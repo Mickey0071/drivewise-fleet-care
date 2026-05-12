@@ -8,6 +8,7 @@ import { Banknote, Play, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { PayrollCheckoutDialog } from "@/components/app/PayrollCheckoutDialog";
+import { ReportActions } from "@/components/app/ReportActions";
 
 export const Route = createFileRoute("/payroll")({
   head: () => ({ meta: [{ title: "Payroll — Camauto Rentals" }] }),
@@ -19,7 +20,23 @@ function PayrollPage() {
   const [payOpen, setPayOpen] = useState(false);
   return (
     <div>
-      <PageHeader title="Payroll Manager" subtitle="Stripe Connect payouts to your team" action={<Button>+ New Run</Button>} />
+      <PageHeader
+        title="Payroll Manager"
+        subtitle="Stripe Connect payouts to your team"
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <ReportActions csv={{
+              filename: "payroll-history.csv",
+              headers: ["Run", "Period start", "Period end", "Status", "Staff", "Role", "Hours", "Vehicles", "Gross", "Net", "Line status"],
+              rows: payrollRuns.flatMap(r => r.lines.map(l => {
+                const s = staffById(l.staffId);
+                return [r.id, r.periodStart, r.periodEnd, r.status, s?.fullName ?? l.staffId, s?.role ?? "", l.hours, l.vehicles, l.gross, l.net, l.status];
+              })),
+            }} />
+            <Button>+ New Run</Button>
+          </div>
+        }
+      />
 
       <Card className="mb-6">
         <CardHeader><CardTitle className="text-base">Active staff</CardTitle></CardHeader>
