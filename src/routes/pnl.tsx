@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { payments, expenses, payrollRuns, staffById, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { TrendingUp, TrendingDown, Users } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
+import { downloadPnLExcel } from "@/lib/pnl-excel";
+import { FileSpreadsheet } from "lucide-react";
 
 export const Route = createFileRoute("/pnl")({
   head: () => ({ meta: [{ title: "P&L — Camauto Rentals" }] }),
@@ -38,6 +40,36 @@ function PnLPage() {
             <select className="h-9 rounded-md border border-input bg-background px-3 text-sm">
               <option>This month</option><option>This week</option><option>This quarter</option>
             </select>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => downloadPnLExcel({
+                periodLabel: `Month-to-date · ${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}`,
+                revenue: [
+                  { label: "Rentals", amount: rentalRevenue },
+                  { label: "Late fees", amount: lateFees },
+                  { label: "Deposits kept", amount: depositsKept },
+                  { label: "Damage charges", amount: damageCharges },
+                ],
+                expenses: Object.entries(byCat).map(([label, amount]) => ({ label, amount })),
+                payroll: payrollRuns.flatMap(run => run.lines.map(l => {
+                  const s = staffById(l.staffId);
+                  return {
+                    runId: run.id,
+                    period: `${fmtDate(run.periodStart)} – ${fmtDate(run.periodEnd)}`,
+                    staff: s?.fullName ?? l.staffId,
+                    role: s?.role ?? "",
+                    gross: l.gross,
+                    net: l.net,
+                    status: l.status,
+                  };
+                })),
+                totals: { revenue: totalRevenue, expenses: totalExpenses, payroll, net, margin },
+              })}
+            >
+              <FileSpreadsheet className="mr-1.5 h-4 w-4" />
+              Export Excel
+            </Button>
             <ReportActions
               csvs={[
                 {
