@@ -13,7 +13,7 @@ const adminItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Fleet", url: "/fleet", icon: Car },
   { title: "Drivers", url: "/drivers", icon: Users },
-  { title: "Rentals", url: "/rentals", icon: FileText },
+  { title: "Reservations", url: "/rentals", icon: FileText },
   { title: "Payments", url: "/payments", icon: DollarSign },
   { title: "Inspections", url: "/inspections", icon: ClipboardCheck },
   { title: "Maintenance", url: "/maintenance", icon: Wrench },
