@@ -152,3 +152,25 @@
     color: var(--color-foreground);
   }
 }
+
+@media print {
+  /* Hide app chrome */
+  [data-sidebar],
+  [data-sidebar-trigger],
+  aside,
+  .no-print { display: none !important; }
+
+  html, body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Expand main content full-width */
+  main, [role="main"] { width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+
+  /* Avoid breaking cards across pages */
+  .rounded-xl, .rounded-md, [data-card] { break-inside: avoid; page-break-inside: avoid; }
+
+  a { color: inherit; text-decoration: none; }
+  @page { margin: 0.5in; }
+}
