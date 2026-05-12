@@ -18,6 +18,7 @@ export const Route = createFileRoute("/payroll")({
 function PayrollPage() {
   const draft = payrollRuns.find(r => r.status === "draft");
   const [payOpen, setPayOpen] = useState(false);
+  const [instantPay, setInstantPay] = useState<{ id: string; amount: number; description: string } | null>(null);
   return (
     <div>
       <PageHeader
@@ -47,7 +48,20 @@ function PayrollPage() {
                 <div className="font-medium">{s.fullName}</div>
                 <div className="text-xs text-muted-foreground">{s.role} · {s.payType} · {fmtMoney(s.payRate)}{s.payType === "hourly" ? "/hr" : s.payType === "per-vehicle" ? "/veh" : "/wk"}</div>
               </div>
-              <StatusBadge status={s.stripeConnected ? "active" : "pending"} />
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setInstantPay({
+                    id: `INSTANT-${s.id}-${Date.now()}`,
+                    amount: s.payRate,
+                    description: `Instant pay · ${s.fullName} (${s.payType})`,
+                  })}
+                >
+                  <CreditCard className="mr-2 h-4 w-4" />Pay {fmtMoney(s.payRate)} now
+                </Button>
+                <StatusBadge status={s.stripeConnected ? "active" : "pending"} />
+              </div>
             </div>
           ))}
         </CardContent>
@@ -104,6 +118,16 @@ function PayrollPage() {
           payrollRunId={draft.id}
           amountCents={Math.round(draft.totalPayout * 100)}
           description={`Payroll period ${draft.periodStart} – ${draft.periodEnd}`}
+        />
+      )}
+
+      {instantPay && (
+        <PayrollCheckoutDialog
+          open={!!instantPay}
+          onOpenChange={(v) => !v && setInstantPay(null)}
+          payrollRunId={instantPay.id}
+          amountCents={Math.round(instantPay.amount * 100)}
+          description={instantPay.description}
         />
       )}
 
