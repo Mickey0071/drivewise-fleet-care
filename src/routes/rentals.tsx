@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { ReportActions } from "@/components/app/ReportActions";
 
 export const Route = createFileRoute("/rentals")({
   head: () => ({ meta: [{ title: "Rentals — Camauto Rentals" }] }),
@@ -16,7 +17,19 @@ function RentalsPage() {
       <PageHeader
         title="Rental Management"
         subtitle={`${rentals.length} active rentals`}
-        action={<Button>+ New Rental</Button>}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <ReportActions csv={{
+              filename: "rentals.csv",
+              headers: ["ID", "Driver", "Vehicle", "Plate", "Started", "Ended", "Weekly", "Deposit", "Status"],
+              rows: rentals.map(r => {
+                const v = vehicleById(r.vehicleId);
+                return [r.id, driverById(r.driverId)?.fullName ?? r.driverId, v ? `${v.year} ${v.make} ${v.model}` : r.vehicleId, v?.plate ?? "", r.startDate, r.endDate ?? "", r.weeklyRate, r.depositPaid, r.paymentStatus];
+              }),
+            }} />
+            <Button>+ New Rental</Button>
+          </div>
+        }
       />
       <div className="grid gap-3 lg:grid-cols-2">
         {rentals.map(r => {
