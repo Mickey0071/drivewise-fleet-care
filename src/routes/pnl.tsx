@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { payments, expenses, payrollRuns, staffById, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { Download, TrendingUp, TrendingDown, Users } from "lucide-react";
+import { TrendingUp, TrendingDown, Users } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 
 export const Route = createFileRoute("/pnl")({
