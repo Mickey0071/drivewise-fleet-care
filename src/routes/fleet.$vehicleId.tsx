@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { vehicleById, rentals, maintenance, violations, inspections, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
+import { carImage } from "@/lib/mock/carImages";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
   component: VehicleDetail,
@@ -22,6 +23,15 @@ function VehicleDetail() {
   return (
     <div>
       <Button variant="ghost" size="sm" asChild className="mb-3"><Link to="/fleet">← Back to fleet</Link></Button>
+      <div className="mb-4 overflow-hidden rounded-xl border border-border bg-muted">
+        <img
+          src={carImage(v.model)}
+          alt={`${v.year} ${v.make} ${v.model}`}
+          width={800}
+          height={512}
+          className="aspect-[21/9] w-full object-cover"
+        />
+      </div>
       <PageHeader
         title={`${v.year} ${v.make} ${v.model}`}
         subtitle={`${v.id} · Plate ${v.plate} · VIN ${v.vin}`}
