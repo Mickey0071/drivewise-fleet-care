@@ -12,6 +12,8 @@ import appCss from "../styles.css?url";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app/AppSidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeToggle } from "@/components/app/ThemeToggle";
+import { GlobalSearch } from "@/components/app/GlobalSearch";
 
 function NotFoundComponent() {
   return (
@@ -89,6 +91,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "icon", type: "image/jpeg", href: "/favicon.jpg" },
+      { rel: "apple-touch-icon", href: "/favicon.jpg" },
     ],
   }),
   shellComponent: RootShell,
@@ -99,8 +103,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
+          }}
+        />
         <HeadContent />
       </head>
       <body>
@@ -125,6 +134,10 @@ function RootComponent() {
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-success" />
                 <span className="text-xs text-muted-foreground">Demo data — no live backend</span>
+              </div>
+              <div className="ml-auto flex items-center gap-1">
+                <GlobalSearch />
+                <ThemeToggle />
               </div>
             </header>
             <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
