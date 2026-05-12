@@ -3,7 +3,8 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { payments, expenses, payrollRuns, staffById, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { Download, TrendingUp, TrendingDown, Users } from "lucide-react";
+import { TrendingUp, TrendingDown, Users } from "lucide-react";
+import { ReportActions } from "@/components/app/ReportActions";
 
 export const Route = createFileRoute("/pnl")({
   head: () => ({ meta: [{ title: "P&L — Camauto Rentals" }] }),
@@ -37,7 +38,37 @@ function PnLPage() {
             <select className="h-9 rounded-md border border-input bg-background px-3 text-sm">
               <option>This month</option><option>This week</option><option>This quarter</option>
             </select>
-            <Button variant="outline"><Download className="mr-2 h-4 w-4" />Export</Button>
+            <ReportActions
+              csvs={[
+                {
+                  filename: "pnl-summary.csv",
+                  headers: ["Line", "Amount"],
+                  rows: [
+                    ["Rentals", rentalRevenue],
+                    ["Late fees", lateFees],
+                    ["Deposits kept", depositsKept],
+                    ["Damage charges", damageCharges],
+                    ["Total revenue", totalRevenue],
+                    ["Total expenses", totalExpenses],
+                    ["Payroll", payroll],
+                    ["Net profit", net],
+                  ],
+                },
+                {
+                  filename: "pnl-expenses.csv",
+                  headers: ["Category", "Amount"],
+                  rows: Object.entries(byCat).map(([c, a]) => [c, a]),
+                },
+                {
+                  filename: "pnl-payroll.csv",
+                  headers: ["Run", "Period start", "Period end", "Staff", "Role", "Gross", "Net", "Status"],
+                  rows: payrollRuns.flatMap(run => run.lines.map(l => {
+                    const s = staffById(l.staffId);
+                    return [run.id, run.periodStart, run.periodEnd, s?.fullName ?? l.staffId, s?.role ?? "", l.gross, l.net, l.status];
+                  })),
+                },
+              ]}
+            />
           </div>
         }
       />

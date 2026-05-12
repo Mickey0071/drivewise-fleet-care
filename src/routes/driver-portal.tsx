@@ -7,6 +7,7 @@ import { drivers, rentals, payments, vehicleById, fmtDate, fmtMoney } from "@/li
 import { carImage } from "@/lib/mock/carImages";
 import { Camera, IdCard } from "lucide-react";
 import { toast } from "sonner";
+import { ReportActions } from "@/components/app/ReportActions";
 
 export const Route = createFileRoute("/driver-portal")({
   head: () => ({ meta: [{ title: "Driver Portal — Camauto Rentals" }] }),
@@ -23,7 +24,17 @@ function DriverPortalPage() {
 
   return (
     <div>
-      <PageHeader title="Driver Portal" subtitle={`Hi, ${me.fullName.split(" ")[0]} 👋`} />
+      <PageHeader
+        title="Driver Portal"
+        subtitle={`Hi, ${me.fullName.split(" ")[0]} 👋`}
+        action={
+          <ReportActions csv={{
+            filename: `${me.fullName.replace(/\s+/g, "_")}-history.csv`,
+            headers: ["Payment ID", "Amount", "Due", "Paid", "Method", "Status", "Vehicle", "Plate"],
+            rows: myPayments.map(p => [p.id, p.amount, p.dueDate, p.paidDate ?? "", p.method ?? "", p.status, `${v.year} ${v.make} ${v.model}`, v.plate]),
+          }} />
+        }
+      />
 
       <Card className="mb-6 overflow-hidden">
         <div className="relative aspect-[16/9] w-full bg-muted">

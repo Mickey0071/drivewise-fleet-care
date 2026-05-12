@@ -3,8 +3,9 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { vehicleById, rentals, maintenance, violations, inspections, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
+import { vehicleById, rentals, maintenance, violations, inspections, payments, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
+import { ReportActions } from "@/components/app/ReportActions";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
   component: VehicleDetail,
@@ -19,6 +20,13 @@ function VehicleDetail() {
   const vMx = maintenance.filter(m => m.vehicleId === v.id);
   const vViol = violations.filter(x => x.vehicleId === v.id);
   const vInsp = inspections.filter(i => i.vehicleId === v.id);
+  const rentalIds = new Set(vRentals.map(r => r.id));
+  const vPayments = payments.filter(p => rentalIds.has(p.rentalId));
+
+  const incomeTotal = vPayments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
+  const expenseTotal = vMx.reduce((s, m) => s + m.cost, 0) + vViol.reduce((s, x) => s + x.amount, 0);
+
+  const slug = `${v.id}-${v.plate}`.replace(/\s+/g, "_");
 
   return (
     <div>
@@ -35,14 +43,47 @@ function VehicleDetail() {
       <PageHeader
         title={`${v.year} ${v.make} ${v.model}`}
         subtitle={`${v.id} · Plate ${v.plate} · VIN ${v.vin}`}
-        action={<StatusBadge status={v.status} />}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={v.status} />
+            <ReportActions
+              csvs={[
+                {
+                  filename: `${slug}-income.csv`,
+                  headers: ["Payment ID", "Rental", "Driver", "Amount", "Due", "Paid", "Status", "Method"],
+                  rows: vPayments.map(p => [p.id, p.rentalId, driverById(p.driverId)?.fullName ?? p.driverId, p.amount, p.dueDate, p.paidDate ?? "", p.status, p.method ?? ""]),
+                },
+                {
+                  filename: `${slug}-expenses.csv`,
+                  headers: ["Type", "ID", "Description", "Date", "Amount", "Vendor/Status"],
+                  rows: [
+                    ...vMx.map(m => ["maintenance", m.id, m.serviceType, m.dateCompleted, m.cost, m.vendor] as const),
+                    ...vViol.map(x => ["violation", x.id, x.type, x.dateIssued, x.amount, x.status] as const),
+                  ].map(r => [...r]),
+                },
+                {
+                  filename: `${slug}-maintenance.csv`,
+                  headers: ["ID", "Service", "Date", "Vendor", "Mileage", "Cost", "Next due"],
+                  rows: vMx.map(m => [m.id, m.serviceType, m.dateCompleted, m.vendor, m.mileageAtService, m.cost, m.nextServiceDue]),
+                },
+                {
+                  filename: `${slug}-rentals.csv`,
+                  headers: ["Rental ID", "Driver", "Start", "End", "Weekly rate", "Deposit", "Status"],
+                  rows: vRentals.map(r => [r.id, driverById(r.driverId)?.fullName ?? r.driverId, r.startDate, r.endDate ?? "", r.weeklyRate, r.depositPaid, r.paymentStatus]),
+                },
+              ]}
+            />
+          </div>
+        }
       />
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <Stat label="Mileage" value={`${v.mileage.toLocaleString()} mi`} />
         <Stat label="Weekly rate" value={fmtMoney(v.weeklyRate)} />
         <Stat label="Daily rate" value={fmtMoney(v.dailyRate)} />
         <Stat label="Risk tier" value={v.riskTier} />
+        <Stat label="Income (paid)" value={fmtMoney(incomeTotal)} />
+        <Stat label="Expenses" value={fmtMoney(expenseTotal)} />
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -64,6 +105,11 @@ function VehicleDetail() {
         <Section title="Inspections">
           {vInsp.length === 0 ? <Empty/> : vInsp.map(i => (
             <Row key={i.id} title={i.type} sub={`${fmtDate(i.date)} · ${i.mileage.toLocaleString()} mi`} right={<StatusBadge status={i.damageNoted ? "missed" : "paid"} />} />
+          ))}
+        </Section>
+        <Section title="Income (payments collected)">
+          {vPayments.length === 0 ? <Empty/> : vPayments.map(p => (
+            <Row key={p.id} title={fmtMoney(p.amount)} sub={`${driverById(p.driverId)?.fullName ?? p.driverId} · due ${fmtDate(p.dueDate)}`} right={<StatusBadge status={p.status} />} />
           ))}
         </Section>
       </div>

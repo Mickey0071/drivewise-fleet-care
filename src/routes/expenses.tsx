@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { expenses, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { Paperclip } from "lucide-react";
+import { ReportActions } from "@/components/app/ReportActions";
 
 const cats = ["payroll", "maintenance", "fuel", "insurance", "registration", "impound", "misc"];
 
@@ -17,7 +18,17 @@ export const Route = createFileRoute("/expenses")({
 function ExpensesPage() {
   return (
     <div>
-      <PageHeader title="Expense Logger" subtitle="Track every dollar that leaves the business" />
+      <PageHeader
+        title="Expense Logger"
+        subtitle="Track every dollar that leaves the business"
+        action={
+          <ReportActions csv={{
+            filename: "expenses.csv",
+            headers: ["ID", "Category", "Vendor", "Date", "Amount", "Vehicle", "Notes"],
+            rows: expenses.map(e => [e.id, e.category, e.vendor, e.date, e.amount, e.vehicleId ? vehicleById(e.vehicleId)?.plate ?? e.vehicleId : "", e.notes ?? ""]),
+          }} />
+        }
+      />
       <div className="grid gap-4 lg:grid-cols-3">
         <Card>
           <CardHeader><CardTitle className="text-base">Quick add</CardTitle></CardHeader>

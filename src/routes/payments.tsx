@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { payments, driverById, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { Bell } from "lucide-react";
+import { ReportActions } from "@/components/app/ReportActions";
 
 export const Route = createFileRoute("/payments")({
   head: () => ({ meta: [{ title: "Payments — Camauto Rentals" }] }),
@@ -21,7 +22,20 @@ function PaymentsPage() {
 
   return (
     <div>
-      <PageHeader title="Payment Tracker" subtitle="Log and chase weekly rental payments" action={<Button>+ Log Payment</Button>} />
+      <PageHeader
+        title="Payment Tracker"
+        subtitle="Log and chase weekly rental payments"
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <ReportActions csv={{
+              filename: "payments.csv",
+              headers: ["ID", "Driver", "Rental", "Amount", "Due", "Paid", "Method", "Status"],
+              rows: sorted.map(p => [p.id, driverById(p.driverId)?.fullName ?? p.driverId, p.rentalId, p.amount, p.dueDate, p.paidDate ?? "", p.method ?? "", p.status]),
+            }} />
+            <Button>+ Log Payment</Button>
+          </div>
+        }
+      />
       <div className="mb-6 grid grid-cols-3 gap-3">
         <Total label="Collected" value={totals.paid} tone="text-success" />
         <Total label="Late" value={totals.late} tone="text-warning-foreground" />

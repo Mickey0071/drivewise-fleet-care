@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { violations, vehicleById, driverById, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { ReportActions } from "@/components/app/ReportActions";
 
 export const Route = createFileRoute("/violations")({
   head: () => ({ meta: [{ title: "Violations — Camauto Rentals" }] }),
@@ -14,7 +15,20 @@ function ViolationsPage() {
   const outstanding = violations.filter(v => v.status === "pending").reduce((s, v) => s + v.amount, 0);
   return (
     <div>
-      <PageHeader title="Violations Board" subtitle={`${violations.length} on record`} action={<Button>+ Log Violation</Button>} />
+      <PageHeader
+        title="Violations Board"
+        subtitle={`${violations.length} on record`}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <ReportActions csv={{
+              filename: "violations.csv",
+              headers: ["ID", "Type", "Plate", "Driver", "Date", "Amount", "Status", "Notes"],
+              rows: violations.map(v => [v.id, v.type, vehicleById(v.vehicleId)?.plate ?? v.vehicleId, v.driverId ? driverById(v.driverId)?.fullName ?? v.driverId : "", v.dateIssued, v.amount, v.status, v.notes ?? ""]),
+            }} />
+            <Button>+ Log Violation</Button>
+          </div>
+        }
+      />
       <Card className="mb-6 border-destructive/40 bg-destructive/5">
         <CardContent className="p-4">
           <div className="text-xs uppercase text-muted-foreground">Outstanding</div>
