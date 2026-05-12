@@ -9,19 +9,79 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ViolationsRouteImport } from './routes/violations'
+import { Route as StaffPortalRouteImport } from './routes/staff-portal'
+import { Route as RentalsRouteImport } from './routes/rentals'
+import { Route as PnlRouteImport } from './routes/pnl'
+import { Route as PayrollRouteImport } from './routes/payroll'
+import { Route as PaymentsRouteImport } from './routes/payments'
+import { Route as MaintenanceRouteImport } from './routes/maintenance'
+import { Route as InspectionsRouteImport } from './routes/inspections'
 import { Route as FleetRouteImport } from './routes/fleet'
+import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as DriversRouteImport } from './routes/drivers'
+import { Route as DriverPortalRouteImport } from './routes/driver-portal'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
 
+const ViolationsRoute = ViolationsRouteImport.update({
+  id: '/violations',
+  path: '/violations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffPortalRoute = StaffPortalRouteImport.update({
+  id: '/staff-portal',
+  path: '/staff-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RentalsRoute = RentalsRouteImport.update({
+  id: '/rentals',
+  path: '/rentals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PnlRoute = PnlRouteImport.update({
+  id: '/pnl',
+  path: '/pnl',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayrollRoute = PayrollRouteImport.update({
+  id: '/payroll',
+  path: '/payroll',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentsRoute = PaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MaintenanceRoute = MaintenanceRouteImport.update({
+  id: '/maintenance',
+  path: '/maintenance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InspectionsRoute = InspectionsRouteImport.update({
+  id: '/inspections',
+  path: '/inspections',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FleetRoute = FleetRouteImport.update({
   id: '/fleet',
   path: '/fleet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExpensesRoute = ExpensesRouteImport.update({
+  id: '/expenses',
+  path: '/expenses',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DriversRoute = DriversRouteImport.update({
   id: '/drivers',
   path: '/drivers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DriverPortalRoute = DriverPortalRouteImport.update({
+  id: '/driver-portal',
+  path: '/driver-portal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -37,39 +97,178 @@ const FleetVehicleIdRoute = FleetVehicleIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/driver-portal': typeof DriverPortalRoute
   '/drivers': typeof DriversRoute
+  '/expenses': typeof ExpensesRoute
   '/fleet': typeof FleetRouteWithChildren
+  '/inspections': typeof InspectionsRoute
+  '/maintenance': typeof MaintenanceRoute
+  '/payments': typeof PaymentsRoute
+  '/payroll': typeof PayrollRoute
+  '/pnl': typeof PnlRoute
+  '/rentals': typeof RentalsRoute
+  '/staff-portal': typeof StaffPortalRoute
+  '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/driver-portal': typeof DriverPortalRoute
   '/drivers': typeof DriversRoute
+  '/expenses': typeof ExpensesRoute
   '/fleet': typeof FleetRouteWithChildren
+  '/inspections': typeof InspectionsRoute
+  '/maintenance': typeof MaintenanceRoute
+  '/payments': typeof PaymentsRoute
+  '/payroll': typeof PayrollRoute
+  '/pnl': typeof PnlRoute
+  '/rentals': typeof RentalsRoute
+  '/staff-portal': typeof StaffPortalRoute
+  '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/driver-portal': typeof DriverPortalRoute
   '/drivers': typeof DriversRoute
+  '/expenses': typeof ExpensesRoute
   '/fleet': typeof FleetRouteWithChildren
+  '/inspections': typeof InspectionsRoute
+  '/maintenance': typeof MaintenanceRoute
+  '/payments': typeof PaymentsRoute
+  '/payroll': typeof PayrollRoute
+  '/pnl': typeof PnlRoute
+  '/rentals': typeof RentalsRoute
+  '/staff-portal': typeof StaffPortalRoute
+  '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/drivers' | '/fleet' | '/fleet/$vehicleId'
+  fullPaths:
+    | '/'
+    | '/driver-portal'
+    | '/drivers'
+    | '/expenses'
+    | '/fleet'
+    | '/inspections'
+    | '/maintenance'
+    | '/payments'
+    | '/payroll'
+    | '/pnl'
+    | '/rentals'
+    | '/staff-portal'
+    | '/violations'
+    | '/fleet/$vehicleId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/drivers' | '/fleet' | '/fleet/$vehicleId'
-  id: '__root__' | '/' | '/drivers' | '/fleet' | '/fleet/$vehicleId'
+  to:
+    | '/'
+    | '/driver-portal'
+    | '/drivers'
+    | '/expenses'
+    | '/fleet'
+    | '/inspections'
+    | '/maintenance'
+    | '/payments'
+    | '/payroll'
+    | '/pnl'
+    | '/rentals'
+    | '/staff-portal'
+    | '/violations'
+    | '/fleet/$vehicleId'
+  id:
+    | '__root__'
+    | '/'
+    | '/driver-portal'
+    | '/drivers'
+    | '/expenses'
+    | '/fleet'
+    | '/inspections'
+    | '/maintenance'
+    | '/payments'
+    | '/payroll'
+    | '/pnl'
+    | '/rentals'
+    | '/staff-portal'
+    | '/violations'
+    | '/fleet/$vehicleId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DriverPortalRoute: typeof DriverPortalRoute
   DriversRoute: typeof DriversRoute
+  ExpensesRoute: typeof ExpensesRoute
   FleetRoute: typeof FleetRouteWithChildren
+  InspectionsRoute: typeof InspectionsRoute
+  MaintenanceRoute: typeof MaintenanceRoute
+  PaymentsRoute: typeof PaymentsRoute
+  PayrollRoute: typeof PayrollRoute
+  PnlRoute: typeof PnlRoute
+  RentalsRoute: typeof RentalsRoute
+  StaffPortalRoute: typeof StaffPortalRoute
+  ViolationsRoute: typeof ViolationsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/violations': {
+      id: '/violations'
+      path: '/violations'
+      fullPath: '/violations'
+      preLoaderRoute: typeof ViolationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff-portal': {
+      id: '/staff-portal'
+      path: '/staff-portal'
+      fullPath: '/staff-portal'
+      preLoaderRoute: typeof StaffPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rentals': {
+      id: '/rentals'
+      path: '/rentals'
+      fullPath: '/rentals'
+      preLoaderRoute: typeof RentalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pnl': {
+      id: '/pnl'
+      path: '/pnl'
+      fullPath: '/pnl'
+      preLoaderRoute: typeof PnlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payroll': {
+      id: '/payroll'
+      path: '/payroll'
+      fullPath: '/payroll'
+      preLoaderRoute: typeof PayrollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payments': {
+      id: '/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof PaymentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/maintenance': {
+      id: '/maintenance'
+      path: '/maintenance'
+      fullPath: '/maintenance'
+      preLoaderRoute: typeof MaintenanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inspections': {
+      id: '/inspections'
+      path: '/inspections'
+      fullPath: '/inspections'
+      preLoaderRoute: typeof InspectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/fleet': {
       id: '/fleet'
       path: '/fleet'
@@ -77,11 +276,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FleetRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/expenses': {
+      id: '/expenses'
+      path: '/expenses'
+      fullPath: '/expenses'
+      preLoaderRoute: typeof ExpensesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/drivers': {
       id: '/drivers'
       path: '/drivers'
       fullPath: '/drivers'
       preLoaderRoute: typeof DriversRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/driver-portal': {
+      id: '/driver-portal'
+      path: '/driver-portal'
+      fullPath: '/driver-portal'
+      preLoaderRoute: typeof DriverPortalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -113,9 +326,29 @@ const FleetRouteWithChildren = FleetRoute._addFileChildren(FleetRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DriverPortalRoute: DriverPortalRoute,
   DriversRoute: DriversRoute,
+  ExpensesRoute: ExpensesRoute,
   FleetRoute: FleetRouteWithChildren,
+  InspectionsRoute: InspectionsRoute,
+  MaintenanceRoute: MaintenanceRoute,
+  PaymentsRoute: PaymentsRoute,
+  PayrollRoute: PayrollRoute,
+  PnlRoute: PnlRoute,
+  RentalsRoute: RentalsRoute,
+  StaffPortalRoute: StaffPortalRoute,
+  ViolationsRoute: ViolationsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
