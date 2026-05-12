@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { Wrench, AlertTriangle } from "lucide-react";
+import { ReportActions } from "@/components/app/ReportActions";
 
 export const Route = createFileRoute("/maintenance")({
   head: () => ({ meta: [{ title: "Maintenance — Camauto Rentals" }] }),
@@ -19,7 +20,23 @@ function MaintenancePage() {
 
   return (
     <div>
-      <PageHeader title="Maintenance Log" subtitle="Per-vehicle service history" action={<Button>+ Log Service</Button>} />
+      <PageHeader
+        title="Maintenance Log"
+        subtitle="Per-vehicle service history"
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <ReportActions csv={{
+              filename: "maintenance.csv",
+              headers: ["ID", "Vehicle", "Plate", "Service", "Vendor", "Date", "Mileage", "Cost", "Next due"],
+              rows: maintenance.map(m => {
+                const v = vehicleById(m.vehicleId);
+                return [m.id, v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId, v?.plate ?? "", m.serviceType, m.vendor, m.dateCompleted, m.mileageAtService, m.cost, m.nextServiceDue];
+              }),
+            }} />
+            <Button>+ Log Service</Button>
+          </div>
+        }
+      />
 
       <div className="mb-6 grid grid-cols-3 gap-3">
         <KPI label="YTD spend" value={fmtMoney(totalCost)} icon={Wrench} />
