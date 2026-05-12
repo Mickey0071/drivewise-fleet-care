@@ -25,6 +25,11 @@ function VehicleDetail() {
 
   const incomeTotal = vPayments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
   const expenseTotal = vMx.reduce((s, m) => s + m.cost, 0) + vViol.reduce((s, x) => s + x.amount, 0);
+  const netTotal = incomeTotal - expenseTotal;
+  const activeRental = vRentals.find(r => !r.endDate) ?? vRentals[0];
+  const activeDriver = activeRental ? driverById(activeRental.driverId) : null;
+  const isCurrentlyRented = v.status === "rented" && !!activeRental && !activeRental.endDate;
+  const nextDue = vPayments.find(p => p.status !== "paid");
 
   const slug = `${v.id}-${v.plate}`.replace(/\s+/g, "_");
 
@@ -77,13 +82,36 @@ function VehicleDetail() {
         }
       />
 
+      {isCurrentlyRented && activeDriver && (
+        <Card className="mb-4 border-primary/40 bg-primary/5">
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Currently rented to</div>
+              <div className="mt-1 text-lg font-semibold">{activeDriver.fullName}</div>
+              <div className="text-xs text-muted-foreground">
+                Since {fmtDate(activeRental.startDate)} · {fmtMoney(activeRental.weeklyRate)}/wk · Deposit {fmtMoney(activeRental.depositPaid)}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Next payment</div>
+              {nextDue ? (
+                <>
+                  <div className="mt-1 font-semibold">{fmtMoney(nextDue.amount)}</div>
+                  <div className="text-xs text-muted-foreground">due {fmtDate(nextDue.dueDate)}</div>
+                </>
+              ) : <div className="mt-1 text-sm text-muted-foreground">All paid</div>}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <Stat label="Mileage" value={`${v.mileage.toLocaleString()} mi`} />
         <Stat label="Weekly rate" value={fmtMoney(v.weeklyRate)} />
         <Stat label="Daily rate" value={fmtMoney(v.dailyRate)} />
-        <Stat label="Risk tier" value={v.riskTier} />
         <Stat label="Income (paid)" value={fmtMoney(incomeTotal)} />
         <Stat label="Expenses" value={fmtMoney(expenseTotal)} />
+        <Stat label="Net" value={fmtMoney(netTotal)} />
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
