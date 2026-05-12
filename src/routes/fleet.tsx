@@ -39,7 +39,7 @@ function FleetPage() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="text-xs text-muted-foreground">{v.id} · {v.plate}</div>
+                    <div className="text-xs text-muted-foreground">{v.id} · Tag #{v.plate}</div>
                     <div className="mt-0.5 font-semibold">{v.year} {v.make} {v.model}</div>
                   </div>
                 </div>
