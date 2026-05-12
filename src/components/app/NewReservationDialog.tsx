@@ -82,18 +82,10 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={close}>
       <DialogContent
         className="flex h-screen w-screen max-w-none flex-col gap-0 rounded-none border-0 p-0 sm:max-w-none"
-        showCloseButton={false}
       >
         <DialogHeader className="border-b bg-background p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <DialogTitle>New reservation</DialogTitle>
-              <DialogDescription>Step {step + 1} of {STEPS.length} · {STEPS[step]}</DialogDescription>
-            </div>
-            <Button variant="ghost" size="icon" onClick={() => close(false)} aria-label="Close">
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
+          <DialogTitle>New reservation</DialogTitle>
+          <DialogDescription>Step {step + 1} of {STEPS.length} · {STEPS[step]}</DialogDescription>
           <div className="mx-auto w-full max-w-3xl">
             <Stepper current={step} />
           </div>
