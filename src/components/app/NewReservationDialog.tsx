@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,14 +80,27 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="max-h-[92vh] max-w-2xl overflow-hidden p-0">
-        <DialogHeader className="border-b p-4">
-          <DialogTitle>New reservation</DialogTitle>
-          <DialogDescription>Step {step + 1} of {STEPS.length} · {STEPS[step]}</DialogDescription>
-          <Stepper current={step} />
+      <DialogContent
+        className="flex h-screen w-screen max-w-none flex-col gap-0 rounded-none border-0 p-0 sm:max-w-none"
+        showCloseButton={false}
+      >
+        <DialogHeader className="border-b bg-background p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <DialogTitle>New reservation</DialogTitle>
+              <DialogDescription>Step {step + 1} of {STEPS.length} · {STEPS[step]}</DialogDescription>
+            </div>
+            <Button variant="ghost" size="icon" onClick={() => close(false)} aria-label="Close">
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+          <div className="mx-auto w-full max-w-3xl">
+            <Stepper current={step} />
+          </div>
         </DialogHeader>
 
-        <div className="max-h-[65vh] overflow-y-auto bg-muted/30 p-5">
+        <div className="flex-1 overflow-y-auto bg-muted/30 px-4 py-8">
+          <div key={step} className="mx-auto w-full max-w-3xl animate-in fade-in slide-in-from-right-4 duration-200">
           {step === 0 && (
             <div className="space-y-3">
               <div className="relative">
@@ -225,9 +239,11 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
               </p>
             </div>
           )}
+          </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t bg-background p-3">
+        <div className="border-t bg-background p-3">
+          <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-2">
           <Button
             variant="ghost"
             size="sm"
@@ -245,6 +261,7 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
               <Check className="mr-1 h-4 w-4" /> Confirm reservation
             </Button>
           )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
