@@ -7,6 +7,7 @@ import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
+import logo from "@/assets/camauto-logo.jpeg";
 
 const adminItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -58,13 +59,12 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground font-bold">
-            C
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white p-1">
+            <img src={logo} alt="Camauto Rentals" className="h-full w-full object-contain" />
           </div>
           {!collapsed && (
-            <div className="leading-tight">
-              <div className="text-sm font-bold text-sidebar-foreground">Camauto</div>
-              <div className="text-[10px] uppercase tracking-wide text-sidebar-foreground/60">Rentals</div>
+            <div className="overflow-hidden rounded bg-white px-2 py-1">
+              <img src={logo} alt="Camauto Rentals" className="h-6 w-auto object-contain" />
             </div>
           )}
         </Link>
