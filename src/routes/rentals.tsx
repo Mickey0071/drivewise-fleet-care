@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { ReportActions } from "@/components/app/ReportActions";
+import { NewReservationDialog } from "@/components/app/NewReservationDialog";
+import { useState } from "react";
 
 export const Route = createFileRoute("/rentals")({
   head: () => ({ meta: [{ title: "Rentals — Camauto Rentals" }] }),
@@ -12,6 +14,7 @@ export const Route = createFileRoute("/rentals")({
 });
 
 function RentalsPage() {
+  const [newOpen, setNewOpen] = useState(false);
   return (
     <div>
       <PageHeader
@@ -27,7 +30,7 @@ function RentalsPage() {
                 return [r.id, driverById(r.driverId)?.fullName ?? r.driverId, v ? `${v.year} ${v.make} ${v.model}` : r.vehicleId, v?.plate ?? "", r.startDate, r.endDate ?? "", r.weeklyRate, r.depositPaid, r.paymentStatus];
               }),
             }} />
-            <Button>+ New Rental</Button>
+            <Button onClick={() => setNewOpen(true)}>+ New Reservation</Button>
           </div>
         }
       />
@@ -72,6 +75,7 @@ function RentalsPage() {
           );
         })}
       </div>
+      <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
     </div>
   );
 }
