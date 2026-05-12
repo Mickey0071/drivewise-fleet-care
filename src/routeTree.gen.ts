@@ -13,6 +13,7 @@ import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as StaffPortalRouteImport } from './routes/staff-portal'
 import { Route as RentalsRouteImport } from './routes/rentals'
 import { Route as PnlRouteImport } from './routes/pnl'
+import { Route as PayrollReturnRouteImport } from './routes/payroll-return'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
@@ -42,6 +43,11 @@ const RentalsRoute = RentalsRouteImport.update({
 const PnlRoute = PnlRouteImport.update({
   id: '/pnl',
   path: '/pnl',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayrollReturnRoute = PayrollReturnRouteImport.update({
+  id: '/payroll-return',
+  path: '/payroll-return',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PayrollRoute = PayrollRouteImport.update({
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/maintenance': typeof MaintenanceRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
+  '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
   '/rentals': typeof RentalsRoute
   '/staff-portal': typeof StaffPortalRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/maintenance': typeof MaintenanceRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
+  '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
   '/rentals': typeof RentalsRoute
   '/staff-portal': typeof StaffPortalRoute
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/maintenance': typeof MaintenanceRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
+  '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
   '/rentals': typeof RentalsRoute
   '/staff-portal': typeof StaffPortalRoute
@@ -156,6 +165,7 @@ export interface FileRouteTypes {
     | '/maintenance'
     | '/payments'
     | '/payroll'
+    | '/payroll-return'
     | '/pnl'
     | '/rentals'
     | '/staff-portal'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/maintenance'
     | '/payments'
     | '/payroll'
+    | '/payroll-return'
     | '/pnl'
     | '/rentals'
     | '/staff-portal'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/maintenance'
     | '/payments'
     | '/payroll'
+    | '/payroll-return'
     | '/pnl'
     | '/rentals'
     | '/staff-portal'
@@ -205,6 +217,7 @@ export interface RootRouteChildren {
   MaintenanceRoute: typeof MaintenanceRoute
   PaymentsRoute: typeof PaymentsRoute
   PayrollRoute: typeof PayrollRoute
+  PayrollReturnRoute: typeof PayrollReturnRoute
   PnlRoute: typeof PnlRoute
   RentalsRoute: typeof RentalsRoute
   StaffPortalRoute: typeof StaffPortalRoute
@@ -239,6 +252,13 @@ declare module '@tanstack/react-router' {
       path: '/pnl'
       fullPath: '/pnl'
       preLoaderRoute: typeof PnlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payroll-return': {
+      id: '/payroll-return'
+      path: '/payroll-return'
+      fullPath: '/payroll-return'
+      preLoaderRoute: typeof PayrollReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/payroll': {
@@ -334,6 +354,7 @@ const rootRouteChildren: RootRouteChildren = {
   MaintenanceRoute: MaintenanceRoute,
   PaymentsRoute: PaymentsRoute,
   PayrollRoute: PayrollRoute,
+  PayrollReturnRoute: PayrollReturnRoute,
   PnlRoute: PnlRoute,
   RentalsRoute: RentalsRoute,
   StaffPortalRoute: StaffPortalRoute,
@@ -342,3 +363,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
