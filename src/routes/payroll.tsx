@@ -4,8 +4,10 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { staff, payrollRuns, staffById, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { Banknote, Play } from "lucide-react";
+import { Banknote, Play, CreditCard } from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
+import { PayrollCheckoutDialog } from "@/components/app/PayrollCheckoutDialog";
 
 export const Route = createFileRoute("/payroll")({
   head: () => ({ meta: [{ title: "Payroll — Camauto Rentals" }] }),
@@ -14,6 +16,7 @@ export const Route = createFileRoute("/payroll")({
 
 function PayrollPage() {
   const draft = payrollRuns.find(r => r.status === "draft");
+  const [payOpen, setPayOpen] = useState(false);
   return (
     <div>
       <PageHeader title="Payroll Manager" subtitle="Stripe Connect payouts to your team" action={<Button>+ New Run</Button>} />
@@ -64,12 +67,27 @@ function PayrollPage() {
                 <div className="text-xs text-muted-foreground">Total payout</div>
                 <div className="text-2xl font-bold">{fmtMoney(draft.totalPayout)}</div>
               </div>
-              <Button size="lg" onClick={() => toast.success("Payroll triggered (demo)", { description: "Stripe Connect transfers would fire here." })}>
-                <Play className="mr-2 h-4 w-4" />Run Payroll
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button size="lg" variant="outline" onClick={() => setPayOpen(true)}>
+                  <CreditCard className="mr-2 h-4 w-4" />Pay with debit card
+                </Button>
+                <Button size="lg" onClick={() => toast.success("Payroll triggered (demo)", { description: "Stripe Connect transfers would fire here." })}>
+                  <Play className="mr-2 h-4 w-4" />Run Payroll
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {draft && (
+        <PayrollCheckoutDialog
+          open={payOpen}
+          onOpenChange={setPayOpen}
+          payrollRunId={draft.id}
+          amountCents={Math.round(draft.totalPayout * 100)}
+          description={`Payroll period ${draft.periodStart} – ${draft.periodEnd}`}
+        />
       )}
 
       <Card>

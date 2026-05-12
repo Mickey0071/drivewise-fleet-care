@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { payments, expenses, fmtMoney } from "@/lib/mock/data";
-import { Download, TrendingUp, TrendingDown } from "lucide-react";
+import { payments, expenses, payrollRuns, staffById, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { Download, TrendingUp, TrendingDown, Users } from "lucide-react";
 
 export const Route = createFileRoute("/pnl")({
   head: () => ({ meta: [{ title: "P&L — Camauto Rentals" }] }),
@@ -83,6 +83,52 @@ function PnLPage() {
             <Compare label="Expenses" cur={totalExpenses} prev={prior.expenses} invert />
             <Compare label="Net" cur={net} prev={prior.net} />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Users className="h-4 w-4 text-primary" /> Payroll breakdown
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {payrollRuns.map(run => {
+            const totalGross = run.lines.reduce((s, l) => s + l.gross, 0);
+            const totalNet = run.lines.reduce((s, l) => s + l.net, 0);
+            return (
+              <div key={run.id} className="rounded-md border border-border">
+                <div className="flex items-center justify-between border-b border-border bg-muted/40 px-4 py-2">
+                  <div>
+                    <div className="text-sm font-semibold">{run.id} <span className="ml-2 text-xs font-normal capitalize text-muted-foreground">{run.status}</span></div>
+                    <div className="text-xs text-muted-foreground">{fmtDate(run.periodStart)} – {fmtDate(run.periodEnd)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground">Total payout</div>
+                    <div className="text-lg font-bold">{fmtMoney(run.totalPayout)}</div>
+                  </div>
+                </div>
+                <div className="divide-y divide-border">
+                  {run.lines.map((l, i) => {
+                    const s = staffById(l.staffId);
+                    return (
+                      <div key={i} className="grid grid-cols-12 gap-2 px-4 py-2 text-sm">
+                        <div className="col-span-5 font-medium">{s?.fullName ?? l.staffId}</div>
+                        <div className="col-span-3 text-xs text-muted-foreground">{s?.role}</div>
+                        <div className="col-span-2 text-right text-muted-foreground">{fmtMoney(l.gross)}</div>
+                        <div className="col-span-2 text-right font-semibold">{fmtMoney(l.net)}</div>
+                      </div>
+                    );
+                  })}
+                  <div className="grid grid-cols-12 gap-2 bg-muted/30 px-4 py-2 text-xs">
+                    <div className="col-span-8 text-muted-foreground">Gross / Net totals</div>
+                    <div className="col-span-2 text-right">{fmtMoney(totalGross)}</div>
+                    <div className="col-span-2 text-right font-semibold">{fmtMoney(totalNet)}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
     </div>
