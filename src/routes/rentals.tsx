@@ -35,7 +35,7 @@ function RentalsPage() {
           </div>
         }
       />
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         {rentals.map(r => {
           const v = vehicleById(r.vehicleId);
           const d = driverById(r.driverId);
@@ -45,52 +45,40 @@ function RentalsPage() {
           const imgUrl = `https://source.unsplash.com/featured/600x400/?${imgQuery}`;
           return (
             <Card key={r.id} className="overflow-hidden">
-              <div className="flex flex-col md:flex-row">
-                <div className="relative w-full md:w-72 lg:w-80 shrink-0 bg-muted">
-                  <div className="aspect-[4/3] md:aspect-auto md:h-full">
-                    <img
-                      src={imgUrl}
-                      alt={`${v?.year} ${v?.make} ${v?.model}`}
-                      className="h-full w-full object-cover"
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                    />
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-muted-foreground/40">
-                      <Car className="h-16 w-16" />
-                    </div>
+              <div className="flex items-stretch">
+                <div className="relative w-28 sm:w-36 shrink-0 bg-muted">
+                  <img
+                    src={imgUrl}
+                    alt={`${v?.year} ${v?.make} ${v?.model}`}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                  />
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-muted-foreground/40">
+                    <Car className="h-7 w-7" />
                   </div>
                 </div>
-                <div className="flex-1 p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <CardTitle className="text-xl md:text-2xl leading-tight truncate">
-                        {v?.year} {v?.make} {v?.model}
-                      </CardTitle>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Plate {v?.plate} · VIN {v?.vin}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Rented to <span className="text-foreground font-medium">{d?.fullName}</span>
-                      </p>
+                <div className="flex flex-1 flex-wrap items-center gap-x-4 gap-y-1 p-3">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-base leading-tight truncate">
+                      {v?.year} {v?.make} {v?.model}
+                    </CardTitle>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {v?.plate} · {d?.fullName}
                     </div>
-                    <StatusBadge status={r.paymentStatus} />
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-sm">
-                    <Stat label="Started" value={fmtDate(r.startDate)} />
-                    <Stat label="Weekly" value={fmtMoney(r.weeklyRate)} />
-                    <Stat label="Deposit" value={fmtMoney(r.depositPaid)} />
+                  <div className="hidden sm:flex items-center gap-4 text-xs">
+                    <MiniStat label="Started" value={fmtDate(r.startDate)} />
+                    <MiniStat label="Weekly" value={fmtMoney(r.weeklyRate)} />
+                    <MiniStat label="Deposit" value={fmtMoney(r.depositPaid)} />
+                    <MiniStat
+                      label="Next"
+                      value={next ? `${fmtMoney(next.amount)} · ${fmtDate(next.dueDate)}` : "All paid"}
+                    />
                   </div>
-                  <div className="rounded-md border border-border bg-muted/30 p-3">
-                    <div className="text-xs uppercase text-muted-foreground">Next payment</div>
-                    {next ? (
-                      <div className="mt-1 flex items-center justify-between">
-                        <span className="font-medium">{fmtMoney(next.amount)} due {fmtDate(next.dueDate)}</span>
-                        <StatusBadge status={next.status} />
-                      </div>
-                    ) : <div className="mt-1 text-sm text-muted-foreground">All paid</div>}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm">Edit</Button>
-                    <Button variant="outline" size="sm">Mark Returned</Button>
+                  <StatusBadge status={r.paymentStatus} />
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">Edit</Button>
+                    <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">Return</Button>
                   </div>
                 </div>
               </div>
@@ -103,6 +91,11 @@ function RentalsPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return <div><div className="text-xs text-muted-foreground">{label}</div><div className="font-medium">{value}</div></div>;
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="leading-tight">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="font-medium text-foreground">{value}</div>
+    </div>
+  );
 }
