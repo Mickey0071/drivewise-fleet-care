@@ -8,7 +8,6 @@ import { carImage } from "@/lib/mock/carImages";
 import { Camera, IdCard } from "lucide-react";
 import { toast } from "sonner";
 import { ReportActions } from "@/components/app/ReportActions";
-import { DamageMap } from "@/components/app/DamageMap";
 
 export const Route = createFileRoute("/driver-portal")({
   head: () => ({ meta: [{ title: "Driver Portal — Camauto Rentals" }] }),
@@ -82,10 +81,6 @@ function DriverPortalPage() {
           ))}
         </CardContent>
       </Card>
-
-      <div className="mb-6">
-        <DamageMap vehicleLabel={`your ${v.year} ${v.make} ${v.model}`} />
-      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Button variant="outline" className="h-auto justify-start gap-3 p-4" onClick={() => toast("Camera would open here")}>

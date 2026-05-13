@@ -4,11 +4,11 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, markReturned } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useState } from "react";
-import { Car } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ export const Route = createFileRoute("/rentals")({
 function RentalsPage() {
   const [newOpen, setNewOpen] = useState(false);
   const [editing, setEditing] = useState<Rental | null>(null);
+  const [delivering, setDelivering] = useState<Rental | null>(null);
   useStoreVersion();
   return (
     <div>
@@ -83,6 +84,7 @@ function RentalsPage() {
                     </div>
                     <StatusBadge status={r.paymentStatus} />
                   </div>
+                  <HandoffStatus rental={r} />
                   <div className="grid grid-cols-3 gap-2 text-sm">
                     <Stat label="Started" value={fmtDate(r.startDate)} />
                     <Stat
@@ -102,6 +104,11 @@ function RentalsPage() {
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => setEditing(r)}>Edit</Button>
+                    {!r.endDate && getInspectionsForRental(r.id).every(i => i.type !== "check-out") && (
+                      <Button size="sm" onClick={() => setDelivering(r)}>
+                        <Truck className="mr-1 h-4 w-4" /> Deliver vehicle
+                      </Button>
+                    )}
                     {!r.endDate && (
                       <Button variant="outline" size="sm" onClick={() => {
                         markReturned(r.id);
@@ -117,12 +124,121 @@ function RentalsPage() {
       </div>
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
       <EditRentalDialog rental={editing} onClose={() => setEditing(null)} />
+      <DeliveryDialog rental={delivering} onClose={() => setDelivering(null)} />
     </div>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return <div><div className="text-xs text-muted-foreground">{label}</div><div className="font-medium">{value}</div></div>;
+}
+
+function HandoffStatus({ rental }: { rental: Rental }) {
+  const insps = getInspectionsForRental(rental.id);
+  const checkout = insps.find(i => i.type === "check-out");
+  if (rental.endDate) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground">
+        <CheckCircle2 className="h-3.5 w-3.5" /> Returned {fmtDate(rental.endDate)}
+      </div>
+    );
+  }
+  if (checkout) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs text-primary">
+        <Truck className="h-3.5 w-3.5" /> Out with driver — delivered {fmtDate(checkout.date)} at {checkout.mileage.toLocaleString()} mi
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400">
+      <ClipboardCheck className="h-3.5 w-3.5" /> Awaiting handoff — log delivery to give the driver the keys
+    </div>
+  );
+}
+
+function DeliveryDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  const v = rental ? vehicleById(rental.vehicleId) : null;
+  const d = rental ? driverById(rental.driverId) : null;
+  const [mileage, setMileage] = useState(0);
+  const [fuelLevel, setFuelLevel] = useState(100);
+  const [damageNoted, setDamageNoted] = useState(false);
+  const [completedBy, setCompletedBy] = useState("");
+  const [notes, setNotes] = useState("");
+  useEffect(() => {
+    if (rental && v) {
+      setMileage(v.mileage);
+      setFuelLevel(100);
+      setDamageNoted(false);
+      setCompletedBy("");
+      setNotes("");
+    }
+  }, [rental, v]);
+  function confirm() {
+    if (!rental || !v) return;
+    if (!completedBy.trim()) {
+      toast.error("Who is delivering the vehicle?");
+      return;
+    }
+    addInspection({
+      vehicleId: v.id,
+      rentalId: rental.id,
+      type: "check-out",
+      date: new Date().toISOString().slice(0, 10),
+      mileage: Number(mileage) || v.mileage,
+      fuelLevel: Number(fuelLevel),
+      damageNoted,
+      completedBy: completedBy.trim(),
+    });
+    if (notes.trim()) {
+      updateRental(rental.id, { notes: [rental.notes, `Delivery: ${notes.trim()}`].filter(Boolean).join(" · ") });
+    }
+    toast.success("Vehicle delivered", { description: `${v.year} ${v.make} ${v.model} → ${d?.fullName}` });
+    onClose();
+  }
+  return (
+    <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Deliver vehicle</DialogTitle>
+        </DialogHeader>
+        {rental && v && d && (
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+              <div className="font-medium">{v.year} {v.make} {v.model} · {v.plate}</div>
+              <div className="text-xs text-muted-foreground">Handing off to {d.fullName} · {d.phone}</div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="dl-mi">Odometer (mi)</Label>
+                <Input id="dl-mi" type="number" value={mileage} onChange={e => setMileage(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label htmlFor="dl-fuel">Fuel level (%)</Label>
+                <Input id="dl-fuel" type="number" min={0} max={100} value={fuelLevel} onChange={e => setFuelLevel(Number(e.target.value))} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="dl-by">Delivered by</Label>
+                <Input id="dl-by" value={completedBy} onChange={e => setCompletedBy(e.target.value)} placeholder="Staff name" />
+              </div>
+              <div className="sm:col-span-2 flex items-center gap-2">
+                <input id="dl-dmg" type="checkbox" checked={damageNoted} onChange={e => setDamageNoted(e.target.checked)} className="h-4 w-4" />
+                <Label htmlFor="dl-dmg" className="!mt-0">Pre-existing damage noted</Label>
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="dl-notes">Delivery notes</Label>
+                <Textarea id="dl-notes" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Pickup location, fuel/cleanliness, walk-around notes…" />
+              </div>
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={confirm}><Truck className="mr-1 h-4 w-4" /> Confirm delivery</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
