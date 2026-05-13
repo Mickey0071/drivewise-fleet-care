@@ -1,35 +1,38 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck,
-  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList,
+  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
-  SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
+  SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { unreadReportCount, useStoreVersion } from "@/lib/mock/store";
+import { useAuth, type AppRole } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
 import logo from "@/assets/camauto-logo.jpeg";
 
-const adminItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Fleet", url: "/fleet", icon: Car },
-  { title: "Drivers", url: "/drivers", icon: Users },
-  { title: "Reservations", url: "/rentals", icon: FileText },
-  { title: "Payments", url: "/payments", icon: DollarSign },
-  { title: "Inspections", url: "/inspections", icon: ClipboardCheck },
-  { title: "Maintenance", url: "/maintenance", icon: Wrench },
-  { title: "Violations", url: "/violations", icon: AlertTriangle },
-  { title: "Runner Reports", url: "/runner-reports", icon: ClipboardList },
+type Item = { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] };
+const adminItems: Item[] = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["admin"] },
+  { title: "Fleet", url: "/fleet", icon: Car, roles: ["admin"] },
+  { title: "Drivers", url: "/drivers", icon: Users, roles: ["admin"] },
+  { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin"] },
+  { title: "Payments", url: "/payments", icon: DollarSign, roles: ["admin"] },
+  { title: "Inspections", url: "/inspections", icon: ClipboardCheck, roles: ["admin"] },
+  { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["admin"] },
+  { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ["admin"] },
+  { title: "Runner Reports", url: "/runner-reports", icon: ClipboardList, roles: ["admin"] },
 ];
-const financeItems = [
-  { title: "P&L", url: "/pnl", icon: TrendingUp },
-  { title: "Expenses", url: "/expenses", icon: Receipt },
-  { title: "Payroll", url: "/payroll", icon: Banknote },
+const financeItems: Item[] = [
+  { title: "P&L", url: "/pnl", icon: TrendingUp, roles: ["admin"] },
+  { title: "Expenses", url: "/expenses", icon: Receipt, roles: ["admin"] },
+  { title: "Payroll", url: "/payroll", icon: Banknote, roles: ["admin"] },
 ];
-const portalItems = [
-  { title: "Runner Portal", url: "/staff-portal", icon: UserCog },
-  { title: "Driver Portal", url: "/driver-portal", icon: IdCard },
+const portalItems: Item[] = [
+  { title: "Runner Portal", url: "/staff-portal", icon: UserCog, roles: ["admin", "runner"] },
+  { title: "Driver Portal", url: "/driver-portal", icon: IdCard, roles: ["admin", "driver"] },
 ];
 
 export function AppSidebar() {
@@ -39,8 +42,10 @@ export function AppSidebar() {
   const isActive = (url: string) => url === "/" ? path === "/" : path.startsWith(url);
   useStoreVersion();
   const unread = unreadReportCount();
+  const { role, user, signOut } = useAuth();
+  const filter = (items: Item[]) => role ? items.filter(i => i.roles.includes(role)) : [];
 
-  const renderGroup = (label: string, items: typeof adminItems) => (
+  const renderGroup = (label: string, items: Item[]) => items.length === 0 ? null : (
     <SidebarGroup>
       {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/60">{label}</SidebarGroupLabel>}
       <SidebarGroupContent>
@@ -78,10 +83,21 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
       <SidebarContent>
-        {renderGroup("Operations", adminItems)}
-        {renderGroup("Finance", financeItems)}
-        {renderGroup("Portals", portalItems)}
+        {renderGroup("Operations", filter(adminItems))}
+        {renderGroup("Finance", filter(financeItems))}
+        {renderGroup("Portals", filter(portalItems))}
       </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border p-3">
+        {!collapsed && user && (
+          <div className="mb-2 min-w-0">
+            <div className="truncate text-xs font-medium">{user.email}</div>
+            <div className="text-[10px] uppercase text-sidebar-foreground/60">{role ?? "no role"}</div>
+          </div>
+        )}
+        <Button variant="outline" size="sm" className="w-full" onClick={() => signOut()}>
+          <LogOut className="h-4 w-4" /> {!collapsed && <span className="ml-1">Sign out</span>}
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   );
 }
