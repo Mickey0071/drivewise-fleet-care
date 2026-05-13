@@ -99,3 +99,27 @@ export function addInspection(input: Omit<Inspection, "id">) {
   emit();
   return insp;
 }
+
+export interface RunnerReport {
+  id: string;
+  runnerId: string;
+  runnerName: string;
+  submittedAt: string;
+  totalTasks: number;
+  completedTasks: number;
+  items: { id: string; label: string; detail?: string; done: boolean }[];
+  notes?: string;
+}
+
+export const runnerReports: RunnerReport[] = [];
+
+export function addRunnerReport(r: Omit<RunnerReport, "id" | "submittedAt">) {
+  const report: RunnerReport = {
+    id: `RR-${runnerReports.length + 1}`,
+    submittedAt: new Date().toISOString(),
+    ...r,
+  };
+  runnerReports.unshift(report);
+  emit();
+  return report;
+}
