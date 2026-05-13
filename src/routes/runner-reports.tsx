@@ -29,12 +29,12 @@ function RunnerReportsPage() {
       <PageHeader
         title="Runner Reports"
         subtitle="Submitted checklists from runners"
-        actions={
+        action={
           unread > 0 ? (
             <Button variant="outline" size="sm" onClick={() => markAllReportsRead()}>
               <MailOpen className="mr-1 h-4 w-4" /> Mark all read
             </Button>
-          ) : null
+          ) : undefined
         }
       />
 
