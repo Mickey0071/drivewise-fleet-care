@@ -14,6 +14,19 @@ import { toast } from "sonner";
 const STEPS = ["Vehicle", "Client", "Dates", "Review"] as const;
 type Step = 0 | 1 | 2 | 3;
 
+type BillingPeriod = "daily" | "weekly" | "monthly";
+function rateSuffix(p: BillingPeriod) { return p === "daily" ? "day" : p === "weekly" ? "wk" : "mo"; }
+function defaultRate(v: { dailyRate: number; weeklyRate: number }, p: BillingPeriod) {
+  if (p === "daily") return v.dailyRate;
+  if (p === "weekly") return v.weeklyRate;
+  return Math.round(v.weeklyRate * 4.345);
+}
+function toWeekly(rate: number, p: BillingPeriod) {
+  if (p === "weekly") return rate;
+  if (p === "daily") return Math.round(rate * 7);
+  return Math.round(rate / 4.345);
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
