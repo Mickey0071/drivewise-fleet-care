@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { payrollRuns, staff, fmtDate, fmtMoney } from "@/lib/mock/data";
+import { PreRentalChecklist } from "@/components/app/PreRentalChecklist";
 
 export const Route = createFileRoute("/staff-portal")({
   head: () => ({ meta: [{ title: "Staff Portal — Camauto Rentals" }] }),
@@ -20,6 +21,10 @@ function StaffPortalPage() {
   return (
     <div>
       <PageHeader title="Staff Portal" subtitle={`Welcome, ${me.fullName}`} />
+
+      <div className="mb-6">
+        <PreRentalChecklist />
+      </div>
 
       <Card className="mb-6">
         <CardHeader><CardTitle className="text-base">Direct deposit</CardTitle></CardHeader>
