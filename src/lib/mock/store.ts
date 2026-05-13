@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, inspections, type Rental, type Driver, type Inspection } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, type Rental, type Driver, type Inspection, type Payment } from "./data";
 
 const listeners = new Set<() => void>();
 let version = 0;
@@ -98,6 +98,36 @@ export function addInspection(input: Omit<Inspection, "id">) {
   if (v && input.mileage) v.mileage = input.mileage;
   emit();
   return insp;
+}
+
+export function recordPayment(id: string, method: Payment["method"], paidDate?: string) {
+  const p = payments.find(p => p.id === id);
+  if (!p) return;
+  p.status = "paid";
+  p.method = method;
+  p.paidDate = paidDate || new Date().toISOString().slice(0, 10);
+  // Schedule next weekly payment for the rental if still active
+  const rental = rentals.find(r => r.id === p.rentalId);
+  if (rental && !rental.endDate) {
+    const hasFuture = payments.some(x => x.rentalId === rental.id && x.status !== "paid");
+    if (!hasFuture) {
+      const due = new Date(p.dueDate);
+      due.setDate(due.getDate() + 7);
+      payments.push({
+        id: nextPaymentId(),
+        rentalId: rental.id,
+        driverId: rental.driverId,
+        amount: rental.rate ?? rental.weeklyRate,
+        dueDate: due.toISOString().slice(0, 10),
+        status: "late",
+      });
+    }
+    // Refresh rental's payment status from outstanding payments
+    const overdue = payments.some(x => x.rentalId === rental.id && x.status === "missed");
+    const late = payments.some(x => x.rentalId === rental.id && x.status === "late");
+    rental.paymentStatus = overdue ? "defaulted" : late ? "late" : "current";
+  }
+  emit();
 }
 
 export interface RunnerReport {
