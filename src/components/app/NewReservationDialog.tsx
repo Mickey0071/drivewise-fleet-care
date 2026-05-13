@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { vehicles, drivers, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { addRental, hasConflict } from "@/lib/mock/store";
 import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -72,8 +73,22 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
   }
 
   function confirm() {
+    if (!vehicle || !driver || !startDate) return;
+    if (hasConflict(vehicle.id, startDate, endDate || undefined)) {
+      toast.error("Booking conflict", { description: `${vehicle.year} ${vehicle.make} ${vehicle.model} already has a rental overlapping these dates.` });
+      return;
+    }
+    addRental({
+      vehicleId: vehicle.id,
+      driverId: driver.id,
+      startDate,
+      endDate: endDate || undefined,
+      weeklyRate,
+      depositPaid: deposit,
+      notes: notes || undefined,
+    });
     toast.success("Reservation created", {
-      description: `${driver?.fullName} · ${vehicle?.year} ${vehicle?.make} ${vehicle?.model} starting ${fmtDate(startDate)}`,
+      description: `${driver.fullName} · ${vehicle.year} ${vehicle.make} ${vehicle.model} starting ${fmtDate(startDate)}`,
     });
     close(false);
   }
