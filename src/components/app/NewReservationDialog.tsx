@@ -14,6 +14,19 @@ import { toast } from "sonner";
 const STEPS = ["Vehicle", "Client", "Dates", "Review"] as const;
 type Step = 0 | 1 | 2 | 3;
 
+type BillingPeriod = "daily" | "weekly" | "monthly";
+function rateSuffix(p: BillingPeriod) { return p === "daily" ? "day" : p === "weekly" ? "wk" : "mo"; }
+function defaultRate(v: { dailyRate: number; weeklyRate: number }, p: BillingPeriod) {
+  if (p === "daily") return v.dailyRate;
+  if (p === "weekly") return v.weeklyRate;
+  return Math.round(v.weeklyRate * 4.345);
+}
+function toWeekly(rate: number, p: BillingPeriod) {
+  if (p === "weekly") return rate;
+  if (p === "daily") return Math.round(rate * 7);
+  return Math.round(rate / 4.345);
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -26,7 +39,8 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
   const [driverId, setDriverId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [weeklyRate, setWeeklyRate] = useState<number>(0);
+  const [billingPeriod, setBillingPeriod] = useState<"daily" | "weekly" | "monthly">("weekly");
+  const [rate, setRate] = useState<number>(0);
   const [deposit, setDeposit] = useState<number>(300);
   const [notes, setNotes] = useState("");
   const [vehQ, setVehQ] = useState("");
@@ -55,7 +69,7 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
 
   function reset() {
     setStep(0); setVehicleId(null); setDriverId(null);
-    setStartDate(""); setEndDate(""); setWeeklyRate(0);
+    setStartDate(""); setEndDate(""); setRate(0); setBillingPeriod("weekly");
     setDeposit(300); setNotes(""); setVehQ(""); setDrvQ("");
     setShowAddDriver(false);
     setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" });
@@ -88,11 +102,11 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
   const canNext =
     (step === 0 && !!vehicle) ||
     (step === 1 && !!driver) ||
-    (step === 2 && !!startDate && weeklyRate > 0) ||
+    (step === 2 && !!startDate && rate > 0) ||
     step === 3;
 
   function next() {
-    if (step === 0 && vehicle) setWeeklyRate(prev => prev || vehicle.weeklyRate);
+    if (step === 0 && vehicle) setRate(prev => prev || defaultRate(vehicle, billingPeriod));
     if (step < 3) setStep((step + 1) as Step);
   }
 
@@ -107,7 +121,9 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
       driverId: driver.id,
       startDate,
       endDate: endDate || undefined,
-      weeklyRate,
+      weeklyRate: toWeekly(rate, billingPeriod),
+      billingPeriod,
+      rate,
       depositPaid: deposit,
       notes: notes || undefined,
     });
@@ -268,8 +284,29 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
                   <Input id="end" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
                 </div>
                 <div>
-                  <Label htmlFor="rate">Weekly rate</Label>
-                  <Input id="rate" type="number" min={0} value={weeklyRate} onChange={e => setWeeklyRate(Number(e.target.value))} />
+                  <Label>Billing period</Label>
+                  <div className="mt-1 grid grid-cols-3 gap-1 rounded-md border p-1">
+                    {(["daily", "weekly", "monthly"] as const).map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => {
+                          setBillingPeriod(p);
+                          if (vehicle) setRate(defaultRate(vehicle, p));
+                        }}
+                        className={cn(
+                          "rounded px-2 py-1 text-xs capitalize transition",
+                          billingPeriod === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted",
+                        )}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="rate">Rate ({rateSuffix(billingPeriod)})</Label>
+                  <Input id="rate" type="number" min={0} value={rate} onChange={e => setRate(Number(e.target.value))} />
                 </div>
                 <div>
                   <Label htmlFor="dep">Deposit</Label>
@@ -290,8 +327,8 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
               <ReviewRow icon={<CalendarDays className="h-4 w-4" />} label="Dates" value={`${startDate ? fmtDate(startDate) : "—"}${endDate ? ` → ${fmtDate(endDate)}` : " · open-ended"}`} />
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border bg-card p-3">
-                  <div className="text-xs uppercase text-muted-foreground">Weekly rate</div>
-                  <div className="text-lg font-bold">{fmtMoney(weeklyRate)}</div>
+                  <div className="text-xs uppercase text-muted-foreground">Rate</div>
+                  <div className="text-lg font-bold">{fmtMoney(rate)}<span className="text-xs font-normal text-muted-foreground">/{rateSuffix(billingPeriod)}</span></div>
                 </div>
                 <div className="rounded-lg border bg-card p-3">
                   <div className="text-xs uppercase text-muted-foreground">Deposit</div>

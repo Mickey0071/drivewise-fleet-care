@@ -85,7 +85,10 @@ function RentalsPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-sm">
                     <Stat label="Started" value={fmtDate(r.startDate)} />
-                    <Stat label="Weekly" value={fmtMoney(r.weeklyRate)} />
+                    <Stat
+                      label={r.billingPeriod === "daily" ? "Daily" : r.billingPeriod === "monthly" ? "Monthly" : "Weekly"}
+                      value={fmtMoney(r.rate ?? r.weeklyRate)}
+                    />
                     <Stat label="Deposit" value={fmtMoney(r.depositPaid)} />
                   </div>
                   <div className="rounded-md border border-border bg-muted/30 p-3">
