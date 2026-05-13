@@ -64,6 +64,40 @@ export function markReturned(id: string, endDate?: string) {
   emit();
 }
 
+/** Extend an active rental's end date by setting a new endDate (optionally schedules another payment if it falls within the new window). */
+export function extendRental(id: string, newEndDate: string) {
+  const r = rentals.find(r => r.id === id);
+  if (!r) return;
+  const prev = r.endDate;
+  r.endDate = newEndDate;
+  r.notes = [r.notes, `Extended ${prev ? `from ${prev} ` : ""}to ${newEndDate}`].filter(Boolean).join(" · ");
+  // Schedule one more payment cycle if there's no outstanding payment past today
+  const hasFuture = payments.some(x => x.rentalId === r.id && x.status !== "paid");
+  if (!hasFuture) {
+    const last = payments
+      .filter(p => p.rentalId === r.id)
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+      .pop();
+    const baseDate = last ? new Date(last.dueDate) : new Date(r.startDate);
+    const period = r.billingPeriod ?? "weekly";
+    const next = new Date(baseDate);
+    if (period === "daily") next.setDate(next.getDate() + 1);
+    else if (period === "monthly") next.setMonth(next.getMonth() + 1);
+    else next.setDate(next.getDate() + 7);
+    if (next.toISOString().slice(0, 10) <= newEndDate) {
+      payments.push({
+        id: nextPaymentId(),
+        rentalId: r.id,
+        driverId: r.driverId,
+        amount: r.rate ?? r.weeklyRate,
+        dueDate: next.toISOString().slice(0, 10),
+        status: "late",
+      });
+    }
+  }
+  emit();
+}
+
 function nextDriverId() {
   const n = drivers.reduce((m, d) => Math.max(m, parseInt(d.id.replace(/\D/g, "")) || 0), 1000);
   return `D-${n + 1}`;

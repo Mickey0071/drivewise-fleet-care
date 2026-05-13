@@ -21,6 +21,10 @@ export interface Rental {
   paymentStatus: PayStatus; notes?: string;
   billingPeriod?: "daily" | "weekly" | "monthly";
   rate?: number;
+  signatureDataUrl?: string;
+  signedAt?: string;
+  signedBy?: string;
+  agreementVersion?: string;
 }
 export interface Payment {
   id: string; rentalId: string; driverId: string; amount: number;

@@ -4,11 +4,11 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2 } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,8 @@ function RentalsPage() {
   const [editing, setEditing] = useState<Rental | null>(null);
   const [delivering, setDelivering] = useState<Rental | null>(null);
   const [returning, setReturning] = useState<Rental | null>(null);
+  const [extending, setExtending] = useState<Rental | null>(null);
+  const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
   useStoreVersion();
   return (
     <div>
@@ -115,6 +117,16 @@ function RentalsPage() {
                         <ClipboardCheck className="mr-1 h-4 w-4" /> Process return
                       </Button>
                     )}
+                    {!r.endDate && (
+                      <Button variant="outline" size="sm" onClick={() => setExtending(r)}>
+                        <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
+                      </Button>
+                    )}
+                    {r.signatureDataUrl && (
+                      <Button variant="ghost" size="sm" onClick={() => setViewingAgreement(r)}>
+                        <FileSignature className="mr-1 h-4 w-4" /> View agreement
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -126,6 +138,8 @@ function RentalsPage() {
       <EditRentalDialog rental={editing} onClose={() => setEditing(null)} />
       <DeliveryDialog rental={delivering} onClose={() => setDelivering(null)} />
       <ReturnDialog rental={returning} onClose={() => setReturning(null)} />
+      <ExtendRentalDialog rental={extending} onClose={() => setExtending(null)} />
+      <AgreementDialog rental={viewingAgreement} onClose={() => setViewingAgreement(null)} />
     </div>
   );
 }
@@ -364,6 +378,102 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={save}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  const v = rental ? vehicleById(rental.vehicleId) : null;
+  const [newEndDate, setNewEndDate] = useState("");
+  useEffect(() => {
+    if (rental) {
+      // Default to +7 days from current end date or today
+      const base = rental.endDate ? new Date(rental.endDate) : new Date();
+      base.setDate(base.getDate() + 7);
+      setNewEndDate(base.toISOString().slice(0, 10));
+    }
+  }, [rental]);
+  function confirm() {
+    if (!rental || !newEndDate) return;
+    if (rental.endDate && newEndDate <= rental.endDate) {
+      toast.error("New end date must be after the current end date");
+      return;
+    }
+    extendRental(rental.id, newEndDate);
+    toast.success("Rental extended", {
+      description: `${v?.year} ${v?.make} ${v?.model} now ends ${fmtDate(newEndDate)}`,
+    });
+    onClose();
+  }
+  return (
+    <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Extend rental</DialogTitle></DialogHeader>
+        {rental && v && (
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+              <div className="font-medium">{v.year} {v.make} {v.model} · {v.plate}</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Current end date: {rental.endDate ? fmtDate(rental.endDate) : "open-ended"}
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="ext-end">New end date</Label>
+              <Input id="ext-end" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
+              <p className="mt-2 text-xs text-muted-foreground">
+                One additional billing cycle ({rental.billingPeriod ?? "weekly"}) will be scheduled if it falls within the new window.
+              </p>
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={confirm}><CalendarPlus className="mr-1 h-4 w-4" /> Confirm extension</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AgreementDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  const v = rental ? vehicleById(rental.vehicleId) : null;
+  const d = rental ? driverById(rental.driverId) : null;
+  return (
+    <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Signed rental agreement</DialogTitle>
+        </DialogHeader>
+        {rental && v && d && (
+          <div className="space-y-3 text-sm">
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <div className="font-medium">{v.year} {v.make} {v.model} · {v.plate}</div>
+              <div className="text-xs text-muted-foreground">Renter: {d.fullName}</div>
+              <div className="text-xs text-muted-foreground">
+                Started {fmtDate(rental.startDate)}{rental.endDate ? ` · Ends ${fmtDate(rental.endDate)}` : ""}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase text-muted-foreground mb-1">
+                Signature {rental.agreementVersion ? `· ${rental.agreementVersion}` : ""}
+              </div>
+              {rental.signatureDataUrl ? (
+                <img src={rental.signatureDataUrl} alt="Signature" className="w-full rounded border bg-white object-contain p-2" />
+              ) : (
+                <div className="rounded border border-dashed p-6 text-center text-xs text-muted-foreground">No signature on file</div>
+              )}
+              {rental.signedAt && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Signed by {rental.signedBy ?? d.fullName} on {new Date(rental.signedAt).toLocaleString()}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
