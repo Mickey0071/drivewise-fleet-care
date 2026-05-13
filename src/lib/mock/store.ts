@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, type Rental, type Driver } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, type Rental, type Driver, type Inspection } from "./data";
 
 const listeners = new Set<() => void>();
 let version = 0;
@@ -80,4 +80,22 @@ export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "i
   drivers.push(driver);
   emit();
   return driver;
+}
+
+function nextInspectionId() {
+  const n = inspections.reduce((m, i) => Math.max(m, parseInt(i.id.replace(/\D/g, "")) || 0), 400);
+  return `I-${n + 1}`;
+}
+
+export function getInspectionsForRental(rentalId: string) {
+  return inspections.filter(i => i.rentalId === rentalId);
+}
+
+export function addInspection(input: Omit<Inspection, "id">) {
+  const insp: Inspection = { id: nextInspectionId(), ...input };
+  inspections.push(insp);
+  const v = vehicles.find(v => v.id === input.vehicleId);
+  if (v && input.mileage) v.mileage = input.mileage;
+  emit();
+  return insp;
 }
