@@ -25,7 +25,7 @@ const financeItems = [
   { title: "Payroll", url: "/payroll", icon: Banknote },
 ];
 const portalItems = [
-  { title: "Staff Portal", url: "/staff-portal", icon: UserCog },
+  { title: "Runner Portal", url: "/staff-portal", icon: UserCog },
   { title: "Driver Portal", url: "/driver-portal", icon: IdCard },
 ];
 
