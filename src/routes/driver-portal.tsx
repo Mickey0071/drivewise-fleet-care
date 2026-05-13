@@ -14,6 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { recordPayment, getInspectionsForRental, useStoreVersion } from "@/lib/mock/store";
+import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
+import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+import { useAuth } from "@/hooks/use-auth";
+import { CreditCard, Wallet } from "lucide-react";
 
 export const Route = createFileRoute("/driver-portal")({
   head: () => ({ meta: [{ title: "Driver Portal — Camauto Rentals" }] }),
@@ -22,6 +26,7 @@ export const Route = createFileRoute("/driver-portal")({
 
 function DriverPortalPage() {
   useStoreVersion();
+  const { user } = useAuth();
   // Drivers who actually have a rental
   const driversWithRental = drivers.filter(d => rentals.some(r => r.driverId === d.id));
   const [meId, setMeId] = useState(driversWithRental[0]?.id ?? drivers[0].id);
@@ -31,9 +36,11 @@ function DriverPortalPage() {
   const myPayments = payments.filter(p => p.driverId === me.id).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   const next = myPayments.find(p => p.status !== "paid");
   const [paying, setPaying] = useState<Payment | null>(null);
+  const [stripeOpen, setStripeOpen] = useState<null | { kind: "weekly" | "deposit"; amount: number }>(null);
 
   return (
     <div>
+      <PaymentTestModeBanner />
       <PageHeader
         title="Driver Portal"
         subtitle={`Hi, ${me.fullName.split(" ")[0]} 👋`}
@@ -86,11 +93,29 @@ function DriverPortalPage() {
                     <div className="text-2xl font-bold">{fmtMoney(next.amount)}</div>
                     <div className="text-xs text-muted-foreground">Due {fmtDate(next.dueDate)}</div>
                   </div>
-                  <Button onClick={() => setPaying(next)}>Pay now</Button>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Button variant="outline" onClick={() => setPaying(next)}>Mark paid (manual)</Button>
+                    <Button onClick={() => setStripeOpen({ kind: "weekly", amount: Math.round(next.amount * 100) })}>
+                      <CreditCard className="mr-1 h-4 w-4" /> Pay with card
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           )}
+
+          <Card className="mb-6">
+            <CardHeader><CardTitle className="text-base">Start rental — pay 2-day advance</CardTitle></CardHeader>
+            <CardContent className="flex items-center justify-between p-4">
+              <div>
+                <div className="text-sm">2 days × $65/day</div>
+                <div className="text-xs text-muted-foreground">Required before vehicle handoff. Next payment due on day 3.</div>
+              </div>
+              <Button variant="secondary" onClick={() => setStripeOpen({ kind: "deposit", amount: 13000 })}>
+                <Wallet className="mr-1 h-4 w-4" /> Pay $130 advance
+              </Button>
+            </CardContent>
+          </Card>
 
           <Card className="mb-6">
             <CardHeader><CardTitle className="text-base">Payment history</CardTitle></CardHeader>
@@ -128,6 +153,27 @@ function DriverPortalPage() {
       </div>
 
       <PayDialog payment={paying} onClose={() => setPaying(null)} driverName={me.fullName} />
+
+      <Dialog open={!!stripeOpen} onOpenChange={(o) => { if (!o) setStripeOpen(null); }}>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden">
+          <DialogHeader className="border-b p-4">
+            <DialogTitle>{stripeOpen?.kind === "weekly" ? "Weekly rental — secure checkout" : "Pay 2-day advance"}</DialogTitle>
+          </DialogHeader>
+          {stripeOpen && myRental && (
+            <div className="max-h-[80vh] overflow-y-auto p-4">
+              <StripeRentalCheckout
+                kind={stripeOpen.kind}
+                amountInCents={stripeOpen.amount}
+                rentalId={myRental.id}
+                customerEmail={user?.email ?? me.email}
+                customerName={me.fullName}
+                userId={user?.id}
+                returnUrl={`${window.location.origin}/driver-portal?checkout=success`}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
