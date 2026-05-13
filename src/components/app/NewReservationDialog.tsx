@@ -7,12 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { vehicles, drivers, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { addRental, hasConflict, addDriver, useStoreVersion } from "@/lib/mock/store";
-import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus } from "lucide-react";
+import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus, FileSignature } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { SignaturePad } from "./SignaturePad";
 
-const STEPS = ["Vehicle", "Client", "Dates", "Review"] as const;
-type Step = 0 | 1 | 2 | 3;
+const STEPS = ["Vehicle", "Client", "Dates", "Agreement", "Review"] as const;
+type Step = 0 | 1 | 2 | 3 | 4;
+const AGREEMENT_VERSION = "v1.0";
 
 type BillingPeriod = "daily" | "weekly" | "monthly";
 function rateSuffix(p: BillingPeriod) { return p === "daily" ? "day" : p === "weekly" ? "wk" : "mo"; }
@@ -47,6 +49,8 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
   const [drvQ, setDrvQ] = useState("");
   const [showAddDriver, setShowAddDriver] = useState(false);
   const [newDriver, setNewDriver] = useState({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" as "Uber" | "Lyft" | "Both" });
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
 
   const vehicle = vehicles.find(v => v.id === vehicleId) ?? null;
   const driver = drivers.find(d => d.id === driverId) ?? null;
@@ -73,6 +77,8 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
     setDeposit(300); setNotes(""); setVehQ(""); setDrvQ("");
     setShowAddDriver(false);
     setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" });
+    setSignatureDataUrl(null);
+    setAgreementAccepted(false);
   }
   function createDriver() {
     if (!newDriver.fullName.trim()) {
@@ -103,17 +109,23 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
     (step === 0 && !!vehicle) ||
     (step === 1 && !!driver) ||
     (step === 2 && !!startDate && rate > 0) ||
-    step === 3;
+    (step === 3 && !!signatureDataUrl && agreementAccepted) ||
+    step === 4;
 
   function next() {
     if (step === 0 && vehicle) setRate(prev => prev || defaultRate(vehicle, billingPeriod));
-    if (step < 3) setStep((step + 1) as Step);
+    if (step < 4) setStep((step + 1) as Step);
   }
 
   function confirm() {
     if (!vehicle || !driver || !startDate) return;
     if (hasConflict(vehicle.id, startDate, endDate || undefined)) {
       toast.error("Booking conflict", { description: `${vehicle.year} ${vehicle.make} ${vehicle.model} already has a rental overlapping these dates.` });
+      return;
+    }
+    if (!signatureDataUrl) {
+      toast.error("Signature required", { description: "Client must sign the rental agreement before confirming." });
+      setStep(3);
       return;
     }
     addRental({
@@ -126,6 +138,10 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
       rate,
       depositPaid: deposit,
       notes: notes || undefined,
+      signatureDataUrl,
+      signedAt: new Date().toISOString(),
+      signedBy: driver.fullName,
+      agreementVersion: AGREEMENT_VERSION,
     });
     toast.success("Reservation created", {
       description: `${driver.fullName} · ${vehicle.year} ${vehicle.make} ${vehicle.model} starting ${fmtDate(startDate)}`,
