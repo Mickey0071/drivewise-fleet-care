@@ -7,14 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { vehicles, drivers, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { addRental, hasConflict, addDriver, useStoreVersion } from "@/lib/mock/store";
-import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus, FileSignature } from "lucide-react";
+import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { SignaturePad } from "./SignaturePad";
 
-const STEPS = ["Vehicle", "Client", "Dates", "Agreement", "Review"] as const;
-type Step = 0 | 1 | 2 | 3 | 4;
-const AGREEMENT_VERSION = "v1.0";
+const STEPS = ["Vehicle", "Client", "Dates", "Review"] as const;
+type Step = 0 | 1 | 2 | 3;
 
 type BillingPeriod = "daily" | "weekly" | "monthly";
 function rateSuffix(p: BillingPeriod) { return p === "daily" ? "day" : p === "weekly" ? "wk" : "mo"; }
@@ -49,8 +47,6 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
   const [drvQ, setDrvQ] = useState("");
   const [showAddDriver, setShowAddDriver] = useState(false);
   const [newDriver, setNewDriver] = useState({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" as "Uber" | "Lyft" | "Both" });
-  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
-  const [agreementAccepted, setAgreementAccepted] = useState(false);
 
   const vehicle = vehicles.find(v => v.id === vehicleId) ?? null;
   const driver = drivers.find(d => d.id === driverId) ?? null;
@@ -77,8 +73,6 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
     setDeposit(300); setNotes(""); setVehQ(""); setDrvQ("");
     setShowAddDriver(false);
     setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" });
-    setSignatureDataUrl(null);
-    setAgreementAccepted(false);
   }
   function createDriver() {
     if (!newDriver.fullName.trim()) {
@@ -109,23 +103,17 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
     (step === 0 && !!vehicle) ||
     (step === 1 && !!driver) ||
     (step === 2 && !!startDate && rate > 0) ||
-    (step === 3 && !!signatureDataUrl && agreementAccepted) ||
-    step === 4;
+    step === 3;
 
   function next() {
     if (step === 0 && vehicle) setRate(prev => prev || defaultRate(vehicle, billingPeriod));
-    if (step < 4) setStep((step + 1) as Step);
+    if (step < 3) setStep((step + 1) as Step);
   }
 
   function confirm() {
     if (!vehicle || !driver || !startDate) return;
     if (hasConflict(vehicle.id, startDate, endDate || undefined)) {
       toast.error("Booking conflict", { description: `${vehicle.year} ${vehicle.make} ${vehicle.model} already has a rental overlapping these dates.` });
-      return;
-    }
-    if (!signatureDataUrl) {
-      toast.error("Signature required", { description: "Client must sign the rental agreement before confirming." });
-      setStep(3);
       return;
     }
     addRental({
@@ -138,13 +126,9 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
       rate,
       depositPaid: deposit,
       notes: notes || undefined,
-      signatureDataUrl,
-      signedAt: new Date().toISOString(),
-      signedBy: driver.fullName,
-      agreementVersion: AGREEMENT_VERSION,
     });
-    toast.success("Reservation created", {
-      description: `${driver.fullName} · ${vehicle.year} ${vehicle.make} ${vehicle.model} starting ${fmtDate(startDate)}`,
+    toast.success("Reservation pending", {
+      description: `${driver.fullName} · ${vehicle.year} ${vehicle.make} ${vehicle.model} — vehicle held 24h until signature + payment`,
     });
     close(false);
   }
@@ -337,50 +321,6 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
           )}
 
           {step === 3 && (
-            <div className="space-y-4">
-              <div className="rounded-lg border bg-card p-4">
-                <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                  <FileSignature className="h-4 w-4 text-primary" /> Rental Agreement {AGREEMENT_VERSION}
-                </div>
-                <div className="max-h-64 overflow-y-auto rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
-                  <p className="font-semibold text-foreground">RENTALPRISE AUTO — VEHICLE RENTAL AGREEMENT</p>
-                  <p className="mt-2">
-                    This Vehicle Rental Agreement ("Agreement") is entered into between Rentalprise Auto ("Lessor") and{" "}
-                    <span className="font-medium text-foreground">{driver?.fullName ?? "the Renter"}</span> ("Renter") for the rental of the vehicle{" "}
-                    <span className="font-medium text-foreground">{vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model} (Plate ${vehicle.plate})` : "—"}</span>.
-                  </p>
-                  <p className="mt-2"><strong className="text-foreground">1. Term.</strong> Rental begins {startDate ? fmtDate(startDate) : "—"}{endDate ? ` and ends ${fmtDate(endDate)}` : " on an open-ended basis"}.</p>
-                  <p className="mt-2"><strong className="text-foreground">2. Rate &amp; Deposit.</strong> Renter agrees to pay {fmtMoney(rate)}/{rateSuffix(billingPeriod)} plus a refundable security deposit of {fmtMoney(deposit)} at signing. Late payments incur a $50 fee per occurrence.</p>
-                  <p className="mt-2"><strong className="text-foreground">3. Use of Vehicle.</strong> Renter shall operate the Vehicle lawfully, only on paved roads, and shall not sublease, race, or use it for illegal activity. Vehicle may be used for rideshare (Uber/Lyft) when authorized.</p>
-                  <p className="mt-2"><strong className="text-foreground">4. Insurance.</strong> Renter is responsible for maintaining valid insurance and a valid driver's license throughout the rental term. Lessor's insurance is secondary.</p>
-                  <p className="mt-2"><strong className="text-foreground">5. Damage &amp; Liability.</strong> Renter is liable for all damage, citations, tolls, impound fees, and parking violations incurred during the rental period. Damage will be assessed at return inspection.</p>
-                  <p className="mt-2"><strong className="text-foreground">6. Return.</strong> Vehicle must be returned with the same fuel level and in the same condition as delivered. Cleaning fees may apply.</p>
-                  <p className="mt-2"><strong className="text-foreground">7. Default.</strong> Failure to return the vehicle, return overdue payments, or violation of this agreement may result in repossession and reporting to law enforcement.</p>
-                  <p className="mt-2"><strong className="text-foreground">8. Governing Law.</strong> This Agreement is governed by the laws of the State of Georgia.</p>
-                  <p className="mt-3 text-foreground">By signing below, Renter acknowledges they have read, understood, and agreed to all terms above.</p>
-                </div>
-              </div>
-
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4"
-                  checked={agreementAccepted}
-                  onChange={e => setAgreementAccepted(e.target.checked)}
-                />
-                <span>
-                  I, <span className="font-medium">{driver?.fullName ?? "the renter"}</span>, have read and agree to the terms of this rental agreement.
-                </span>
-              </label>
-
-              <div>
-                <Label className="mb-1 block">Renter signature</Label>
-                <SignaturePad value={signatureDataUrl ?? undefined} onChange={setSignatureDataUrl} />
-              </div>
-            </div>
-          )}
-
-          {step === 4 && (
             <div className="space-y-3">
               <ReviewRow icon={<Car className="h-4 w-4" />} label="Vehicle" value={vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model} · ${vehicle.plate}` : "—"} />
               <ReviewRow icon={<User className="h-4 w-4" />} label="Client" value={driver ? `${driver.fullName} · ${driver.phone}` : "—"} />
@@ -395,17 +335,6 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
                   <div className="text-lg font-bold">{fmtMoney(deposit)}</div>
                 </div>
               </div>
-              {signatureDataUrl && (
-                <div className="rounded-lg border bg-card p-3">
-                  <div className="flex items-center justify-between text-xs uppercase text-muted-foreground">
-                    <span>Signed agreement {AGREEMENT_VERSION}</span>
-                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 normal-case">
-                      <Check className="h-3.5 w-3.5" /> Signed
-                    </span>
-                  </div>
-                  <img src={signatureDataUrl} alt="Renter signature" className="mt-2 h-20 rounded border bg-white object-contain p-1" />
-                </div>
-              )}
               {notes && (
                 <div className="rounded-lg border bg-card p-3 text-sm">
                   <div className="text-xs uppercase text-muted-foreground">Notes</div>
@@ -413,7 +342,7 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
                 </div>
               )}
               <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                <ClipboardCheck className="h-4 w-4" /> Confirming creates the rental and sends a check-in link to the client.
+                <ClipboardCheck className="h-4 w-4" /> Saves as Pending. Vehicle is held for 24h until the client signs the agreement and payment is received.
               </p>
             </div>
           )}
@@ -430,13 +359,13 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
           >
             <ArrowLeft className="mr-1 h-4 w-4" /> Back
           </Button>
-          {step < 4 ? (
+          {step < 3 ? (
             <Button size="sm" disabled={!canNext} onClick={next}>
               Continue <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           ) : (
             <Button size="sm" onClick={confirm}>
-              <Check className="mr-1 h-4 w-4" /> Confirm reservation
+              <Check className="mr-1 h-4 w-4" /> Save as pending
             </Button>
           )}
           </div>

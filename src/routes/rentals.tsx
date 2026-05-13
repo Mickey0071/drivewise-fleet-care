@@ -4,15 +4,17 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { SignaturePad } from "@/components/app/SignaturePad";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
@@ -21,6 +23,8 @@ export const Route = createFileRoute("/rentals")({
   component: RentalsPage,
 });
 
+const AGREEMENT_VERSION = "v1.0";
+
 function RentalsPage() {
   const [newOpen, setNewOpen] = useState(false);
   const [editing, setEditing] = useState<Rental | null>(null);
@@ -28,119 +32,271 @@ function RentalsPage() {
   const [returning, setReturning] = useState<Rental | null>(null);
   const [extending, setExtending] = useState<Rental | null>(null);
   const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
+  const [signing, setSigning] = useState<Rental | null>(null);
   useStoreVersion();
+  // Prune any pending reservations whose 24h hold has expired
+  useEffect(() => {
+    prunePendingReservations();
+    const t = setInterval(prunePendingReservations, 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const pending = rentals.filter(r => r.reservationStatus === "pending");
+  const active = rentals.filter(r => (r.reservationStatus ?? "active") === "active" && !r.endDate);
+  const completed = rentals.filter(r => !!r.endDate);
+
+  function renderCard(r: Rental) {
+    const v = vehicleById(r.vehicleId);
+    const d = driverById(r.driverId);
+    const sched = payments.filter(p => p.rentalId === r.id);
+    const next = sched.find(p => p.status !== "paid");
+    const isPending = r.reservationStatus === "pending";
+    return (
+      <Card key={r.id} className="overflow-hidden">
+        <div className="flex flex-col md:flex-row">
+          <div className="relative w-full md:w-72 lg:w-80 shrink-0 bg-muted">
+            <div className="aspect-[4/3] md:aspect-auto md:h-full flex items-center justify-center text-muted-foreground/40">
+              <Car className="h-16 w-16" />
+            </div>
+          </div>
+          <div className="flex-1 p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <CardTitle className="text-xl md:text-2xl leading-tight truncate">
+                  {v?.year} {v?.make} {v?.model}
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Plate {v?.plate} · VIN {v?.vin}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {isPending ? "Reserved for" : "Rented to"} <span className="text-foreground font-medium">{d?.fullName}</span>
+                </p>
+              </div>
+              {isPending ? <PendingHoldBadge rental={r} /> : <StatusBadge status={r.paymentStatus} />}
+            </div>
+            {isPending ? <PendingChecklist rental={r} /> : <HandoffStatus rental={r} />}
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <Stat label="Started" value={fmtDate(r.startDate)} />
+              <Stat
+                label={r.billingPeriod === "daily" ? "Daily" : r.billingPeriod === "monthly" ? "Monthly" : "Weekly"}
+                value={fmtMoney(r.rate ?? r.weeklyRate)}
+              />
+              <Stat label="Deposit" value={fmtMoney(r.depositPaid)} />
+            </div>
+            {!isPending && (
+              <div className="rounded-md border border-border bg-muted/30 p-3">
+                <div className="text-xs uppercase text-muted-foreground">Next payment</div>
+                {next ? (
+                  <div className="mt-1 flex items-center justify-between">
+                    <span className="font-medium">{fmtMoney(next.amount)} due {fmtDate(next.dueDate)}</span>
+                    <StatusBadge status={next.status} />
+                  </div>
+                ) : <div className="mt-1 text-sm text-muted-foreground">All paid</div>}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {isPending ? (
+                <>
+                  <Button size="sm" onClick={() => setSigning(r)} variant={r.signatureDataUrl ? "outline" : "default"}>
+                    <FileSignature className="mr-1 h-4 w-4" />
+                    {r.signatureDataUrl ? "Re-capture signature" : "Capture signature"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={r.paymentReceived ? "outline" : "default"}
+                    onClick={() => {
+                      const activated = markReservationPaid(r.id);
+                      toast.success(activated ? "Reservation activated" : "Payment recorded");
+                    }}
+                  >
+                    <DollarSign className="mr-1 h-4 w-4" />
+                    {r.paymentReceived ? "Payment received ✓" : "Mark payment received"}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>Edit</Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => {
+                      cancelReservation(r.id);
+                      toast.success("Reservation cancelled");
+                    }}
+                  >
+                    <XIcon className="mr-1 h-4 w-4" /> Cancel
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setEditing(r)}>Edit</Button>
+                  {!r.endDate && getInspectionsForRental(r.id).every(i => i.type !== "check-out") && (
+                    <Button size="sm" onClick={() => setDelivering(r)}>
+                      <Truck className="mr-1 h-4 w-4" /> Deliver vehicle
+                    </Button>
+                  )}
+                  {!r.endDate && getInspectionsForRental(r.id).some(i => i.type === "check-out") && (
+                    <Button variant="outline" size="sm" onClick={() => setReturning(r)}>
+                      <ClipboardCheck className="mr-1 h-4 w-4" /> Process return
+                    </Button>
+                  )}
+                  {!r.endDate && (
+                    <Button variant="outline" size="sm" onClick={() => setExtending(r)}>
+                      <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
+                    </Button>
+                  )}
+                  {r.signatureDataUrl && (
+                    <Button variant="ghost" size="sm" onClick={() => setViewingAgreement(r)}>
+                      <FileSignature className="mr-1 h-4 w-4" /> View agreement
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <div>
       <PageHeader
         title="Reservations"
-        subtitle={`${rentals.length} active reservations`}
+        subtitle={`${active.length} active · ${pending.length} pending · ${completed.length} completed`}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ReportActions csv={{
               filename: "rentals.csv",
-              headers: ["ID", "Driver", "Vehicle", "Plate", "Started", "Ended", "Weekly", "Deposit", "Status"],
+              headers: ["ID", "Driver", "Vehicle", "Plate", "Started", "Ended", "Weekly", "Deposit", "Status", "Reservation"],
               rows: rentals.map(r => {
                 const v = vehicleById(r.vehicleId);
-                return [r.id, driverById(r.driverId)?.fullName ?? r.driverId, v ? `${v.year} ${v.make} ${v.model}` : r.vehicleId, v?.plate ?? "", r.startDate, r.endDate ?? "", r.weeklyRate, r.depositPaid, r.paymentStatus];
+                return [r.id, driverById(r.driverId)?.fullName ?? r.driverId, v ? `${v.year} ${v.make} ${v.model}` : r.vehicleId, v?.plate ?? "", r.startDate, r.endDate ?? "", r.weeklyRate, r.depositPaid, r.paymentStatus, r.reservationStatus ?? "active"];
               }),
             }} />
             <Button onClick={() => setNewOpen(true)}>+ New Reservation</Button>
           </div>
         }
       />
-      <div className="flex flex-col gap-3">
-        {rentals.map(r => {
-          const v = vehicleById(r.vehicleId);
-          const d = driverById(r.driverId);
-          const sched = payments.filter(p => p.rentalId === r.id);
-          const next = sched.find(p => p.status !== "paid");
-          const imgQuery = encodeURIComponent(`${v?.make ?? ""} ${v?.model ?? ""} car`.trim());
-          const imgUrl = `https://source.unsplash.com/featured/600x400/?${imgQuery}`;
-          return (
-            <Card key={r.id} className="overflow-hidden">
-              <div className="flex flex-col md:flex-row">
-                <div className="relative w-full md:w-72 lg:w-80 shrink-0 bg-muted">
-                  <div className="aspect-[4/3] md:aspect-auto md:h-full">
-                    <img
-                      src={imgUrl}
-                      alt={`${v?.year} ${v?.make} ${v?.model}`}
-                      className="h-full w-full object-cover"
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                    />
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-muted-foreground/40">
-                      <Car className="h-16 w-16" />
-                    </div>
-                  </div>
-                </div>
-                <div className="flex-1 p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <CardTitle className="text-xl md:text-2xl leading-tight truncate">
-                        {v?.year} {v?.make} {v?.model}
-                      </CardTitle>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Plate {v?.plate} · VIN {v?.vin}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Rented to <span className="text-foreground font-medium">{d?.fullName}</span>
-                      </p>
-                    </div>
-                    <StatusBadge status={r.paymentStatus} />
-                  </div>
-                  <HandoffStatus rental={r} />
-                  <div className="grid grid-cols-3 gap-2 text-sm">
-                    <Stat label="Started" value={fmtDate(r.startDate)} />
-                    <Stat
-                      label={r.billingPeriod === "daily" ? "Daily" : r.billingPeriod === "monthly" ? "Monthly" : "Weekly"}
-                      value={fmtMoney(r.rate ?? r.weeklyRate)}
-                    />
-                    <Stat label="Deposit" value={fmtMoney(r.depositPaid)} />
-                  </div>
-                  <div className="rounded-md border border-border bg-muted/30 p-3">
-                    <div className="text-xs uppercase text-muted-foreground">Next payment</div>
-                    {next ? (
-                      <div className="mt-1 flex items-center justify-between">
-                        <span className="font-medium">{fmtMoney(next.amount)} due {fmtDate(next.dueDate)}</span>
-                        <StatusBadge status={next.status} />
-                      </div>
-                    ) : <div className="mt-1 text-sm text-muted-foreground">All paid</div>}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setEditing(r)}>Edit</Button>
-                    {!r.endDate && getInspectionsForRental(r.id).every(i => i.type !== "check-out") && (
-                      <Button size="sm" onClick={() => setDelivering(r)}>
-                        <Truck className="mr-1 h-4 w-4" /> Deliver vehicle
-                      </Button>
-                    )}
-                    {!r.endDate && getInspectionsForRental(r.id).some(i => i.type === "check-out") && (
-                      <Button variant="outline" size="sm" onClick={() => setReturning(r)}>
-                        <ClipboardCheck className="mr-1 h-4 w-4" /> Process return
-                      </Button>
-                    )}
-                    {!r.endDate && (
-                      <Button variant="outline" size="sm" onClick={() => setExtending(r)}>
-                        <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
-                      </Button>
-                    )}
-                    {r.signatureDataUrl && (
-                      <Button variant="ghost" size="sm" onClick={() => setViewingAgreement(r)}>
-                        <FileSignature className="mr-1 h-4 w-4" /> View agreement
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+      <Tabs defaultValue={pending.length > 0 ? "pending" : "active"} className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="active">Active ({active.length})</TabsTrigger>
+          <TabsTrigger value="pending">
+            Pending {pending.length > 0 && <span className="ml-1 rounded-full bg-amber-500/20 px-2 text-xs text-amber-700 dark:text-amber-400">{pending.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="completed">Completed ({completed.length})</TabsTrigger>
+        </TabsList>
+        <TabsContent value="active" className="flex flex-col gap-3 mt-0">
+          {active.length === 0 ? <EmptyState label="No active rentals." /> : active.map(renderCard)}
+        </TabsContent>
+        <TabsContent value="pending" className="flex flex-col gap-3 mt-0">
+          {pending.length === 0 ? (
+            <EmptyState label="No pending reservations. New reservations are held here for 24h until signature + payment." />
+          ) : pending.map(renderCard)}
+        </TabsContent>
+        <TabsContent value="completed" className="flex flex-col gap-3 mt-0">
+          {completed.length === 0 ? <EmptyState label="No completed rentals yet." /> : completed.map(renderCard)}
+        </TabsContent>
+      </Tabs>
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
       <EditRentalDialog rental={editing} onClose={() => setEditing(null)} />
       <DeliveryDialog rental={delivering} onClose={() => setDelivering(null)} />
       <ReturnDialog rental={returning} onClose={() => setReturning(null)} />
       <ExtendRentalDialog rental={extending} onClose={() => setExtending(null)} />
       <AgreementDialog rental={viewingAgreement} onClose={() => setViewingAgreement(null)} />
+      <CaptureSignatureDialog rental={signing} onClose={() => setSigning(null)} />
     </div>
+  );
+}
+
+function EmptyState({ label }: { label: string }) {
+  return <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">{label}</div>;
+}
+
+function PendingHoldBadge({ rental }: { rental: Rental }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const exp = pendingExpiresAt(rental);
+  if (!exp) return null;
+  const remaining = exp - now;
+  const hrs = Math.max(0, Math.floor(remaining / 3_600_000));
+  const mins = Math.max(0, Math.floor((remaining % 3_600_000) / 60_000));
+  const expired = remaining <= 0;
+  return (
+    <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${expired ? "bg-destructive/15 text-destructive" : "bg-amber-500/15 text-amber-700 dark:text-amber-400"}`}>
+      <Clock className="h-3.5 w-3.5" />
+      {expired ? "Hold expired" : `Hold ${hrs}h ${mins}m left`}
+    </div>
+  );
+}
+
+function PendingChecklist({ rental }: { rental: Rental }) {
+  const signed = !!rental.signatureDataUrl;
+  const paid = !!rental.paymentReceived;
+  return (
+    <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-1.5 text-xs">
+      <div className="font-medium text-amber-700 dark:text-amber-400">Pending — vehicle held off the calendar</div>
+      <div className="flex items-center gap-2">
+        {signed ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40" />}
+        <span className={signed ? "text-foreground" : "text-muted-foreground"}>Rental agreement signed</span>
+      </div>
+      <div className="flex items-center gap-2">
+        {paid ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40" />}
+        <span className={paid ? "text-foreground" : "text-muted-foreground"}>First payment received</span>
+      </div>
+    </div>
+  );
+}
+
+function CaptureSignatureDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  const v = rental ? vehicleById(rental.vehicleId) : null;
+  const d = rental ? driverById(rental.driverId) : null;
+  const [sig, setSig] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState(false);
+  useEffect(() => {
+    if (rental) { setSig(rental.signatureDataUrl ?? null); setAccepted(false); }
+  }, [rental]);
+  function confirm() {
+    if (!rental || !d) return;
+    if (!accepted) { toast.error("Client must accept the agreement"); return; }
+    if (!sig) { toast.error("Signature required"); return; }
+    const activated = captureSignature(rental.id, sig, d.fullName, AGREEMENT_VERSION);
+    toast.success(activated ? "Reservation activated" : "Signature captured");
+    onClose();
+  }
+  return (
+    <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Capture rental agreement signature</DialogTitle>
+        </DialogHeader>
+        {rental && v && d && (
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+              <div className="font-medium">{v.year} {v.make} {v.model} · {v.plate}</div>
+              <div className="text-xs text-muted-foreground">Renter: {d.fullName}</div>
+            </div>
+            <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
+              <p className="font-semibold text-foreground">RENTALPRISE AUTO — VEHICLE RENTAL AGREEMENT {AGREEMENT_VERSION}</p>
+              <p className="mt-2">Renter agrees to pay the contracted rate and a refundable deposit, and is responsible for damage, citations, tolls, impound fees, and parking violations during the rental term. Vehicle must be returned in the same condition as delivered. Failure to return or pay may result in repossession. Governed by the laws of the State of Georgia.</p>
+            </div>
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" className="mt-0.5 h-4 w-4" checked={accepted} onChange={e => setAccepted(e.target.checked)} />
+              <span>I, <span className="font-medium">{d.fullName}</span>, have read and agree to the terms.</span>
+            </label>
+            <div>
+              <Label className="mb-1 block">Signature</Label>
+              <SignaturePad value={sig ?? undefined} onChange={setSig} />
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={confirm}><FileSignature className="mr-1 h-4 w-4" /> Save signature</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

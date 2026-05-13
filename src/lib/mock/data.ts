@@ -25,6 +25,9 @@ export interface Rental {
   signedAt?: string;
   signedBy?: string;
   agreementVersion?: string;
+  reservationStatus?: "pending" | "active" | "completed";
+  pendingCreatedAt?: string;
+  paymentReceived?: boolean;
 }
 export interface Payment {
   id: string; rentalId: string; driverId: string; amount: number;
@@ -82,10 +85,10 @@ export const drivers: Driver[] = [
 ];
 
 export const rentals: Rental[] = [
-  { id: "R-501", vehicleId: "V-001", driverId: "D-1001", startDate: "2026-04-20", weeklyRate: 380, depositPaid: 300, paymentStatus: "current" },
-  { id: "R-502", vehicleId: "V-002", driverId: "D-1002", startDate: "2026-03-15", weeklyRate: 380, depositPaid: 300, paymentStatus: "current" },
-  { id: "R-503", vehicleId: "V-005", driverId: "D-1003", startDate: "2026-04-01", weeklyRate: 340, depositPaid: 250, paymentStatus: "late" },
-  { id: "R-504", vehicleId: "V-008", driverId: "D-1005", startDate: "2026-04-25", weeklyRate: 380, depositPaid: 300, paymentStatus: "current" },
+  { id: "R-501", vehicleId: "V-001", driverId: "D-1001", startDate: "2026-04-20", weeklyRate: 380, depositPaid: 300, paymentStatus: "current", reservationStatus: "active", paymentReceived: true },
+  { id: "R-502", vehicleId: "V-002", driverId: "D-1002", startDate: "2026-03-15", weeklyRate: 380, depositPaid: 300, paymentStatus: "current", reservationStatus: "active", paymentReceived: true },
+  { id: "R-503", vehicleId: "V-005", driverId: "D-1003", startDate: "2026-04-01", weeklyRate: 340, depositPaid: 250, paymentStatus: "late", reservationStatus: "active", paymentReceived: true },
+  { id: "R-504", vehicleId: "V-008", driverId: "D-1005", startDate: "2026-04-25", weeklyRate: 380, depositPaid: 300, paymentStatus: "current", reservationStatus: "active", paymentReceived: true },
 ];
 
 export const payments: Payment[] = [
