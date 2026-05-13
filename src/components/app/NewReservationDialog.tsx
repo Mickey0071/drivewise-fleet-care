@@ -321,50 +321,6 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
           )}
 
           {step === 3 && (
-            <div className="space-y-4">
-              <div className="rounded-lg border bg-card p-4">
-                <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                  <FileSignature className="h-4 w-4 text-primary" /> Rental Agreement {AGREEMENT_VERSION}
-                </div>
-                <div className="max-h-64 overflow-y-auto rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
-                  <p className="font-semibold text-foreground">RENTALPRISE AUTO — VEHICLE RENTAL AGREEMENT</p>
-                  <p className="mt-2">
-                    This Vehicle Rental Agreement ("Agreement") is entered into between Rentalprise Auto ("Lessor") and{" "}
-                    <span className="font-medium text-foreground">{driver?.fullName ?? "the Renter"}</span> ("Renter") for the rental of the vehicle{" "}
-                    <span className="font-medium text-foreground">{vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model} (Plate ${vehicle.plate})` : "—"}</span>.
-                  </p>
-                  <p className="mt-2"><strong className="text-foreground">1. Term.</strong> Rental begins {startDate ? fmtDate(startDate) : "—"}{endDate ? ` and ends ${fmtDate(endDate)}` : " on an open-ended basis"}.</p>
-                  <p className="mt-2"><strong className="text-foreground">2. Rate &amp; Deposit.</strong> Renter agrees to pay {fmtMoney(rate)}/{rateSuffix(billingPeriod)} plus a refundable security deposit of {fmtMoney(deposit)} at signing. Late payments incur a $50 fee per occurrence.</p>
-                  <p className="mt-2"><strong className="text-foreground">3. Use of Vehicle.</strong> Renter shall operate the Vehicle lawfully, only on paved roads, and shall not sublease, race, or use it for illegal activity. Vehicle may be used for rideshare (Uber/Lyft) when authorized.</p>
-                  <p className="mt-2"><strong className="text-foreground">4. Insurance.</strong> Renter is responsible for maintaining valid insurance and a valid driver's license throughout the rental term. Lessor's insurance is secondary.</p>
-                  <p className="mt-2"><strong className="text-foreground">5. Damage &amp; Liability.</strong> Renter is liable for all damage, citations, tolls, impound fees, and parking violations incurred during the rental period. Damage will be assessed at return inspection.</p>
-                  <p className="mt-2"><strong className="text-foreground">6. Return.</strong> Vehicle must be returned with the same fuel level and in the same condition as delivered. Cleaning fees may apply.</p>
-                  <p className="mt-2"><strong className="text-foreground">7. Default.</strong> Failure to return the vehicle, return overdue payments, or violation of this agreement may result in repossession and reporting to law enforcement.</p>
-                  <p className="mt-2"><strong className="text-foreground">8. Governing Law.</strong> This Agreement is governed by the laws of the State of Georgia.</p>
-                  <p className="mt-3 text-foreground">By signing below, Renter acknowledges they have read, understood, and agreed to all terms above.</p>
-                </div>
-              </div>
-
-              <label className="flex items-start gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4"
-                  checked={agreementAccepted}
-                  onChange={e => setAgreementAccepted(e.target.checked)}
-                />
-                <span>
-                  I, <span className="font-medium">{driver?.fullName ?? "the renter"}</span>, have read and agree to the terms of this rental agreement.
-                </span>
-              </label>
-
-              <div>
-                <Label className="mb-1 block">Renter signature</Label>
-                <SignaturePad value={signatureDataUrl ?? undefined} onChange={setSignatureDataUrl} />
-              </div>
-            </div>
-          )}
-
-          {step === 4 && (
             <div className="space-y-3">
               <ReviewRow icon={<Car className="h-4 w-4" />} label="Vehicle" value={vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model} · ${vehicle.plate}` : "—"} />
               <ReviewRow icon={<User className="h-4 w-4" />} label="Client" value={driver ? `${driver.fullName} · ${driver.phone}` : "—"} />
@@ -379,17 +335,6 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
                   <div className="text-lg font-bold">{fmtMoney(deposit)}</div>
                 </div>
               </div>
-              {signatureDataUrl && (
-                <div className="rounded-lg border bg-card p-3">
-                  <div className="flex items-center justify-between text-xs uppercase text-muted-foreground">
-                    <span>Signed agreement {AGREEMENT_VERSION}</span>
-                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 normal-case">
-                      <Check className="h-3.5 w-3.5" /> Signed
-                    </span>
-                  </div>
-                  <img src={signatureDataUrl} alt="Renter signature" className="mt-2 h-20 rounded border bg-white object-contain p-1" />
-                </div>
-              )}
               {notes && (
                 <div className="rounded-lg border bg-card p-3 text-sm">
                   <div className="text-xs uppercase text-muted-foreground">Notes</div>
@@ -397,7 +342,7 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
                 </div>
               )}
               <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                <ClipboardCheck className="h-4 w-4" /> Confirming creates the rental and sends a check-in link to the client.
+                <ClipboardCheck className="h-4 w-4" /> Saves as Pending. Vehicle is held for 24h until the client signs the agreement and payment is received.
               </p>
             </div>
           )}
@@ -414,13 +359,13 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
           >
             <ArrowLeft className="mr-1 h-4 w-4" /> Back
           </Button>
-          {step < 4 ? (
+          {step < 3 ? (
             <Button size="sm" disabled={!canNext} onClick={next}>
               Continue <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           ) : (
             <Button size="sm" onClick={confirm}>
-              <Check className="mr-1 h-4 w-4" /> Confirm reservation
+              <Check className="mr-1 h-4 w-4" /> Save as pending
             </Button>
           )}
           </div>
