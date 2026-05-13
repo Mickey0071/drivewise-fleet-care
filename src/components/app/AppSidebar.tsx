@@ -7,6 +7,8 @@ import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
+import { unreadReportCount, useStoreVersion } from "@/lib/mock/store";
 import logo from "@/assets/camauto-logo.jpeg";
 
 const adminItems = [
@@ -35,6 +37,8 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const path = useRouterState({ select: (r) => r.location.pathname });
   const isActive = (url: string) => url === "/" ? path === "/" : path.startsWith(url);
+  useStoreVersion();
+  const unread = unreadReportCount();
 
   const renderGroup = (label: string, items: typeof adminItems) => (
     <SidebarGroup>
@@ -46,7 +50,10 @@ export function AppSidebar() {
               <SidebarMenuButton asChild isActive={isActive(item.url)}>
                 <Link to={item.url} className="flex items-center gap-3">
                   <item.icon className="h-4 w-4 shrink-0" />
-                  {!collapsed && <span>{item.title}</span>}
+                  {!collapsed && <span className="flex-1">{item.title}</span>}
+                  {!collapsed && item.url === "/runner-reports" && unread > 0 && (
+                    <Badge variant="default" className="h-5 px-1.5 text-[10px]">{unread}</Badge>
+                  )}
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
