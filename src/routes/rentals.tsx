@@ -4,7 +4,7 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useState } from "react";
@@ -542,35 +542,47 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
 
 function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
   const v = rental ? vehicleById(rental.vehicleId) : null;
+  const d = rental ? driverById(rental.driverId) : null;
   const [newEndDate, setNewEndDate] = useState("");
+  const [sig, setSig] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState(false);
   useEffect(() => {
     if (rental) {
-      // Default to +7 days from current end date or today
       const base = rental.endDate ? new Date(rental.endDate) : new Date();
       base.setDate(base.getDate() + 7);
       setNewEndDate(base.toISOString().slice(0, 10));
+      setSig(null);
+      setAccepted(false);
     }
   }, [rental]);
+  const charge = rental && newEndDate ? computeExtensionCharge(rental, newEndDate) : null;
   function confirm() {
-    if (!rental || !newEndDate) return;
+    if (!rental || !newEndDate || !d) return;
     if (rental.endDate && newEndDate <= rental.endDate) {
       toast.error("New end date must be after the current end date");
       return;
     }
-    extendRental(rental.id, newEndDate);
+    if (!accepted) { toast.error("Renter must accept the extension addendum"); return; }
+    if (!sig) { toast.error("Signature required for the addendum"); return; }
+    const ext = extendRental(rental.id, newEndDate, {
+      signatureDataUrl: sig,
+      signedBy: d.fullName,
+      agreementVersion: AGREEMENT_VERSION,
+    });
     toast.success("Rental extended", {
-      description: `${v?.year} ${v?.make} ${v?.model} now ends ${fmtDate(newEndDate)}`,
+      description: `${v?.year} ${v?.make} ${v?.model} → ${fmtDate(newEndDate)}${ext && ext.additionalAmount > 0 ? ` · ${fmtMoney(ext.additionalAmount)} added to receipt` : ""}`,
     });
     onClose();
   }
   return (
     <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Extend rental</DialogTitle></DialogHeader>
-        {rental && v && (
-          <div className="space-y-4">
+        {rental && v && d && (
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
             <div className="rounded-lg border bg-muted/30 p-3 text-sm">
               <div className="font-medium">{v.year} {v.make} {v.model} · {v.plate}</div>
+              <div className="text-xs text-muted-foreground">Renter: {d.fullName}</div>
               <div className="text-xs text-muted-foreground mt-1">
                 Current end date: {rental.endDate ? fmtDate(rental.endDate) : "open-ended"}
               </div>
@@ -578,9 +590,33 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
             <div>
               <Label htmlFor="ext-end">New end date</Label>
               <Input id="ext-end" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
-              <p className="mt-2 text-xs text-muted-foreground">
-                One additional billing cycle ({rental.billingPeriod ?? "weekly"}) will be scheduled if it falls within the new window.
+            </div>
+            {charge && charge.additionalAmount > 0 && (
+              <div className="rounded-md border bg-card p-3 text-sm">
+                <div className="text-xs uppercase text-muted-foreground">Extension charge (added to receipt)</div>
+                <div className="mt-1 flex items-baseline justify-between">
+                  <span>{charge.periods} additional {charge.periodLabel}{charge.periods === 1 ? "" : "s"} × {fmtMoney(rental.rate ?? rental.weeklyRate)}</span>
+                  <span className="text-lg font-bold">{fmtMoney(charge.additionalAmount)}</span>
+                </div>
+              </div>
+            )}
+            <div className="rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
+              <div className="font-semibold text-foreground">EXTENSION ADDENDUM TO RENTAL AGREEMENT {AGREEMENT_VERSION}</div>
+              <p className="mt-2">
+                This addendum extends the rental of <span className="font-medium text-foreground">{v.year} {v.make} {v.model} (Plate {v.plate})</span> by{" "}
+                <span className="font-medium text-foreground">{charge?.periods ?? 0} {charge?.periodLabel}{(charge?.periods ?? 0) === 1 ? "" : "s"}</span>
+                {rental.endDate ? <> from {fmtDate(rental.endDate)}</> : null} through{" "}
+                <span className="font-medium text-foreground">{newEndDate ? fmtDate(newEndDate) : "—"}</span>.
+                Renter agrees to pay an additional <span className="font-medium text-foreground">{fmtMoney(charge?.additionalAmount ?? 0)}</span> at the contracted rate of {fmtMoney(rental.rate ?? rental.weeklyRate)}/{(rental.billingPeriod ?? "weekly").replace("ly", "")}. All other terms of the original agreement remain in full force.
               </p>
+            </div>
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" className="mt-0.5 h-4 w-4" checked={accepted} onChange={e => setAccepted(e.target.checked)} />
+              <span>I, <span className="font-medium">{d.fullName}</span>, agree to the extension and the additional charge above.</span>
+            </label>
+            <div>
+              <Label className="mb-1 block">Renter signature (addendum)</Label>
+              <SignaturePad value={sig ?? undefined} onChange={setSig} />
             </div>
           </div>
         )}
@@ -603,7 +639,7 @@ function AgreementDialog({ rental, onClose }: { rental: Rental | null; onClose: 
           <DialogTitle>Signed rental agreement</DialogTitle>
         </DialogHeader>
         {rental && v && d && (
-          <div className="space-y-3 text-sm">
+          <div className="space-y-3 text-sm max-h-[70vh] overflow-y-auto pr-1">
             <div className="rounded-lg border bg-muted/30 p-3">
               <div className="font-medium">{v.year} {v.make} {v.model} · {v.plate}</div>
               <div className="text-xs text-muted-foreground">Renter: {d.fullName}</div>
@@ -626,6 +662,33 @@ function AgreementDialog({ rental, onClose }: { rental: Rental | null; onClose: 
                 </div>
               )}
             </div>
+            {rental.extensions && rental.extensions.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs uppercase text-muted-foreground">Extension addenda</div>
+                {rental.extensions.map((ext, i) => (
+                  <div key={ext.id} className="rounded-lg border bg-card p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-medium">Addendum #{i + 1}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {ext.previousEndDate ? `${fmtDate(ext.previousEndDate)} → ` : ""}{fmtDate(ext.newEndDate)} · +{ext.periods} {ext.periodLabel}{ext.periods === 1 ? "" : "s"}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-bold">{fmtMoney(ext.additionalAmount)}</div>
+                        <div className="text-xs text-muted-foreground">added to receipt</div>
+                      </div>
+                    </div>
+                    {ext.signatureDataUrl && (
+                      <img src={ext.signatureDataUrl} alt="Addendum signature" className="mt-2 h-16 w-full rounded border bg-white object-contain p-1" />
+                    )}
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Signed by {ext.signedBy ?? d.fullName} on {new Date(ext.extendedAt).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         <DialogFooter>
