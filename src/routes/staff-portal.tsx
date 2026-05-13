@@ -6,8 +6,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { staff, vehicles, rentals, drivers, fmtDate } from "@/lib/mock/data";
-import { getInspectionsForRental, useStoreVersion } from "@/lib/mock/store";
-import { CheckCircle2, Car, Wrench, Fuel, Camera } from "lucide-react";
+import { getInspectionsForRental, useStoreVersion, addRunnerReport } from "@/lib/mock/store";
+import { CheckCircle2, Car, Wrench, Fuel, Camera, Send, ExternalLink } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/staff-portal")({
   head: () => ({ meta: [{ title: "Runner Portal — Camauto Rentals" }] }),
@@ -59,11 +61,29 @@ function RunnerPortalPage() {
   }, []);
 
   const [done, setDone] = useState<Record<string, boolean>>({});
+  const [notes, setNotes] = useState("");
   const completed = tasks.filter(t => done[t.id]).length;
   const pct = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
 
   const toggle = (id: string) => setDone(d => ({ ...d, [id]: !d[id] }));
-  const reset = () => setDone({});
+  const reset = () => { setDone({}); setNotes(""); };
+
+  const submit = () => {
+    const report = addRunnerReport({
+      runnerId: me.id,
+      runnerName: me.fullName,
+      totalTasks: tasks.length,
+      completedTasks: completed,
+      items: tasks.map(t => ({ id: t.id, label: t.label, detail: t.detail, done: !!done[t.id] })),
+      notes: notes.trim() || undefined,
+    });
+    toast.success("Report submitted to admin", {
+      description: `${completed}/${tasks.length} tasks · opening admin view`,
+      action: { label: "Open", onClick: () => window.open("/runner-reports", "_blank") },
+    });
+    window.open(`/runner-reports?focus=${report.id}`, "_blank");
+    reset();
+  };
 
   return (
     <div>
@@ -106,6 +126,29 @@ function RunnerPortalPage() {
               </label>
             );
           })}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader><CardTitle className="text-base">Notes for admin (optional)</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <Textarea
+            placeholder="Anything the office should know — issues, delays, damage observed…"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+          />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs text-muted-foreground">Submitting sends a snapshot of this checklist to the admin Runner Reports page.</div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => window.open("/runner-reports", "_blank")}>
+                <ExternalLink className="mr-1 h-4 w-4" /> Admin view
+              </Button>
+              <Button size="sm" onClick={submit} disabled={tasks.length === 0}>
+                <Send className="mr-1 h-4 w-4" /> Submit report
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
