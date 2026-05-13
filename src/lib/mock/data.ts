@@ -28,6 +28,20 @@ export interface Rental {
   reservationStatus?: "pending" | "active" | "completed";
   pendingCreatedAt?: string;
   paymentReceived?: boolean;
+  extensions?: RentalExtension[];
+}
+export interface RentalExtension {
+  id: string;
+  extendedAt: string;
+  previousEndDate?: string;
+  newEndDate: string;
+  periods: number;
+  periodLabel: "day" | "week" | "month";
+  additionalAmount: number;
+  paymentId?: string;
+  signatureDataUrl?: string;
+  signedBy?: string;
+  agreementVersion?: string;
 }
 export interface Payment {
   id: string; rentalId: string; driverId: string; amount: number;
