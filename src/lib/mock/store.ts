@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, type Rental } from "./data";
+import { rentals, vehicles, payments, drivers, type Rental, type Driver } from "./data";
 
 const listeners = new Set<() => void>();
 let version = 0;
@@ -62,4 +62,22 @@ export function markReturned(id: string, endDate?: string) {
   const v = vehicles.find(v => v.id === r.vehicleId);
   if (v) v.status = "available";
   emit();
+}
+
+function nextDriverId() {
+  const n = drivers.reduce((m, d) => Math.max(m, parseInt(d.id.replace(/\D/g, "")) || 0), 1000);
+  return `D-${n + 1}`;
+}
+
+export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "insuranceOnFile"> & Partial<Pick<Driver, "status" | "insuranceOnFile" | "dateAdded">>) {
+  const driver: Driver = {
+    id: nextDriverId(),
+    dateAdded: new Date().toISOString().slice(0, 10),
+    status: "active",
+    insuranceOnFile: false,
+    ...input,
+  };
+  drivers.push(driver);
+  emit();
+  return driver;
 }
