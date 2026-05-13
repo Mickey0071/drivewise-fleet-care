@@ -4,9 +4,12 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -14,6 +17,17 @@ import { AppSidebar } from "@/components/app/AppSidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeToggle } from "@/components/app/ThemeToggle";
 import { GlobalSearch } from "@/components/app/GlobalSearch";
+import { AuthProvider, useAuth, type AppRole } from "@/hooks/use-auth";
+
+const ROUTE_ROLES: { prefix: string; roles: AppRole[] }[] = [
+  { prefix: "/staff-portal", roles: ["admin", "runner"] },
+  { prefix: "/driver-portal", roles: ["admin", "driver"] },
+  { prefix: "/runner-reports", roles: ["admin"] },
+  { prefix: "/payroll", roles: ["admin"] },
+  { prefix: "/pnl", roles: ["admin"] },
+  { prefix: "/expenses", roles: ["admin"] },
+];
+const PUBLIC_ROUTES = ["/login"];
 
 function NotFoundComponent() {
   return (
@@ -125,28 +139,64 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full bg-background">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col">
-            <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
-              <SidebarTrigger />
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 rounded-full bg-success" />
-                <span className="text-xs text-muted-foreground">Demo data — no live backend</span>
-              </div>
-              <div className="ml-auto flex items-center gap-1">
-                <GlobalSearch />
-                <ThemeToggle />
-              </div>
-            </header>
-            <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-              <Outlet />
-            </main>
-          </div>
-        </div>
-        <Toaster />
-      </SidebarProvider>
+      <AuthProvider>
+        <AuthGate />
+      </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+function AuthGate() {
+  const { session, role, loading } = useAuth();
+  const path = useRouterState({ select: (r) => r.location.pathname });
+  const navigate = useNavigate();
+  const isPublic = PUBLIC_ROUTES.some(p => path.startsWith(p));
+
+  useEffect(() => {
+    if (loading) return;
+    if (!session && !isPublic) navigate({ to: "/login" });
+  }, [loading, session, isPublic, navigate]);
+
+  useEffect(() => {
+    if (loading || !session || !role) return;
+    const guard = ROUTE_ROLES.find(g => path.startsWith(g.prefix));
+    if (guard && !guard.roles.includes(role)) {
+      const home = role === "driver" ? "/driver-portal" : role === "runner" ? "/staff-portal" : "/";
+      navigate({ to: home });
+    }
+    // Drivers/runners shouldn't see the admin dashboard
+    if (path === "/" && role === "driver") navigate({ to: "/driver-portal" });
+    if (path === "/" && role === "runner") navigate({ to: "/staff-portal" });
+  }, [loading, session, role, path, navigate]);
+
+  if (loading) {
+    return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>;
+  }
+  if (isPublic) return <Outlet />;
+  if (!session) return null;
+
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background">
+        <AppSidebar />
+        <div className="flex flex-1 flex-col">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
+            <SidebarTrigger />
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-success" />
+              <span className="text-xs text-muted-foreground">Signed in as {role ?? "—"}</span>
+            </div>
+            <div className="ml-auto flex items-center gap-1">
+              <GlobalSearch />
+              <ThemeToggle />
+            </div>
+          </header>
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+      <Toaster />
+    </SidebarProvider>
   );
 }
