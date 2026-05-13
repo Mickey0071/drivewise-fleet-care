@@ -109,17 +109,44 @@ export interface RunnerReport {
   completedTasks: number;
   items: { id: string; label: string; detail?: string; done: boolean }[];
   notes?: string;
+  read?: boolean;
 }
 
-export const runnerReports: RunnerReport[] = [];
+const RR_KEY = "camauto.runnerReports.v1";
+function loadReports(): RunnerReport[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(RR_KEY) || "[]"); } catch { return []; }
+}
+function saveReports() {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(RR_KEY, JSON.stringify(runnerReports)); } catch {}
+}
+export const runnerReports: RunnerReport[] = loadReports();
+
+export function unreadReportCount() {
+  return runnerReports.filter(r => !r.read).length;
+}
+
+export function markReportRead(id: string) {
+  const r = runnerReports.find(r => r.id === id);
+  if (r && !r.read) { r.read = true; saveReports(); emit(); }
+}
+
+export function markAllReportsRead() {
+  let changed = false;
+  runnerReports.forEach(r => { if (!r.read) { r.read = true; changed = true; } });
+  if (changed) { saveReports(); emit(); }
+}
 
 export function addRunnerReport(r: Omit<RunnerReport, "id" | "submittedAt">) {
   const report: RunnerReport = {
-    id: `RR-${runnerReports.length + 1}`,
+    id: `RR-${Date.now().toString(36).toUpperCase()}`,
     submittedAt: new Date().toISOString(),
+    read: false,
     ...r,
   };
   runnerReports.unshift(report);
+  saveReports();
   emit();
   return report;
 }
