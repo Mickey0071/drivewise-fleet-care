@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { vehicles, drivers, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { addRental, hasConflict } from "@/lib/mock/store";
-import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search } from "lucide-react";
+import { addRental, hasConflict, addDriver, useStoreVersion } from "@/lib/mock/store";
+import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -20,6 +20,7 @@ interface Props {
 }
 
 export function NewReservationDialog({ open, onOpenChange }: Props) {
+  useStoreVersion();
   const [step, setStep] = useState<Step>(0);
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [driverId, setDriverId] = useState<string | null>(null);
@@ -30,6 +31,8 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
   const [notes, setNotes] = useState("");
   const [vehQ, setVehQ] = useState("");
   const [drvQ, setDrvQ] = useState("");
+  const [showAddDriver, setShowAddDriver] = useState(false);
+  const [newDriver, setNewDriver] = useState({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" as "Uber" | "Lyft" | "Both" });
 
   const vehicle = vehicles.find(v => v.id === vehicleId) ?? null;
   const driver = drivers.find(d => d.id === driverId) ?? null;
@@ -54,7 +57,28 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
     setStep(0); setVehicleId(null); setDriverId(null);
     setStartDate(""); setEndDate(""); setWeeklyRate(0);
     setDeposit(300); setNotes(""); setVehQ(""); setDrvQ("");
+    setShowAddDriver(false);
+    setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" });
   }
+  function createDriver() {
+    if (!newDriver.fullName.trim()) {
+      toast.error("Name required");
+      return;
+    }
+    const d = addDriver({
+      fullName: newDriver.fullName.trim(),
+      phone: newDriver.phone.trim(),
+      email: newDriver.email.trim(),
+      licenseNumber: newDriver.licenseNumber.trim() || "—",
+      licenseExpiry: "",
+      rideshare: newDriver.rideshare,
+    });
+    setDriverId(d.id);
+    setShowAddDriver(false);
+    setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" });
+    toast.success("Client added", { description: d.fullName });
+  }
+
 
   function close(v: boolean) {
     onOpenChange(v);
@@ -162,6 +186,45 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
                   onChange={e => setDrvQ(e.target.value)}
                 />
               </div>
+              {!showAddDriver && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddDriver(true);
+                    if (drvQ.trim()) setNewDriver(n => ({ ...n, fullName: drvQ.trim() }));
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg border border-dashed bg-card p-3 text-left text-sm transition hover:border-primary/50 hover:bg-muted/50"
+                >
+                  <UserPlus className="h-5 w-5 text-muted-foreground" />
+                  <div className="flex-1">
+                    <div className="font-medium">Add new client{drvQ.trim() ? `: "${drvQ.trim()}"` : ""}</div>
+                    <div className="text-xs text-muted-foreground">Create a contact you can rent to right now</div>
+                  </div>
+                </button>
+              )}
+              {showAddDriver && (
+                <div className="space-y-3 rounded-lg border bg-card p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">New client</div>
+                    <button type="button" onClick={() => setShowAddDriver(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div><Label htmlFor="nd-name">Full name</Label><Input id="nd-name" value={newDriver.fullName} onChange={e => setNewDriver({ ...newDriver, fullName: e.target.value })} /></div>
+                    <div><Label htmlFor="nd-phone">Phone</Label><Input id="nd-phone" value={newDriver.phone} onChange={e => setNewDriver({ ...newDriver, phone: e.target.value })} /></div>
+                    <div><Label htmlFor="nd-email">Email</Label><Input id="nd-email" type="email" value={newDriver.email} onChange={e => setNewDriver({ ...newDriver, email: e.target.value })} /></div>
+                    <div><Label htmlFor="nd-lic">License #</Label><Input id="nd-lic" value={newDriver.licenseNumber} onChange={e => setNewDriver({ ...newDriver, licenseNumber: e.target.value })} /></div>
+                    <div className="sm:col-span-2">
+                      <Label htmlFor="nd-rs">Rideshare</Label>
+                      <select id="nd-rs" className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={newDriver.rideshare} onChange={e => setNewDriver({ ...newDriver, rideshare: e.target.value as "Uber" | "Lyft" | "Both" })}>
+                        <option value="Uber">Uber</option>
+                        <option value="Lyft">Lyft</option>
+                        <option value="Both">Both</option>
+                      </select>
+                    </div>
+                  </div>
+                  <Button size="sm" onClick={createDriver}><UserPlus className="mr-1 h-4 w-4" /> Save client</Button>
+                </div>
+              )}
               <div className="divide-y rounded-lg border bg-card">
                 {filteredDrivers.map(d => {
                   const selected = d.id === driverId;
