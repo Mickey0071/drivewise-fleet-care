@@ -7,7 +7,7 @@ import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@
 import { useStoreVersion, updateRental, markReturned } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Car } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -127,26 +127,22 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
   const [depositPaid, setDepositPaid] = useState(0);
   const [endDate, setEndDate] = useState("");
   const [notes, setNotes] = useState("");
-  // sync when rental changes
-  useState(() => null);
-  if (rental && weeklyRate === 0 && depositPaid === 0 && endDate === "" && notes === "") {
-    setWeeklyRate(rental.weeklyRate);
-    setDepositPaid(rental.depositPaid);
-    setEndDate(rental.endDate ?? "");
-    setNotes(rental.notes ?? "");
-  }
+  useEffect(() => {
+    if (rental) {
+      setWeeklyRate(rental.weeklyRate);
+      setDepositPaid(rental.depositPaid);
+      setEndDate(rental.endDate ?? "");
+      setNotes(rental.notes ?? "");
+    }
+  }, [rental]);
   function save() {
     if (!rental) return;
     updateRental(rental.id, { weeklyRate, depositPaid, endDate: endDate || undefined, notes: notes || undefined });
     toast.success("Reservation updated");
-    handleClose();
-  }
-  function handleClose() {
-    setWeeklyRate(0); setDepositPaid(0); setEndDate(""); setNotes("");
     onClose();
   }
   return (
-    <Dialog open={!!rental} onOpenChange={(v) => { if (!v) handleClose(); }}>
+    <Dialog open={!!rental} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
         <DialogHeader><DialogTitle>Edit reservation</DialogTitle></DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -156,7 +152,7 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
           <div className="sm:col-span-2"><Label>Notes</Label><Textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} /></div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={save}>Save</Button>
         </DialogFooter>
       </DialogContent>
