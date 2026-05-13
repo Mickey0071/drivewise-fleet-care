@@ -4,11 +4,11 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2 } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,8 @@ function RentalsPage() {
   const [editing, setEditing] = useState<Rental | null>(null);
   const [delivering, setDelivering] = useState<Rental | null>(null);
   const [returning, setReturning] = useState<Rental | null>(null);
+  const [extending, setExtending] = useState<Rental | null>(null);
+  const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
   useStoreVersion();
   return (
     <div>
@@ -115,6 +117,16 @@ function RentalsPage() {
                         <ClipboardCheck className="mr-1 h-4 w-4" /> Process return
                       </Button>
                     )}
+                    {!r.endDate && (
+                      <Button variant="outline" size="sm" onClick={() => setExtending(r)}>
+                        <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
+                      </Button>
+                    )}
+                    {r.signatureDataUrl && (
+                      <Button variant="ghost" size="sm" onClick={() => setViewingAgreement(r)}>
+                        <FileSignature className="mr-1 h-4 w-4" /> View agreement
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -126,6 +138,8 @@ function RentalsPage() {
       <EditRentalDialog rental={editing} onClose={() => setEditing(null)} />
       <DeliveryDialog rental={delivering} onClose={() => setDelivering(null)} />
       <ReturnDialog rental={returning} onClose={() => setReturning(null)} />
+      <ExtendRentalDialog rental={extending} onClose={() => setExtending(null)} />
+      <AgreementDialog rental={viewingAgreement} onClose={() => setViewingAgreement(null)} />
     </div>
   );
 }
