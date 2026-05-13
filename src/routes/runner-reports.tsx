@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { runnerReports, useStoreVersion } from "@/lib/mock/store";
-import { CheckCircle2, Circle, ClipboardList } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { runnerReports, useStoreVersion, markAllReportsRead, unreadReportCount } from "@/lib/mock/store";
+import { CheckCircle2, Circle, ClipboardList, MailOpen } from "lucide-react";
 
 export const Route = createFileRoute("/runner-reports")({
   head: () => ({ meta: [{ title: "Runner Reports — Camauto Rentals" }] }),
@@ -14,10 +16,27 @@ export const Route = createFileRoute("/runner-reports")({
 function RunnerReportsPage() {
   useStoreVersion();
   const { focus } = Route.useSearch();
+  const unread = unreadReportCount();
+
+  useEffect(() => {
+    // Auto-mark all read shortly after viewing
+    const t = setTimeout(() => markAllReportsRead(), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <div>
-      <PageHeader title="Runner Reports" subtitle="Submitted checklists from runners" />
+      <PageHeader
+        title="Runner Reports"
+        subtitle="Submitted checklists from runners"
+        action={
+          unread > 0 ? (
+            <Button variant="outline" size="sm" onClick={() => markAllReportsRead()}>
+              <MailOpen className="mr-1 h-4 w-4" /> Mark all read
+            </Button>
+          ) : undefined
+        }
+      />
 
       {runnerReports.length === 0 && (
         <Card>
@@ -34,10 +53,13 @@ function RunnerReportsPage() {
           const pct = r.totalTasks ? Math.round((r.completedTasks / r.totalTasks) * 100) : 0;
           const isFocused = r.id === focus;
           return (
-            <Card key={r.id} className={isFocused ? "ring-2 ring-primary" : ""}>
+            <Card key={r.id} className={isFocused ? "ring-2 ring-primary" : !r.read ? "border-primary/40" : ""}>
               <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
                 <div>
-                  <CardTitle className="text-base">{r.runnerName}</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    {r.runnerName}
+                    {!r.read && <span className="rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">NEW</span>}
+                  </CardTitle>
                   <div className="text-xs text-muted-foreground">
                     {new Date(r.submittedAt).toLocaleString()} · {r.id}
                   </div>
