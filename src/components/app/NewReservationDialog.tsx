@@ -430,7 +430,7 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
           >
             <ArrowLeft className="mr-1 h-4 w-4" /> Back
           </Button>
-          {step < 3 ? (
+          {step < 4 ? (
             <Button size="sm" disabled={!canNext} onClick={next}>
               Continue <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
