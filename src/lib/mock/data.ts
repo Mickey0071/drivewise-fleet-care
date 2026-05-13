@@ -19,6 +19,8 @@ export interface Rental {
   id: string; vehicleId: string; driverId: string; startDate: string;
   endDate?: string; weeklyRate: number; depositPaid: number;
   paymentStatus: PayStatus; notes?: string;
+  billingPeriod?: "daily" | "weekly" | "monthly";
+  rate?: number;
 }
 export interface Payment {
   id: string; rentalId: string; driverId: string; amount: number;
