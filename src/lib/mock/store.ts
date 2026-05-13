@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, inspections, type Rental, type Driver, type Inspection, type Payment } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, type Rental, type RentalExtension, type Driver, type Inspection, type Payment } from "./data";
 
 const listeners = new Set<() => void>();
 let version = 0;
@@ -140,38 +140,65 @@ export function markReturned(id: string, endDate?: string) {
   emit();
 }
 
-/** Extend an active rental's end date by setting a new endDate (optionally schedules another payment if it falls within the new window). */
-export function extendRental(id: string, newEndDate: string) {
+/** Compute additional periods + charge for extending a rental. */
+export function computeExtensionCharge(rental: Rental, newEndDate: string): { periods: number; periodLabel: "day" | "week" | "month"; additionalAmount: number } {
+  const period = rental.billingPeriod ?? "weekly";
+  const periodLabel: "day" | "week" | "month" = period === "daily" ? "day" : period === "monthly" ? "month" : "week";
+  const baseDate = rental.endDate ? new Date(rental.endDate) : new Date(rental.startDate);
+  const end = new Date(newEndDate);
+  const msDiff = end.getTime() - baseDate.getTime();
+  const days = Math.max(0, Math.ceil(msDiff / 86_400_000));
+  let periods = 0;
+  if (period === "daily") periods = days;
+  else if (period === "monthly") periods = Math.max(1, Math.ceil(days / 30));
+  else periods = Math.max(1, Math.ceil(days / 7));
+  const rate = rental.rate ?? rental.weeklyRate;
+  return { periods, periodLabel, additionalAmount: periods * rate };
+}
+
+/** Extend a rental with a signed addendum and a billable receipt line. */
+export function extendRental(
+  id: string,
+  newEndDate: string,
+  opts?: { signatureDataUrl?: string; signedBy?: string; agreementVersion?: string },
+) {
   const r = rentals.find(r => r.id === id);
   if (!r) return;
   const prev = r.endDate;
+  const { periods, periodLabel, additionalAmount } = computeExtensionCharge(r, newEndDate);
   r.endDate = newEndDate;
-  r.notes = [r.notes, `Extended ${prev ? `from ${prev} ` : ""}to ${newEndDate}`].filter(Boolean).join(" · ");
-  // Schedule one more payment cycle if there's no outstanding payment past today
-  const hasFuture = payments.some(x => x.rentalId === r.id && x.status !== "paid");
-  if (!hasFuture) {
-    const last = payments
-      .filter(p => p.rentalId === r.id)
-      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-      .pop();
-    const baseDate = last ? new Date(last.dueDate) : new Date(r.startDate);
-    const period = r.billingPeriod ?? "weekly";
-    const next = new Date(baseDate);
-    if (period === "daily") next.setDate(next.getDate() + 1);
-    else if (period === "monthly") next.setMonth(next.getMonth() + 1);
-    else next.setDate(next.getDate() + 7);
-    if (next.toISOString().slice(0, 10) <= newEndDate) {
-      payments.push({
-        id: nextPaymentId(),
-        rentalId: r.id,
-        driverId: r.driverId,
-        amount: r.rate ?? r.weeklyRate,
-        dueDate: next.toISOString().slice(0, 10),
-        status: "late",
-      });
-    }
+  r.notes = [r.notes, `Extended ${prev ? `from ${prev} ` : ""}to ${newEndDate} (+${periods} ${periodLabel}${periods === 1 ? "" : "s"})`].filter(Boolean).join(" · ");
+
+  // Create a billable receipt line for the extension charge
+  let paymentId: string | undefined;
+  if (additionalAmount > 0) {
+    paymentId = nextPaymentId();
+    payments.push({
+      id: paymentId,
+      rentalId: r.id,
+      driverId: r.driverId,
+      amount: additionalAmount,
+      dueDate: newEndDate,
+      status: "late",
+    });
   }
+
+  const ext: RentalExtension = {
+    id: `EXT-${Date.now().toString(36).toUpperCase()}`,
+    extendedAt: new Date().toISOString(),
+    previousEndDate: prev,
+    newEndDate,
+    periods,
+    periodLabel,
+    additionalAmount,
+    paymentId,
+    signatureDataUrl: opts?.signatureDataUrl,
+    signedBy: opts?.signedBy,
+    agreementVersion: opts?.agreementVersion,
+  };
+  r.extensions = [...(r.extensions ?? []), ext];
   emit();
+  return ext;
 }
 
 function nextDriverId() {
