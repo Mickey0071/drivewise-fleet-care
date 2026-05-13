@@ -33,19 +33,95 @@ export function hasConflict(vehicleId: string, startDate: string, endDate?: stri
 }
 
 export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymentStatus?: Rental["paymentStatus"] }) {
-  const rental: Rental = { id: nextRentalId(), paymentStatus: "current", ...input };
+  const rental: Rental = {
+    id: nextRentalId(),
+    paymentStatus: "current",
+    reservationStatus: "pending",
+    pendingCreatedAt: new Date().toISOString(),
+    paymentReceived: false,
+    ...input,
+  };
   rentals.push(rental);
-  // Schedule first payment one week out
-  const due = new Date(input.startDate);
-  due.setDate(due.getDate() + 7);
-  payments.push({
-    id: nextPaymentId(), rentalId: rental.id, driverId: input.driverId,
-    amount: input.weeklyRate, dueDate: due.toISOString().slice(0, 10), status: "late",
-  });
-  const v = vehicles.find(v => v.id === input.vehicleId);
-  if (v) v.status = "rented";
+  // Pending reservations block the vehicle on the calendar but don't flip its status
+  // until activated (signature + payment).
   emit();
   return rental;
+}
+
+export const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
+
+export function pendingExpiresAt(r: Rental): number | null {
+  if (r.reservationStatus !== "pending" || !r.pendingCreatedAt) return null;
+  return new Date(r.pendingCreatedAt).getTime() + PENDING_TTL_MS;
+}
+
+export function isPendingExpired(r: Rental): boolean {
+  const exp = pendingExpiresAt(r);
+  return exp !== null && Date.now() > exp;
+}
+
+/** Remove pending reservations whose 24h hold has elapsed. */
+export function prunePendingReservations() {
+  let changed = false;
+  for (let i = rentals.length - 1; i >= 0; i--) {
+    if (isPendingExpired(rentals[i])) {
+      rentals.splice(i, 1);
+      changed = true;
+    }
+  }
+  if (changed) emit();
+}
+
+export function cancelReservation(id: string) {
+  const idx = rentals.findIndex(r => r.id === id);
+  if (idx < 0) return;
+  rentals.splice(idx, 1);
+  emit();
+}
+
+function tryActivate(rental: Rental) {
+  if (rental.reservationStatus !== "pending") return false;
+  if (!rental.signatureDataUrl || !rental.paymentReceived) return false;
+  rental.reservationStatus = "active";
+  rental.pendingCreatedAt = undefined;
+  const v = vehicles.find(v => v.id === rental.vehicleId);
+  if (v) v.status = "rented";
+  // Schedule first payment one period out
+  const period = rental.billingPeriod ?? "weekly";
+  const due = new Date(rental.startDate);
+  if (period === "daily") due.setDate(due.getDate() + 1);
+  else if (period === "monthly") due.setMonth(due.getMonth() + 1);
+  else due.setDate(due.getDate() + 7);
+  const exists = payments.some(p => p.rentalId === rental.id);
+  if (!exists) {
+    payments.push({
+      id: nextPaymentId(), rentalId: rental.id, driverId: rental.driverId,
+      amount: rental.rate ?? rental.weeklyRate,
+      dueDate: due.toISOString().slice(0, 10), status: "late",
+    });
+  }
+  return true;
+}
+
+export function captureSignature(id: string, signatureDataUrl: string, signedBy: string, agreementVersion: string) {
+  const r = rentals.find(r => r.id === id);
+  if (!r) return false;
+  r.signatureDataUrl = signatureDataUrl;
+  r.signedAt = new Date().toISOString();
+  r.signedBy = signedBy;
+  r.agreementVersion = agreementVersion;
+  const activated = tryActivate(r);
+  emit();
+  return activated;
+}
+
+export function markReservationPaid(id: string) {
+  const r = rentals.find(r => r.id === id);
+  if (!r) return false;
+  r.paymentReceived = true;
+  const activated = tryActivate(r);
+  emit();
+  return activated;
 }
 
 export function updateRental(id: string, patch: Partial<Rental>) {
