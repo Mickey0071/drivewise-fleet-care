@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as StaffPortalRouteImport } from './routes/staff-portal'
+import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
 import { Route as RentalsRouteImport } from './routes/rentals'
 import { Route as PnlRouteImport } from './routes/pnl'
 import { Route as PayrollReturnRouteImport } from './routes/payroll-return'
@@ -33,6 +34,11 @@ const ViolationsRoute = ViolationsRouteImport.update({
 const StaffPortalRoute = StaffPortalRouteImport.update({
   id: '/staff-portal',
   path: '/staff-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RunnerReportsRoute = RunnerReportsRouteImport.update({
+  id: '/runner-reports',
+  path: '/runner-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RentalsRoute = RentalsRouteImport.update({
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
   '/rentals': typeof RentalsRoute
+  '/runner-reports': typeof RunnerReportsRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
   '/rentals': typeof RentalsRoute
+  '/runner-reports': typeof RunnerReportsRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
   '/rentals': typeof RentalsRoute
+  '/runner-reports': typeof RunnerReportsRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/payroll-return'
     | '/pnl'
     | '/rentals'
+    | '/runner-reports'
     | '/staff-portal'
     | '/violations'
     | '/fleet/$vehicleId'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/payroll-return'
     | '/pnl'
     | '/rentals'
+    | '/runner-reports'
     | '/staff-portal'
     | '/violations'
     | '/fleet/$vehicleId'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/payroll-return'
     | '/pnl'
     | '/rentals'
+    | '/runner-reports'
     | '/staff-portal'
     | '/violations'
     | '/fleet/$vehicleId'
@@ -220,6 +232,7 @@ export interface RootRouteChildren {
   PayrollReturnRoute: typeof PayrollReturnRoute
   PnlRoute: typeof PnlRoute
   RentalsRoute: typeof RentalsRoute
+  RunnerReportsRoute: typeof RunnerReportsRoute
   StaffPortalRoute: typeof StaffPortalRoute
   ViolationsRoute: typeof ViolationsRoute
 }
@@ -238,6 +251,13 @@ declare module '@tanstack/react-router' {
       path: '/staff-portal'
       fullPath: '/staff-portal'
       preLoaderRoute: typeof StaffPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/runner-reports': {
+      id: '/runner-reports'
+      path: '/runner-reports'
+      fullPath: '/runner-reports'
+      preLoaderRoute: typeof RunnerReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rentals': {
@@ -357,9 +377,20 @@ const rootRouteChildren: RootRouteChildren = {
   PayrollReturnRoute: PayrollReturnRoute,
   PnlRoute: PnlRoute,
   RentalsRoute: RentalsRoute,
+  RunnerReportsRoute: RunnerReportsRoute,
   StaffPortalRoute: StaffPortalRoute,
   ViolationsRoute: ViolationsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
