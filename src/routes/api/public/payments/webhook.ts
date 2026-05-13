@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { type StripeEnv, verifyWebhook } from "@/lib/stripe.server";
+import { sendSms } from "@/lib/ghl.server";
 
 let _supabase: any = null;
 function getSupabase(): any {
@@ -8,6 +9,21 @@ function getSupabase(): any {
     _supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   }
   return _supabase;
+}
+
+async function getProfile(userId: string | null): Promise<{ phone: string | null; full_name: string | null } | null> {
+  if (!userId) return null;
+  const { data } = await getSupabase()
+    .from("profiles")
+    .select("phone, full_name")
+    .eq("id", userId)
+    .maybeSingle();
+  return data || null;
+}
+
+function fmtAmount(cents: number | null | undefined): string {
+  if (cents == null) return "";
+  return `$${(cents / 100).toFixed(2)}`;
 }
 
 async function handleCheckoutCompleted(session: any, env: StripeEnv) {
@@ -27,6 +43,15 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       environment: env,
     } as any);
     // Business logic: deposit paid → unlock vehicle handoff (handled via row in subs table; UI reads it)
+    const profile = await getProfile(userId);
+    if (profile?.phone) {
+      const amt = fmtAmount(session.amount_total);
+      await sendSms(
+        profile.phone,
+        `Rentalprise Auto: Your deposit ${amt ? amt + " " : ""}has been received. We'll be in touch shortly to coordinate vehicle handoff.`,
+        profile.full_name
+      );
+    }
   }
 }
 
@@ -58,6 +83,16 @@ async function handleSubscriptionCreated(subscription: any, env: StripeEnv) {
     } as any,
     { onConflict: "stripe_subscription_id" }
   );
+
+  const profile = await getProfile(userId);
+  if (profile?.phone) {
+    const amt = fmtAmount(item?.price?.unit_amount);
+    await sendSms(
+      profile.phone,
+      `Rentalprise Auto: Your rental subscription is active${amt ? " (" + amt + ")" : ""}. Welcome aboard!`,
+      profile.full_name
+    );
+  }
 }
 
 async function handleSubscriptionUpdated(subscription: any, env: StripeEnv) {
@@ -66,6 +101,14 @@ async function handleSubscriptionUpdated(subscription: any, env: StripeEnv) {
   const productId = typeof item?.price?.product === "string" ? item.price.product : item?.price?.product?.id;
   const periodStart = item?.current_period_start ?? subscription.current_period_start;
   const periodEnd = item?.current_period_end ?? subscription.current_period_end;
+
+  // Detect a cancel-at-period-end transition by comparing to the existing row.
+  const { data: existing } = await getSupabase()
+    .from("subscriptions")
+    .select("user_id, cancel_at_period_end")
+    .eq("stripe_subscription_id", subscription.id)
+    .eq("environment", env)
+    .maybeSingle();
 
   await getSupabase().from("subscriptions").update({
     status: subscription.status,
@@ -77,6 +120,19 @@ async function handleSubscriptionUpdated(subscription: any, env: StripeEnv) {
     cancel_at_period_end: subscription.cancel_at_period_end || false,
     updated_at: new Date().toISOString(),
   } as any).eq("stripe_subscription_id", subscription.id).eq("environment", env);
+
+  const justCanceled = !existing?.cancel_at_period_end && subscription.cancel_at_period_end;
+  if (justCanceled) {
+    const profile = await getProfile(existing?.user_id || null);
+    if (profile?.phone) {
+      const endsAt = periodEnd ? new Date(periodEnd * 1000).toLocaleDateString("en-US") : "the end of your current period";
+      await sendSms(
+        profile.phone,
+        `Rentalprise Auto: Your subscription has been canceled. You'll retain access until ${endsAt}.`,
+        profile.full_name
+      );
+    }
+  }
 }
 
 async function handleSubscriptionDeleted(subscription: any, env: StripeEnv) {
