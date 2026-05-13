@@ -25,6 +25,7 @@ function RentalsPage() {
   const [newOpen, setNewOpen] = useState(false);
   const [editing, setEditing] = useState<Rental | null>(null);
   const [delivering, setDelivering] = useState<Rental | null>(null);
+  const [returning, setReturning] = useState<Rental | null>(null);
   useStoreVersion();
   return (
     <div>
@@ -109,11 +110,10 @@ function RentalsPage() {
                         <Truck className="mr-1 h-4 w-4" /> Deliver vehicle
                       </Button>
                     )}
-                    {!r.endDate && (
-                      <Button variant="outline" size="sm" onClick={() => {
-                        markReturned(r.id);
-                        toast.success("Vehicle marked returned", { description: `${v?.year} ${v?.make} ${v?.model}` });
-                      }}>Mark Returned</Button>
+                    {!r.endDate && getInspectionsForRental(r.id).some(i => i.type === "check-out") && (
+                      <Button variant="outline" size="sm" onClick={() => setReturning(r)}>
+                        <ClipboardCheck className="mr-1 h-4 w-4" /> Process return
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -125,6 +125,7 @@ function RentalsPage() {
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
       <EditRentalDialog rental={editing} onClose={() => setEditing(null)} />
       <DeliveryDialog rental={delivering} onClose={() => setDelivering(null)} />
+      <ReturnDialog rental={returning} onClose={() => setReturning(null)} />
     </div>
   );
 }
@@ -235,6 +236,96 @@ function DeliveryDialog({ rental, onClose }: { rental: Rental | null; onClose: (
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={confirm}><Truck className="mr-1 h-4 w-4" /> Confirm delivery</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  const v = rental ? vehicleById(rental.vehicleId) : null;
+  const d = rental ? driverById(rental.driverId) : null;
+  const checkout = rental ? getInspectionsForRental(rental.id).find(i => i.type === "check-out") : undefined;
+  const [mileage, setMileage] = useState(0);
+  const [fuelLevel, setFuelLevel] = useState(100);
+  const [damageNoted, setDamageNoted] = useState(false);
+  const [completedBy, setCompletedBy] = useState("");
+  const [notes, setNotes] = useState("");
+  useEffect(() => {
+    if (rental && v) {
+      setMileage(v.mileage);
+      setFuelLevel(100);
+      setDamageNoted(false);
+      setCompletedBy("");
+      setNotes("");
+    }
+  }, [rental, v]);
+  function confirm() {
+    if (!rental || !v) return;
+    if (!completedBy.trim()) { toast.error("Who received the vehicle?"); return; }
+    if (mileage < (checkout?.mileage ?? 0)) { toast.error("Return mileage can't be less than delivery mileage"); return; }
+    addInspection({
+      vehicleId: v.id,
+      rentalId: rental.id,
+      type: "check-in",
+      date: new Date().toISOString().slice(0, 10),
+      mileage: Number(mileage) || v.mileage,
+      fuelLevel: Number(fuelLevel),
+      damageNoted,
+      completedBy: completedBy.trim(),
+    });
+    if (notes.trim()) {
+      updateRental(rental.id, { notes: [rental.notes, `Return: ${notes.trim()}`].filter(Boolean).join(" · ") });
+    }
+    markReturned(rental.id);
+    const drove = checkout ? mileage - checkout.mileage : 0;
+    toast.success("Vehicle returned", {
+      description: `${v.year} ${v.make} ${v.model}${drove > 0 ? ` · ${drove.toLocaleString()} mi driven` : ""}`,
+    });
+    onClose();
+  }
+  return (
+    <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Process return</DialogTitle></DialogHeader>
+        {rental && v && d && (
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+              <div className="font-medium">{v.year} {v.make} {v.model} · {v.plate}</div>
+              <div className="text-xs text-muted-foreground">Returned by {d.fullName} · {d.phone}</div>
+              {checkout && (
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Delivered {fmtDate(checkout.date)} at {checkout.mileage.toLocaleString()} mi · fuel {checkout.fuelLevel}%
+                </div>
+              )}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="rt-mi">Return odometer (mi)</Label>
+                <Input id="rt-mi" type="number" value={mileage} onChange={e => setMileage(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label htmlFor="rt-fuel">Fuel level (%)</Label>
+                <Input id="rt-fuel" type="number" min={0} max={100} value={fuelLevel} onChange={e => setFuelLevel(Number(e.target.value))} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="rt-by">Received by</Label>
+                <Input id="rt-by" value={completedBy} onChange={e => setCompletedBy(e.target.value)} placeholder="Staff name" />
+              </div>
+              <div className="sm:col-span-2 flex items-center gap-2">
+                <input id="rt-dmg" type="checkbox" checked={damageNoted} onChange={e => setDamageNoted(e.target.checked)} className="h-4 w-4" />
+                <Label htmlFor="rt-dmg" className="!mt-0">New damage observed</Label>
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="rt-notes">Return notes</Label>
+                <Textarea id="rt-notes" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Cleanliness, missing items, damage details…" />
+              </div>
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={confirm}><CheckCircle2 className="mr-1 h-4 w-4" /> Confirm return</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
