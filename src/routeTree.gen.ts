@@ -26,6 +26,7 @@ import { Route as DriversRouteImport } from './routes/drivers'
 import { Route as DriverPortalRouteImport } from './routes/driver-portal'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
+import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
 const ViolationsRoute = ViolationsRouteImport.update({
   id: '/violations',
@@ -112,6 +113,12 @@ const FleetVehicleIdRoute = FleetVehicleIdRouteImport.update({
   path: '/$vehicleId',
   getParentRoute: () => FleetRoute,
 } as any)
+const ApiPublicPaymentsWebhookRoute =
+  ApiPublicPaymentsWebhookRouteImport.update({
+    id: '/api/public/payments/webhook',
+    path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -150,6 +158,7 @@ export interface FileRoutesByTo {
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -170,6 +179,7 @@ export interface FileRoutesById {
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/staff-portal'
     | '/violations'
     | '/fleet/$vehicleId'
+    | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '/staff-portal'
     | '/violations'
     | '/fleet/$vehicleId'
+    | '/api/public/payments/webhook'
   id:
     | '__root__'
     | '/'
@@ -229,6 +241,7 @@ export interface FileRouteTypes {
     | '/staff-portal'
     | '/violations'
     | '/fleet/$vehicleId'
+    | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -248,6 +261,7 @@ export interface RootRouteChildren {
   RunnerReportsRoute: typeof RunnerReportsRoute
   StaffPortalRoute: typeof StaffPortalRoute
   ViolationsRoute: typeof ViolationsRoute
+  ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -371,6 +385,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FleetVehicleIdRouteImport
       parentRoute: typeof FleetRoute
     }
+    '/api/public/payments/webhook': {
+      id: '/api/public/payments/webhook'
+      path: '/api/public/payments/webhook'
+      fullPath: '/api/public/payments/webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -401,6 +422,7 @@ const rootRouteChildren: RootRouteChildren = {
   RunnerReportsRoute: RunnerReportsRoute,
   StaffPortalRoute: StaffPortalRoute,
   ViolationsRoute: ViolationsRoute,
+  ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
