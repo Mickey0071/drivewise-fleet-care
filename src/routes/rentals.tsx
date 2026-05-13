@@ -4,10 +4,17 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { useStoreVersion, updateRental, markReturned } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useState } from "react";
 import { Car } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import type { Rental } from "@/lib/mock/data";
 
 export const Route = createFileRoute("/rentals")({
   head: () => ({ meta: [{ title: "Reservations — Camauto Rentals" }] }),
@@ -16,6 +23,8 @@ export const Route = createFileRoute("/rentals")({
 
 function RentalsPage() {
   const [newOpen, setNewOpen] = useState(false);
+  const [editing, setEditing] = useState<Rental | null>(null);
+  useStoreVersion();
   return (
     <div>
       <PageHeader
@@ -89,8 +98,13 @@ function RentalsPage() {
                     ) : <div className="mt-1 text-sm text-muted-foreground">All paid</div>}
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">Edit</Button>
-                    <Button variant="outline" size="sm">Mark Returned</Button>
+                    <Button variant="outline" size="sm" onClick={() => setEditing(r)}>Edit</Button>
+                    {!r.endDate && (
+                      <Button variant="outline" size="sm" onClick={() => {
+                        markReturned(r.id);
+                        toast.success("Vehicle marked returned", { description: `${v?.year} ${v?.make} ${v?.model}` });
+                      }}>Mark Returned</Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -99,10 +113,53 @@ function RentalsPage() {
         })}
       </div>
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
+      <EditRentalDialog rental={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
   return <div><div className="text-xs text-muted-foreground">{label}</div><div className="font-medium">{value}</div></div>;
+}
+
+function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  const [weeklyRate, setWeeklyRate] = useState(0);
+  const [depositPaid, setDepositPaid] = useState(0);
+  const [endDate, setEndDate] = useState("");
+  const [notes, setNotes] = useState("");
+  // sync when rental changes
+  useState(() => null);
+  if (rental && weeklyRate === 0 && depositPaid === 0 && endDate === "" && notes === "") {
+    setWeeklyRate(rental.weeklyRate);
+    setDepositPaid(rental.depositPaid);
+    setEndDate(rental.endDate ?? "");
+    setNotes(rental.notes ?? "");
+  }
+  function save() {
+    if (!rental) return;
+    updateRental(rental.id, { weeklyRate, depositPaid, endDate: endDate || undefined, notes: notes || undefined });
+    toast.success("Reservation updated");
+    handleClose();
+  }
+  function handleClose() {
+    setWeeklyRate(0); setDepositPaid(0); setEndDate(""); setNotes("");
+    onClose();
+  }
+  return (
+    <Dialog open={!!rental} onOpenChange={(v) => { if (!v) handleClose(); }}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Edit reservation</DialogTitle></DialogHeader>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div><Label>Weekly rate</Label><Input type="number" value={weeklyRate} onChange={e => setWeeklyRate(Number(e.target.value))} /></div>
+          <div><Label>Deposit</Label><Input type="number" value={depositPaid} onChange={e => setDepositPaid(Number(e.target.value))} /></div>
+          <div className="sm:col-span-2"><Label>End date</Label><Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
+          <div className="sm:col-span-2"><Label>Notes</Label><Textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose}>Cancel</Button>
+          <Button onClick={save}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
