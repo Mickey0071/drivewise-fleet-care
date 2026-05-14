@@ -122,13 +122,11 @@ function RentalsPage() {
                   <Button
                     size="sm"
                     variant={r.paymentReceived ? "outline" : "default"}
-                    onClick={() => {
-                      const activated = markReservationPaid(r.id);
-                      toast.success(activated ? "Reservation activated" : "Payment recorded");
-                    }}
+                    onClick={() => setCharging(r)}
+                    disabled={r.paymentReceived}
                   >
                     <DollarSign className="mr-1 h-4 w-4" />
-                    {r.paymentReceived ? "Payment received ✓" : "Mark payment received"}
+                    {r.paymentReceived ? "Payment received ✓" : "Charge with Stripe"}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>Edit</Button>
                   <Button
