@@ -275,6 +275,15 @@ export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymen
   return rental;
 }
 
+/** Returns the renter's current open rental (active or pending), if any. */
+export function getActiveRentalForDriver(driverId: string, ignoreRentalId?: string): Rental | null {
+  return rentals.find(r =>
+    r.driverId === driverId &&
+    r.id !== ignoreRentalId &&
+    !r.endDate
+  ) ?? null;
+}
+
 export const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
 
 export function pendingExpiresAt(r: Rental): number | null {
