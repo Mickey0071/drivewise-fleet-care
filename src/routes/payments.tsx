@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { payments, driverById, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { Bell, CheckCircle2 } from "lucide-react";
+import { Send, CheckCircle2, Loader2 } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 import { recordPayment, useStoreVersion } from "@/lib/mock/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import type { Payment } from "@/lib/mock/data";
+import { sendPaymentLink } from "@/lib/payment-link.functions";
+import { getStripeEnvironment } from "@/lib/stripe";
 
 export const Route = createFileRoute("/payments")({
   head: () => ({ meta: [{ title: "Payments — Camauto Rentals" }] }),
@@ -23,6 +25,35 @@ export const Route = createFileRoute("/payments")({
 function PaymentsPage() {
   useStoreVersion();
   const [paying, setPaying] = useState<Payment | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
+
+  async function sendLink(p: Payment) {
+    const d = driverById(p.driverId);
+    if (!d?.phone) {
+      toast.error("No phone on file for this renter");
+      return;
+    }
+    setSendingId(p.id);
+    try {
+      await sendPaymentLink({
+        data: {
+          phone: d.phone,
+          name: d.fullName,
+          amountCents: Math.round(p.amount * 100),
+          description: `Rental payment ${p.id} due ${fmtDate(p.dueDate)}`,
+          environment: getStripeEnvironment(),
+          rentalId: p.rentalId,
+          paymentId: p.id,
+        },
+      });
+      toast.success("Payment link sent", { description: `Texted to ${d.fullName} (${d.phone})` });
+    } catch (e) {
+      toast.error("Failed to send link", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSendingId(null);
+    }
+  }
+
   const totals = {
     paid: payments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0),
     late: payments.filter(p => p.status === "late").reduce((s, p) => s + p.amount, 0),
@@ -69,8 +100,11 @@ function PaymentsPage() {
                   <StatusBadge status={p.status} />
                   {p.status !== "paid" && (
                     <>
-                      <Button variant="ghost" size="sm" onClick={() => toast.success("Reminder sent", { description: `${d?.fullName} · ${fmtMoney(p.amount)}` })}>
-                        <Bell className="mr-1 h-3.5 w-3.5" />Remind
+                      <Button variant="ghost" size="sm" disabled={sendingId === p.id} onClick={() => sendLink(p)}>
+                        {sendingId === p.id
+                          ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                          : <Send className="mr-1 h-3.5 w-3.5" />}
+                        Send Pay Link
                       </Button>
                       <Button size="sm" onClick={() => setPaying(p)}>
                         <CheckCircle2 className="mr-1 h-3.5 w-3.5" />Record
