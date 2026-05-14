@@ -8,7 +8,7 @@ import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, a
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { useAuth } from "@/hooks/use-auth";
+import { useServerFn } from "@tanstack/react-start";
+import { sendRentalSms } from "@/lib/rental-sms.functions";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
@@ -43,11 +45,34 @@ function RentalsPage() {
   const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
   const [signing, setSigning] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
+  const [receipt, setReceipt] = useState<Rental | null>(null);
+  const sendSmsFn = useServerFn(sendRentalSms);
   useStoreVersion();
-  // Prune any pending reservations whose 24h hold has expired
+  // Prune any pending reservations whose 24h hold has expired,
+  // and warn once when a hold drops below 2 hours remaining.
   useEffect(() => {
-    prunePendingReservations();
-    const t = setInterval(prunePendingReservations, 60_000);
+    const warned = new Set<string>();
+    function tick() {
+      prunePendingReservations();
+      const now = Date.now();
+      for (const r of rentals) {
+        if (r.reservationStatus !== "pending") continue;
+        const exp = pendingExpiresAt(r);
+        if (!exp) continue;
+        const remaining = exp - now;
+        if (remaining > 0 && remaining < 2 * 3_600_000 && !warned.has(r.id)) {
+          warned.add(r.id);
+          const d = driverById(r.driverId);
+          const v = vehicleById(r.vehicleId);
+          const mins = Math.max(1, Math.floor(remaining / 60_000));
+          toast.warning(`Hold expiring in ${mins}m`, {
+            description: `${v?.year} ${v?.make} ${v?.model} · ${d?.fullName ?? r.driverId}`,
+          });
+        }
+      }
+    }
+    tick();
+    const t = setInterval(tick, 60_000);
     return () => clearInterval(t);
   }, []);
 
@@ -132,6 +157,28 @@ function RentalsPage() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    onClick={async () => {
+                      const phone = d?.phone;
+                      if (!phone) { toast.error("No phone on file for renter"); return; }
+                      const v2 = vehicleById(r.vehicleId);
+                      const need = [];
+                      if (!r.signatureDataUrl) need.push("sign your rental agreement");
+                      if (!r.paymentReceived) need.push("complete the first payment");
+                      const action = need.length ? need.join(" and ") : "confirm your reservation";
+                      const msg = `Rentalprise Auto: Your ${v2?.year ?? ""} ${v2?.make ?? ""} ${v2?.model ?? ""} is on hold until ${new Date(pendingExpiresAt(r) ?? Date.now()).toLocaleString()}. Please come in to ${action}.`;
+                      try {
+                        await sendSmsFn({ data: { phone, message: msg, name: d?.fullName } });
+                        toast.success("SMS sent to renter");
+                      } catch (e) {
+                        toast.error("SMS failed", { description: e instanceof Error ? e.message : String(e) });
+                      }
+                    }}
+                  >
+                    <MessageSquare className="mr-1 h-4 w-4" /> Notify renter
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="text-destructive hover:text-destructive"
                     onClick={() => {
                       cancelReservation(r.id);
@@ -164,6 +211,9 @@ function RentalsPage() {
                       <FileSignature className="mr-1 h-4 w-4" /> View agreement
                     </Button>
                   )}
+                  <Button variant="ghost" size="sm" onClick={() => setReceipt(r)}>
+                    <Receipt className="mr-1 h-4 w-4" /> Receipt
+                  </Button>
                 </>
               )}
             </div>
@@ -225,6 +275,7 @@ function RentalsPage() {
         userEmail={user?.email}
         userId={user?.id}
       />
+      <ReceiptDialog rental={receipt} onClose={() => setReceipt(null)} />
     </div>
   );
 }
@@ -758,6 +809,119 @@ function AgreementDialog({ rental, onClose }: { rental: Rental | null; onClose: 
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ReceiptDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  const v = rental ? vehicleById(rental.vehicleId) : null;
+  const d = rental ? driverById(rental.driverId) : null;
+  const sched = rental ? payments.filter(p => p.rentalId === rental.id) : [];
+  const baseTotal = rental ? (rental.depositPaid ?? 0) + sched.reduce((s, p) => s + p.amount, 0) : 0;
+  const extTotal = rental?.extensions?.reduce((s, e) => s + e.additionalAmount, 0) ?? 0;
+  const grandTotal = baseTotal + extTotal;
+  const paidTotal = sched.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0) + (rental?.paymentReceived ? 0 : 0);
+  const balance = grandTotal - paidTotal - (rental?.depositPaid ?? 0);
+
+  function printReceipt() {
+    const win = window.open("", "_blank", "width=720,height=900");
+    if (!win || !rental || !v || !d) return;
+    const fmt = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const lines: string[] = [];
+    lines.push(`<tr><td>${fmtDate(rental.startDate)}</td><td>Security deposit</td><td style="text-align:right">${fmt(rental.depositPaid)}</td><td>—</td></tr>`);
+    sched.forEach(p => {
+      lines.push(`<tr><td>${fmtDate(p.dueDate)}</td><td>Rental payment (${p.status})</td><td style="text-align:right">${fmt(p.amount)}</td><td>${p.method ?? "—"}</td></tr>`);
+    });
+    rental.extensions?.forEach((e, i) => {
+      lines.push(`<tr><td>${new Date(e.extendedAt).toLocaleDateString()}</td><td>Extension addendum #${i + 1} (+${e.periods} ${e.periodLabel}${e.periods === 1 ? "" : "s"})</td><td style="text-align:right">${fmt(e.additionalAmount)}</td><td>—</td></tr>`);
+    });
+    win.document.write(`<!doctype html><html><head><title>Receipt ${rental.id}</title>
+      <style>
+        body{font-family:system-ui,sans-serif;max-width:680px;margin:24px auto;padding:0 16px;color:#111}
+        h1{margin:0 0 4px;font-size:22px}
+        .meta{color:#666;font-size:12px;margin-bottom:24px}
+        .box{border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;font-size:13px}
+        table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+        th,td{padding:8px 6px;border-bottom:1px solid #eee;text-align:left}
+        th{background:#f7f7f7;font-size:11px;text-transform:uppercase;color:#555}
+        tfoot td{font-weight:600;border-top:2px solid #333;border-bottom:none;padding-top:10px}
+        .totals{margin-top:16px;text-align:right;font-size:14px}
+        .totals .grand{font-size:18px;font-weight:700;margin-top:6px}
+        @media print { button{display:none} }
+      </style></head><body>
+      <h1>Rentalprise Auto — Receipt</h1>
+      <div class="meta">Reservation ${rental.id} · Issued ${new Date().toLocaleString()}</div>
+      <div class="box">
+        <strong>${v.year} ${v.make} ${v.model}</strong> · Plate ${v.plate} · VIN ${v.vin}<br/>
+        Renter: ${d.fullName} · ${d.phone} · ${d.email}<br/>
+        Period: ${fmtDate(rental.startDate)}${rental.endDate ? ` → ${fmtDate(rental.endDate)}` : " (open)"}<br/>
+        Rate: ${fmt(rental.rate ?? rental.weeklyRate)} / ${(rental.billingPeriod ?? "weekly").replace("ly", "")}
+      </div>
+      <table>
+        <thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th><th>Method</th></tr></thead>
+        <tbody>${lines.join("")}</tbody>
+      </table>
+      <div class="totals">
+        Subtotal (rental + deposit): ${fmt(baseTotal)}<br/>
+        Extensions: ${fmt(extTotal)}<br/>
+        <div class="grand">Total: ${fmt(grandTotal)}</div>
+      </div>
+      ${rental.signatureDataUrl ? `<div style="margin-top:32px"><div style="font-size:11px;color:#666;text-transform:uppercase">Signed by ${rental.signedBy ?? d.fullName}</div><img src="${rental.signatureDataUrl}" style="max-width:240px;border:1px solid #ddd;padding:4px;margin-top:4px"/></div>` : ""}
+      <button onclick="window.print()" style="margin-top:24px;padding:8px 16px;background:#111;color:#fff;border:0;border-radius:4px;cursor:pointer">Print / Save as PDF</button>
+      </body></html>`);
+    win.document.close();
+  }
+
+  return (
+    <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Receipt — {rental?.id}</DialogTitle></DialogHeader>
+        {rental && v && d && (
+          <div className="space-y-3 text-sm">
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <div className="font-medium">{v.year} {v.make} {v.model} · {v.plate}</div>
+              <div className="text-xs text-muted-foreground">Renter: {d.fullName}</div>
+              <div className="text-xs text-muted-foreground">
+                {fmtDate(rental.startDate)}{rental.endDate ? ` → ${fmtDate(rental.endDate)}` : " · open"}
+              </div>
+            </div>
+            <table className="w-full text-xs">
+              <thead className="text-muted-foreground">
+                <tr><th className="text-left py-1">Date</th><th className="text-left">Description</th><th className="text-right">Amount</th><th className="text-left pl-2">Method</th></tr>
+              </thead>
+              <tbody>
+                <tr className="border-t"><td className="py-1.5">{fmtDate(rental.startDate)}</td><td>Security deposit</td><td className="text-right">{fmtMoney(rental.depositPaid)}</td><td className="pl-2">—</td></tr>
+                {sched.map(p => (
+                  <tr key={p.id} className="border-t">
+                    <td className="py-1.5">{fmtDate(p.dueDate)}</td>
+                    <td>Rental payment <span className="text-muted-foreground">({p.status})</span></td>
+                    <td className="text-right">{fmtMoney(p.amount)}</td>
+                    <td className="pl-2">{p.method ?? "—"}</td>
+                  </tr>
+                ))}
+                {rental.extensions?.map((e, i) => (
+                  <tr key={e.id} className="border-t">
+                    <td className="py-1.5">{new Date(e.extendedAt).toLocaleDateString()}</td>
+                    <td>Extension #{i + 1} (+{e.periods} {e.periodLabel}{e.periods === 1 ? "" : "s"})</td>
+                    <td className="text-right">{fmtMoney(e.additionalAmount)}</td>
+                    <td className="pl-2">—</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="rounded-md border bg-muted/30 p-3 text-right text-sm space-y-0.5">
+              <div>Subtotal: <span className="font-medium">{fmtMoney(baseTotal)}</span></div>
+              <div>Extensions: <span className="font-medium">{fmtMoney(extTotal)}</span></div>
+              <div className="text-base font-bold pt-1 border-t mt-1">Total: {fmtMoney(grandTotal)}</div>
+              {balance !== 0 && <div className="text-xs text-muted-foreground">Outstanding balance: {fmtMoney(Math.max(0, balance))}</div>}
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button onClick={printReceipt}><Printer className="mr-1 h-4 w-4" /> Print / Save PDF</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
