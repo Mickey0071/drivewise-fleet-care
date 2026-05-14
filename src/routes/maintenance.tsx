@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { Wrench, AlertTriangle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { ReportActions } from "@/components/app/ReportActions";
 
 export const Route = createFileRoute("/maintenance")({
@@ -16,7 +17,10 @@ function MaintenancePage() {
   const today = new Date();
   const soon = new Date(today); soon.setDate(today.getDate() + 14);
   const due = maintenance.filter(m => new Date(m.nextServiceDue) <= soon);
+  const overdue = maintenance.filter(m => new Date(m.nextServiceDue) < today);
   const totalCost = maintenance.reduce((s, m) => s + m.cost, 0);
+  const daysOverdue = (d: string) =>
+    Math.floor((today.getTime() - new Date(d).getTime()) / (1000 * 60 * 60 * 24));
 
   return (
     <div>
@@ -41,8 +45,32 @@ function MaintenancePage() {
       <div className="mb-6 grid grid-cols-3 gap-3">
         <KPI label="YTD spend" value={fmtMoney(totalCost)} icon={Wrench} />
         <KPI label="Service records" value={String(maintenance.length)} icon={Wrench} />
-        <KPI label="Due soon" value={String(due.length)} icon={AlertTriangle} tone="text-warning-foreground" />
+        <KPI label="Overdue" value={String(overdue.length)} icon={AlertTriangle} tone={overdue.length ? "text-destructive" : "text-foreground"} />
       </div>
+
+      {overdue.length > 0 && (
+        <Card className="mb-6 border-destructive/40 bg-destructive/5">
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" />Overdue services</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {overdue.map(m => {
+              const v = vehicleById(m.vehicleId);
+              const days = daysOverdue(m.nextServiceDue);
+              return (
+                <div key={m.id} className="flex items-center justify-between rounded-md bg-card border border-destructive/30 px-3 py-2">
+                  <div>
+                    <div className="text-sm font-medium">{v?.year} {v?.make} {v?.model} · {v?.plate}</div>
+                    <div className="text-xs text-muted-foreground">{m.serviceType} · was due {fmtDate(m.nextServiceDue)}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="destructive">{days} {days === 1 ? "day" : "days"} overdue</Badge>
+                    <Button size="sm" variant="outline">Schedule</Button>
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {due.length > 0 && (
         <Card className="mb-6 border-warning/40 bg-warning/5">
@@ -69,10 +97,15 @@ function MaintenancePage() {
         <CardContent className="divide-y divide-border p-0">
           {maintenance.map(m => {
             const v = vehicleById(m.vehicleId);
+            const isOverdue = new Date(m.nextServiceDue) < today;
+            const days = isOverdue ? daysOverdue(m.nextServiceDue) : 0;
             return (
-              <div key={m.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div key={m.id} className={`flex flex-wrap items-center justify-between gap-3 p-4 ${isOverdue ? "bg-destructive/5" : ""}`}>
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium">{m.serviceType}</div>
+                  <div className="flex items-center gap-2 font-medium">
+                    {m.serviceType}
+                    {isOverdue && <Badge variant="destructive">{days}d overdue</Badge>}
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {v?.year} {v?.make} {v?.model} · {v?.plate} · {m.vendor} · {fmtDate(m.dateCompleted)}
                   </div>
