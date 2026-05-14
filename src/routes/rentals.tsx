@@ -50,6 +50,30 @@ function RentalsPage() {
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
   useStoreVersion();
+  // Notify staff when a remote signature arrives (via realtime) and the
+  // reservation flips from pending → active.
+  const seenSignedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const r of rentals) {
+      const key = `${r.id}:${r.signatureDataUrl ? 1 : 0}:${r.reservationStatus ?? "active"}`;
+      if (seenSignedRef.current.has(key)) continue;
+      // First pass: just record current state, don't toast.
+      if (seenSignedRef.current.size === 0) { seenSignedRef.current.add(key); continue; }
+      seenSignedRef.current.add(key);
+      if (r.signatureDataUrl && r.reservationStatus === "active") {
+        const d = driverById(r.driverId);
+        const v = vehicleById(r.vehicleId);
+        toast.success("Renter signed — moved to On Rent", {
+          description: `${d?.fullName ?? r.driverId} · ${v?.year} ${v?.make} ${v?.model}`,
+        });
+      } else if (r.signatureDataUrl && r.reservationStatus === "pending") {
+        const d = driverById(r.driverId);
+        toast.success(`Signature received from ${d?.fullName ?? r.driverId}`, {
+          description: "Waiting on payment to activate.",
+        });
+      }
+    }
+  });
   // Prune any pending reservations whose 24h hold has expired,
   // and warn once when a hold drops below 2 hours remaining.
   useEffect(() => {
