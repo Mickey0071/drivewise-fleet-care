@@ -203,6 +203,11 @@ function VehicleDetail() {
           </Section>
         </TabsContent>
       </Tabs>
+      <NewReservationDialog
+        open={reserveOpen}
+        onOpenChange={setReserveOpen}
+        initialVehicleId={v.id}
+      />
     </div>
   );
 }
