@@ -257,17 +257,22 @@ export type Database = {
         Row: {
           agreement_version: string | null
           billing_period: string | null
+          client_signature_url: string | null
+          client_signed_at: string | null
           created_at: string
           deposit_paid: number
           driver_id: string
           end_date: string | null
           id: string
+          license_image_url: string | null
           notes: string | null
           payment_received: boolean
           payment_status: string
           pending_created_at: string | null
           rate: number | null
           reservation_status: string | null
+          selfie_image_url: string | null
+          sign_token: string | null
           signature_data_url: string | null
           signed_at: string | null
           signed_by: string | null
@@ -279,17 +284,22 @@ export type Database = {
         Insert: {
           agreement_version?: string | null
           billing_period?: string | null
+          client_signature_url?: string | null
+          client_signed_at?: string | null
           created_at?: string
           deposit_paid?: number
           driver_id: string
           end_date?: string | null
           id: string
+          license_image_url?: string | null
           notes?: string | null
           payment_received?: boolean
           payment_status?: string
           pending_created_at?: string | null
           rate?: number | null
           reservation_status?: string | null
+          selfie_image_url?: string | null
+          sign_token?: string | null
           signature_data_url?: string | null
           signed_at?: string | null
           signed_by?: string | null
@@ -301,17 +311,22 @@ export type Database = {
         Update: {
           agreement_version?: string | null
           billing_period?: string | null
+          client_signature_url?: string | null
+          client_signed_at?: string | null
           created_at?: string
           deposit_paid?: number
           driver_id?: string
           end_date?: string | null
           id?: string
+          license_image_url?: string | null
           notes?: string | null
           payment_received?: boolean
           payment_status?: string
           pending_created_at?: string | null
           rate?: number | null
           reservation_status?: string | null
+          selfie_image_url?: string | null
+          sign_token?: string | null
           signature_data_url?: string | null
           signed_at?: string | null
           signed_by?: string | null
