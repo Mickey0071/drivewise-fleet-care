@@ -19,6 +19,7 @@ import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
+import { sendSigningLink } from "@/lib/sign.functions";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
