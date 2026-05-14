@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck,
+  LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
   Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut,
 } from "lucide-react";
 import {
@@ -19,6 +19,7 @@ const adminItems: Item[] = [
   { title: "Fleet", url: "/fleet", icon: Car, roles: ["admin"] },
   { title: "Drivers", url: "/drivers", icon: Users, roles: ["admin"] },
   { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin"] },
+  { title: "Calendar", url: "/calendar", icon: Calendar, roles: ["admin"] },
   { title: "Payments", url: "/payments", icon: DollarSign, roles: ["admin"] },
   { title: "Inspections", url: "/inspections", icon: ClipboardCheck, roles: ["admin"] },
   { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["admin"] },
