@@ -67,12 +67,24 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           return Response.json({ ok: false, stage: "past_due", error: pastErr.message }, { status: 500 });
         }
 
+        // 4) Admin digest: all payments due TODAY
+        const { data: dueTodayPayments, error: dueTodayErr } = await supabaseAdmin
+          .from("payments")
+          .select("id, rental_id, driver_id, amount, due_date, status")
+          .eq("due_date", today)
+          .neq("status", "paid");
+
+        if (dueTodayErr) {
+          return Response.json({ ok: false, stage: "due_today", error: dueTodayErr.message }, { status: 500 });
+        }
+
         // Collect driver ids to fetch contact info in one go
         const driverIds = Array.from(
           new Set([
             ...(duePayments ?? []).map((p) => p.driver_id),
             ...(endingRentals ?? []).map((r) => r.driver_id),
             ...(pastDuePayments ?? []).map((p) => p.driver_id),
+            ...(dueTodayPayments ?? []).map((p) => p.driver_id),
           ])
         );
         const driversById = new Map<string, { phone: string | null; full_name: string | null }>();
@@ -96,7 +108,7 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
 
         async function logAndSend(
           rentalId: string,
-          type: "payment_due" | "rental_return" | "admin_past_due",
+          type: "payment_due" | "rental_return" | "admin_past_due" | "admin_due_today",
           phone: string | null,
           name: string | null,
           message: string,
@@ -142,12 +154,26 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           await logAndSend(p.rental_id, "admin_past_due", ADMIN_PHONE, "Admin", msg, today);
         }
 
+        // Admin daily digest — one SMS listing every payment due TODAY
+        if ((dueTodayPayments ?? []).length > 0) {
+          const lines = (dueTodayPayments ?? []).map((p) => {
+            const drv = driversById.get(p.driver_id);
+            const name = drv?.full_name ?? p.driver_id;
+            const driverPhone = drv?.phone ?? "unknown";
+            return `• ${name} (${driverPhone}) — $${Number(p.amount).toFixed(2)}`;
+          });
+          const total = (dueTodayPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
+          const msg = `Rentalprise payments due today (${fmtDate(today)}):\n${lines.join("\n")}\nTotal: $${total.toFixed(2)}`;
+          await logAndSend("DIGEST", "admin_due_today", ADMIN_PHONE, "Admin", msg, today);
+        }
+
         return Response.json({
           ok: true,
           target_date: target,
           payments_due: duePayments?.length ?? 0,
           rentals_ending: endingRentals?.length ?? 0,
           admin_past_due: pastDuePayments?.length ?? 0,
+          admin_due_today: dueTodayPayments?.length ?? 0,
           results,
         });
       },

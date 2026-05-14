@@ -1,0 +1,2 @@
+ALTER TABLE public.reminder_log DROP CONSTRAINT reminder_log_reminder_type_check;
+ALTER TABLE public.reminder_log ADD CONSTRAINT reminder_log_reminder_type_check CHECK (reminder_type = ANY (ARRAY['payment_due'::text, 'rental_return'::text, 'admin_past_due'::text, 'admin_due_today'::text]));
