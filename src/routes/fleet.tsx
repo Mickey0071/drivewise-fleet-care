@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addVehicle, useStoreVersion } from "@/lib/mock/store";
 import { toast } from "sonner";
+import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 
 export const Route = createFileRoute("/fleet")({
   head: () => ({ meta: [{ title: "Fleet — Camauto Rentals" }] }),
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/fleet")({
 function FleetPage() {
   useStoreVersion();
   const [open, setOpen] = useState(false);
+  const [reserveVehicleId, setReserveVehicleId] = useState<string | null>(null);
   const { status } = Route.useSearch();
   const navigate = Route.useNavigate();
   const filtered = status ? vehicles.filter(v => v.status === status) : vehicles;
@@ -42,8 +44,8 @@ function FleetPage() {
       )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map(v => (
-          <Link key={v.id} to="/fleet/$vehicleId" params={{ vehicleId: v.id }}>
-            <Card className="transition-all hover:border-primary hover:shadow-md">
+          <Card key={v.id} className="overflow-hidden transition-all hover:border-primary hover:shadow-md">
+            <Link to="/fleet/$vehicleId" params={{ vehicleId: v.id }} className="block">
               <div className="relative aspect-[16/10] w-full overflow-hidden rounded-t-xl bg-muted">
                 <img
                   src={carImage(v.model)}
@@ -70,11 +72,29 @@ function FleetPage() {
                 </div>
                 <div className="mt-2 text-xs text-muted-foreground">Risk tier {v.riskTier}</div>
               </CardContent>
-            </Card>
-          </Link>
+            </Link>
+            <div className="flex gap-2 border-t border-border bg-muted/30 p-2">
+              <Button asChild variant="ghost" size="sm" className="flex-1">
+                <Link to="/fleet/$vehicleId" params={{ vehicleId: v.id }}>View</Link>
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1"
+                disabled={v.status !== "available"}
+                onClick={() => setReserveVehicleId(v.id)}
+              >
+                Reserve
+              </Button>
+            </div>
+          </Card>
         ))}
       </div>
       <AddVehicleDialog open={open} onClose={() => setOpen(false)} />
+      <NewReservationDialog
+        open={!!reserveVehicleId}
+        onOpenChange={(o) => { if (!o) setReserveVehicleId(null); }}
+        initialVehicleId={reserveVehicleId ?? undefined}
+      />
     </div>
   );
 }

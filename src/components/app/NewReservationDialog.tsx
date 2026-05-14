@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,9 +30,10 @@ function toWeekly(rate: number, p: BillingPeriod) {
 interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  initialVehicleId?: string;
 }
 
-export function NewReservationDialog({ open, onOpenChange }: Props) {
+export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: Props) {
   useStoreVersion();
   const [step, setStep] = useState<Step>(0);
   const [vehicleId, setVehicleId] = useState<string | null>(null);
@@ -48,6 +49,13 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
   const [showAddDriver, setShowAddDriver] = useState(false);
   const [newDriver, setNewDriver] = useState({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" as "Uber" | "Lyft" | "Both" });
   const [isSwap, setIsSwap] = useState(false);
+
+  useEffect(() => {
+    if (open && initialVehicleId) {
+      setVehicleId(initialVehicleId);
+      setStep(1);
+    }
+  }, [open, initialVehicleId]);
 
   const vehicle = vehicles.find(v => v.id === vehicleId) ?? null;
   const driver = drivers.find(d => d.id === driverId) ?? null;
