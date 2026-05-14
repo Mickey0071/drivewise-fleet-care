@@ -580,6 +580,7 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
   const v = rental ? vehicleById(rental.vehicleId) : null;
   const d = rental ? driverById(rental.driverId) : null;
   const checkout = rental ? getInspectionsForRental(rental.id).find(i => i.type === "check-out") : undefined;
+  const sendSmsFn = useServerFn(sendRentalSms);
   const [mileage, setMileage] = useState(0);
   const [fuelLevel, setFuelLevel] = useState(100);
   const [damageNoted, setDamageNoted] = useState(false);
@@ -615,6 +616,13 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
       damageNoted,
       completedBy: completedBy.trim(),
     });
+    if (damageNoted) {
+      const renter = d?.fullName ?? rental.driverId;
+      const msg = `Rentalprise Auto: New damage reported on return of ${v.year} ${v.make} ${v.model} (Plate ${v.plate}) by ${renter}. Odo ${Number(mileage).toLocaleString()} mi · Fuel ${fuelLevel}%. Received by ${completedBy.trim()}.${notes.trim() ? ` Notes: ${notes.trim()}` : ""}`;
+      sendSmsFn({ data: { phone: "+12672213977", message: msg.slice(0, 1000), name: "Damage Alert" } })
+        .then(() => toast.success("Damage alert SMS sent"))
+        .catch(e => toast.error("Damage SMS failed", { description: e instanceof Error ? e.message : String(e) }));
+    }
     const checklistSummary = `Return checklist: ${RETURN_CHECKLIST.length}/${RETURN_CHECKLIST.length} verified by ${completedBy.trim()}`;
     const noteParts = [rental.notes, checklistSummary, notes.trim() ? `Return: ${notes.trim()}` : ""].filter(Boolean);
     updateRental(rental.id, { notes: noteParts.join(" · ") });
