@@ -197,6 +197,36 @@ export type Database = {
         }
         Relationships: []
       }
+      reminder_log: {
+        Row: {
+          id: string
+          message: string | null
+          phone: string | null
+          reminder_type: string
+          rental_id: string
+          sent_at: string
+          target_date: string
+        }
+        Insert: {
+          id?: string
+          message?: string | null
+          phone?: string | null
+          reminder_type: string
+          rental_id: string
+          sent_at?: string
+          target_date: string
+        }
+        Update: {
+          id?: string
+          message?: string | null
+          phone?: string | null
+          reminder_type?: string
+          rental_id?: string
+          sent_at?: string
+          target_date?: string
+        }
+        Relationships: []
+      }
       rental_extensions: {
         Row: {
           additional_amount: number
