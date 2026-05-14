@@ -617,7 +617,8 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
       completedBy: completedBy.trim(),
     });
     if (damageNoted) {
-      const msg = `Rentalprise Auto: New damage reported on return of ${v.year} ${v.make} ${v.model} (Plate ${v.plate}) by ${d.fullName}. Odo ${Number(mileage).toLocaleString()} mi · Fuel ${fuelLevel}%. Received by ${completedBy.trim()}.${notes.trim() ? ` Notes: ${notes.trim()}` : ""}`;
+      const renter = d?.fullName ?? rental.driverId;
+      const msg = `Rentalprise Auto: New damage reported on return of ${v.year} ${v.make} ${v.model} (Plate ${v.plate}) by ${renter}. Odo ${Number(mileage).toLocaleString()} mi · Fuel ${fuelLevel}%. Received by ${completedBy.trim()}.${notes.trim() ? ` Notes: ${notes.trim()}` : ""}`;
       sendSmsFn({ data: { phone: "+12672213977", message: msg.slice(0, 1000), name: "Damage Alert" } })
         .then(() => toast.success("Damage alert SMS sent"))
         .catch(e => toast.error("Damage SMS failed", { description: e instanceof Error ? e.message : String(e) }));
