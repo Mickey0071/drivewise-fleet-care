@@ -280,8 +280,7 @@ export function getActiveRentalForDriver(driverId: string, ignoreRentalId?: stri
   return rentals.find(r =>
     r.driverId === driverId &&
     r.id !== ignoreRentalId &&
-    !r.endDate &&
-    (r.reservationStatus ?? "active") !== "cancelled"
+    !r.endDate
   ) ?? null;
 }
 
