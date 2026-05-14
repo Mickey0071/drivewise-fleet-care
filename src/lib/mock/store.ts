@@ -270,8 +270,7 @@ export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymen
     ...input,
   };
   rentals.push(rental);
-  // Pending reservations block the vehicle on the calendar but don't flip its status
-  // until activated (signature + payment).
+  cloudWrite("rental:insert", supabase.from("rentals").insert(toRental(rental)));
   emit();
   return rental;
 }
@@ -293,6 +292,8 @@ export function prunePendingReservations() {
   let changed = false;
   for (let i = rentals.length - 1; i >= 0; i--) {
     if (isPendingExpired(rentals[i])) {
+      const id = rentals[i].id;
+      cloudWrite("rental:delete", supabase.from("rentals").delete().eq("id", id));
       rentals.splice(i, 1);
       changed = true;
     }
@@ -304,6 +305,7 @@ export function cancelReservation(id: string) {
   const idx = rentals.findIndex(r => r.id === id);
   if (idx < 0) return;
   rentals.splice(idx, 1);
+  cloudWrite("rental:delete", supabase.from("rentals").delete().eq("id", id));
   emit();
 }
 
@@ -313,7 +315,10 @@ function tryActivate(rental: Rental) {
   rental.reservationStatus = "active";
   rental.pendingCreatedAt = undefined;
   const v = vehicles.find(v => v.id === rental.vehicleId);
-  if (v) v.status = "rented";
+  if (v) {
+    v.status = "rented";
+    cloudWrite("vehicle:update", supabase.from("vehicles").update({ status: "rented" }).eq("id", v.id));
+  }
   // Schedule first payment one period out
   const period = rental.billingPeriod ?? "weekly";
   const due = new Date(rental.startDate);
@@ -322,11 +327,13 @@ function tryActivate(rental: Rental) {
   else due.setDate(due.getDate() + 7);
   const exists = payments.some(p => p.rentalId === rental.id);
   if (!exists) {
-    payments.push({
+    const p: Payment = {
       id: nextPaymentId(), rentalId: rental.id, driverId: rental.driverId,
       amount: rental.rate ?? rental.weeklyRate,
       dueDate: due.toISOString().slice(0, 10), status: "late",
-    });
+    };
+    payments.push(p);
+    cloudWrite("payment:insert", supabase.from("payments").insert(toPayment(p)));
   }
   return true;
 }
@@ -339,6 +346,7 @@ export function captureSignature(id: string, signatureDataUrl: string, signedBy:
   r.signedBy = signedBy;
   r.agreementVersion = agreementVersion;
   const activated = tryActivate(r);
+  cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
   emit();
   return activated;
 }
@@ -348,6 +356,7 @@ export function markReservationPaid(id: string) {
   if (!r) return false;
   r.paymentReceived = true;
   const activated = tryActivate(r);
+  cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
   emit();
   return activated;
 }
@@ -356,6 +365,7 @@ export function updateRental(id: string, patch: Partial<Rental>) {
   const r = rentals.find(r => r.id === id);
   if (!r) return;
   Object.assign(r, patch);
+  cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
   emit();
 }
 
@@ -364,7 +374,11 @@ export function markReturned(id: string, endDate?: string) {
   if (!r) return;
   r.endDate = endDate || new Date().toISOString().slice(0, 10);
   const v = vehicles.find(v => v.id === r.vehicleId);
-  if (v) v.status = "available";
+  if (v) {
+    v.status = "available";
+    cloudWrite("vehicle:update", supabase.from("vehicles").update({ status: "available" }).eq("id", v.id));
+  }
+  cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
   emit();
 }
 
@@ -401,14 +415,12 @@ export function extendRental(
   let paymentId: string | undefined;
   if (additionalAmount > 0) {
     paymentId = nextPaymentId();
-    payments.push({
-      id: paymentId,
-      rentalId: r.id,
-      driverId: r.driverId,
-      amount: additionalAmount,
-      dueDate: newEndDate,
-      status: "late",
-    });
+    const p: Payment = {
+      id: paymentId, rentalId: r.id, driverId: r.driverId,
+      amount: additionalAmount, dueDate: newEndDate, status: "late",
+    };
+    payments.push(p);
+    cloudWrite("payment:insert", supabase.from("payments").insert(toPayment(p)));
   }
 
   const ext: RentalExtension = {
@@ -425,6 +437,8 @@ export function extendRental(
     agreementVersion: opts?.agreementVersion,
   };
   r.extensions = [...(r.extensions ?? []), ext];
+  cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
+  cloudWrite("ext:insert", supabase.from("rental_extensions").insert(toExt(r.id, ext)));
   emit();
   return ext;
 }
@@ -443,6 +457,7 @@ export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "i
     ...input,
   };
   drivers.push(driver);
+  cloudWrite("driver:insert", supabase.from("drivers").insert(toDriver(driver)));
   emit();
   return driver;
 }
@@ -459,8 +474,12 @@ export function getInspectionsForRental(rentalId: string) {
 export function addInspection(input: Omit<Inspection, "id">) {
   const insp: Inspection = { id: nextInspectionId(), ...input };
   inspections.push(insp);
+  cloudWrite("inspection:insert", supabase.from("inspections").insert(toInspection(insp)));
   const v = vehicles.find(v => v.id === input.vehicleId);
-  if (v && input.mileage) v.mileage = input.mileage;
+  if (v && input.mileage) {
+    v.mileage = input.mileage;
+    cloudWrite("vehicle:update", supabase.from("vehicles").update({ mileage: input.mileage }).eq("id", v.id));
+  }
   emit();
   return insp;
 }
@@ -471,6 +490,7 @@ export function recordPayment(id: string, method: Payment["method"], paidDate?: 
   p.status = "paid";
   p.method = method;
   p.paidDate = paidDate || new Date().toISOString().slice(0, 10);
+  cloudWrite("payment:update", supabase.from("payments").update(toPayment(p)).eq("id", p.id));
   // Schedule next weekly payment for the rental if still active
   const rental = rentals.find(r => r.id === p.rentalId);
   if (rental && !rental.endDate) {
@@ -478,19 +498,19 @@ export function recordPayment(id: string, method: Payment["method"], paidDate?: 
     if (!hasFuture) {
       const due = new Date(p.dueDate);
       due.setDate(due.getDate() + 7);
-      payments.push({
-        id: nextPaymentId(),
-        rentalId: rental.id,
-        driverId: rental.driverId,
+      const np: Payment = {
+        id: nextPaymentId(), rentalId: rental.id, driverId: rental.driverId,
         amount: rental.rate ?? rental.weeklyRate,
-        dueDate: due.toISOString().slice(0, 10),
-        status: "late",
-      });
+        dueDate: due.toISOString().slice(0, 10), status: "late",
+      };
+      payments.push(np);
+      cloudWrite("payment:insert", supabase.from("payments").insert(toPayment(np)));
     }
     // Refresh rental's payment status from outstanding payments
     const overdue = payments.some(x => x.rentalId === rental.id && x.status === "missed");
     const late = payments.some(x => x.rentalId === rental.id && x.status === "late");
     rental.paymentStatus = overdue ? "defaulted" : late ? "late" : "current";
+    cloudWrite("rental:update", supabase.from("rentals").update({ payment_status: rental.paymentStatus }).eq("id", rental.id));
   }
   emit();
 }
