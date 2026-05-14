@@ -15,17 +15,26 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SignaturePad } from "@/components/app/SignaturePad";
+import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
+import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
 export const Route = createFileRoute("/rentals")({
   head: () => ({ meta: [{ title: "Reservations — Camauto Rentals" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    paid: typeof search.paid === "string" ? search.paid : undefined,
+    session_id: typeof search.session_id === "string" ? search.session_id : undefined,
+  }),
   component: RentalsPage,
 });
 
 const AGREEMENT_VERSION = "v1.0";
 
 function RentalsPage() {
+  const navigate = Route.useNavigate();
+  const { paid } = Route.useSearch();
+  const { user } = useAuth();
   const [newOpen, setNewOpen] = useState(false);
   const [editing, setEditing] = useState<Rental | null>(null);
   const [delivering, setDelivering] = useState<Rental | null>(null);
@@ -33,6 +42,7 @@ function RentalsPage() {
   const [extending, setExtending] = useState<Rental | null>(null);
   const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
   const [signing, setSigning] = useState<Rental | null>(null);
+  const [charging, setCharging] = useState<Rental | null>(null);
   useStoreVersion();
   // Prune any pending reservations whose 24h hold has expired
   useEffect(() => {
@@ -40,6 +50,14 @@ function RentalsPage() {
     const t = setInterval(prunePendingReservations, 60_000);
     return () => clearInterval(t);
   }, []);
+
+  // After Stripe redirect: mark reservation paid and clear query params
+  useEffect(() => {
+    if (!paid) return;
+    const activated = markReservationPaid(paid);
+    toast.success(activated ? "Payment received — reservation activated" : "Payment received");
+    navigate({ to: "/rentals", search: {}, replace: true });
+  }, [paid, navigate]);
 
   const pending = rentals.filter(r => r.reservationStatus === "pending");
   const active = rentals.filter(r => (r.reservationStatus ?? "active") === "active" && !r.endDate);
