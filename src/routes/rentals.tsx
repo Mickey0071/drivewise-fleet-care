@@ -271,7 +271,7 @@ function RentalsPage() {
     <div>
       <PageHeader
         title="Reservations"
-        subtitle={`${active.length} active · ${pending.length} pending · ${completed.length} completed`}
+        subtitle={`${active.length} on rent · ${pending.length} pending · ${completed.length} completed`}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ReportActions csv={{
@@ -288,14 +288,14 @@ function RentalsPage() {
       />
       <Tabs defaultValue={pending.length > 0 ? "pending" : "active"} className="w-full">
         <TabsList className="mb-4">
-          <TabsTrigger value="active">Active ({active.length})</TabsTrigger>
+          <TabsTrigger value="active">On Rent ({active.length})</TabsTrigger>
           <TabsTrigger value="pending">
             Pending {pending.length > 0 && <span className="ml-1 rounded-full bg-amber-500/20 px-2 text-xs text-amber-700 dark:text-amber-400">{pending.length}</span>}
           </TabsTrigger>
           <TabsTrigger value="completed">Completed ({completed.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="active" className="flex flex-col gap-3 mt-0">
-          {active.length === 0 ? <EmptyState label="No active rentals." /> : active.map(renderCard)}
+          {active.length === 0 ? <EmptyState label="No vehicles currently on rent." /> : active.map(renderCard)}
         </TabsContent>
         <TabsContent value="pending" className="flex flex-col gap-3 mt-0">
           {pending.length === 0 ? (
