@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { vehicles, drivers, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { addRental, hasConflict, addDriver, useStoreVersion } from "@/lib/mock/store";
-import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus } from "lucide-react";
+import { vehicles, drivers, vehicleById, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { addRental, hasConflict, addDriver, getActiveRentalForDriver, markReturned, useStoreVersion } from "@/lib/mock/store";
+import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus, Repeat, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -47,9 +47,11 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
   const [drvQ, setDrvQ] = useState("");
   const [showAddDriver, setShowAddDriver] = useState(false);
   const [newDriver, setNewDriver] = useState({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" as "Uber" | "Lyft" | "Both" });
+  const [isSwap, setIsSwap] = useState(false);
 
   const vehicle = vehicles.find(v => v.id === vehicleId) ?? null;
   const driver = drivers.find(d => d.id === driverId) ?? null;
+  const existingRental = driver ? getActiveRentalForDriver(driver.id) : null;
 
   const availableVehicles = useMemo(
     () => vehicles.filter(v => v.status === "available" && (
@@ -72,6 +74,7 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
     setStartDate(""); setEndDate(""); setRate(0); setBillingPeriod("weekly");
     setDeposit(300); setNotes(""); setVehQ(""); setDrvQ("");
     setShowAddDriver(false);
+    setIsSwap(false);
     setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" });
   }
   function createDriver() {
@@ -101,7 +104,7 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
 
   const canNext =
     (step === 0 && !!vehicle) ||
-    (step === 1 && !!driver) ||
+    (step === 1 && !!driver && (!existingRental || isSwap)) ||
     (step === 2 && !!startDate && rate > 0) ||
     step === 3;
 
@@ -112,9 +115,16 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
 
   function confirm() {
     if (!vehicle || !driver || !startDate) return;
+    if (existingRental && !isSwap) {
+      toast.error("Renter already has an active rental", { description: "Tick the swap box on the Client step to close the existing rental." });
+      return;
+    }
     if (hasConflict(vehicle.id, startDate, endDate || undefined)) {
       toast.error("Booking conflict", { description: `${vehicle.year} ${vehicle.make} ${vehicle.model} already has a rental overlapping these dates.` });
       return;
+    }
+    if (existingRental && isSwap) {
+      markReturned(existingRental.id, startDate);
     }
     addRental({
       vehicleId: vehicle.id,
@@ -125,11 +135,20 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
       billingPeriod,
       rate,
       depositPaid: deposit,
-      notes: notes || undefined,
+      notes: isSwap && existingRental
+        ? `Vehicle swap from rental ${existingRental.id}.${notes ? ` ${notes}` : ""}`
+        : (notes || undefined),
     });
-    toast.success("Reservation pending", {
-      description: `${driver.fullName} · ${vehicle.year} ${vehicle.make} ${vehicle.model} — vehicle held 24h until signature + payment`,
-    });
+    if (isSwap && existingRental) {
+      const oldV = vehicleById(existingRental.vehicleId);
+      toast.success("Swap reservation created", {
+        description: `${driver.fullName} swapped ${oldV ? `${oldV.year} ${oldV.make} ${oldV.model}` : "previous vehicle"} → ${vehicle.year} ${vehicle.make} ${vehicle.model}. Old rental closed.`,
+      });
+    } else {
+      toast.success("Reservation pending", {
+        description: `${driver.fullName} · ${vehicle.year} ${vehicle.make} ${vehicle.model} — vehicle held 24h until signature + payment`,
+      });
+    }
     close(false);
   }
 
