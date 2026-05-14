@@ -233,6 +233,49 @@ function EmptyState({ label }: { label: string }) {
   return <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">{label}</div>;
 }
 
+function ChargeRentalDialog({
+  rental, onClose, userEmail, userId,
+}: { rental: Rental | null; onClose: () => void; userEmail?: string; userId?: string }) {
+  const open = !!rental;
+  if (!rental) {
+    return (
+      <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent />
+      </Dialog>
+    );
+  }
+  const v = vehicleById(rental.vehicleId);
+  const d = driverById(rental.driverId);
+  const period = rental.billingPeriod ?? "weekly";
+  const periodLabel = period === "daily" ? "day" : period === "monthly" ? "month" : "week";
+  const amount = rental.rate ?? rental.weeklyRate;
+  const amountInCents = Math.round(amount * 100);
+  const returnUrl = `${window.location.origin}/rentals?paid=${rental.id}&session_id={CHECKOUT_SESSION_ID}`;
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Charge first {periodLabel} — {fmtMoney(amount)}</DialogTitle>
+        </DialogHeader>
+        <div className="rounded-md border bg-muted/30 p-3 text-sm">
+          <div><span className="text-muted-foreground">Vehicle:</span> {v?.year} {v?.make} {v?.model}</div>
+          <div><span className="text-muted-foreground">Renter:</span> {d?.fullName} · {d?.email}</div>
+          <div><span className="text-muted-foreground">Reservation:</span> {rental.id}</div>
+        </div>
+        <StripeRentalCheckout
+          kind="deposit"
+          amountInCents={amountInCents}
+          rentalId={rental.id}
+          customerEmail={d?.email || userEmail}
+          customerName={d?.fullName}
+          userId={userId}
+          returnUrl={returnUrl}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function PendingHoldBadge({ rental }: { rental: Rental }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
