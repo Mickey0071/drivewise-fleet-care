@@ -142,7 +142,17 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
     ]);
 
     const nowIso = new Date().toISOString();
-    const update: Record<string, unknown> = {
+    const update: {
+      client_signature_url: string;
+      license_image_url: string;
+      selfie_image_url: string;
+      client_signed_at: string;
+      signature_data_url: string;
+      signed_at: string;
+      signed_by: string;
+      agreement_version: string;
+      reservation_status?: string;
+    } = {
       client_signature_url: signatureUrl,
       license_image_url: licenseUrl,
       selfie_image_url: selfieUrl,
