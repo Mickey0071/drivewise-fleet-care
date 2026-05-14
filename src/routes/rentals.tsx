@@ -8,8 +8,9 @@ import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, a
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,6 +48,7 @@ function RentalsPage() {
   const [signing, setSigning] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
   const [receipt, setReceipt] = useState<Rental | null>(null);
+  const [confirmReturn, setConfirmReturn] = useState<Rental | null>(null);
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
   useStoreVersion();
@@ -246,6 +248,11 @@ function RentalsPage() {
                     </Button>
                   )}
                   {!r.endDate && (
+                    <Button size="sm" onClick={() => setConfirmReturn(r)}>
+                      <PackageCheck className="mr-1 h-4 w-4" /> Mark as Returned
+                    </Button>
+                  )}
+                  {!r.endDate && (
                     <Button variant="outline" size="sm" onClick={() => setExtending(r)}>
                       <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
                     </Button>
@@ -320,6 +327,33 @@ function RentalsPage() {
         userId={user?.id}
       />
       <ReceiptDialog rental={receipt} onClose={() => setReceipt(null)} />
+      <AlertDialog open={!!confirmReturn} onOpenChange={(o) => !o && setConfirmReturn(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark this rental as Returned?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmReturn ? (() => {
+                const v = vehicleById(confirmReturn.vehicleId);
+                const d = driverById(confirmReturn.driverId);
+                return `${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""} (Plate ${v?.plate ?? "—"}) rented to ${d?.fullName ?? confirmReturn.driverId} will be moved to the Returned tab and the vehicle marked Available. This can't be undone from here.`;
+              })() : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!confirmReturn) return;
+                markReturned(confirmReturn.id);
+                toast.success("Rental marked as Returned");
+                setConfirmReturn(null);
+              }}
+            >
+              Yes, mark Returned
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
