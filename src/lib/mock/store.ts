@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from "react";
 import { rentals, vehicles, payments, drivers, inspections, type Rental, type RentalExtension, type Driver, type Inspection, type Payment } from "./data";
+import { supabase } from "@/integrations/supabase/client";
 
 const listeners = new Set<() => void>();
 let version = 0;
-function emit() { version++; persist(); listeners.forEach(l => l()); }
+function emit() { version++; listeners.forEach(l => l()); }
 function subscribe(l: () => void) { listeners.add(l); return () => listeners.delete(l); }
 
 export function useStoreVersion() {
@@ -11,52 +12,231 @@ export function useStoreVersion() {
 }
 
 // ---------------------------------------------------------------------------
-// Persistence layer
-// Snapshots the mutable arrays into localStorage on every emit() and rehydrates
-// on module load, so data survives page refreshes, re-deploys, and tab closes.
-// Cross-device sync requires the database migration (next step).
+// Cloud persistence layer
+// All mutations mirror to Supabase; remote changes flow back through realtime
+// channels. The in-memory arrays remain the single source of truth for
+// components — they're hydrated from the cloud on first import.
 // ---------------------------------------------------------------------------
-const STORE_KEY = "camauto.store.v1";
-
-function snapshot() {
-  return { vehicles, drivers, rentals, payments, inspections };
-}
-
 function replaceArray<T>(target: T[], next: T[]) {
   target.splice(0, target.length, ...next);
 }
 
+// ---- row <-> camelCase mappers ----
+const fromVehicle = (r: any) => ({
+  id: r.id, make: r.make, model: r.model, year: r.year, vin: r.vin,
+  plate: r.plate, mileage: r.mileage, status: r.status, riskTier: r.risk_tier,
+  dailyRate: Number(r.daily_rate), weeklyRate: Number(r.weekly_rate),
+  notes: r.notes ?? undefined, nextServiceDue: r.next_service_due ?? undefined,
+});
+const toVehicle = (v: any) => ({
+  id: v.id, make: v.make, model: v.model, year: v.year, vin: v.vin,
+  plate: v.plate, mileage: v.mileage, status: v.status, risk_tier: v.riskTier,
+  daily_rate: v.dailyRate, weekly_rate: v.weeklyRate,
+  notes: v.notes ?? null, next_service_due: v.nextServiceDue ?? null,
+});
+const fromDriver = (r: any) => ({
+  id: r.id, fullName: r.full_name, phone: r.phone, email: r.email,
+  licenseNumber: r.license_number, licenseExpiry: r.license_expiry,
+  insuranceOnFile: r.insurance_on_file, rideshare: r.rideshare,
+  status: r.status, dateAdded: r.date_added,
+});
+const toDriver = (d: any) => ({
+  id: d.id, full_name: d.fullName, phone: d.phone, email: d.email,
+  license_number: d.licenseNumber, license_expiry: d.licenseExpiry,
+  insurance_on_file: d.insuranceOnFile, rideshare: d.rideshare,
+  status: d.status, date_added: d.dateAdded,
+});
+const fromRental = (r: any, exts: any[] = []): Rental => ({
+  id: r.id, vehicleId: r.vehicle_id, driverId: r.driver_id,
+  startDate: r.start_date, endDate: r.end_date ?? undefined,
+  weeklyRate: Number(r.weekly_rate), depositPaid: Number(r.deposit_paid),
+  paymentStatus: r.payment_status, notes: r.notes ?? undefined,
+  billingPeriod: r.billing_period ?? undefined,
+  rate: r.rate != null ? Number(r.rate) : undefined,
+  signatureDataUrl: r.signature_data_url ?? undefined,
+  signedAt: r.signed_at ?? undefined, signedBy: r.signed_by ?? undefined,
+  agreementVersion: r.agreement_version ?? undefined,
+  reservationStatus: r.reservation_status ?? undefined,
+  pendingCreatedAt: r.pending_created_at ?? undefined,
+  paymentReceived: !!r.payment_received,
+  extensions: exts.filter(e => e.rental_id === r.id).map(fromExt),
+});
+const toRental = (r: any) => ({
+  id: r.id, vehicle_id: r.vehicleId, driver_id: r.driverId,
+  start_date: r.startDate, end_date: r.endDate ?? null,
+  weekly_rate: r.weeklyRate, deposit_paid: r.depositPaid,
+  payment_status: r.paymentStatus, notes: r.notes ?? null,
+  billing_period: r.billingPeriod ?? null, rate: r.rate ?? null,
+  signature_data_url: r.signatureDataUrl ?? null,
+  signed_at: r.signedAt ?? null, signed_by: r.signedBy ?? null,
+  agreement_version: r.agreementVersion ?? null,
+  reservation_status: r.reservationStatus ?? null,
+  pending_created_at: r.pendingCreatedAt ?? null,
+  payment_received: !!r.paymentReceived,
+});
+const fromExt = (r: any): RentalExtension => ({
+  id: r.id, extendedAt: r.extended_at, previousEndDate: r.previous_end_date ?? undefined,
+  newEndDate: r.new_end_date, periods: r.periods, periodLabel: r.period_label,
+  additionalAmount: Number(r.additional_amount), paymentId: r.payment_id ?? undefined,
+  signatureDataUrl: r.signature_data_url ?? undefined, signedBy: r.signed_by ?? undefined,
+  agreementVersion: r.agreement_version ?? undefined,
+});
+const toExt = (rentalId: string, e: RentalExtension) => ({
+  id: e.id, rental_id: rentalId, extended_at: e.extendedAt,
+  previous_end_date: e.previousEndDate ?? null, new_end_date: e.newEndDate,
+  periods: e.periods, period_label: e.periodLabel,
+  additional_amount: e.additionalAmount, payment_id: e.paymentId ?? null,
+  signature_data_url: e.signatureDataUrl ?? null, signed_by: e.signedBy ?? null,
+  agreement_version: e.agreementVersion ?? null,
+});
+const fromPayment = (r: any): Payment => ({
+  id: r.id, rentalId: r.rental_id, driverId: r.driver_id,
+  amount: Number(r.amount), dueDate: r.due_date, paidDate: r.paid_date ?? undefined,
+  method: r.method ?? undefined, status: r.status,
+});
+const toPayment = (p: Payment) => ({
+  id: p.id, rental_id: p.rentalId, driver_id: p.driverId,
+  amount: p.amount, due_date: p.dueDate, paid_date: p.paidDate ?? null,
+  method: p.method ?? null, status: p.status,
+});
+const fromInspection = (r: any): Inspection => ({
+  id: r.id, vehicleId: r.vehicle_id, rentalId: r.rental_id,
+  type: r.type, date: r.date, mileage: r.mileage, fuelLevel: r.fuel_level,
+  damageNoted: r.damage_noted, completedBy: r.completed_by,
+});
+const toInspection = (i: Inspection) => ({
+  id: i.id, vehicle_id: i.vehicleId, rental_id: i.rentalId,
+  type: i.type, date: i.date, mileage: i.mileage,
+  fuel_level: i.fuelLevel, damage_noted: i.damageNoted, completed_by: i.completedBy,
+});
+
+let hydrationPromise: Promise<void> | null = null;
 let hydrated = false;
-function hydrate() {
-  if (hydrated || typeof window === "undefined") return;
-  hydrated = true;
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    if (data.vehicles) replaceArray(vehicles, data.vehicles);
-    if (data.drivers) replaceArray(drivers, data.drivers);
-    if (data.rentals) replaceArray(rentals, data.rentals);
-    if (data.payments) replaceArray(payments, data.payments);
-    if (data.inspections) replaceArray(inspections, data.inspections);
-  } catch {}
+export function isStoreHydrated() { return hydrated; }
+
+export function hydrateFromCloud(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (hydrationPromise) return hydrationPromise;
+  hydrationPromise = (async () => {
+    const [v, d, r, p, i, e] = await Promise.all([
+      supabase.from("vehicles").select("*"),
+      supabase.from("drivers").select("*"),
+      supabase.from("rentals").select("*"),
+      supabase.from("payments").select("*"),
+      supabase.from("inspections").select("*"),
+      supabase.from("rental_extensions").select("*"),
+    ]);
+    if (v.data) replaceArray(vehicles, v.data.map(fromVehicle));
+    if (d.data) replaceArray(drivers, d.data.map(fromDriver));
+    if (r.data) replaceArray(rentals, r.data.map(row => fromRental(row, e.data ?? [])));
+    if (p.data) replaceArray(payments, p.data.map(fromPayment));
+    if (i.data) replaceArray(inspections, i.data.map(fromInspection));
+    hydrated = true;
+    emit();
+    subscribeRealtime();
+  })();
+  return hydrationPromise;
 }
 
-function persist() {
-  if (typeof window === "undefined") return;
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(snapshot())); } catch {}
+let realtimeSubscribed = false;
+function subscribeRealtime() {
+  if (realtimeSubscribed || typeof window === "undefined") return;
+  realtimeSubscribed = true;
+  supabase.channel("fleet-store")
+    .on("postgres_changes", { event: "*", schema: "public", table: "vehicles" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = vehicles.findIndex(x => x.id === id);
+        if (idx >= 0) vehicles.splice(idx, 1);
+      } else {
+        const next = fromVehicle(payload.new);
+        const idx = vehicles.findIndex(x => x.id === next.id);
+        if (idx >= 0) vehicles[idx] = next as any; else vehicles.push(next as any);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "drivers" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = drivers.findIndex(x => x.id === id);
+        if (idx >= 0) drivers.splice(idx, 1);
+      } else {
+        const next = fromDriver(payload.new);
+        const idx = drivers.findIndex(x => x.id === next.id);
+        if (idx >= 0) drivers[idx] = next as any; else drivers.push(next as any);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "rentals" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = rentals.findIndex(x => x.id === id);
+        if (idx >= 0) rentals.splice(idx, 1);
+      } else {
+        const next = fromRental(payload.new);
+        const idx = rentals.findIndex(x => x.id === next.id);
+        if (idx >= 0) rentals[idx] = { ...next, extensions: rentals[idx].extensions };
+        else rentals.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = payments.findIndex(x => x.id === id);
+        if (idx >= 0) payments.splice(idx, 1);
+      } else {
+        const next = fromPayment(payload.new);
+        const idx = payments.findIndex(x => x.id === next.id);
+        if (idx >= 0) payments[idx] = next; else payments.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "inspections" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = inspections.findIndex(x => x.id === id);
+        if (idx >= 0) inspections.splice(idx, 1);
+      } else {
+        const next = fromInspection(payload.new);
+        const idx = inspections.findIndex(x => x.id === next.id);
+        if (idx >= 0) inspections[idx] = next; else inspections.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "rental_extensions" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        for (const r of rentals) {
+          if (r.extensions?.some(e => e.id === id)) {
+            r.extensions = r.extensions.filter(e => e.id !== id);
+          }
+        }
+      } else {
+        const ext = fromExt(payload.new);
+        const rentalId = (payload.new as any).rental_id;
+        const r = rentals.find(x => x.id === rentalId);
+        if (r) {
+          const exts = r.extensions ?? [];
+          const idx = exts.findIndex(e => e.id === ext.id);
+          if (idx >= 0) exts[idx] = ext; else exts.push(ext);
+          r.extensions = exts;
+        }
+      }
+      emit();
+    })
+    .subscribe();
 }
 
-/** Reset persisted store back to the seed mock data. */
-export function resetStore() {
-  if (typeof window !== "undefined") {
-    try { localStorage.removeItem(STORE_KEY); } catch {}
-  }
-  // Force a reload so the seed arrays from data.ts are re-imported fresh.
-  if (typeof window !== "undefined") window.location.reload();
-}
+// fire-and-forget cloud writes; log failures but don't block UI
+const cloudWrite = (label: string, p: PromiseLike<{ error: any }>) => {
+  Promise.resolve(p).then(({ error }) => {
+    if (error) console.error(`[cloud:${label}]`, error);
+  });
+};
 
-hydrate();
+// kick off hydration immediately on browser
+if (typeof window !== "undefined") { hydrateFromCloud(); }
 
 function nextRentalId() {
   const n = rentals.reduce((m, r) => Math.max(m, parseInt(r.id.replace(/\D/g, "")) || 0), 500);
@@ -90,8 +270,7 @@ export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymen
     ...input,
   };
   rentals.push(rental);
-  // Pending reservations block the vehicle on the calendar but don't flip its status
-  // until activated (signature + payment).
+  cloudWrite("rental:insert", supabase.from("rentals").insert(toRental(rental)));
   emit();
   return rental;
 }
@@ -113,6 +292,8 @@ export function prunePendingReservations() {
   let changed = false;
   for (let i = rentals.length - 1; i >= 0; i--) {
     if (isPendingExpired(rentals[i])) {
+      const id = rentals[i].id;
+      cloudWrite("rental:delete", supabase.from("rentals").delete().eq("id", id));
       rentals.splice(i, 1);
       changed = true;
     }
@@ -124,6 +305,7 @@ export function cancelReservation(id: string) {
   const idx = rentals.findIndex(r => r.id === id);
   if (idx < 0) return;
   rentals.splice(idx, 1);
+  cloudWrite("rental:delete", supabase.from("rentals").delete().eq("id", id));
   emit();
 }
 
@@ -133,7 +315,10 @@ function tryActivate(rental: Rental) {
   rental.reservationStatus = "active";
   rental.pendingCreatedAt = undefined;
   const v = vehicles.find(v => v.id === rental.vehicleId);
-  if (v) v.status = "rented";
+  if (v) {
+    v.status = "rented";
+    cloudWrite("vehicle:update", supabase.from("vehicles").update({ status: "rented" }).eq("id", v.id));
+  }
   // Schedule first payment one period out
   const period = rental.billingPeriod ?? "weekly";
   const due = new Date(rental.startDate);
@@ -142,11 +327,13 @@ function tryActivate(rental: Rental) {
   else due.setDate(due.getDate() + 7);
   const exists = payments.some(p => p.rentalId === rental.id);
   if (!exists) {
-    payments.push({
+    const p: Payment = {
       id: nextPaymentId(), rentalId: rental.id, driverId: rental.driverId,
       amount: rental.rate ?? rental.weeklyRate,
       dueDate: due.toISOString().slice(0, 10), status: "late",
-    });
+    };
+    payments.push(p);
+    cloudWrite("payment:insert", supabase.from("payments").insert(toPayment(p)));
   }
   return true;
 }
@@ -159,6 +346,7 @@ export function captureSignature(id: string, signatureDataUrl: string, signedBy:
   r.signedBy = signedBy;
   r.agreementVersion = agreementVersion;
   const activated = tryActivate(r);
+  cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
   emit();
   return activated;
 }
@@ -168,6 +356,7 @@ export function markReservationPaid(id: string) {
   if (!r) return false;
   r.paymentReceived = true;
   const activated = tryActivate(r);
+  cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
   emit();
   return activated;
 }
@@ -176,6 +365,7 @@ export function updateRental(id: string, patch: Partial<Rental>) {
   const r = rentals.find(r => r.id === id);
   if (!r) return;
   Object.assign(r, patch);
+  cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
   emit();
 }
 
@@ -184,7 +374,11 @@ export function markReturned(id: string, endDate?: string) {
   if (!r) return;
   r.endDate = endDate || new Date().toISOString().slice(0, 10);
   const v = vehicles.find(v => v.id === r.vehicleId);
-  if (v) v.status = "available";
+  if (v) {
+    v.status = "available";
+    cloudWrite("vehicle:update", supabase.from("vehicles").update({ status: "available" }).eq("id", v.id));
+  }
+  cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
   emit();
 }
 
@@ -221,14 +415,12 @@ export function extendRental(
   let paymentId: string | undefined;
   if (additionalAmount > 0) {
     paymentId = nextPaymentId();
-    payments.push({
-      id: paymentId,
-      rentalId: r.id,
-      driverId: r.driverId,
-      amount: additionalAmount,
-      dueDate: newEndDate,
-      status: "late",
-    });
+    const p: Payment = {
+      id: paymentId, rentalId: r.id, driverId: r.driverId,
+      amount: additionalAmount, dueDate: newEndDate, status: "late",
+    };
+    payments.push(p);
+    cloudWrite("payment:insert", supabase.from("payments").insert(toPayment(p)));
   }
 
   const ext: RentalExtension = {
@@ -245,6 +437,8 @@ export function extendRental(
     agreementVersion: opts?.agreementVersion,
   };
   r.extensions = [...(r.extensions ?? []), ext];
+  cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
+  cloudWrite("ext:insert", supabase.from("rental_extensions").insert(toExt(r.id, ext)));
   emit();
   return ext;
 }
@@ -263,6 +457,7 @@ export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "i
     ...input,
   };
   drivers.push(driver);
+  cloudWrite("driver:insert", supabase.from("drivers").insert(toDriver(driver)));
   emit();
   return driver;
 }
@@ -279,8 +474,12 @@ export function getInspectionsForRental(rentalId: string) {
 export function addInspection(input: Omit<Inspection, "id">) {
   const insp: Inspection = { id: nextInspectionId(), ...input };
   inspections.push(insp);
+  cloudWrite("inspection:insert", supabase.from("inspections").insert(toInspection(insp)));
   const v = vehicles.find(v => v.id === input.vehicleId);
-  if (v && input.mileage) v.mileage = input.mileage;
+  if (v && input.mileage) {
+    v.mileage = input.mileage;
+    cloudWrite("vehicle:update", supabase.from("vehicles").update({ mileage: input.mileage }).eq("id", v.id));
+  }
   emit();
   return insp;
 }
@@ -291,6 +490,7 @@ export function recordPayment(id: string, method: Payment["method"], paidDate?: 
   p.status = "paid";
   p.method = method;
   p.paidDate = paidDate || new Date().toISOString().slice(0, 10);
+  cloudWrite("payment:update", supabase.from("payments").update(toPayment(p)).eq("id", p.id));
   // Schedule next weekly payment for the rental if still active
   const rental = rentals.find(r => r.id === p.rentalId);
   if (rental && !rental.endDate) {
@@ -298,19 +498,19 @@ export function recordPayment(id: string, method: Payment["method"], paidDate?: 
     if (!hasFuture) {
       const due = new Date(p.dueDate);
       due.setDate(due.getDate() + 7);
-      payments.push({
-        id: nextPaymentId(),
-        rentalId: rental.id,
-        driverId: rental.driverId,
+      const np: Payment = {
+        id: nextPaymentId(), rentalId: rental.id, driverId: rental.driverId,
         amount: rental.rate ?? rental.weeklyRate,
-        dueDate: due.toISOString().slice(0, 10),
-        status: "late",
-      });
+        dueDate: due.toISOString().slice(0, 10), status: "late",
+      };
+      payments.push(np);
+      cloudWrite("payment:insert", supabase.from("payments").insert(toPayment(np)));
     }
     // Refresh rental's payment status from outstanding payments
     const overdue = payments.some(x => x.rentalId === rental.id && x.status === "missed");
     const late = payments.some(x => x.rentalId === rental.id && x.status === "late");
     rental.paymentStatus = overdue ? "defaulted" : late ? "late" : "current";
+    cloudWrite("rental:update", supabase.from("rentals").update({ payment_status: rental.paymentStatus }).eq("id", rental.id));
   }
   emit();
 }
