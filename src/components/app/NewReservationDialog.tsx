@@ -284,6 +284,34 @@ export function NewReservationDialog({ open, onOpenChange }: Props) {
                   );
                 })}
               </div>
+              {existingRental && (() => {
+                const oldV = vehicleById(existingRental.vehicleId);
+                return (
+                  <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      <div className="flex-1 space-y-2">
+                        <div>
+                          <div className="font-medium">{driver?.fullName} already has an active rental</div>
+                          <div className="text-xs text-muted-foreground">
+                            {oldV ? `${oldV.year} ${oldV.make} ${oldV.model} · ${oldV.plate}` : existingRental.vehicleId} · started {fmtDate(existingRental.startDate)}
+                          </div>
+                        </div>
+                        <label className="flex cursor-pointer items-center gap-2 rounded-md border bg-background p-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={isSwap}
+                            onChange={e => setIsSwap(e.target.checked)}
+                            className="h-4 w-4"
+                          />
+                          <Repeat className="h-4 w-4 text-muted-foreground" />
+                          <span>This is a vehicle swap — close the existing rental and start this one.</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
