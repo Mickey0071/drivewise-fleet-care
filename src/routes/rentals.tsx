@@ -219,6 +219,12 @@ function RentalsPage() {
       <ExtendRentalDialog rental={extending} onClose={() => setExtending(null)} />
       <AgreementDialog rental={viewingAgreement} onClose={() => setViewingAgreement(null)} />
       <CaptureSignatureDialog rental={signing} onClose={() => setSigning(null)} />
+      <ChargeRentalDialog
+        rental={charging}
+        onClose={() => setCharging(null)}
+        userEmail={user?.email}
+        userId={user?.id}
+      />
     </div>
   );
 }
