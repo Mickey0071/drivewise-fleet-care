@@ -50,35 +50,33 @@ function CalendarPage() {
       />
       <Card className="overflow-x-auto">
         <div className="min-w-[900px]">
-          <div className="grid border-b" style={{ gridTemplateColumns: `220px repeat(${DAYS}, minmax(38px, 1fr))` }}>
-            <div className="p-2 text-xs font-medium text-muted-foreground">Vehicle</div>
-            {days.map(d => {
-              const isToday = d.getTime() === startOfDay(new Date()).getTime();
-              const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-              return (
-                <div
-                  key={d.toISOString()}
-                  className={`p-1 text-center text-[10px] border-l ${isToday ? "bg-primary/10 font-bold text-primary" : isWeekend ? "bg-muted/40 text-muted-foreground" : "text-muted-foreground"}`}
-                >
-                  <div>{d.toLocaleDateString("en-US", { weekday: "short" })[0]}</div>
-                  <div>{d.getDate()}</div>
-                </div>
-              );
-            })}
+          <div className="flex border-b">
+            <div className="w-[220px] shrink-0 p-2 text-xs font-medium text-muted-foreground">Vehicle</div>
+            <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${DAYS}, minmax(38px, 1fr))` }}>
+              {days.map(d => {
+                const isToday = d.getTime() === startOfDay(new Date()).getTime();
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                return (
+                  <div
+                    key={d.toISOString()}
+                    className={`p-1 text-center text-[10px] border-l ${isToday ? "bg-primary/10 font-bold text-primary" : isWeekend ? "bg-muted/40 text-muted-foreground" : "text-muted-foreground"}`}
+                  >
+                    <div>{d.toLocaleDateString("en-US", { weekday: "short" })[0]}</div>
+                    <div>{d.getDate()}</div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           {vehicles.map(v => {
             const vRentals = rentals.filter(r => r.vehicleId === v.id);
             return (
-              <div
-                key={v.id}
-                className="grid border-b last:border-b-0 hover:bg-muted/20"
-                style={{ gridTemplateColumns: `220px repeat(${DAYS}, minmax(38px, 1fr))` }}
-              >
-                <div className="p-2 text-sm">
+              <div key={v.id} className="flex border-b last:border-b-0 hover:bg-muted/20">
+                <div className="w-[220px] shrink-0 p-2 text-sm">
                   <div className="font-medium truncate">{v.year} {v.make} {v.model}</div>
                   <div className="text-xs text-muted-foreground">{v.plate}</div>
                 </div>
-                <div className="relative col-span-full row-start-1" style={{ gridColumn: `2 / span ${DAYS}` }}>
+                <div className="relative flex-1 min-h-[52px]">
                   <div className="grid h-full" style={{ gridTemplateColumns: `repeat(${DAYS}, minmax(38px, 1fr))` }}>
                     {days.map((d, i) => (
                       <div key={i} className="border-l h-full min-h-[52px]" />
