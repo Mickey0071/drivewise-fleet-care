@@ -8,9 +8,8 @@ import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, a
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,7 +47,7 @@ function RentalsPage() {
   const [signing, setSigning] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
   const [receipt, setReceipt] = useState<Rental | null>(null);
-  const [confirmReturn, setConfirmReturn] = useState<Rental | null>(null);
+  // (Mark as Returned now opens the full Return Inspection dialog directly.)
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
   useStoreVersion();
@@ -242,13 +241,8 @@ function RentalsPage() {
                       <Truck className="mr-1 h-4 w-4" /> Deliver vehicle
                     </Button>
                   )}
-                  {!r.endDate && getInspectionsForRental(r.id).some(i => i.type === "check-out") && (
-                    <Button variant="outline" size="sm" onClick={() => setReturning(r)}>
-                      <ClipboardCheck className="mr-1 h-4 w-4" /> Process return
-                    </Button>
-                  )}
                   {!r.endDate && (
-                    <Button size="sm" onClick={() => setConfirmReturn(r)}>
+                    <Button size="sm" onClick={() => setReturning(r)}>
                       <PackageCheck className="mr-1 h-4 w-4" /> Mark as Returned
                     </Button>
                   )}
@@ -268,6 +262,9 @@ function RentalsPage() {
                 </>
               )}
             </div>
+            {!isPending && !r.endDate && (
+              <RentalCardTabs rental={r} />
+            )}
           </div>
         </div>
       </Card>
@@ -327,33 +324,6 @@ function RentalsPage() {
         userId={user?.id}
       />
       <ReceiptDialog rental={receipt} onClose={() => setReceipt(null)} />
-      <AlertDialog open={!!confirmReturn} onOpenChange={(o) => !o && setConfirmReturn(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Mark this rental as Returned?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmReturn ? (() => {
-                const v = vehicleById(confirmReturn.vehicleId);
-                const d = driverById(confirmReturn.driverId);
-                return `${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""} (Plate ${v?.plate ?? "—"}) rented to ${d?.fullName ?? confirmReturn.driverId} will be moved to the Returned tab and the vehicle marked Available. This can't be undone from here.`;
-              })() : null}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (!confirmReturn) return;
-                markReturned(confirmReturn.id);
-                toast.success("Rental marked as Returned");
-                setConfirmReturn(null);
-              }}
-            >
-              Yes, mark Returned
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
@@ -615,6 +585,7 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
   const [damageNoted, setDamageNoted] = useState(false);
   const [completedBy, setCompletedBy] = useState("");
   const [notes, setNotes] = useState("");
+  const [check, setCheck] = useState<Record<string, boolean>>({});
   useEffect(() => {
     if (rental && v) {
       setMileage(v.mileage);
@@ -622,12 +593,18 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
       setDamageNoted(false);
       setCompletedBy("");
       setNotes("");
+      setCheck({});
     }
   }, [rental, v]);
   function confirm() {
     if (!rental || !v) return;
     if (!completedBy.trim()) { toast.error("Who received the vehicle?"); return; }
     if (mileage < (checkout?.mileage ?? 0)) { toast.error("Return mileage can't be less than delivery mileage"); return; }
+    const missing = RETURN_CHECKLIST.filter(item => !check[item]);
+    if (missing.length > 0) {
+      toast.error("Complete the return checklist", { description: `${missing.length} item(s) remaining` });
+      return;
+    }
     addInspection({
       vehicleId: v.id,
       rentalId: rental.id,
@@ -638,9 +615,10 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
       damageNoted,
       completedBy: completedBy.trim(),
     });
-    if (notes.trim()) {
-      updateRental(rental.id, { notes: [rental.notes, `Return: ${notes.trim()}`].filter(Boolean).join(" · ") });
-    }
+    const checklistSummary = `Return checklist: ${RETURN_CHECKLIST.length}/${RETURN_CHECKLIST.length} verified by ${completedBy.trim()}`;
+    const noteParts = [rental.notes, checklistSummary, notes.trim() ? `Return: ${notes.trim()}` : ""].filter(Boolean);
+    updateRental(rental.id, { notes: noteParts.join(" · ") });
+    try { localStorage.removeItem(`return-checklist:${rental.id}`); } catch { /* ignore */ }
     markReturned(rental.id);
     const drove = checkout ? mileage - checkout.mileage : 0;
     toast.success("Vehicle returned", {
@@ -650,8 +628,10 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
   }
   return (
     <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Process return</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Return inspection</DialogTitle>
+        </DialogHeader>
         {rental && v && d && (
           <div className="space-y-4">
             <div className="rounded-lg border bg-muted/30 p-3 text-sm">
@@ -680,6 +660,24 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
                 <input id="rt-dmg" type="checkbox" checked={damageNoted} onChange={e => setDamageNoted(e.target.checked)} className="h-4 w-4" />
                 <Label htmlFor="rt-dmg" className="!mt-0">New damage observed</Label>
               </div>
+              <div className="sm:col-span-2 rounded-md border bg-muted/20 p-3">
+                <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                  <ListChecks className="h-4 w-4 text-primary" /> Required return checklist
+                </div>
+                <div className="grid gap-1.5">
+                  {RETURN_CHECKLIST.map(item => (
+                    <label key={item} className="flex items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4"
+                        checked={!!check[item]}
+                        onChange={e => setCheck(c => ({ ...c, [item]: e.target.checked }))}
+                      />
+                      <span className={check[item] ? "text-foreground" : "text-muted-foreground"}>{item}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="rt-notes">Return notes</Label>
                 <Textarea id="rt-notes" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Cleanliness, missing items, damage details…" />
@@ -689,10 +687,82 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={confirm}><CheckCircle2 className="mr-1 h-4 w-4" /> Confirm return</Button>
+          <Button onClick={confirm}><PackageCheck className="mr-1 h-4 w-4" /> Confirm return</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const RETURN_CHECKLIST = [
+  "Vehicle parked in return bay",
+  "Both keys / fobs returned",
+  "Walk-around inspection completed (4 sides + roof)",
+  "Odometer photographed",
+  "Fuel level photographed",
+  "Interior cleaned & no personal items left",
+  "Trunk / cargo area inspected",
+  "Tires & lights checked",
+  "Tolls / citations / damage logged",
+  "Driver acknowledged final condition",
+] as const;
+
+function RentalCardTabs({ rental }: { rental: Rental }) {
+  const storageKey = `return-checklist:${rental.id}`;
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) setChecked(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, [storageKey]);
+  function toggle(item: string, val: boolean) {
+    setChecked(prev => {
+      const next = { ...prev, [item]: val };
+      try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }
+  const done = RETURN_CHECKLIST.filter(i => checked[i]).length;
+  const total = RETURN_CHECKLIST.length;
+  return (
+    <Tabs defaultValue="overview" className="mt-2">
+      <TabsList className="h-9">
+        <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
+        <TabsTrigger value="checklist" className="text-xs">
+          Return checklist
+          <span className={`ml-1.5 rounded-full px-1.5 text-[10px] ${done === total ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}>
+            {done}/{total}
+          </span>
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="overview" className="mt-2 text-xs text-muted-foreground">
+        Use the Return Checklist tab to walk through end-of-rental steps before processing the return.
+      </TabsContent>
+      <TabsContent value="checklist" className="mt-2">
+        <div className="rounded-md border bg-muted/20 p-3">
+          <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+            <ListChecks className="h-4 w-4 text-primary" /> End-of-rental checklist
+          </div>
+          <div className="grid gap-1.5">
+            {RETURN_CHECKLIST.map(item => (
+              <label key={item} className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4"
+                  checked={!!checked[item]}
+                  onChange={e => toggle(item, e.target.checked)}
+                />
+                <span className={checked[item] ? "text-foreground line-through opacity-70" : "text-foreground"}>{item}</span>
+              </label>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            This is a pre-return guide. The official inspection is captured when you click <strong>Mark as Returned</strong>.
+          </p>
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 }
 
