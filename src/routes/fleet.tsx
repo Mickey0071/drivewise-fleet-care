@@ -15,21 +15,33 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/fleet")({
   head: () => ({ meta: [{ title: "Fleet — Camauto Rentals" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    status: (search.status as "available" | "rented" | "maintenance" | "impound" | undefined) ?? undefined,
+  }),
   component: FleetPage,
 });
 
 function FleetPage() {
   useStoreVersion();
   const [open, setOpen] = useState(false);
+  const { status } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const filtered = status ? vehicles.filter(v => v.status === status) : vehicles;
   return (
     <div>
       <PageHeader
         title="Fleet Manager"
-        subtitle={`${vehicles.length} vehicles in service`}
+        subtitle={status ? `${filtered.length} ${status} vehicle${filtered.length === 1 ? "" : "s"}` : `${vehicles.length} vehicles in service`}
         action={<Button onClick={() => setOpen(true)}>+ Add Vehicle</Button>}
       />
+      {status && (
+        <div className="mb-4 flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+          <span>Filtered by status: <span className="font-medium capitalize">{status}</span></span>
+          <Button size="sm" variant="ghost" onClick={() => navigate({ search: { status: undefined } })}>Clear</Button>
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {vehicles.map(v => (
+        {filtered.map(v => (
           <Link key={v.id} to="/fleet/$vehicleId" params={{ vehicleId: v.id }}>
             <Card className="transition-all hover:border-primary hover:shadow-md">
               <div className="relative aspect-[16/10] w-full overflow-hidden rounded-t-xl bg-muted">

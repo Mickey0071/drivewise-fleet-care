@@ -38,10 +38,10 @@ function Index() {
       />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Available" value={counts.available} tone="success" icon={Car} />
-        <StatCard label="Rented" value={counts.rented} tone="info" icon={Car} />
-        <StatCard label="Maintenance" value={counts.maintenance} tone="warning" icon={Wrench} />
-        <StatCard label="Impound" value={counts.impound} tone="danger" icon={AlertTriangle} />
+        <StatCard label="Available" value={counts.available} tone="success" icon={Car} to="/fleet" search={{ status: "available" }} />
+        <StatCard label="Rented" value={counts.rented} tone="info" icon={Car} to="/fleet" search={{ status: "rented" }} />
+        <StatCard label="Maintenance" value={counts.maintenance} tone="warning" icon={Wrench} to="/maintenance" />
+        <StatCard label="Impound" value={counts.impound} tone="danger" icon={AlertTriangle} to="/fleet" search={{ status: "impound" }} />
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -117,12 +117,12 @@ function Index() {
   );
 }
 
-function StatCard({ label, value, tone, icon: Icon }: { label: string; value: number; tone: "success" | "info" | "warning" | "danger"; icon: any }) {
+function StatCard({ label, value, tone, icon: Icon, to, search }: { label: string; value: number; tone: "success" | "info" | "warning" | "danger"; icon: any; to?: string; search?: Record<string, unknown> }) {
   const toneBar = {
     success: "bg-success", info: "bg-primary", warning: "bg-warning", danger: "bg-destructive",
   }[tone];
-  return (
-    <Card className="overflow-hidden">
+  const card = (
+    <Card className={`overflow-hidden ${to ? "cursor-pointer transition-all hover:border-primary hover:shadow-md" : ""}`}>
       <div className={`h-1 w-full ${toneBar}`} />
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
@@ -133,6 +133,10 @@ function StatCard({ label, value, tone, icon: Icon }: { label: string; value: nu
       </CardContent>
     </Card>
   );
+  if (to) {
+    return <Link to={to as any} search={search as any}>{card}</Link>;
+  }
+  return card;
 }
 
 function Row({ label, value }: { label: string; value: number | string }) {
