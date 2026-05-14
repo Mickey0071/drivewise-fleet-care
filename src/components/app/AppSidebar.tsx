@@ -17,7 +17,7 @@ type Item = { title: string; url: string; icon: typeof LayoutDashboard; roles: A
 const adminItems: Item[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["admin"] },
   { title: "Fleet", url: "/fleet", icon: Car, roles: ["admin"] },
-  { title: "Drivers", url: "/drivers", icon: Users, roles: ["admin"] },
+  { title: "Renters", url: "/drivers", icon: Users, roles: ["admin"] },
   { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin"] },
   { title: "Calendar", url: "/calendar", icon: Calendar, roles: ["admin"] },
   { title: "Payments", url: "/payments", icon: DollarSign, roles: ["admin"] },
@@ -33,7 +33,7 @@ const financeItems: Item[] = [
 ];
 const portalItems: Item[] = [
   { title: "Runner Portal", url: "/staff-portal", icon: UserCog, roles: ["admin", "runner"] },
-  { title: "Driver Portal", url: "/driver-portal", icon: IdCard, roles: ["admin", "driver"] },
+  { title: "Renter Portal", url: "/driver-portal", icon: IdCard, roles: ["admin", "driver"] },
 ];
 
 export function AppSidebar() {

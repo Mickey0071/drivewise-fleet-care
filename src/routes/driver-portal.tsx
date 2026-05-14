@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { CreditCard, Wallet } from "lucide-react";
 
 export const Route = createFileRoute("/driver-portal")({
-  head: () => ({ meta: [{ title: "Driver Portal — Camauto Rentals" }] }),
+  head: () => ({ meta: [{ title: "Renter Portal — Camauto Rentals" }] }),
   component: DriverPortalPage,
 });
 
@@ -42,7 +42,7 @@ function DriverPortalPage() {
     <div>
       <PaymentTestModeBanner />
       <PageHeader
-        title="Driver Portal"
+        title="Renter Portal"
         subtitle={`Hi, ${me.fullName.split(" ")[0]} 👋`}
         action={
           <div className="flex flex-wrap items-center gap-2">

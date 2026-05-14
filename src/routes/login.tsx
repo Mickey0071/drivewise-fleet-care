@@ -79,7 +79,7 @@ function LoginPage() {
                 <div><Label htmlFor="su-email">Email</Label><Input id="su-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} /></div>
                 <div><Label htmlFor="su-pw">Password</Label><Input id="su-pw" type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} /></div>
                 <Button type="submit" className="w-full" disabled={busy}>{busy ? "Creating…" : "Create account"}</Button>
-                <p className="text-xs text-muted-foreground">First account becomes admin. Others default to driver — admin can promote later.</p>
+                <p className="text-xs text-muted-foreground">First account becomes admin. Others default to renter — admin can promote later.</p>
               </form>
             </TabsContent>
           </Tabs>
