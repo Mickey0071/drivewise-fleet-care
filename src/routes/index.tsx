@@ -79,7 +79,7 @@ function Index() {
             <div className="mt-1 text-xs text-muted-foreground">{overdue.length} late or missed</div>
             <div className="mt-4 space-y-1 text-sm">
               <Row label="Active rentals" value={rentals.length} />
-              <Row label="Active drivers" value={drivers.filter(d => d.status === "active").length} />
+              <Row label="Active renters" value={drivers.filter(d => d.status === "active").length} />
               <Row label="Fleet size" value={vehicles.length} />
             </div>
           </CardContent>
@@ -110,7 +110,7 @@ function Index() {
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <QuickLink to="/fleet" label="Manage Fleet" icon={Car} />
-        <QuickLink to="/drivers" label="Driver Roster" icon={Users} />
+        <QuickLink to="/drivers" label="Renter Roster" icon={Users} />
         <QuickLink to="/pnl" label="View P&L" icon={TrendingUp} />
       </div>
     </div>
