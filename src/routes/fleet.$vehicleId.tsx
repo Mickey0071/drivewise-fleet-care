@@ -7,6 +7,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { vehicleById, rentals, maintenance, violations, inspections, payments, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
 import { ReportActions } from "@/components/app/ReportActions";
+import { NewReservationDialog } from "@/components/app/NewReservationDialog";
+import { useState } from "react";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
   component: VehicleDetail,
@@ -15,6 +17,7 @@ export const Route = createFileRoute("/fleet/$vehicleId")({
 function VehicleDetail() {
   const { vehicleId } = Route.useParams();
   const v = vehicleById(vehicleId);
+  const [reserveOpen, setReserveOpen] = useState(false);
   if (!v) return <div className="text-muted-foreground">Vehicle not found.</div>;
 
   const vRentals = rentals.filter(r => r.vehicleId === v.id);
@@ -59,6 +62,13 @@ function VehicleDetail() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={v.status} />
+            <Button
+              size="sm"
+              disabled={v.status !== "available"}
+              onClick={() => setReserveOpen(true)}
+            >
+              Reserve
+            </Button>
             <ReportActions
               csvs={[
                 {
