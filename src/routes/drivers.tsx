@@ -7,7 +7,7 @@ import { drivers, rentals, payments, vehicleById, fmtDate } from "@/lib/mock/dat
 import { AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/drivers")({
-  head: () => ({ meta: [{ title: "Drivers — Camauto Rentals" }] }),
+  head: () => ({ meta: [{ title: "Renters — Camauto Rentals" }] }),
   component: DriversPage,
 });
 
@@ -18,9 +18,9 @@ function DriversPage() {
   return (
     <div>
       <PageHeader
-        title="Driver Management"
-        subtitle={`${drivers.length} drivers · ${drivers.filter(d => d.status === "active").length} active`}
-        action={<Button>+ Add Driver</Button>}
+        title="Renter Management"
+        subtitle={`${drivers.length} renters · ${drivers.filter(d => d.status === "active").length} active`}
+        action={<Button>+ Add Renter</Button>}
       />
       <div className="space-y-2">
         {drivers.map(d => {
