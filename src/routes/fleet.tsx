@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
@@ -28,6 +28,7 @@ function FleetPage() {
   const [reserveVehicleId, setReserveVehicleId] = useState<string | null>(null);
   const { status } = Route.useSearch();
   const navigate = Route.useNavigate();
+  const goto = useNavigate();
   const filtered = status ? vehicles.filter(v => v.status === status) : vehicles;
   return (
     <div>
@@ -44,8 +45,20 @@ function FleetPage() {
       )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map(v => (
-          <Card key={v.id} className="overflow-hidden transition-all hover:border-primary hover:shadow-md">
-            <Link to="/fleet/$vehicleId" params={{ vehicleId: v.id }} className="block">
+          <Card
+            key={v.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => goto({ to: "/fleet/$vehicleId", params: { vehicleId: v.id } })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                goto({ to: "/fleet/$vehicleId", params: { vehicleId: v.id } });
+              }
+            }}
+            className="cursor-pointer overflow-hidden transition-all hover:border-primary hover:shadow-md"
+          >
+            <div className="block">
               <div className="relative aspect-[16/10] w-full overflow-hidden rounded-t-xl bg-muted">
                 <img
                   src={carImage(v.model)}
@@ -72,10 +85,15 @@ function FleetPage() {
                 </div>
                 <div className="mt-2 text-xs text-muted-foreground">Risk tier {v.riskTier}</div>
               </CardContent>
-            </Link>
-            <div className="flex gap-2 border-t border-border bg-muted/30 p-2">
-              <Button asChild variant="ghost" size="sm" className="flex-1">
-                <Link to="/fleet/$vehicleId" params={{ vehicleId: v.id }}>View</Link>
+            </div>
+            <div className="flex gap-2 border-t border-border bg-muted/30 p-2" onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1"
+                onClick={() => goto({ to: "/fleet/$vehicleId", params: { vehicleId: v.id } })}
+              >
+                View
               </Button>
               <Button
                 size="sm"
