@@ -48,7 +48,7 @@ function RentalsPage() {
   const [signing, setSigning] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
   const [receipt, setReceipt] = useState<Rental | null>(null);
-  const [confirmReturn, setConfirmReturn] = useState<Rental | null>(null);
+  // (Mark as Returned now opens the full Return Inspection dialog directly.)
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
   useStoreVersion();
@@ -242,13 +242,8 @@ function RentalsPage() {
                       <Truck className="mr-1 h-4 w-4" /> Deliver vehicle
                     </Button>
                   )}
-                  {!r.endDate && getInspectionsForRental(r.id).some(i => i.type === "check-out") && (
-                    <Button variant="outline" size="sm" onClick={() => setReturning(r)}>
-                      <ClipboardCheck className="mr-1 h-4 w-4" /> Process return
-                    </Button>
-                  )}
                   {!r.endDate && (
-                    <Button size="sm" onClick={() => setConfirmReturn(r)}>
+                    <Button size="sm" onClick={() => setReturning(r)}>
                       <PackageCheck className="mr-1 h-4 w-4" /> Mark as Returned
                     </Button>
                   )}
@@ -327,33 +322,6 @@ function RentalsPage() {
         userId={user?.id}
       />
       <ReceiptDialog rental={receipt} onClose={() => setReceipt(null)} />
-      <AlertDialog open={!!confirmReturn} onOpenChange={(o) => !o && setConfirmReturn(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Mark this rental as Returned?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmReturn ? (() => {
-                const v = vehicleById(confirmReturn.vehicleId);
-                const d = driverById(confirmReturn.driverId);
-                return `${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""} (Plate ${v?.plate ?? "—"}) rented to ${d?.fullName ?? confirmReturn.driverId} will be moved to the Returned tab and the vehicle marked Available. This can't be undone from here.`;
-              })() : null}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (!confirmReturn) return;
-                markReturned(confirmReturn.id);
-                toast.success("Rental marked as Returned");
-                setConfirmReturn(null);
-              }}
-            >
-              Yes, mark Returned
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
