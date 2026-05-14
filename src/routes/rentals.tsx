@@ -8,7 +8,7 @@ import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, a
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +48,7 @@ function RentalsPage() {
   const [charging, setCharging] = useState<Rental | null>(null);
   const [receipt, setReceipt] = useState<Rental | null>(null);
   const sendSmsFn = useServerFn(sendRentalSms);
+  const sendSignLinkFn = useServerFn(sendSigningLink);
   useStoreVersion();
   // Prune any pending reservations whose 24h hold has expired,
   // and warn once when a hold drops below 2 hours remaining.
@@ -144,6 +145,24 @@ function RentalsPage() {
                   <Button size="sm" onClick={() => setSigning(r)} variant={r.signatureDataUrl ? "outline" : "default"}>
                     <FileSignature className="mr-1 h-4 w-4" />
                     {r.signatureDataUrl ? "Re-capture signature" : "Capture signature"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={async () => {
+                      try {
+                        const res = await sendSignLinkFn({
+                          data: { rentalId: r.id, origin: window.location.origin },
+                        });
+                        toast.success("Signing link sent via SMS", { description: res.link });
+                      } catch (e) {
+                        toast.error("Could not send link", {
+                          description: e instanceof Error ? e.message : String(e),
+                        });
+                      }
+                    }}
+                  >
+                    <Send className="mr-1 h-4 w-4" /> Send sign link to renter
                   </Button>
                   <Button
                     size="sm"
