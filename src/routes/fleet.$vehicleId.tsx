@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { vehicleById, rentals, maintenance, violations, inspections, payments, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
 import { ReportActions } from "@/components/app/ReportActions";
@@ -30,6 +31,13 @@ function VehicleDetail() {
   const activeDriver = activeRental ? driverById(activeRental.driverId) : null;
   const isCurrentlyRented = v.status === "rented" && !!activeRental && !activeRental.endDate;
   const nextDue = vPayments.find(p => p.status !== "paid");
+
+  const uniqueRenters = Array.from(new Map(vRentals.map(r => [r.driverId, driverById(r.driverId)])).entries())
+    .map(([driverId, driver]) => {
+      const rs = vRentals.filter(r => r.driverId === driverId);
+      const totalPaid = vPayments.filter(p => p.driverId === driverId && p.status === "paid").reduce((s, p) => s + p.amount, 0);
+      return { driverId, driver, count: rs.length, firstStart: rs.map(r => r.startDate).sort()[0], totalPaid };
+    });
 
   const slug = `${v.id}-${v.plate}`.replace(/\s+/g, "_");
 
@@ -105,46 +113,93 @@ function VehicleDetail() {
         </Card>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-        <Stat label="Mileage" value={`${v.mileage.toLocaleString()} mi`} />
-        <Stat label="Weekly rate" value={fmtMoney(v.weeklyRate)} />
-        <Stat label="Daily rate" value={fmtMoney(v.dailyRate)} />
-        <Stat label="Income (paid)" value={fmtMoney(incomeTotal)} />
-        <Stat label="Expenses" value={fmtMoney(expenseTotal)} />
-        <Stat label="Net" value={fmtMoney(netTotal)} />
-      </div>
+      <Tabs defaultValue="overview" className="mt-2">
+        <TabsList className="flex flex-wrap">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics / P&amp;L</TabsTrigger>
+          <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+          <TabsTrigger value="renters">Renters ({uniqueRenters.length})</TabsTrigger>
+          <TabsTrigger value="other">Violations &amp; Inspections</TabsTrigger>
+        </TabsList>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Section title="Rental history">
-          {vRentals.length === 0 ? <Empty/> : vRentals.map(r => (
-            <Row key={r.id} title={driverById(r.driverId)?.fullName ?? r.driverId} sub={`Started ${fmtDate(r.startDate)}`} right={<StatusBadge status={r.paymentStatus} />} />
-          ))}
-        </Section>
-        <Section title="Maintenance log">
-          {vMx.length === 0 ? <Empty/> : vMx.map(m => (
-            <Row key={m.id} title={m.serviceType} sub={`${fmtDate(m.dateCompleted)} · ${m.vendor}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
-          ))}
-        </Section>
-        <Section title="Violations">
-          {vViol.length === 0 ? <Empty/> : vViol.map(x => (
-            <Row key={x.id} title={x.type.toUpperCase()} sub={fmtDate(x.dateIssued)} right={<><span className="mr-2 font-medium">{fmtMoney(x.amount)}</span><StatusBadge status={x.status} /></>} />
-          ))}
-        </Section>
-        <Section title="Inspections">
-          {vInsp.length === 0 ? <Empty/> : vInsp.map(i => (
-            <Row key={i.id} title={i.type} sub={`${fmtDate(i.date)} · ${i.mileage.toLocaleString()} mi`} right={<StatusBadge status={i.damageNoted ? "missed" : "paid"} />} />
-          ))}
-        </Section>
-        <Section title="Income (payments collected)">
-          {vPayments.length === 0 ? <Empty/> : vPayments.map(p => (
-            <Row key={p.id} title={fmtMoney(p.amount)} sub={`${driverById(p.driverId)?.fullName ?? p.driverId} · due ${fmtDate(p.dueDate)}`} right={<StatusBadge status={p.status} />} />
-          ))}
-        </Section>
-      </div>
+        <TabsContent value="overview" className="mt-4 space-y-4">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Vehicle description</CardTitle></CardHeader>
+            <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
+              <Field label="Make / Model" value={`${v.make} ${v.model}`} />
+              <Field label="Year" value={String(v.year)} />
+              <Field label="VIN" value={v.vin} />
+              <Field label="Plate" value={v.plate} />
+              <Field label="Mileage" value={`${v.mileage.toLocaleString()} mi`} />
+              <Field label="Risk tier" value={v.riskTier} />
+              <Field label="Daily rate" value={fmtMoney(v.dailyRate)} />
+              <Field label="Weekly rate" value={fmtMoney(v.weeklyRate)} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="mt-4 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Stat label="Income (paid)" value={fmtMoney(incomeTotal)} />
+            <Stat label="Expenses" value={fmtMoney(expenseTotal)} />
+            <Stat label="Net P&L" value={fmtMoney(netTotal)} />
+          </div>
+          <Section title="Income (payments collected)">
+            {vPayments.length === 0 ? <Empty/> : vPayments.map(p => (
+              <Row key={p.id} title={fmtMoney(p.amount)} sub={`${driverById(p.driverId)?.fullName ?? p.driverId} · due ${fmtDate(p.dueDate)}`} right={<StatusBadge status={p.status} />} />
+            ))}
+          </Section>
+          <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/pnl">Open full P&amp;L report →</Link></Button>
+        </TabsContent>
+
+        <TabsContent value="maintenance" className="mt-4 space-y-4">
+          <Section title={`Maintenance records (${vMx.length})`}>
+            {vMx.length === 0 ? <Empty/> : vMx.map(m => (
+              <Row key={m.id} title={m.serviceType} sub={`${fmtDate(m.dateCompleted)} · ${m.vendor} · ${m.mileageAtService.toLocaleString()} mi · next due ${fmtDate(m.nextServiceDue)}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
+            ))}
+          </Section>
+          <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/maintenance">Open maintenance log →</Link></Button>
+        </TabsContent>
+
+        <TabsContent value="renters" className="mt-4 space-y-4">
+          <Section title={`Renters of this vehicle (${uniqueRenters.length})`}>
+            {uniqueRenters.length === 0 ? <Empty/> : uniqueRenters.map(u => (
+              <Link key={u.driverId} to="/drivers" className="block">
+                <Row
+                  title={u.driver?.fullName ?? u.driverId}
+                  sub={`${u.count} rental${u.count === 1 ? "" : "s"} · first started ${fmtDate(u.firstStart)}`}
+                  right={<span className="font-medium">{fmtMoney(u.totalPaid)} paid</span>}
+                />
+              </Link>
+            ))}
+          </Section>
+          <Section title="Rental history">
+            {vRentals.length === 0 ? <Empty/> : vRentals.map(r => (
+              <Row key={r.id} title={driverById(r.driverId)?.fullName ?? r.driverId} sub={`${fmtDate(r.startDate)} → ${r.endDate ? fmtDate(r.endDate) : "open"} · ${fmtMoney(r.weeklyRate)}/wk`} right={<StatusBadge status={r.paymentStatus} />} />
+            ))}
+          </Section>
+        </TabsContent>
+
+        <TabsContent value="other" className="mt-4 grid gap-4 lg:grid-cols-2">
+          <Section title="Violations">
+            {vViol.length === 0 ? <Empty/> : vViol.map(x => (
+              <Row key={x.id} title={x.type.toUpperCase()} sub={fmtDate(x.dateIssued)} right={<><span className="mr-2 font-medium">{fmtMoney(x.amount)}</span><StatusBadge status={x.status} /></>} />
+            ))}
+          </Section>
+          <Section title="Inspections">
+            {vInsp.length === 0 ? <Empty/> : vInsp.map(i => (
+              <Row key={i.id} title={i.type} sub={`${fmtDate(i.date)} · ${i.mileage.toLocaleString()} mi`} right={<StatusBadge status={i.damageNoted ? "missed" : "paid"} />} />
+            ))}
+          </Section>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
 
+function Field({ label, value }: { label: string; value: string }) {
+  return <div className="flex justify-between gap-3 border-b border-border/50 pb-1"><span className="text-muted-foreground">{label}</span><span className="font-medium">{value}</span></div>;
+}
 function Stat({ label, value }: { label: string; value: string }) {
   return <Card><CardContent className="p-4"><div className="text-xs uppercase text-muted-foreground">{label}</div><div className="mt-1 text-xl font-bold">{value}</div></CardContent></Card>;
 }
