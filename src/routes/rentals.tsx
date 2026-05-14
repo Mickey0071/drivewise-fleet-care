@@ -15,17 +15,26 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SignaturePad } from "@/components/app/SignaturePad";
+import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
+import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
 export const Route = createFileRoute("/rentals")({
   head: () => ({ meta: [{ title: "Reservations — Camauto Rentals" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    paid: typeof search.paid === "string" ? search.paid : undefined,
+    session_id: typeof search.session_id === "string" ? search.session_id : undefined,
+  }),
   component: RentalsPage,
 });
 
 const AGREEMENT_VERSION = "v1.0";
 
 function RentalsPage() {
+  const navigate = Route.useNavigate();
+  const { paid } = Route.useSearch();
+  const { user } = useAuth();
   const [newOpen, setNewOpen] = useState(false);
   const [editing, setEditing] = useState<Rental | null>(null);
   const [delivering, setDelivering] = useState<Rental | null>(null);
@@ -33,6 +42,7 @@ function RentalsPage() {
   const [extending, setExtending] = useState<Rental | null>(null);
   const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
   const [signing, setSigning] = useState<Rental | null>(null);
+  const [charging, setCharging] = useState<Rental | null>(null);
   useStoreVersion();
   // Prune any pending reservations whose 24h hold has expired
   useEffect(() => {
@@ -40,6 +50,14 @@ function RentalsPage() {
     const t = setInterval(prunePendingReservations, 60_000);
     return () => clearInterval(t);
   }, []);
+
+  // After Stripe redirect: mark reservation paid and clear query params
+  useEffect(() => {
+    if (!paid) return;
+    const activated = markReservationPaid(paid);
+    toast.success(activated ? "Payment received — reservation activated" : "Payment received");
+    navigate({ to: "/rentals", search: {}, replace: true });
+  }, [paid, navigate]);
 
   const pending = rentals.filter(r => r.reservationStatus === "pending");
   const active = rentals.filter(r => (r.reservationStatus ?? "active") === "active" && !r.endDate);
@@ -104,13 +122,11 @@ function RentalsPage() {
                   <Button
                     size="sm"
                     variant={r.paymentReceived ? "outline" : "default"}
-                    onClick={() => {
-                      const activated = markReservationPaid(r.id);
-                      toast.success(activated ? "Reservation activated" : "Payment recorded");
-                    }}
+                    onClick={() => setCharging(r)}
+                    disabled={r.paymentReceived}
                   >
                     <DollarSign className="mr-1 h-4 w-4" />
-                    {r.paymentReceived ? "Payment received ✓" : "Mark payment received"}
+                    {r.paymentReceived ? "Payment received ✓" : "Charge with Stripe"}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>Edit</Button>
                   <Button
@@ -203,12 +219,61 @@ function RentalsPage() {
       <ExtendRentalDialog rental={extending} onClose={() => setExtending(null)} />
       <AgreementDialog rental={viewingAgreement} onClose={() => setViewingAgreement(null)} />
       <CaptureSignatureDialog rental={signing} onClose={() => setSigning(null)} />
+      <ChargeRentalDialog
+        rental={charging}
+        onClose={() => setCharging(null)}
+        userEmail={user?.email}
+        userId={user?.id}
+      />
     </div>
   );
 }
 
 function EmptyState({ label }: { label: string }) {
   return <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">{label}</div>;
+}
+
+function ChargeRentalDialog({
+  rental, onClose, userEmail, userId,
+}: { rental: Rental | null; onClose: () => void; userEmail?: string; userId?: string }) {
+  const open = !!rental;
+  if (!rental) {
+    return (
+      <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent />
+      </Dialog>
+    );
+  }
+  const v = vehicleById(rental.vehicleId);
+  const d = driverById(rental.driverId);
+  const period = rental.billingPeriod ?? "weekly";
+  const periodLabel = period === "daily" ? "day" : period === "monthly" ? "month" : "week";
+  const amount = rental.rate ?? rental.weeklyRate;
+  const amountInCents = Math.round(amount * 100);
+  const returnUrl = `${window.location.origin}/rentals?paid=${rental.id}&session_id={CHECKOUT_SESSION_ID}`;
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Charge first {periodLabel} — {fmtMoney(amount)}</DialogTitle>
+        </DialogHeader>
+        <div className="rounded-md border bg-muted/30 p-3 text-sm">
+          <div><span className="text-muted-foreground">Vehicle:</span> {v?.year} {v?.make} {v?.model}</div>
+          <div><span className="text-muted-foreground">Renter:</span> {d?.fullName} · {d?.email}</div>
+          <div><span className="text-muted-foreground">Reservation:</span> {rental.id}</div>
+        </div>
+        <StripeRentalCheckout
+          kind="deposit"
+          amountInCents={amountInCents}
+          rentalId={rental.id}
+          customerEmail={d?.email || userEmail}
+          customerName={d?.fullName}
+          userId={userId}
+          returnUrl={returnUrl}
+        />
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function PendingHoldBadge({ rental }: { rental: Rental }) {
