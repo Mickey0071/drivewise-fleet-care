@@ -271,7 +271,7 @@ function RentalsPage() {
     <div>
       <PageHeader
         title="Reservations"
-        subtitle={`${active.length} on rent · ${pending.length} pending · ${completed.length} completed`}
+        subtitle={`${active.length} on rent · ${pending.length} pending · ${completed.length} returned`}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ReportActions csv={{
@@ -292,7 +292,7 @@ function RentalsPage() {
           <TabsTrigger value="pending">
             Pending {pending.length > 0 && <span className="ml-1 rounded-full bg-amber-500/20 px-2 text-xs text-amber-700 dark:text-amber-400">{pending.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="completed">Completed ({completed.length})</TabsTrigger>
+          <TabsTrigger value="completed">Returned ({completed.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="active" className="flex flex-col gap-3 mt-0">
           {active.length === 0 ? <EmptyState label="No vehicles currently on rent." /> : active.map(renderCard)}
@@ -303,7 +303,7 @@ function RentalsPage() {
           ) : pending.map(renderCard)}
         </TabsContent>
         <TabsContent value="completed" className="flex flex-col gap-3 mt-0">
-          {completed.length === 0 ? <EmptyState label="No completed rentals yet." /> : completed.map(renderCard)}
+          {completed.length === 0 ? <EmptyState label="No returned rentals yet." /> : completed.map(renderCard)}
         </TabsContent>
       </Tabs>
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
