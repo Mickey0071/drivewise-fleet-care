@@ -3,12 +3,60 @@ import { rentals, vehicles, payments, drivers, inspections, type Rental, type Re
 
 const listeners = new Set<() => void>();
 let version = 0;
-function emit() { version++; listeners.forEach(l => l()); }
+function emit() { version++; persist(); listeners.forEach(l => l()); }
 function subscribe(l: () => void) { listeners.add(l); return () => listeners.delete(l); }
 
 export function useStoreVersion() {
   return useSyncExternalStore(subscribe, () => version, () => version);
 }
+
+// ---------------------------------------------------------------------------
+// Persistence layer
+// Snapshots the mutable arrays into localStorage on every emit() and rehydrates
+// on module load, so data survives page refreshes, re-deploys, and tab closes.
+// Cross-device sync requires the database migration (next step).
+// ---------------------------------------------------------------------------
+const STORE_KEY = "camauto.store.v1";
+
+function snapshot() {
+  return { vehicles, drivers, rentals, payments, inspections };
+}
+
+function replaceArray<T>(target: T[], next: T[]) {
+  target.splice(0, target.length, ...next);
+}
+
+let hydrated = false;
+function hydrate() {
+  if (hydrated || typeof window === "undefined") return;
+  hydrated = true;
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data.vehicles) replaceArray(vehicles, data.vehicles);
+    if (data.drivers) replaceArray(drivers, data.drivers);
+    if (data.rentals) replaceArray(rentals, data.rentals);
+    if (data.payments) replaceArray(payments, data.payments);
+    if (data.inspections) replaceArray(inspections, data.inspections);
+  } catch {}
+}
+
+function persist() {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(snapshot())); } catch {}
+}
+
+/** Reset persisted store back to the seed mock data. */
+export function resetStore() {
+  if (typeof window !== "undefined") {
+    try { localStorage.removeItem(STORE_KEY); } catch {}
+  }
+  // Force a reload so the seed arrays from data.ts are re-imported fresh.
+  if (typeof window !== "undefined") window.location.reload();
+}
+
+hydrate();
 
 function nextRentalId() {
   const n = rentals.reduce((m, r) => Math.max(m, parseInt(r.id.replace(/\D/g, "")) || 0), 500);
