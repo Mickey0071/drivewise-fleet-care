@@ -8,7 +8,7 @@ import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, a
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { useAuth } from "@/hooks/use-auth";
+import { useServerFn } from "@tanstack/react-start";
+import { sendRentalSms } from "@/lib/rental-sms.functions";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
@@ -43,11 +45,34 @@ function RentalsPage() {
   const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
   const [signing, setSigning] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
+  const [receipt, setReceipt] = useState<Rental | null>(null);
+  const sendSmsFn = useServerFn(sendRentalSms);
   useStoreVersion();
-  // Prune any pending reservations whose 24h hold has expired
+  // Prune any pending reservations whose 24h hold has expired,
+  // and warn once when a hold drops below 2 hours remaining.
   useEffect(() => {
-    prunePendingReservations();
-    const t = setInterval(prunePendingReservations, 60_000);
+    const warned = new Set<string>();
+    function tick() {
+      prunePendingReservations();
+      const now = Date.now();
+      for (const r of rentals) {
+        if (r.reservationStatus !== "pending") continue;
+        const exp = pendingExpiresAt(r);
+        if (!exp) continue;
+        const remaining = exp - now;
+        if (remaining > 0 && remaining < 2 * 3_600_000 && !warned.has(r.id)) {
+          warned.add(r.id);
+          const d = driverById(r.driverId);
+          const v = vehicleById(r.vehicleId);
+          const mins = Math.max(1, Math.floor(remaining / 60_000));
+          toast.warning(`Hold expiring in ${mins}m`, {
+            description: `${v?.year} ${v?.make} ${v?.model} · ${d?.fullName ?? r.driverId}`,
+          });
+        }
+      }
+    }
+    tick();
+    const t = setInterval(tick, 60_000);
     return () => clearInterval(t);
   }, []);
 
@@ -132,6 +157,28 @@ function RentalsPage() {
                   <Button
                     variant="ghost"
                     size="sm"
+                    onClick={async () => {
+                      const phone = d?.phone;
+                      if (!phone) { toast.error("No phone on file for renter"); return; }
+                      const v2 = vehicleById(r.vehicleId);
+                      const need = [];
+                      if (!r.signatureDataUrl) need.push("sign your rental agreement");
+                      if (!r.paymentReceived) need.push("complete the first payment");
+                      const action = need.length ? need.join(" and ") : "confirm your reservation";
+                      const msg = `Rentalprise Auto: Your ${v2?.year ?? ""} ${v2?.make ?? ""} ${v2?.model ?? ""} is on hold until ${new Date(pendingExpiresAt(r) ?? Date.now()).toLocaleString()}. Please come in to ${action}.`;
+                      try {
+                        await sendSmsFn({ data: { phone, message: msg, name: d?.fullName } });
+                        toast.success("SMS sent to renter");
+                      } catch (e) {
+                        toast.error("SMS failed", { description: e instanceof Error ? e.message : String(e) });
+                      }
+                    }}
+                  >
+                    <MessageSquare className="mr-1 h-4 w-4" /> Notify renter
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="text-destructive hover:text-destructive"
                     onClick={() => {
                       cancelReservation(r.id);
@@ -164,6 +211,9 @@ function RentalsPage() {
                       <FileSignature className="mr-1 h-4 w-4" /> View agreement
                     </Button>
                   )}
+                  <Button variant="ghost" size="sm" onClick={() => setReceipt(r)}>
+                    <Receipt className="mr-1 h-4 w-4" /> Receipt
+                  </Button>
                 </>
               )}
             </div>
@@ -225,6 +275,7 @@ function RentalsPage() {
         userEmail={user?.email}
         userId={user?.id}
       />
+      <ReceiptDialog rental={receipt} onClose={() => setReceipt(null)} />
     </div>
   );
 }
