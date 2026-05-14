@@ -7,7 +7,7 @@ import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@
 import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,30 @@ function RentalsPage() {
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
   useStoreVersion();
+  // Notify staff when a remote signature arrives (via realtime) and the
+  // reservation flips from pending → active.
+  const seenSignedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    for (const r of rentals) {
+      const key = `${r.id}:${r.signatureDataUrl ? 1 : 0}:${r.reservationStatus ?? "active"}`;
+      if (seenSignedRef.current.has(key)) continue;
+      // First pass: just record current state, don't toast.
+      if (seenSignedRef.current.size === 0) { seenSignedRef.current.add(key); continue; }
+      seenSignedRef.current.add(key);
+      if (r.signatureDataUrl && r.reservationStatus === "active") {
+        const d = driverById(r.driverId);
+        const v = vehicleById(r.vehicleId);
+        toast.success("Renter signed — moved to On Rent", {
+          description: `${d?.fullName ?? r.driverId} · ${v?.year} ${v?.make} ${v?.model}`,
+        });
+      } else if (r.signatureDataUrl && r.reservationStatus === "pending") {
+        const d = driverById(r.driverId);
+        toast.success(`Signature received from ${d?.fullName ?? r.driverId}`, {
+          description: "Waiting on payment to activate.",
+        });
+      }
+    }
+  });
   // Prune any pending reservations whose 24h hold has expired,
   // and warn once when a hold drops below 2 hours remaining.
   useEffect(() => {
@@ -247,7 +271,7 @@ function RentalsPage() {
     <div>
       <PageHeader
         title="Reservations"
-        subtitle={`${active.length} active · ${pending.length} pending · ${completed.length} completed`}
+        subtitle={`${active.length} on rent · ${pending.length} pending · ${completed.length} completed`}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ReportActions csv={{
@@ -264,14 +288,14 @@ function RentalsPage() {
       />
       <Tabs defaultValue={pending.length > 0 ? "pending" : "active"} className="w-full">
         <TabsList className="mb-4">
-          <TabsTrigger value="active">Active ({active.length})</TabsTrigger>
+          <TabsTrigger value="active">On Rent ({active.length})</TabsTrigger>
           <TabsTrigger value="pending">
             Pending {pending.length > 0 && <span className="ml-1 rounded-full bg-amber-500/20 px-2 text-xs text-amber-700 dark:text-amber-400">{pending.length}</span>}
           </TabsTrigger>
           <TabsTrigger value="completed">Completed ({completed.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="active" className="flex flex-col gap-3 mt-0">
-          {active.length === 0 ? <EmptyState label="No active rentals." /> : active.map(renderCard)}
+          {active.length === 0 ? <EmptyState label="No vehicles currently on rent." /> : active.map(renderCard)}
         </TabsContent>
         <TabsContent value="pending" className="flex flex-col gap-3 mt-0">
           {pending.length === 0 ? (
