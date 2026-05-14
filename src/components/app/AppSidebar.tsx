@@ -17,7 +17,7 @@ type Item = { title: string; url: string; icon: typeof LayoutDashboard; roles: A
 const adminItems: Item[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["admin"] },
   { title: "Fleet", url: "/fleet", icon: Car, roles: ["admin"] },
-  { title: "Renters", url: "/drivers", icon: Users, roles: ["admin"] },
+  { title: "Customers", url: "/drivers", icon: Users, roles: ["admin"] },
   { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin"] },
   { title: "Calendar", url: "/calendar", icon: Calendar, roles: ["admin"] },
   { title: "Payments", url: "/payments", icon: DollarSign, roles: ["admin"] },
