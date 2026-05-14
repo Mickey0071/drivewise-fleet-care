@@ -448,6 +448,27 @@ function nextDriverId() {
   return `D-${n + 1}`;
 }
 
+function nextVehicleId() {
+  const n = vehicles.reduce((m, v) => Math.max(m, parseInt(v.id.replace(/\D/g, "")) || 0), 100);
+  return `V-${n + 1}`;
+}
+
+import type { Vehicle } from "./data";
+
+export function addVehicle(input: Omit<Vehicle, "id" | "status" | "mileage" | "riskTier"> & Partial<Pick<Vehicle, "status" | "mileage" | "riskTier">>) {
+  const vehicle: Vehicle = {
+    id: nextVehicleId(),
+    status: "available",
+    mileage: 0,
+    riskTier: "A",
+    ...input,
+  };
+  vehicles.push(vehicle);
+  cloudWrite("vehicle:insert", supabase.from("vehicles").insert(toVehicle(vehicle)));
+  emit();
+  return vehicle;
+}
+
 export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "insuranceOnFile"> & Partial<Pick<Driver, "status" | "insuranceOnFile" | "dateAdded">>) {
   const driver: Driver = {
     id: nextDriverId(),
