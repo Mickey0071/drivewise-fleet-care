@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { vehicleById, rentals, maintenance, violations, inspections, payments, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
-import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useState } from "react";
 import { ArrowLeft, Link2 } from "lucide-react";
@@ -53,8 +52,6 @@ function VehicleDetail() {
       return { driverId, driver, count: rs.length, firstStart: rs.map(r => r.startDate).sort()[0], totalPaid };
     });
 
-  const slug = `${v.id}-${v.plate}`.replace(/\s+/g, "_");
-
   return (
     <div>
       <Button variant="outline" size="sm" asChild className="mb-3">
@@ -82,38 +79,6 @@ function VehicleDetail() {
             >
               Reserve
             </Button>
-            <ReportActions
-              csvs={[
-                {
-                  filename: `${slug}-income.csv`,
-                  headers: ["Payment ID", "Rental", "Driver", "Amount", "Due", "Paid", "Status", "Method"],
-                  rows: vPayments.map(p => [p.id, p.rentalId, driverById(p.driverId)?.fullName ?? p.driverId, p.amount, p.dueDate, p.paidDate ?? "", p.status, p.method ?? ""]),
-                },
-                {
-                  filename: `${slug}-expenses.csv`,
-                  headers: ["Type", "ID", "Description", "Date", "Amount", "Vendor/Status"],
-                  rows: [
-                    ...vMx.map(m => ["maintenance", m.id, m.serviceType, m.dateCompleted, m.cost, m.vendor] as const),
-                    ...vViol.map(x => ["violation", x.id, x.type, x.dateIssued, x.amount, x.status] as const),
-                  ].map(r => [...r]),
-                },
-                {
-                  filename: `${slug}-maintenance.csv`,
-                  headers: ["ID", "Service", "Date", "Vendor", "Mileage", "Cost", "Next due"],
-                  rows: vMx.map(m => [m.id, m.serviceType, m.dateCompleted, m.vendor, m.mileageAtService, m.cost, m.nextServiceDue]),
-                },
-                {
-                  filename: `${slug}-repair-history.csv`,
-                  headers: ["ID", "Repair", "Date", "Vendor", "Mileage", "Cost", "Notes"],
-                  rows: vRepairs.map(m => [m.id, m.serviceType, m.dateCompleted, m.vendor, m.mileageAtService, m.cost, m.notes ?? ""]),
-                },
-                {
-                  filename: `${slug}-rentals.csv`,
-                  headers: ["Rental ID", "Driver", "Start", "End", "Weekly rate", "Deposit", "Status"],
-                  rows: vRentals.map(r => [r.id, driverById(r.driverId)?.fullName ?? r.driverId, r.startDate, r.endDate ?? "", r.weeklyRate, r.depositPaid, r.paymentStatus]),
-                },
-              ]}
-            />
           </div>
         }
       />
