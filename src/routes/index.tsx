@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { Car, Users, DollarSign, Wrench, AlertTriangle, TrendingUp } from "lucide-react";
+import { Car, Users, DollarSign, Wrench, AlertTriangle, TrendingUp, Clock } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ function Index() {
     rented: vehicles.filter(v => v.status === "rented").length,
     maintenance: vehicles.filter(v => v.status === "maintenance").length,
     impound: vehicles.filter(v => v.status === "impound").length,
+    pending: rentals.filter(r => r.reservationStatus === "pending").length,
   };
   const today = new Date();
   const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
@@ -37,10 +38,11 @@ function Index() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard label="Available" value={counts.available} tone="success" icon={Car} to="/fleet" search={{ status: "available" }} />
         <StatCard label="Rented" value={counts.rented} tone="info" icon={Car} to="/fleet" search={{ status: "rented" }} />
         <StatCard label="Maintenance" value={counts.maintenance} tone="warning" icon={Wrench} to="/maintenance" />
+        <StatCard label="Pending" value={counts.pending} tone="warning" icon={Clock} to="/rentals" />
         <StatCard label="Impound" value={counts.impound} tone="danger" icon={AlertTriangle} to="/fleet" search={{ status: "impound" }} />
       </div>
 
