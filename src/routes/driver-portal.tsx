@@ -8,6 +8,7 @@ import { drivers, rentals, payments, vehicleById, fmtDate, fmtMoney } from "@/li
 import type { Payment } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
 import { Camera, IdCard, Truck, CheckCircle2, ClipboardCheck } from "lucide-react";
+import { FileSignature } from "lucide-react";
 import { toast } from "sonner";
 import { ReportActions } from "@/components/app/ReportActions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +19,7 @@ import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { useAuth } from "@/hooks/use-auth";
 import { CreditCard, Wallet } from "lucide-react";
+import { RentalAgreement } from "@/components/app/RentalAgreement";
 
 export const Route = createFileRoute("/driver-portal")({
   head: () => ({ meta: [{ title: "Renter Portal — Camauto Rentals" }] }),
@@ -37,6 +39,7 @@ function DriverPortalPage() {
   const next = myPayments.find(p => p.status !== "paid");
   const [paying, setPaying] = useState<Payment | null>(null);
   const [stripeOpen, setStripeOpen] = useState<null | { kind: "weekly" | "deposit"; amount: number }>(null);
+  const [agreementOpen, setAgreementOpen] = useState(false);
 
   return (
     <div>
@@ -132,6 +135,29 @@ function DriverPortalPage() {
               ))}
             </CardContent>
           </Card>
+
+          <Card className="mb-6">
+            <CardHeader><CardTitle className="text-base">Rental agreement</CardTitle></CardHeader>
+            <CardContent className="flex items-center justify-between p-4">
+              <div className="text-sm">
+                {myRental.signatureDataUrl ? (
+                  <>
+                    <div className="font-medium">Signed{myRental.signedAt ? ` on ${fmtDate(myRental.signedAt.slice(0, 10))}` : ""}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {myRental.extensions?.length
+                        ? `${myRental.extensions.length} extension${myRental.extensions.length === 1 ? "" : "s"} on file`
+                        : "Original agreement"}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-muted-foreground">Not signed yet</div>
+                )}
+              </div>
+              <Button variant="outline" onClick={() => setAgreementOpen(true)} disabled={!myRental.signatureDataUrl}>
+                <FileSignature className="mr-1 h-4 w-4" /> View agreement
+              </Button>
+            </CardContent>
+          </Card>
         </>
       )}
 
@@ -153,6 +179,23 @@ function DriverPortalPage() {
       </div>
 
       <PayDialog payment={paying} onClose={() => setPaying(null)} driverName={me.fullName} />
+
+      {myRental && v && (
+        <Dialog open={agreementOpen} onOpenChange={setAgreementOpen}>
+          <DialogContent className="max-w-4xl p-0">
+            <DialogHeader className="px-4 pt-4">
+              <DialogTitle>Your rental agreement</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-[80vh] overflow-y-auto bg-zinc-100 p-4">
+              <RentalAgreement rental={myRental} driver={me} vehicle={v} />
+            </div>
+            <DialogFooter className="px-4 pb-4">
+              <Button variant="outline" onClick={() => window.print()}>Print</Button>
+              <Button variant="outline" onClick={() => setAgreementOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <Dialog open={!!stripeOpen} onOpenChange={(o) => { if (!o) setStripeOpen(null); }}>
         <DialogContent className="max-w-3xl p-0 overflow-hidden">
