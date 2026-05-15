@@ -268,6 +268,18 @@ function subscribeRealtime() {
       }
       emit();
     })
+    .on("postgres_changes", { event: "*", schema: "public", table: "vehicle_photos" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = vehiclePhotos.findIndex(x => x.id === id);
+        if (idx >= 0) vehiclePhotos.splice(idx, 1);
+      } else {
+        const next = fromVehiclePhoto(payload.new);
+        const idx = vehiclePhotos.findIndex(x => x.id === next.id);
+        if (idx >= 0) vehiclePhotos[idx] = next; else vehiclePhotos.push(next);
+      }
+      emit();
+    })
     .subscribe();
 }
 
