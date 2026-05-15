@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto } from "./data";
 import { supabase } from "@/integrations/supabase/client";
 
 const listeners = new Set<() => void>();
@@ -121,6 +121,11 @@ const toExpense = (e: Expense) => ({
   vendor: e.vendor ?? null, vehicle_id: e.vehicleId ?? null,
   notes: e.notes ?? null, receipt_url: e.receiptUrl ?? null,
 });
+const fromVehiclePhoto = (r: any): VehiclePhoto => ({
+  id: r.id, vehicleId: r.vehicle_id, url: r.url,
+  caption: r.caption ?? undefined, sortOrder: r.sort_order ?? 0,
+  createdAt: r.created_at,
+});
 
 let hydrationPromise: Promise<void> | null = null;
 let hydrated = false;
@@ -134,7 +139,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
   }
   if (hydrationPromise) return hydrationPromise;
   hydrationPromise = (async () => {
-    const [v, d, r, p, i, e, ex] = await Promise.all([
+    const [v, d, r, p, i, e, ex, vp] = await Promise.all([
       supabase.from("vehicles").select("*"),
       supabase.from("drivers").select("*"),
       supabase.from("rentals").select("*"),
@@ -142,8 +147,9 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
       supabase.from("inspections").select("*"),
       supabase.from("rental_extensions").select("*"),
       supabase.from("expenses").select("*"),
+      supabase.from("vehicle_photos").select("*").order("sort_order", { ascending: true }),
     ]);
-    const failures = [v, d, r, p, i, e, ex].filter(result => result.error);
+    const failures = [v, d, r, p, i, e, ex, vp].filter(result => result.error);
     if (failures.length) {
       failures.forEach(result => console.error("[cloud:hydrate]", result.error));
       hydrationPromise = null;
@@ -155,6 +161,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
     replaceArray(payments, (p.data ?? []).map(fromPayment));
     replaceArray(inspections, (i.data ?? []).map(fromInspection));
     replaceArray(expenses, (ex.data ?? []).map(fromExpense));
+    replaceArray(vehiclePhotos, (vp.data ?? []).map(fromVehiclePhoto));
     hydrated = true;
     emit();
     subscribeRealtime();
@@ -258,6 +265,18 @@ function subscribeRealtime() {
         const next = fromExpense(payload.new);
         const idx = expenses.findIndex(x => x.id === next.id);
         if (idx >= 0) expenses[idx] = next; else expenses.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "vehicle_photos" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = vehiclePhotos.findIndex(x => x.id === id);
+        if (idx >= 0) vehiclePhotos.splice(idx, 1);
+      } else {
+        const next = fromVehiclePhoto(payload.new);
+        const idx = vehiclePhotos.findIndex(x => x.id === next.id);
+        if (idx >= 0) vehiclePhotos[idx] = next; else vehiclePhotos.push(next);
       }
       emit();
     })
@@ -612,6 +631,61 @@ export async function uploadVehiclePhoto(vehicleId: string, file: File): Promise
   if (error) throw error;
   const { data } = supabase.storage.from("vehicle-photos").getPublicUrl(path);
   return data.publicUrl;
+}
+
+export function getVehiclePhotos(vehicleId: string): VehiclePhoto[] {
+  return vehiclePhotos
+    .filter(p => p.vehicleId === vehicleId)
+    .slice()
+    .sort((a, b) => (a.sortOrder - b.sortOrder) || a.createdAt.localeCompare(b.createdAt));
+}
+
+export async function addVehicleGalleryPhoto(vehicleId: string, file: File, caption?: string): Promise<VehiclePhoto> {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${vehicleId}/gallery/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error: upErr } = await supabase.storage.from("vehicle-photos").upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+    contentType: file.type || "image/jpeg",
+  });
+  if (upErr) throw upErr;
+  const { data: pub } = supabase.storage.from("vehicle-photos").getPublicUrl(path);
+  const url = pub.publicUrl;
+  const maxOrder = vehiclePhotos.filter(p => p.vehicleId === vehicleId)
+    .reduce((m, p) => Math.max(m, p.sortOrder), -1);
+  const row = {
+    vehicle_id: vehicleId,
+    url,
+    caption: caption ?? null,
+    sort_order: maxOrder + 1,
+  };
+  const { data, error } = await supabase.from("vehicle_photos").insert(row as never).select().single();
+  if (error) throw error;
+  const photo = fromVehiclePhoto(data);
+  if (!vehiclePhotos.some(p => p.id === photo.id)) vehiclePhotos.push(photo);
+  emit();
+  return photo;
+}
+
+export async function deleteVehicleGalleryPhoto(photoId: string): Promise<void> {
+  const idx = vehiclePhotos.findIndex(p => p.id === photoId);
+  if (idx < 0) return;
+  const photo = vehiclePhotos[idx];
+  // attempt to remove the storage object (best-effort)
+  try {
+    const m = photo.url.match(/\/vehicle-photos\/(.+)$/);
+    if (m) await supabase.storage.from("vehicle-photos").remove([m[1]]);
+  } catch (e) {
+    console.warn("[cloud:vehicle_photos:storage] could not delete object", e);
+  }
+  vehiclePhotos.splice(idx, 1);
+  emit();
+  const cloudReady = cloudWrite("vehicle_photos:delete", supabase.from("vehicle_photos").delete().eq("id", photoId)).catch((error) => {
+    vehiclePhotos.splice(idx, 0, photo);
+    emit();
+    throw error;
+  });
+  await cloudReady;
 }
 
 export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "insuranceOnFile"> & Partial<Pick<Driver, "status" | "insuranceOnFile" | "dateAdded">>) {

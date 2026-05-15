@@ -79,6 +79,10 @@ export interface PayrollRun {
   totalPayout: number; status: "draft" | "approved" | "paid";
   lines: { staffId: string; hours: number; vehicles: number; gross: number; net: number; status: "pending" | "sent" | "failed"; }[];
 }
+export interface VehiclePhoto {
+  id: string; vehicleId: string; url: string; caption?: string;
+  sortOrder: number; createdAt: string;
+}
 
 export const vehicles: Vehicle[] = [];
 export const drivers: Driver[] = [];
@@ -87,6 +91,7 @@ export const payments: Payment[] = [];
 export const maintenance: Maintenance[] = [];
 export const inspections: Inspection[] = [];
 export const violations: Violation[] = [];
+export const vehiclePhotos: VehiclePhoto[] = [];
 
 export const staff: Staff[] = [
   { id: "S-01", fullName: "Ray Mitchell", role: "Lot Manager", phone: "(404) 555-1010", email: "ray@camauto.com", payType: "salary", payRate: 1200, stripeConnected: true, status: "active" },
