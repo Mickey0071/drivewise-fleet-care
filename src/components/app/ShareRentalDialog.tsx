@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Copy, MessageSquare, Mail, Link2, Loader2 } from "lucide-react";
-import { createShareLink } from "@/lib/share-rental.functions";
+import { createShareLink, sendShareLinkSms } from "@/lib/share-rental.functions";
 import type { Vehicle } from "@/lib/mock/data";
 
 export function ShareRentalDialog({
@@ -20,6 +20,7 @@ export function ShareRentalDialog({
   vehicle: Vehicle | null;
 }) {
   const create = useServerFn(createShareLink);
+  const sendSms = useServerFn(sendShareLinkSms);
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [startDate, setStartDate] = useState(today);
@@ -27,6 +28,7 @@ export function ShareRentalDialog({
   const [rate, setRate] = useState<string>("");
   const [token, setToken] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [smsLoading, setSmsLoading] = useState(false);
 
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -78,19 +80,19 @@ export function ShareRentalDialog({
     }
   }
 
-  function handleOpenSms() {
-    if (!url) return;
-    const greeting = name ? `Hi ${name}, ` : "Hi, ";
-    const body = `${greeting}you're invited to rent a vehicle from Camauto Rentals. Complete your application here: ${url} (link expires in 14 days)`;
-    // Strip everything except digits and leading + for the sms: URI
-    const cleanPhone = phone.trim().replace(/[^\d+]/g, "");
-    // iOS uses "&body=", Android uses "?body=" — "&" works for both when a number is present;
-    // when no number, use "?body=".
-    const href = cleanPhone
-      ? `sms:${cleanPhone}?&body=${encodeURIComponent(body)}`
-      : `sms:?body=${encodeURIComponent(body)}`;
-    window.location.href = href;
-    toast.success("Opening your messages app…");
+  async function handleSendSms() {
+    if (!url || !token) return;
+    const cleanPhone = phone.trim();
+    if (cleanPhone.length < 7) return toast.error("Enter a valid phone number");
+    setSmsLoading(true);
+    try {
+      await sendSms({ data: { token, url, phone: cleanPhone, name: name.trim() || undefined } });
+      toast.success(`Sent to ${cleanPhone}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send SMS");
+    } finally {
+      setSmsLoading(false);
+    }
   }
 
   function handleSendEmail() {
@@ -171,10 +173,12 @@ export function ShareRentalDialog({
               <div className="rounded-md border border-border p-3 space-y-2">
                 <Label htmlFor="share-phone" className="flex items-center gap-2 text-sm"><MessageSquare className="h-4 w-4" /> Text to customer</Label>
                 <div className="flex gap-2">
-                  <Input id="share-phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 555 555 5555 (optional)" />
-                  <Button variant="outline" onClick={handleOpenSms}>Open</Button>
+                  <Input id="share-phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 555 555 5555" />
+                  <Button onClick={handleSendSms} disabled={smsLoading}>
+                    {smsLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</> : "Send link"}
+                  </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Opens your phone's Messages app with the link pre-filled. Review and hit send.</p>
+                <p className="text-xs text-muted-foreground">Sends an SMS to the customer via GoHighLevel with the rental link.</p>
               </div>
 
               <div className="rounded-md border border-border p-3 space-y-2">
