@@ -906,64 +906,17 @@ function AgreementDialog({ rental, onClose }: { rental: Rental | null; onClose: 
   const d = rental ? driverById(rental.driverId) : null;
   return (
     <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-4xl p-0">
         <DialogHeader>
-          <DialogTitle>Signed rental agreement</DialogTitle>
+          <DialogTitle className="px-4 pt-4">Signed rental agreement</DialogTitle>
         </DialogHeader>
         {rental && v && d && (
-          <div className="space-y-3 text-sm max-h-[70vh] overflow-y-auto pr-1">
-            <div className="rounded-lg border bg-muted/30 p-3">
-              <div className="font-medium">{v.year} {v.make} {v.model} · {v.plate}</div>
-              <div className="text-xs text-muted-foreground">Renter: {d.fullName}</div>
-              <div className="text-xs text-muted-foreground">
-                Started {fmtDate(rental.startDate)}{rental.endDate ? ` · Ends ${fmtDate(rental.endDate)}` : ""}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs uppercase text-muted-foreground mb-1">
-                Signature {rental.agreementVersion ? `· ${rental.agreementVersion}` : ""}
-              </div>
-              {rental.signatureDataUrl ? (
-                <img src={rental.signatureDataUrl} alt="Signature" className="w-full rounded border bg-white object-contain p-2" />
-              ) : (
-                <div className="rounded border border-dashed p-6 text-center text-xs text-muted-foreground">No signature on file</div>
-              )}
-              {rental.signedAt && (
-                <div className="mt-2 text-xs text-muted-foreground">
-                  Signed by {rental.signedBy ?? d.fullName} on {new Date(rental.signedAt).toLocaleString()}
-                </div>
-              )}
-            </div>
-            {rental.extensions && rental.extensions.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-xs uppercase text-muted-foreground">Extension addenda</div>
-                {rental.extensions.map((ext, i) => (
-                  <div key={ext.id} className="rounded-lg border bg-card p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-medium">Addendum #{i + 1}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {ext.previousEndDate ? `${fmtDate(ext.previousEndDate)} → ` : ""}{fmtDate(ext.newEndDate)} · +{ext.periods} {ext.periodLabel}{ext.periods === 1 ? "" : "s"}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-bold">{fmtMoney(ext.additionalAmount)}</div>
-                        <div className="text-xs text-muted-foreground">added to receipt</div>
-                      </div>
-                    </div>
-                    {ext.signatureDataUrl && (
-                      <img src={ext.signatureDataUrl} alt="Addendum signature" className="mt-2 h-16 w-full rounded border bg-white object-contain p-1" />
-                    )}
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      Signed by {ext.signedBy ?? d.fullName} on {new Date(ext.extendedAt).toLocaleString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="max-h-[80vh] overflow-y-auto bg-zinc-100 p-4">
+            <RentalAgreement rental={rental} driver={d} vehicle={v} />
           </div>
         )}
-        <DialogFooter>
+        <DialogFooter className="px-4 pb-4">
+          <Button variant="outline" onClick={() => window.print()}>Print</Button>
           <Button variant="outline" onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>
