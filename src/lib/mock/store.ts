@@ -27,12 +27,14 @@ const fromVehicle = (r: any) => ({
   plate: r.plate, mileage: r.mileage, status: r.status, riskTier: r.risk_tier,
   dailyRate: Number(r.daily_rate), weeklyRate: Number(r.weekly_rate),
   notes: r.notes ?? undefined, nextServiceDue: r.next_service_due ?? undefined,
+  imageUrl: r.image_url ?? undefined,
 });
 const toVehicle = (v: any) => ({
   id: v.id, make: v.make, model: v.model, year: v.year, vin: v.vin,
   plate: v.plate, mileage: v.mileage, status: v.status, risk_tier: v.riskTier,
   daily_rate: v.dailyRate, weekly_rate: v.weeklyRate,
   notes: v.notes ?? null, next_service_due: v.nextServiceDue ?? null,
+  image_url: v.imageUrl ?? null,
 });
 const fromDriver = (r: any) => ({
   id: r.id, fullName: r.full_name, phone: r.phone, email: r.email,
