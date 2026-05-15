@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { vehicles, drivers, vehicleById, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { addRental, hasConflict, addDriver, getActiveRentalForDriver, markReturned, useStoreVersion } from "@/lib/mock/store";
+import { useServerFn } from "@tanstack/react-start";
+import { sendSigningLink } from "@/lib/sign.functions";
 import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus, Repeat, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -35,6 +37,7 @@ interface Props {
 
 export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: Props) {
   useStoreVersion();
+  const sendSignLinkFn = useServerFn(sendSigningLink);
   const [step, setStep] = useState<Step>(0);
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [driverId, setDriverId] = useState<string | null>(null);
@@ -134,7 +137,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     if (existingRental && isSwap) {
       markReturned(existingRental.id, startDate);
     }
-    addRental({
+    const newRental = addRental({
       vehicleId: vehicle.id,
       driverId: driver.id,
       startDate,
@@ -155,6 +158,28 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     } else {
       toast.success("Reservation pending", {
         description: `${driver.fullName} · ${vehicle.year} ${vehicle.make} ${vehicle.model} — vehicle held 24h until signature + payment`,
+      });
+    }
+    // Auto-text the renter the signing link (retry briefly while cloud insert lands)
+    if (driver.phone) {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const trySend = async (attempt = 0): Promise<void> => {
+        try {
+          await sendSignLinkFn({ data: { rentalId: newRental.id, origin } });
+          toast.success("Signing link texted to renter", { description: driver.phone });
+        } catch (e) {
+          if (attempt < 4) {
+            await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+            return trySend(attempt + 1);
+          }
+          const msg = e instanceof Error ? e.message : "Unknown error";
+          toast.error("Could not text signing link", { description: msg });
+        }
+      };
+      void trySend();
+    } else {
+      toast.warning("No phone on file — signing link not sent", {
+        description: "Add a phone number to the renter to enable auto-text.",
       });
     }
     close(false);
