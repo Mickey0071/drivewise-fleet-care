@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { vehicleById, rentals, maintenance, violations, inspections, payments, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
+import { uploadVehiclePhoto, updateVehicleImage, useStoreVersion } from "@/lib/mock/store";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
-import { useState } from "react";
-import { ArrowLeft, Link2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { ArrowLeft, Link2, Camera } from "lucide-react";
 import { toast } from "sonner";
 
 const REPAIR_KEYWORDS = ["brake", "transmission", "repair", "pads", "engine", "battery", "tire", "body", "glass", "diagnostic"];
@@ -21,10 +22,13 @@ export const Route = createFileRoute("/fleet/$vehicleId")({
 });
 
 function VehicleDetail() {
+  useStoreVersion();
   const { vehicleId } = Route.useParams();
   const { tab } = Route.useSearch();
   const v = vehicleById(vehicleId);
   const [reserveOpen, setReserveOpen] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
   if (!v) return <div className="text-muted-foreground">Vehicle not found.</div>;
 
   const vRentals = rentals.filter(r => r.vehicleId === v.id);
@@ -57,14 +61,50 @@ function VehicleDetail() {
       <Button variant="outline" size="sm" asChild className="mb-3">
         <Link to="/fleet"><ArrowLeft className="mr-1 h-4 w-4" />Back to Fleet</Link>
       </Button>
-      <div className="mb-4 overflow-hidden rounded-xl border border-border bg-muted">
+      <div className="relative mb-4 overflow-hidden rounded-xl border border-border bg-muted">
         <img
-          src={carImage(v.model)}
+          src={v.imageUrl ?? carImage(v.model)}
           alt={`${v.year} ${v.make} ${v.model}`}
           width={800}
           height={512}
           className="aspect-[21/9] w-full object-cover"
         />
+        <div className="absolute right-2 top-2 flex gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setUploading(true);
+              try {
+                const url = await uploadVehiclePhoto(v.id, file);
+                updateVehicleImage(v.id, url);
+                toast.success("Photo updated");
+              } catch (err: any) {
+                toast.error("Upload failed", { description: err?.message ?? "Try again" });
+              } finally {
+                setUploading(false);
+                if (fileRef.current) fileRef.current.value = "";
+              }
+            }}
+          />
+          <Button size="sm" variant="secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>
+            <Camera className="mr-1 h-4 w-4" />{uploading ? "Uploading…" : v.imageUrl ? "Change photo" : "Add photo"}
+          </Button>
+          {v.imageUrl && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={uploading}
+              onClick={() => { updateVehicleImage(v.id, null); toast.success("Photo removed"); }}
+            >
+              Remove
+            </Button>
+          )}
+        </div>
       </div>
       <PageHeader
         title={`${v.year} ${v.make} ${v.model}`}
