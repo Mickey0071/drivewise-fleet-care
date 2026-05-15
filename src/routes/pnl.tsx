@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { payments, expenses, payrollRuns, staffById, vehicles, vehicleById, rentals, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { payments, expenses, payrollRuns, staffById, vehicles, vehicleById, driverById, rentals, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { Users } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
@@ -74,6 +74,52 @@ function PnLPage() {
                   };
                 })),
                 totals: { revenue: totalRevenue, expenses: totalExpenses, payroll, net, margin },
+                paymentsDetail: payments
+                  .filter(p => p.status === "paid")
+                  .sort((a, b) => (b.paidDate ?? b.dueDate).localeCompare(a.paidDate ?? a.dueDate))
+                  .map(p => {
+                    const r = rentals.find(x => x.id === p.rentalId);
+                    const v = r ? vehicleById(r.vehicleId) : undefined;
+                    const d = driverById(p.driverId);
+                    return {
+                      id: p.id,
+                      paidDate: p.paidDate ?? "",
+                      dueDate: p.dueDate,
+                      rentalId: p.rentalId,
+                      driver: d?.fullName ?? p.driverId,
+                      vehicle: v ? `${v.year} ${v.make} ${v.model}` : "",
+                      plate: v?.plate ?? "",
+                      method: p.method ?? "",
+                      status: p.status,
+                      amount: p.amount,
+                    };
+                  }),
+                expensesDetail: [...expenses]
+                  .sort((a, b) => b.date.localeCompare(a.date))
+                  .map(e => {
+                    const v = e.vehicleId ? vehicleById(e.vehicleId) : undefined;
+                    return {
+                      id: e.id,
+                      date: e.date,
+                      category: e.category,
+                      vendor: e.vendor ?? "",
+                      vehicle: v ? `${v.year} ${v.make} ${v.model}` : "",
+                      plate: v?.plate ?? "",
+                      notes: e.notes ?? "",
+                      receiptUrl: e.receiptUrl ?? "",
+                      amount: e.amount,
+                    };
+                  }),
+                vehicleDetail: perVehicle.map(r => ({
+                  vehicleId: r.vehicle.id,
+                  vehicle: `${r.vehicle.year} ${r.vehicle.make} ${r.vehicle.model}`,
+                  plate: r.vehicle.plate,
+                  vin: r.vehicle.vin,
+                  revenue: r.revenue,
+                  expenses: r.expense,
+                  net: r.profit,
+                  roiPct: r.roi,
+                })),
               })}
             >
               <FileSpreadsheet className="mr-1.5 h-4 w-4" />
