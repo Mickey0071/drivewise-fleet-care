@@ -169,7 +169,7 @@ function VehicleDetail() {
             <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
               <Field label="Make / Model" value={`${v.make} ${v.model}`} />
               <Field label="Year" value={String(v.year)} />
-              <Field label="VIN" value={v.vin} />
+              <div className="sm:col-span-2"><Field label="VIN" value={v.vin} /></div>
               <Field label="Plate" value={v.plate} />
               <Field label="Mileage" value={`${v.mileage.toLocaleString()} mi`} />
               <Field label="Risk tier" value={v.riskTier} />
