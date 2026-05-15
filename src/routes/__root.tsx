@@ -94,11 +94,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Camauto Rentals — Fleet Management" },
       { name: "description", content: "Fleet rental management for rideshare and gig drivers." },
       { name: "author", content: "Camauto Rentals" },
-      { property: "og:title", content: "Camauto Rentals" },
+      { property: "og:title", content: "Camauto Rentals — Fleet Management" },
       { property: "og:description", content: "Fleet rental management for rideshare and gig drivers." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Camauto Rentals — Fleet Management" },
+      { name: "twitter:description", content: "Fleet rental management for rideshare and gig drivers." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2245abd9-6472-43cb-a241-7ca25daec2b5/id-preview-bf100e4e--d41d3e7e-f5b7-4980-b1e7-d2e263f62d74.lovable.app-1778812342388.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2245abd9-6472-43cb-a241-7ca25daec2b5/id-preview-bf100e4e--d41d3e7e-f5b7-4980-b1e7-d2e263f62d74.lovable.app-1778812342388.png" },
     ],
     links: [
       {
