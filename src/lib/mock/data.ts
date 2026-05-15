@@ -71,7 +71,8 @@ export interface Staff {
 }
 export interface Expense {
   id: string; category: string; amount: number; date: string;
-  vendor: string; vehicleId?: string; staffId?: string; notes?: string;
+  vendor?: string; vehicleId?: string; staffId?: string; notes?: string;
+  receiptUrl?: string;
 }
 export interface PayrollRun {
   id: string; periodStart: string; periodEnd: string; runDate: string;
@@ -144,15 +145,7 @@ export const staff: Staff[] = [
   { id: "S-04", fullName: "Sam Park", role: "Mechanic", phone: "(404) 555-1013", email: "sam@camauto.com", payType: "hourly", payRate: 28, stripeConnected: true, status: "active" },
 ];
 
-export const expenses: Expense[] = [
-  { id: "E-101", category: "maintenance", amount: 340, date: "2026-05-08", vendor: "Midas", vehicleId: "V-004" },
-  { id: "E-102", category: "fuel", amount: 220, date: "2026-05-05", vendor: "Shell" },
-  { id: "E-103", category: "insurance", amount: 1850, date: "2026-05-01", vendor: "Progressive Commercial" },
-  { id: "E-104", category: "impound", amount: 450, date: "2026-04-18", vendor: "City of Atlanta", vehicleId: "V-006" },
-  { id: "E-105", category: "registration", amount: 120, date: "2026-04-25", vendor: "GA DDS", vehicleId: "V-007" },
-  { id: "E-106", category: "payroll", amount: 4280, date: "2026-04-30", vendor: "Stripe Payouts" },
-  { id: "E-107", category: "misc", amount: 90, date: "2026-05-03", vendor: "Office supplies" },
-];
+export const expenses: Expense[] = [];
 
 export const payrollRuns: PayrollRun[] = [
   {
