@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, inspections, type Rental, type RentalExtension, type Driver, type Inspection, type Payment } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, maintenance, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance } from "./data";
 import { supabase } from "@/integrations/supabase/client";
 
 const listeners = new Set<() => void>();
