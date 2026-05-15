@@ -9,6 +9,7 @@ import { carImage } from "@/lib/mock/carImages";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useState } from "react";
+import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
   component: VehicleDetail,
@@ -46,7 +47,9 @@ function VehicleDetail() {
 
   return (
     <div>
-      <Button variant="ghost" size="sm" asChild className="mb-3"><Link to="/fleet">← Back to fleet</Link></Button>
+      <Button variant="outline" size="sm" asChild className="mb-3">
+        <Link to="/fleet"><ArrowLeft className="mr-1 h-4 w-4" />Back to Fleet</Link>
+      </Button>
       <div className="mb-4 overflow-hidden rounded-xl border border-border bg-muted">
         <img
           src={carImage(v.model)}
@@ -208,6 +211,11 @@ function VehicleDetail() {
         onOpenChange={setReserveOpen}
         initialVehicleId={v.id}
       />
+      <div className="mt-6 flex justify-start">
+        <Button variant="outline" asChild>
+          <Link to="/fleet"><ArrowLeft className="mr-1 h-4 w-4" />Back to Fleet</Link>
+        </Button>
+      </div>
     </div>
   );
 }
