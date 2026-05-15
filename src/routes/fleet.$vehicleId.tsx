@@ -8,6 +8,7 @@ import { vehicleById, rentals, maintenance, violations, inspections, payments, d
 import { carImage } from "@/lib/mock/carImages";
 import { uploadVehiclePhoto, updateVehicleImage, useStoreVersion } from "@/lib/mock/store";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
+import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { useRef, useState } from "react";
 import { ArrowLeft, Link2, Camera } from "lucide-react";
 import { toast } from "sonner";
@@ -264,6 +265,11 @@ function VehicleDetail() {
         open={reserveOpen}
         onOpenChange={setReserveOpen}
         initialVehicleId={v.id}
+      />
+      <ShareRentalDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        vehicle={v}
       />
       <div className="mt-6 flex justify-start">
         <Button variant="outline" asChild>
