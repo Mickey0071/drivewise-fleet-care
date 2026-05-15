@@ -218,16 +218,19 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
       weeklyRate: Number(weeklyRate) || 0,
       riskTier,
     });
-    if (photoFile) {
-      try {
+    try {
+      await (v as { cloudReady?: Promise<unknown> }).cloudReady;
+      if (photoFile) {
         const url = await uploadVehiclePhoto(v.id, photoFile);
-        updateVehicleImage(v.id, url);
-      } catch (e: any) {
-        toast.error("Photo upload failed", { description: e?.message ?? "Try again" });
+        await updateVehicleImage(v.id, url);
       }
+      toast.success("Vehicle added", { description: `${v.year} ${v.make} ${v.model} (${v.id})` });
+      reset(); onClose();
+    } catch (e: any) {
+      toast.error("Vehicle was not saved to cloud", { description: e?.message ?? "Try again" });
+    } finally {
+      setSaving(false);
     }
-    toast.success("Vehicle added", { description: `${v.year} ${v.make} ${v.model} (${v.id})` });
-    reset(); onClose();
   }
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
