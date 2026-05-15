@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
+import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
 
 function genToken() {
   return (
@@ -69,7 +70,7 @@ export const sendSigningLink = createServerFn({ method: "POST" })
     if (!driver?.phone) throw new Error("Renter has no phone on file");
 
     const link = `${data.origin.replace(/\/$/, "")}/sign/${token}`;
-    const message = `Camauto Rentals: Please complete your reservation by signing your agreement and uploading your driver's license + a selfie here: ${link}`;
+    const message = `Camauto Rentals: Please sign your rental agreement (and upload your driver's license + a selfie) here: ${link}`;
     await sendSms(driver.phone, message, driver.full_name ?? null);
     return { ok: true, link };
   });
@@ -219,22 +220,70 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       .update({ insurance_on_file: true })
       .eq("id", rental.driver_id);
 
-    // Notify staff via SMS to driver too (acknowledgment)
+    // After signing: if not yet paid, text the renter a Stripe payment link
+    // so the reservation can flip to "on rent" once payment lands.
     try {
       const { data: driver } = await supabaseAdmin
         .from("drivers")
         .select("phone, full_name")
         .eq("id", rental.driver_id)
         .single();
-      if (driver?.phone) {
-        await sendSms(
-          driver.phone,
-          "Camauto Rentals: Thank you! Your signed agreement, license, and selfie have been received. We'll be in touch shortly.",
-          driver.full_name ?? null,
-        );
+
+      if (rental.payment_received) {
+        if (driver?.phone) {
+          await sendSms(
+            driver.phone,
+            "Camauto Rentals: Thank you! Your signed agreement and ID have been received — your reservation is confirmed.",
+            driver.full_name ?? null,
+          );
+        }
+      } else {
+        // Pull rate to charge first period
+        const { data: full } = await supabaseAdmin
+          .from("rentals")
+          .select("rate, weekly_rate, billing_period")
+          .eq("id", rental.id)
+          .single();
+        const amount = Number(full?.rate ?? full?.weekly_rate ?? 0);
+        const period = (full?.billing_period as string) ?? "weekly";
+        const periodLabel = period === "daily" ? "day" : period === "monthly" ? "month" : "week";
+        const amountCents = Math.round(amount * 100);
+
+        if (driver?.phone && amountCents >= 50) {
+          const env: StripeEnv = process.env.STRIPE_LIVE_API_KEY ? "live" : "sandbox";
+          const stripe = createStripeClient(env);
+          const session = await stripe.checkout.sessions.create({
+            mode: "payment",
+            line_items: [{
+              price_data: {
+                currency: "usd",
+                product_data: { name: `Rental ${rental.id} — first ${periodLabel}` },
+                unit_amount: amountCents,
+              },
+              quantity: 1,
+            }],
+            success_url: "https://rentalprise.app/paid?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url: "https://rentalprise.app/paid?canceled=1",
+            metadata: { kind: "rental_first_payment", rental_id: rental.id },
+          });
+          if (session.url) {
+            const amt = `$${(amountCents / 100).toFixed(2)}`;
+            await sendSms(
+              driver.phone,
+              `Camauto Rentals: Thanks for signing! Final step — please pay ${amt} for your first ${periodLabel} to release the vehicle: ${session.url}`,
+              driver.full_name ?? null,
+            );
+          }
+        } else if (driver?.phone) {
+          await sendSms(
+            driver.phone,
+            "Camauto Rentals: Thanks for signing! We'll be in touch with payment instructions shortly.",
+            driver.full_name ?? null,
+          );
+        }
       }
     } catch (e) {
-      console.error("ack sms failed", e);
+      console.error("post-sign notify failed", e);
     }
 
     return { ok: true };
