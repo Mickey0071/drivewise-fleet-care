@@ -41,18 +41,12 @@ async function upsertContact(phone: string, name?: string | null): Promise<strin
 
 export async function sendSms(phone: string, message: string, name?: string | null) {
   if (!phone) {
-    console.warn("GHL sendSms skipped: no phone");
-    return;
+    throw new Error("No phone number on file");
   }
-  try {
-    const contactId = await upsertContact(phone, name);
-    await ghlFetch("/conversations/messages", {
-      type: "SMS",
-      contactId,
-      message,
-    });
-  } catch (e) {
-    // Don't fail the webhook on SMS errors — just log.
-    console.error("GHL sendSms failed:", e);
-  }
+  const contactId = await upsertContact(phone, name);
+  await ghlFetch("/conversations/messages", {
+    type: "SMS",
+    contactId,
+    message,
+  });
 }
