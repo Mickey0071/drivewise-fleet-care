@@ -145,9 +145,9 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [vin, setVin] = useState("");
   const [plate, setPlate] = useState("");
-  const [mileage, setMileage] = useState<string>("0");
-  const [dailyRate, setDailyRate] = useState<string>("75");
-  const [weeklyRate, setWeeklyRate] = useState<string>("450");
+  const [mileage, setMileage] = useState<string>("");
+  const [dailyRate, setDailyRate] = useState<string>("");
+  const [weeklyRate, setWeeklyRate] = useState<string>("");
   const [riskTier, setRiskTier] = useState<"A" | "B" | "C">("A");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -155,7 +155,7 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
 
   function reset() {
     setMake(""); setModel(""); setYear(new Date().getFullYear()); setVin(""); setPlate("");
-    setMileage("0"); setDailyRate("75"); setWeeklyRate("450"); setRiskTier("A");
+    setMileage(""); setDailyRate(""); setWeeklyRate(""); setRiskTier("A");
     setPhotoFile(null);
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoPreview(null);
