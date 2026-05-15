@@ -65,6 +65,7 @@ function VehicleDetail() {
       </Button>
       <div className="relative mb-4 overflow-hidden rounded-xl border border-border bg-muted">
         <img
+          key={v.imageUrl ?? `default-${v.id}`}
           src={v.imageUrl ?? carImage(v.model)}
           alt={`${v.year} ${v.make} ${v.model}`}
           width={800}
