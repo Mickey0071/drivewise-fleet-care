@@ -94,10 +94,39 @@ export const sendShareLinkSms = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data }) => {
+    const normalized = normalizePhone(data.phone);
+    if (!normalized) {
+      throw new Error("Enter a valid phone number (e.g. +1 555 555 5555)");
+    }
     const message = `Camauto Rentals: You're invited to rent a vehicle. Complete your application (license + selfie + signature) here: ${data.url}`;
-    await sendSms(data.phone, message, data.name ?? null);
-    return { ok: true };
+    try {
+      await sendSms(normalized, message, data.name ?? null);
+    } catch (e) {
+      console.error("sendShareLinkSms failed", e);
+      const msg = e instanceof Error ? e.message : String(e);
+      // Re-throw a friendly message; keep raw detail in server logs above
+      if (/GHL/.test(msg) && /4\d\d/.test(msg)) {
+        throw new Error("Could not send SMS — check the phone number and try again.");
+      }
+      throw new Error("Could not send SMS — please try again in a moment.");
+    }
+    return { ok: true, phone: normalized };
   });
+
+/** Normalize a US-friendly phone number to E.164. Returns null if invalid. */
+function normalizePhone(raw: string): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  const hasPlus = trimmed.startsWith("+");
+  const digits = trimmed.replace(/\D/g, "");
+  if (hasPlus) {
+    if (digits.length < 8 || digits.length > 15) return null;
+    return `+${digits}`;
+  }
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return null;
+}
 
 /** Public: load share link details for the customer-facing rental page. */
 export const getShareLinkPublic = createServerFn({ method: "POST" })
