@@ -347,7 +347,17 @@ export function prunePendingReservations() {
 export function cancelReservation(id: string) {
   const idx = rentals.findIndex(r => r.id === id);
   if (idx < 0) return;
+  const r = rentals[idx];
   rentals.splice(idx, 1);
+  // Free the vehicle if no other active/pending rental holds it
+  const stillHeld = rentals.some(x => x.vehicleId === r.vehicleId && (x.reservationStatus === "active" || x.reservationStatus === "pending"));
+  if (!stillHeld) {
+    const v = vehicles.find(v => v.id === r.vehicleId);
+    if (v && v.status !== "available") {
+      v.status = "available";
+      cloudWrite("vehicle:update", supabase.from("vehicles").update({ status: "available" }).eq("id", v.id));
+    }
+  }
   cloudWrite("rental:delete", supabase.from("rentals").delete().eq("id", id));
   emit();
 }
