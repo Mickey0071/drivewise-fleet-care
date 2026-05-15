@@ -1,47 +1,41 @@
-## What you want
+## What you're seeing
 
-In the Share Rental dialog, after generating a link: type the customer's phone number, click **Send**, and Lovable sends the SMS to them via GoHighLevel — no opening of your phone's Messages app, no manual sending.
-
-## Good news
-
-GHL is already fully wired up in the project:
-- Secrets `GHL_PIT_TOKEN` and `GHL_LOCATION_ID` are configured
-- `src/lib/ghl.server.ts` already has a `sendSms(phone, message, name)` helper that creates the contact in GHL and sends the SMS through the Conversations API
-- `src/lib/share-rental.functions.ts` still has `sendShareLinkSms` — the server function that takes `{ token, url, phone, name }` and calls `sendSms` with a pre-written message: *"Camauto Rentals: You're invited to rent a vehicle. Complete your application (license + selfie + signature) here: {url}"*
-
-I just need to re-wire the UI button to call it. (My last change replaced this with the native `sms:` link, which is what you don't want.)
+On the Fleet page, each vehicle card has: photo upload, **Profile**, share, and **Reserve** — but no way to edit the vehicle's details (make, model, plate, VIN, mileage, daily/weekly rates, risk tier, status). The vehicle Profile page also has no Edit button. So if you mistype a plate or need to change a rate, you're stuck.
 
 ## Plan
 
-**Edit `src/components/app/ShareRentalDialog.tsx`** (1 file, frontend only):
+Add an **Edit vehicle** flow in two places (both opening the same dialog):
 
-1. Re-import `sendShareLinkSms` and wire it through `useServerFn`
-2. Change the "Text to customer" section back to a clean form:
-   - Phone number input (required)
-   - **Send link** button
-3. On click:
-   - Validate phone is filled
-   - Show a spinner while sending
-   - Call the GHL server function with `{ token, url, phone, name }`
-   - On success: green toast "Sent to {phone}"
-   - On error: red toast with the GHL error message
-4. Keep the existing **email** section as-is (opens mail client — unchanged)
+1. **Fleet card** — add a small "Edit" button next to Profile/Share/Reserve.
+2. **Vehicle Profile page** — add an "Edit vehicle" button in the header.
 
-## What this gives you
+**The Edit dialog** is essentially the existing AddVehicleDialog repurposed. Editable fields:
+- Make, Model, Year, Plate, VIN
+- Mileage
+- Daily rate, Weekly rate
+- Risk tier (A/B/C)
+- Status (available / rented / maintenance / impound)
+- Next service due (date)
+- Notes
+- Profile photo (replace, same as today)
 
-- You generate a link in the dialog
-- Type the customer's phone number (e.g. +15558675309)
-- Click **Send link**
-- ~1 second later: the customer receives an SMS from your GHL-connected number with the link
-- The contact is auto-created/updated in your GHL location with their name + phone
-- No phone needed on your end, works from desktop and mobile
+**Save** writes to the `vehicles` table via a new `updateVehicle(id, fields)` helper in `src/lib/mock/store.ts` (mirrors the existing `addVehicle` / `updateVehicleImage` pattern — local store update + Supabase upsert). Toast on success/failure.
 
-## Risk / cost
+**Delete** — I'll also add a "Delete vehicle" button inside the Edit dialog (with a confirm prompt), since you'll likely want it. Blocked if the vehicle has an active rental.
 
-- Frontend-only edit, 1 file. Smallest possible build.
-- GHL costs apply per SMS sent (your existing GHL plan)
-- If GHL is misconfigured or out of credits, the toast will show the exact error so you know
+## Files touched
 
-## To go live
+- `src/lib/mock/store.ts` — add `updateVehicle()` and `deleteVehicle()` helpers
+- `src/components/app/EditVehicleDialog.tsx` — new dialog (extracted/cloned from the AddVehicleDialog already in `fleet.tsx`)
+- `src/routes/fleet.tsx` — add Edit button on each card, wire the dialog
+- `src/routes/fleet.$vehicleId.tsx` — add Edit button in the profile header
 
-After approval: I make the edit → you click **Publish → Update**.
+Frontend + one tiny store helper. No migrations needed (the `vehicles` table already has every column and the RLS allows authenticated writes).
+
+## Out of scope (ask if you want)
+
+- Bulk edit / multi-select
+- Audit log of who edited what
+- Editing the vehicle `id` (keeping it stable)
+
+Want me to build this exactly as described, or change anything (e.g. skip Delete, skip the status field)?
