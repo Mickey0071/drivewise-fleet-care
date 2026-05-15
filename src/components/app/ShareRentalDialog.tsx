@@ -150,7 +150,7 @@ export function ShareRentalDialog({
                   onChange={(e) => setRate(e.target.value)}
                 />
               </div>
-              <Button onClick={handleCreate} disabled={creating} className="w-full">
+              <Button type="button" onClick={handleCreate} disabled={creating} className="w-full">
                 {creating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating…</> : <><Link2 className="h-4 w-4" /> Generate share link</>}
               </Button>
             </>
@@ -173,19 +173,27 @@ export function ShareRentalDialog({
               <div className="rounded-md border border-border p-3 space-y-2">
                 <Label htmlFor="share-phone" className="flex items-center gap-2 text-sm"><MessageSquare className="h-4 w-4" /> Text to customer</Label>
                 <div className="flex gap-2">
-                  <Input id="share-phone" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 555 555 5555" />
-                  <Button onClick={handleSendSms} disabled={smsLoading}>
+                  <Input
+                    id="share-phone"
+                    type="tel"
+                    inputMode="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+1 555 555 5555"
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSendSms(); } }}
+                  />
+                  <Button type="button" onClick={handleSendSms} disabled={smsLoading}>
                     {smsLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</> : "Send link"}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Sends an SMS to the customer via GoHighLevel with the rental link.</p>
+                <p className="text-xs text-muted-foreground">Use full number with country code, e.g. +1 555 555 5555. 10-digit US numbers also work.</p>
               </div>
 
               <div className="rounded-md border border-border p-3 space-y-2">
                 <Label htmlFor="share-email" className="flex items-center gap-2 text-sm"><Mail className="h-4 w-4" /> Send by email</Label>
                 <div className="flex gap-2">
                   <Input id="share-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="customer@example.com" />
-                  <Button variant="outline" onClick={handleSendEmail}>Open</Button>
+                  <Button type="button" variant="outline" onClick={handleSendEmail}>Open</Button>
                 </div>
                 <p className="text-xs text-muted-foreground">Opens your mail client with the link pre-filled.</p>
               </div>
