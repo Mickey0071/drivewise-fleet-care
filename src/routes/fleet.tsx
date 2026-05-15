@@ -140,6 +140,45 @@ function FleetPage() {
   );
 }
 
+function VehiclePhotoButton({ vehicleId, hasPhoto }: { vehicleId: string; hasPhoto: boolean }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  return (
+    <>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          setUploading(true);
+          try {
+            const url = await uploadVehiclePhoto(vehicleId, file);
+            updateVehicleImage(vehicleId, url);
+            toast.success("Photo updated");
+          } catch (err: any) {
+            toast.error("Upload failed", { description: err?.message ?? "Try again" });
+          } finally {
+            setUploading(false);
+            if (fileRef.current) fileRef.current.value = "";
+          }
+        }}
+      />
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={uploading}
+        onClick={() => fileRef.current?.click()}
+        title={hasPhoto ? "Change photo" : "Add photo"}
+      >
+        <Camera className="h-4 w-4" />
+      </Button>
+    </>
+  );
+}
+
 function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
