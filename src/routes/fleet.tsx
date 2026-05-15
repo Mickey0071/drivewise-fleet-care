@@ -68,6 +68,7 @@ function FleetPage() {
             <div className="block">
               <div className="relative aspect-[16/10] w-full overflow-hidden rounded-t-xl bg-muted">
                 <img
+                  key={v.imageUrl ?? `default-${v.id}`}
                   src={v.imageUrl ?? carImage(v.model)}
                   alt={`${v.year} ${v.make} ${v.model}`}
                   loading="lazy"
