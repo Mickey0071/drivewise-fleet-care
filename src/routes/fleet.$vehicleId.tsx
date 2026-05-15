@@ -10,6 +10,7 @@ import { uploadVehiclePhoto, updateVehicleImage, useStoreVersion } from "@/lib/m
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
+import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useRef, useState } from "react";
 import { ArrowLeft, Link2, Camera, Pencil } from "lucide-react";
 import { toast } from "sonner";
@@ -190,6 +191,7 @@ function VehicleDetail() {
               <Field label="Weekly rate" value={fmtMoney(v.weeklyRate)} />
             </CardContent>
           </Card>
+          <VehicleGallery vehicleId={v.id} coverUrl={v.imageUrl} />
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4 space-y-4">
