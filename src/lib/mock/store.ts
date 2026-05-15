@@ -577,7 +577,7 @@ export function updateVehicle(id: string, fields: Partial<Omit<Vehicle, "id">>) 
   if (fields.notes !== undefined) patch.notes = fields.notes ?? null;
   if (fields.nextServiceDue !== undefined) patch.next_service_due = fields.nextServiceDue ?? null;
   if (fields.imageUrl !== undefined) patch.image_url = fields.imageUrl ?? null;
-  const cloudReady = cloudWrite("vehicle:update", supabase.from("vehicles").update(patch).eq("id", id)).catch((error) => {
+  const cloudReady = cloudWrite("vehicle:update", supabase.from("vehicles").update(patch as never).eq("id", id)).catch((error) => {
     Object.assign(v, prev);
     emit();
     throw error;
