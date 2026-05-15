@@ -7,6 +7,8 @@ import { maintenance, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { Wrench, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ReportActions } from "@/components/app/ReportActions";
+import { LogServiceDialog } from "@/components/app/LogServiceDialog";
+import { useState } from "react";
 
 export const Route = createFileRoute("/maintenance")({
   head: () => ({ meta: [{ title: "Maintenance — Camauto Rentals" }] }),
@@ -14,6 +16,7 @@ export const Route = createFileRoute("/maintenance")({
 });
 
 function MaintenancePage() {
+  const [logOpen, setLogOpen] = useState(false);
   const today = new Date();
   const soon = new Date(today); soon.setDate(today.getDate() + 14);
   const due = maintenance.filter(m => new Date(m.nextServiceDue) <= soon);
@@ -37,10 +40,11 @@ function MaintenancePage() {
                 return [m.id, v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId, v?.plate ?? "", m.serviceType, m.vendor, m.dateCompleted, m.mileageAtService, m.cost, m.nextServiceDue];
               }),
             }} />
-            <Button>+ Log Service</Button>
+            <Button onClick={() => setLogOpen(true)}>+ Log Service</Button>
           </div>
         }
       />
+      <LogServiceDialog open={logOpen} onOpenChange={setLogOpen} />
 
       <div className="mb-6 grid grid-cols-3 gap-3">
         <KPI label="YTD spend" value={fmtMoney(totalCost)} icon={Wrench} />

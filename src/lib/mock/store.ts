@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, inspections, type Rental, type RentalExtension, type Driver, type Inspection, type Payment } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, maintenance, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance } from "./data";
 import { supabase } from "@/integrations/supabase/client";
 
 const listeners = new Set<() => void>();
@@ -512,6 +512,29 @@ export function addInspection(input: Omit<Inspection, "id">) {
   }
   emit();
   return insp;
+}
+
+function nextMaintenanceId() {
+  const n = maintenance.reduce((m, x) => Math.max(m, parseInt(x.id.replace(/\D/g, "")) || 0), 300);
+  return `M-${n + 1}`;
+}
+
+export function addMaintenance(input: Omit<Maintenance, "id">) {
+  const rec: Maintenance = { id: nextMaintenanceId(), ...input };
+  maintenance.push(rec);
+  const v = vehicles.find(v => v.id === input.vehicleId);
+  if (v) {
+    if (input.mileageAtService && input.mileageAtService > v.mileage) {
+      v.mileage = input.mileageAtService;
+      cloudWrite("vehicle:update", supabase.from("vehicles").update({ mileage: v.mileage }).eq("id", v.id));
+    }
+    if (input.nextServiceDue) {
+      v.nextServiceDue = input.nextServiceDue;
+      cloudWrite("vehicle:update", supabase.from("vehicles").update({ next_service_due: v.nextServiceDue }).eq("id", v.id));
+    }
+  }
+  emit();
+  return rec;
 }
 
 export function recordPayment(id: string, method: Payment["method"], paidDate?: string) {
