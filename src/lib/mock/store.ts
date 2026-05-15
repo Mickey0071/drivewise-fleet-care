@@ -256,8 +256,11 @@ function subscribeRealtime() {
 
 // fire-and-forget cloud writes; log failures but don't block UI
 const cloudWrite = (label: string, p: PromiseLike<{ error: any }>) => {
-  Promise.resolve(p).then(({ error }) => {
-    if (error) console.error(`[cloud:${label}]`, error);
+  return Promise.resolve(p).then(({ error }) => {
+    if (error) {
+      console.error(`[cloud:${label}]`, error);
+      throw new Error(`[cloud:${label}] ${error.message ?? "write failed"}`);
+    }
   });
 };
 
@@ -296,9 +299,9 @@ export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymen
     ...input,
   };
   rentals.push(rental);
-  cloudWrite("rental:insert", supabase.from("rentals").insert(toRental(rental)));
+  const cloudReady = cloudWrite("rental:insert", supabase.from("rentals").insert(toRental(rental)));
   emit();
-  return rental;
+  return Object.assign(rental, { cloudReady });
 }
 
 /** Returns the renter's current open rental (active or pending), if any. */
@@ -535,9 +538,9 @@ export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "i
     ...input,
   };
   drivers.push(driver);
-  cloudWrite("driver:insert", supabase.from("drivers").insert(toDriver(driver)));
+  const cloudReady = cloudWrite("driver:insert", supabase.from("drivers").insert(toDriver(driver)));
   emit();
-  return driver;
+  return Object.assign(driver, { cloudReady });
 }
 
 function nextInspectionId() {

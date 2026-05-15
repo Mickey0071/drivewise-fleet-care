@@ -160,23 +160,23 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
         description: `${driver.fullName} · ${vehicle.year} ${vehicle.make} ${vehicle.model} — vehicle held 24h until signature + payment`,
       });
     }
-    // Auto-text the renter the signing link (retry briefly while cloud insert lands)
+    // Auto-text the renter the signing link — wait for the cloud insert to land first
     if (driver.phone) {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const trySend = async (attempt = 0): Promise<void> => {
+      void (async () => {
         try {
+          // Make sure the rental (and driver, if just created) exist in the cloud DB
+          // before the server function tries to look them up.
+          const driverReady = (driver as { cloudReady?: Promise<unknown> }).cloudReady;
+          if (driverReady) await driverReady;
+          await (newRental as { cloudReady?: Promise<unknown> }).cloudReady;
           await sendSignLinkFn({ data: { rentalId: newRental.id, origin } });
           toast.success("Signing link texted to renter", { description: driver.phone });
         } catch (e) {
-          if (attempt < 4) {
-            await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
-            return trySend(attempt + 1);
-          }
           const msg = e instanceof Error ? e.message : "Unknown error";
           toast.error("Could not text signing link", { description: msg });
         }
-      };
-      void trySend();
+      })();
     } else {
       toast.warning("No phone on file — signing link not sent", {
         description: "Add a phone number to the renter to enable auto-text.",
