@@ -52,6 +52,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [showAddDriver, setShowAddDriver] = useState(false);
   const [newDriver, setNewDriver] = useState({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" as "Uber" | "Lyft" | "Both" });
   const [isSwap, setIsSwap] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open && initialVehicleId) {
@@ -124,8 +125,9 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     if (step < 3) setStep((step + 1) as Step);
   }
 
-  function confirm() {
+  async function confirm() {
     if (!vehicle || !driver || !startDate) return;
+    if (saving) return;
     if (existingRental && !isSwap) {
       toast.error("Renter already has an active rental", { description: "Tick the swap box on the Client step to close the existing rental." });
       return;
@@ -137,6 +139,10 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     if (existingRental && isSwap) {
       markReturned(existingRental.id, startDate);
     }
+    setSaving(true);
+    try {
+      const driverReady = (driver as { cloudReady?: Promise<unknown> }).cloudReady;
+      if (driverReady) await driverReady;
     const newRental = addRental({
       vehicleId: vehicle.id,
       driverId: driver.id,
@@ -150,6 +156,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
         ? `Vehicle swap from rental ${existingRental.id}.${notes ? ` ${notes}` : ""}`
         : (notes || undefined),
     });
+    await (newRental as { cloudReady?: Promise<unknown> }).cloudReady;
     if (isSwap && existingRental) {
       const oldV = vehicleById(existingRental.vehicleId);
       toast.success("Swap reservation created", {
@@ -183,6 +190,12 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       });
     }
     close(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Try again";
+      toast.error("Reservation was not saved to cloud", { description: msg });
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
