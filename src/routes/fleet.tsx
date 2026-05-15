@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
@@ -26,9 +26,13 @@ function FleetPage() {
   useStoreVersion();
   const [open, setOpen] = useState(false);
   const [reserveVehicleId, setReserveVehicleId] = useState<string | null>(null);
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { status } = Route.useSearch();
   const navigate = Route.useNavigate();
   const goto = useNavigate();
+
+  if (pathname !== "/fleet") return <Outlet />;
+
   const filtered = status ? vehicles.filter(v => v.status === status) : vehicles;
   return (
     <div>
