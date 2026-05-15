@@ -70,7 +70,7 @@ export const sendSigningLink = createServerFn({ method: "POST" })
     if (!driver?.phone) throw new Error("Renter has no phone on file");
 
     const link = `${data.origin.replace(/\/$/, "")}/sign/${token}`;
-    const message = `Camauto Rentals: Please sign your rental agreement (and upload your driver's license + a selfie) here: ${link}`;
+    const message = `Camauto Rentals: Please complete your rental agreement online and upload your driver's license + selfie here: ${link}. You do not need to come in to sign.`;
     await sendSms(driver.phone, message, driver.full_name ?? null);
     return { ok: true, link };
   });
