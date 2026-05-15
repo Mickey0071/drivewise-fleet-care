@@ -14,7 +14,8 @@ import { addVehicle, updateVehicleImage, uploadVehiclePhoto, useStoreVersion } f
 import { toast } from "sonner";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
-import { Share2, Camera } from "lucide-react";
+import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
+import { Share2, Camera, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/fleet")({
   head: () => ({ meta: [{ title: "Fleet — Camauto Rentals" }] }),
@@ -29,6 +30,7 @@ function FleetPage() {
   const [open, setOpen] = useState(false);
   const [reserveVehicleId, setReserveVehicleId] = useState<string | null>(null);
   const [shareVehicleId, setShareVehicleId] = useState<string | null>(null);
+  const [editVehicleId, setEditVehicleId] = useState<string | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { status } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -115,6 +117,14 @@ function FleetPage() {
                 </Button>
               )}
               <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditVehicleId(v.id)}
+                title="Edit vehicle"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
                 size="sm"
                 className="flex-1"
                 disabled={v.status !== "available"}
@@ -136,6 +146,12 @@ function FleetPage() {
         open={!!shareVehicleId}
         onOpenChange={(o) => { if (!o) setShareVehicleId(null); }}
         vehicle={shareVehicleId ? vehicles.find(v => v.id === shareVehicleId) ?? null : null}
+      />
+      <EditVehicleDialog
+        open={!!editVehicleId}
+        onOpenChange={(o) => { if (!o) setEditVehicleId(null); }}
+        vehicle={editVehicleId ? vehicles.find(v => v.id === editVehicleId) ?? null : null}
+        onDeleted={() => setEditVehicleId(null)}
       />
     </div>
   );
