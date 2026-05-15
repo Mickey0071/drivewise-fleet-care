@@ -18,6 +18,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeToggle } from "@/components/app/ThemeToggle";
 import { GlobalSearch } from "@/components/app/GlobalSearch";
 import { AuthProvider, useAuth, type AppRole } from "@/hooks/use-auth";
+import { hydrateFromCloud, isStoreHydrated, useStoreVersion } from "@/lib/mock/store";
 
 const ROUTE_ROLES: { prefix: string; roles: AppRole[] }[] = [
   { prefix: "/staff-portal", roles: ["admin", "runner"] },
@@ -152,9 +153,17 @@ function RootComponent() {
 
 function AuthGate() {
   const { session, role, loading } = useAuth();
+  useStoreVersion();
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
   const isPublic = PUBLIC_ROUTES.some(p => path.startsWith(p));
+
+  useEffect(() => {
+    if (loading || !session) return;
+    hydrateFromCloud().catch((error) => {
+      console.error(error);
+    });
+  }, [loading, session]);
 
   useEffect(() => {
     if (loading) return;
@@ -173,7 +182,7 @@ function AuthGate() {
     if (path === "/" && role === "runner") navigate({ to: "/staff-portal" });
   }, [loading, session, role, path, navigate]);
 
-  if (loading) {
+  if (loading || (!!session && !isPublic && !isStoreHydrated())) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
   if (isPublic) return <Outlet />;
