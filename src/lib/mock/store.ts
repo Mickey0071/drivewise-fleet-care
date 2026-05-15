@@ -309,6 +309,16 @@ export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymen
   return Object.assign(rental, { cloudReady });
 }
 
+export async function ensureRentalSynced(id: string) {
+  const rental = rentals.find(r => r.id === id);
+  if (!rental) throw new Error("Reservation not found");
+  const driver = drivers.find(d => d.id === rental.driverId);
+  const vehicle = vehicles.find(v => v.id === rental.vehicleId);
+  if (vehicle) await cloudWrite("vehicle:upsert", supabase.from("vehicles").upsert(toVehicle(vehicle)));
+  if (driver) await cloudWrite("driver:upsert", supabase.from("drivers").upsert(toDriver(driver)));
+  await cloudWrite("rental:upsert", supabase.from("rentals").upsert(toRental(rental)));
+}
+
 /** Returns the renter's current open rental (active or pending), if any. */
 export function getActiveRentalForDriver(driverId: string, ignoreRentalId?: string): Rental | null {
   return rentals.find(r =>
