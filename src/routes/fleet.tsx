@@ -91,7 +91,7 @@ function FleetPage() {
                 variant="outline"
                 size="sm"
                 className="flex-1"
-                onClick={() => goto({ to: "/fleet/$vehicleId", params: { vehicleId: v.id } })}
+                onClick={() => goto({ to: "/fleet/$vehicleId", params: { vehicleId: v.id }, search: { tab: "repairs" } })}
               >
                 Profile
               </Button>
