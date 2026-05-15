@@ -74,6 +74,47 @@ export const sendSigningLink = createServerFn({ method: "POST" })
     return { ok: true, link };
   });
 
+/** Ensure a rental has a sign_token and return the link + renter contact info.
+ *  Used by the "Email" option so the staff can send from their own mail client. */
+export const getSigningLink = createServerFn({ method: "POST" })
+  .inputValidator((input: { rentalId: string; origin: string }) => {
+    if (!input.rentalId || typeof input.rentalId !== "string") throw new Error("rentalId required");
+    if (!input.origin || !/^https?:\/\//.test(input.origin)) throw new Error("origin required");
+    return input;
+  })
+  .handler(async ({ data }) => {
+    const { data: rental, error } = await supabaseAdmin
+      .from("rentals")
+      .select("id, driver_id, sign_token")
+      .eq("id", data.rentalId)
+      .single();
+    if (error || !rental) throw new Error("Reservation not found");
+
+    let token = rental.sign_token as string | null;
+    if (!token) {
+      token = genToken();
+      const { error: upErr } = await supabaseAdmin
+        .from("rentals")
+        .update({ sign_token: token })
+        .eq("id", rental.id);
+      if (upErr) throw new Error(`Could not save token: ${upErr.message}`);
+    }
+
+    const { data: driver } = await supabaseAdmin
+      .from("drivers")
+      .select("full_name, email, phone")
+      .eq("id", rental.driver_id)
+      .single();
+
+    const link = `${data.origin.replace(/\/$/, "")}/sign/${token}`;
+    return {
+      link,
+      driverName: driver?.full_name ?? null,
+      driverEmail: driver?.email ?? null,
+      driverPhone: driver?.phone ?? null,
+    };
+  });
+
 /** Public: load reservation details for the signing page (token-gated). */
 export const getRentalForSigning = createServerFn({ method: "POST" })
   .inputValidator((input: { token: string }) => {

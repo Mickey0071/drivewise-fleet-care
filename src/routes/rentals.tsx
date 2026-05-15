@@ -9,7 +9,8 @@ import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, a
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +21,7 @@ import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
-import { sendSigningLink } from "@/lib/sign.functions";
+import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
@@ -51,6 +52,7 @@ function RentalsPage() {
   // (Mark as Returned now opens the full Return Inspection dialog directly.)
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
+  const getSignLinkFn = useServerFn(getSigningLink);
   useStoreVersion();
   // Notify staff when a remote signature arrives (via realtime) and the
   // reservation flips from pending → active.
@@ -172,24 +174,75 @@ function RentalsPage() {
                     <FileSignature className="mr-1 h-4 w-4" />
                     {r.signatureDataUrl ? "Re-capture signature" : "Capture signature"}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={async () => {
-                      try {
-                        const res = await sendSignLinkFn({
-                          data: { rentalId: r.id, origin: window.location.origin },
-                        });
-                        toast.success("Signing link sent via SMS", { description: res.link });
-                      } catch (e) {
-                        toast.error("Could not send link", {
-                          description: e instanceof Error ? e.message : String(e),
-                        });
-                      }
-                    }}
-                  >
-                    <Send className="mr-1 h-4 w-4" /> Send sign link to renter
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="secondary">
+                        <Send className="mr-1 h-4 w-4" /> Send agreement
+                        <ChevronDown className="ml-1 h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56">
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          try {
+                            const res = await sendSignLinkFn({
+                              data: { rentalId: r.id, origin: window.location.origin },
+                            });
+                            toast.success("Text message sent to renter", { description: res.link });
+                          } catch (e) {
+                            toast.error("Could not send text", {
+                              description: e instanceof Error ? e.message : String(e),
+                            });
+                          }
+                        }}
+                      >
+                        <MessageSquare className="mr-2 h-4 w-4" /> Text (SMS)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          try {
+                            const res = await getSignLinkFn({
+                              data: { rentalId: r.id, origin: window.location.origin },
+                            });
+                            if (!res.driverEmail) {
+                              toast.error("No email on file for renter");
+                              return;
+                            }
+                            const subject = "Your Camauto Rentals Agreement";
+                            const body =
+                              `Hi ${res.driverName ?? ""},\n\n` +
+                              `Please complete your reservation by signing your rental agreement and uploading your driver's license + a selfie at the secure link below:\n\n` +
+                              `${res.link}\n\n` +
+                              `Thank you,\nCamauto Rentals\n(866) 625-5550`;
+                            window.location.href = `mailto:${encodeURIComponent(res.driverEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                          } catch (e) {
+                            toast.error("Could not prepare email", {
+                              description: e instanceof Error ? e.message : String(e),
+                            });
+                          }
+                        }}
+                      >
+                        <Mail className="mr-2 h-4 w-4" /> Email
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          try {
+                            const res = await getSignLinkFn({
+                              data: { rentalId: r.id, origin: window.location.origin },
+                            });
+                            await navigator.clipboard.writeText(res.link);
+                            toast.success("Signing link copied to clipboard");
+                          } catch (e) {
+                            toast.error("Could not copy link", {
+                              description: e instanceof Error ? e.message : String(e),
+                            });
+                          }
+                        }}
+                      >
+                        <Copy className="mr-2 h-4 w-4" /> Copy link
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     size="sm"
                     variant={r.paymentReceived ? "outline" : "default"}
