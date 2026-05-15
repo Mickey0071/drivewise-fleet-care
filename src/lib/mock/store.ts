@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto } from "./data";
 import { supabase } from "@/integrations/supabase/client";
 
 const listeners = new Set<() => void>();
@@ -120,6 +120,11 @@ const toExpense = (e: Expense) => ({
   id: e.id, category: e.category, amount: e.amount, date: e.date,
   vendor: e.vendor ?? null, vehicle_id: e.vehicleId ?? null,
   notes: e.notes ?? null, receipt_url: e.receiptUrl ?? null,
+});
+const fromVehiclePhoto = (r: any): VehiclePhoto => ({
+  id: r.id, vehicleId: r.vehicle_id, url: r.url,
+  caption: r.caption ?? undefined, sortOrder: r.sort_order ?? 0,
+  createdAt: r.created_at,
 });
 
 let hydrationPromise: Promise<void> | null = null;
