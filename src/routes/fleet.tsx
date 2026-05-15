@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addVehicle, useStoreVersion } from "@/lib/mock/store";
+import { addVehicle, updateVehicleImage, uploadVehiclePhoto, useStoreVersion } from "@/lib/mock/store";
 import { toast } from "sonner";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 
@@ -65,7 +65,7 @@ function FleetPage() {
             <div className="block">
               <div className="relative aspect-[16/10] w-full overflow-hidden rounded-t-xl bg-muted">
                 <img
-                  src={carImage(v.model)}
+                  src={v.imageUrl ?? carImage(v.model)}
                   alt={`${v.year} ${v.make} ${v.model}`}
                   loading="lazy"
                   width={800}
