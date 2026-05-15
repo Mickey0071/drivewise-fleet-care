@@ -31,15 +31,28 @@ function DriverPortalPage() {
   const { user } = useAuth();
   // Drivers who actually have a rental
   const driversWithRental = drivers.filter(d => rentals.some(r => r.driverId === d.id));
-  const [meId, setMeId] = useState(driversWithRental[0]?.id ?? drivers[0].id);
-  const me = drivers.find(d => d.id === meId)!;
-  const myRental = rentals.find(r => r.driverId === me.id);
+  const [meId, setMeId] = useState<string | undefined>(driversWithRental[0]?.id ?? drivers[0]?.id);
+  const me = drivers.find(d => d.id === meId) ?? null;
+  const myRental = me ? rentals.find(r => r.driverId === me.id) : null;
   const v = myRental ? vehicleById(myRental.vehicleId) : null;
-  const myPayments = payments.filter(p => p.driverId === me.id).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const myPayments = me ? payments.filter(p => p.driverId === me.id).sort((a, b) => a.dueDate.localeCompare(b.dueDate)) : [];
   const next = myPayments.find(p => p.status !== "paid");
   const [paying, setPaying] = useState<Payment | null>(null);
   const [stripeOpen, setStripeOpen] = useState<null | { kind: "weekly" | "deposit"; amount: number }>(null);
   const [agreementOpen, setAgreementOpen] = useState(false);
+
+  if (!me) {
+    return (
+      <div>
+        <PageHeader title="Renter Portal" subtitle="No renters yet" />
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            No renters in the system yet. Add a renter or share a rental link to get started.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -49,10 +62,10 @@ function DriverPortalPage() {
         subtitle={`Hi, ${me.fullName.split(" ")[0]} 👋`}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={meId} onValueChange={setMeId}>
+            <Select value={meId} onValueChange={(v) => setMeId(v)}>
               <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {driversWithRental.map(d => (
+                {(driversWithRental.length ? driversWithRental : drivers).map(d => (
                   <SelectItem key={d.id} value={d.id}>{d.fullName}</SelectItem>
                 ))}
               </SelectContent>
