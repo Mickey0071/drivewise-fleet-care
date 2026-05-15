@@ -15,6 +15,39 @@ export interface PnLExportData {
     status: string;
   }[];
   totals: { revenue: number; expenses: number; payroll: number; net: number; margin: number };
+  paymentsDetail?: {
+    id: string;
+    paidDate: string;
+    dueDate: string;
+    rentalId: string;
+    driver: string;
+    vehicle: string;
+    plate: string;
+    method: string;
+    status: string;
+    amount: number;
+  }[];
+  expensesDetail?: {
+    id: string;
+    date: string;
+    category: string;
+    vendor: string;
+    vehicle: string;
+    plate: string;
+    notes: string;
+    receiptUrl: string;
+    amount: number;
+  }[];
+  vehicleDetail?: {
+    vehicleId: string;
+    vehicle: string;
+    plate: string;
+    vin: string;
+    revenue: number;
+    expenses: number;
+    net: number;
+    roiPct: number | null;
+  }[];
 }
 
 const BRAND = "0F172A"; // dark slate
