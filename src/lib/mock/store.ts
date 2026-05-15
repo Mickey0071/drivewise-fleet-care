@@ -256,8 +256,11 @@ function subscribeRealtime() {
 
 // fire-and-forget cloud writes; log failures but don't block UI
 const cloudWrite = (label: string, p: PromiseLike<{ error: any }>) => {
-  Promise.resolve(p).then(({ error }) => {
-    if (error) console.error(`[cloud:${label}]`, error);
+  return Promise.resolve(p).then(({ error }) => {
+    if (error) {
+      console.error(`[cloud:${label}]`, error);
+      throw new Error(`[cloud:${label}] ${error.message ?? "write failed"}`);
+    }
   });
 };
 
