@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 function genToken() {
   return (
@@ -47,6 +48,7 @@ async function nextId(table: "rentals" | "drivers", prefix: "R" | "D", floor: nu
 
 /** Create a public share link for an available vehicle. */
 export const createShareLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: {
     vehicleId: string;
     startDate: string;
@@ -59,7 +61,7 @@ export const createShareLink = createServerFn({ method: "POST" })
     if (typeof input.rate !== "number" || input.rate < 0) throw new Error("rate required");
     return input;
   })
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { data: vehicle, error: vErr } = await supabaseAdmin
       .from("vehicles")
       .select("id, status, daily_rate, weekly_rate")
@@ -77,6 +79,7 @@ export const createShareLink = createServerFn({ method: "POST" })
       rate: data.rate,
       weekly_rate: vehicle.weekly_rate ?? 0,
       daily_rate: vehicle.daily_rate ?? 0,
+      created_by: context.userId,
     });
     if (error) throw new Error(error.message);
     return { token };
@@ -240,6 +243,26 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       );
     } catch (e) {
       console.error("ack sms failed", e);
+    }
+
+    // Notify admin who created the link
+    try {
+      if (link.created_by) {
+        const { data: adminProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("phone, full_name")
+          .eq("id", link.created_by)
+          .maybeSingle();
+        if (adminProfile?.phone) {
+          await sendSms(
+            adminProfile.phone,
+            `Camauto Rentals: New rental application received from ${data.fullName.trim()} (${data.phone.trim()}) for vehicle ${link.vehicle_id}. Rental ${rentalId}.`,
+            adminProfile.full_name ?? null,
+          );
+        }
+      }
+    } catch (e) {
+      console.error("admin notify sms failed", e);
     }
 
     return { ok: true, rentalId };
