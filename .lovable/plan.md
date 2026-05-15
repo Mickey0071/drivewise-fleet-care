@@ -1,47 +1,47 @@
+## What you want
 
-# Plan: P&L / Financial Reporting Module
+In the Share Rental dialog, after generating a link: type the customer's phone number, click **Send**, and Lovable sends the SMS to them via GoHighLevel — no opening of your phone's Messages app, no manual sending.
 
-Replace the analytics gap from Fleet Fitness by building a financial reporting module that pulls revenue from existing rental/payment data and lets you log expenses against vehicles. Multi-tenancy and the other modules (payroll, expenses-deep, onboarding wizard) come in later phases.
+## Good news
 
-## Phase 1 — P&L Foundation (this build)
+GHL is already fully wired up in the project:
+- Secrets `GHL_PIT_TOKEN` and `GHL_LOCATION_ID` are configured
+- `src/lib/ghl.server.ts` already has a `sendSms(phone, message, name)` helper that creates the contact in GHL and sends the SMS through the Conversations API
+- `src/lib/share-rental.functions.ts` still has `sendShareLinkSms` — the server function that takes `{ token, url, phone, name }` and calls `sendSms` with a pre-written message: *"Camauto Rentals: You're invited to rent a vehicle. Complete your application (license + selfie + signature) here: {url}"*
 
-### What you'll get
-- A new **Financials** tab in the admin nav with three views:
-  1. **Overview** — current month, YTD, last 12 months: total revenue, total expenses, net profit, profit margin
-  2. **Per-Vehicle P&L** — every vehicle as a row: revenue, expenses, net, ROI %, utilization %
-  3. **Expenses** — log and categorize expenses (fuel, repairs, insurance, registration, payments to lien holder, other)
-- **Revenue auto-pulled** from `payments` table (status = paid) + extension `additional_amount` — no double entry.
-- **Date range filter** (this month / last month / YTD / last 12 mo / custom).
-- **Export to CSV** for any view (so you can hand to an accountant).
-- **Charts**: monthly revenue vs expense line chart, expense breakdown by category (donut).
+I just need to re-wire the UI button to call it. (My last change replaced this with the native `sms:` link, which is what you don't want.)
 
-### Database additions
-- `expenses` table — id, vehicle_id (nullable for overhead), category, amount, date, vendor, notes, receipt_url, created_by
-- `expense_categories` enum: fuel, repair, maintenance, insurance, registration, lien_payment, cleaning, towing, other
-- Storage bucket `expense-receipts` for receipt photos/PDFs
-- RLS: admin-only read/write
+## Plan
 
-### UI
-- New route `src/routes/financials.tsx` with tabbed sub-views (Overview / Per-Vehicle / Expenses)
-- Reuse existing `Card` / `Table` patterns from rentals & fleet
-- Charts via `recharts` (already common in shadcn stacks — install if missing)
+**Edit `src/components/app/ShareRentalDialog.tsx`** (1 file, frontend only):
 
-### Server functions
-- `getFinancialSummary(dateRange)` — aggregates payments + extensions + expenses
-- `getVehiclePnL(dateRange)` — per-vehicle rollup
-- `createExpense / updateExpense / deleteExpense`
-- `exportFinancialsCsv(view, dateRange)`
+1. Re-import `sendShareLinkSms` and wire it through `useServerFn`
+2. Change the "Text to customer" section back to a clean form:
+   - Phone number input (required)
+   - **Send link** button
+3. On click:
+   - Validate phone is filled
+   - Show a spinner while sending
+   - Call the GHL server function with `{ token, url, phone, name }`
+   - On success: green toast "Sent to {phone}"
+   - On error: red toast with the GHL error message
+4. Keep the existing **email** section as-is (opens mail client — unchanged)
 
-## Phase 2+ (future requests, not built now)
-- Payroll module (staff, hours, commissions)
-- Onboarding wizard (step-by-step setup for new fleet owner)
-- Multi-tenant / white-label (when you're ready to sell to other fleet owners)
-- Advanced analytics (vehicle LTV, churn, optimal rate suggestions)
+## What this gives you
 
-## Out of scope for this build
-- Accounting integrations (QuickBooks/Xero) — can add later
-- Tax calculations
-- Bank feed sync
-- Driver-facing financial views (admin only)
+- You generate a link in the dialog
+- Type the customer's phone number (e.g. +15558675309)
+- Click **Send link**
+- ~1 second later: the customer receives an SMS from your GHL-connected number with the link
+- The contact is auto-created/updated in your GHL location with their name + phone
+- No phone needed on your end, works from desktop and mobile
 
-Approve and I'll build Phase 1.
+## Risk / cost
+
+- Frontend-only edit, 1 file. Smallest possible build.
+- GHL costs apply per SMS sent (your existing GHL plan)
+- If GHL is misconfigured or out of credits, the toast will show the exact error so you know
+
+## To go live
+
+After approval: I make the edit → you click **Publish → Update**.
