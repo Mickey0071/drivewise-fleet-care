@@ -256,12 +256,17 @@ function subscribeRealtime() {
 
 // fire-and-forget cloud writes; log failures but don't block UI
 const cloudWrite = (label: string, p: PromiseLike<{ error: any }>) => {
-  return Promise.resolve(p).then(({ error }) => {
+  // Returns a promise that resolves on success and rejects on failure so
+  // callers that care can `await` it. We also attach a `.catch` so callers
+  // that ignore the promise don't trigger an unhandled-rejection crash.
+  const promise = Promise.resolve(p).then(({ error }) => {
     if (error) {
       console.error(`[cloud:${label}]`, error);
       throw new Error(`[cloud:${label}] ${error.message ?? "write failed"}`);
     }
   });
+  promise.catch(() => { /* logged above; swallow to avoid unhandled rejection */ });
+  return promise;
 };
 
 // kick off hydration immediately on browser
