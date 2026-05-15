@@ -281,7 +281,7 @@ function VehicleDetail() {
 }
 
 function Field({ label, value }: { label: string; value: string }) {
-  return <div className="flex justify-between gap-3 border-b border-border/50 pb-1"><span className="text-muted-foreground">{label}</span><span className="font-medium">{value}</span></div>;
+  return <div className="flex justify-between gap-3 border-b border-border/50 pb-1"><span className="text-muted-foreground shrink-0">{label}</span><span className="font-medium text-right break-all">{value}</span></div>;
 }
 function Stat({ label, value }: { label: string; value: string }) {
   return <Card><CardContent className="p-4"><div className="text-xs uppercase text-muted-foreground">{label}</div><div className="mt-1 text-xl font-bold">{value}</div></CardContent></Card>;
