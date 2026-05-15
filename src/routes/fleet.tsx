@@ -127,9 +127,9 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
   const [year, setYear] = useState<number>(new Date().getFullYear());
   const [vin, setVin] = useState("");
   const [plate, setPlate] = useState("");
-  const [mileage, setMileage] = useState<number>(0);
-  const [dailyRate, setDailyRate] = useState<number>(75);
-  const [weeklyRate, setWeeklyRate] = useState<number>(450);
+  const [mileage, setMileage] = useState<string>("0");
+  const [dailyRate, setDailyRate] = useState<string>("75");
+  const [weeklyRate, setWeeklyRate] = useState<string>("450");
   const [riskTier, setRiskTier] = useState<"A" | "B" | "C">("A");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -137,7 +137,7 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
 
   function reset() {
     setMake(""); setModel(""); setYear(new Date().getFullYear()); setVin(""); setPlate("");
-    setMileage(0); setDailyRate(75); setWeeklyRate(450); setRiskTier("A");
+    setMileage("0"); setDailyRate("75"); setWeeklyRate("450"); setRiskTier("A");
     setPhotoFile(null);
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoPreview(null);
@@ -152,7 +152,13 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
   async function save() {
     if (!make || !model || !plate) { toast.error("Make, model, and plate are required"); return; }
     setSaving(true);
-    const v = addVehicle({ make, model, year, vin, plate, mileage, dailyRate, weeklyRate, riskTier });
+    const v = addVehicle({
+      make, model, year, vin, plate,
+      mileage: Number(mileage) || 0,
+      dailyRate: Number(dailyRate) || 0,
+      weeklyRate: Number(weeklyRate) || 0,
+      riskTier,
+    });
     if (photoFile) {
       try {
         const url = await uploadVehiclePhoto(v.id, photoFile);
@@ -192,7 +198,7 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
           <div><Label>Year</Label><Input type="number" value={year} onChange={e => setYear(Number(e.target.value))} /></div>
           <div><Label>Plate *</Label><Input value={plate} onChange={e => setPlate(e.target.value)} /></div>
           <div className="sm:col-span-2"><Label>VIN</Label><Input value={vin} onChange={e => setVin(e.target.value)} /></div>
-          <div><Label>Mileage</Label><Input type="number" value={mileage} onChange={e => setMileage(Number(e.target.value))} /></div>
+          <div><Label>Mileage</Label><Input type="number" inputMode="numeric" value={mileage} onChange={e => setMileage(e.target.value)} /></div>
           <div>
             <Label>Risk tier</Label>
             <Select value={riskTier} onValueChange={(v) => setRiskTier(v as "A" | "B" | "C")}>
@@ -204,8 +210,8 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
               </SelectContent>
             </Select>
           </div>
-          <div><Label>Daily rate ($)</Label><Input type="number" value={dailyRate} onChange={e => setDailyRate(Number(e.target.value))} /></div>
-          <div><Label>Weekly rate ($)</Label><Input type="number" value={weeklyRate} onChange={e => setWeeklyRate(Number(e.target.value))} /></div>
+          <div><Label>Daily rate ($)</Label><Input type="number" inputMode="decimal" value={dailyRate} onChange={e => setDailyRate(e.target.value)} /></div>
+          <div><Label>Weekly rate ($)</Label><Input type="number" inputMode="decimal" value={weeklyRate} onChange={e => setWeeklyRate(e.target.value)} /></div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
