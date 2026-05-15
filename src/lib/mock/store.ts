@@ -538,9 +538,9 @@ export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "i
     ...input,
   };
   drivers.push(driver);
-  cloudWrite("driver:insert", supabase.from("drivers").insert(toDriver(driver)));
+  const cloudReady = cloudWrite("driver:insert", supabase.from("drivers").insert(toDriver(driver)));
   emit();
-  return driver;
+  return Object.assign(driver, { cloudReady });
 }
 
 function nextInspectionId() {
