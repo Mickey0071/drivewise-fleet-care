@@ -141,7 +141,8 @@ function VehicleDetail() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics / P&amp;L</TabsTrigger>
           <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
-          <TabsTrigger value="renters">Renters ({uniqueRenters.length})</TabsTrigger>
+          <TabsTrigger value="repairs">Repair History</TabsTrigger>
+          <TabsTrigger value="renters">Renter History ({uniqueRenters.length})</TabsTrigger>
           <TabsTrigger value="other">Violations &amp; Inspections</TabsTrigger>
         </TabsList>
 
@@ -172,6 +173,10 @@ function VehicleDetail() {
               <Row key={p.id} title={fmtMoney(p.amount)} sub={`${driverById(p.driverId)?.fullName ?? p.driverId} · due ${fmtDate(p.dueDate)}`} right={<StatusBadge status={p.status} />} />
             ))}
           </Section>
+          <Section title="Expense breakdown">
+            <Row title="Maintenance and repairs" sub={`${vMx.length} service record${vMx.length === 1 ? "" : "s"}`} right={<span className="font-medium">{fmtMoney(maintenanceTotal)}</span>} />
+            <Row title="Violations and impound costs" sub={`${vViol.length} vehicle charge${vViol.length === 1 ? "" : "s"}`} right={<span className="font-medium">{fmtMoney(violationTotal)}</span>} />
+          </Section>
           <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/pnl">Open full P&amp;L report →</Link></Button>
         </TabsContent>
 
@@ -182,6 +187,14 @@ function VehicleDetail() {
             ))}
           </Section>
           <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/maintenance">Open maintenance log →</Link></Button>
+        </TabsContent>
+
+        <TabsContent value="repairs" className="mt-4 space-y-4">
+          <Section title={`Repair history (${vRepairs.length})`}>
+            {vRepairs.length === 0 ? <Empty/> : vRepairs.map(m => (
+              <Row key={m.id} title={m.serviceType} sub={`${fmtDate(m.dateCompleted)} · ${m.vendor} · ${m.mileageAtService.toLocaleString()} mi${m.notes ? ` · ${m.notes}` : ""}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
+            ))}
+          </Section>
         </TabsContent>
 
         <TabsContent value="renters" className="mt-4 space-y-4">
