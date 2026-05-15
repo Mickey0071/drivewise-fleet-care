@@ -48,7 +48,8 @@ function RentPage() {
   async function handleSubmit() {
     if (!fullName.trim()) return toast.error("Enter your full name");
     if (!phone.trim()) return toast.error("Enter your phone");
-    if (!email.trim()) return toast.error("Enter your email");
+    if (!email.trim()) return toast.error("Email is required");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return toast.error("Enter a valid email address");
     if (!licenseNumber.trim()) return toast.error("Enter your license number");
     if (!licenseExpiry) return toast.error("Enter your license expiry");
     if (!licenseUrl) return toast.error("Upload your driver's license");
@@ -138,8 +139,8 @@ function RentPage() {
             <Input id="ph" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
           <div className="sm:col-span-2">
-            <Label htmlFor="em">Email</Label>
-            <Input id="em" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Label htmlFor="em">Email <span className="text-destructive">*</span></Label>
+            <Input id="em" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div>
             <Label htmlFor="ln">License number</Label>
