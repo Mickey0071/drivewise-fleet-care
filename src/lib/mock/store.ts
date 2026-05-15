@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, inspections, maintenance, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense } from "./data";
 import { supabase } from "@/integrations/supabase/client";
 
 const listeners = new Set<() => void>();
@@ -111,6 +111,16 @@ const toInspection = (i: Inspection) => ({
   type: i.type, date: i.date, mileage: i.mileage,
   fuel_level: i.fuelLevel, damage_noted: i.damageNoted, completed_by: i.completedBy,
 });
+const fromExpense = (r: any): Expense => ({
+  id: r.id, category: r.category, amount: Number(r.amount), date: r.date,
+  vendor: r.vendor ?? undefined, vehicleId: r.vehicle_id ?? undefined,
+  notes: r.notes ?? undefined, receiptUrl: r.receipt_url ?? undefined,
+});
+const toExpense = (e: Expense) => ({
+  id: e.id, category: e.category, amount: e.amount, date: e.date,
+  vendor: e.vendor ?? null, vehicle_id: e.vehicleId ?? null,
+  notes: e.notes ?? null, receipt_url: e.receiptUrl ?? null,
+});
 
 let hydrationPromise: Promise<void> | null = null;
 let hydrated = false;
@@ -120,19 +130,21 @@ export function hydrateFromCloud(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   if (hydrationPromise) return hydrationPromise;
   hydrationPromise = (async () => {
-    const [v, d, r, p, i, e] = await Promise.all([
+    const [v, d, r, p, i, e, ex] = await Promise.all([
       supabase.from("vehicles").select("*"),
       supabase.from("drivers").select("*"),
       supabase.from("rentals").select("*"),
       supabase.from("payments").select("*"),
       supabase.from("inspections").select("*"),
       supabase.from("rental_extensions").select("*"),
+      supabase.from("expenses").select("*"),
     ]);
     if (v.data) replaceArray(vehicles, v.data.map(fromVehicle));
     if (d.data) replaceArray(drivers, d.data.map(fromDriver));
     if (r.data) replaceArray(rentals, r.data.map(row => fromRental(row, e.data ?? [])));
     if (p.data) replaceArray(payments, p.data.map(fromPayment));
     if (i.data) replaceArray(inspections, i.data.map(fromInspection));
+    if (ex.data) replaceArray(expenses, ex.data.map(fromExpense));
     hydrated = true;
     emit();
     subscribeRealtime();
@@ -224,6 +236,18 @@ function subscribeRealtime() {
           if (idx >= 0) exts[idx] = ext; else exts.push(ext);
           r.extensions = exts;
         }
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = expenses.findIndex(x => x.id === id);
+        if (idx >= 0) expenses.splice(idx, 1);
+      } else {
+        const next = fromExpense(payload.new);
+        const idx = expenses.findIndex(x => x.id === next.id);
+        if (idx >= 0) expenses[idx] = next; else expenses.push(next);
       }
       emit();
     })
