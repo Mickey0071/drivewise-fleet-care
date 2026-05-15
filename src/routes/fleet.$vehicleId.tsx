@@ -11,6 +11,8 @@ import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
+const REPAIR_KEYWORDS = ["brake", "transmission", "repair", "pads", "engine", "battery", "tire", "body", "glass", "diagnostic"];
+
 export const Route = createFileRoute("/fleet/$vehicleId")({
   component: VehicleDetail,
 });
@@ -23,13 +25,16 @@ function VehicleDetail() {
 
   const vRentals = rentals.filter(r => r.vehicleId === v.id);
   const vMx = maintenance.filter(m => m.vehicleId === v.id);
+  const vRepairs = vMx.filter(m => REPAIR_KEYWORDS.some(keyword => m.serviceType.toLowerCase().includes(keyword)));
   const vViol = violations.filter(x => x.vehicleId === v.id);
   const vInsp = inspections.filter(i => i.vehicleId === v.id);
   const rentalIds = new Set(vRentals.map(r => r.id));
   const vPayments = payments.filter(p => rentalIds.has(p.rentalId));
 
   const incomeTotal = vPayments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
-  const expenseTotal = vMx.reduce((s, m) => s + m.cost, 0) + vViol.reduce((s, x) => s + x.amount, 0);
+  const maintenanceTotal = vMx.reduce((s, m) => s + m.cost, 0);
+  const violationTotal = vViol.reduce((s, x) => s + x.amount, 0);
+  const expenseTotal = maintenanceTotal + violationTotal;
   const netTotal = incomeTotal - expenseTotal;
   const activeRental = vRentals.find(r => !r.endDate) ?? vRentals[0];
   const activeDriver = activeRental ? driverById(activeRental.driverId) : null;
@@ -91,6 +96,11 @@ function VehicleDetail() {
                   filename: `${slug}-maintenance.csv`,
                   headers: ["ID", "Service", "Date", "Vendor", "Mileage", "Cost", "Next due"],
                   rows: vMx.map(m => [m.id, m.serviceType, m.dateCompleted, m.vendor, m.mileageAtService, m.cost, m.nextServiceDue]),
+                },
+                {
+                  filename: `${slug}-repair-history.csv`,
+                  headers: ["ID", "Repair", "Date", "Vendor", "Mileage", "Cost", "Notes"],
+                  rows: vRepairs.map(m => [m.id, m.serviceType, m.dateCompleted, m.vendor, m.mileageAtService, m.cost, m.notes ?? ""]),
                 },
                 {
                   filename: `${slug}-rentals.csv`,
