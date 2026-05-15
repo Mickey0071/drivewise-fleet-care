@@ -9,8 +9,9 @@ import { carImage } from "@/lib/mock/carImages";
 import { uploadVehiclePhoto, updateVehicleImage, useStoreVersion } from "@/lib/mock/store";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
+import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { useRef, useState } from "react";
-import { ArrowLeft, Link2, Camera } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 const REPAIR_KEYWORDS = ["brake", "transmission", "repair", "pads", "engine", "battery", "tire", "body", "glass", "diagnostic"];
@@ -29,6 +30,7 @@ function VehicleDetail() {
   const v = vehicleById(vehicleId);
   const [reserveOpen, setReserveOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   if (!v) return <div className="text-muted-foreground">Vehicle not found.</div>;
@@ -127,6 +129,9 @@ function VehicleDetail() {
                 Share rental link
               </Button>
             )}
+            <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil className="mr-1 h-4 w-4" />Edit
+            </Button>
             <Button
               size="sm"
               disabled={v.status !== "available"}
