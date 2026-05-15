@@ -9,7 +9,8 @@ import { carImage } from "@/lib/mock/carImages";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Link2 } from "lucide-react";
+import { toast } from "sonner";
 
 const REPAIR_KEYWORDS = ["brake", "transmission", "repair", "pads", "engine", "battery", "tire", "body", "glass", "diagnostic"];
 
@@ -194,6 +195,21 @@ function VehicleDetail() {
         </TabsContent>
 
         <TabsContent value="repairs" className="mt-4 space-y-4">
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const url = `${window.location.origin}/fleet/${v.id}?tab=repairs`;
+                navigator.clipboard.writeText(url).then(
+                  () => toast.success("Repair History link copied", { description: url }),
+                  () => toast.error("Could not copy link"),
+                );
+              }}
+            >
+              <Link2 className="mr-1 h-4 w-4" />Copy deep link
+            </Button>
+          </div>
           <Section title={`Repair history (${vRepairs.length})`}>
             {vRepairs.length === 0 ? <Empty/> : vRepairs.map(m => (
               <Row key={m.id} title={m.serviceType} sub={`${fmtDate(m.dateCompleted)} · ${m.vendor} · ${m.mileageAtService.toLocaleString()} mi${m.notes ? ` · ${m.notes}` : ""}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
