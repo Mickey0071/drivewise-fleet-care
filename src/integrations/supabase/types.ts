@@ -468,6 +468,7 @@ export type Database = {
           created_at: string
           daily_rate: number
           id: string
+          image_url: string | null
           make: string
           mileage: number
           model: string
@@ -485,6 +486,7 @@ export type Database = {
           created_at?: string
           daily_rate?: number
           id: string
+          image_url?: string | null
           make: string
           mileage?: number
           model: string
@@ -502,6 +504,7 @@ export type Database = {
           created_at?: string
           daily_rate?: number
           id?: string
+          image_url?: string | null
           make?: string
           mileage?: number
           model?: string

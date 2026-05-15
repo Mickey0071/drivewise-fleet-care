@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addVehicle, useStoreVersion } from "@/lib/mock/store";
+import { addVehicle, updateVehicleImage, uploadVehiclePhoto, useStoreVersion } from "@/lib/mock/store";
 import { toast } from "sonner";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 
@@ -65,7 +65,7 @@ function FleetPage() {
             <div className="block">
               <div className="relative aspect-[16/10] w-full overflow-hidden rounded-t-xl bg-muted">
                 <img
-                  src={carImage(v.model)}
+                  src={v.imageUrl ?? carImage(v.model)}
                   alt={`${v.year} ${v.make} ${v.model}`}
                   loading="lazy"
                   width={800}
@@ -131,14 +131,36 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
   const [dailyRate, setDailyRate] = useState<number>(75);
   const [weeklyRate, setWeeklyRate] = useState<number>(450);
   const [riskTier, setRiskTier] = useState<"A" | "B" | "C">("A");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   function reset() {
     setMake(""); setModel(""); setYear(new Date().getFullYear()); setVin(""); setPlate("");
     setMileage(0); setDailyRate(75); setWeeklyRate(450); setRiskTier("A");
+    setPhotoFile(null);
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoPreview(null);
+    setSaving(false);
   }
-  function save() {
+  function pickPhoto(file: File | null) {
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    if (!file) { setPhotoFile(null); setPhotoPreview(null); return; }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  }
+  async function save() {
     if (!make || !model || !plate) { toast.error("Make, model, and plate are required"); return; }
+    setSaving(true);
     const v = addVehicle({ make, model, year, vin, plate, mileage, dailyRate, weeklyRate, riskTier });
+    if (photoFile) {
+      try {
+        const url = await uploadVehiclePhoto(v.id, photoFile);
+        updateVehicleImage(v.id, url);
+      } catch (e: any) {
+        toast.error("Photo upload failed", { description: e?.message ?? "Try again" });
+      }
+    }
     toast.success("Vehicle added", { description: `${v.year} ${v.make} ${v.model} (${v.id})` });
     reset(); onClose();
   }
@@ -147,6 +169,24 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
       <DialogContent>
         <DialogHeader><DialogTitle>Add vehicle</DialogTitle></DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Label>Profile photo</Label>
+            <div className="mt-1 flex items-center gap-3">
+              <div className="h-20 w-32 overflow-hidden rounded-md border border-border bg-muted">
+                {photoPreview ? (
+                  <img src={photoPreview} alt="Preview" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">No photo</div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <Input type="file" accept="image/*" onChange={(e) => pickPhoto(e.target.files?.[0] ?? null)} />
+                {photoFile && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => pickPhoto(null)}>Remove</Button>
+                )}
+              </div>
+            </div>
+          </div>
           <div><Label>Make *</Label><Input value={make} onChange={e => setMake(e.target.value)} placeholder="Toyota" /></div>
           <div><Label>Model *</Label><Input value={model} onChange={e => setModel(e.target.value)} placeholder="Camry" /></div>
           <div><Label>Year</Label><Input type="number" value={year} onChange={e => setYear(Number(e.target.value))} /></div>
@@ -169,7 +209,7 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
-          <Button onClick={save}>Add vehicle</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Add vehicle"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

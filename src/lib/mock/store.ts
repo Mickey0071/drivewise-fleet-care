@@ -27,12 +27,14 @@ const fromVehicle = (r: any) => ({
   plate: r.plate, mileage: r.mileage, status: r.status, riskTier: r.risk_tier,
   dailyRate: Number(r.daily_rate), weeklyRate: Number(r.weekly_rate),
   notes: r.notes ?? undefined, nextServiceDue: r.next_service_due ?? undefined,
+  imageUrl: r.image_url ?? undefined,
 });
 const toVehicle = (v: any) => ({
   id: v.id, make: v.make, model: v.model, year: v.year, vin: v.vin,
   plate: v.plate, mileage: v.mileage, status: v.status, risk_tier: v.riskTier,
   daily_rate: v.dailyRate, weekly_rate: v.weeklyRate,
   notes: v.notes ?? null, next_service_due: v.nextServiceDue ?? null,
+  image_url: v.imageUrl ?? null,
 });
 const fromDriver = (r: any) => ({
   id: r.id, fullName: r.full_name, phone: r.phone, email: r.email,
@@ -476,6 +478,28 @@ export function addVehicle(input: Omit<Vehicle, "id" | "status" | "mileage" | "r
   cloudWrite("vehicle:insert", supabase.from("vehicles").insert(toVehicle(vehicle)));
   emit();
   return vehicle;
+}
+
+export function updateVehicleImage(id: string, imageUrl: string | null) {
+  const v = vehicles.find(x => x.id === id);
+  if (!v) return;
+  v.imageUrl = imageUrl ?? undefined;
+  cloudWrite("vehicle:update", supabase.from("vehicles").update({ image_url: imageUrl }).eq("id", id));
+  emit();
+}
+
+/** Upload a photo file to storage and return its public URL. */
+export async function uploadVehiclePhoto(vehicleId: string, file: File): Promise<string> {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${vehicleId}/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("vehicle-photos").upload(path, file, {
+    cacheControl: "3600",
+    upsert: true,
+    contentType: file.type || "image/jpeg",
+  });
+  if (error) throw error;
+  const { data } = supabase.storage.from("vehicle-photos").getPublicUrl(path);
+  return data.publicUrl;
 }
 
 export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "insuranceOnFile"> & Partial<Pick<Driver, "status" | "insuranceOnFile" | "dateAdded">>) {
