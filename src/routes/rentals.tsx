@@ -272,6 +272,8 @@ function RentalsPage() {
                     size="sm"
                     className="text-destructive hover:text-destructive"
                     onClick={() => {
+                      if (!window.confirm("Cancel this reservation?")) return;
+                      if (!window.confirm("Are you sure? This cannot be undone.")) return;
                       cancelReservation(r.id);
                       toast.success("Reservation cancelled");
                     }}
