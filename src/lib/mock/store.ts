@@ -139,7 +139,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
   }
   if (hydrationPromise) return hydrationPromise;
   hydrationPromise = (async () => {
-    const [v, d, r, p, i, e, ex] = await Promise.all([
+    const [v, d, r, p, i, e, ex, vp] = await Promise.all([
       supabase.from("vehicles").select("*"),
       supabase.from("drivers").select("*"),
       supabase.from("rentals").select("*"),
@@ -147,8 +147,9 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
       supabase.from("inspections").select("*"),
       supabase.from("rental_extensions").select("*"),
       supabase.from("expenses").select("*"),
+      supabase.from("vehicle_photos").select("*").order("sort_order", { ascending: true }),
     ]);
-    const failures = [v, d, r, p, i, e, ex].filter(result => result.error);
+    const failures = [v, d, r, p, i, e, ex, vp].filter(result => result.error);
     if (failures.length) {
       failures.forEach(result => console.error("[cloud:hydrate]", result.error));
       hydrationPromise = null;
@@ -160,6 +161,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
     replaceArray(payments, (p.data ?? []).map(fromPayment));
     replaceArray(inspections, (i.data ?? []).map(fromInspection));
     replaceArray(expenses, (ex.data ?? []).map(fromExpense));
+    replaceArray(vehiclePhotos, (vp.data ?? []).map(fromVehiclePhoto));
     hydrated = true;
     emit();
     subscribeRealtime();
