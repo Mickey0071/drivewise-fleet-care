@@ -633,6 +633,61 @@ export async function uploadVehiclePhoto(vehicleId: string, file: File): Promise
   return data.publicUrl;
 }
 
+export function getVehiclePhotos(vehicleId: string): VehiclePhoto[] {
+  return vehiclePhotos
+    .filter(p => p.vehicleId === vehicleId)
+    .slice()
+    .sort((a, b) => (a.sortOrder - b.sortOrder) || a.createdAt.localeCompare(b.createdAt));
+}
+
+export async function addVehicleGalleryPhoto(vehicleId: string, file: File, caption?: string): Promise<VehiclePhoto> {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${vehicleId}/gallery/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error: upErr } = await supabase.storage.from("vehicle-photos").upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+    contentType: file.type || "image/jpeg",
+  });
+  if (upErr) throw upErr;
+  const { data: pub } = supabase.storage.from("vehicle-photos").getPublicUrl(path);
+  const url = pub.publicUrl;
+  const maxOrder = vehiclePhotos.filter(p => p.vehicleId === vehicleId)
+    .reduce((m, p) => Math.max(m, p.sortOrder), -1);
+  const row = {
+    vehicle_id: vehicleId,
+    url,
+    caption: caption ?? null,
+    sort_order: maxOrder + 1,
+  };
+  const { data, error } = await supabase.from("vehicle_photos").insert(row as never).select().single();
+  if (error) throw error;
+  const photo = fromVehiclePhoto(data);
+  if (!vehiclePhotos.some(p => p.id === photo.id)) vehiclePhotos.push(photo);
+  emit();
+  return photo;
+}
+
+export async function deleteVehicleGalleryPhoto(photoId: string): Promise<void> {
+  const idx = vehiclePhotos.findIndex(p => p.id === photoId);
+  if (idx < 0) return;
+  const photo = vehiclePhotos[idx];
+  // attempt to remove the storage object (best-effort)
+  try {
+    const m = photo.url.match(/\/vehicle-photos\/(.+)$/);
+    if (m) await supabase.storage.from("vehicle-photos").remove([m[1]]);
+  } catch (e) {
+    console.warn("[cloud:vehicle_photos:storage] could not delete object", e);
+  }
+  vehiclePhotos.splice(idx, 1);
+  emit();
+  const cloudReady = cloudWrite("vehicle_photos:delete", supabase.from("vehicle_photos").delete().eq("id", photoId)).catch((error) => {
+    vehiclePhotos.splice(idx, 0, photo);
+    emit();
+    throw error;
+  });
+  await cloudReady;
+}
+
 export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "insuranceOnFile"> & Partial<Pick<Driver, "status" | "insuranceOnFile" | "dateAdded">>) {
   const driver: Driver = {
     id: nextDriverId(),
