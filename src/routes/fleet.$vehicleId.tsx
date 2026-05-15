@@ -101,7 +101,14 @@ function VehicleDetail() {
               size="sm"
               variant="ghost"
               disabled={uploading}
-              onClick={() => { updateVehicleImage(v.id, null); toast.success("Photo removed"); }}
+              onClick={async () => {
+                try {
+                  await updateVehicleImage(v.id, null);
+                  toast.success("Photo removed");
+                } catch (err: any) {
+                  toast.error("Photo was not removed from cloud", { description: err?.message ?? "Try again" });
+                }
+              }}
             >
               Remove
             </Button>
