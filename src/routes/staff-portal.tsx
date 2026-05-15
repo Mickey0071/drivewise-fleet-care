@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { pushRunnerReportToGhl } from "@/lib/ghl.functions";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,6 +28,7 @@ type Task = {
 function RunnerPortalPage() {
   useStoreVersion();
   const me = staff.find(s => s.id === "S-02") ?? staff[0];
+  const pushToGhl = useServerFn(pushRunnerReportToGhl);
 
   // Build today's runner checklist from real data
   const tasks = useMemo<Task[]>(() => {
@@ -82,6 +85,25 @@ function RunnerPortalPage() {
       action: { label: "Open", onClick: () => window.open("/runner-reports", "_blank") },
     });
     window.open(`/runner-reports?focus=${report.id}`, "_blank");
+    // Fire-and-forget sync to GoHighLevel
+    pushToGhl({
+      data: {
+        reportId: report.id,
+        runnerName: me.fullName,
+        runnerEmail: me.email,
+        runnerPhone: me.phone,
+        submittedAt: report.submittedAt,
+        totalTasks: report.totalTasks,
+        completedTasks: report.completedTasks,
+        items: report.items,
+        notes: report.notes,
+      },
+    })
+      .then(() => toast.success("Synced to GoHighLevel"))
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : "Unknown error";
+        toast.error("GHL sync failed", { description: msg });
+      });
     reset();
   };
 
