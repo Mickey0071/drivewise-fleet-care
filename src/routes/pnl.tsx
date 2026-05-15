@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { payments, expenses, payrollRuns, staffById, vehicles, vehicleById, rentals, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
-import { TrendingUp, TrendingDown, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 import { downloadPnLExcel } from "@/lib/pnl-excel";
 import { FileSpreadsheet } from "lucide-react";
