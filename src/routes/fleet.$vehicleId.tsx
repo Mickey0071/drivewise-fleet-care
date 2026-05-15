@@ -15,10 +15,14 @@ const REPAIR_KEYWORDS = ["brake", "transmission", "repair", "pads", "engine", "b
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
   component: VehicleDetail,
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: typeof search.tab === "string" ? search.tab : undefined,
+  }),
 });
 
 function VehicleDetail() {
   const { vehicleId } = Route.useParams();
+  const { tab } = Route.useSearch();
   const v = vehicleById(vehicleId);
   const [reserveOpen, setReserveOpen] = useState(false);
   if (!v) return <div className="text-muted-foreground">Vehicle not found.</div>;
@@ -136,7 +140,7 @@ function VehicleDetail() {
         </Card>
       )}
 
-      <Tabs defaultValue="overview" className="mt-2">
+      <Tabs defaultValue={tab ?? "overview"} className="mt-2">
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics / P&amp;L</TabsTrigger>
