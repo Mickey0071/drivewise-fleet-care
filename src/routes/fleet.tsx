@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { addVehicle, updateVehicleImage, uploadVehiclePhoto, useStoreVersion } f
 import { toast } from "sonner";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
-import { Share2 } from "lucide-react";
+import { Share2, Camera } from "lucide-react";
 
 export const Route = createFileRoute("/fleet")({
   head: () => ({ meta: [{ title: "Fleet — Camauto Rentals" }] }),
@@ -94,6 +94,7 @@ function FleetPage() {
               </CardContent>
             </div>
             <div className="flex gap-2 border-t border-border bg-muted/30 p-2" onClick={(e) => e.stopPropagation()}>
+              <VehiclePhotoButton vehicleId={v.id} hasPhoto={!!v.imageUrl} />
               <Button
                 variant="outline"
                 size="sm"
