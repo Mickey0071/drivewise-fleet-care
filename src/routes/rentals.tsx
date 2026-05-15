@@ -5,7 +5,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
@@ -185,6 +185,7 @@ function RentalsPage() {
                       <DropdownMenuItem
                         onClick={async () => {
                           try {
+                            await ensureRentalSynced(r.id);
                             const res = await sendSignLinkFn({
                               data: { rentalId: r.id, origin: window.location.origin },
                             });
@@ -201,6 +202,7 @@ function RentalsPage() {
                       <DropdownMenuItem
                         onClick={async () => {
                           try {
+                            await ensureRentalSynced(r.id);
                             const res = await getSignLinkFn({
                               data: { rentalId: r.id, origin: window.location.origin },
                             });
@@ -227,6 +229,7 @@ function RentalsPage() {
                       <DropdownMenuItem
                         onClick={async () => {
                           try {
+                            await ensureRentalSynced(r.id);
                             const res = await getSignLinkFn({
                               data: { rentalId: r.id, origin: window.location.origin },
                             });
@@ -258,6 +261,7 @@ function RentalsPage() {
                     size="sm"
                     onClick={async () => {
                       try {
+                        await ensureRentalSynced(r.id);
                         await sendSignLinkFn({ data: { rentalId: r.id, origin: window.location.origin } });
                         toast.success("Signing link texted to renter");
                       } catch (e) {
