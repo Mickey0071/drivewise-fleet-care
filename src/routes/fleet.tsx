@@ -103,14 +103,16 @@ function FleetPage() {
               >
                 Profile
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShareVehicleId(v.id)}
-                title="Share rental link"
-              >
-                <Share2 className="h-4 w-4" />
-              </Button>
+              {v.status === "available" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShareVehicleId(v.id)}
+                  title="Share rental link"
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 size="sm"
                 className="flex-1"
