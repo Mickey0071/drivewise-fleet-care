@@ -9,6 +9,7 @@ export interface Vehicle {
   plate: string; mileage: number; status: VehicleStatus;
   riskTier: "A" | "B" | "C"; dailyRate: number; weeklyRate: number; notes?: string;
   nextServiceDue?: string;
+  imageUrl?: string;
 }
 export interface Driver {
   id: string; fullName: string; phone: string; email: string;
