@@ -81,11 +81,16 @@ function AddRenterDialog({ open, onClose }: { open: boolean; onClose: () => void
   function reset() {
     setFullName(""); setPhone(""); setEmail(""); setLicenseNumber(""); setLicenseExpiry(""); setRideshare("Uber");
   }
-  function save() {
+  async function save() {
     if (!fullName || !phone) { toast.error("Name and phone are required"); return; }
-    const d = addDriver({ fullName, phone, email, licenseNumber, licenseExpiry: licenseExpiry || "2030-01-01", rideshare });
-    toast.success("Renter added", { description: `${d.fullName} (${d.id})` });
-    reset(); onClose();
+    try {
+      const d = addDriver({ fullName, phone, email, licenseNumber, licenseExpiry: licenseExpiry || "2030-01-01", rideshare });
+      await (d as { cloudReady?: Promise<unknown> }).cloudReady;
+      toast.success("Renter added", { description: `${d.fullName} (${d.id})` });
+      reset(); onClose();
+    } catch (e: any) {
+      toast.error("Renter was not saved to cloud", { description: e?.message ?? "Try again" });
+    }
   }
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
