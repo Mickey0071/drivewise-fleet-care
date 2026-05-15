@@ -480,6 +480,28 @@ export function addVehicle(input: Omit<Vehicle, "id" | "status" | "mileage" | "r
   return vehicle;
 }
 
+export function updateVehicleImage(id: string, imageUrl: string | null) {
+  const v = vehicles.find(x => x.id === id);
+  if (!v) return;
+  v.imageUrl = imageUrl ?? undefined;
+  cloudWrite("vehicle:update", supabase.from("vehicles").update({ image_url: imageUrl }).eq("id", id));
+  emit();
+}
+
+/** Upload a photo file to storage and return its public URL. */
+export async function uploadVehiclePhoto(vehicleId: string, file: File): Promise<string> {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${vehicleId}/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("vehicle-photos").upload(path, file, {
+    cacheControl: "3600",
+    upsert: true,
+    contentType: file.type || "image/jpeg",
+  });
+  if (error) throw error;
+  const { data } = supabase.storage.from("vehicle-photos").getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "insuranceOnFile"> & Partial<Pick<Driver, "status" | "insuranceOnFile" | "dateAdded">>) {
   const driver: Driver = {
     id: nextDriverId(),
