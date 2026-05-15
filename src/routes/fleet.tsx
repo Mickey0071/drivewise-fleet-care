@@ -88,12 +88,12 @@ function FleetPage() {
             </div>
             <div className="flex gap-2 border-t border-border bg-muted/30 p-2" onClick={(e) => e.stopPropagation()}>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 className="flex-1"
                 onClick={() => goto({ to: "/fleet/$vehicleId", params: { vehicleId: v.id } })}
               >
-                View
+                Profile
               </Button>
               <Button
                 size="sm"
