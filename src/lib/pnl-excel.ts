@@ -233,6 +233,86 @@ export async function downloadPnLExcel(data: PnLExportData, filename = "pnl-summ
     ps.views = [{ state: "frozen", ySplit: 1 }];
   }
 
+  // ===== Payments detail (every paid invoice) =====
+  if (data.paymentsDetail?.length) {
+    const s = wb.addWorksheet("Payments detail", { views: [{ state: "frozen", ySplit: 1 }] });
+    s.columns = [
+      { header: "Payment ID", key: "id", width: 16 },
+      { header: "Paid date", key: "paidDate", width: 14 },
+      { header: "Due date", key: "dueDate", width: 14 },
+      { header: "Rental ID", key: "rentalId", width: 14 },
+      { header: "Driver", key: "driver", width: 22 },
+      { header: "Vehicle", key: "vehicle", width: 26 },
+      { header: "Plate", key: "plate", width: 12 },
+      { header: "Method", key: "method", width: 12 },
+      { header: "Status", key: "status", width: 10 },
+      { header: "Amount", key: "amount", width: 14, style: { numFmt: '"$"#,##0.00' } },
+    ];
+    styleHeader(s.getRow(1));
+    data.paymentsDetail.forEach((p, i) => {
+      const r = s.addRow(p);
+      if (i % 2 === 0) zebra(r);
+    });
+    const totalRow = s.addRow({ driver: "TOTAL", amount: data.paymentsDetail.reduce((a, b) => a + b.amount, 0) });
+    totalRow.font = { bold: true };
+    totalRow.getCell("amount").numFmt = '"$"#,##0.00';
+  }
+
+  // ===== Expenses detail (every logged expense) =====
+  if (data.expensesDetail?.length) {
+    const s = wb.addWorksheet("Expenses detail", { views: [{ state: "frozen", ySplit: 1 }] });
+    s.columns = [
+      { header: "Expense ID", key: "id", width: 18 },
+      { header: "Date", key: "date", width: 14 },
+      { header: "Category", key: "category", width: 16 },
+      { header: "Vendor", key: "vendor", width: 22 },
+      { header: "Vehicle", key: "vehicle", width: 26 },
+      { header: "Plate", key: "plate", width: 12 },
+      { header: "Notes", key: "notes", width: 36 },
+      { header: "Receipt", key: "receiptUrl", width: 30 },
+      { header: "Amount", key: "amount", width: 14, style: { numFmt: '"$"#,##0.00' } },
+    ];
+    styleHeader(s.getRow(1));
+    data.expensesDetail.forEach((e, i) => {
+      const r = s.addRow(e);
+      if (i % 2 === 0) zebra(r);
+      if (e.receiptUrl) {
+        const cell = r.getCell("receiptUrl");
+        cell.value = { text: "View receipt", hyperlink: e.receiptUrl };
+        cell.font = { color: { argb: "FF" + ACCENT }, underline: true };
+      }
+    });
+    const totalRow = s.addRow({ vendor: "TOTAL", amount: data.expensesDetail.reduce((a, b) => a + b.amount, 0) });
+    totalRow.font = { bold: true };
+    totalRow.getCell("amount").numFmt = '"$"#,##0.00';
+  }
+
+  // ===== Per-vehicle P&L =====
+  if (data.vehicleDetail?.length) {
+    const s = wb.addWorksheet("Per-vehicle P&L", { views: [{ state: "frozen", ySplit: 1 }] });
+    s.columns = [
+      { header: "Vehicle ID", key: "vehicleId", width: 12 },
+      { header: "Vehicle", key: "vehicle", width: 28 },
+      { header: "Plate", key: "plate", width: 12 },
+      { header: "VIN", key: "vin", width: 22 },
+      { header: "Revenue", key: "revenue", width: 14, style: { numFmt: '"$"#,##0.00' } },
+      { header: "Expenses", key: "expenses", width: 14, style: { numFmt: '"$"#,##0.00' } },
+      { header: "Net", key: "net", width: 14, style: { numFmt: '"$"#,##0.00;[Red]("$"#,##0.00)' } },
+      { header: "ROI %", key: "roiPct", width: 10, style: { numFmt: '0.0"%";[Red]-0.0"%";"—"' } },
+    ];
+    styleHeader(s.getRow(1));
+    data.vehicleDetail.forEach((v, i) => {
+      const r = s.addRow({ ...v, roiPct: v.roiPct ?? "" });
+      if (i % 2 === 0) zebra(r);
+    });
+    const tot = data.vehicleDetail.reduce(
+      (a, v) => ({ revenue: a.revenue + v.revenue, expenses: a.expenses + v.expenses, net: a.net + v.net }),
+      { revenue: 0, expenses: 0, net: 0 }
+    );
+    const totalRow = s.addRow({ vehicle: "TOTAL", ...tot });
+    totalRow.font = { bold: true };
+  }
+
   const buf = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   const url = URL.createObjectURL(blob);
@@ -243,4 +323,18 @@ export async function downloadPnLExcel(data: PnLExportData, filename = "pnl-summ
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+function styleHeader(row: ExcelJS.Row) {
+  row.eachCell(c => {
+    c.font = { bold: true, color: { argb: "FFFFFFFF" }, name: "Calibri" };
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + BRAND } };
+    c.alignment = { vertical: "middle" };
+  });
+  row.height = 20;
+}
+function zebra(row: ExcelJS.Row) {
+  row.eachCell(c => {
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + SOFT } };
+  });
 }
