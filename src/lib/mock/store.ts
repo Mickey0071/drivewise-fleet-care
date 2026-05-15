@@ -666,3 +666,61 @@ export function addRunnerReport(r: Omit<RunnerReport, "id" | "submittedAt">) {
   emit();
   return report;
 }
+
+// ---------------------------------------------------------------------------
+// Expenses
+// ---------------------------------------------------------------------------
+function nextExpenseId() {
+  const n = expenses.reduce((m, e) => Math.max(m, parseInt(e.id.replace(/\D/g, "")) || 0), 100);
+  return `E-${n + 1}`;
+}
+
+export function addExpense(input: Omit<Expense, "id"> & { id?: string }) {
+  const exp: Expense = {
+    id: input.id ?? nextExpenseId(),
+    category: input.category,
+    amount: input.amount,
+    date: input.date,
+    vendor: input.vendor,
+    vehicleId: input.vehicleId,
+    notes: input.notes,
+    receiptUrl: input.receiptUrl,
+  };
+  expenses.push(exp);
+  cloudWrite("expense:insert", supabase.from("expenses").insert(toExpense(exp)));
+  emit();
+  return exp;
+}
+
+export function updateExpense(id: string, patch: Partial<Expense>) {
+  const e = expenses.find(x => x.id === id);
+  if (!e) return;
+  Object.assign(e, patch);
+  cloudWrite("expense:update", supabase.from("expenses").update(toExpense(e)).eq("id", id));
+  emit();
+}
+
+export function deleteExpense(id: string) {
+  const idx = expenses.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  expenses.splice(idx, 1);
+  cloudWrite("expense:delete", supabase.from("expenses").delete().eq("id", id));
+  emit();
+}
+
+/** Upload a receipt file to private storage and return its signed download URL. */
+export async function uploadExpenseReceipt(file: File): Promise<{ path: string; url: string }> {
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage.from("expense-receipts").upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+    contentType: file.type || "application/octet-stream",
+  });
+  if (error) throw error;
+  const { data, error: urlErr } = await supabase.storage
+    .from("expense-receipts")
+    .createSignedUrl(path, 60 * 60 * 24 * 365); // 1y
+  if (urlErr || !data) throw urlErr ?? new Error("signed url failed");
+  return { path, url: data.signedUrl };
+}
