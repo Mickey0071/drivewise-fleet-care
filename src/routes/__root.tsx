@@ -9,7 +9,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import appCss from "../styles.css?url";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -18,6 +18,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeToggle } from "@/components/app/ThemeToggle";
 import { GlobalSearch } from "@/components/app/GlobalSearch";
 import { AuthProvider, useAuth, type AppRole } from "@/hooks/use-auth";
+import { hydrateFromCloud, isStoreHydrated, useStoreVersion } from "@/lib/mock/store";
 
 const ROUTE_ROLES: { prefix: string; roles: AppRole[] }[] = [
   { prefix: "/staff-portal", roles: ["admin", "runner"] },
@@ -152,9 +153,20 @@ function RootComponent() {
 
 function AuthGate() {
   const { session, role, loading } = useAuth();
+  useStoreVersion();
+  const [storeLoadError, setStoreLoadError] = useState<string | null>(null);
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
   const isPublic = PUBLIC_ROUTES.some(p => path.startsWith(p));
+
+  useEffect(() => {
+    if (loading || !session) return;
+    setStoreLoadError(null);
+    hydrateFromCloud({ force: true }).catch((error) => {
+      console.error(error);
+      setStoreLoadError(error instanceof Error ? error.message : "Cloud data did not load.");
+    });
+  }, [loading, session]);
 
   useEffect(() => {
     if (loading) return;
@@ -173,8 +185,24 @@ function AuthGate() {
     if (path === "/" && role === "runner") navigate({ to: "/staff-portal" });
   }, [loading, session, role, path, navigate]);
 
-  if (loading) {
+  if (loading || (!!session && !isPublic && !storeLoadError && !isStoreHydrated())) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>;
+  }
+  if (!!session && !isPublic && storeLoadError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="max-w-md text-center">
+          <h1 className="text-xl font-semibold text-foreground">Cloud data did not load</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{storeLoadError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+    );
   }
   if (isPublic) return <Outlet />;
   if (!session) return null;

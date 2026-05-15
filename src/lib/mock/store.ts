@@ -126,8 +126,12 @@ let hydrationPromise: Promise<void> | null = null;
 let hydrated = false;
 export function isStoreHydrated() { return hydrated; }
 
-export function hydrateFromCloud(): Promise<void> {
+export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
+  if (options?.force) {
+    hydrationPromise = null;
+    hydrated = false;
+  }
   if (hydrationPromise) return hydrationPromise;
   hydrationPromise = (async () => {
     const [v, d, r, p, i, e, ex] = await Promise.all([
@@ -139,12 +143,18 @@ export function hydrateFromCloud(): Promise<void> {
       supabase.from("rental_extensions").select("*"),
       supabase.from("expenses").select("*"),
     ]);
-    if (v.data) replaceArray(vehicles, v.data.map(fromVehicle));
-    if (d.data) replaceArray(drivers, d.data.map(fromDriver));
-    if (r.data) replaceArray(rentals, r.data.map(row => fromRental(row, e.data ?? [])));
-    if (p.data) replaceArray(payments, p.data.map(fromPayment));
-    if (i.data) replaceArray(inspections, i.data.map(fromInspection));
-    if (ex.data) replaceArray(expenses, ex.data.map(fromExpense));
+    const failures = [v, d, r, p, i, e, ex].filter(result => result.error);
+    if (failures.length) {
+      failures.forEach(result => console.error("[cloud:hydrate]", result.error));
+      hydrationPromise = null;
+      throw new Error("Cloud data did not load. Please sign in again or refresh.");
+    }
+    replaceArray(vehicles, (v.data ?? []).map(fromVehicle));
+    replaceArray(drivers, (d.data ?? []).map(fromDriver));
+    replaceArray(rentals, (r.data ?? []).map(row => fromRental(row, e.data ?? [])));
+    replaceArray(payments, (p.data ?? []).map(fromPayment));
+    replaceArray(inspections, (i.data ?? []).map(fromInspection));
+    replaceArray(expenses, (ex.data ?? []).map(fromExpense));
     hydrated = true;
     emit();
     subscribeRealtime();
@@ -269,8 +279,7 @@ const cloudWrite = (label: string, p: PromiseLike<{ error: any }>) => {
   return promise;
 };
 
-// kick off hydration immediately on browser
-if (typeof window !== "undefined") { hydrateFromCloud(); }
+// Hydration is started after auth restores so cloud reads include the session.
 
 function nextRentalId() {
   const n = rentals.reduce((m, r) => Math.max(m, parseInt(r.id.replace(/\D/g, "")) || 0), 500);
@@ -304,7 +313,11 @@ export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymen
     ...input,
   };
   rentals.push(rental);
-  const cloudReady = cloudWrite("rental:insert", supabase.from("rentals").insert(toRental(rental)));
+  const cloudReady = cloudWrite("rental:insert", supabase.from("rentals").insert(toRental(rental))).catch((error) => {
+    const idx = rentals.findIndex(r => r.id === rental.id);
+    if (idx >= 0) { rentals.splice(idx, 1); emit(); }
+    throw error;
+  });
   emit();
   return Object.assign(rental, { cloudReady });
 }
@@ -527,17 +540,22 @@ export function addVehicle(input: Omit<Vehicle, "id" | "status" | "mileage" | "r
     ...input,
   };
   vehicles.push(vehicle);
-  cloudWrite("vehicle:insert", supabase.from("vehicles").insert(toVehicle(vehicle)));
+  const cloudReady = cloudWrite("vehicle:insert", supabase.from("vehicles").insert(toVehicle(vehicle))).catch((error) => {
+    const idx = vehicles.findIndex(v => v.id === vehicle.id);
+    if (idx >= 0) { vehicles.splice(idx, 1); emit(); }
+    throw error;
+  });
   emit();
-  return vehicle;
+  return Object.assign(vehicle, { cloudReady });
 }
 
 export function updateVehicleImage(id: string, imageUrl: string | null) {
   const v = vehicles.find(x => x.id === id);
-  if (!v) return;
+  if (!v) return Promise.reject(new Error("Vehicle not found"));
   v.imageUrl = imageUrl ?? undefined;
-  cloudWrite("vehicle:update", supabase.from("vehicles").update({ image_url: imageUrl }).eq("id", id));
+  const cloudReady = cloudWrite("vehicle:update", supabase.from("vehicles").update({ image_url: imageUrl }).eq("id", id));
   emit();
+  return cloudReady;
 }
 
 /** Upload a photo file to storage and return its public URL. */
@@ -563,7 +581,11 @@ export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "i
     ...input,
   };
   drivers.push(driver);
-  const cloudReady = cloudWrite("driver:insert", supabase.from("drivers").insert(toDriver(driver)));
+  const cloudReady = cloudWrite("driver:insert", supabase.from("drivers").insert(toDriver(driver))).catch((error) => {
+    const idx = drivers.findIndex(d => d.id === driver.id);
+    if (idx >= 0) { drivers.splice(idx, 1); emit(); }
+    throw error;
+  });
   emit();
   return Object.assign(driver, { cloudReady });
 }
@@ -715,9 +737,13 @@ export function addExpense(input: Omit<Expense, "id"> & { id?: string }) {
     receiptUrl: input.receiptUrl,
   };
   expenses.push(exp);
-  cloudWrite("expense:insert", supabase.from("expenses").insert(toExpense(exp)));
+  const cloudReady = cloudWrite("expense:insert", supabase.from("expenses").insert(toExpense(exp))).catch((error) => {
+    const idx = expenses.findIndex(e => e.id === exp.id);
+    if (idx >= 0) { expenses.splice(idx, 1); emit(); }
+    throw error;
+  });
   emit();
-  return exp;
+  return Object.assign(exp, { cloudReady });
 }
 
 export function updateExpense(id: string, patch: Partial<Expense>) {

@@ -83,7 +83,7 @@ function VehicleDetail() {
               setUploading(true);
               try {
                 const url = await uploadVehiclePhoto(v.id, file);
-                updateVehicleImage(v.id, url);
+                await updateVehicleImage(v.id, url);
                 toast.success("Photo updated");
               } catch (err: any) {
                 toast.error("Upload failed", { description: err?.message ?? "Try again" });
@@ -101,7 +101,14 @@ function VehicleDetail() {
               size="sm"
               variant="ghost"
               disabled={uploading}
-              onClick={() => { updateVehicleImage(v.id, null); toast.success("Photo removed"); }}
+              onClick={async () => {
+                try {
+                  await updateVehicleImage(v.id, null);
+                  toast.success("Photo removed");
+                } catch (err: any) {
+                  toast.error("Photo was not removed from cloud", { description: err?.message ?? "Try again" });
+                }
+              }}
             >
               Remove
             </Button>

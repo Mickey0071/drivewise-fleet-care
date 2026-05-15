@@ -44,13 +44,14 @@ function ExpensesPage() {
         const { url } = await uploadExpenseReceipt(receiptFile);
         receiptUrl = url;
       }
-      addExpense({
+      const exp = addExpense({
         category, amount: amt, date,
         vendor: vendor || undefined,
         notes: notes || undefined,
         vehicleId: vehicleId || undefined,
         receiptUrl,
       });
+      await (exp as { cloudReady?: Promise<unknown> }).cloudReady;
       toast.success("Expense saved");
       reset();
     } catch (e: any) {
