@@ -126,8 +126,12 @@ let hydrationPromise: Promise<void> | null = null;
 let hydrated = false;
 export function isStoreHydrated() { return hydrated; }
 
-export function hydrateFromCloud(): Promise<void> {
+export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
+  if (options?.force) {
+    hydrationPromise = null;
+    hydrated = false;
+  }
   if (hydrationPromise) return hydrationPromise;
   hydrationPromise = (async () => {
     const [v, d, r, p, i, e, ex] = await Promise.all([
@@ -139,12 +143,18 @@ export function hydrateFromCloud(): Promise<void> {
       supabase.from("rental_extensions").select("*"),
       supabase.from("expenses").select("*"),
     ]);
-    if (v.data) replaceArray(vehicles, v.data.map(fromVehicle));
-    if (d.data) replaceArray(drivers, d.data.map(fromDriver));
-    if (r.data) replaceArray(rentals, r.data.map(row => fromRental(row, e.data ?? [])));
-    if (p.data) replaceArray(payments, p.data.map(fromPayment));
-    if (i.data) replaceArray(inspections, i.data.map(fromInspection));
-    if (ex.data) replaceArray(expenses, ex.data.map(fromExpense));
+    const failures = [v, d, r, p, i, e, ex].filter(result => result.error);
+    if (failures.length) {
+      failures.forEach(result => console.error("[cloud:hydrate]", result.error));
+      hydrationPromise = null;
+      throw new Error("Cloud data did not load. Please sign in again or refresh.");
+    }
+    replaceArray(vehicles, (v.data ?? []).map(fromVehicle));
+    replaceArray(drivers, (d.data ?? []).map(fromDriver));
+    replaceArray(rentals, (r.data ?? []).map(row => fromRental(row, e.data ?? [])));
+    replaceArray(payments, (p.data ?? []).map(fromPayment));
+    replaceArray(inspections, (i.data ?? []).map(fromInspection));
+    replaceArray(expenses, (ex.data ?? []).map(fromExpense));
     hydrated = true;
     emit();
     subscribeRealtime();
@@ -269,8 +279,7 @@ const cloudWrite = (label: string, p: PromiseLike<{ error: any }>) => {
   return promise;
 };
 
-// kick off hydration immediately on browser
-if (typeof window !== "undefined") { hydrateFromCloud(); }
+// Hydration is started after auth restores so cloud reads include the session.
 
 function nextRentalId() {
   const n = rentals.reduce((m, r) => Math.max(m, parseInt(r.id.replace(/\D/g, "")) || 0), 500);
