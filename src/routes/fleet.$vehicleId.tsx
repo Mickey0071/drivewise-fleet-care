@@ -83,7 +83,7 @@ function VehicleDetail() {
               setUploading(true);
               try {
                 const url = await uploadVehiclePhoto(v.id, file);
-                updateVehicleImage(v.id, url);
+                await updateVehicleImage(v.id, url);
                 toast.success("Photo updated");
               } catch (err: any) {
                 toast.error("Upload failed", { description: err?.message ?? "Try again" });
