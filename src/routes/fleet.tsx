@@ -93,7 +93,7 @@ function FleetPage() {
                 <div className="mt-2 text-xs text-muted-foreground">Risk tier {v.riskTier}</div>
               </CardContent>
             </div>
-            <div className="flex gap-2 border-t border-border bg-muted/30 p-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex flex-wrap gap-2 border-t border-border bg-muted/30 p-2" onClick={(e) => e.stopPropagation()}>
               <VehiclePhotoButton vehicleId={v.id} hasPhoto={!!v.imageUrl} />
               <Button
                 variant="outline"
@@ -173,7 +173,8 @@ function VehiclePhotoButton({ vehicleId, hasPhoto }: { vehicleId: string; hasPho
         onClick={() => fileRef.current?.click()}
         title={hasPhoto ? "Change photo" : "Add photo"}
       >
-        <Camera className="h-4 w-4" />
+        <Camera className="mr-1 h-4 w-4" />
+        {uploading ? "Uploading…" : hasPhoto ? "Change photo" : "Add photo"}
       </Button>
     </>
   );
