@@ -283,6 +283,54 @@ export type Database = {
           },
         ]
       }
+      rental_share_links: {
+        Row: {
+          billing_period: string
+          consumed_at: string | null
+          consumed_rental_id: string | null
+          created_at: string
+          created_by: string | null
+          daily_rate: number
+          expires_at: string
+          notes: string | null
+          rate: number
+          start_date: string
+          token: string
+          vehicle_id: string
+          weekly_rate: number
+        }
+        Insert: {
+          billing_period?: string
+          consumed_at?: string | null
+          consumed_rental_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          daily_rate?: number
+          expires_at?: string
+          notes?: string | null
+          rate?: number
+          start_date: string
+          token: string
+          vehicle_id: string
+          weekly_rate?: number
+        }
+        Update: {
+          billing_period?: string
+          consumed_at?: string | null
+          consumed_rental_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          daily_rate?: number
+          expires_at?: string
+          notes?: string | null
+          rate?: number
+          start_date?: string
+          token?: string
+          vehicle_id?: string
+          weekly_rate?: number
+        }
+        Relationships: []
+      }
       rentals: {
         Row: {
           agreement_version: string | null
@@ -525,6 +573,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_share_link_public: {
+        Args: { _token: string }
+        Returns: {
+          billing_period: string
+          consumed: boolean
+          daily_rate: number
+          expires_at: string
+          notes: string
+          rate: number
+          start_date: string
+          token: string
+          vehicle_id: string
+          vehicle_image_url: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_year: number
+          weekly_rate: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

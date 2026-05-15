@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { addVehicle, updateVehicleImage, uploadVehiclePhoto, useStoreVersion } from "@/lib/mock/store";
 import { toast } from "sonner";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
+import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
+import { Share2 } from "lucide-react";
 
 export const Route = createFileRoute("/fleet")({
   head: () => ({ meta: [{ title: "Fleet — Camauto Rentals" }] }),
@@ -26,6 +28,7 @@ function FleetPage() {
   useStoreVersion();
   const [open, setOpen] = useState(false);
   const [reserveVehicleId, setReserveVehicleId] = useState<string | null>(null);
+  const [shareVehicleId, setShareVehicleId] = useState<string | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { status } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -99,6 +102,16 @@ function FleetPage() {
               >
                 Profile
               </Button>
+              {v.status === "available" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShareVehicleId(v.id)}
+                  title="Share rental link"
+                >
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 size="sm"
                 className="flex-1"
@@ -116,6 +129,11 @@ function FleetPage() {
         open={!!reserveVehicleId}
         onOpenChange={(o) => { if (!o) setReserveVehicleId(null); }}
         initialVehicleId={reserveVehicleId ?? undefined}
+      />
+      <ShareRentalDialog
+        open={!!shareVehicleId}
+        onOpenChange={(o) => { if (!o) setShareVehicleId(null); }}
+        vehicle={shareVehicleId ? vehicles.find(v => v.id === shareVehicleId) ?? null : null}
       />
     </div>
   );

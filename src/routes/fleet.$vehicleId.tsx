@@ -8,6 +8,7 @@ import { vehicleById, rentals, maintenance, violations, inspections, payments, d
 import { carImage } from "@/lib/mock/carImages";
 import { uploadVehiclePhoto, updateVehicleImage, useStoreVersion } from "@/lib/mock/store";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
+import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { useRef, useState } from "react";
 import { ArrowLeft, Link2, Camera } from "lucide-react";
 import { toast } from "sonner";
@@ -27,6 +28,7 @@ function VehicleDetail() {
   const { tab } = Route.useSearch();
   const v = vehicleById(vehicleId);
   const [reserveOpen, setReserveOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   if (!v) return <div className="text-muted-foreground">Vehicle not found.</div>;
@@ -112,6 +114,11 @@ function VehicleDetail() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={v.status} />
+            {v.status === "available" && (
+              <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
+                Share rental link
+              </Button>
+            )}
             <Button
               size="sm"
               disabled={v.status !== "available"}
@@ -258,6 +265,11 @@ function VehicleDetail() {
         open={reserveOpen}
         onOpenChange={setReserveOpen}
         initialVehicleId={v.id}
+      />
+      <ShareRentalDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        vehicle={v}
       />
       <div className="mt-6 flex justify-start">
         <Button variant="outline" asChild>
