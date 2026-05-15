@@ -299,9 +299,9 @@ export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymen
     ...input,
   };
   rentals.push(rental);
-  cloudWrite("rental:insert", supabase.from("rentals").insert(toRental(rental)));
+  const cloudReady = cloudWrite("rental:insert", supabase.from("rentals").insert(toRental(rental)));
   emit();
-  return rental;
+  return Object.assign(rental, { cloudReady });
 }
 
 /** Returns the renter's current open rental (active or pending), if any. */
