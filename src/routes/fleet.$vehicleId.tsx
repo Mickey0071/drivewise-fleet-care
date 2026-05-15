@@ -11,6 +11,8 @@ import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
+const REPAIR_KEYWORDS = ["brake", "transmission", "repair", "pads", "engine", "battery", "tire", "body", "glass", "diagnostic"];
+
 export const Route = createFileRoute("/fleet/$vehicleId")({
   component: VehicleDetail,
 });
@@ -23,13 +25,16 @@ function VehicleDetail() {
 
   const vRentals = rentals.filter(r => r.vehicleId === v.id);
   const vMx = maintenance.filter(m => m.vehicleId === v.id);
+  const vRepairs = vMx.filter(m => REPAIR_KEYWORDS.some(keyword => m.serviceType.toLowerCase().includes(keyword)));
   const vViol = violations.filter(x => x.vehicleId === v.id);
   const vInsp = inspections.filter(i => i.vehicleId === v.id);
   const rentalIds = new Set(vRentals.map(r => r.id));
   const vPayments = payments.filter(p => rentalIds.has(p.rentalId));
 
   const incomeTotal = vPayments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
-  const expenseTotal = vMx.reduce((s, m) => s + m.cost, 0) + vViol.reduce((s, x) => s + x.amount, 0);
+  const maintenanceTotal = vMx.reduce((s, m) => s + m.cost, 0);
+  const violationTotal = vViol.reduce((s, x) => s + x.amount, 0);
+  const expenseTotal = maintenanceTotal + violationTotal;
   const netTotal = incomeTotal - expenseTotal;
   const activeRental = vRentals.find(r => !r.endDate) ?? vRentals[0];
   const activeDriver = activeRental ? driverById(activeRental.driverId) : null;
@@ -93,6 +98,11 @@ function VehicleDetail() {
                   rows: vMx.map(m => [m.id, m.serviceType, m.dateCompleted, m.vendor, m.mileageAtService, m.cost, m.nextServiceDue]),
                 },
                 {
+                  filename: `${slug}-repair-history.csv`,
+                  headers: ["ID", "Repair", "Date", "Vendor", "Mileage", "Cost", "Notes"],
+                  rows: vRepairs.map(m => [m.id, m.serviceType, m.dateCompleted, m.vendor, m.mileageAtService, m.cost, m.notes ?? ""]),
+                },
+                {
                   filename: `${slug}-rentals.csv`,
                   headers: ["Rental ID", "Driver", "Start", "End", "Weekly rate", "Deposit", "Status"],
                   rows: vRentals.map(r => [r.id, driverById(r.driverId)?.fullName ?? r.driverId, r.startDate, r.endDate ?? "", r.weeklyRate, r.depositPaid, r.paymentStatus]),
@@ -131,7 +141,8 @@ function VehicleDetail() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics / P&amp;L</TabsTrigger>
           <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
-          <TabsTrigger value="renters">Renters ({uniqueRenters.length})</TabsTrigger>
+          <TabsTrigger value="repairs">Repair History</TabsTrigger>
+          <TabsTrigger value="renters">Renter History ({uniqueRenters.length})</TabsTrigger>
           <TabsTrigger value="other">Violations &amp; Inspections</TabsTrigger>
         </TabsList>
 
@@ -162,6 +173,10 @@ function VehicleDetail() {
               <Row key={p.id} title={fmtMoney(p.amount)} sub={`${driverById(p.driverId)?.fullName ?? p.driverId} · due ${fmtDate(p.dueDate)}`} right={<StatusBadge status={p.status} />} />
             ))}
           </Section>
+          <Section title="Expense breakdown">
+            <Row title="Maintenance and repairs" sub={`${vMx.length} service record${vMx.length === 1 ? "" : "s"}`} right={<span className="font-medium">{fmtMoney(maintenanceTotal)}</span>} />
+            <Row title="Violations and impound costs" sub={`${vViol.length} vehicle charge${vViol.length === 1 ? "" : "s"}`} right={<span className="font-medium">{fmtMoney(violationTotal)}</span>} />
+          </Section>
           <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/pnl">Open full P&amp;L report →</Link></Button>
         </TabsContent>
 
@@ -172,6 +187,14 @@ function VehicleDetail() {
             ))}
           </Section>
           <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/maintenance">Open maintenance log →</Link></Button>
+        </TabsContent>
+
+        <TabsContent value="repairs" className="mt-4 space-y-4">
+          <Section title={`Repair history (${vRepairs.length})`}>
+            {vRepairs.length === 0 ? <Empty/> : vRepairs.map(m => (
+              <Row key={m.id} title={m.serviceType} sub={`${fmtDate(m.dateCompleted)} · ${m.vendor} · ${m.mileageAtService.toLocaleString()} mi${m.notes ? ` · ${m.notes}` : ""}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
+            ))}
+          </Section>
         </TabsContent>
 
         <TabsContent value="renters" className="mt-4 space-y-4">
