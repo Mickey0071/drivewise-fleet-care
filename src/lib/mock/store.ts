@@ -558,6 +558,48 @@ export function updateVehicleImage(id: string, imageUrl: string | null) {
   return cloudReady;
 }
 
+export function updateVehicle(id: string, fields: Partial<Omit<Vehicle, "id">>) {
+  const v = vehicles.find(x => x.id === id);
+  if (!v) return Promise.reject(new Error("Vehicle not found"));
+  const prev = { ...v };
+  Object.assign(v, fields);
+  const patch: Record<string, unknown> = {};
+  if (fields.make !== undefined) patch.make = fields.make;
+  if (fields.model !== undefined) patch.model = fields.model;
+  if (fields.year !== undefined) patch.year = fields.year;
+  if (fields.vin !== undefined) patch.vin = fields.vin;
+  if (fields.plate !== undefined) patch.plate = fields.plate;
+  if (fields.mileage !== undefined) patch.mileage = fields.mileage;
+  if (fields.status !== undefined) patch.status = fields.status;
+  if (fields.riskTier !== undefined) patch.risk_tier = fields.riskTier;
+  if (fields.dailyRate !== undefined) patch.daily_rate = fields.dailyRate;
+  if (fields.weeklyRate !== undefined) patch.weekly_rate = fields.weeklyRate;
+  if (fields.notes !== undefined) patch.notes = fields.notes ?? null;
+  if (fields.nextServiceDue !== undefined) patch.next_service_due = fields.nextServiceDue ?? null;
+  if (fields.imageUrl !== undefined) patch.image_url = fields.imageUrl ?? null;
+  const cloudReady = cloudWrite("vehicle:update", supabase.from("vehicles").update(patch).eq("id", id)).catch((error) => {
+    Object.assign(v, prev);
+    emit();
+    throw error;
+  });
+  emit();
+  return cloudReady;
+}
+
+export function deleteVehicle(id: string) {
+  const idx = vehicles.findIndex(x => x.id === id);
+  if (idx < 0) return Promise.reject(new Error("Vehicle not found"));
+  const removed = vehicles[idx];
+  vehicles.splice(idx, 1);
+  const cloudReady = cloudWrite("vehicle:delete", supabase.from("vehicles").delete().eq("id", id)).catch((error) => {
+    vehicles.splice(idx, 0, removed);
+    emit();
+    throw error;
+  });
+  emit();
+  return cloudReady;
+}
+
 /** Upload a photo file to storage and return its public URL. */
 export async function uploadVehiclePhoto(vehicleId: string, file: File): Promise<string> {
   const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
