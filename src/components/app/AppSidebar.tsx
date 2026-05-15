@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
-  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText,
+  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -96,9 +96,20 @@ export function AppSidebar() {
             <div className="text-[10px] uppercase text-sidebar-foreground/60">{role ?? "no role"}</div>
           </div>
         )}
-        <Button variant="outline" size="sm" className="w-full" onClick={() => signOut()}>
-          <LogOut className="h-4 w-4" /> {!collapsed && <span className="ml-1">Sign out</span>}
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => { if (typeof window !== "undefined") window.location.reload(); }}
+            title="Refresh page"
+          >
+            <RefreshCw className="h-4 w-4" /> {!collapsed && <span className="ml-1">Refresh</span>}
+          </Button>
+          <Button variant="outline" size="sm" className="w-full" onClick={() => signOut()}>
+            <LogOut className="h-4 w-4" /> {!collapsed && <span className="ml-1">Sign out</span>}
+          </Button>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
