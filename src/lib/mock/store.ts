@@ -536,17 +536,18 @@ export function addVehicle(input: Omit<Vehicle, "id" | "status" | "mileage" | "r
     ...input,
   };
   vehicles.push(vehicle);
-  cloudWrite("vehicle:insert", supabase.from("vehicles").insert(toVehicle(vehicle)));
+  const cloudReady = cloudWrite("vehicle:insert", supabase.from("vehicles").insert(toVehicle(vehicle)));
   emit();
-  return vehicle;
+  return Object.assign(vehicle, { cloudReady });
 }
 
 export function updateVehicleImage(id: string, imageUrl: string | null) {
   const v = vehicles.find(x => x.id === id);
-  if (!v) return;
+  if (!v) return Promise.reject(new Error("Vehicle not found"));
   v.imageUrl = imageUrl ?? undefined;
-  cloudWrite("vehicle:update", supabase.from("vehicles").update({ image_url: imageUrl }).eq("id", id));
+  const cloudReady = cloudWrite("vehicle:update", supabase.from("vehicles").update({ image_url: imageUrl }).eq("id", id));
   emit();
+  return cloudReady;
 }
 
 /** Upload a photo file to storage and return its public URL. */
@@ -724,9 +725,9 @@ export function addExpense(input: Omit<Expense, "id"> & { id?: string }) {
     receiptUrl: input.receiptUrl,
   };
   expenses.push(exp);
-  cloudWrite("expense:insert", supabase.from("expenses").insert(toExpense(exp)));
+  const cloudReady = cloudWrite("expense:insert", supabase.from("expenses").insert(toExpense(exp)));
   emit();
-  return exp;
+  return Object.assign(exp, { cloudReady });
 }
 
 export function updateExpense(id: string, patch: Partial<Expense>) {
