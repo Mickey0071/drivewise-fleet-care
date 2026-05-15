@@ -313,7 +313,11 @@ export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymen
     ...input,
   };
   rentals.push(rental);
-  const cloudReady = cloudWrite("rental:insert", supabase.from("rentals").insert(toRental(rental)));
+  const cloudReady = cloudWrite("rental:insert", supabase.from("rentals").insert(toRental(rental))).catch((error) => {
+    const idx = rentals.findIndex(r => r.id === rental.id);
+    if (idx >= 0) { rentals.splice(idx, 1); emit(); }
+    throw error;
+  });
   emit();
   return Object.assign(rental, { cloudReady });
 }
@@ -536,7 +540,11 @@ export function addVehicle(input: Omit<Vehicle, "id" | "status" | "mileage" | "r
     ...input,
   };
   vehicles.push(vehicle);
-  const cloudReady = cloudWrite("vehicle:insert", supabase.from("vehicles").insert(toVehicle(vehicle)));
+  const cloudReady = cloudWrite("vehicle:insert", supabase.from("vehicles").insert(toVehicle(vehicle))).catch((error) => {
+    const idx = vehicles.findIndex(v => v.id === vehicle.id);
+    if (idx >= 0) { vehicles.splice(idx, 1); emit(); }
+    throw error;
+  });
   emit();
   return Object.assign(vehicle, { cloudReady });
 }
@@ -573,7 +581,11 @@ export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "i
     ...input,
   };
   drivers.push(driver);
-  const cloudReady = cloudWrite("driver:insert", supabase.from("drivers").insert(toDriver(driver)));
+  const cloudReady = cloudWrite("driver:insert", supabase.from("drivers").insert(toDriver(driver))).catch((error) => {
+    const idx = drivers.findIndex(d => d.id === driver.id);
+    if (idx >= 0) { drivers.splice(idx, 1); emit(); }
+    throw error;
+  });
   emit();
   return Object.assign(driver, { cloudReady });
 }
@@ -725,7 +737,11 @@ export function addExpense(input: Omit<Expense, "id"> & { id?: string }) {
     receiptUrl: input.receiptUrl,
   };
   expenses.push(exp);
-  const cloudReady = cloudWrite("expense:insert", supabase.from("expenses").insert(toExpense(exp)));
+  const cloudReady = cloudWrite("expense:insert", supabase.from("expenses").insert(toExpense(exp))).catch((error) => {
+    const idx = expenses.findIndex(e => e.id === exp.id);
+    if (idx >= 0) { expenses.splice(idx, 1); emit(); }
+    throw error;
+  });
   emit();
   return Object.assign(exp, { cloudReady });
 }
