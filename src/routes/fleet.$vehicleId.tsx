@@ -27,6 +27,7 @@ function VehicleDetail() {
   const { tab } = Route.useSearch();
   const v = vehicleById(vehicleId);
   const [reserveOpen, setReserveOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   if (!v) return <div className="text-muted-foreground">Vehicle not found.</div>;
@@ -112,6 +113,11 @@ function VehicleDetail() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={v.status} />
+            {v.status === "available" && (
+              <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
+                Share rental link
+              </Button>
+            )}
             <Button
               size="sm"
               disabled={v.status !== "available"}
