@@ -156,7 +156,7 @@ function VehiclePhotoButton({ vehicleId, hasPhoto }: { vehicleId: string; hasPho
           setUploading(true);
           try {
             const url = await uploadVehiclePhoto(vehicleId, file);
-            updateVehicleImage(vehicleId, url);
+            await updateVehicleImage(vehicleId, url);
             toast.success("Photo updated");
           } catch (err: any) {
             toast.error("Upload failed", { description: err?.message ?? "Try again" });
