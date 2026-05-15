@@ -257,17 +257,9 @@ function RentalsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={async () => {
-                      const phone = d?.phone;
-                      if (!phone) { toast.error("No phone on file for renter"); return; }
-                      const v2 = vehicleById(r.vehicleId);
-                      const need = [];
-                      if (!r.signatureDataUrl) need.push("sign your rental agreement");
-                      if (!r.paymentReceived) need.push("complete the first payment");
-                      const action = need.length ? need.join(" and ") : "confirm your reservation";
-                      const msg = `Rentalprise Auto: Your ${v2?.year ?? ""} ${v2?.make ?? ""} ${v2?.model ?? ""} is on hold until ${new Date(pendingExpiresAt(r) ?? Date.now()).toLocaleString()}. Please come in to ${action}.`;
                       try {
-                        await sendSmsFn({ data: { phone, message: msg, name: d?.fullName } });
-                        toast.success("SMS sent to renter");
+                        await sendSignLinkFn({ data: { rentalId: r.id, origin: window.location.origin } });
+                        toast.success("Signing link texted to renter");
                       } catch (e) {
                         toast.error("SMS failed", { description: e instanceof Error ? e.message : String(e) });
                       }
