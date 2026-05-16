@@ -1,54 +1,29 @@
-## Where we are — and what's left to finish the core flow
+# Fix: "Link expired" on rental share links
 
-Your core path is **Add a vehicle → Reserve it → Renter signs/pays → Rental is active**. Everything else (Insurance, Expenses, Payroll, Inspections, Violations, PnL) is a side feature already built. Here's the honest status of the core, plus what to do next.
+## Problem
+Public rent links (`/rent/$token`) currently expire after **14 days** (DB default on `rental_share_links.expires_at`). Renters who open the link later see "This rental link is invalid or expired" with no recovery path.
 
-### What already works
+## Changes
 
-1. **Add vehicle** (`src/routes/fleet.tsx` → `AddVehicleDialog`)
-   - Make/model/year/VIN/plate/mileage/risk tier/daily+weekly rate
-   - Profile photo upload (saved to `vehicle-photos` bucket, set as `image_url`)
-   - Saves to Supabase `vehicles`, syncs in real time.
-2. **Vehicle detail page** (`src/routes/fleet.$vehicleId.tsx`)
-   - Photo gallery, edit, log service, start reservation, share rental link.
-3. **Edit vehicle** (`EditVehicleDialog`) — full edit + delete + change photo.
-4. **Reserve a vehicle** — two paths:
-   - **Internal:** `NewReservationDialog` — 4-step wizard (Vehicle → Client → Dates → Review). Conflict checking, swap-existing-rental support, deposit, billing period, auto-text signing link to renter on confirm.
-   - **Public share link:** `ShareRentalDialog` builds a `/rent/$token` link, optional SMS to renter's phone. The renter fills out their info, uploads license + selfie, signs — handled by `submitShareApplication` server fn.
-5. **Sign + pay flow:** `/sign/$token` route + Stripe checkout already wired; webhook flips rental to active when payment lands.
+### 1. Extend default expiry to 60 days
+- Migration: alter `public.rental_share_links.expires_at` default from `now() + '14 days'` to `now() + '60 days'`.
+- Backfill: bump `expires_at` on existing **unconsumed** links so currently-expired ones become valid again (`expires_at = greatest(expires_at, now() + '60 days')` where `consumed_rental_id IS NULL`).
 
-### What's incomplete or rough on the CORE path
+### 2. Update UI copy
+- `src/components/app/ShareRentalDialog.tsx`: change both strings ("expires in 14 days") to "expires in 60 days".
 
-These are the only items I think you should care about until they're done. Side bars stay parked.
+### 3. Allow staff to regenerate an expired link
+- Add `regenerateShareLink` server function in `src/lib/share-rental.functions.ts` that:
+  - Takes the old token, looks up its vehicle/dates/rate.
+  - If `consumed_rental_id IS NOT NULL`, refuse (rental already used).
+  - Otherwise update `expires_at = now() + '60 days'` and return the same token (no need to mint a new URL).
+- In `ShareRentalDialog`, when a previously-created link is shown, add a small "Extend 60 days" button that calls this fn and toasts confirmation.
 
-A. **"Add vehicle" form is missing fields renters/staff actually need**
-   - No color, no transmission, no fuel type, no seats, no registration expiry, no insurance expiry.
-   - No "Notes / known issues" field on create (it exists on edit only).
-   - No way to upload multiple gallery photos during initial add (you have to add the vehicle, then go to the detail page).
+## Out of scope
+- Per-link custom expiry picker (can add later if needed).
+- Auto-notifying the renter when a link is extended.
 
-B. **Reservation wizard rough edges**
-   - "Client" step has add-driver inline but no license upload there.
-   - No price summary at the top of the Review step (total rent for the period, deposit, expected first payment).
-   - No way to attach a pre-collected deposit payment record from the dialog.
-
-C. **Public rental link (`/rent/$token`)**
-   - Works end-to-end, but renter never sees the agreement terms before signing.
-   - No "save & resume" — if the renter closes the tab, they lose progress.
-
-D. **Status visibility**
-   - Fleet page shows status badges, but there is no single "Reservation pipeline" view (Pending → Signed → Paid → Active) so you can see where every booking is stuck.
-
-### Recommendation: pick ONE of these to do next
-
-Each is a focused, shippable chunk. We do one, you test it, we move to the next.
-
-1. **Beef up Add Vehicle** (Item A) — biggest visible win, ~1 turn.
-2. **Polish Reservation wizard** (Item B) — improves daily ops, ~1 turn.
-3. **Reservation pipeline view** (Item D) — a new section on `/rentals` showing every booking by stage with quick actions (resend signing link, mark paid, cancel). ~1 turn.
-4. **Renter-facing polish** (Item C) — agreement preview + resume token. ~1–2 turns.
-
-### Side-bar features already shipped (parked, no work needed)
-Insurance & accident claims, Expenses, Payroll, PnL, Inspections, Violations, Maintenance, Calendar, Reports/CSV export, Global search, Auth + roles, Payments webhook, Reminders cron, Driver/Staff portals.
-
----
-
-**Tell me which of 1–4 to do next** (or say "all of them in that order"). I'll execute one at a time and come back for sign-off before moving on, so we actually finish.
+## Files touched
+- `supabase/migrations/<new>.sql` (default + backfill)
+- `src/lib/share-rental.functions.ts` (new `regenerateShareLink`)
+- `src/components/app/ShareRentalDialog.tsx` (copy + extend button)
