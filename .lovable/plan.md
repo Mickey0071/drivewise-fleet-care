@@ -1,45 +1,37 @@
-## What I found
+## Goal
 
-The phone error text is the app’s generic page-crash screen, not a confirmed SMS failure screen.
+Restructure the public renter sign page (`/sign/$token`) into a two-page flow and clean up the agreement.
 
-The likely crash is on the public signing page after the link opens:
-- The signing-page server function returns `deposit`.
-- The agreement UI expects `depositPaid` and passes it into money formatting.
-- On some links this can throw while rendering the agreement, which sends the renter to: “Something went wrong on our end.”
+## New flow
 
-The SMS send itself appears to be reaching the phone because the live logs show repeated successful loads of `/sign/46qmmbqkpocb5ptx` and successful server-function calls around those visits.
+**Page 1 — Identity verification**
+1. Upload driver's license (photo)
+2. Take selfie (front camera)
+3. "Continue" button — disabled until both photos are captured
 
-## Charge risk answer
+**Page 2 — Agreement & signature**
+1. Full rental agreement (scrollable preview)
+2. Type full legal name
+3. Draw signature
+4. "Submit & complete reservation" button
 
-You are not charged just because I inspect code or logs.
+Photos captured on page 1 stay in component state and are submitted together with the signature on page 2 (single `submitSigningPackage` call — no backend changes needed).
 
-For customer payments:
-- Opening the sign link does not charge a card.
-- Sending the agreement SMS does not charge the renter.
-- A Stripe charge only happens if the renter completes Stripe Checkout and submits payment.
-- However, the current code can create a new Stripe Checkout session each time the renter submits the signing package while unpaid. That is not an immediate duplicate charge by itself, but it can create multiple payable links. I would tighten this so repeated attempts do not create fresh payment sessions unnecessarily.
+## Files to change
 
-For SMS/provider billing:
-- Each actual outbound SMS attempt may count with your messaging provider. I can reduce retries and make failures visible instead of blindly trying again.
+**`src/routes/sign.$token.tsx`**
+- Add `step` state (`"identity" | "agreement"`).
+- Render only the license + selfie cards when `step === "identity"`, with a Continue button that advances to `"agreement"` once both `licenseUrl` and `selfieUrl` exist.
+- Render the agreement preview + name + signature pad when `step === "agreement"`, with a Back button and the existing Submit button.
+- Keep all existing state and the single `submit()` call exactly as-is.
 
-## Fix plan
+**`src/components/app/RentalAgreement.tsx`**
+- Remove the "Vehicle Condition at Pickup" section (the `<SectionLabel>` and the condition table that iterates `settings.conditionRows`).
+- Leave everything else (renter info, vehicle info, terms, clauses, signatures) untouched.
 
-1. Fix the signing page crash
-   - Return the full agreement fields the UI uses: `depositPaid`, driver phone/license fields, vehicle mileage/VIN/color fields.
-   - Add safe fallbacks in `RentalAgreement` so missing numbers do not crash formatting.
-   - Keep the page usable even if optional vehicle/driver fields are blank.
+## Not changing
 
-2. Add explicit SMS diagnostics
-   - Add server-side logs around the agreement SMS send: rental id, normalized phone last 4 only, contact upsert success/failure, SMS send success/failure.
-   - Do not log full phone numbers, tokens, card/payment data, or secrets.
-   - Make the staff toast show the real provider failure when SMS fails.
-
-3. Prevent payment-link spam after signing
-   - Before creating a Stripe payment link after renter submit, check whether the rental is already signed/paid or whether a payment instruction was already sent.
-   - If the signing package was already submitted, return success without generating a new payment link.
-   - Keep Stripe charges dependent on the renter completing Stripe Checkout only.
-
-4. Verify after implementation
-   - Test the public sign link loads without the generic crash.
-   - Test submit flow with missing optional agreement fields.
-   - Check live server logs for the exact SMS/payment-link result after one real test click.
+- No server function changes (`sign.functions.ts` stays the same).
+- No database changes.
+- No changes to SMS or agreement-sending flow.
+- `agreementSettings.conditionRows` stays in place in case it's used elsewhere later.
