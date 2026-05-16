@@ -10,13 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ReportActions } from "@/components/app/ReportActions";
-import { vehicles, vehicleById, insuranceEntries, fmtDate, fmtMoney, type InsuranceEntry, type InsuranceClaimType } from "@/lib/mock/data";
+import { vehicles, vehicleById, insuranceEntries, insuranceChecklist, fmtDate, fmtMoney, type InsuranceEntry, type InsuranceClaimType } from "@/lib/mock/data";
 import {
   addInsuranceEntry, updateInsuranceEntry, deleteInsuranceEntry,
-  getChecklistFor, toggleChecklistItem, addChecklistItem, deleteChecklistItem,
+  getChecklistFor, updateChecklistItem, addChecklistItem, deleteChecklistItem,
+  uploadClaimDocument,
   useStoreVersion,
 } from "@/lib/mock/store";
-import { Shield, Trash2, ClipboardCheck, Plus, X, Loader2, Pencil } from "lucide-react";
+import { Shield, Trash2, ClipboardCheck, Plus, X, Loader2, Pencil, Upload, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/insurance")({
@@ -37,6 +38,9 @@ function InsurancePage() {
   const [policyNumber, setPolicyNumber] = useState("");
   const [claimNumber, setClaimNumber] = useState("");
   const [notes, setNotes] = useState("");
+  const [company, setCompany] = useState("");
+  const [renterName, setRenterName] = useState("");
+  const [renterPhone, setRenterPhone] = useState("");
   const [saving, setSaving] = useState(false);
 
   const [filterVehicle, setFilterVehicle] = useState("");
@@ -69,6 +73,7 @@ function InsurancePage() {
   function reset() {
     setVehicleId(""); setAmount(""); setDescription("");
     setPolicyNumber(""); setClaimNumber(""); setNotes("");
+    setCompany(""); setRenterName(""); setRenterPhone("");
     setDate(new Date().toISOString().slice(0, 10));
     setEditingId(null);
   }
@@ -84,6 +89,9 @@ function InsurancePage() {
     setPolicyNumber(e.policyNumber ?? "");
     setClaimNumber(e.claimNumber ?? "");
     setNotes(e.notes ?? "");
+    setCompany(e.company ?? "");
+    setRenterName(e.renterName ?? "");
+    setRenterPhone(e.renterPhone ?? "");
   }
 
   async function handleSave() {
@@ -100,6 +108,9 @@ function InsurancePage() {
           policyNumber: policyNumber || undefined,
           claimNumber: claimNumber || undefined,
           notes: notes || undefined,
+          company: company || undefined,
+          renterName: renterName || undefined,
+          renterPhone: renterPhone || undefined,
         });
         toast.success("Entry updated");
       } else {
@@ -110,6 +121,9 @@ function InsurancePage() {
           policyNumber: policyNumber || undefined,
           claimNumber: claimNumber || undefined,
           notes: notes || undefined,
+          company: company || undefined,
+          renterName: renterName || undefined,
+          renterPhone: renterPhone || undefined,
         });
         await (ent as { cloudReady?: Promise<unknown> }).cloudReady;
         toast.success(type === "claim" ? "Claim opened" : "Premium logged");
