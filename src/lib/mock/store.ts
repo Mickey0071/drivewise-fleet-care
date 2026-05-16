@@ -28,6 +28,14 @@ const fromVehicle = (r: any) => ({
   dailyRate: Number(r.daily_rate), weeklyRate: Number(r.weekly_rate),
   notes: r.notes ?? undefined, nextServiceDue: r.next_service_due ?? undefined,
   imageUrl: r.image_url ?? undefined,
+  color: r.color ?? undefined,
+  transmission: r.transmission ?? undefined,
+  fuelType: r.fuel_type ?? undefined,
+  seats: r.seats ?? undefined,
+  fuelLevelPickup: r.fuel_level_pickup ?? undefined,
+  ezPassTag: r.ez_pass_tag ?? undefined,
+  registrationExpiry: r.registration_expiry ?? undefined,
+  insuranceExpiry: r.insurance_expiry ?? undefined,
 });
 const toVehicle = (v: any) => ({
   id: v.id, make: v.make, model: v.model, year: v.year, vin: v.vin,
@@ -35,18 +43,30 @@ const toVehicle = (v: any) => ({
   daily_rate: v.dailyRate, weekly_rate: v.weeklyRate,
   notes: v.notes ?? null, next_service_due: v.nextServiceDue ?? null,
   image_url: v.imageUrl ?? null,
+  color: v.color ?? null,
+  transmission: v.transmission ?? null,
+  fuel_type: v.fuelType ?? null,
+  seats: v.seats ?? null,
+  fuel_level_pickup: v.fuelLevelPickup ?? null,
+  ez_pass_tag: v.ezPassTag ?? null,
+  registration_expiry: v.registrationExpiry ?? null,
+  insurance_expiry: v.insuranceExpiry ?? null,
 });
 const fromDriver = (r: any) => ({
   id: r.id, fullName: r.full_name, phone: r.phone, email: r.email,
   licenseNumber: r.license_number, licenseExpiry: r.license_expiry,
   insuranceOnFile: r.insurance_on_file, rideshare: r.rideshare,
   status: r.status, dateAdded: r.date_added,
+  dateOfBirth: r.date_of_birth ?? undefined,
+  address: r.address ?? undefined,
 });
 const toDriver = (d: any) => ({
   id: d.id, full_name: d.fullName, phone: d.phone, email: d.email,
   license_number: d.licenseNumber, license_expiry: d.licenseExpiry,
   insurance_on_file: d.insuranceOnFile, rideshare: d.rideshare,
   status: d.status, date_added: d.dateAdded,
+  date_of_birth: d.dateOfBirth ?? null,
+  address: d.address ?? null,
 });
 const fromRental = (r: any, exts: any[] = []): Rental => ({
   id: r.id, vehicleId: r.vehicle_id, driverId: r.driver_id,
