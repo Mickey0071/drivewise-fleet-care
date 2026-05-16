@@ -157,7 +157,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
   }
   if (hydrationPromise) return hydrationPromise;
   hydrationPromise = (async () => {
-    const [v, d, r, p, i, e, ex, vp] = await Promise.all([
+    const [v, d, r, p, i, e, ex, vp, ie, ic] = await Promise.all([
       supabase.from("vehicles").select("*"),
       supabase.from("drivers").select("*"),
       supabase.from("rentals").select("*"),
@@ -166,8 +166,10 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
       supabase.from("rental_extensions").select("*"),
       supabase.from("expenses").select("*"),
       supabase.from("vehicle_photos").select("*").order("sort_order", { ascending: true }),
+      supabase.from("insurance_entries").select("*").order("date", { ascending: false }),
+      supabase.from("insurance_claim_checklist").select("*").order("sort_order", { ascending: true }),
     ]);
-    const failures = [v, d, r, p, i, e, ex, vp].filter(result => result.error);
+    const failures = [v, d, r, p, i, e, ex, vp, ie, ic].filter(result => result.error);
     if (failures.length) {
       failures.forEach(result => console.error("[cloud:hydrate]", result.error));
       hydrationPromise = null;
@@ -180,6 +182,8 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
     replaceArray(inspections, (i.data ?? []).map(fromInspection));
     replaceArray(expenses, (ex.data ?? []).map(fromExpense));
     replaceArray(vehiclePhotos, (vp.data ?? []).map(fromVehiclePhoto));
+    replaceArray(insuranceEntries, (ie.data ?? []).map(fromInsuranceEntry));
+    replaceArray(insuranceChecklist, (ic.data ?? []).map(fromChecklist));
     hydrated = true;
     emit();
     subscribeRealtime();
