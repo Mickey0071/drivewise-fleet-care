@@ -50,7 +50,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [vehQ, setVehQ] = useState("");
   const [drvQ, setDrvQ] = useState("");
   const [showAddDriver, setShowAddDriver] = useState(false);
-  const [newDriver, setNewDriver] = useState({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" as "Uber" | "Lyft" | "Both" });
+  const [newDriver, setNewDriver] = useState({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" as "Uber" | "Lyft" | "Both", dateOfBirth: "", address: "" });
   const [isSwap, setIsSwap] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -87,7 +87,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     setDeposit(300); setNotes(""); setVehQ(""); setDrvQ("");
     setShowAddDriver(false);
     setIsSwap(false);
-    setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" });
+    setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber", dateOfBirth: "", address: "" });
   }
   function createDriver() {
     if (!newDriver.fullName.trim()) {
@@ -101,10 +101,12 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       licenseNumber: newDriver.licenseNumber.trim() || "—",
       licenseExpiry: "",
       rideshare: newDriver.rideshare,
+      dateOfBirth: newDriver.dateOfBirth || undefined,
+      address: newDriver.address.trim() || undefined,
     });
     setDriverId(d.id);
     setShowAddDriver(false);
-    setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" });
+    setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber", dateOfBirth: "", address: "" });
     toast.success("Client added", { description: d.fullName });
   }
 
