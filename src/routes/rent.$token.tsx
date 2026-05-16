@@ -32,6 +32,8 @@ function RentPage() {
   const [licenseNumber, setLicenseNumber] = useState("");
   const [licenseExpiry, setLicenseExpiry] = useState("");
   const [rideshare, setRideshare] = useState<"Uber" | "Lyft" | "Both">("Uber");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [address, setAddress] = useState("");
   const [licenseUrl, setLicenseUrl] = useState<string | null>(null);
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [sig, setSig] = useState<string | null>(null);
@@ -50,6 +52,8 @@ function RentPage() {
     if (!phone.trim()) return toast.error("Enter your phone");
     if (!email.trim()) return toast.error("Email is required");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return toast.error("Enter a valid email address");
+    if (!dateOfBirth) return toast.error("Enter your date of birth");
+    if (!address.trim()) return toast.error("Enter your street address");
     if (!licenseNumber.trim()) return toast.error("Enter your license number");
     if (!licenseExpiry) return toast.error("Enter your license expiry");
     if (!licenseUrl) return toast.error("Upload your driver's license");
@@ -66,6 +70,8 @@ function RentPage() {
           licenseNumber: licenseNumber.trim(),
           licenseExpiry,
           rideshare,
+          dateOfBirth: dateOfBirth || undefined,
+          address: address.trim() || undefined,
           licenseDataUrl: licenseUrl,
           selfieDataUrl: selfieUrl,
           signatureDataUrl: sig,
@@ -128,7 +134,7 @@ function RentPage() {
       </header>
 
       <Card className="p-4 space-y-3">
-        <SectionHeader icon={<User className="h-4 w-4" />} title="Your info" done={!!fullName && !!phone && !!email && !!licenseNumber && !!licenseExpiry} />
+        <SectionHeader icon={<User className="h-4 w-4" />} title="Your info" done={!!fullName && !!phone && !!email && !!licenseNumber && !!licenseExpiry && !!dateOfBirth && !!address} />
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label htmlFor="fn">Full legal name</Label>
@@ -137,6 +143,14 @@ function RentPage() {
           <div>
             <Label htmlFor="ph">Phone</Label>
             <Input id="ph" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="dob">Date of birth</Label>
+            <Input id="dob" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="ad">Street address, city, state, ZIP</Label>
+            <Input id="ad" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Main St, Camden, NJ 08104" />
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="em">Email <span className="text-destructive">*</span></Label>
