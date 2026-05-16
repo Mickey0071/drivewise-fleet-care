@@ -163,6 +163,92 @@ export type Database = {
           },
         ]
       }
+      insurance_claim_checklist: {
+        Row: {
+          created_at: string
+          done: boolean
+          entry_id: string
+          id: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          done?: boolean
+          entry_id: string
+          id?: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          done?: boolean
+          entry_id?: string
+          id?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insurance_claim_checklist_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "insurance_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insurance_entries: {
+        Row: {
+          amount: number
+          claim_number: string | null
+          claim_type: string | null
+          created_at: string
+          created_by: string | null
+          date: string
+          description: string
+          id: string
+          notes: string | null
+          policy_number: string | null
+          status: string
+          type: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          amount?: number
+          claim_number?: string | null
+          claim_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          policy_number?: string | null
+          status?: string
+          type: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          amount?: number
+          claim_number?: string | null
+          claim_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          policy_number?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
