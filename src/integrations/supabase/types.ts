@@ -165,27 +165,45 @@ export type Database = {
       }
       insurance_claim_checklist: {
         Row: {
+          amount: number | null
           created_at: string
+          document_name: string | null
+          document_url: string | null
           done: boolean
           entry_id: string
           id: string
           label: string
+          notes: string | null
+          requires_amount: boolean
+          requires_document: boolean
           sort_order: number
         }
         Insert: {
+          amount?: number | null
           created_at?: string
+          document_name?: string | null
+          document_url?: string | null
           done?: boolean
           entry_id: string
           id?: string
           label: string
+          notes?: string | null
+          requires_amount?: boolean
+          requires_document?: boolean
           sort_order?: number
         }
         Update: {
+          amount?: number | null
           created_at?: string
+          document_name?: string | null
+          document_url?: string | null
           done?: boolean
           entry_id?: string
           id?: string
           label?: string
+          notes?: string | null
+          requires_amount?: boolean
+          requires_document?: boolean
           sort_order?: number
         }
         Relationships: [
@@ -203,6 +221,7 @@ export type Database = {
           amount: number
           claim_number: string | null
           claim_type: string | null
+          company: string | null
           created_at: string
           created_by: string | null
           date: string
@@ -210,6 +229,8 @@ export type Database = {
           id: string
           notes: string | null
           policy_number: string | null
+          renter_name: string | null
+          renter_phone: string | null
           status: string
           type: string
           updated_at: string
@@ -219,6 +240,7 @@ export type Database = {
           amount?: number
           claim_number?: string | null
           claim_type?: string | null
+          company?: string | null
           created_at?: string
           created_by?: string | null
           date?: string
@@ -226,6 +248,8 @@ export type Database = {
           id?: string
           notes?: string | null
           policy_number?: string | null
+          renter_name?: string | null
+          renter_phone?: string | null
           status?: string
           type: string
           updated_at?: string
@@ -235,6 +259,7 @@ export type Database = {
           amount?: number
           claim_number?: string | null
           claim_type?: string | null
+          company?: string | null
           created_at?: string
           created_by?: string | null
           date?: string
@@ -242,6 +267,8 @@ export type Database = {
           id?: string
           notes?: string | null
           policy_number?: string | null
+          renter_name?: string | null
+          renter_phone?: string | null
           status?: string
           type?: string
           updated_at?: string
