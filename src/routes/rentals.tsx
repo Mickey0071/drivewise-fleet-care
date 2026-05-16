@@ -25,6 +25,8 @@ import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
+const PUBLIC_APP_ORIGIN = "https://drivewise-fleet-care.lovable.app";
+
 export const Route = createFileRoute("/rentals")({
   head: () => ({ meta: [{ title: "Reservations — Camauto Rentals" }] }),
   validateSearch: (search: Record<string, unknown>) => ({
@@ -187,7 +189,7 @@ function RentalsPage() {
                           try {
                             await ensureRentalSynced(r.id);
                             const res = await sendSignLinkFn({
-                              data: { rentalId: r.id, origin: window.location.origin },
+                              data: { rentalId: r.id, origin: PUBLIC_APP_ORIGIN },
                             });
                             toast.success("Text message sent to renter", { description: res.link });
                           } catch (e) {
@@ -204,7 +206,7 @@ function RentalsPage() {
                           try {
                             await ensureRentalSynced(r.id);
                             const res = await getSignLinkFn({
-                              data: { rentalId: r.id, origin: window.location.origin },
+                              data: { rentalId: r.id, origin: PUBLIC_APP_ORIGIN },
                             });
                             if (!res.driverEmail) {
                               toast.error("No email on file for renter");
@@ -231,7 +233,7 @@ function RentalsPage() {
                           try {
                             await ensureRentalSynced(r.id);
                             const res = await getSignLinkFn({
-                              data: { rentalId: r.id, origin: window.location.origin },
+                              data: { rentalId: r.id, origin: PUBLIC_APP_ORIGIN },
                             });
                             await navigator.clipboard.writeText(res.link);
                             toast.success("Signing link copied to clipboard");
@@ -262,7 +264,7 @@ function RentalsPage() {
                     onClick={async () => {
                       try {
                         await ensureRentalSynced(r.id);
-                        await sendSignLinkFn({ data: { rentalId: r.id, origin: window.location.origin } });
+                        await sendSignLinkFn({ data: { rentalId: r.id, origin: PUBLIC_APP_ORIGIN } });
                         toast.success("Signing link texted to renter");
                       } catch (e) {
                         toast.error("SMS failed", { description: e instanceof Error ? e.message : String(e) });
