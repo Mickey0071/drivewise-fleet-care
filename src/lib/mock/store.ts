@@ -302,6 +302,30 @@ function subscribeRealtime() {
       }
       emit();
     })
+    .on("postgres_changes", { event: "*", schema: "public", table: "insurance_entries" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = insuranceEntries.findIndex(x => x.id === id);
+        if (idx >= 0) insuranceEntries.splice(idx, 1);
+      } else {
+        const next = fromInsuranceEntry(payload.new);
+        const idx = insuranceEntries.findIndex(x => x.id === next.id);
+        if (idx >= 0) insuranceEntries[idx] = next; else insuranceEntries.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "insurance_claim_checklist" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = insuranceChecklist.findIndex(x => x.id === id);
+        if (idx >= 0) insuranceChecklist.splice(idx, 1);
+      } else {
+        const next = fromChecklist(payload.new);
+        const idx = insuranceChecklist.findIndex(x => x.id === next.id);
+        if (idx >= 0) insuranceChecklist[idx] = next; else insuranceChecklist.push(next);
+      }
+      emit();
+    })
     .subscribe();
 }
 
