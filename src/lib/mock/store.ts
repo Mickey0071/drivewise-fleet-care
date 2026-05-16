@@ -940,3 +940,84 @@ export async function uploadExpenseReceipt(file: File): Promise<{ path: string; 
   if (urlErr || !data) throw urlErr ?? new Error("signed url failed");
   return { path, url: data.signedUrl };
 }
+
+// ---------------------------------------------------------------------------
+// Insurance entries + claim checklist
+// ---------------------------------------------------------------------------
+export function addInsuranceEntry(input: Omit<InsuranceEntry, "id" | "createdAt" | "status"> & { status?: InsuranceEntry["status"] }) {
+  const entry: InsuranceEntry = {
+    id: `ins_${Math.random().toString(36).slice(2, 14)}`,
+    vehicleId: input.vehicleId,
+    type: input.type,
+    claimType: input.claimType,
+    date: input.date,
+    amount: input.amount,
+    description: input.description,
+    notes: input.notes,
+    policyNumber: input.policyNumber,
+    claimNumber: input.claimNumber,
+    status: input.status ?? (input.type === "claim" ? "open" : "closed"),
+    createdAt: new Date().toISOString(),
+  };
+  insuranceEntries.push(entry);
+  const cloudReady = cloudWrite("insurance:insert", supabase.from("insurance_entries").insert(toInsuranceEntry(entry))).catch((error) => {
+    const idx = insuranceEntries.findIndex(e => e.id === entry.id);
+    if (idx >= 0) { insuranceEntries.splice(idx, 1); emit(); }
+    throw error;
+  });
+  emit();
+  return Object.assign(entry, { cloudReady });
+}
+
+export function updateInsuranceEntry(id: string, patch: Partial<InsuranceEntry>) {
+  const e = insuranceEntries.find(x => x.id === id);
+  if (!e) return;
+  Object.assign(e, patch);
+  cloudWrite("insurance:update", supabase.from("insurance_entries").update(toInsuranceEntry(e)).eq("id", id));
+  emit();
+}
+
+export function deleteInsuranceEntry(id: string) {
+  const idx = insuranceEntries.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  insuranceEntries.splice(idx, 1);
+  // cascade in DB handles checklist rows; clear local mirror
+  for (let i = insuranceChecklist.length - 1; i >= 0; i--) {
+    if (insuranceChecklist[i].entryId === id) insuranceChecklist.splice(i, 1);
+  }
+  cloudWrite("insurance:delete", supabase.from("insurance_entries").delete().eq("id", id));
+  emit();
+}
+
+export function getChecklistFor(entryId: string): InsuranceChecklistItem[] {
+  return insuranceChecklist
+    .filter(c => c.entryId === entryId)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export function toggleChecklistItem(id: string, done: boolean) {
+  const item = insuranceChecklist.find(c => c.id === id);
+  if (!item) return;
+  item.done = done;
+  cloudWrite("insurance_checklist:update", supabase.from("insurance_claim_checklist").update({ done }).eq("id", id));
+  emit();
+}
+
+export function addChecklistItem(entryId: string, label: string) {
+  const maxOrder = insuranceChecklist.filter(c => c.entryId === entryId).reduce((m, c) => Math.max(m, c.sortOrder), 0);
+  const id = `icl_${Math.random().toString(36).slice(2, 14)}`;
+  const item: InsuranceChecklistItem = { id, entryId, label, done: false, sortOrder: maxOrder + 1 };
+  insuranceChecklist.push(item);
+  cloudWrite("insurance_checklist:insert", supabase.from("insurance_claim_checklist").insert({
+    id, entry_id: entryId, label, sort_order: item.sortOrder,
+  }));
+  emit();
+}
+
+export function deleteChecklistItem(id: string) {
+  const idx = insuranceChecklist.findIndex(c => c.id === id);
+  if (idx < 0) return;
+  insuranceChecklist.splice(idx, 1);
+  cloudWrite("insurance_checklist:delete", supabase.from("insurance_claim_checklist").delete().eq("id", id));
+  emit();
+}
