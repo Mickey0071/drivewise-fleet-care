@@ -1,29 +1,45 @@
-# Fix: "Link expired" on rental share links
+## What I found
 
-## Problem
-Public rent links (`/rent/$token`) currently expire after **14 days** (DB default on `rental_share_links.expires_at`). Renters who open the link later see "This rental link is invalid or expired" with no recovery path.
+The phone error text is the app’s generic page-crash screen, not a confirmed SMS failure screen.
 
-## Changes
+The likely crash is on the public signing page after the link opens:
+- The signing-page server function returns `deposit`.
+- The agreement UI expects `depositPaid` and passes it into money formatting.
+- On some links this can throw while rendering the agreement, which sends the renter to: “Something went wrong on our end.”
 
-### 1. Extend default expiry to 60 days
-- Migration: alter `public.rental_share_links.expires_at` default from `now() + '14 days'` to `now() + '60 days'`.
-- Backfill: bump `expires_at` on existing **unconsumed** links so currently-expired ones become valid again (`expires_at = greatest(expires_at, now() + '60 days')` where `consumed_rental_id IS NULL`).
+The SMS send itself appears to be reaching the phone because the live logs show repeated successful loads of `/sign/46qmmbqkpocb5ptx` and successful server-function calls around those visits.
 
-### 2. Update UI copy
-- `src/components/app/ShareRentalDialog.tsx`: change both strings ("expires in 14 days") to "expires in 60 days".
+## Charge risk answer
 
-### 3. Allow staff to regenerate an expired link
-- Add `regenerateShareLink` server function in `src/lib/share-rental.functions.ts` that:
-  - Takes the old token, looks up its vehicle/dates/rate.
-  - If `consumed_rental_id IS NOT NULL`, refuse (rental already used).
-  - Otherwise update `expires_at = now() + '60 days'` and return the same token (no need to mint a new URL).
-- In `ShareRentalDialog`, when a previously-created link is shown, add a small "Extend 60 days" button that calls this fn and toasts confirmation.
+You are not charged just because I inspect code or logs.
 
-## Out of scope
-- Per-link custom expiry picker (can add later if needed).
-- Auto-notifying the renter when a link is extended.
+For customer payments:
+- Opening the sign link does not charge a card.
+- Sending the agreement SMS does not charge the renter.
+- A Stripe charge only happens if the renter completes Stripe Checkout and submits payment.
+- However, the current code can create a new Stripe Checkout session each time the renter submits the signing package while unpaid. That is not an immediate duplicate charge by itself, but it can create multiple payable links. I would tighten this so repeated attempts do not create fresh payment sessions unnecessarily.
 
-## Files touched
-- `supabase/migrations/<new>.sql` (default + backfill)
-- `src/lib/share-rental.functions.ts` (new `regenerateShareLink`)
-- `src/components/app/ShareRentalDialog.tsx` (copy + extend button)
+For SMS/provider billing:
+- Each actual outbound SMS attempt may count with your messaging provider. I can reduce retries and make failures visible instead of blindly trying again.
+
+## Fix plan
+
+1. Fix the signing page crash
+   - Return the full agreement fields the UI uses: `depositPaid`, driver phone/license fields, vehicle mileage/VIN/color fields.
+   - Add safe fallbacks in `RentalAgreement` so missing numbers do not crash formatting.
+   - Keep the page usable even if optional vehicle/driver fields are blank.
+
+2. Add explicit SMS diagnostics
+   - Add server-side logs around the agreement SMS send: rental id, normalized phone last 4 only, contact upsert success/failure, SMS send success/failure.
+   - Do not log full phone numbers, tokens, card/payment data, or secrets.
+   - Make the staff toast show the real provider failure when SMS fails.
+
+3. Prevent payment-link spam after signing
+   - Before creating a Stripe payment link after renter submit, check whether the rental is already signed/paid or whether a payment instruction was already sent.
+   - If the signing package was already submitted, return success without generating a new payment link.
+   - Keep Stripe charges dependent on the renter completing Stripe Checkout only.
+
+4. Verify after implementation
+   - Test the public sign link loads without the generic crash.
+   - Test submit flow with missing optional agreement fields.
+   - Check live server logs for the exact SMS/payment-link result after one real test click.
