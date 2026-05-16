@@ -25,6 +25,15 @@ async function ghlFetch(path: string, body: unknown) {
   return res.json();
 }
 
+function toE164(raw: string): string {
+  const digits = (raw || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (raw.trim().startsWith("+")) return "+" + digits;
+  if (digits.length === 10) return "+1" + digits;
+  if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
+  return "+" + digits;
+}
+
 async function upsertContact(phone: string, name?: string | null): Promise<string> {
   const [firstName, ...rest] = (name || "").trim().split(/\s+/);
   const payload: Record<string, unknown> = {
@@ -40,10 +49,11 @@ async function upsertContact(phone: string, name?: string | null): Promise<strin
 }
 
 export async function sendSms(phone: string, message: string, name?: string | null) {
-  if (!phone) {
+  const normalized = toE164(phone);
+  if (!normalized) {
     throw new Error("No phone number on file");
   }
-  const contactId = await upsertContact(phone, name);
+  const contactId = await upsertContact(normalized, name);
   await ghlFetch("/conversations/messages", {
     type: "SMS",
     contactId,
