@@ -48,15 +48,28 @@ async function upsertContact(phone: string, name?: string | null): Promise<strin
   return id as string;
 }
 
+function maskPhone(p: string): string {
+  const d = (p || "").replace(/\D/g, "");
+  return d ? `***${d.slice(-4)}` : "(none)";
+}
+
 export async function sendSms(phone: string, message: string, name?: string | null) {
   const normalized = toE164(phone);
   if (!normalized) {
+    console.error("[sms] no phone on file");
     throw new Error("No phone number on file");
   }
-  const contactId = await upsertContact(normalized, name);
-  await ghlFetch("/conversations/messages", {
-    type: "SMS",
-    contactId,
-    message,
-  });
+  const masked = maskPhone(normalized);
+  try {
+    const contactId = await upsertContact(normalized, name);
+    await ghlFetch("/conversations/messages", {
+      type: "SMS",
+      contactId,
+      message,
+    });
+    console.log(`[sms] sent ok phone=${masked}`);
+  } catch (e) {
+    console.error(`[sms] failed phone=${masked}: ${e instanceof Error ? e.message : String(e)}`);
+    throw e;
+  }
 }
