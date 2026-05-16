@@ -1015,13 +1015,42 @@ export function toggleChecklistItem(id: string, done: boolean) {
   emit();
 }
 
+export function updateChecklistItem(id: string, patch: Partial<Pick<InsuranceChecklistItem, "done" | "notes" | "amount" | "documentUrl" | "documentName">>) {
+  const item = insuranceChecklist.find(c => c.id === id);
+  if (!item) return;
+  Object.assign(item, patch);
+  const row: Record<string, unknown> = {};
+  if ("done" in patch) row.done = patch.done;
+  if ("notes" in patch) row.notes = patch.notes ?? null;
+  if ("amount" in patch) row.amount = patch.amount ?? null;
+  if ("documentUrl" in patch) row.document_url = patch.documentUrl ?? null;
+  if ("documentName" in patch) row.document_name = patch.documentName ?? null;
+  cloudWrite("insurance_checklist:update", supabase.from("insurance_claim_checklist").update(row).eq("id", id));
+  emit();
+}
+
+export async function uploadClaimDocument(itemId: string, file: File): Promise<void> {
+  const ext = file.name.split(".").pop() || "bin";
+  const path = `${itemId}/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("claim-documents").upload(path, file, {
+    cacheControl: "3600", upsert: true, contentType: file.type || undefined,
+  });
+  if (error) throw error;
+  const { data } = supabase.storage.from("claim-documents").getPublicUrl(path);
+  updateChecklistItem(itemId, { documentUrl: data.publicUrl, documentName: file.name });
+}
+
 export function addChecklistItem(entryId: string, label: string) {
   const maxOrder = insuranceChecklist.filter(c => c.entryId === entryId).reduce((m, c) => Math.max(m, c.sortOrder), 0);
   const id = `icl_${Math.random().toString(36).slice(2, 14)}`;
-  const item: InsuranceChecklistItem = { id, entryId, label, done: false, sortOrder: maxOrder + 1 };
+  const item: InsuranceChecklistItem = {
+    id, entryId, label, done: false, sortOrder: maxOrder + 1,
+    requiresAmount: false, requiresDocument: true,
+  };
   insuranceChecklist.push(item);
   cloudWrite("insurance_checklist:insert", supabase.from("insurance_claim_checklist").insert({
     id, entry_id: entryId, label, sort_order: item.sortOrder,
+    requires_amount: false, requires_document: true,
   }));
   emit();
 }
