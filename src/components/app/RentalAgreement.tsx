@@ -105,27 +105,6 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
         <Field label="Current End Date" value={currentEnd ? fmtDate(currentEnd) : "Open-ended"} />
       </div>
 
-      {/* CONDITION CHECKLIST */}
-      <SectionLabel>Vehicle Condition at Pickup</SectionLabel>
-      <table className="w-full border-collapse text-[11.5px]">
-        <thead>
-          <tr className="bg-[#2db84b] text-white">
-            <th className="w-[28%] px-2 py-1 text-left font-semibold">Location</th>
-            <th className="px-2 py-1 text-left font-semibold">Damage Noted (describe or write "None")</th>
-            <th className="w-[18%] px-2 py-1 text-left font-semibold">Initials</th>
-          </tr>
-        </thead>
-        <tbody>
-          {settings.conditionRows.map((loc, i) => (
-            <tr key={loc} className={i % 2 ? "bg-zinc-50" : ""}>
-              <td className="border border-zinc-300 px-2 py-2 font-semibold">{loc}</td>
-              <td className="border border-zinc-300 px-2 py-2">&nbsp;</td>
-              <td className="border border-zinc-300 px-2 py-2">&nbsp;</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
       {/* EXTENSIONS — only when present */}
       {exts.length > 0 && (
         <>
