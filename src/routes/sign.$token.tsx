@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { toast } from "sonner";
-import { CheckCircle2, Loader2, Camera, FileSignature, IdCard } from "lucide-react";
+import { CheckCircle2, Loader2, ArrowLeft, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/sign/$token")({
   head: () => ({ meta: [{ title: "Complete your reservation — Camauto Rentals" }] }),
@@ -31,6 +31,7 @@ function SignPage() {
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [step, setStep] = useState<"identity" | "agreement">("identity");
 
   useEffect(() => {
     fetchInfo({ data: { token } })
@@ -142,82 +143,101 @@ function SignPage() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6 space-y-6">
-
-      {/* STEP 1: Full rental agreement — client reads & scrolls */}
-      <div>
-        <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">1</span>
-          <h2 className="font-semibold text-sm">Read your rental agreement</h2>
-        </div>
-        <div className="rounded-lg border shadow-sm overflow-hidden">
-          <RentalAgreement
-            rental={agreementRental as any}
-            driver={agreementDriver as any}
-            vehicle={agreementVehicle as any}
-          />
-        </div>
+      <div className="text-center text-xs text-muted-foreground">
+        Step {step === "identity" ? "1" : "2"} of 2
       </div>
 
-      {/* STEP 2: Driver's license */}
-      <div>
-        <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">2</span>
-          <h2 className="font-semibold text-sm">Upload your driver's license</h2>
-          {licenseUrl && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
-        </div>
-        <Card className="p-4">
-          <PhotoCapture label="Upload license" onChange={setLicenseUrl} value={licenseUrl} />
-        </Card>
-      </div>
-
-      {/* STEP 3: Selfie */}
-      <div>
-        <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">3</span>
-          <h2 className="font-semibold text-sm">Take a selfie</h2>
-          {selfieUrl && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
-        </div>
-        <Card className="p-4">
-          <PhotoCapture label="Take selfie" onChange={setSelfieUrl} value={selfieUrl} useCamera />
-        </Card>
-      </div>
-
-      {/* STEP 4: Sign */}
-      <div>
-        <div className="mb-3 flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">4</span>
-          <h2 className="font-semibold text-sm">Sign the agreement</h2>
-          {sig && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
-        </div>
-        <Card className="p-4 space-y-4">
+      {step === "identity" ? (
+        <>
           <div>
-            <Label htmlFor="signedBy">Your full legal name</Label>
-            <Input
-              id="signedBy"
-              value={signedBy}
-              onChange={(e) => setSignedBy(e.target.value)}
-              className="mt-1"
-              placeholder="As it appears on your license"
-            />
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">1</span>
+              <h2 className="font-semibold text-sm">Upload your driver's license</h2>
+              {licenseUrl && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
+            </div>
+            <Card className="p-4">
+              <PhotoCapture label="Upload license" onChange={setLicenseUrl} value={licenseUrl} />
+            </Card>
           </div>
-          <SignaturePad value={sig ?? undefined} onChange={setSig} />
-        </Card>
-      </div>
 
-      <Button
-        className="w-full bg-[#2db84b] hover:bg-[#27a341] text-white"
-        size="lg"
-        onClick={handleSubmit}
-        disabled={submitting}
-      >
-        {submitting
-          ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…</>
-          : "Submit & complete reservation"}
-      </Button>
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">2</span>
+              <h2 className="font-semibold text-sm">Take a selfie</h2>
+              {selfieUrl && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
+            </div>
+            <Card className="p-4">
+              <PhotoCapture label="Take selfie" onChange={setSelfieUrl} value={selfieUrl} useCamera />
+            </Card>
+          </div>
 
-      <p className="text-center text-xs text-muted-foreground pb-4">
-        By submitting you confirm you have read and agree to the rental agreement above.
-      </p>
+          <Button
+            className="w-full bg-[#2db84b] hover:bg-[#27a341] text-white"
+            size="lg"
+            disabled={!licenseUrl || !selfieUrl}
+            onClick={() => setStep("agreement")}
+          >
+            Continue <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </>
+      ) : (
+        <>
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">3</span>
+              <h2 className="font-semibold text-sm">Read your rental agreement</h2>
+            </div>
+            <div className="rounded-lg border shadow-sm overflow-hidden">
+              <RentalAgreement
+                rental={agreementRental as any}
+                driver={agreementDriver as any}
+                vehicle={agreementVehicle as any}
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">4</span>
+              <h2 className="font-semibold text-sm">Sign the agreement</h2>
+              {sig && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
+            </div>
+            <Card className="p-4 space-y-4">
+              <div>
+                <Label htmlFor="signedBy">Your full legal name</Label>
+                <Input
+                  id="signedBy"
+                  value={signedBy}
+                  onChange={(e) => setSignedBy(e.target.value)}
+                  className="mt-1"
+                  placeholder="As it appears on your license"
+                />
+              </div>
+              <SignaturePad value={sig ?? undefined} onChange={setSig} />
+            </Card>
+          </div>
+
+          <div className="flex gap-2">
+            <Button variant="outline" size="lg" onClick={() => setStep("identity")} disabled={submitting}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            </Button>
+            <Button
+              className="flex-1 bg-[#2db84b] hover:bg-[#27a341] text-white"
+              size="lg"
+              onClick={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…</>
+                : "Submit & complete reservation"}
+            </Button>
+          </div>
+
+          <p className="text-center text-xs text-muted-foreground pb-4">
+            By submitting you confirm you have read and agree to the rental agreement above.
+          </p>
+        </>
+      )}
     </div>
   );
 }
