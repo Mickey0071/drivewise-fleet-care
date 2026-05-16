@@ -1,56 +1,54 @@
-## Update Insurance Claim Checklist to match Accident Checklist
+## Where we are — and what's left to finish the core flow
 
-Replace the current 9-step claim checklist with the 8-task accident checklist from the uploaded PDF, and make each task richer: file uploads to prove docs were collected, and amount fields where money is involved.
+Your core path is **Add a vehicle → Reserve it → Renter signs/pays → Rental is active**. Everything else (Insurance, Expenses, Payroll, Inspections, Violations, PnL) is a side feature already built. Here's the honest status of the core, plus what to do next.
 
-### Header fields on each claim
-Add to `insurance_entries` (already has most): `company` (insurance company), `renter_name`, `renter_phone`. Claim # and vehicle are already captured. Date already exists.
+### What already works
 
-### New checklist tasks (replaces old 9)
-1. Incident Report
-2. Police Report
-3. Photos of Damages
-4. Repair Estimate — **amount field**
-5. Actual Cash Value — **amount field**
-6. Rental Receipt — **amount field**
-7. Loss of Use Demand (1099 previous year) — **amount field**
-8. Loss of Use Demand (Previous Week to accident) — **amount field**
+1. **Add vehicle** (`src/routes/fleet.tsx` → `AddVehicleDialog`)
+   - Make/model/year/VIN/plate/mileage/risk tier/daily+weekly rate
+   - Profile photo upload (saved to `vehicle-photos` bucket, set as `image_url`)
+   - Saves to Supabase `vehicles`, syncs in real time.
+2. **Vehicle detail page** (`src/routes/fleet.$vehicleId.tsx`)
+   - Photo gallery, edit, log service, start reservation, share rental link.
+3. **Edit vehicle** (`EditVehicleDialog`) — full edit + delete + change photo.
+4. **Reserve a vehicle** — two paths:
+   - **Internal:** `NewReservationDialog` — 4-step wizard (Vehicle → Client → Dates → Review). Conflict checking, swap-existing-rental support, deposit, billing period, auto-text signing link to renter on confirm.
+   - **Public share link:** `ShareRentalDialog` builds a `/rent/$token` link, optional SMS to renter's phone. The renter fills out their info, uploads license + selfie, signs — handled by `submitShareApplication` server fn.
+5. **Sign + pay flow:** `/sign/$token` route + Stripe checkout already wired; webhook flips rental to active when payment lands.
 
-The `seed_claim_checklist()` trigger will be rewritten to insert these 8 rows with the right flags.
+### What's incomplete or rough on the CORE path
 
-### Per-task fields (new columns on `insurance_claim_checklist`)
-- `done` boolean (exists)
-- `notes` text — free notes per task
-- `amount` numeric nullable — shown only on tasks flagged `requires_amount`
-- `requires_amount` boolean — seeded true for tasks 4–8
-- `requires_document` boolean — seeded true for all 8
-- `document_url` text nullable — uploaded proof (PDF/image)
-- `document_name` text nullable
+These are the only items I think you should care about until they're done. Side bars stay parked.
 
-A task shows a green "complete" state only when `done = true` AND (if `requires_document`) `document_url` is set AND (if `requires_amount`) `amount` is set.
+A. **"Add vehicle" form is missing fields renters/staff actually need**
+   - No color, no transmission, no fuel type, no seats, no registration expiry, no insurance expiry.
+   - No "Notes / known issues" field on create (it exists on edit only).
+   - No way to upload multiple gallery photos during initial add (you have to add the vehicle, then go to the detail page).
 
-### Storage
-New public bucket `claim-documents` with authenticated read/write RLS for uploaded proof files (police reports, photos, estimates, receipts).
+B. **Reservation wizard rough edges**
+   - "Client" step has add-driver inline but no license upload there.
+   - No price summary at the top of the Review step (total rent for the period, deposit, expected first payment).
+   - No way to attach a pre-collected deposit payment record from the dialog.
 
-### UI changes (`src/routes/insurance.tsx` + `ChecklistDialog`)
-- Claim form gains: Insurance Company, Renter Name, Renter Phone fields.
-- Checklist dialog redesigned as a vertical list of cards, each showing:
-  - Checkbox + task label
-  - Notes input
-  - Amount input (when `requires_amount`)
-  - Upload button + filename preview + view/replace/remove (when `requires_document`)
-  - Status badge: "Complete" / "Missing docs" / "Missing amount" / "Pending"
-- Summary row at top of dialog: "X of 8 complete" + total of all amounts entered.
-- Entry table gains a "Claim total" column summing the 5 amount fields.
+C. **Public rental link (`/rent/$token`)**
+   - Works end-to-end, but renter never sees the agreement terms before signing.
+   - No "save & resume" — if the renter closes the tab, they lose progress.
 
-### Store helpers (`src/lib/mock/store.ts`)
-- Extend `toggleChecklistItem` → `updateChecklistItem({ id, done?, notes?, amount?, document_url?, document_name? })`
-- New `uploadClaimDocument(itemId, file)` → uploads to `claim-documents` bucket, updates row.
+D. **Status visibility**
+   - Fleet page shows status badges, but there is no single "Reservation pipeline" view (Pending → Signed → Paid → Active) so you can see where every booking is stuck.
 
-### Files touched
-- New migration: schema changes + rewritten `seed_claim_checklist` trigger + storage bucket/policies
-- `src/lib/mock/data.ts` — extend `InsuranceEntry` + `InsuranceChecklistItem` types
-- `src/lib/mock/store.ts` — new helpers
-- `src/routes/insurance.tsx` — form fields, table column, redesigned ChecklistDialog
-- `src/integrations/supabase/types.ts` — regenerated after migration
+### Recommendation: pick ONE of these to do next
 
-No new secrets, no edge functions.
+Each is a focused, shippable chunk. We do one, you test it, we move to the next.
+
+1. **Beef up Add Vehicle** (Item A) — biggest visible win, ~1 turn.
+2. **Polish Reservation wizard** (Item B) — improves daily ops, ~1 turn.
+3. **Reservation pipeline view** (Item D) — a new section on `/rentals` showing every booking by stage with quick actions (resend signing link, mark paid, cancel). ~1 turn.
+4. **Renter-facing polish** (Item C) — agreement preview + resume token. ~1–2 turns.
+
+### Side-bar features already shipped (parked, no work needed)
+Insurance & accident claims, Expenses, Payroll, PnL, Inspections, Violations, Maintenance, Calendar, Reports/CSV export, Global search, Auth + roles, Payments webhook, Reminders cron, Driver/Staff portals.
+
+---
+
+**Tell me which of 1–4 to do next** (or say "all of them in that order"). I'll execute one at a time and come back for sign-off before moving on, so we actually finish.
