@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ReportActions } from "@/components/app/ReportActions";
-import { vehicles, vehicleById, insuranceEntries, insuranceChecklist, fmtDate, fmtMoney, type InsuranceEntry, type InsuranceClaimType } from "@/lib/mock/data";
+import { vehicles, vehicleById, insuranceEntries, fmtDate, fmtMoney, type InsuranceEntry, type InsuranceClaimType } from "@/lib/mock/data";
 import {
   addInsuranceEntry, updateInsuranceEntry, deleteInsuranceEntry,
   getChecklistFor, updateChecklistItem, addChecklistItem, deleteChecklistItem,
