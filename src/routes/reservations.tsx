@@ -88,7 +88,7 @@ function AllReservationsPage() {
     <div className="space-y-6 p-4 md:p-6">
       <PageHeader
         title="All Reservations"
-        description="Every reservation across the fleet, with up-to-date status, payments and signing."
+        subtitle="Every reservation across the fleet, with up-to-date status, payments and signing."
       />
 
       {/* KPIs */}
