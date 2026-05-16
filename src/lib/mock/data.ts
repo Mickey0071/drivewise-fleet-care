@@ -83,6 +83,26 @@ export interface VehiclePhoto {
   id: string; vehicleId: string; url: string; caption?: string;
   sortOrder: number; createdAt: string;
 }
+export type InsuranceEntryType = "premium" | "claim";
+export type InsuranceClaimType = "Collision" | "Comprehensive" | "Liability" | "Total Loss" | "Other";
+export type InsuranceClaimStatus = "open" | "closed";
+export interface InsuranceEntry {
+  id: string;
+  vehicleId?: string;
+  type: InsuranceEntryType;
+  claimType?: InsuranceClaimType;
+  date: string;
+  amount: number;
+  description: string;
+  notes?: string;
+  policyNumber?: string;
+  claimNumber?: string;
+  status: InsuranceClaimStatus;
+  createdAt: string;
+}
+export interface InsuranceChecklistItem {
+  id: string; entryId: string; label: string; done: boolean; sortOrder: number;
+}
 
 export const vehicles: Vehicle[] = [];
 export const drivers: Driver[] = [];
@@ -92,6 +112,8 @@ export const maintenance: Maintenance[] = [];
 export const inspections: Inspection[] = [];
 export const violations: Violation[] = [];
 export const vehiclePhotos: VehiclePhoto[] = [];
+export const insuranceEntries: InsuranceEntry[] = [];
+export const insuranceChecklist: InsuranceChecklistItem[] = [];
 
 export const staff: Staff[] = [
   { id: "S-01", fullName: "Ray Mitchell", role: "Lot Manager", phone: "(404) 555-1010", email: "ray@camauto.com", payType: "salary", payRate: 1200, stripeConnected: true, status: "active" },
