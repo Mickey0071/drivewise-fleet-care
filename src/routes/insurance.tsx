@@ -222,6 +222,25 @@ function InsurancePage() {
               <Label className="mb-1.5 block text-xs">Notes</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
+            {type === "claim" && (
+              <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Claim header</div>
+                <div>
+                  <Label className="mb-1.5 block text-xs">Insurance company</Label>
+                  <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="e.g. Progressive" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="mb-1.5 block text-xs">Renter name</Label>
+                    <Input value={renterName} onChange={(e) => setRenterName(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block text-xs">Renter phone</Label>
+                    <Input value={renterPhone} onChange={(e) => setRenterPhone(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex gap-2">
               <Button className="flex-1" onClick={handleSave} disabled={saving}>
                 {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving…</> : editingId ? "Save changes" : "Add entry"}
