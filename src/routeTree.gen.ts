@@ -20,6 +20,7 @@ import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as InsuranceRouteImport } from './routes/insurance'
 import { Route as InspectionsRouteImport } from './routes/inspections'
 import { Route as FleetRouteImport } from './routes/fleet'
 import { Route as ExpensesRouteImport } from './routes/expenses'
@@ -86,6 +87,11 @@ const MaintenanceRoute = MaintenanceRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsuranceRoute = InsuranceRouteImport.update({
+  id: '/insurance',
+  path: '/insurance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InspectionsRoute = InspectionsRouteImport.update({
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/expenses': typeof ExpensesRoute
   '/fleet': typeof FleetRouteWithChildren
   '/inspections': typeof InspectionsRoute
+  '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/payments': typeof PaymentsRoute
@@ -184,6 +191,7 @@ export interface FileRoutesByTo {
   '/expenses': typeof ExpensesRoute
   '/fleet': typeof FleetRouteWithChildren
   '/inspections': typeof InspectionsRoute
+  '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/payments': typeof PaymentsRoute
@@ -210,6 +218,7 @@ export interface FileRoutesById {
   '/expenses': typeof ExpensesRoute
   '/fleet': typeof FleetRouteWithChildren
   '/inspections': typeof InspectionsRoute
+  '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/payments': typeof PaymentsRoute
@@ -237,6 +246,7 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/fleet'
     | '/inspections'
+    | '/insurance'
     | '/login'
     | '/maintenance'
     | '/payments'
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/fleet'
     | '/inspections'
+    | '/insurance'
     | '/login'
     | '/maintenance'
     | '/payments'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/fleet'
     | '/inspections'
+    | '/insurance'
     | '/login'
     | '/maintenance'
     | '/payments'
@@ -313,6 +325,7 @@ export interface RootRouteChildren {
   ExpensesRoute: typeof ExpensesRoute
   FleetRoute: typeof FleetRouteWithChildren
   InspectionsRoute: typeof InspectionsRoute
+  InsuranceRoute: typeof InsuranceRoute
   LoginRoute: typeof LoginRoute
   MaintenanceRoute: typeof MaintenanceRoute
   PaymentsRoute: typeof PaymentsRoute
@@ -407,6 +420,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insurance': {
+      id: '/insurance'
+      path: '/insurance'
+      fullPath: '/insurance'
+      preLoaderRoute: typeof InsuranceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inspections': {
@@ -514,6 +534,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExpensesRoute: ExpensesRoute,
   FleetRoute: FleetRouteWithChildren,
   InspectionsRoute: InspectionsRoute,
+  InsuranceRoute: InsuranceRoute,
   LoginRoute: LoginRoute,
   MaintenanceRoute: MaintenanceRoute,
   PaymentsRoute: PaymentsRoute,
@@ -533,3 +554,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
