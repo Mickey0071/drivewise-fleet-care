@@ -31,7 +31,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export function RentalAgreement({ rental, driver, vehicle }: Props) {
   const settings = useAgreementSettings();
   const periodLabel = rental.billingPeriod === "daily" ? "day" : rental.billingPeriod === "monthly" ? "month" : "week";
-  const rate = rental.rate ?? rental.weeklyRate;
+  const rate = Number(rental.rate ?? rental.weeklyRate ?? 0);
   const exts = rental.extensions ?? [];
   const currentEnd = exts.length ? exts[exts.length - 1].newEndDate : rental.endDate;
 
