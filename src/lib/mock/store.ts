@@ -1019,7 +1019,10 @@ export function updateChecklistItem(id: string, patch: Partial<Pick<InsuranceChe
   const item = insuranceChecklist.find(c => c.id === id);
   if (!item) return;
   Object.assign(item, patch);
-  const row: Record<string, unknown> = {};
+  const row: {
+    done?: boolean; notes?: string | null; amount?: number | null;
+    document_url?: string | null; document_name?: string | null;
+  } = {};
   if ("done" in patch) row.done = patch.done;
   if ("notes" in patch) row.notes = patch.notes ?? null;
   if ("amount" in patch) row.amount = patch.amount ?? null;
