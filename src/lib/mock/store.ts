@@ -132,6 +132,9 @@ const fromInsuranceEntry = (r: any): InsuranceEntry => ({
   description: r.description ?? "", notes: r.notes ?? undefined,
   policyNumber: r.policy_number ?? undefined, claimNumber: r.claim_number ?? undefined,
   status: r.status, createdAt: r.created_at,
+  company: r.company ?? undefined,
+  renterName: r.renter_name ?? undefined,
+  renterPhone: r.renter_phone ?? undefined,
 });
 const toInsuranceEntry = (e: InsuranceEntry) => ({
   id: e.id, vehicle_id: e.vehicleId ?? null, type: e.type,
@@ -139,10 +142,19 @@ const toInsuranceEntry = (e: InsuranceEntry) => ({
   description: e.description, notes: e.notes ?? null,
   policy_number: e.policyNumber ?? null, claim_number: e.claimNumber ?? null,
   status: e.status,
+  company: e.company ?? null,
+  renter_name: e.renterName ?? null,
+  renter_phone: e.renterPhone ?? null,
 });
 const fromChecklist = (r: any): InsuranceChecklistItem => ({
   id: r.id, entryId: r.entry_id, label: r.label,
   done: !!r.done, sortOrder: r.sort_order ?? 0,
+  notes: r.notes ?? undefined,
+  amount: r.amount != null ? Number(r.amount) : undefined,
+  requiresAmount: !!r.requires_amount,
+  requiresDocument: r.requires_document !== false,
+  documentUrl: r.document_url ?? undefined,
+  documentName: r.document_name ?? undefined,
 });
 
 let hydrationPromise: Promise<void> | null = null;
