@@ -275,6 +275,7 @@ function InsurancePage() {
               const v = e.vehicleId ? vehicleById(e.vehicleId) : null;
               const checklist = e.type === "claim" ? getChecklistFor(e.id) : [];
               const done = checklist.filter(c => c.done).length;
+              const claimTotal = checklist.reduce((s, c) => s + (c.amount ?? 0), 0);
               return (
                 <div key={e.id} className="flex items-center justify-between gap-3 p-4">
                   <div className="min-w-0 flex-1">
@@ -291,6 +292,9 @@ function InsurancePage() {
                       {v && ` · ${v.plate}`}
                       {e.policyNumber && ` · Policy ${e.policyNumber}`}
                       {e.claimNumber && ` · Claim ${e.claimNumber}`}
+                      {e.company && ` · ${e.company}`}
+                      {e.renterName && ` · Renter ${e.renterName}`}
+                      {e.type === "claim" && claimTotal > 0 && ` · Claim total ${fmtMoney(claimTotal)}`}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
