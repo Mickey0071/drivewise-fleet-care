@@ -792,6 +792,31 @@ export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "i
   return Object.assign(driver, { cloudReady });
 }
 
+export function updateDriver(id: string, fields: Partial<Omit<Driver, "id">>) {
+  const d = drivers.find(x => x.id === id);
+  if (!d) return Promise.reject(new Error("Driver not found"));
+  const prev = { ...d };
+  Object.assign(d, fields);
+  const patch: Record<string, unknown> = {};
+  if (fields.fullName !== undefined) patch.full_name = fields.fullName;
+  if (fields.phone !== undefined) patch.phone = fields.phone;
+  if (fields.email !== undefined) patch.email = fields.email;
+  if (fields.licenseNumber !== undefined) patch.license_number = fields.licenseNumber;
+  if (fields.licenseExpiry !== undefined) patch.license_expiry = fields.licenseExpiry;
+  if (fields.insuranceOnFile !== undefined) patch.insurance_on_file = fields.insuranceOnFile;
+  if (fields.rideshare !== undefined) patch.rideshare = fields.rideshare;
+  if (fields.status !== undefined) patch.status = fields.status;
+  if (fields.dateOfBirth !== undefined) patch.date_of_birth = fields.dateOfBirth ?? null;
+  if (fields.address !== undefined) patch.address = fields.address ?? null;
+  const cloudReady = cloudWrite("driver:update", supabase.from("drivers").update(patch as never).eq("id", id)).catch((error) => {
+    Object.assign(d, prev);
+    emit();
+    throw error;
+  });
+  emit();
+  return cloudReady;
+}
+
 function nextInspectionId() {
   const n = inspections.reduce((m, i) => Math.max(m, parseInt(i.id.replace(/\D/g, "")) || 0), 400);
   return `I-${n + 1}`;
