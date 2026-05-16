@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, insuranceEntries, insuranceChecklist, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto, type InsuranceEntry, type InsuranceChecklistItem } from "./data";
 import { supabase } from "@/integrations/supabase/client";
 
 const listeners = new Set<() => void>();
@@ -125,6 +125,24 @@ const fromVehiclePhoto = (r: any): VehiclePhoto => ({
   id: r.id, vehicleId: r.vehicle_id, url: r.url,
   caption: r.caption ?? undefined, sortOrder: r.sort_order ?? 0,
   createdAt: r.created_at,
+});
+const fromInsuranceEntry = (r: any): InsuranceEntry => ({
+  id: r.id, vehicleId: r.vehicle_id ?? undefined, type: r.type,
+  claimType: r.claim_type ?? undefined, date: r.date, amount: Number(r.amount),
+  description: r.description ?? "", notes: r.notes ?? undefined,
+  policyNumber: r.policy_number ?? undefined, claimNumber: r.claim_number ?? undefined,
+  status: r.status, createdAt: r.created_at,
+});
+const toInsuranceEntry = (e: InsuranceEntry) => ({
+  id: e.id, vehicle_id: e.vehicleId ?? null, type: e.type,
+  claim_type: e.claimType ?? null, date: e.date, amount: e.amount,
+  description: e.description, notes: e.notes ?? null,
+  policy_number: e.policyNumber ?? null, claim_number: e.claimNumber ?? null,
+  status: e.status,
+});
+const fromChecklist = (r: any): InsuranceChecklistItem => ({
+  id: r.id, entryId: r.entry_id, label: r.label,
+  done: !!r.done, sortOrder: r.sort_order ?? 0,
 });
 
 let hydrationPromise: Promise<void> | null = null;
