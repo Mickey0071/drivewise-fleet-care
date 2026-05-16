@@ -10,6 +10,8 @@ import { Copy, MessageSquare, Mail, Link2, Loader2 } from "lucide-react";
 import { createShareLink, sendShareLinkSms } from "@/lib/share-rental.functions";
 import type { Vehicle } from "@/lib/mock/data";
 
+const PUBLIC_APP_ORIGIN = "https://drivewise-fleet-care.lovable.app";
+
 export function ShareRentalDialog({
   open,
   onOpenChange,
@@ -52,7 +54,7 @@ export function ShareRentalDialog({
     else if (billingPeriod === "monthly") setRate(String((vehicle.weeklyRate ?? 0) * 4));
   }, [billingPeriod, vehicle, token]);
 
-  const url = token && typeof window !== "undefined" ? `${window.location.origin}/rent/${token}` : "";
+  const url = token ? `${PUBLIC_APP_ORIGIN}/rent/${token}` : "";
 
   async function handleCreate() {
     if (!vehicle) return;
