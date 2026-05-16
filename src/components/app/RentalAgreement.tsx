@@ -67,28 +67,11 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
         <Field label="Street Address, City, State, ZIP" value={driver.address ?? ""} />
       </div>
 
-      {/* RENTER CHECK-OFF & INSURANCE */}
-      <div className="mt-3 grid grid-cols-2 gap-4">
-        <div className="space-y-1.5 text-[11.5px]">
-          <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-500">Renter Check-Off</div>
-          {[
-            "Renter name matches Driver License",
-            "Driver License verified & not expired",
-            "Proof of insurance reviewed",
-            "Payment method on file",
-            "Agreement terms explained to renter",
-          ].map((label) => (
-            <label key={label} className="flex items-start gap-2">
-              <span className="mt-0.5 inline-block h-3.5 w-3.5 shrink-0 border border-zinc-800" />
-              <span>{label}</span>
-            </label>
-          ))}
-        </div>
-        <div className="space-y-2">
-          <Field label="Insurance Provider Name" value="" />
-          <Field label="Policy Number" value="" />
-          <Field label="Policy Expiration" value="" />
-        </div>
+      {/* INSURANCE */}
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <Field label="Insurance Provider Name" value="" />
+        <Field label="Policy Number" value="" />
+        <Field label="Policy Expiration" value="" />
       </div>
 
       {/* VEHICLE */}
