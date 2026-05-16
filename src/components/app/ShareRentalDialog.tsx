@@ -100,7 +100,7 @@ export function ShareRentalDialog({
     if (!email.trim()) return toast.error("Enter an email");
     const subject = encodeURIComponent("Your Camauto Rentals application link");
     const body = encodeURIComponent(
-      `${name ? `Hi ${name},\n\n` : "Hi,\n\n"}You're invited to rent a vehicle from Camauto Rentals.\n\nComplete your application — driver's license, selfie, and signature — here:\n${url}\n\nThis link expires in 14 days.\n\nThanks,\nCamauto Rentals`
+      `${name ? `Hi ${name},\n\n` : "Hi,\n\n"}You're invited to rent a vehicle from Camauto Rentals.\n\nComplete your application — driver's license, selfie, and signature — here:\n${url}\n\nThis link expires in 60 days.\n\nThanks,\nCamauto Rentals`
     );
     window.open(`mailto:${encodeURIComponent(email.trim())}?subject=${subject}&body=${body}`, "_blank");
     toast.success("Opening your mail client…");
@@ -162,7 +162,7 @@ export function ShareRentalDialog({
                   <Input readOnly value={url} className="font-mono text-xs" />
                   <Button type="button" variant="outline" onClick={handleCopy}><Copy className="h-4 w-4" /></Button>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">Anyone with this link can apply to rent this vehicle. Expires in 14 days.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Anyone with this link can apply to rent this vehicle. Expires in 60 days.</p>
               </div>
 
               <div className="space-y-2">

@@ -1,0 +1,2 @@
+ALTER TABLE public.rental_share_links ALTER COLUMN expires_at SET DEFAULT (now() + '60 days'::interval);
+UPDATE public.rental_share_links SET expires_at = now() + '60 days'::interval WHERE consumed_rental_id IS NULL AND expires_at < now() + '60 days'::interval;
