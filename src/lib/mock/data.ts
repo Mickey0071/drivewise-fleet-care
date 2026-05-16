@@ -99,9 +99,18 @@ export interface InsuranceEntry {
   claimNumber?: string;
   status: InsuranceClaimStatus;
   createdAt: string;
+  company?: string;
+  renterName?: string;
+  renterPhone?: string;
 }
 export interface InsuranceChecklistItem {
   id: string; entryId: string; label: string; done: boolean; sortOrder: number;
+  notes?: string;
+  amount?: number;
+  requiresAmount: boolean;
+  requiresDocument: boolean;
+  documentUrl?: string;
+  documentName?: string;
 }
 
 export const vehicles: Vehicle[] = [];
