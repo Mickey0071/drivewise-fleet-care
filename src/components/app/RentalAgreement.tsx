@@ -57,14 +57,14 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
       <SectionLabel>Renter Information</SectionLabel>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Full Legal Name" value={driver.fullName} />
-        <Field label="Date of Birth" value="" />
+        <Field label="Date of Birth" value={driver.dateOfBirth ? fmtDate(driver.dateOfBirth) : ""} />
         <Field label="Driver License Number" value={driver.licenseNumber} />
         <Field label="DL State / Expiration Date" value={fmtDate(driver.licenseExpiry)} />
         <Field label="Phone Number" value={driver.phone} />
         <Field label="Email Address" value={driver.email} />
       </div>
       <div className="mt-2 grid grid-cols-1 gap-2">
-        <Field label="Street Address, City, State, ZIP" value="" />
+        <Field label="Street Address, City, State, ZIP" value={driver.address ?? ""} />
       </div>
 
       {/* VEHICLE */}
@@ -73,13 +73,14 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
         <Field label="Year" value={vehicle.year} />
         <Field label="Make" value={vehicle.make} />
         <Field label="Model" value={vehicle.model} />
-        <Field label="Color" value="" />
+        <Field label="Color" value={vehicle.color ?? ""} />
         <Field label="License Plate #" value={vehicle.plate} />
         <Field label="VIN" value={vehicle.vin} />
       </div>
-      <div className="mt-2 grid grid-cols-3 gap-2">
+      <div className="mt-2 grid grid-cols-4 gap-2">
         <Field label="Mileage Out" value={vehicle.mileage.toLocaleString()} />
-        <Field label="Fuel Level Out" value="" />
+        <Field label="Fuel Level Out" value={vehicle.fuelLevelPickup ?? ""} />
+        <Field label="EZ-Pass Tag #" value={vehicle.ezPassTag ?? ""} />
         <Field label="Pickup Date & Time" value={fmtDate(rental.startDate)} />
       </div>
 

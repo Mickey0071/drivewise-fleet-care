@@ -167,6 +167,8 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     licenseNumber: string;
     licenseExpiry: string;
     rideshare: "Uber" | "Lyft" | "Both";
+    dateOfBirth?: string;
+    address?: string;
     licenseDataUrl: string;
     selfieDataUrl: string;
     signatureDataUrl: string;
@@ -181,6 +183,8 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     reqStr(input.licenseNumber, "License number", 60);
     reqStr(input.licenseExpiry, "License expiry", 20);
     if (!["Uber", "Lyft", "Both"].includes(input.rideshare)) throw new Error("Invalid rideshare");
+    if (input.dateOfBirth && input.dateOfBirth.length > 20) throw new Error("Invalid DOB");
+    if (input.address && input.address.length > 300) throw new Error("Address too long");
     if (!input.licenseDataUrl?.startsWith("data:image/")) throw new Error("License photo required");
     if (!input.selfieDataUrl?.startsWith("data:image/")) throw new Error("Selfie required");
     if (!input.signatureDataUrl?.startsWith("data:image/")) throw new Error("Signature required");
@@ -218,6 +222,8 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       rideshare: data.rideshare,
       status: "active",
       date_added: new Date().toISOString().slice(0, 10),
+      date_of_birth: data.dateOfBirth || null,
+      address: data.address?.trim() || null,
     });
     if (dErr) throw new Error(`Could not create renter: ${dErr.message}`);
 

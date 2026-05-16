@@ -16,8 +16,10 @@ export type Database = {
     Tables: {
       drivers: {
         Row: {
+          address: string | null
           created_at: string
           date_added: string
+          date_of_birth: string | null
           email: string
           full_name: string
           id: string
@@ -30,8 +32,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          address?: string | null
           created_at?: string
           date_added?: string
+          date_of_birth?: string | null
           email: string
           full_name: string
           id: string
@@ -44,8 +48,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          address?: string | null
           created_at?: string
           date_added?: string
+          date_of_birth?: string | null
           email?: string
           full_name?: string
           id?: string
@@ -706,54 +712,78 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          color: string | null
           created_at: string
           daily_rate: number
+          ez_pass_tag: string | null
+          fuel_level_pickup: string | null
+          fuel_type: string | null
           id: string
           image_url: string | null
+          insurance_expiry: string | null
           make: string
           mileage: number
           model: string
           next_service_due: string | null
           notes: string | null
           plate: string
+          registration_expiry: string | null
           risk_tier: string
+          seats: number | null
           status: string
+          transmission: string | null
           updated_at: string
           vin: string
           weekly_rate: number
           year: number
         }
         Insert: {
+          color?: string | null
           created_at?: string
           daily_rate?: number
+          ez_pass_tag?: string | null
+          fuel_level_pickup?: string | null
+          fuel_type?: string | null
           id: string
           image_url?: string | null
+          insurance_expiry?: string | null
           make: string
           mileage?: number
           model: string
           next_service_due?: string | null
           notes?: string | null
           plate: string
+          registration_expiry?: string | null
           risk_tier?: string
+          seats?: number | null
           status?: string
+          transmission?: string | null
           updated_at?: string
           vin: string
           weekly_rate?: number
           year: number
         }
         Update: {
+          color?: string | null
           created_at?: string
           daily_rate?: number
+          ez_pass_tag?: string | null
+          fuel_level_pickup?: string | null
+          fuel_type?: string | null
           id?: string
           image_url?: string | null
+          insurance_expiry?: string | null
           make?: string
           mileage?: number
           model?: string
           next_service_due?: string | null
           notes?: string | null
           plate?: string
+          registration_expiry?: string | null
           risk_tier?: string
+          seats?: number | null
           status?: string
+          transmission?: string | null
           updated_at?: string
           vin?: string
           weekly_rate?: number

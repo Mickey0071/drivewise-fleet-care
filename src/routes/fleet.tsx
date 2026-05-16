@@ -207,6 +207,15 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
   const [dailyRate, setDailyRate] = useState<string>("");
   const [weeklyRate, setWeeklyRate] = useState<string>("");
   const [riskTier, setRiskTier] = useState<"A" | "B" | "C">("A");
+  const [color, setColor] = useState("");
+  const [transmission, setTransmission] = useState<"Automatic" | "Manual" | "CVT" | "Other">("Automatic");
+  const [fuelType, setFuelType] = useState<"Gas" | "Hybrid" | "Diesel" | "Electric">("Gas");
+  const [seats, setSeats] = useState<string>("5");
+  const [fuelLevelPickup, setFuelLevelPickup] = useState<"Full" | "3/4" | "1/2" | "1/4" | "Empty">("Full");
+  const [ezPassTag, setEzPassTag] = useState("");
+  const [registrationExpiry, setRegistrationExpiry] = useState("");
+  const [insuranceExpiry, setInsuranceExpiry] = useState("");
+  const [notes, setNotes] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -214,6 +223,9 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
   function reset() {
     setMake(""); setModel(""); setYear(new Date().getFullYear()); setVin(""); setPlate("");
     setMileage(""); setDailyRate(""); setWeeklyRate(""); setRiskTier("A");
+    setColor(""); setTransmission("Automatic"); setFuelType("Gas"); setSeats("5");
+    setFuelLevelPickup("Full"); setEzPassTag(""); setRegistrationExpiry(""); setInsuranceExpiry("");
+    setNotes("");
     setPhotoFile(null);
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoPreview(null);
@@ -234,6 +246,15 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
       dailyRate: Number(dailyRate) || 0,
       weeklyRate: Number(weeklyRate) || 0,
       riskTier,
+      color: color || undefined,
+      transmission,
+      fuelType,
+      seats: Number(seats) || undefined,
+      fuelLevelPickup,
+      ezPassTag: ezPassTag || undefined,
+      registrationExpiry: registrationExpiry || undefined,
+      insuranceExpiry: insuranceExpiry || undefined,
+      notes: notes || undefined,
     });
     try {
       await (v as { cloudReady?: Promise<unknown> }).cloudReady;
@@ -275,9 +296,51 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
           <div><Label>Make *</Label><Input value={make} onChange={e => setMake(e.target.value)} placeholder="Toyota" /></div>
           <div><Label>Model *</Label><Input value={model} onChange={e => setModel(e.target.value)} placeholder="Camry" /></div>
           <div><Label>Year</Label><Input type="number" value={year} onChange={e => setYear(Number(e.target.value))} /></div>
+          <div><Label>Color</Label><Input value={color} onChange={e => setColor(e.target.value)} placeholder="Silver" /></div>
           <div><Label>Plate *</Label><Input value={plate} onChange={e => setPlate(e.target.value)} /></div>
           <div className="sm:col-span-2"><Label>VIN</Label><Input value={vin} onChange={e => setVin(e.target.value)} /></div>
           <div><Label>Mileage</Label><Input type="number" inputMode="numeric" value={mileage} onChange={e => setMileage(e.target.value)} /></div>
+          <div><Label>Seats</Label><Input type="number" inputMode="numeric" value={seats} onChange={e => setSeats(e.target.value)} /></div>
+          <div>
+            <Label>Transmission</Label>
+            <Select value={transmission} onValueChange={(v) => setTransmission(v as typeof transmission)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Automatic">Automatic</SelectItem>
+                <SelectItem value="Manual">Manual</SelectItem>
+                <SelectItem value="CVT">CVT</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Fuel type</Label>
+            <Select value={fuelType} onValueChange={(v) => setFuelType(v as typeof fuelType)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Gas">Gas</SelectItem>
+                <SelectItem value="Hybrid">Hybrid</SelectItem>
+                <SelectItem value="Diesel">Diesel</SelectItem>
+                <SelectItem value="Electric">Electric</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Fuel level at pickup</Label>
+            <Select value={fuelLevelPickup} onValueChange={(v) => setFuelLevelPickup(v as typeof fuelLevelPickup)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Full">Full</SelectItem>
+                <SelectItem value="3/4">3/4</SelectItem>
+                <SelectItem value="1/2">1/2</SelectItem>
+                <SelectItem value="1/4">1/4</SelectItem>
+                <SelectItem value="Empty">Empty</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div><Label>EZ-Pass tag #</Label><Input value={ezPassTag} onChange={e => setEzPassTag(e.target.value)} /></div>
+          <div><Label>Registration expiry</Label><Input type="date" value={registrationExpiry} onChange={e => setRegistrationExpiry(e.target.value)} /></div>
+          <div><Label>Insurance expiry</Label><Input type="date" value={insuranceExpiry} onChange={e => setInsuranceExpiry(e.target.value)} /></div>
           <div>
             <Label>Risk tier</Label>
             <Select value={riskTier} onValueChange={(v) => setRiskTier(v as "A" | "B" | "C")}>
@@ -291,6 +354,10 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
           </div>
           <div><Label>Daily rate ($)</Label><Input type="number" inputMode="decimal" value={dailyRate} onChange={e => setDailyRate(e.target.value)} /></div>
           <div><Label>Weekly rate ($)</Label><Input type="number" inputMode="decimal" value={weeklyRate} onChange={e => setWeeklyRate(e.target.value)} /></div>
+          <div className="sm:col-span-2">
+            <Label>Notes / known issues</Label>
+            <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>

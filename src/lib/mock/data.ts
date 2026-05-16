@@ -10,11 +10,21 @@ export interface Vehicle {
   riskTier: "A" | "B" | "C"; dailyRate: number; weeklyRate: number; notes?: string;
   nextServiceDue?: string;
   imageUrl?: string;
+  color?: string;
+  transmission?: "Automatic" | "Manual" | "CVT" | "Other";
+  fuelType?: "Gas" | "Hybrid" | "Diesel" | "Electric";
+  seats?: number;
+  fuelLevelPickup?: "Full" | "3/4" | "1/2" | "1/4" | "Empty";
+  ezPassTag?: string;
+  registrationExpiry?: string;
+  insuranceExpiry?: string;
 }
 export interface Driver {
   id: string; fullName: string; phone: string; email: string;
   licenseNumber: string; licenseExpiry: string; insuranceOnFile: boolean;
   rideshare: "Uber" | "Lyft" | "Both"; status: DriverStatus; dateAdded: string;
+  dateOfBirth?: string;
+  address?: string;
 }
 export interface Rental {
   id: string; vehicleId: string; driverId: string; startDate: string;

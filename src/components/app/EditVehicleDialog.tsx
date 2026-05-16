@@ -35,6 +35,14 @@ export function EditVehicleDialog({
   const [status, setStatus] = useState<VehicleStatus>("available");
   const [nextServiceDue, setNextServiceDue] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
+  const [color, setColor] = useState("");
+  const [transmission, setTransmission] = useState<"Automatic" | "Manual" | "CVT" | "Other">("Automatic");
+  const [fuelType, setFuelType] = useState<"Gas" | "Hybrid" | "Diesel" | "Electric">("Gas");
+  const [seats, setSeats] = useState<string>("");
+  const [fuelLevelPickup, setFuelLevelPickup] = useState<"Full" | "3/4" | "1/2" | "1/4" | "Empty">("Full");
+  const [ezPassTag, setEzPassTag] = useState("");
+  const [registrationExpiry, setRegistrationExpiry] = useState("");
+  const [insuranceExpiry, setInsuranceExpiry] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -53,6 +61,14 @@ export function EditVehicleDialog({
     setStatus(vehicle.status);
     setNextServiceDue(vehicle.nextServiceDue ?? "");
     setNotes(vehicle.notes ?? "");
+    setColor(vehicle.color ?? "");
+    setTransmission((vehicle.transmission as typeof transmission) ?? "Automatic");
+    setFuelType((vehicle.fuelType as typeof fuelType) ?? "Gas");
+    setSeats(vehicle.seats != null ? String(vehicle.seats) : "");
+    setFuelLevelPickup((vehicle.fuelLevelPickup as typeof fuelLevelPickup) ?? "Full");
+    setEzPassTag(vehicle.ezPassTag ?? "");
+    setRegistrationExpiry(vehicle.registrationExpiry ?? "");
+    setInsuranceExpiry(vehicle.insuranceExpiry ?? "");
     setPhotoFile(null);
   }, [open, vehicle]);
 
@@ -81,6 +97,14 @@ export function EditVehicleDialog({
         status,
         nextServiceDue: nextServiceDue || undefined,
         notes: notes.trim() || undefined,
+        color: color.trim() || undefined,
+        transmission,
+        fuelType,
+        seats: Number(seats) || undefined,
+        fuelLevelPickup,
+        ezPassTag: ezPassTag.trim() || undefined,
+        registrationExpiry: registrationExpiry || undefined,
+        insuranceExpiry: insuranceExpiry || undefined,
       });
       if (photoFile) {
         const url = await uploadVehiclePhoto(vehicle.id, photoFile);
@@ -126,9 +150,51 @@ export function EditVehicleDialog({
           <div><Label>Make *</Label><Input value={make} onChange={e => setMake(e.target.value)} /></div>
           <div><Label>Model *</Label><Input value={model} onChange={e => setModel(e.target.value)} /></div>
           <div><Label>Year</Label><Input type="number" value={year} onChange={e => setYear(Number(e.target.value))} /></div>
+          <div><Label>Color</Label><Input value={color} onChange={e => setColor(e.target.value)} placeholder="Silver" /></div>
           <div><Label>Plate *</Label><Input value={plate} onChange={e => setPlate(e.target.value)} /></div>
           <div className="sm:col-span-2"><Label>VIN</Label><Input value={vin} onChange={e => setVin(e.target.value)} /></div>
           <div><Label>Mileage</Label><Input type="number" inputMode="numeric" value={mileage} onChange={e => setMileage(e.target.value)} /></div>
+          <div><Label>Seats</Label><Input type="number" inputMode="numeric" value={seats} onChange={e => setSeats(e.target.value)} /></div>
+          <div>
+            <Label>Transmission</Label>
+            <Select value={transmission} onValueChange={(v) => setTransmission(v as typeof transmission)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Automatic">Automatic</SelectItem>
+                <SelectItem value="Manual">Manual</SelectItem>
+                <SelectItem value="CVT">CVT</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Fuel type</Label>
+            <Select value={fuelType} onValueChange={(v) => setFuelType(v as typeof fuelType)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Gas">Gas</SelectItem>
+                <SelectItem value="Hybrid">Hybrid</SelectItem>
+                <SelectItem value="Diesel">Diesel</SelectItem>
+                <SelectItem value="Electric">Electric</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Fuel level at pickup</Label>
+            <Select value={fuelLevelPickup} onValueChange={(v) => setFuelLevelPickup(v as typeof fuelLevelPickup)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Full">Full</SelectItem>
+                <SelectItem value="3/4">3/4</SelectItem>
+                <SelectItem value="1/2">1/2</SelectItem>
+                <SelectItem value="1/4">1/4</SelectItem>
+                <SelectItem value="Empty">Empty</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div><Label>EZ-Pass tag #</Label><Input value={ezPassTag} onChange={e => setEzPassTag(e.target.value)} /></div>
+          <div><Label>Registration expiry</Label><Input type="date" value={registrationExpiry} onChange={e => setRegistrationExpiry(e.target.value)} /></div>
+          <div><Label>Insurance expiry</Label><Input type="date" value={insuranceExpiry} onChange={e => setInsuranceExpiry(e.target.value)} /></div>
           <div>
             <Label>Status</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as VehicleStatus)}>

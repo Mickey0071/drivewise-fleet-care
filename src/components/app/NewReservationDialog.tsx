@@ -50,7 +50,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [vehQ, setVehQ] = useState("");
   const [drvQ, setDrvQ] = useState("");
   const [showAddDriver, setShowAddDriver] = useState(false);
-  const [newDriver, setNewDriver] = useState({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" as "Uber" | "Lyft" | "Both" });
+  const [newDriver, setNewDriver] = useState({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" as "Uber" | "Lyft" | "Both", dateOfBirth: "", address: "" });
   const [isSwap, setIsSwap] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -87,7 +87,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     setDeposit(300); setNotes(""); setVehQ(""); setDrvQ("");
     setShowAddDriver(false);
     setIsSwap(false);
-    setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" });
+    setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber", dateOfBirth: "", address: "" });
   }
   function createDriver() {
     if (!newDriver.fullName.trim()) {
@@ -101,10 +101,12 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       licenseNumber: newDriver.licenseNumber.trim() || "—",
       licenseExpiry: "",
       rideshare: newDriver.rideshare,
+      dateOfBirth: newDriver.dateOfBirth || undefined,
+      address: newDriver.address.trim() || undefined,
     });
     setDriverId(d.id);
     setShowAddDriver(false);
-    setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" });
+    setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber", dateOfBirth: "", address: "" });
     toast.success("Client added", { description: d.fullName });
   }
 
@@ -294,6 +296,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                     <div><Label htmlFor="nd-phone">Phone</Label><Input id="nd-phone" value={newDriver.phone} onChange={e => setNewDriver({ ...newDriver, phone: e.target.value })} /></div>
                     <div><Label htmlFor="nd-email">Email</Label><Input id="nd-email" type="email" value={newDriver.email} onChange={e => setNewDriver({ ...newDriver, email: e.target.value })} /></div>
                     <div><Label htmlFor="nd-lic">License #</Label><Input id="nd-lic" value={newDriver.licenseNumber} onChange={e => setNewDriver({ ...newDriver, licenseNumber: e.target.value })} /></div>
+                    <div><Label htmlFor="nd-dob">Date of birth</Label><Input id="nd-dob" type="date" value={newDriver.dateOfBirth} onChange={e => setNewDriver({ ...newDriver, dateOfBirth: e.target.value })} /></div>
+                    <div className="sm:col-span-2"><Label htmlFor="nd-addr">Address</Label><Input id="nd-addr" placeholder="123 Main St, Camden, NJ 08104" value={newDriver.address} onChange={e => setNewDriver({ ...newDriver, address: e.target.value })} /></div>
                     <div className="sm:col-span-2">
                       <Label htmlFor="nd-rs">Rideshare</Label>
                       <select id="nd-rs" className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={newDriver.rideshare} onChange={e => setNewDriver({ ...newDriver, rideshare: e.target.value as "Uber" | "Lyft" | "Both" })}>

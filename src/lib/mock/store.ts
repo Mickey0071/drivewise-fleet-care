@@ -28,6 +28,14 @@ const fromVehicle = (r: any) => ({
   dailyRate: Number(r.daily_rate), weeklyRate: Number(r.weekly_rate),
   notes: r.notes ?? undefined, nextServiceDue: r.next_service_due ?? undefined,
   imageUrl: r.image_url ?? undefined,
+  color: r.color ?? undefined,
+  transmission: r.transmission ?? undefined,
+  fuelType: r.fuel_type ?? undefined,
+  seats: r.seats ?? undefined,
+  fuelLevelPickup: r.fuel_level_pickup ?? undefined,
+  ezPassTag: r.ez_pass_tag ?? undefined,
+  registrationExpiry: r.registration_expiry ?? undefined,
+  insuranceExpiry: r.insurance_expiry ?? undefined,
 });
 const toVehicle = (v: any) => ({
   id: v.id, make: v.make, model: v.model, year: v.year, vin: v.vin,
@@ -35,18 +43,30 @@ const toVehicle = (v: any) => ({
   daily_rate: v.dailyRate, weekly_rate: v.weeklyRate,
   notes: v.notes ?? null, next_service_due: v.nextServiceDue ?? null,
   image_url: v.imageUrl ?? null,
+  color: v.color ?? null,
+  transmission: v.transmission ?? null,
+  fuel_type: v.fuelType ?? null,
+  seats: v.seats ?? null,
+  fuel_level_pickup: v.fuelLevelPickup ?? null,
+  ez_pass_tag: v.ezPassTag ?? null,
+  registration_expiry: v.registrationExpiry ?? null,
+  insurance_expiry: v.insuranceExpiry ?? null,
 });
 const fromDriver = (r: any) => ({
   id: r.id, fullName: r.full_name, phone: r.phone, email: r.email,
   licenseNumber: r.license_number, licenseExpiry: r.license_expiry,
   insuranceOnFile: r.insurance_on_file, rideshare: r.rideshare,
   status: r.status, dateAdded: r.date_added,
+  dateOfBirth: r.date_of_birth ?? undefined,
+  address: r.address ?? undefined,
 });
 const toDriver = (d: any) => ({
   id: d.id, full_name: d.fullName, phone: d.phone, email: d.email,
   license_number: d.licenseNumber, license_expiry: d.licenseExpiry,
   insurance_on_file: d.insuranceOnFile, rideshare: d.rideshare,
   status: d.status, date_added: d.dateAdded,
+  date_of_birth: d.dateOfBirth ?? null,
+  address: d.address ?? null,
 });
 const fromRental = (r: any, exts: any[] = []): Rental => ({
   id: r.id, vehicleId: r.vehicle_id, driverId: r.driver_id,
@@ -654,6 +674,14 @@ export function updateVehicle(id: string, fields: Partial<Omit<Vehicle, "id">>) 
   if (fields.notes !== undefined) patch.notes = fields.notes ?? null;
   if (fields.nextServiceDue !== undefined) patch.next_service_due = fields.nextServiceDue ?? null;
   if (fields.imageUrl !== undefined) patch.image_url = fields.imageUrl ?? null;
+  if (fields.color !== undefined) patch.color = fields.color ?? null;
+  if (fields.transmission !== undefined) patch.transmission = fields.transmission ?? null;
+  if (fields.fuelType !== undefined) patch.fuel_type = fields.fuelType ?? null;
+  if (fields.seats !== undefined) patch.seats = fields.seats ?? null;
+  if (fields.fuelLevelPickup !== undefined) patch.fuel_level_pickup = fields.fuelLevelPickup ?? null;
+  if (fields.ezPassTag !== undefined) patch.ez_pass_tag = fields.ezPassTag ?? null;
+  if (fields.registrationExpiry !== undefined) patch.registration_expiry = fields.registrationExpiry ?? null;
+  if (fields.insuranceExpiry !== undefined) patch.insurance_expiry = fields.insuranceExpiry ?? null;
   const cloudReady = cloudWrite("vehicle:update", supabase.from("vehicles").update(patch as never).eq("id", id)).catch((error) => {
     Object.assign(v, prev);
     emit();
@@ -762,6 +790,31 @@ export function addDriver(input: Omit<Driver, "id" | "dateAdded" | "status" | "i
   });
   emit();
   return Object.assign(driver, { cloudReady });
+}
+
+export function updateDriver(id: string, fields: Partial<Omit<Driver, "id">>) {
+  const d = drivers.find(x => x.id === id);
+  if (!d) return Promise.reject(new Error("Driver not found"));
+  const prev = { ...d };
+  Object.assign(d, fields);
+  const patch: Record<string, unknown> = {};
+  if (fields.fullName !== undefined) patch.full_name = fields.fullName;
+  if (fields.phone !== undefined) patch.phone = fields.phone;
+  if (fields.email !== undefined) patch.email = fields.email;
+  if (fields.licenseNumber !== undefined) patch.license_number = fields.licenseNumber;
+  if (fields.licenseExpiry !== undefined) patch.license_expiry = fields.licenseExpiry;
+  if (fields.insuranceOnFile !== undefined) patch.insurance_on_file = fields.insuranceOnFile;
+  if (fields.rideshare !== undefined) patch.rideshare = fields.rideshare;
+  if (fields.status !== undefined) patch.status = fields.status;
+  if (fields.dateOfBirth !== undefined) patch.date_of_birth = fields.dateOfBirth ?? null;
+  if (fields.address !== undefined) patch.address = fields.address ?? null;
+  const cloudReady = cloudWrite("driver:update", supabase.from("drivers").update(patch as never).eq("id", id)).catch((error) => {
+    Object.assign(d, prev);
+    emit();
+    throw error;
+  });
+  emit();
+  return cloudReady;
 }
 
 function nextInspectionId() {
