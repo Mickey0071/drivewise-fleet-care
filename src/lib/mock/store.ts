@@ -674,6 +674,14 @@ export function updateVehicle(id: string, fields: Partial<Omit<Vehicle, "id">>) 
   if (fields.notes !== undefined) patch.notes = fields.notes ?? null;
   if (fields.nextServiceDue !== undefined) patch.next_service_due = fields.nextServiceDue ?? null;
   if (fields.imageUrl !== undefined) patch.image_url = fields.imageUrl ?? null;
+  if (fields.color !== undefined) patch.color = fields.color ?? null;
+  if (fields.transmission !== undefined) patch.transmission = fields.transmission ?? null;
+  if (fields.fuelType !== undefined) patch.fuel_type = fields.fuelType ?? null;
+  if (fields.seats !== undefined) patch.seats = fields.seats ?? null;
+  if (fields.fuelLevelPickup !== undefined) patch.fuel_level_pickup = fields.fuelLevelPickup ?? null;
+  if (fields.ezPassTag !== undefined) patch.ez_pass_tag = fields.ezPassTag ?? null;
+  if (fields.registrationExpiry !== undefined) patch.registration_expiry = fields.registrationExpiry ?? null;
+  if (fields.insuranceExpiry !== undefined) patch.insurance_expiry = fields.insuranceExpiry ?? null;
   const cloudReady = cloudWrite("vehicle:update", supabase.from("vehicles").update(patch as never).eq("id", id)).catch((error) => {
     Object.assign(v, prev);
     emit();
