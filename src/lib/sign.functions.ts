@@ -194,10 +194,15 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { data: rental, error } = await supabaseAdmin
       .from("rentals")
-      .select("id, driver_id, sign_token, payment_received, reservation_status")
+      .select("id, driver_id, sign_token, payment_received, reservation_status, client_signature_url")
       .eq("sign_token", data.token)
       .maybeSingle();
     if (error || !rental) throw new Error("Invalid signing link");
+
+    // Idempotency: if this rental was already signed, don't re-upload or re-text.
+    if (rental.client_signature_url) {
+      return { ok: true, alreadySigned: true };
+    }
 
     const [signatureUrl, licenseUrl, selfieUrl] = await Promise.all([
       uploadDataUrl(rental.id, "signature", data.signatureDataUrl),
