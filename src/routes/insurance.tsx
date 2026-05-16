@@ -356,29 +356,44 @@ function ChecklistDialog({ entryId, onClose }: { entryId: string | null; onClose
   const entry = entryId ? insuranceEntries.find(e => e.id === entryId) : null;
   const items = entryId ? getChecklistFor(entryId) : [];
 
+  const isComplete = (c: typeof items[number]) =>
+    c.done && (!c.requiresDocument || !!c.documentUrl) && (!c.requiresAmount || (c.amount != null && c.amount >= 0));
+
+  const completeCount = items.filter(isComplete).length;
+  const totalAmount = items.reduce((s, c) => s + (c.amount ?? 0), 0);
+
   return (
     <Dialog open={!!entryId} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Claim checklist</DialogTitle>
+          <DialogTitle>Accident claim checklist</DialogTitle>
           {entry && (
-            <p className="text-sm text-muted-foreground">{entry.description} · {fmtDate(entry.date)}</p>
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <p>{entry.description} · {fmtDate(entry.date)}</p>
+              <p className="text-xs">
+                {entry.company && `${entry.company} · `}
+                {entry.claimNumber && `Claim ${entry.claimNumber} · `}
+                {entry.renterName && `${entry.renterName}`}
+                {entry.renterPhone && ` · ${entry.renterPhone}`}
+              </p>
+            </div>
           )}
         </DialogHeader>
-        <div className="space-y-2 py-2">
+
+        <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+          <span><span className="font-semibold">{completeCount}</span> of {items.length} complete</span>
+          <span>Demand total: <span className="font-semibold">{fmtMoney(totalAmount)}</span></span>
+        </div>
+
+        <div className="space-y-3 py-2">
           {items.length === 0 && <p className="text-sm text-muted-foreground">No checklist items yet.</p>}
           {items.map(c => (
-            <div key={c.id} className="flex items-start gap-3 rounded-md border border-border p-2.5">
-              <Checkbox checked={c.done} onCheckedChange={(v) => toggleChecklistItem(c.id, !!v)} className="mt-0.5" />
-              <span className={`flex-1 text-sm ${c.done ? "text-muted-foreground line-through" : ""}`}>{c.label}</span>
-              <button onClick={() => deleteChecklistItem(c.id)} className="text-muted-foreground hover:text-destructive">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+            <ChecklistRow key={c.id} item={c} complete={isComplete(c)} />
           ))}
         </div>
-        <div className="flex gap-2">
-          <Input placeholder="Add a step…" value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
+
+        <div className="flex gap-2 border-t border-border pt-3">
+          <Input placeholder="Add a custom step…" value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && newLabel.trim() && entryId) {
                 e.preventDefault();
@@ -394,5 +409,103 @@ function ChecklistDialog({ entryId, onClose }: { entryId: string | null; onClose
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ChecklistRow({ item, complete }: { item: import("@/lib/mock/data").InsuranceChecklistItem; complete: boolean }) {
+  const [uploading, setUploading] = useState(false);
+  const [amountStr, setAmountStr] = useState(item.amount != null ? String(item.amount) : "");
+  const [notes, setNotes] = useState(item.notes ?? "");
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      await uploadClaimDocument(item.id, file);
+      toast.success("Document uploaded");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Upload failed");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  const status = complete
+    ? { label: "Complete", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" }
+    : item.done
+      ? { label: item.requiresDocument && !item.documentUrl ? "Missing document" : "Missing amount",
+          className: "bg-amber-500/15 text-amber-700 dark:text-amber-400" }
+      : { label: "Pending", className: "bg-muted text-muted-foreground" };
+
+  return (
+    <div className={`rounded-md border p-3 ${complete ? "border-emerald-500/40 bg-emerald-500/5" : "border-border"}`}>
+      <div className="flex items-start gap-3">
+        <Checkbox checked={item.done} onCheckedChange={(v) => updateChecklistItem(item.id, { done: !!v })} className="mt-1" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`text-sm font-medium ${complete ? "" : ""}`}>{item.label}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${status.className}`}>{status.label}</span>
+          </div>
+
+          {item.requiresAmount && (
+            <div className="mt-2">
+              <Label className="mb-1 block text-[11px] uppercase text-muted-foreground">Amount</Label>
+              <Input type="number" inputMode="decimal" min="0" step="0.01" placeholder="0.00"
+                value={amountStr}
+                onChange={(e) => setAmountStr(e.target.value)}
+                onBlur={() => {
+                  const n = amountStr === "" ? undefined : parseFloat(amountStr);
+                  updateChecklistItem(item.id, { amount: Number.isFinite(n as number) ? n : undefined });
+                }}
+                className="h-8" />
+            </div>
+          )}
+
+          {item.requiresDocument && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {item.documentUrl ? (
+                <>
+                  <a href={item.documentUrl} target="_blank" rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs hover:bg-accent">
+                    <FileText className="h-3.5 w-3.5" />
+                    <span className="max-w-[180px] truncate">{item.documentName ?? "View document"}</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                  <button type="button"
+                    onClick={() => updateChecklistItem(item.id, { documentUrl: undefined, documentName: undefined })}
+                    className="text-xs text-muted-foreground hover:text-destructive">
+                    Remove
+                  </button>
+                </>
+              ) : (
+                <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-dashed border-border px-2 py-1 text-xs hover:bg-accent">
+                  {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                  Upload proof
+                  <input type="file" className="hidden" onChange={onFile} disabled={uploading}
+                    accept="image/*,application/pdf" />
+                </label>
+              )}
+              <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent">
+                {item.documentUrl ? "Replace" : ""}
+                {item.documentUrl && (
+                  <input type="file" className="hidden" onChange={onFile} disabled={uploading}
+                    accept="image/*,application/pdf" />
+                )}
+              </label>
+            </div>
+          )}
+
+          <Textarea rows={1} placeholder="Notes" value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            onBlur={() => updateChecklistItem(item.id, { notes: notes || undefined })}
+            className="mt-2 min-h-[32px] text-xs" />
+        </div>
+        <button onClick={() => deleteChecklistItem(item.id)} className="text-muted-foreground hover:text-destructive" title="Remove task">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
   );
 }
