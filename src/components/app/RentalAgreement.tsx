@@ -31,7 +31,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export function RentalAgreement({ rental, driver, vehicle }: Props) {
   const settings = useAgreementSettings();
   const periodLabel = rental.billingPeriod === "daily" ? "day" : rental.billingPeriod === "monthly" ? "month" : "week";
-  const rate = rental.rate ?? rental.weeklyRate;
+  const rate = Number(rental.rate ?? rental.weeklyRate ?? 0);
   const exts = rental.extensions ?? [];
   const currentEnd = exts.length ? exts[exts.length - 1].newEndDate : rental.endDate;
 
@@ -85,7 +85,7 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
         <Field label="VIN" value={vehicle.vin} />
       </div>
       <div className="mt-2 grid grid-cols-4 gap-2">
-        <Field label="Mileage Out" value={vehicle.mileage.toLocaleString()} />
+        <Field label="Mileage Out" value={Number(vehicle.mileage ?? 0).toLocaleString()} />
         <Field label="Fuel Level Out" value={vehicle.fuelLevelPickup ?? ""} />
         <Field label="EZ-Pass Tag #" value={vehicle.ezPassTag ?? ""} />
         <Field label="Pickup Date & Time" value={fmtDate(rental.startDate)} />
@@ -100,7 +100,7 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
         <Field label="Mileage Cap / Week" value={settings.fees.mileageCapPerWeek} />
       </div>
       <div className="mt-2 grid grid-cols-3 gap-2">
-        <Field label="Security Deposit" value={fmtMoney(rental.depositPaid)} />
+        <Field label="Security Deposit" value={fmtMoney(Number(rental.depositPaid ?? 0))} />
         <Field label="Payment Method" value="" />
         <Field label="Current End Date" value={currentEnd ? fmtDate(currentEnd) : "Open-ended"} />
       </div>

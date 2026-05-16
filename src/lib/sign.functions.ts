@@ -126,27 +126,49 @@ export const getRentalForSigning = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { data: rental, error } = await supabaseAdmin
       .from("rentals")
-      .select("id, vehicle_id, driver_id, start_date, weekly_rate, rate, billing_period, deposit_paid, reservation_status, client_signature_url, license_image_url, selfie_image_url, client_signed_at")
+      .select("id, vehicle_id, driver_id, start_date, end_date, weekly_rate, rate, billing_period, deposit_paid, reservation_status, client_signature_url, license_image_url, selfie_image_url, client_signed_at, signed_at, signed_by, agreement_version")
       .eq("sign_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!rental) throw new Error("This signing link is invalid or expired");
 
     const [{ data: vehicle }, { data: driver }] = await Promise.all([
-      supabaseAdmin.from("vehicles").select("year, make, model, plate").eq("id", rental.vehicle_id).single(),
-      supabaseAdmin.from("drivers").select("full_name, email").eq("id", rental.driver_id).single(),
+      supabaseAdmin.from("vehicles").select("year, make, model, plate, vin, color, mileage, fuel_level_pickup, ez_pass_tag").eq("id", rental.vehicle_id).maybeSingle(),
+      supabaseAdmin.from("drivers").select("full_name, email, phone, license_number, license_expiry, date_of_birth, address").eq("id", rental.driver_id).maybeSingle(),
     ]);
 
     return {
       rentalId: rental.id,
       startDate: rental.start_date,
+      endDate: rental.end_date ?? null,
       billingPeriod: rental.billing_period ?? "weekly",
       rate: rental.rate ?? rental.weekly_rate,
       deposit: rental.deposit_paid,
+      depositPaid: Number(rental.deposit_paid ?? 0),
       reservationStatus: rental.reservation_status,
-      vehicle: vehicle ?? null,
+      vehicle: vehicle
+        ? {
+            year: vehicle.year ?? "",
+            make: vehicle.make ?? "",
+            model: vehicle.model ?? "",
+            plate: vehicle.plate ?? "",
+            vin: vehicle.vin ?? "",
+            color: vehicle.color ?? "",
+            mileage: Number(vehicle.mileage ?? 0),
+            fuelLevelPickup: vehicle.fuel_level_pickup ?? null,
+            ezPassTag: vehicle.ez_pass_tag ?? null,
+          }
+        : null,
       driverName: driver?.full_name ?? null,
       driverEmail: driver?.email ?? null,
+      driverPhone: driver?.phone ?? null,
+      licenseNumber: driver?.license_number ?? "",
+      licenseExpiry: driver?.license_expiry ?? "",
+      dateOfBirth: driver?.date_of_birth ?? null,
+      address: driver?.address ?? "",
+      signedAt: rental.signed_at ?? null,
+      signedBy: rental.signed_by ?? null,
+      agreementVersion: rental.agreement_version ?? null,
       alreadySigned: !!rental.client_signature_url,
       licenseUploaded: !!rental.license_image_url,
       selfieUploaded: !!rental.selfie_image_url,
@@ -172,10 +194,15 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { data: rental, error } = await supabaseAdmin
       .from("rentals")
-      .select("id, driver_id, sign_token, payment_received, reservation_status")
+      .select("id, driver_id, sign_token, payment_received, reservation_status, client_signature_url")
       .eq("sign_token", data.token)
       .maybeSingle();
     if (error || !rental) throw new Error("Invalid signing link");
+
+    // Idempotency: if this rental was already signed, don't re-upload or re-text.
+    if (rental.client_signature_url) {
+      return { ok: true, alreadySigned: true };
+    }
 
     const [signatureUrl, licenseUrl, selfieUrl] = await Promise.all([
       uploadDataUrl(rental.id, "signature", data.signatureDataUrl),
