@@ -72,13 +72,19 @@ export function ShareRentalDialog({
           await sendSms({ data: { token: res.token, url: newUrl, phone: cleanPhone, name: name.trim() || undefined } });
           toast.success(`Link sent to ${cleanPhone}`);
         } catch (e) {
-          toast.error(e instanceof Error ? `Link created, SMS failed: ${e.message}` : "Link created, SMS failed");
+          toast.error("Link created — SMS failed", {
+            description: e instanceof Error ? e.message : "Unknown error. Copy the link and send it manually.",
+            duration: 8000,
+          });
         }
       } else {
         toast.success("Share link generated");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to create link");
+      toast.error("Could not create share link", {
+        description: e instanceof Error ? e.message : "Unknown error. Please try again.",
+        duration: 8000,
+      });
     } finally {
       setCreating(false);
     }
@@ -103,7 +109,10 @@ export function ShareRentalDialog({
       await sendSms({ data: { token, url, phone: cleanPhone, name: name.trim() || undefined } });
       toast.success(`Sent to ${cleanPhone}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to send SMS");
+      toast.error("SMS failed", {
+        description: e instanceof Error ? e.message : "Unknown error. Copy the link and send it manually.",
+        duration: 8000,
+      });
     } finally {
       setSmsLoading(false);
     }
