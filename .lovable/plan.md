@@ -1,45 +1,18 @@
 ## Goal
-Give admins a log of every share-link SMS attempt — phone, status (sent / failed), failure reason, and timestamp — so they can debug delivery issues like the recent "invalid token" error.
+Make the freshly updated `ghlPitToken` value take effect in the preview, and confirm code/secret naming match.
 
-## Database
-Create a new table `share_link_sms_log`:
-- `id` uuid pk
-- `token` text (the share link token attempted)
-- `vehicle_id` text (nullable, looked up from share link)
-- `phone` text (the destination phone)
-- `recipient_name` text (nullable)
-- `status` text — `'sent'` or `'failed'`
-- `error_message` text (nullable; populated on failure)
-- `attempted_by` uuid (auth.uid() of admin)
-- `created_at` timestamptz default now()
+## Findings
+- Secret in Lovable Cloud: `ghlPitToken` — exact case match to `process.env.ghlPitToken`.
+- Read in 3 files: `src/lib/ghl.server.ts`, `src/lib/ghl.functions.ts`, `src/lib/payment-link.functions.ts`.
+- No remaining references to the old `GHL_PIT_TOKEN` name in source.
+- Legacy `GHL_PIT_TOKEN` and `GHL_LOCATION_ID` secrets still exist in Cloud but are unused.
 
-RLS:
-- Admins read all rows (`has_role(auth.uid(), 'admin')`).
-- Service role / authenticated insert (server fn uses admin client, so simple authenticated-insert policy is fine).
-- No update/delete policies (immutable log).
+## Plan
+1. Restart the preview dev server so the worker re-reads env vars and picks up the new `ghlPitToken` (`code--restart_dev_server`).
+2. Ask you to retry "Send Payment Link" on a pending reservation. The toast now surfaces the exact upstream error if GHL still rejects — share it if it fails again.
+3. (Optional cleanup, on your go-ahead) Delete the unused `GHL_PIT_TOKEN` and `GHL_LOCATION_ID` legacy secrets so only the camelCase versions remain.
 
-## Server changes
-`src/lib/share-rental.functions.ts`:
-- In `sendShareLinkSms.handler`, wrap the `sendSms` call so we always insert one row into `share_link_sms_log` — `status='sent'` on success, `status='failed'` with the raw error message on failure. Use `supabaseAdmin` for the insert so logging never fails due to RLS.
-- Add `requireSupabaseAuth` middleware to `sendShareLinkSms` (currently missing) so we can record `attempted_by = context.userId`.
-
-Also fix the underlying bug noticed earlier: replace the weak `genToken()` (which can produce <8-char tokens) with `crypto.getRandomValues` → 32-char hex. This stops the spurious "invalid token" failures from being logged.
-
-## UI
-New route `src/routes/sms-log.tsx` — admin-only page:
-- Header: "Share link SMS log".
-- Table columns: Sent at, Phone, Recipient, Vehicle, Status badge, Error (truncated, hover for full), Token (last 6 chars).
-- Filter buttons: All / Sent / Failed.
-- Loads via a new server fn `getShareLinkSmsLog` (uses `supabaseAdmin`, gated by `requireSupabaseAuth` + admin role check).
-- Add nav entry in `src/components/app/AppSidebar.tsx` under the admin section ("SMS log").
-
-## Files touched
-- `supabase/migrations/<new>.sql` — table + RLS.
-- `src/lib/share-rental.functions.ts` — log on send, fix `genToken`, add auth middleware, add `getShareLinkSmsLog` server fn.
-- `src/routes/sms-log.tsx` — new admin page.
-- `src/components/app/AppSidebar.tsx` — new nav link.
-
-## Out of scope
-- No log for the acknowledgment / admin-notify SMS inside `submitShareApplication` (can add later if needed).
-- No re-send button on the log page.
-- No retention / cleanup job.
+## Notes
+- Published deployments pick up new secret values on the next request — no manual redeploy needed there.
+- The preview worker caches env at startup, which is why a restart is required after rotating a secret.
+- No source changes needed.
