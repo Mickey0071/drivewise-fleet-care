@@ -1,9 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
 import { sendSms } from "@/lib/ghl.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 
 export const sendPaymentLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: {
     phone: string;
     name?: string;
