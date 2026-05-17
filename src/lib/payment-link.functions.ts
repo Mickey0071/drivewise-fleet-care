@@ -22,7 +22,7 @@ export const sendPaymentLink = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const stripe = createStripeClient(data.environment);
     const originHeader = getRequestHeader("origin") || getRequestHeader("referer");
-    let origin = "https://drivewise-fleet-care.lovable.app";
+    let origin = process.env.PUBLIC_APP_ORIGIN ?? "";
     if (originHeader) {
       try { origin = new URL(originHeader).origin; } catch { /* keep default */ }
     }
