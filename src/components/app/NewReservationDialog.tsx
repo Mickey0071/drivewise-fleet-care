@@ -205,15 +205,15 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       <DialogContent
         className="flex h-screen w-screen max-w-none flex-col gap-0 rounded-none border-0 p-0 sm:max-w-none"
       >
-        <DialogHeader className="border-b bg-background p-4">
-          <DialogTitle>New reservation</DialogTitle>
-          <DialogDescription>Step {step + 1} of {STEPS.length} · {STEPS[step]}</DialogDescription>
+        <DialogHeader className="border-b bg-background px-4 py-2">
+          <DialogTitle className="text-base">New reservation</DialogTitle>
+          <DialogDescription className="text-xs">Step {step + 1} of {STEPS.length} · {STEPS[step]}</DialogDescription>
           <div className="mx-auto w-full max-w-3xl">
             <Stepper current={step} />
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto bg-muted/30 px-4 py-8">
+        <div className="flex-1 overflow-y-auto bg-muted/30 px-4 py-4">
           <div key={step} className="mx-auto w-full max-w-3xl animate-in fade-in slide-in-from-right-4 duration-200">
           {step === 0 && (
             <div className="space-y-3">
@@ -486,7 +486,7 @@ function ReviewRow({ icon, label, value }: { icon: React.ReactNode; label: strin
 
 function Stepper({ current }: { current: Step }) {
   return (
-    <div className="mt-3 flex items-center gap-2">
+    <div className="mt-1.5 flex items-center gap-2">
       {STEPS.map((label, i) => {
         const done = i < current;
         const active = i === current;
@@ -494,13 +494,13 @@ function Stepper({ current }: { current: Step }) {
           <div key={label} className="flex flex-1 items-center gap-2">
             <div
               className={cn(
-                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
                 done && "bg-primary text-primary-foreground",
                 active && "bg-primary text-primary-foreground ring-2 ring-primary/30",
                 !done && !active && "bg-muted text-muted-foreground",
               )}
             >
-              {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
+              {done ? <Check className="h-3 w-3" /> : i + 1}
             </div>
             <span className={cn("hidden text-xs sm:inline", active ? "font-medium text-foreground" : "text-muted-foreground")}>{label}</span>
             {i < STEPS.length - 1 && <div className={cn("h-px flex-1", done ? "bg-primary" : "bg-border")} />}

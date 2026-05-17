@@ -68,9 +68,9 @@ export function PayrollCheckoutDialog({ open, onOpenChange, payrollRunId, amount
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-xl overflow-hidden p-0">
-        <DialogHeader className="border-b p-4">
-          <DialogTitle>Fund payroll · {payrollRunId}</DialogTitle>
-          <DialogDescription>Step {step + 1} of {STEPS.length} · {STEPS[step]}</DialogDescription>
+        <DialogHeader className="border-b px-4 py-2">
+          <DialogTitle className="text-base">Fund payroll · {payrollRunId}</DialogTitle>
+          <DialogDescription className="text-xs">Step {step + 1} of {STEPS.length} · {STEPS[step]}</DialogDescription>
           <Stepper current={step} />
         </DialogHeader>
         <div className="max-h-[70vh] overflow-y-auto bg-muted/30">
@@ -158,7 +158,7 @@ export function PayrollCheckoutDialog({ open, onOpenChange, payrollRunId, amount
 
 function Stepper({ current }: { current: Step }) {
   return (
-    <div className="mt-3 flex items-center gap-2">
+    <div className="mt-1.5 flex items-center gap-2">
       {STEPS.map((label, i) => {
         const done = i < current;
         const active = i === current;
@@ -166,13 +166,13 @@ function Stepper({ current }: { current: Step }) {
           <div key={label} className="flex flex-1 items-center gap-2">
             <div
               className={cn(
-                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
                 done && "bg-primary text-primary-foreground",
                 active && "bg-primary text-primary-foreground ring-2 ring-primary/30",
                 !done && !active && "bg-muted text-muted-foreground",
               )}
             >
-              {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
+              {done ? <Check className="h-3 w-3" /> : i + 1}
             </div>
             <span className={cn("text-xs", active ? "font-medium text-foreground" : "text-muted-foreground")}>{label}</span>
             {i < STEPS.length - 1 && <div className={cn("h-px flex-1", done ? "bg-primary" : "bg-border")} />}
