@@ -11,7 +11,7 @@ async function ghlFetch(path: string, body: unknown) {
   const res = await fetch(`${GHL_BASE}${path}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${getEnv("GHL_PIT_TOKEN")}`,
+      Authorization: `Bearer ${getEnv("ghlPitToken")}`,
       Version: GHL_VERSION,
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -29,7 +29,7 @@ async function ghlGet(path: string) {
   const res = await fetch(`${GHL_BASE}${path}`, {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${getEnv("GHL_PIT_TOKEN")}`,
+      Authorization: `Bearer ${getEnv("ghlPitToken")}`,
       Version: GHL_VERSION,
       Accept: "application/json",
     },
@@ -53,7 +53,7 @@ function toE164(raw: string): string {
 export async function upsertContact(phone: string, name?: string | null): Promise<string> {
   const [firstName, ...rest] = (name || "").trim().split(/\s+/);
   const payload: Record<string, unknown> = {
-    locationId: getEnv("GHL_LOCATION_ID"),
+    locationId: getEnv("ghlLocationId"),
     phone,
   };
   if (firstName) payload.firstName = firstName;
@@ -85,7 +85,7 @@ export async function fetchRenterConversation(phone: string, name?: string | nul
   const normalized = toE164(phone);
   if (!normalized) throw new Error("No phone number on file");
   const contactId = await upsertContact(normalized, name);
-  const locationId = getEnv("GHL_LOCATION_ID");
+  const locationId = getEnv("ghlLocationId");
   // Find conversations for this contact
   const search = await ghlGet(
     `/conversations/search?locationId=${encodeURIComponent(locationId)}&contactId=${encodeURIComponent(contactId)}`,

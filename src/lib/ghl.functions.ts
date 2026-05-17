@@ -103,10 +103,10 @@ async function findOrCreateContact(opts: {
 export const pushRunnerReportToGhl = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data }) => {
-    const token = process.env.GHL_PIT_TOKEN;
-    const locationId = process.env.GHL_LOCATION_ID;
-    if (!token) throw new Error("GHL_PIT_TOKEN is not configured");
-    if (!locationId) throw new Error("GHL_LOCATION_ID is not configured");
+    const token = process.env.ghlPitToken;
+    const locationId = process.env.ghlLocationId;
+    if (!token) throw new Error("ghlPitToken is not configured");
+    if (!locationId) throw new Error("ghlLocationId is not configured");
 
     const contactId = await findOrCreateContact({
       token,
