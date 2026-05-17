@@ -39,7 +39,7 @@ function SmsLogPage() {
     <div className="space-y-4">
       <PageHeader
         title="Share link SMS log"
-        description="Every text message sent (or attempted) for a rental share link."
+        subtitle="Every text message sent (or attempted) for a rental share link."
       />
 
       <div className="flex flex-wrap items-center gap-2">
