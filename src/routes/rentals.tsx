@@ -278,7 +278,12 @@ function RentalsPage() {
                         } });
                         toast.success("Payment link texted to renter", { description: d.phone });
                       } catch (e) {
-                        toast.error("Could not send payment link", { description: e instanceof Error ? e.message : String(e) });
+                        const msg = e instanceof Error ? (e.stack || e.message) : String(e);
+                        console.error("[sendPaymentLink] failed:", e);
+                        toast.error("Could not send payment link", {
+                          description: msg,
+                          duration: 15000,
+                        });
                       } finally {
                         setPayLinkSendingId(null);
                       }
