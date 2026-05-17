@@ -422,6 +422,72 @@ function subscribeRealtime() {
       }
       emit();
     })
+    .on("postgres_changes", { event: "*", schema: "public", table: "violations" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = violations.findIndex(x => x.id === id);
+        if (idx >= 0) violations.splice(idx, 1);
+      } else {
+        const next = fromViolation(payload.new);
+        const idx = violations.findIndex(x => x.id === next.id);
+        if (idx >= 0) violations[idx] = next; else violations.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "maintenance" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = maintenance.findIndex(x => x.id === id);
+        if (idx >= 0) maintenance.splice(idx, 1);
+      } else {
+        const next = fromMaintenance(payload.new);
+        const idx = maintenance.findIndex(x => x.id === next.id);
+        if (idx >= 0) maintenance[idx] = next; else maintenance.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = staff.findIndex(x => x.id === id);
+        if (idx >= 0) staff.splice(idx, 1);
+      } else {
+        const next = fromStaff(payload.new);
+        const idx = staff.findIndex(x => x.id === next.id);
+        if (idx >= 0) staff[idx] = next; else staff.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "payroll_runs" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = payrollRuns.findIndex(x => x.id === id);
+        if (idx >= 0) payrollRuns.splice(idx, 1);
+      } else {
+        const existing = payrollRuns.find(x => x.id === (payload.new as any).id);
+        const next = fromPayrollRun(payload.new, []);
+        next.lines = existing?.lines ?? [];
+        const idx = payrollRuns.findIndex(x => x.id === next.id);
+        if (idx >= 0) payrollRuns[idx] = next; else payrollRuns.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "payroll_lines" }, (payload) => {
+      const row = (payload.new ?? payload.old) as any;
+      const run = payrollRuns.find(r => r.id === row.run_id);
+      if (!run) { emit(); return; }
+      if (payload.eventType === "DELETE") {
+        run.lines = run.lines.filter(l => !(l.staffId === row.staff_id));
+      } else {
+        const line = {
+          staffId: row.staff_id, hours: Number(row.hours), vehicles: row.vehicles,
+          gross: Number(row.gross), net: Number(row.net), status: row.status,
+        };
+        const idx = run.lines.findIndex(l => l.staffId === line.staffId);
+        if (idx >= 0) run.lines[idx] = line; else run.lines.push(line);
+      }
+      emit();
+    })
     .subscribe();
 }
 
