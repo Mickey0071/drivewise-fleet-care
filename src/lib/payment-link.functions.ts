@@ -84,7 +84,11 @@ export const sendPaymentLink = createServerFn({ method: "POST" })
           ? {
               after_completion: {
                 type: "redirect" as const,
-                redirect: { url: `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}` },
+                redirect: {
+                  url: data.rentalId
+                    ? `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}&rental_id=${encodeURIComponent(data.rentalId)}`
+                    : `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}`,
+                },
               },
             }
           : {}),
