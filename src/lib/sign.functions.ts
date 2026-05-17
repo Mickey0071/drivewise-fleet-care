@@ -33,8 +33,12 @@ async function uploadDataUrl(rentalId: string, kind: string, dataUrl: string) {
     .from("rental-signing")
     .upload(path, buffer, { contentType, upsert: true });
   if (error) throw new Error(`Upload failed: ${error.message}`);
-  const { data } = supabaseAdmin.storage.from("rental-signing").getPublicUrl(path);
-  return data.publicUrl;
+  // Bucket is private — mint a long-lived signed URL (10 years).
+  const { data, error: signErr } = await supabaseAdmin.storage
+    .from("rental-signing")
+    .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+  if (signErr || !data?.signedUrl) throw new Error(`Sign URL failed: ${signErr?.message ?? "unknown"}`);
+  return data.signedUrl;
 }
 
 /** Ensure a rental has a sign_token; send SMS to renter with the signing link. */
