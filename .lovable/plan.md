@@ -1,37 +1,18 @@
 ## Goal
+Make the "Text to customer" SMS box visible immediately when the Share Rental dialog opens, instead of being hidden until after the link is generated.
 
-Restructure the public renter sign page (`/sign/$token`) into a two-page flow and clean up the agreement.
+## Change
+In `src/components/app/ShareRentalDialog.tsx`, restructure the dialog so:
 
-## New flow
+1. **Always visible (top section):** rental details (start date, billing period, rate) + a "Send to customer" panel with name + phone inputs.
+2. **Single primary button:** "Generate & send link" — creates the share link, then immediately sends the SMS to the entered phone number in one click. If phone is empty, it just generates the link.
+3. **After generation:** show the public URL with Copy button, plus the existing Email panel and a "Resend SMS" button so the user can text it again or to a different number.
 
-**Page 1 — Identity verification**
-1. Upload driver's license (photo)
-2. Take selfie (front camera)
-3. "Continue" button — disabled until both photos are captured
+This way the user sees the phone input from the moment they open the dialog and doesn't have to do a two-step "generate, then scroll down to text" flow.
 
-**Page 2 — Agreement & signature**
-1. Full rental agreement (scrollable preview)
-2. Type full legal name
-3. Draw signature
-4. "Submit & complete reservation" button
+## Files
+- `src/components/app/ShareRentalDialog.tsx` — reorder JSX, merge generate + sendSms into one handler, keep all existing server function calls (`createShareLink`, `sendShareLinkSms`) and validation unchanged.
 
-Photos captured on page 1 stay in component state and are submitted together with the signature on page 2 (single `submitSigningPackage` call — no backend changes needed).
-
-## Files to change
-
-**`src/routes/sign.$token.tsx`**
-- Add `step` state (`"identity" | "agreement"`).
-- Render only the license + selfie cards when `step === "identity"`, with a Continue button that advances to `"agreement"` once both `licenseUrl` and `selfieUrl` exist.
-- Render the agreement preview + name + signature pad when `step === "agreement"`, with a Back button and the existing Submit button.
-- Keep all existing state and the single `submit()` call exactly as-is.
-
-**`src/components/app/RentalAgreement.tsx`**
-- Remove the "Vehicle Condition at Pickup" section (the `<SectionLabel>` and the condition table that iterates `settings.conditionRows`).
-- Leave everything else (renter info, vehicle info, terms, clauses, signatures) untouched.
-
-## Not changing
-
-- No server function changes (`sign.functions.ts` stays the same).
-- No database changes.
-- No changes to SMS or agreement-sending flow.
-- `agreementSettings.conditionRows` stays in place in case it's used elsewhere later.
+## Out of scope
+- No DB or server function changes.
+- No changes to the signing link (`/sign/$token`) flow.
