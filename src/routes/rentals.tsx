@@ -508,14 +508,20 @@ function PendingChecklist({ rental }: { rental: Rental }) {
   const paid = !!rental.paymentReceived;
   return (
     <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-1.5 text-xs">
-      <div className="font-medium text-amber-700 dark:text-amber-400">Pending — vehicle held off the calendar</div>
-      <div className="flex items-center gap-2">
-        {signed ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40" />}
-        <span className={signed ? "text-foreground" : "text-muted-foreground"}>Rental agreement signed</span>
+      <div className="font-medium text-amber-700 dark:text-amber-400">
+        Pending — collect first payment to activate
       </div>
       <div className="flex items-center gap-2">
         {paid ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40" />}
-        <span className={paid ? "text-foreground" : "text-muted-foreground"}>First payment received</span>
+        <span className={paid ? "text-foreground font-medium" : "text-muted-foreground"}>
+          First payment received <span className="text-[10px] uppercase tracking-wide">(activates reservation)</span>
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        {signed ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40" />}
+        <span className={signed ? "text-foreground" : "text-muted-foreground"}>
+          Rental agreement signed <span className="text-[10px] uppercase tracking-wide">(optional)</span>
+        </span>
       </div>
     </div>
   );
