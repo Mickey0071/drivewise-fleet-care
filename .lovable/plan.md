@@ -1,16 +1,45 @@
 ## Goal
-Remove US country code (+1) references from the phone input in the Share Rental dialog since all customers are US-based.
+Give admins a log of every share-link SMS attempt — phone, status (sent / failed), failure reason, and timestamp — so they can debug delivery issues like the recent "invalid token" error.
 
-## Change
-In `src/components/app/ShareRentalDialog.tsx`:
-1. Change phone input placeholder from `+1 555 555 5555` to `555 555 5555`.
-2. Remove or simplify the helper note under the phone input that mentions country codes and 10-digit US numbers.
+## Database
+Create a new table `share_link_sms_log`:
+- `id` uuid pk
+- `token` text (the share link token attempted)
+- `vehicle_id` text (nullable, looked up from share link)
+- `phone` text (the destination phone)
+- `recipient_name` text (nullable)
+- `status` text — `'sent'` or `'failed'`
+- `error_message` text (nullable; populated on failure)
+- `attempted_by` uuid (auth.uid() of admin)
+- `created_at` timestamptz default now()
 
-No server function or SMS logic changes — the phone number is passed through exactly as entered.
+RLS:
+- Admins read all rows (`has_role(auth.uid(), 'admin')`).
+- Service role / authenticated insert (server fn uses admin client, so simple authenticated-insert policy is fine).
+- No update/delete policies (immutable log).
 
-## Files
-- `src/components/app/ShareRentalDialog.tsx` — text-only edits (placeholder + helper note).
+## Server changes
+`src/lib/share-rental.functions.ts`:
+- In `sendShareLinkSms.handler`, wrap the `sendSms` call so we always insert one row into `share_link_sms_log` — `status='sent'` on success, `status='failed'` with the raw error message on failure. Use `supabaseAdmin` for the insert so logging never fails due to RLS.
+- Add `requireSupabaseAuth` middleware to `sendShareLinkSms` (currently missing) so we can record `attempted_by = context.userId`.
+
+Also fix the underlying bug noticed earlier: replace the weak `genToken()` (which can produce <8-char tokens) with `crypto.getRandomValues` → 32-char hex. This stops the spurious "invalid token" failures from being logged.
+
+## UI
+New route `src/routes/sms-log.tsx` — admin-only page:
+- Header: "Share link SMS log".
+- Table columns: Sent at, Phone, Recipient, Vehicle, Status badge, Error (truncated, hover for full), Token (last 6 chars).
+- Filter buttons: All / Sent / Failed.
+- Loads via a new server fn `getShareLinkSmsLog` (uses `supabaseAdmin`, gated by `requireSupabaseAuth` + admin role check).
+- Add nav entry in `src/components/app/AppSidebar.tsx` under the admin section ("SMS log").
+
+## Files touched
+- `supabase/migrations/<new>.sql` — table + RLS.
+- `src/lib/share-rental.functions.ts` — log on send, fix `genToken`, add auth middleware, add `getShareLinkSmsLog` server fn.
+- `src/routes/sms-log.tsx` — new admin page.
+- `src/components/app/AppSidebar.tsx` — new nav link.
 
 ## Out of scope
-- No changes to SMS sending logic (`sendShareLinkSms` server function).
-- No auto-formatting or auto-prepending of +1.
+- No log for the acknowledgment / admin-notify SMS inside `submitShareApplication` (can add later if needed).
+- No re-send button on the log page.
+- No retention / cleanup job.
