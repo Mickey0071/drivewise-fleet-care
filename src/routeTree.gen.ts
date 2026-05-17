@@ -31,6 +31,7 @@ import { Route as DriverPortalRouteImport } from './routes/driver-portal'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
+import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
@@ -146,6 +147,11 @@ const SignTokenRoute = SignTokenRouteImport.update({
   path: '/sign/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RentPaidRoute = RentPaidRouteImport.update({
+  id: '/rent/paid',
+  path: '/rent/paid',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RentTokenRoute = RentTokenRouteImport.update({
   id: '/rent/$token',
   path: '/rent/$token',
@@ -193,6 +199,7 @@ export interface FileRoutesByFullPath {
   '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/rent/$token': typeof RentTokenRoute
+  '/rent/paid': typeof RentPaidRoute
   '/sign/$token': typeof SignTokenRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/rent/$token': typeof RentTokenRoute
+  '/rent/paid': typeof RentPaidRoute
   '/sign/$token': typeof SignTokenRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -250,6 +258,7 @@ export interface FileRoutesById {
   '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/rent/$token': typeof RentTokenRoute
+  '/rent/paid': typeof RentPaidRoute
   '/sign/$token': typeof SignTokenRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -280,6 +289,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/fleet/$vehicleId'
     | '/rent/$token'
+    | '/rent/paid'
     | '/sign/$token'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/fleet/$vehicleId'
     | '/rent/$token'
+    | '/rent/paid'
     | '/sign/$token'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
@@ -336,6 +347,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/fleet/$vehicleId'
     | '/rent/$token'
+    | '/rent/paid'
     | '/sign/$token'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
@@ -364,6 +376,7 @@ export interface RootRouteChildren {
   StaffPortalRoute: typeof StaffPortalRoute
   ViolationsRoute: typeof ViolationsRoute
   RentTokenRoute: typeof RentTokenRoute
+  RentPaidRoute: typeof RentPaidRoute
   SignTokenRoute: typeof SignTokenRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -525,6 +538,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rent/paid': {
+      id: '/rent/paid'
+      path: '/rent/paid'
+      fullPath: '/rent/paid'
+      preLoaderRoute: typeof RentPaidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rent/$token': {
       id: '/rent/$token'
       path: '/rent/$token'
@@ -589,6 +609,7 @@ const rootRouteChildren: RootRouteChildren = {
   StaffPortalRoute: StaffPortalRoute,
   ViolationsRoute: ViolationsRoute,
   RentTokenRoute: RentTokenRoute,
+  RentPaidRoute: RentPaidRoute,
   SignTokenRoute: SignTokenRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
