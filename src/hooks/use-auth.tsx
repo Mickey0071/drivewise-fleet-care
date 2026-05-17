@@ -58,17 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       return { error: error?.message };
     },
-    async signUp(email, password, fullName) {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: { full_name: fullName },
-        },
-      });
-      return { error: error?.message };
-    },
     async signInWithGoogle() {
       await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
     },
