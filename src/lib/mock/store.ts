@@ -665,6 +665,22 @@ export function markReservationPaid(id: string) {
   return activated;
 }
 
+/**
+ * Has the renter paid for the current billing period?
+ * - Pending reservations: true once paymentReceived flag is set (first-week capture).
+ * - Active reservations: true when no unpaid payment has a due date on/before today.
+ * - Completed (returned) rentals: always considered paid.
+ */
+export function currentPeriodPaid(rental: Rental): boolean {
+  if (rental.endDate) return true;
+  if ((rental.reservationStatus ?? "active") === "pending") return !!rental.paymentReceived;
+  const today = new Date().toISOString().slice(0, 10);
+  const overdue = payments.some(
+    p => p.rentalId === rental.id && p.status !== "paid" && p.dueDate <= today,
+  );
+  return !overdue;
+}
+
 export function updateRental(id: string, patch: Partial<Rental>) {
   const r = rentals.find(r => r.id === id);
   if (!r) return;
