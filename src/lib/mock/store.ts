@@ -614,7 +614,8 @@ export function cancelReservation(id: string) {
 
 function tryActivate(rental: Rental) {
   if (rental.reservationStatus !== "pending") return false;
-  if (!rental.signatureDataUrl || !rental.paymentReceived) return false;
+  // Payment is the ONLY trigger for activation. Signature is no longer required.
+  if (!rental.paymentReceived) return false;
   rental.reservationStatus = "active";
   rental.pendingCreatedAt = undefined;
   const v = vehicles.find(v => v.id === rental.vehicleId);
