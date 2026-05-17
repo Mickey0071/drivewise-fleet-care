@@ -599,6 +599,42 @@ export type Database = {
           },
         ]
       }
+      share_link_sms_log: {
+        Row: {
+          attempted_by: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          phone: string
+          recipient_name: string | null
+          status: string
+          token: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          attempted_by?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          phone: string
+          recipient_name?: string | null
+          status: string
+          token: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          attempted_by?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          phone?: string
+          recipient_name?: string | null
+          status?: string
+          token?: string
+          vehicle_id?: string | null
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           amount_cents: number | null

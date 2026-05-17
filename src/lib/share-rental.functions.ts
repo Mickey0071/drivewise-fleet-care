@@ -4,10 +4,9 @@ import { sendSms } from "@/lib/ghl.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 function genToken() {
-  return (
-    Math.random().toString(36).slice(2, 12) +
-    Math.random().toString(36).slice(2, 12)
-  );
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; contentType: string; ext: string } {
@@ -87,23 +86,47 @@ export const createShareLink = createServerFn({ method: "POST" })
 
 /** Send a share link to a phone number via SMS. */
 export const sendShareLinkSms = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: { token: string; url: string; phone: string; name?: string }) => {
     if (!input.token || input.token.length < 8) throw new Error("invalid token");
     if (!input.url || !/^https?:\/\//.test(input.url)) throw new Error("invalid url");
     if (!input.phone || input.phone.length < 7) throw new Error("phone required");
     return input;
   })
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const normalized = normalizePhone(data.phone);
     if (!normalized) {
+      await logSmsAttempt({
+        token: data.token,
+        phone: data.phone,
+        recipientName: data.name,
+        status: "failed",
+        errorMessage: "Invalid phone number format",
+        attemptedBy: context.userId,
+      });
       throw new Error("Enter a valid phone number (e.g. +1 555 555 5555)");
     }
     const message = `Camauto Rentals: You're invited to rent a vehicle. Complete your application (license + selfie + signature) here: ${data.url}`;
     try {
       await sendSms(normalized, message, data.name ?? null);
+      await logSmsAttempt({
+        token: data.token,
+        phone: normalized,
+        recipientName: data.name,
+        status: "sent",
+        attemptedBy: context.userId,
+      });
     } catch (e) {
       console.error("sendShareLinkSms failed", e);
       const msg = e instanceof Error ? e.message : String(e);
+      await logSmsAttempt({
+        token: data.token,
+        phone: normalized,
+        recipientName: data.name,
+        status: "failed",
+        errorMessage: msg,
+        attemptedBy: context.userId,
+      });
       // Re-throw a friendly message; keep raw detail in server logs above
       if (/GHL/.test(msg) && /4\d\d/.test(msg)) {
         throw new Error("Could not send SMS — check the phone number and try again.");
@@ -111,6 +134,67 @@ export const sendShareLinkSms = createServerFn({ method: "POST" })
       throw new Error("Could not send SMS — please try again in a moment.");
     }
     return { ok: true, phone: normalized };
+  });
+
+async function logSmsAttempt(entry: {
+  token: string;
+  phone: string;
+  recipientName?: string;
+  status: "sent" | "failed";
+  errorMessage?: string;
+  attemptedBy?: string;
+}) {
+  try {
+    // Look up vehicle id for context (best-effort)
+    let vehicleId: string | null = null;
+    const { data: link } = await supabaseAdmin
+      .from("rental_share_links")
+      .select("vehicle_id")
+      .eq("token", entry.token)
+      .maybeSingle();
+    if (link?.vehicle_id) vehicleId = link.vehicle_id;
+
+    await supabaseAdmin.from("share_link_sms_log").insert({
+      token: entry.token,
+      vehicle_id: vehicleId,
+      phone: entry.phone,
+      recipient_name: entry.recipientName ?? null,
+      status: entry.status,
+      error_message: entry.errorMessage ?? null,
+      attempted_by: entry.attemptedBy ?? null,
+    });
+  } catch (e) {
+    console.error("logSmsAttempt failed (non-fatal)", e);
+  }
+}
+
+/** Admin: read share link SMS attempt log. */
+export const getShareLinkSmsLog = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: roles } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    const isAdmin = (roles ?? []).some((r: { role: string }) => r.role === "admin");
+    if (!isAdmin) throw new Error("Admins only");
+    const { data, error } = await supabaseAdmin
+      .from("share_link_sms_log")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => ({
+      id: r.id as string,
+      token: r.token as string,
+      vehicleId: r.vehicle_id as string | null,
+      phone: r.phone as string,
+      recipientName: r.recipient_name as string | null,
+      status: r.status as "sent" | "failed",
+      errorMessage: r.error_message as string | null,
+      attemptedBy: r.attempted_by as string | null,
+      createdAt: r.created_at as string,
+    }));
   });
 
 /** Normalize a US-friendly phone number to E.164. Returns null if invalid. */

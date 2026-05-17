@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as StaffPortalRouteImport } from './routes/staff-portal'
+import { Route as SmsLogRouteImport } from './routes/sms-log'
 import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
 import { Route as ReservationsRouteImport } from './routes/reservations'
 import { Route as RentalsRouteImport } from './routes/rentals'
@@ -43,6 +44,11 @@ const ViolationsRoute = ViolationsRouteImport.update({
 const StaffPortalRoute = StaffPortalRouteImport.update({
   id: '/staff-portal',
   path: '/staff-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SmsLogRoute = SmsLogRouteImport.update({
+  id: '/sms-log',
+  path: '/sms-log',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RunnerReportsRoute = RunnerReportsRouteImport.update({
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/rentals': typeof RentalsRoute
   '/reservations': typeof ReservationsRoute
   '/runner-reports': typeof RunnerReportsRoute
+  '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/rentals': typeof RentalsRoute
   '/reservations': typeof ReservationsRoute
   '/runner-reports': typeof RunnerReportsRoute
+  '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/rentals': typeof RentalsRoute
   '/reservations': typeof ReservationsRoute
   '/runner-reports': typeof RunnerReportsRoute
+  '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -266,6 +275,7 @@ export interface FileRouteTypes {
     | '/rentals'
     | '/reservations'
     | '/runner-reports'
+    | '/sms-log'
     | '/staff-portal'
     | '/violations'
     | '/fleet/$vehicleId'
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
     | '/rentals'
     | '/reservations'
     | '/runner-reports'
+    | '/sms-log'
     | '/staff-portal'
     | '/violations'
     | '/fleet/$vehicleId'
@@ -320,6 +331,7 @@ export interface FileRouteTypes {
     | '/rentals'
     | '/reservations'
     | '/runner-reports'
+    | '/sms-log'
     | '/staff-portal'
     | '/violations'
     | '/fleet/$vehicleId'
@@ -348,6 +360,7 @@ export interface RootRouteChildren {
   RentalsRoute: typeof RentalsRoute
   ReservationsRoute: typeof ReservationsRoute
   RunnerReportsRoute: typeof RunnerReportsRoute
+  SmsLogRoute: typeof SmsLogRoute
   StaffPortalRoute: typeof StaffPortalRoute
   ViolationsRoute: typeof ViolationsRoute
   RentTokenRoute: typeof RentTokenRoute
@@ -370,6 +383,13 @@ declare module '@tanstack/react-router' {
       path: '/staff-portal'
       fullPath: '/staff-portal'
       preLoaderRoute: typeof StaffPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sms-log': {
+      id: '/sms-log'
+      path: '/sms-log'
+      fullPath: '/sms-log'
+      preLoaderRoute: typeof SmsLogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/runner-reports': {
@@ -565,6 +585,7 @@ const rootRouteChildren: RootRouteChildren = {
   RentalsRoute: RentalsRoute,
   ReservationsRoute: ReservationsRoute,
   RunnerReportsRoute: RunnerReportsRoute,
+  SmsLogRoute: SmsLogRoute,
   StaffPortalRoute: StaffPortalRoute,
   ViolationsRoute: ViolationsRoute,
   RentTokenRoute: RentTokenRoute,
