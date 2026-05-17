@@ -40,6 +40,7 @@ function RentPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
 
   useEffect(() => {
     fetchInfo({ data: { token } })
@@ -61,7 +62,7 @@ function RentPage() {
     if (!sig) return toast.error("Sign the agreement");
     setSubmitting(true);
     try {
-      await submit({
+      const res = await submit({
         data: {
           token,
           fullName: fullName.trim(),
@@ -77,8 +78,13 @@ function RentPage() {
           signatureDataUrl: sig,
         },
       });
+      setPaymentUrl(res?.paymentUrl ?? null);
       setDone(true);
       toast.success("Application received!");
+      if (res?.paymentUrl) {
+        // Auto-open Stripe checkout
+        window.open(res.paymentUrl, "_blank", "noopener");
+      }
     } catch (e) {
       toast.error("Submission failed", { description: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -111,8 +117,16 @@ function RentPage() {
           <h1 className="text-xl font-semibold">Application received</h1>
           <p className="text-sm text-muted-foreground">
             Thanks! We received your information, ID, and signed agreement.
-            We'll be in touch shortly to confirm pickup.
+            {paymentUrl ? " Complete your first payment below to confirm pickup." : " We'll be in touch shortly to confirm pickup."}
           </p>
+          {paymentUrl && (
+            <a href={paymentUrl} target="_blank" rel="noopener noreferrer">
+              <Button className="w-full">Pay now</Button>
+            </a>
+          )}
+          {paymentUrl && (
+            <p className="text-xs text-muted-foreground">We also texted this link to your phone.</p>
+          )}
         </Card>
       </div>
     );
