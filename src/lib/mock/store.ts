@@ -177,6 +177,61 @@ const fromChecklist = (r: any): InsuranceChecklistItem => ({
   documentName: r.document_name ?? undefined,
 });
 
+// ---- violations ----
+const fromViolation = (r: any): Violation => ({
+  id: r.id, vehicleId: r.vehicle_id, driverId: r.driver_id ?? undefined,
+  type: r.type, amount: Number(r.amount), dateIssued: r.date_issued,
+  status: r.status, notes: r.notes ?? undefined,
+});
+const toViolation = (v: Violation) => ({
+  id: v.id, vehicle_id: v.vehicleId, driver_id: v.driverId ?? null,
+  type: v.type, amount: v.amount, date_issued: v.dateIssued,
+  status: v.status, notes: v.notes ?? null,
+});
+
+// ---- maintenance ----
+const fromMaintenance = (r: any): Maintenance => ({
+  id: r.id, vehicleId: r.vehicle_id, serviceType: r.service_type,
+  vendor: r.vendor, dateCompleted: r.date_completed,
+  mileageAtService: r.mileage_at_service, cost: Number(r.cost),
+  nextServiceDue: r.next_service_due, notes: r.notes ?? undefined,
+});
+const toMaintenance = (m: Maintenance) => ({
+  id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
+  vendor: m.vendor, date_completed: m.dateCompleted,
+  mileage_at_service: m.mileageAtService, cost: m.cost,
+  next_service_due: m.nextServiceDue, notes: m.notes ?? null,
+});
+
+// ---- staff ----
+const fromStaff = (r: any): Staff => ({
+  id: r.id, fullName: r.full_name, role: r.role, phone: r.phone, email: r.email,
+  payType: r.pay_type, payRate: Number(r.pay_rate),
+  stripeConnected: !!r.stripe_connected, status: r.status,
+});
+const toStaff = (s: Staff) => ({
+  id: s.id, full_name: s.fullName, role: s.role, phone: s.phone, email: s.email,
+  pay_type: s.payType, pay_rate: s.payRate,
+  stripe_connected: s.stripeConnected, status: s.status,
+});
+
+// ---- payroll runs (header + lines) ----
+const fromPayrollRun = (r: any, lines: any[] = []): PayrollRun => ({
+  id: r.id, periodStart: r.period_start, periodEnd: r.period_end,
+  runDate: r.run_date, totalPayout: Number(r.total_payout),
+  status: r.status,
+  lines: lines.filter(l => l.run_id === r.id)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map(l => ({
+      staffId: l.staff_id, hours: Number(l.hours), vehicles: l.vehicles,
+      gross: Number(l.gross), net: Number(l.net), status: l.status,
+    })),
+});
+const toPayrollRun = (r: PayrollRun) => ({
+  id: r.id, period_start: r.periodStart, period_end: r.periodEnd,
+  run_date: r.runDate, total_payout: r.totalPayout, status: r.status,
+});
+
 let hydrationPromise: Promise<void> | null = null;
 let hydrated = false;
 export function isStoreHydrated() { return hydrated; }
