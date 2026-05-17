@@ -2,6 +2,48 @@ import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { createStripeClient } from "@/lib/stripe.server";
+import { getRequestHeader } from "@tanstack/react-start/server";
+
+function checkoutOrigin(): string {
+  const origin = getRequestHeader("origin") || getRequestHeader("referer");
+  if (origin) {
+    try { return new URL(origin).origin; } catch { /* ignore */ }
+  }
+  return "https://drivewise-fleet-care.lovable.app";
+}
+
+async function createRentalCheckoutUrl(opts: {
+  rentalId: string;
+  amountCents: number;
+  description: string;
+  customerEmail?: string;
+}): Promise<string | null> {
+  try {
+    const env = process.env.STRIPE_LIVE_API_KEY ? "live" : "sandbox";
+    const stripe = createStripeClient(env);
+    const origin = checkoutOrigin();
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [{
+        price_data: {
+          currency: "usd",
+          product_data: { name: opts.description },
+          unit_amount: Math.max(50, Math.round(opts.amountCents)),
+        },
+        quantity: 1,
+      }],
+      success_url: `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/rent/paid?canceled=1`,
+      ...(opts.customerEmail ? { customer_email: opts.customerEmail } : {}),
+      metadata: { kind: "rental_first_payment", rental_id: opts.rentalId },
+    });
+    return session.url ?? null;
+  } catch (e) {
+    console.error("createRentalCheckoutUrl failed", e);
+    return null;
+  }
+}
 
 function genToken() {
   const bytes = new Uint8Array(16);
@@ -354,10 +396,23 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       .eq("token", data.token);
 
     // Acknowledgment SMS
+    // First-payment Stripe checkout link
+    const amountCents = Math.round(Number(link.rate) * 100);
+    const periodLabel = link.billing_period === "daily" ? "day" : link.billing_period === "monthly" ? "month" : "week";
+    const description = `Camauto Rentals: first ${periodLabel} payment for ${link.vehicle_id}`;
+    const paymentUrl = await createRentalCheckoutUrl({
+      rentalId,
+      amountCents,
+      description,
+      customerEmail: data.email.trim(),
+    });
+
     try {
       await sendSms(
         data.phone.trim(),
-        "Camauto Rentals: Thanks! Your application has been received. We'll be in touch shortly to confirm pickup.",
+        paymentUrl
+          ? `Camauto Rentals: Thanks ${data.fullName.trim().split(" ")[0]}! Pay your first ${periodLabel} ($${(amountCents/100).toFixed(2)}) to confirm pickup: ${paymentUrl}`
+          : "Camauto Rentals: Thanks! Your application has been received. We'll be in touch shortly to confirm pickup.",
         data.fullName.trim(),
       );
     } catch (e) {
@@ -384,5 +439,5 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       console.error("admin notify sms failed", e);
     }
 
-    return { ok: true, rentalId };
+    return { ok: true, rentalId, paymentUrl };
   });
