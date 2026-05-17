@@ -38,8 +38,14 @@ export const sendPaymentLink = createServerFn({ method: "POST" })
 
     // 1) Create Stripe Checkout session
     let sessionUrl: string;
+    let sessionId: string;
     try {
       const stripe = createStripeClient(data.environment);
+      console.log("[sendPaymentLink] creating Stripe checkout session", {
+        environment: data.environment,
+        amountCents: data.amountCents,
+        rentalId: data.rentalId,
+      });
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         line_items: [{
@@ -60,21 +66,25 @@ export const sendPaymentLink = createServerFn({ method: "POST" })
       });
       if (!session.url) throw new Error("Stripe did not return a checkout URL");
       sessionUrl = session.url;
+      sessionId = session.id;
+      console.log("[sendPaymentLink] Stripe checkout session created", { sessionId, url: sessionUrl });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error("[sendPaymentLink] Stripe checkout create failed:", msg);
+      console.error("[sendPaymentLink] Stripe checkout create failed:", e);
       throw new Error(`Stripe checkout failed: ${msg}`);
     }
 
     // 2) Send via GHL SMS
     try {
+      console.log("[sendPaymentLink] sending SMS via GHL", { sessionId });
       const amt = `$${(data.amountCents / 100).toFixed(2)}`;
       const msg = `Rentalprise Auto: Please pay ${amt} for ${data.description}. Secure link: ${sessionUrl}`;
       await sendSms(data.phone, msg, data.name ?? null);
+      console.log("[sendPaymentLink] SMS sent successfully");
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error("[sendPaymentLink] GHL SMS send failed:", msg);
-      throw new Error(`SMS send failed: ${msg}`);
+      console.error("[sendPaymentLink] GHL SMS send failed (Stripe session was created OK):", e);
+      throw new Error(`SMS send failed (Stripe session ${sessionId} created OK): ${msg}`);
     }
 
     return { ok: true, url: sessionUrl };
