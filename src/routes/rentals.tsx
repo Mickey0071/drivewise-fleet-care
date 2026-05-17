@@ -485,6 +485,24 @@ function PendingHoldBadge({ rental }: { rental: Rental }) {
   );
 }
 
+function PaidBadge({ rental }: { rental: Rental }) {
+  const paid = currentPeriodPaid(rental);
+  if (rental.endDate) return null;
+  return (
+    <div
+      className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+        paid
+          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+          : "bg-destructive/15 text-destructive"
+      }`}
+      title={paid ? "Current period paid" : "Current period unpaid"}
+    >
+      <DollarSign className="h-3 w-3" />
+      {paid ? "Paid" : "Unpaid"}
+    </div>
+  );
+}
+
 function PendingChecklist({ rental }: { rental: Rental }) {
   const signed = !!rental.signatureDataUrl;
   const paid = !!rental.paymentReceived;
