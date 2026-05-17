@@ -172,10 +172,6 @@ function RentalsPage() {
             <div className="flex flex-wrap gap-2">
               {isPending ? (
                 <>
-                  <Button size="sm" onClick={() => setSigning(r)} variant={r.signatureDataUrl ? "outline" : "default"}>
-                    <FileSignature className="mr-1 h-4 w-4" />
-                    {r.signatureDataUrl ? "Re-capture signature" : "Capture signature"}
-                  </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button size="sm" variant="secondary">
