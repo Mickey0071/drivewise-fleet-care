@@ -25,6 +25,22 @@ async function ghlFetch(path: string, body: unknown) {
   return res.json();
 }
 
+async function ghlGet(path: string) {
+  const res = await fetch(`${GHL_BASE}${path}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${getEnv("GHL_PIT_TOKEN")}`,
+      Version: GHL_VERSION,
+      Accept: "application/json",
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`GHL GET ${path} ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
 function toE164(raw: string): string {
   const digits = (raw || "").replace(/\D/g, "");
   if (!digits) return "";
@@ -34,7 +50,7 @@ function toE164(raw: string): string {
   return "+" + digits;
 }
 
-async function upsertContact(phone: string, name?: string | null): Promise<string> {
+export async function upsertContact(phone: string, name?: string | null): Promise<string> {
   const [firstName, ...rest] = (name || "").trim().split(/\s+/);
   const payload: Record<string, unknown> = {
     locationId: getEnv("GHL_LOCATION_ID"),
@@ -46,6 +62,58 @@ async function upsertContact(phone: string, name?: string | null): Promise<strin
   const id = data?.contact?.id || data?.id;
   if (!id) throw new Error(`GHL upsert returned no contact id: ${JSON.stringify(data)}`);
   return id as string;
+}
+
+export function normalizePhone(raw: string): string {
+  return toE164(raw);
+}
+
+export interface RenterChatMessage {
+  id: string;
+  body: string;
+  direction: "inbound" | "outbound";
+  dateAdded: string;
+  type?: string;
+  status?: string;
+}
+
+export async function fetchRenterConversation(phone: string, name?: string | null): Promise<{
+  contactId: string;
+  conversationId: string | null;
+  messages: RenterChatMessage[];
+}> {
+  const normalized = toE164(phone);
+  if (!normalized) throw new Error("No phone number on file");
+  const contactId = await upsertContact(normalized, name);
+  const locationId = getEnv("GHL_LOCATION_ID");
+  // Find conversations for this contact
+  const search = await ghlGet(
+    `/conversations/search?locationId=${encodeURIComponent(locationId)}&contactId=${encodeURIComponent(contactId)}`,
+  ) as { conversations?: Array<{ id: string; lastMessageDate?: string }> };
+  const conv = (search.conversations || []).sort((a, b) =>
+    (b.lastMessageDate || "").localeCompare(a.lastMessageDate || ""),
+  )[0];
+  if (!conv?.id) return { contactId, conversationId: null, messages: [] };
+  const msgs = await ghlGet(`/conversations/${conv.id}/messages?limit=50`) as {
+    messages?: { messages?: Array<{
+      id: string;
+      body?: string;
+      direction: string;
+      dateAdded: string;
+      messageType?: string;
+      type?: number | string;
+      status?: string;
+    }> };
+  };
+  const list = (msgs.messages?.messages || []).map((m) => ({
+    id: m.id,
+    body: m.body || "",
+    direction: (m.direction === "inbound" ? "inbound" : "outbound") as "inbound" | "outbound",
+    dateAdded: m.dateAdded,
+    type: m.messageType || String(m.type ?? ""),
+    status: m.status,
+  })).reverse(); // oldest first
+  return { contactId, conversationId: conv.id, messages: list };
 }
 
 function maskPhone(p: string): string {
