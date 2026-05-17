@@ -302,10 +302,13 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     phone: string;
     email: string;
     licenseNumber: string;
-    licenseExpiry: string;
-    rideshare: "Uber" | "Lyft" | "Both";
+    licenseExpiry?: string;
+    rideshare?: "Uber" | "Lyft" | "Both";
     dateOfBirth?: string;
     address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
     licenseDataUrl: string;
     selfieDataUrl: string;
     signatureDataUrl: string;
@@ -318,10 +321,13 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     reqStr(input.phone, "Phone");
     reqStr(input.email, "Email");
     reqStr(input.licenseNumber, "License number", 60);
-    reqStr(input.licenseExpiry, "License expiry", 20);
-    if (!["Uber", "Lyft", "Both"].includes(input.rideshare)) throw new Error("Invalid rideshare");
+    if (input.licenseExpiry && input.licenseExpiry.length > 20) throw new Error("Invalid license expiry");
+    if (input.rideshare && !["Uber", "Lyft", "Both"].includes(input.rideshare)) throw new Error("Invalid rideshare");
     if (input.dateOfBirth && input.dateOfBirth.length > 20) throw new Error("Invalid DOB");
     if (input.address && input.address.length > 300) throw new Error("Address too long");
+    if (input.city && input.city.length > 120) throw new Error("City too long");
+    if (input.state && input.state.length > 60) throw new Error("State too long");
+    if (input.zip && input.zip.length > 20) throw new Error("ZIP too long");
     if (!input.licenseDataUrl?.startsWith("data:image/")) throw new Error("License photo required");
     if (!input.selfieDataUrl?.startsWith("data:image/")) throw new Error("Selfie required");
     if (!input.signatureDataUrl?.startsWith("data:image/")) throw new Error("Signature required");
@@ -354,13 +360,15 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       phone: data.phone.trim(),
       email: data.email.trim(),
       license_number: data.licenseNumber.trim(),
-      license_expiry: data.licenseExpiry,
+      license_expiry: data.licenseExpiry || "2099-12-31",
       insurance_on_file: true,
-      rideshare: data.rideshare,
+      rideshare: data.rideshare || "Uber",
       status: "active",
       date_added: new Date().toISOString().slice(0, 10),
       date_of_birth: data.dateOfBirth || null,
-      address: data.address?.trim() || null,
+      address: [data.address?.trim(), data.city?.trim(), [data.state?.trim(), data.zip?.trim()].filter(Boolean).join(" ")]
+        .filter(Boolean)
+        .join(", ") || null,
     });
     if (dErr) throw new Error(`Could not create renter: ${dErr.message}`);
 
