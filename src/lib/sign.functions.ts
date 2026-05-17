@@ -1,13 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
 import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
 
 function genToken() {
-  return (
-    Math.random().toString(36).slice(2, 10) +
-    Math.random().toString(36).slice(2, 10)
-  );
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function dataUrlToBuffer(dataUrl: string): { buffer: Buffer; contentType: string; ext: string } {
@@ -39,6 +39,7 @@ async function uploadDataUrl(rentalId: string, kind: string, dataUrl: string) {
 
 /** Ensure a rental has a sign_token; send SMS to renter with the signing link. */
 export const sendSigningLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: { rentalId: string; origin: string }) => {
     if (!input.rentalId || typeof input.rentalId !== "string") throw new Error("rentalId required");
     if (!input.origin || !/^https?:\/\//.test(input.origin)) throw new Error("origin required");
@@ -78,6 +79,7 @@ export const sendSigningLink = createServerFn({ method: "POST" })
 /** Ensure a rental has a sign_token and return the link + renter contact info.
  *  Used by the "Email" option so the staff can send from their own mail client. */
 export const getSigningLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: { rentalId: string; origin: string }) => {
     if (!input.rentalId || typeof input.rentalId !== "string") throw new Error("rentalId required");
     if (!input.origin || !/^https?:\/\//.test(input.origin)) throw new Error("origin required");
