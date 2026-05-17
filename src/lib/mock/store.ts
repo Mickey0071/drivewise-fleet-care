@@ -1368,8 +1368,12 @@ export async function uploadClaimDocument(itemId: string, file: File): Promise<v
     cacheControl: "3600", upsert: true, contentType: file.type || undefined,
   });
   if (error) throw error;
-  const { data } = supabase.storage.from("claim-documents").getPublicUrl(path);
-  updateChecklistItem(itemId, { documentUrl: data.publicUrl, documentName: file.name });
+  // Bucket is private — generate a long-lived signed URL.
+  const { data, error: signErr } = await supabase.storage
+    .from("claim-documents")
+    .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+  if (signErr || !data?.signedUrl) throw signErr ?? new Error("Failed to sign URL");
+  updateChecklistItem(itemId, { documentUrl: data.signedUrl, documentName: file.name });
 }
 
 export function addChecklistItem(entryId: string, label: string) {
