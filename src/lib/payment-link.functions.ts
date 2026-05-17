@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
 import { sendSms } from "@/lib/ghl.server";
+import { getRequestHeader } from "@tanstack/react-start/server";
 
 export const sendPaymentLink = createServerFn({ method: "POST" })
   .inputValidator((d: {
@@ -20,6 +21,11 @@ export const sendPaymentLink = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const stripe = createStripeClient(data.environment);
+    const originHeader = getRequestHeader("origin") || getRequestHeader("referer");
+    let origin = "https://drivewise-fleet-care.lovable.app";
+    if (originHeader) {
+      try { origin = new URL(originHeader).origin; } catch { /* keep default */ }
+    }
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: [{
@@ -30,8 +36,8 @@ export const sendPaymentLink = createServerFn({ method: "POST" })
         },
         quantity: 1,
       }],
-      success_url: "https://rentalprise.app/paid?session_id={CHECKOUT_SESSION_ID}",
-      cancel_url: "https://rentalprise.app/paid?canceled=1",
+      success_url: `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/rent/paid?canceled=1`,
       metadata: {
         kind: "payment_link",
         ...(data.rentalId ? { rental_id: data.rentalId } : {}),
