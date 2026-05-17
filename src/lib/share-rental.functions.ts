@@ -33,8 +33,8 @@ async function createRentalCheckoutUrl(opts: {
         },
         quantity: 1,
       }],
-      success_url: `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/rent/paid?canceled=1`,
+      success_url: `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}&rental_id=${encodeURIComponent(opts.rentalId)}`,
+      cancel_url: `${origin}/rent/paid?canceled=1&rental_id=${encodeURIComponent(opts.rentalId)}`,
       ...(opts.customerEmail ? { customer_email: opts.customerEmail } : {}),
       metadata: { kind: "rental_first_payment", rental_id: opts.rentalId },
     });
