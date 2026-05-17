@@ -614,7 +614,8 @@ export function cancelReservation(id: string) {
 
 function tryActivate(rental: Rental) {
   if (rental.reservationStatus !== "pending") return false;
-  if (!rental.signatureDataUrl || !rental.paymentReceived) return false;
+  // Payment is the ONLY trigger for activation. Signature is no longer required.
+  if (!rental.paymentReceived) return false;
   rental.reservationStatus = "active";
   rental.pendingCreatedAt = undefined;
   const v = vehicles.find(v => v.id === rental.vehicleId);
@@ -662,6 +663,22 @@ export function markReservationPaid(id: string) {
   cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
   emit();
   return activated;
+}
+
+/**
+ * Has the renter paid for the current billing period?
+ * - Pending reservations: true once paymentReceived flag is set (first-week capture).
+ * - Active reservations: true when no unpaid payment has a due date on/before today.
+ * - Completed (returned) rentals: always considered paid.
+ */
+export function currentPeriodPaid(rental: Rental): boolean {
+  if (rental.endDate) return true;
+  if ((rental.reservationStatus ?? "active") === "pending") return !!rental.paymentReceived;
+  const today = new Date().toISOString().slice(0, 10);
+  const overdue = payments.some(
+    p => p.rentalId === rental.id && p.status !== "paid" && p.dueDate <= today,
+  );
+  return !overdue;
 }
 
 export function updateRental(id: string, patch: Partial<Rental>) {

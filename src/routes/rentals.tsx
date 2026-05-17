@@ -5,7 +5,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
@@ -23,6 +23,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
+import { sendPaymentLink } from "@/lib/payment-link.functions";
+import { getStripeEnvironment } from "@/lib/stripe";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
@@ -58,6 +60,8 @@ function RentalsPage() {
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
   const getSignLinkFn = useServerFn(getSigningLink);
+  const sendPayLinkFn = useServerFn(sendPaymentLink);
+  const [payLinkSendingId, setPayLinkSendingId] = useState<string | null>(null);
   useStoreVersion();
   // Notify staff when a remote signature arrives (via realtime) and the
   // reservation flips from pending → active.
@@ -150,7 +154,10 @@ function RentalsPage() {
                   {isPending ? "Reserved for" : "Rented to"} <span className="text-foreground font-medium">{d?.fullName}</span>
                 </p>
               </div>
-              {isPending ? <PendingHoldBadge rental={r} /> : <StatusBadge status={r.paymentStatus} />}
+              <div className="flex flex-col items-end gap-1">
+                {isPending ? <PendingHoldBadge rental={r} /> : <StatusBadge status={r.paymentStatus} />}
+                <PaidBadge rental={r} />
+              </div>
             </div>
             {isPending ? <PendingChecklist rental={r} /> : <HandoffStatus rental={r} />}
             <div className="grid grid-cols-3 gap-2 text-sm">
@@ -249,12 +256,44 @@ function RentalsPage() {
                   </DropdownMenu>
                   <Button
                     size="sm"
-                    variant={r.paymentReceived ? "outline" : "default"}
+                    variant="secondary"
+                    disabled={!!r.paymentReceived || payLinkSendingId === r.id}
+                    onClick={async () => {
+                      const d = driverById(r.driverId);
+                      const v = vehicleById(r.vehicleId);
+                      if (!d?.phone) { toast.error("No phone on file for renter"); return; }
+                      const amount = Number(r.rate ?? r.weeklyRate ?? 0);
+                      if (amount < 0.5) { toast.error("Set a rate before sending a payment link"); return; }
+                      const periodLbl = r.billingPeriod === "daily" ? "day" : r.billingPeriod === "monthly" ? "month" : "week";
+                      setPayLinkSendingId(r.id);
+                      try {
+                        await ensureRentalSynced(r.id);
+                        await sendPayLinkFn({ data: {
+                          phone: d.phone,
+                          name: d.fullName,
+                          amountCents: Math.round(amount * 100),
+                          description: `First ${periodLbl} — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim(),
+                          environment: getStripeEnvironment(),
+                          rentalId: r.id,
+                        } });
+                        toast.success("Payment link texted to renter", { description: d.phone });
+                      } catch (e) {
+                        toast.error("Could not send payment link", { description: e instanceof Error ? e.message : String(e) });
+                      } finally {
+                        setPayLinkSendingId(null);
+                      }
+                    }}
+                  >
+                    <Send className="mr-1 h-4 w-4" />
+                    {r.paymentReceived ? "Paid ✓" : payLinkSendingId === r.id ? "Sending…" : "Send Payment Link"}
+                  </Button>
+                  <Button
+                    size="sm"
                     onClick={() => setCharging(r)}
-                    disabled={r.paymentReceived}
+                    disabled={!!r.paymentReceived}
                   >
                     <DollarSign className="mr-1 h-4 w-4" />
-                    {r.paymentReceived ? "Payment received ✓" : "Charge with Stripe"}
+                    {r.paymentReceived ? "Paid ✓" : "Charge Now"}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>Edit</Button>
                   <Button
@@ -446,19 +485,43 @@ function PendingHoldBadge({ rental }: { rental: Rental }) {
   );
 }
 
+function PaidBadge({ rental }: { rental: Rental }) {
+  const paid = currentPeriodPaid(rental);
+  if (rental.endDate) return null;
+  return (
+    <div
+      className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+        paid
+          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+          : "bg-destructive/15 text-destructive"
+      }`}
+      title={paid ? "Current period paid" : "Current period unpaid"}
+    >
+      <DollarSign className="h-3 w-3" />
+      {paid ? "Paid" : "Unpaid"}
+    </div>
+  );
+}
+
 function PendingChecklist({ rental }: { rental: Rental }) {
   const signed = !!rental.signatureDataUrl;
   const paid = !!rental.paymentReceived;
   return (
     <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 space-y-1.5 text-xs">
-      <div className="font-medium text-amber-700 dark:text-amber-400">Pending — vehicle held off the calendar</div>
-      <div className="flex items-center gap-2">
-        {signed ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40" />}
-        <span className={signed ? "text-foreground" : "text-muted-foreground"}>Rental agreement signed</span>
+      <div className="font-medium text-amber-700 dark:text-amber-400">
+        Pending — collect first payment to activate
       </div>
       <div className="flex items-center gap-2">
         {paid ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40" />}
-        <span className={paid ? "text-foreground" : "text-muted-foreground"}>First payment received</span>
+        <span className={paid ? "text-foreground font-medium" : "text-muted-foreground"}>
+          First payment received <span className="text-[10px] uppercase tracking-wide">(activates reservation)</span>
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        {signed ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> : <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/40" />}
+        <span className={signed ? "text-foreground" : "text-muted-foreground"}>
+          Rental agreement signed <span className="text-[10px] uppercase tracking-wide">(optional)</span>
+        </span>
       </div>
     </div>
   );
