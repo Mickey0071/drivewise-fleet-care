@@ -31,24 +31,86 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
   const rentalId = session.metadata?.rental_id || null;
   const kind = session.metadata?.kind || (session.mode === "subscription" ? "subscription" : "deposit");
 
-  if (kind === "deposit") {
+  // Any one-time checkout linked to a rental activates that reservation.
+  // (kind may be "deposit", "payment_link", or "first_payment" — all are
+  // treated as the first weekly payment when rental_id is present.)
+  if (rentalId && kind !== "subscription" && kind !== "weekly_subscription") {
+    const sb = getSupabase();
+    // Record the payment in the subscriptions ledger for accounting.
     await getSupabase().from("subscriptions").insert({
       user_id: userId,
       rental_id: rentalId,
       stripe_customer_id: session.customer,
       stripe_session_id: session.id,
-      kind: "deposit",
+      kind: kind || "first_payment",
       amount_cents: session.amount_total ?? null,
       status: "paid",
       environment: env,
     } as any);
-    // Business logic: deposit paid → unlock vehicle handoff (handled via row in subs table; UI reads it)
+
+    // Flip the reservation to active and mark vehicle rented.
+    const { data: rental } = await sb.from("rentals")
+      .select("id, vehicle_id, driver_id, start_date, billing_period, rate, weekly_rate, reservation_status, payment_received")
+      .eq("id", rentalId)
+      .maybeSingle();
+
+    if (rental) {
+      await sb.from("rentals").update({
+        payment_received: true,
+        reservation_status: "active",
+        pending_created_at: null,
+        updated_at: new Date().toISOString(),
+      }).eq("id", rental.id);
+
+      if (rental.vehicle_id) {
+        await sb.from("vehicles").update({ status: "rented" }).eq("id", rental.vehicle_id);
+      }
+
+      // Record the first weekly payment as paid; schedule next due one period out.
+      const period = (rental.billing_period as string) || "weekly";
+      const start = new Date((rental.start_date as string) || new Date().toISOString().slice(0, 10));
+      const next = new Date(start);
+      if (period === "daily") next.setDate(next.getDate() + 1);
+      else if (period === "monthly") next.setMonth(next.getMonth() + 1);
+      else next.setDate(next.getDate() + 7);
+      const amount = Number(rental.rate ?? rental.weekly_rate ?? 0);
+      const today = new Date().toISOString().slice(0, 10);
+      const paidId = `PM-${session.id.slice(-10)}`;
+      // First payment row (already paid via Stripe).
+      await sb.from("payments").upsert({
+        id: paidId,
+        rental_id: rental.id,
+        driver_id: rental.driver_id,
+        amount,
+        due_date: today,
+        paid_date: today,
+        method: "Stripe",
+        status: "paid",
+      } as any, { onConflict: "id" });
+      // Next scheduled payment (only if none already exists past today).
+      const { data: upcoming } = await sb.from("payments")
+        .select("id")
+        .eq("rental_id", rental.id)
+        .gt("due_date", today)
+        .limit(1);
+      if (!upcoming?.length) {
+        await sb.from("payments").insert({
+          id: `PM-${rental.id.slice(-6)}-${next.toISOString().slice(0, 10).replace(/-/g, "")}`,
+          rental_id: rental.id,
+          driver_id: rental.driver_id,
+          amount,
+          due_date: next.toISOString().slice(0, 10),
+          status: "late",
+        } as any);
+      }
+    }
+
     const profile = await getProfile(userId);
     if (profile?.phone) {
       const amt = fmtAmount(session.amount_total);
       await sendSms(
         profile.phone,
-        `Rentalprise Auto: Your deposit ${amt ? amt + " " : ""}has been received. We'll be in touch shortly to coordinate vehicle handoff.`,
+        `Rentalprise Auto: Payment received${amt ? " (" + amt + ")" : ""}. Your rental is now active — see you at pickup!`,
         profile.full_name
       );
     }
