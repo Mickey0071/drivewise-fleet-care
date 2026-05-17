@@ -977,6 +977,7 @@ function nextMaintenanceId() {
 export function addMaintenance(input: Omit<Maintenance, "id">) {
   const rec: Maintenance = { id: nextMaintenanceId(), ...input };
   maintenance.push(rec);
+  cloudWrite("maintenance:insert", supabase.from("maintenance").insert(toMaintenance(rec)));
   const v = vehicles.find(v => v.id === input.vehicleId);
   if (v) {
     if (input.mileageAtService && input.mileageAtService > v.mileage) {
@@ -990,6 +991,134 @@ export function addMaintenance(input: Omit<Maintenance, "id">) {
   }
   emit();
   return rec;
+}
+
+export function updateMaintenance(id: string, patch: Partial<Maintenance>) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  Object.assign(m, patch);
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  emit();
+}
+
+export function deleteMaintenance(id: string) {
+  const idx = maintenance.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  maintenance.splice(idx, 1);
+  cloudWrite("maintenance:delete", supabase.from("maintenance").delete().eq("id", id));
+  emit();
+}
+
+// ---------------------------------------------------------------------------
+// Violations
+// ---------------------------------------------------------------------------
+function nextViolationId() {
+  const n = violations.reduce((m, x) => Math.max(m, parseInt(x.id.replace(/\D/g, "")) || 0), 700);
+  return `VIO-${n + 1}`;
+}
+
+export function addViolation(input: Omit<Violation, "id" | "status"> & Partial<Pick<Violation, "status">>) {
+  const v: Violation = {
+    id: nextViolationId(),
+    status: "pending",
+    ...input,
+  };
+  violations.push(v);
+  cloudWrite("violation:insert", supabase.from("violations").insert(toViolation(v)));
+  emit();
+  return v;
+}
+
+export function updateViolation(id: string, patch: Partial<Violation>) {
+  const v = violations.find(x => x.id === id);
+  if (!v) return;
+  Object.assign(v, patch);
+  cloudWrite("violation:update", supabase.from("violations").update(toViolation(v)).eq("id", id));
+  emit();
+}
+
+export function deleteViolation(id: string) {
+  const idx = violations.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  violations.splice(idx, 1);
+  cloudWrite("violation:delete", supabase.from("violations").delete().eq("id", id));
+  emit();
+}
+
+// ---------------------------------------------------------------------------
+// Staff
+// ---------------------------------------------------------------------------
+function nextStaffId() {
+  const n = staff.reduce((m, x) => Math.max(m, parseInt(x.id.replace(/\D/g, "")) || 0), 0);
+  return `S-${String(n + 1).padStart(2, "0")}`;
+}
+
+export function addStaff(input: Omit<Staff, "id" | "status" | "stripeConnected"> & Partial<Pick<Staff, "status" | "stripeConnected">>) {
+  const s: Staff = {
+    id: nextStaffId(),
+    status: "active",
+    stripeConnected: false,
+    ...input,
+  };
+  staff.push(s);
+  cloudWrite("staff:insert", supabase.from("staff").insert(toStaff(s)));
+  emit();
+  return s;
+}
+
+export function updateStaff(id: string, patch: Partial<Staff>) {
+  const s = staff.find(x => x.id === id);
+  if (!s) return;
+  Object.assign(s, patch);
+  cloudWrite("staff:update", supabase.from("staff").update(toStaff(s)).eq("id", id));
+  emit();
+}
+
+export function deleteStaff(id: string) {
+  const idx = staff.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  staff.splice(idx, 1);
+  cloudWrite("staff:delete", supabase.from("staff").delete().eq("id", id));
+  emit();
+}
+
+// ---------------------------------------------------------------------------
+// Payroll runs
+// ---------------------------------------------------------------------------
+function nextPayrollRunId() {
+  const n = payrollRuns.reduce((m, x) => Math.max(m, parseInt(x.id.replace(/\D/g, "")) || 0), 0);
+  return `PR-${String(n + 1).padStart(4, "0")}`;
+}
+
+export function addPayrollRun(input: Omit<PayrollRun, "id"> & { id?: string }) {
+  const run: PayrollRun = { id: input.id ?? nextPayrollRunId(), ...input };
+  payrollRuns.push(run);
+  cloudWrite("payroll_run:insert", supabase.from("payroll_runs").insert(toPayrollRun(run)));
+  run.lines.forEach((line, i) => {
+    cloudWrite("payroll_line:insert", supabase.from("payroll_lines").insert({
+      run_id: run.id, staff_id: line.staffId, hours: line.hours,
+      vehicles: line.vehicles, gross: line.gross, net: line.net,
+      status: line.status, sort_order: i,
+    }));
+  });
+  emit();
+  return run;
+}
+
+export function updatePayrollRun(id: string, patch: Partial<Omit<PayrollRun, "lines">>) {
+  const r = payrollRuns.find(x => x.id === id);
+  if (!r) return;
+  Object.assign(r, patch);
+  cloudWrite("payroll_run:update", supabase.from("payroll_runs").update(toPayrollRun(r)).eq("id", id));
+  emit();
+}
+
+export function deletePayrollRun(id: string) {
+  const idx = payrollRuns.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  payrollRuns.splice(idx, 1);
+  cloudWrite("payroll_run:delete", supabase.from("payroll_runs").delete().eq("id", id));
+  emit();
 }
 
 export function recordPayment(id: string, method: Payment["method"], paidDate?: string) {
