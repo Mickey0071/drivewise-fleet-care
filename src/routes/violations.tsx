@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { violations, vehicleById, driverById, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { useStoreVersion } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 
 export const Route = createFileRoute("/violations")({
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/violations")({
 });
 
 function ViolationsPage() {
+  useStoreVersion();
   const outstanding = violations.filter(v => v.status === "pending").reduce((s, v) => s + v.amount, 0);
   return (
     <div>

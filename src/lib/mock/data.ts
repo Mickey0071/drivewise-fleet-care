@@ -134,12 +134,7 @@ export const vehiclePhotos: VehiclePhoto[] = [];
 export const insuranceEntries: InsuranceEntry[] = [];
 export const insuranceChecklist: InsuranceChecklistItem[] = [];
 
-export const staff: Staff[] = [
-  { id: "S-01", fullName: "Ray Mitchell", role: "Lot Manager", phone: "(404) 555-1010", email: "ray@camauto.com", payType: "salary", payRate: 1200, stripeConnected: true, status: "active" },
-  { id: "S-02", fullName: "Mia Cortez", role: "Inspector", phone: "(404) 555-1011", email: "mia@camauto.com", payType: "hourly", payRate: 22, stripeConnected: true, status: "active" },
-  { id: "S-03", fullName: "Jordan Blake", role: "Detailer", phone: "(404) 555-1012", email: "jordan@camauto.com", payType: "per-vehicle", payRate: 35, stripeConnected: false, status: "active" },
-  { id: "S-04", fullName: "Sam Park", role: "Mechanic", phone: "(404) 555-1013", email: "sam@camauto.com", payType: "hourly", payRate: 28, stripeConnected: true, status: "active" },
-];
+export const staff: Staff[] = [];
 
 export const expenses: Expense[] = [];
 

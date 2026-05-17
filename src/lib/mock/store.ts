@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, insuranceEntries, insuranceChecklist, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto, type InsuranceEntry, type InsuranceChecklistItem } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, insuranceEntries, insuranceChecklist, violations, staff, payrollRuns, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto, type InsuranceEntry, type InsuranceChecklistItem, type Violation, type Staff, type PayrollRun } from "./data";
 import { supabase } from "@/integrations/supabase/client";
 
 const listeners = new Set<() => void>();
@@ -177,6 +177,61 @@ const fromChecklist = (r: any): InsuranceChecklistItem => ({
   documentName: r.document_name ?? undefined,
 });
 
+// ---- violations ----
+const fromViolation = (r: any): Violation => ({
+  id: r.id, vehicleId: r.vehicle_id, driverId: r.driver_id ?? undefined,
+  type: r.type, amount: Number(r.amount), dateIssued: r.date_issued,
+  status: r.status, notes: r.notes ?? undefined,
+});
+const toViolation = (v: Violation) => ({
+  id: v.id, vehicle_id: v.vehicleId, driver_id: v.driverId ?? null,
+  type: v.type, amount: v.amount, date_issued: v.dateIssued,
+  status: v.status, notes: v.notes ?? null,
+});
+
+// ---- maintenance ----
+const fromMaintenance = (r: any): Maintenance => ({
+  id: r.id, vehicleId: r.vehicle_id, serviceType: r.service_type,
+  vendor: r.vendor, dateCompleted: r.date_completed,
+  mileageAtService: r.mileage_at_service, cost: Number(r.cost),
+  nextServiceDue: r.next_service_due, notes: r.notes ?? undefined,
+});
+const toMaintenance = (m: Maintenance) => ({
+  id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
+  vendor: m.vendor, date_completed: m.dateCompleted,
+  mileage_at_service: m.mileageAtService, cost: m.cost,
+  next_service_due: m.nextServiceDue, notes: m.notes ?? null,
+});
+
+// ---- staff ----
+const fromStaff = (r: any): Staff => ({
+  id: r.id, fullName: r.full_name, role: r.role, phone: r.phone, email: r.email,
+  payType: r.pay_type, payRate: Number(r.pay_rate),
+  stripeConnected: !!r.stripe_connected, status: r.status,
+});
+const toStaff = (s: Staff) => ({
+  id: s.id, full_name: s.fullName, role: s.role, phone: s.phone, email: s.email,
+  pay_type: s.payType, pay_rate: s.payRate,
+  stripe_connected: s.stripeConnected, status: s.status,
+});
+
+// ---- payroll runs (header + lines) ----
+const fromPayrollRun = (r: any, lines: any[] = []): PayrollRun => ({
+  id: r.id, periodStart: r.period_start, periodEnd: r.period_end,
+  runDate: r.run_date, totalPayout: Number(r.total_payout),
+  status: r.status,
+  lines: lines.filter(l => l.run_id === r.id)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map(l => ({
+      staffId: l.staff_id, hours: Number(l.hours), vehicles: l.vehicles,
+      gross: Number(l.gross), net: Number(l.net), status: l.status,
+    })),
+});
+const toPayrollRun = (r: PayrollRun) => ({
+  id: r.id, period_start: r.periodStart, period_end: r.periodEnd,
+  run_date: r.runDate, total_payout: r.totalPayout, status: r.status,
+});
+
 let hydrationPromise: Promise<void> | null = null;
 let hydrated = false;
 export function isStoreHydrated() { return hydrated; }
@@ -189,7 +244,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
   }
   if (hydrationPromise) return hydrationPromise;
   hydrationPromise = (async () => {
-    const [v, d, r, p, i, e, ex, vp, ie, ic] = await Promise.all([
+    const [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl] = await Promise.all([
       supabase.from("vehicles").select("*"),
       supabase.from("drivers").select("*"),
       supabase.from("rentals").select("*"),
@@ -200,8 +255,13 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
       supabase.from("vehicle_photos").select("*").order("sort_order", { ascending: true }),
       supabase.from("insurance_entries").select("*").order("date", { ascending: false }),
       supabase.from("insurance_claim_checklist").select("*").order("sort_order", { ascending: true }),
+      supabase.from("violations").select("*").order("date_issued", { ascending: false }),
+      supabase.from("maintenance").select("*").order("date_completed", { ascending: false }),
+      supabase.from("staff").select("*").order("full_name", { ascending: true }),
+      supabase.from("payroll_runs").select("*").order("period_end", { ascending: false }),
+      supabase.from("payroll_lines").select("*"),
     ]);
-    const failures = [v, d, r, p, i, e, ex, vp, ie, ic].filter(result => result.error);
+    const failures = [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl].filter(result => result.error);
     if (failures.length) {
       failures.forEach(result => console.error("[cloud:hydrate]", result.error));
       hydrationPromise = null;
@@ -216,6 +276,10 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
     replaceArray(vehiclePhotos, (vp.data ?? []).map(fromVehiclePhoto));
     replaceArray(insuranceEntries, (ie.data ?? []).map(fromInsuranceEntry));
     replaceArray(insuranceChecklist, (ic.data ?? []).map(fromChecklist));
+    replaceArray(violations, (vio.data ?? []).map(fromViolation));
+    replaceArray(maintenance, (mnt.data ?? []).map(fromMaintenance));
+    replaceArray(staff, (stf.data ?? []).map(fromStaff));
+    replaceArray(payrollRuns, (prr.data ?? []).map(row => fromPayrollRun(row, prl.data ?? [])));
     hydrated = true;
     emit();
     subscribeRealtime();
@@ -355,6 +419,72 @@ function subscribeRealtime() {
         const next = fromChecklist(payload.new);
         const idx = insuranceChecklist.findIndex(x => x.id === next.id);
         if (idx >= 0) insuranceChecklist[idx] = next; else insuranceChecklist.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "violations" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = violations.findIndex(x => x.id === id);
+        if (idx >= 0) violations.splice(idx, 1);
+      } else {
+        const next = fromViolation(payload.new);
+        const idx = violations.findIndex(x => x.id === next.id);
+        if (idx >= 0) violations[idx] = next; else violations.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "maintenance" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = maintenance.findIndex(x => x.id === id);
+        if (idx >= 0) maintenance.splice(idx, 1);
+      } else {
+        const next = fromMaintenance(payload.new);
+        const idx = maintenance.findIndex(x => x.id === next.id);
+        if (idx >= 0) maintenance[idx] = next; else maintenance.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = staff.findIndex(x => x.id === id);
+        if (idx >= 0) staff.splice(idx, 1);
+      } else {
+        const next = fromStaff(payload.new);
+        const idx = staff.findIndex(x => x.id === next.id);
+        if (idx >= 0) staff[idx] = next; else staff.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "payroll_runs" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = payrollRuns.findIndex(x => x.id === id);
+        if (idx >= 0) payrollRuns.splice(idx, 1);
+      } else {
+        const existing = payrollRuns.find(x => x.id === (payload.new as any).id);
+        const next = fromPayrollRun(payload.new, []);
+        next.lines = existing?.lines ?? [];
+        const idx = payrollRuns.findIndex(x => x.id === next.id);
+        if (idx >= 0) payrollRuns[idx] = next; else payrollRuns.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "payroll_lines" }, (payload) => {
+      const row = (payload.new ?? payload.old) as any;
+      const run = payrollRuns.find(r => r.id === row.run_id);
+      if (!run) { emit(); return; }
+      if (payload.eventType === "DELETE") {
+        run.lines = run.lines.filter(l => !(l.staffId === row.staff_id));
+      } else {
+        const line = {
+          staffId: row.staff_id, hours: Number(row.hours), vehicles: row.vehicles,
+          gross: Number(row.gross), net: Number(row.net), status: row.status,
+        };
+        const idx = run.lines.findIndex(l => l.staffId === line.staffId);
+        if (idx >= 0) run.lines[idx] = line; else run.lines.push(line);
       }
       emit();
     })
@@ -847,6 +977,7 @@ function nextMaintenanceId() {
 export function addMaintenance(input: Omit<Maintenance, "id">) {
   const rec: Maintenance = { id: nextMaintenanceId(), ...input };
   maintenance.push(rec);
+  cloudWrite("maintenance:insert", supabase.from("maintenance").insert(toMaintenance(rec)));
   const v = vehicles.find(v => v.id === input.vehicleId);
   if (v) {
     if (input.mileageAtService && input.mileageAtService > v.mileage) {
@@ -860,6 +991,134 @@ export function addMaintenance(input: Omit<Maintenance, "id">) {
   }
   emit();
   return rec;
+}
+
+export function updateMaintenance(id: string, patch: Partial<Maintenance>) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  Object.assign(m, patch);
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  emit();
+}
+
+export function deleteMaintenance(id: string) {
+  const idx = maintenance.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  maintenance.splice(idx, 1);
+  cloudWrite("maintenance:delete", supabase.from("maintenance").delete().eq("id", id));
+  emit();
+}
+
+// ---------------------------------------------------------------------------
+// Violations
+// ---------------------------------------------------------------------------
+function nextViolationId() {
+  const n = violations.reduce((m, x) => Math.max(m, parseInt(x.id.replace(/\D/g, "")) || 0), 700);
+  return `VIO-${n + 1}`;
+}
+
+export function addViolation(input: Omit<Violation, "id" | "status"> & Partial<Pick<Violation, "status">>) {
+  const v: Violation = {
+    id: nextViolationId(),
+    status: "pending",
+    ...input,
+  };
+  violations.push(v);
+  cloudWrite("violation:insert", supabase.from("violations").insert(toViolation(v)));
+  emit();
+  return v;
+}
+
+export function updateViolation(id: string, patch: Partial<Violation>) {
+  const v = violations.find(x => x.id === id);
+  if (!v) return;
+  Object.assign(v, patch);
+  cloudWrite("violation:update", supabase.from("violations").update(toViolation(v)).eq("id", id));
+  emit();
+}
+
+export function deleteViolation(id: string) {
+  const idx = violations.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  violations.splice(idx, 1);
+  cloudWrite("violation:delete", supabase.from("violations").delete().eq("id", id));
+  emit();
+}
+
+// ---------------------------------------------------------------------------
+// Staff
+// ---------------------------------------------------------------------------
+function nextStaffId() {
+  const n = staff.reduce((m, x) => Math.max(m, parseInt(x.id.replace(/\D/g, "")) || 0), 0);
+  return `S-${String(n + 1).padStart(2, "0")}`;
+}
+
+export function addStaff(input: Omit<Staff, "id" | "status" | "stripeConnected"> & Partial<Pick<Staff, "status" | "stripeConnected">>) {
+  const s: Staff = {
+    id: nextStaffId(),
+    status: "active",
+    stripeConnected: false,
+    ...input,
+  };
+  staff.push(s);
+  cloudWrite("staff:insert", supabase.from("staff").insert(toStaff(s)));
+  emit();
+  return s;
+}
+
+export function updateStaff(id: string, patch: Partial<Staff>) {
+  const s = staff.find(x => x.id === id);
+  if (!s) return;
+  Object.assign(s, patch);
+  cloudWrite("staff:update", supabase.from("staff").update(toStaff(s)).eq("id", id));
+  emit();
+}
+
+export function deleteStaff(id: string) {
+  const idx = staff.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  staff.splice(idx, 1);
+  cloudWrite("staff:delete", supabase.from("staff").delete().eq("id", id));
+  emit();
+}
+
+// ---------------------------------------------------------------------------
+// Payroll runs
+// ---------------------------------------------------------------------------
+function nextPayrollRunId() {
+  const n = payrollRuns.reduce((m, x) => Math.max(m, parseInt(x.id.replace(/\D/g, "")) || 0), 0);
+  return `PR-${String(n + 1).padStart(4, "0")}`;
+}
+
+export function addPayrollRun(input: Omit<PayrollRun, "id"> & { id?: string }) {
+  const run: PayrollRun = { id: input.id ?? nextPayrollRunId(), ...input };
+  payrollRuns.push(run);
+  cloudWrite("payroll_run:insert", supabase.from("payroll_runs").insert(toPayrollRun(run)));
+  run.lines.forEach((line, i) => {
+    cloudWrite("payroll_line:insert", supabase.from("payroll_lines").insert({
+      run_id: run.id, staff_id: line.staffId, hours: line.hours,
+      vehicles: line.vehicles, gross: line.gross, net: line.net,
+      status: line.status, sort_order: i,
+    }));
+  });
+  emit();
+  return run;
+}
+
+export function updatePayrollRun(id: string, patch: Partial<Omit<PayrollRun, "lines">>) {
+  const r = payrollRuns.find(x => x.id === id);
+  if (!r) return;
+  Object.assign(r, patch);
+  cloudWrite("payroll_run:update", supabase.from("payroll_runs").update(toPayrollRun(r)).eq("id", id));
+  emit();
+}
+
+export function deletePayrollRun(id: string) {
+  const idx = payrollRuns.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  payrollRuns.splice(idx, 1);
+  cloudWrite("payroll_run:delete", supabase.from("payroll_runs").delete().eq("id", id));
+  emit();
 }
 
 export function recordPayment(id: string, method: Payment["method"], paidDate?: string) {

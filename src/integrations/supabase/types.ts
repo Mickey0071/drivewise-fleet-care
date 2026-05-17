@@ -282,6 +282,48 @@ export type Database = {
         }
         Relationships: []
       }
+      maintenance: {
+        Row: {
+          cost: number
+          created_at: string
+          date_completed: string
+          id: string
+          mileage_at_service: number
+          next_service_due: string
+          notes: string | null
+          service_type: string
+          updated_at: string
+          vehicle_id: string
+          vendor: string
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          date_completed?: string
+          id: string
+          mileage_at_service?: number
+          next_service_due?: string
+          notes?: string | null
+          service_type: string
+          updated_at?: string
+          vehicle_id: string
+          vendor: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          date_completed?: string
+          id?: string
+          mileage_at_service?: number
+          next_service_due?: string
+          notes?: string | null
+          service_type?: string
+          updated_at?: string
+          vehicle_id?: string
+          vendor?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -335,6 +377,86 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payroll_lines: {
+        Row: {
+          created_at: string
+          gross: number
+          hours: number
+          id: string
+          net: number
+          run_id: string
+          sort_order: number
+          staff_id: string
+          status: string
+          vehicles: number
+        }
+        Insert: {
+          created_at?: string
+          gross?: number
+          hours?: number
+          id?: string
+          net?: number
+          run_id: string
+          sort_order?: number
+          staff_id: string
+          status?: string
+          vehicles?: number
+        }
+        Update: {
+          created_at?: string
+          gross?: number
+          hours?: number
+          id?: string
+          net?: number
+          run_id?: string
+          sort_order?: number
+          staff_id?: string
+          status?: string
+          vehicles?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_lines_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_runs: {
+        Row: {
+          created_at: string
+          id: string
+          period_end: string
+          period_start: string
+          run_date: string
+          status: string
+          total_payout: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          period_end: string
+          period_start: string
+          run_date?: string
+          status?: string
+          total_payout?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          period_end?: string
+          period_start?: string
+          run_date?: string
+          status?: string
+          total_payout?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -635,6 +757,48 @@ export type Database = {
         }
         Relationships: []
       }
+      staff: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          pay_rate: number
+          pay_type: string
+          phone: string
+          role: string
+          status: string
+          stripe_connected: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string
+          full_name: string
+          id: string
+          pay_rate?: number
+          pay_type?: string
+          phone?: string
+          role?: string
+          status?: string
+          stripe_connected?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          pay_rate?: number
+          pay_type?: string
+          phone?: string
+          role?: string
+          status?: string
+          stripe_connected?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           amount_cents: number | null
@@ -824,6 +988,45 @@ export type Database = {
           vin?: string
           weekly_rate?: number
           year?: number
+        }
+        Relationships: []
+      }
+      violations: {
+        Row: {
+          amount: number
+          created_at: string
+          date_issued: string
+          driver_id: string | null
+          id: string
+          notes: string | null
+          status: string
+          type: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          date_issued?: string
+          driver_id?: string | null
+          id: string
+          notes?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          date_issued?: string
+          driver_id?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          vehicle_id?: string
         }
         Relationships: []
       }
