@@ -151,74 +151,154 @@ function RentPage() {
         <p className="text-sm font-medium">${info.rate}/{periodLabel} · Starts {info.startDate}</p>
       </header>
 
-      <Card className="p-4 space-y-3">
-        <SectionHeader icon={<User className="h-4 w-4" />} title="Your info" done={!!fullName && !!phone && !!email && !!licenseNumber && !!licenseExpiry && !!dateOfBirth && !!address} />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="fn">Full legal name</Label>
-            <Input id="fn" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="ph">Phone</Label>
-            <Input id="ph" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="dob">Date of birth</Label>
-            <Input id="dob" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="ad">Street address, city, state, ZIP</Label>
-            <Input id="ad" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Main St, Camden, NJ 08104" />
-          </div>
-          <div className="sm:col-span-2">
-            <Label htmlFor="em">Email <span className="text-destructive">*</span></Label>
-            <Input id="em" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="ln">License number</Label>
-            <Input id="ln" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="le">License expiry</Label>
-            <Input id="le" type="date" value={licenseExpiry} onChange={(e) => setLicenseExpiry(e.target.value)} />
-          </div>
-          <div className="sm:col-span-2">
-            <Label htmlFor="rs">Rideshare platform</Label>
-            <Select value={rideshare} onValueChange={(v) => setRideshare(v as "Uber" | "Lyft" | "Both")}>
-              <SelectTrigger id="rs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Uber">Uber</SelectItem>
-                <SelectItem value="Lyft">Lyft</SelectItem>
-                <SelectItem value="Both">Both</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </Card>
+      <div className="text-center text-xs text-muted-foreground">
+        Step {step === "details" ? "1" : step === "agreement" ? "2" : "3"} of 3
+      </div>
 
-      <Card className="p-4 space-y-3">
-        <SectionHeader icon={<IdCard className="h-4 w-4" />} title="Driver's license photo" done={!!licenseUrl} />
-        <PhotoCapture label="Upload license" onChange={setLicenseUrl} value={licenseUrl} />
-      </Card>
+      {step === "details" && (
+        <>
+          <Card className="p-4 space-y-3">
+            <SectionHeader icon={<User className="h-4 w-4" />} title="Your info" done={!!fullName && !!phone && !!email && !!licenseNumber && !!dateOfBirth && !!address && !!city && !!stateRegion} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="fn">Full legal name</Label>
+                <Input id="fn" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="ph">Phone</Label>
+                <Input id="ph" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="em">Email</Label>
+                <Input id="em" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="dob">Date of birth</Label>
+                <Input id="dob" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="ln">License number</Label>
+                <Input id="ln" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="ad">Street address</Label>
+                <Input id="ad" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Main St" />
+              </div>
+              <div>
+                <Label htmlFor="city">City</Label>
+                <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Camden" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="st">State</Label>
+                  <Input id="st" value={stateRegion} onChange={(e) => setStateRegion(e.target.value)} placeholder="NJ" maxLength={20} />
+                </div>
+                <div>
+                  <Label htmlFor="zip">ZIP</Label>
+                  <Input id="zip" value={zip} onChange={(e) => setZip(e.target.value)} placeholder="08104" maxLength={10} />
+                </div>
+              </div>
+            </div>
+          </Card>
 
-      <Card className="p-4 space-y-3">
-        <SectionHeader icon={<Camera className="h-4 w-4" />} title="Selfie" done={!!selfieUrl} />
-        <PhotoCapture label="Take selfie" onChange={setSelfieUrl} value={selfieUrl} useCamera />
-      </Card>
+          <Card className="p-4 space-y-3">
+            <SectionHeader icon={<IdCard className="h-4 w-4" />} title="Driver's license photo" done={!!licenseUrl} />
+            <PhotoCapture label="Upload license" onChange={setLicenseUrl} value={licenseUrl} />
+          </Card>
 
-      <Card className="p-4 space-y-3">
-        <SectionHeader icon={<FileSignature className="h-4 w-4" />} title="Sign rental agreement" done={!!sig} />
-        <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground max-h-40 overflow-y-auto">
-          By signing below, you agree to the Camauto Rentals rental agreement,
-          authorize the listed payment method, certify the uploaded license and
-          selfie are your own, and acknowledge the deposit and rental terms.
-        </div>
-        <SignaturePad value={sig ?? undefined} onChange={setSig} />
-      </Card>
+          <Card className="p-4 space-y-3">
+            <SectionHeader icon={<Camera className="h-4 w-4" />} title="Selfie" done={!!selfieUrl} />
+            <PhotoCapture label="Take selfie" onChange={setSelfieUrl} value={selfieUrl} useCamera />
+          </Card>
 
-      <Button className="w-full" size="lg" onClick={handleSubmit} disabled={submitting}>
-        {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…</> : "Submit application"}
-      </Button>
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={() => {
+              if (!fullName.trim() || !phone.trim() || !email.trim() || !dateOfBirth || !address.trim() || !city.trim() || !stateRegion.trim() || !licenseNumber.trim() || !licenseUrl || !selfieUrl) {
+                return toast.error("Complete all fields, license photo, and selfie first");
+              }
+              setStep("agreement");
+            }}
+          >
+            Review rental agreement <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </>
+      )}
+
+      {step === "agreement" && (
+        <>
+          <Card className="p-2 overflow-hidden">
+            <div className="max-h-[70vh] overflow-y-auto">
+              <RentalAgreement
+                rental={{
+                  billingPeriod: info.billingPeriod ?? "weekly",
+                  rate: info.rate,
+                  weeklyRate: info.rate,
+                  startDate: info.startDate,
+                  endDate: null,
+                  depositPaid: null,
+                  extensions: [],
+                  signatureDataUrl: null,
+                  signedBy: null,
+                  signedAt: null,
+                  agreementVersion: null,
+                } as any}
+                driver={{
+                  fullName,
+                  dateOfBirth: dateOfBirth || null,
+                  licenseNumber,
+                  licenseExpiry: "",
+                  phone,
+                  email,
+                  address: [address, city, [stateRegion, zip].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+                } as any}
+                vehicle={{
+                  year: info.vehicle?.year ?? "",
+                  make: info.vehicle?.make ?? "",
+                  model: info.vehicle?.model ?? "",
+                  color: "",
+                  plate: "",
+                  vin: "",
+                  mileage: 0,
+                  fuelLevelPickup: null,
+                  ezPassTag: null,
+                } as any}
+              />
+            </div>
+          </Card>
+          <div className="flex gap-2">
+            <Button variant="outline" size="lg" onClick={() => setStep("details")}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            </Button>
+            <Button className="flex-1" size="lg" onClick={() => setStep("sign")}>
+              I&rsquo;ve read it &mdash; continue to sign <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </>
+      )}
+
+      {step === "sign" && (
+        <>
+          <Card className="p-4 space-y-3">
+            <SectionHeader icon={<FileSignature className="h-4 w-4" />} title="Sign rental agreement" done={!!sig} />
+            <p className="text-xs text-muted-foreground">
+              By signing below, you agree to the rental agreement you just reviewed,
+              authorize the listed payment method, and certify the uploaded license
+              and selfie are your own.
+            </p>
+            <SignaturePad value={sig ?? undefined} onChange={setSig} />
+          </Card>
+          <div className="flex gap-2">
+            <Button variant="outline" size="lg" onClick={() => setStep("agreement")} disabled={submitting}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            </Button>
+            <Button className="flex-1" size="lg" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…</> : "Submit application"}
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
