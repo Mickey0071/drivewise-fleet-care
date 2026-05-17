@@ -130,9 +130,9 @@ export const createShareLink = createServerFn({ method: "POST" })
 export const sendShareLinkSms = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { token: string; url: string; phone: string; name?: string }) => {
-    if (!input.token || input.token.length < 8) throw new Error("invalid token");
-    if (!input.url || !/^https?:\/\//.test(input.url)) throw new Error("invalid url");
-    if (!input.phone || input.phone.length < 7) throw new Error("phone required");
+    if (!input.token) throw new Error("Missing share token — generate the link again.");
+    if (!input.url || !/^https?:\/\//.test(input.url)) throw new Error("Invalid share URL.");
+    if (!input.phone || input.phone.length < 7) throw new Error("Enter a valid phone number.");
     return input;
   })
   .handler(async ({ data, context }) => {
@@ -169,14 +169,25 @@ export const sendShareLinkSms = createServerFn({ method: "POST" })
         errorMessage: msg,
         attemptedBy: context.userId,
       });
-      // Re-throw a friendly message; keep raw detail in server logs above
-      if (/GHL/.test(msg) && /4\d\d/.test(msg)) {
-        throw new Error("Could not send SMS — check the phone number and try again.");
-      }
-      throw new Error("Could not send SMS — please try again in a moment.");
+      // Surface the actual reason so the admin can act on it (bad number, billing, etc.)
+      const friendly = friendlySmsError(msg);
+      throw new Error(friendly);
     }
     return { ok: true, phone: normalized };
   });
+
+function friendlySmsError(raw: string): string {
+  const m = raw || "Unknown error";
+  if (/invalid.*phone|not.*valid.*phone|10dlc|unreachable|landline/i.test(m))
+    return `SMS provider rejected the phone number: ${m}`;
+  if (/balance|billing|insufficient|payment|quota|limit/i.test(m))
+    return `SMS provider billing/quota issue: ${m}`;
+  if (/unauthor|forbidden|401|403|token/i.test(m))
+    return `SMS provider auth failed: ${m}`;
+  if (/timeout|network|fetch|ECONN/i.test(m))
+    return `Network error contacting SMS provider: ${m}`;
+  return `SMS failed: ${m}`;
+}
 
 async function logSmsAttempt(entry: {
   token: string;
