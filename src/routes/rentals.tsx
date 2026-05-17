@@ -154,7 +154,10 @@ function RentalsPage() {
                   {isPending ? "Reserved for" : "Rented to"} <span className="text-foreground font-medium">{d?.fullName}</span>
                 </p>
               </div>
-              {isPending ? <PendingHoldBadge rental={r} /> : <StatusBadge status={r.paymentStatus} />}
+              <div className="flex flex-col items-end gap-1">
+                {isPending ? <PendingHoldBadge rental={r} /> : <StatusBadge status={r.paymentStatus} />}
+                <PaidBadge rental={r} />
+              </div>
             </div>
             {isPending ? <PendingChecklist rental={r} /> : <HandoffStatus rental={r} />}
             <div className="grid grid-cols-3 gap-2 text-sm">
