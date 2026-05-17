@@ -28,7 +28,11 @@ function fmtDate(iso: string): string {
 export const Route = createFileRoute("/api/public/hooks/send-reminders")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
+        const cronSecret = request.headers.get("x-cron-secret");
+        if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
+          return new Response("Unauthorized", { status: 401 });
+        }
         const target = tomorrowISO();
         const today = todayISO();
         const pastDueCutoff = daysAgoISO(2); // due_date strictly before this = >2 days late
