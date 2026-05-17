@@ -5,7 +5,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
@@ -23,6 +23,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
+import { sendPaymentLink } from "@/lib/payment-link.functions";
+import { getStripeEnvironment } from "@/lib/stripe";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
