@@ -175,9 +175,9 @@ export function ShareRentalDialog({
               inputMode="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+1 555 555 5555"
+              placeholder="555 555 5555"
             />
-            <p className="text-xs text-muted-foreground">Use country code, e.g. +1 555 555 5555. 10-digit US numbers also work. Leave blank to just generate a link.</p>
+            <p className="text-xs text-muted-foreground">Leave blank to just generate a link.</p>
           </div>
 
           {!token ? (

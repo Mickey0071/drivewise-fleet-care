@@ -1,18 +1,16 @@
 ## Goal
-Make the "Text to customer" SMS box visible immediately when the Share Rental dialog opens, instead of being hidden until after the link is generated.
+Remove US country code (+1) references from the phone input in the Share Rental dialog since all customers are US-based.
 
 ## Change
-In `src/components/app/ShareRentalDialog.tsx`, restructure the dialog so:
+In `src/components/app/ShareRentalDialog.tsx`:
+1. Change phone input placeholder from `+1 555 555 5555` to `555 555 5555`.
+2. Remove or simplify the helper note under the phone input that mentions country codes and 10-digit US numbers.
 
-1. **Always visible (top section):** rental details (start date, billing period, rate) + a "Send to customer" panel with name + phone inputs.
-2. **Single primary button:** "Generate & send link" — creates the share link, then immediately sends the SMS to the entered phone number in one click. If phone is empty, it just generates the link.
-3. **After generation:** show the public URL with Copy button, plus the existing Email panel and a "Resend SMS" button so the user can text it again or to a different number.
-
-This way the user sees the phone input from the moment they open the dialog and doesn't have to do a two-step "generate, then scroll down to text" flow.
+No server function or SMS logic changes — the phone number is passed through exactly as entered.
 
 ## Files
-- `src/components/app/ShareRentalDialog.tsx` — reorder JSX, merge generate + sendSms into one handler, keep all existing server function calls (`createShareLink`, `sendShareLinkSms`) and validation unchanged.
+- `src/components/app/ShareRentalDialog.tsx` — text-only edits (placeholder + helper note).
 
 ## Out of scope
-- No DB or server function changes.
-- No changes to the signing link (`/sign/$token`) flow.
+- No changes to SMS sending logic (`sendShareLinkSms` server function).
+- No auto-formatting or auto-prepending of +1.
