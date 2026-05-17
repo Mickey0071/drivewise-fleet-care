@@ -368,6 +368,12 @@ function RentalsPage() {
         userId={user?.id}
       />
       <ReceiptDialog rental={receipt} onClose={() => setReceipt(null)} />
+      <NotifyRenterDialog
+        open={!!chatting}
+        onOpenChange={(o) => !o && setChatting(null)}
+        renterName={chatting ? (driverById(chatting.driverId)?.fullName ?? "") : ""}
+        phone={chatting ? (driverById(chatting.driverId)?.phone ?? "") : ""}
+      />
     </div>
   );
 }
