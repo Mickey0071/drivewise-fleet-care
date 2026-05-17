@@ -31,6 +31,7 @@ async function resolveOrCreateCustomer(
 
 // Weekly rental subscription with dynamic per-driver amount.
 export const createWeeklyRentalCheckout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: {
     amountInCents: number;
     rentalId: string;
@@ -82,6 +83,7 @@ export const createWeeklyRentalCheckout = createServerFn({ method: "POST" })
 
 // One-time deposit (2 days advance) at handoff.
 export const createDepositCheckout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: {
     amountInCents: number;
     rentalId: string;

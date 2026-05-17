@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 const GHL_BASE = "https://services.leadconnectorhq.com";
@@ -101,6 +102,7 @@ async function findOrCreateContact(opts: {
 }
 
 export const pushRunnerReportToGhl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data }) => {
     const token = process.env.ghlPitToken;
