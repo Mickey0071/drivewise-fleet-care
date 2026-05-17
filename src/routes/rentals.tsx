@@ -256,12 +256,44 @@ function RentalsPage() {
                   </DropdownMenu>
                   <Button
                     size="sm"
-                    variant={r.paymentReceived ? "outline" : "default"}
+                    variant="secondary"
+                    disabled={!!r.paymentReceived || payLinkSendingId === r.id}
+                    onClick={async () => {
+                      const d = driverById(r.driverId);
+                      const v = vehicleById(r.vehicleId);
+                      if (!d?.phone) { toast.error("No phone on file for renter"); return; }
+                      const amount = Number(r.rate ?? r.weeklyRate ?? 0);
+                      if (amount < 0.5) { toast.error("Set a rate before sending a payment link"); return; }
+                      const periodLbl = r.billingPeriod === "daily" ? "day" : r.billingPeriod === "monthly" ? "month" : "week";
+                      setPayLinkSendingId(r.id);
+                      try {
+                        await ensureRentalSynced(r.id);
+                        await sendPayLinkFn({ data: {
+                          phone: d.phone,
+                          name: d.fullName,
+                          amountCents: Math.round(amount * 100),
+                          description: `First ${periodLbl} — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim(),
+                          environment: getStripeEnvironment(),
+                          rentalId: r.id,
+                        } });
+                        toast.success("Payment link texted to renter", { description: d.phone });
+                      } catch (e) {
+                        toast.error("Could not send payment link", { description: e instanceof Error ? e.message : String(e) });
+                      } finally {
+                        setPayLinkSendingId(null);
+                      }
+                    }}
+                  >
+                    <Send className="mr-1 h-4 w-4" />
+                    {r.paymentReceived ? "Paid ✓" : payLinkSendingId === r.id ? "Sending…" : "Send Payment Link"}
+                  </Button>
+                  <Button
+                    size="sm"
                     onClick={() => setCharging(r)}
-                    disabled={r.paymentReceived}
+                    disabled={!!r.paymentReceived}
                   >
                     <DollarSign className="mr-1 h-4 w-4" />
-                    {r.paymentReceived ? "Payment received ✓" : "Charge with Stripe"}
+                    {r.paymentReceived ? "Paid ✓" : "Charge Now"}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>Edit</Button>
                   <Button
