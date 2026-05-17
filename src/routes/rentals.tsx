@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
+import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
@@ -51,6 +52,7 @@ function RentalsPage() {
   const [signing, setSigning] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
   const [receipt, setReceipt] = useState<Rental | null>(null);
+  const [chatting, setChatting] = useState<Rental | null>(null);
   // (Mark as Returned now opens the full Return Inspection dialog directly.)
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
@@ -257,15 +259,7 @@ function RentalsPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={async () => {
-                      try {
-                        await ensureRentalSynced(r.id);
-                        await sendSignLinkFn({ data: { rentalId: r.id, origin: PUBLIC_APP_ORIGIN } });
-                        toast.success("Signing link texted to renter");
-                      } catch (e) {
-                        toast.error("SMS failed", { description: e instanceof Error ? e.message : String(e) });
-                      }
-                    }}
+                    onClick={() => setChatting(r)}
                   >
                     <MessageSquare className="mr-1 h-4 w-4" /> Notify renter
                   </Button>
