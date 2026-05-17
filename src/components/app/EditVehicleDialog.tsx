@@ -142,11 +142,11 @@ export function EditVehicleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit vehicle · {vehicle.id}</DialogTitle>
+      <DialogContent className="flex max-h-[90vh] max-w-xl flex-col gap-0 p-0">
+        <DialogHeader className="border-b px-6 py-3">
+          <DialogTitle className="text-base">Edit vehicle · {vehicle.id}</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid flex-1 gap-3 overflow-y-auto px-6 py-4 sm:grid-cols-2">
           <div><Label>Make *</Label><Input value={make} onChange={e => setMake(e.target.value)} /></div>
           <div><Label>Model *</Label><Input value={model} onChange={e => setModel(e.target.value)} /></div>
           <div><Label>Year</Label><Input type="number" value={year} onChange={e => setYear(Number(e.target.value))} /></div>
@@ -231,7 +231,7 @@ export function EditVehicleDialog({
             {photoFile && <p className="mt-1 text-xs text-muted-foreground">Will upload {photoFile.name} on save.</p>}
           </div>
         </div>
-        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+        <DialogFooter className="flex-col-reverse gap-2 border-t bg-background px-6 py-3 sm:flex-row sm:justify-between">
           <Button
             variant="destructive"
             onClick={handleDelete}
