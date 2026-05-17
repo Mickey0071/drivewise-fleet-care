@@ -272,23 +272,25 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
   }
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Add vehicle</DialogTitle></DialogHeader>
-        <div className="grid gap-3 sm:grid-cols-2">
+      <DialogContent className="!bottom-2 !top-2 flex h-auto max-h-none max-w-xl !translate-y-0 flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-3 py-1.5">
+          <DialogTitle className="text-sm">Add vehicle</DialogTitle>
+        </DialogHeader>
+        <div className="grid min-h-0 flex-1 gap-1.5 overflow-y-auto px-3 py-2 text-sm sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Label>Profile photo</Label>
-            <div className="mt-1 flex items-center gap-3">
-              <div className="h-20 w-32 overflow-hidden rounded-md border border-border bg-muted">
+            <div className="mt-1 flex items-center gap-2">
+              <div className="h-10 w-16 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
                 {photoPreview ? (
                   <img src={photoPreview} alt="Preview" className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">No photo</div>
                 )}
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="min-w-0 flex-1">
                 <Input type="file" accept="image/*" onChange={(e) => pickPhoto(e.target.files?.[0] ?? null)} />
                 {photoFile && (
-                  <Button type="button" size="sm" variant="ghost" onClick={() => pickPhoto(null)}>Remove</Button>
+                  <Button type="button" size="sm" variant="ghost" className="mt-1 h-7" onClick={() => pickPhoto(null)}>Remove</Button>
                 )}
               </div>
             </div>
@@ -359,7 +361,7 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
             <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" />
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t bg-background px-3 py-2 sm:flex-row">
           <Button variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
           <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Add vehicle"}</Button>
         </DialogFooter>
