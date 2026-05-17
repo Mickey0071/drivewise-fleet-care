@@ -1057,15 +1057,17 @@ function ReceiptDialog({ rental, onClose }: { rental: Rental | null; onClose: ()
     const win = window.open("", "_blank", "width=720,height=900");
     if (!win || !rental || !v || !d) return;
     const fmt = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const esc = (s: unknown) =>
+      String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
     const lines: string[] = [];
-    lines.push(`<tr><td>${fmtDate(rental.startDate)}</td><td>Security deposit</td><td style="text-align:right">${fmt(rental.depositPaid)}</td><td>—</td></tr>`);
+    lines.push(`<tr><td>${esc(fmtDate(rental.startDate))}</td><td>Security deposit</td><td style="text-align:right">${fmt(rental.depositPaid)}</td><td>—</td></tr>`);
     sched.forEach(p => {
-      lines.push(`<tr><td>${fmtDate(p.dueDate)}</td><td>Rental payment (${p.status})</td><td style="text-align:right">${fmt(p.amount)}</td><td>${p.method ?? "—"}</td></tr>`);
+      lines.push(`<tr><td>${esc(fmtDate(p.dueDate))}</td><td>Rental payment (${esc(p.status)})</td><td style="text-align:right">${fmt(p.amount)}</td><td>${esc(p.method ?? "—")}</td></tr>`);
     });
     rental.extensions?.forEach((e, i) => {
-      lines.push(`<tr><td>${new Date(e.extendedAt).toLocaleDateString()}</td><td>Extension addendum #${i + 1} (+${e.periods} ${e.periodLabel}${e.periods === 1 ? "" : "s"})</td><td style="text-align:right">${fmt(e.additionalAmount)}</td><td>—</td></tr>`);
+      lines.push(`<tr><td>${esc(new Date(e.extendedAt).toLocaleDateString())}</td><td>Extension addendum #${i + 1} (+${esc(e.periods)} ${esc(e.periodLabel)}${e.periods === 1 ? "" : "s"})</td><td style="text-align:right">${fmt(e.additionalAmount)}</td><td>—</td></tr>`);
     });
-    win.document.write(`<!doctype html><html><head><title>Receipt ${rental.id}</title>
+    win.document.write(`<!doctype html><html><head><title>Receipt ${esc(rental.id)}</title>
       <style>
         body{font-family:system-ui,sans-serif;max-width:680px;margin:24px auto;padding:0 16px;color:#111}
         h1{margin:0 0 4px;font-size:22px}
@@ -1080,12 +1082,12 @@ function ReceiptDialog({ rental, onClose }: { rental: Rental | null; onClose: ()
         @media print { button{display:none} }
       </style></head><body>
       <h1>Rentalprise Auto — Receipt</h1>
-      <div class="meta">Reservation ${rental.id} · Issued ${new Date().toLocaleString()}</div>
+      <div class="meta">Reservation ${esc(rental.id)} · Issued ${esc(new Date().toLocaleString())}</div>
       <div class="box">
-        <strong>${v.year} ${v.make} ${v.model}</strong> · Plate ${v.plate} · VIN ${v.vin}<br/>
-        Renter: ${d.fullName} · ${d.phone} · ${d.email}<br/>
-        Period: ${fmtDate(rental.startDate)}${rental.endDate ? ` → ${fmtDate(rental.endDate)}` : " (open)"}<br/>
-        Rate: ${fmt(rental.rate ?? rental.weeklyRate)} / ${(rental.billingPeriod ?? "weekly").replace("ly", "")}
+        <strong>${esc(v.year)} ${esc(v.make)} ${esc(v.model)}</strong> · Plate ${esc(v.plate)} · VIN ${esc(v.vin)}<br/>
+        Renter: ${esc(d.fullName)} · ${esc(d.phone)} · ${esc(d.email)}<br/>
+        Period: ${esc(fmtDate(rental.startDate))}${rental.endDate ? ` → ${esc(fmtDate(rental.endDate))}` : " (open)"}<br/>
+        Rate: ${fmt(rental.rate ?? rental.weeklyRate)} / ${esc((rental.billingPeriod ?? "weekly").replace("ly", ""))}
       </div>
       <table>
         <thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th><th>Method</th></tr></thead>
@@ -1096,7 +1098,7 @@ function ReceiptDialog({ rental, onClose }: { rental: Rental | null; onClose: ()
         Extensions: ${fmt(extTotal)}<br/>
         <div class="grand">Total: ${fmt(grandTotal)}</div>
       </div>
-      ${rental.signatureDataUrl ? `<div style="margin-top:32px"><div style="font-size:11px;color:#666;text-transform:uppercase">Signed by ${rental.signedBy ?? d.fullName}</div><img src="${rental.signatureDataUrl}" style="max-width:240px;border:1px solid #ddd;padding:4px;margin-top:4px"/></div>` : ""}
+      ${rental.signatureDataUrl ? `<div style="margin-top:32px"><div style="font-size:11px;color:#666;text-transform:uppercase">Signed by ${esc(rental.signedBy ?? d.fullName)}</div><img src="${esc(rental.signatureDataUrl)}" style="max-width:240px;border:1px solid #ddd;padding:4px;margin-top:4px"/></div>` : ""}
       <button onclick="window.print()" style="margin-top:24px;padding:8px 16px;background:#111;color:#fff;border:0;border-radius:4px;cursor:pointer">Print / Save as PDF</button>
       </body></html>`);
     win.document.close();
