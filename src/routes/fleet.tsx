@@ -15,7 +15,8 @@ import { toast } from "sonner";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
-import { Share2, Camera, Pencil } from "lucide-react";
+import { VehiclePhotosDialog } from "@/components/app/VehiclePhotosDialog";
+import { Share2, Camera, Pencil, Images } from "lucide-react";
 
 export const Route = createFileRoute("/fleet")({
   head: () => ({ meta: [{ title: "Fleet — Camauto Rentals" }] }),
@@ -31,6 +32,7 @@ function FleetPage() {
   const [reserveVehicleId, setReserveVehicleId] = useState<string | null>(null);
   const [shareVehicleId, setShareVehicleId] = useState<string | null>(null);
   const [editVehicleId, setEditVehicleId] = useState<string | null>(null);
+  const [photosVehicleId, setPhotosVehicleId] = useState<string | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { status } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -101,6 +103,14 @@ function FleetPage() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setPhotosVehicleId(v.id)}
+                title="Manage & share photos"
+              >
+                <Images className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 className="flex-1"
                 onClick={() => goto({ to: "/fleet/$vehicleId", params: { vehicleId: v.id }, search: { tab: "repairs" } })}
               >
@@ -152,6 +162,11 @@ function FleetPage() {
         onOpenChange={(o) => { if (!o) setEditVehicleId(null); }}
         vehicle={editVehicleId ? vehicles.find(v => v.id === editVehicleId) ?? null : null}
         onDeleted={() => setEditVehicleId(null)}
+      />
+      <VehiclePhotosDialog
+        open={!!photosVehicleId}
+        onOpenChange={(o) => { if (!o) setPhotosVehicleId(null); }}
+        vehicle={photosVehicleId ? vehicles.find(v => v.id === photosVehicleId) ?? null : null}
       />
     </div>
   );
