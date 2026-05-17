@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
-  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, ListChecks,
+  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, ListChecks, MessageSquare,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -28,6 +28,7 @@ const adminItems: Item[] = [
   { title: "Insurance", url: "/insurance", icon: Shield, roles: ["admin"] },
   { title: "Runner Reports", url: "/runner-reports", icon: ClipboardList, roles: ["admin"] },
   { title: "Rental Agreement", url: "/rental-agreement", icon: ScrollText, roles: ["admin"] },
+  { title: "SMS log", url: "/sms-log", icon: MessageSquare, roles: ["admin"] },
 ];
 const financeItems: Item[] = [
   { title: "P&L", url: "/pnl", icon: TrendingUp, roles: ["admin"] },
