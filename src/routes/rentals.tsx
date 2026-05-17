@@ -26,7 +26,8 @@ import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
-const PUBLIC_APP_ORIGIN = "https://drivewise-fleet-care.lovable.app";
+const getPublicAppOrigin = () =>
+  typeof window !== "undefined" ? window.location.origin : "";
 
 export const Route = createFileRoute("/rentals")({
   head: () => ({ meta: [{ title: "Reservations — Camauto Rentals" }] }),
@@ -187,7 +188,7 @@ function RentalsPage() {
                           try {
                             await ensureRentalSynced(r.id);
                             const res = await sendSignLinkFn({
-                              data: { rentalId: r.id, origin: PUBLIC_APP_ORIGIN },
+                              data: { rentalId: r.id, origin: getPublicAppOrigin() },
                             });
                             toast.success("Text message sent to renter", { description: res.link });
                           } catch (e) {
@@ -204,7 +205,7 @@ function RentalsPage() {
                           try {
                             await ensureRentalSynced(r.id);
                             const res = await getSignLinkFn({
-                              data: { rentalId: r.id, origin: PUBLIC_APP_ORIGIN },
+                              data: { rentalId: r.id, origin: getPublicAppOrigin() },
                             });
                             if (!res.driverEmail) {
                               toast.error("No email on file for renter");
@@ -231,7 +232,7 @@ function RentalsPage() {
                           try {
                             await ensureRentalSynced(r.id);
                             const res = await getSignLinkFn({
-                              data: { rentalId: r.id, origin: PUBLIC_APP_ORIGIN },
+                              data: { rentalId: r.id, origin: getPublicAppOrigin() },
                             });
                             await navigator.clipboard.writeText(res.link);
                             toast.success("Signing link copied to clipboard");

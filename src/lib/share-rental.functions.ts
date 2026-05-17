@@ -10,7 +10,7 @@ function checkoutOrigin(): string {
   if (origin) {
     try { return new URL(origin).origin; } catch { /* ignore */ }
   }
-  return "https://drivewise-fleet-care.lovable.app";
+  return process.env.PUBLIC_APP_ORIGIN ?? "";
 }
 
 async function createRentalCheckoutUrl(opts: {
