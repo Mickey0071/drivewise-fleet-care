@@ -39,7 +39,7 @@ export const sendPaymentLink = createServerFn({ method: "POST" })
       success_url: `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/rent/paid?canceled=1`,
       metadata: {
-        kind: "payment_link",
+        kind: data.rentalId ? "first_payment" : "payment_link",
         ...(data.rentalId ? { rental_id: data.rentalId } : {}),
         ...(data.paymentId ? { payment_id: data.paymentId } : {}),
       },
