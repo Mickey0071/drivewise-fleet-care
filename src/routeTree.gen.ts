@@ -34,6 +34,7 @@ import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
+import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
 
@@ -162,6 +163,11 @@ const FleetVehicleIdRoute = FleetVehicleIdRouteImport.update({
   path: '/$vehicleId',
   getParentRoute: () => FleetRoute,
 } as any)
+const RentPortalRentalIdRoute = RentPortalRentalIdRouteImport.update({
+  id: '/rent/portal/$rentalId',
+  path: '/rent/portal/$rentalId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/sign/$token': typeof SignTokenRoute
+  '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -230,6 +237,7 @@ export interface FileRoutesByTo {
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/sign/$token': typeof SignTokenRoute
+  '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -260,6 +268,7 @@ export interface FileRoutesById {
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/sign/$token': typeof SignTokenRoute
+  '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -291,6 +300,7 @@ export interface FileRouteTypes {
     | '/rent/$token'
     | '/rent/paid'
     | '/sign/$token'
+    | '/rent/portal/$rentalId'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -320,6 +330,7 @@ export interface FileRouteTypes {
     | '/rent/$token'
     | '/rent/paid'
     | '/sign/$token'
+    | '/rent/portal/$rentalId'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
   id:
@@ -349,6 +360,7 @@ export interface FileRouteTypes {
     | '/rent/$token'
     | '/rent/paid'
     | '/sign/$token'
+    | '/rent/portal/$rentalId'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
@@ -378,6 +390,7 @@ export interface RootRouteChildren {
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
   SignTokenRoute: typeof SignTokenRoute
+  RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
@@ -559,6 +572,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FleetVehicleIdRouteImport
       parentRoute: typeof FleetRoute
     }
+    '/rent/portal/$rentalId': {
+      id: '/rent/portal/$rentalId'
+      path: '/rent/portal/$rentalId'
+      fullPath: '/rent/portal/$rentalId'
+      preLoaderRoute: typeof RentPortalRentalIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -611,9 +631,20 @@ const rootRouteChildren: RootRouteChildren = {
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
   SignTokenRoute: SignTokenRoute,
+  RentPortalRentalIdRoute: RentPortalRentalIdRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
