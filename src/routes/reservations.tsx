@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { rentals, payments, vehicleById, driverById, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, pendingExpiresAt } from "@/lib/mock/store";
+import { useStoreVersion, pendingExpiresAt, currentPeriodPaid } from "@/lib/mock/store";
 import { ExternalLink, Search } from "lucide-react";
 import type { Rental } from "@/lib/mock/data";
 
@@ -138,6 +138,7 @@ function AllReservationsPage() {
               <TableHead className="text-right">Paid</TableHead>
               <TableHead className="text-right">Balance</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Paid</TableHead>
               <TableHead>Signed</TableHead>
               <TableHead className="w-10" />
             </TableRow>
@@ -145,7 +146,7 @@ function AllReservationsPage() {
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={11} className="py-10 text-center text-sm text-muted-foreground">
                   No reservations match your filters.
                 </TableCell>
               </TableRow>
@@ -189,6 +190,11 @@ function AllReservationsPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={label.tone}>{label.label}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {currentPeriodPaid(r)
+                      ? <Badge variant="secondary" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">Paid</Badge>
+                      : <Badge variant="destructive">Unpaid</Badge>}
                   </TableCell>
                   <TableCell>
                     {r.signedAt ? <span className="text-emerald-600">✓ {fmtDate(r.signedAt.slice(0, 10))}</span> : <span className="text-muted-foreground">—</span>}
