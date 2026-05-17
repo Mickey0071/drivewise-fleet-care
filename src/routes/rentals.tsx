@@ -60,6 +60,8 @@ function RentalsPage() {
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
   const getSignLinkFn = useServerFn(getSigningLink);
+  const sendPayLinkFn = useServerFn(sendPaymentLink);
+  const [payLinkSendingId, setPayLinkSendingId] = useState<string | null>(null);
   useStoreVersion();
   // Notify staff when a remote signature arrives (via realtime) and the
   // reservation flips from pending → active.
