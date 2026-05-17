@@ -11,7 +11,7 @@ async function ghlFetch(path: string, body: unknown) {
   const res = await fetch(`${GHL_BASE}${path}`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${getEnv("GHL_PIT_TOKEN")}`,
+      Authorization: `Bearer ${getEnv("ghlPitToken")}`,
       Version: GHL_VERSION,
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -29,7 +29,7 @@ async function ghlGet(path: string) {
   const res = await fetch(`${GHL_BASE}${path}`, {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${getEnv("GHL_PIT_TOKEN")}`,
+      Authorization: `Bearer ${getEnv("ghlPitToken")}`,
       Version: GHL_VERSION,
       Accept: "application/json",
     },
