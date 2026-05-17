@@ -60,11 +60,23 @@ export function ShareRentalDialog({
     if (!vehicle) return;
     const r = Number(rate);
     if (!r || r <= 0) return toast.error("Enter a valid rate");
+    const cleanPhone = phone.trim();
+    const willSend = cleanPhone.length >= 7;
     setCreating(true);
     try {
       const res = await create({ data: { vehicleId: vehicle.id, startDate, billingPeriod, rate: r } });
       setToken(res.token);
-      toast.success("Share link generated");
+      const newUrl = `${PUBLIC_APP_ORIGIN}/rent/${res.token}`;
+      if (willSend) {
+        try {
+          await sendSms({ data: { token: res.token, url: newUrl, phone: cleanPhone, name: name.trim() || undefined } });
+          toast.success(`Link sent to ${cleanPhone}`);
+        } catch (e) {
+          toast.error(e instanceof Error ? `Link created, SMS failed: ${e.message}` : "Link created, SMS failed");
+        }
+      } else {
+        toast.success("Share link generated");
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to create link");
     } finally {
@@ -123,39 +135,57 @@ export function ShareRentalDialog({
             <div className="text-xs text-muted-foreground">Plate {vehicle.plate}</div>
           </div>
 
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="share-start">Start date</Label>
+              <Input id="share-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={!!token} />
+            </div>
+            <div>
+              <Label htmlFor="share-period">Billing period</Label>
+              <Select value={billingPeriod} onValueChange={(v) => setBillingPeriod(v as "daily" | "weekly" | "monthly")} disabled={!!token}>
+                <SelectTrigger id="share-period"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="share-rate">Rate ($)</Label>
+            <Input
+              id="share-rate"
+              type="number"
+              inputMode="decimal"
+              value={rate}
+              onChange={(e) => setRate(e.target.value)}
+              disabled={!!token}
+            />
+          </div>
+
+          <div className="rounded-md border border-border p-3 space-y-2">
+            <Label htmlFor="share-name" className="text-sm">Customer name (optional)</Label>
+            <Input id="share-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" />
+
+            <Label htmlFor="share-phone" className="flex items-center gap-2 text-sm pt-2"><MessageSquare className="h-4 w-4" /> Customer phone</Label>
+            <Input
+              id="share-phone"
+              type="tel"
+              inputMode="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+1 555 555 5555"
+            />
+            <p className="text-xs text-muted-foreground">Use country code, e.g. +1 555 555 5555. 10-digit US numbers also work. Leave blank to just generate a link.</p>
+          </div>
+
           {!token ? (
-            <>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="share-start">Start date</Label>
-                  <Input id="share-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                </div>
-                <div>
-                  <Label htmlFor="share-period">Billing period</Label>
-                  <Select value={billingPeriod} onValueChange={(v) => setBillingPeriod(v as "daily" | "weekly" | "monthly")}>
-                    <SelectTrigger id="share-period"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="share-rate">Rate ($)</Label>
-                <Input
-                  id="share-rate"
-                  type="number"
-                  inputMode="decimal"
-                  value={rate}
-                  onChange={(e) => setRate(e.target.value)}
-                />
-              </div>
-              <Button type="button" onClick={handleCreate} disabled={creating} className="w-full">
-                {creating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating…</> : <><Link2 className="h-4 w-4" /> Generate share link</>}
-              </Button>
-            </>
+            <Button type="button" onClick={handleCreate} disabled={creating} className="w-full">
+              {creating ? <><Loader2 className="h-4 w-4 animate-spin" /> Working…</> : phone.trim().length >= 7
+                ? <><MessageSquare className="h-4 w-4" /> Generate & text link</>
+                : <><Link2 className="h-4 w-4" /> Generate share link</>}
+            </Button>
           ) : (
             <>
               <div>
@@ -167,29 +197,9 @@ export function ShareRentalDialog({
                 <p className="mt-1 text-xs text-muted-foreground">Anyone with this link can apply to rent this vehicle. Expires in 60 days.</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="share-name">Customer name (optional)</Label>
-                <Input id="share-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" />
-              </div>
-
-              <div className="rounded-md border border-border p-3 space-y-2">
-                <Label htmlFor="share-phone" className="flex items-center gap-2 text-sm"><MessageSquare className="h-4 w-4" /> Text to customer</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="share-phone"
-                    type="tel"
-                    inputMode="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+1 555 555 5555"
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSendSms(); } }}
-                  />
-                  <Button type="button" onClick={handleSendSms} disabled={smsLoading}>
-                    {smsLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</> : "Send link"}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">Use full number with country code, e.g. +1 555 555 5555. 10-digit US numbers also work.</p>
-              </div>
+              <Button type="button" onClick={handleSendSms} disabled={smsLoading} className="w-full" variant="secondary">
+                {smsLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</> : <><MessageSquare className="h-4 w-4" /> Resend SMS</>}
+              </Button>
 
               <div className="rounded-md border border-border p-3 space-y-2">
                 <Label htmlFor="share-email" className="flex items-center gap-2 text-sm"><Mail className="h-4 w-4" /> Send by email</Label>
