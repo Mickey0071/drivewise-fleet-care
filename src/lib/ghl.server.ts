@@ -53,7 +53,7 @@ function toE164(raw: string): string {
 export async function upsertContact(phone: string, name?: string | null): Promise<string> {
   const [firstName, ...rest] = (name || "").trim().split(/\s+/);
   const payload: Record<string, unknown> = {
-    locationId: getEnv("GHL_LOCATION_ID"),
+    locationId: getEnv("ghlLocationId"),
     phone,
   };
   if (firstName) payload.firstName = firstName;
