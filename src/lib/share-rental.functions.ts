@@ -396,10 +396,23 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       .eq("token", data.token);
 
     // Acknowledgment SMS
+    // First-payment Stripe checkout link
+    const amountCents = Math.round(Number(link.rate) * 100);
+    const periodLabel = link.billing_period === "daily" ? "day" : link.billing_period === "monthly" ? "month" : "week";
+    const description = `Camauto Rentals: first ${periodLabel} payment for ${link.vehicle_id}`;
+    const paymentUrl = await createRentalCheckoutUrl({
+      rentalId,
+      amountCents,
+      description,
+      customerEmail: data.email.trim(),
+    });
+
     try {
       await sendSms(
         data.phone.trim(),
-        "Camauto Rentals: Thanks! Your application has been received. We'll be in touch shortly to confirm pickup.",
+        paymentUrl
+          ? `Camauto Rentals: Thanks ${data.fullName.trim().split(" ")[0]}! Pay your first ${periodLabel} ($${(amountCents/100).toFixed(2)}) to confirm pickup: ${paymentUrl}`
+          : "Camauto Rentals: Thanks! Your application has been received. We'll be in touch shortly to confirm pickup.",
         data.fullName.trim(),
       );
     } catch (e) {
@@ -426,5 +439,5 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       console.error("admin notify sms failed", e);
     }
 
-    return { ok: true, rentalId };
+    return { ok: true, rentalId, paymentUrl };
   });
