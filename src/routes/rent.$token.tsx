@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SignaturePad } from "@/components/app/SignaturePad";
+import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { toast } from "sonner";
-import { CheckCircle2, Loader2, Camera, FileSignature, IdCard, User } from "lucide-react";
+import { CheckCircle2, Loader2, Camera, FileSignature, IdCard, User, ArrowLeft, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/rent/$token")({
   head: () => ({ meta: [{ title: "Rent a vehicle — Camauto Rentals" }] }),
@@ -30,10 +30,11 @@ function RentPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
-  const [licenseExpiry, setLicenseExpiry] = useState("");
-  const [rideshare, setRideshare] = useState<"Uber" | "Lyft" | "Both">("Uber");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [stateRegion, setStateRegion] = useState("");
+  const [zip, setZip] = useState("");
   const [licenseUrl, setLicenseUrl] = useState<string | null>(null);
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [sig, setSig] = useState<string | null>(null);
@@ -41,6 +42,7 @@ function RentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [step, setStep] = useState<"details" | "agreement" | "sign">("details");
 
   useEffect(() => {
     fetchInfo({ data: { token } })
@@ -55,8 +57,9 @@ function RentPage() {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return toast.error("Enter a valid email address");
     if (!dateOfBirth) return toast.error("Enter your date of birth");
     if (!address.trim()) return toast.error("Enter your street address");
+    if (!city.trim()) return toast.error("Enter your city");
+    if (!stateRegion.trim()) return toast.error("Enter your state");
     if (!licenseNumber.trim()) return toast.error("Enter your license number");
-    if (!licenseExpiry) return toast.error("Enter your license expiry");
     if (!licenseUrl) return toast.error("Upload your driver's license");
     if (!selfieUrl) return toast.error("Take a selfie");
     if (!sig) return toast.error("Sign the agreement");
@@ -69,10 +72,11 @@ function RentPage() {
           phone: phone.trim(),
           email: email.trim(),
           licenseNumber: licenseNumber.trim(),
-          licenseExpiry,
-          rideshare,
           dateOfBirth: dateOfBirth || undefined,
           address: address.trim() || undefined,
+          city: city.trim() || undefined,
+          state: stateRegion.trim() || undefined,
+          zip: zip.trim() || undefined,
           licenseDataUrl: licenseUrl,
           selfieDataUrl: selfieUrl,
           signatureDataUrl: sig,
