@@ -1106,7 +1106,7 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
   if (!rental) return <Dialog open={false} onOpenChange={() => {}}><DialogContent /></Dialog>;
   const currentV = vehicleById(rental.vehicleId);
   const d = driverById(rental.driverId);
-  const available = vehicles.filter(v => v.status === "available" && v.id !== rental.vehicleId);
+  const available = vehicles.filter(v => isVehicleBookable(v.id) && v.id !== rental.vehicleId);
   function confirm() {
     if (!rental || !newVehicleId) { toast.error("Pick a replacement vehicle"); return; }
     try {
