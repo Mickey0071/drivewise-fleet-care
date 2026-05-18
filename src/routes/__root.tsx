@@ -217,7 +217,7 @@ function AuthGate() {
       </div>
     );
   }
-  if (isPublic) return <Outlet />;
+  if (isPublic) return <><Outlet /><Toaster /></>;
   if (!session) return null;
   if (!role) {
     return (
