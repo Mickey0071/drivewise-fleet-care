@@ -524,6 +524,35 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
 
           {step === 3 && (
             <div className="space-y-3">
+              {vehicle && awaitingPostReturnInspection(vehicle.id) && (
+                <div className="rounded-lg border border-destructive/60 bg-destructive/10 p-3 text-sm">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                    <div className="flex-1">
+                      <div className="font-semibold text-destructive">Post-return inspection required</div>
+                      <p className="mt-1 text-muted-foreground">
+                        This vehicle was just returned. A runner must submit a passing checklist before it can be rented again.
+                      </p>
+                      <Link
+                        to="/checklist"
+                        className="mt-2 inline-flex text-xs font-medium text-primary hover:underline"
+                      >
+                        Open runner checklist →
+                      </Link>
+                      {isAdmin && (
+                        <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={inspectionOverride}
+                            onChange={(e) => setInspectionOverride(e.target.checked)}
+                          />
+                          <span>Override — book without inspection (admin)</span>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               <ReviewRow icon={<Car className="h-4 w-4" />} label="Vehicle" value={vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model} · ${vehicle.plate}` : "—"} />
               <ReviewRow icon={<User className="h-4 w-4" />} label="Client" value={driver ? `${driver.fullName} · ${driver.phone}` : "—"} />
               <ReviewRow icon={<CalendarDays className="h-4 w-4" />} label="Dates" value={`${startDate ? fmtDate(startDate) : "—"}${endDate ? ` → ${fmtDate(endDate)}` : " · open-ended"}`} />
