@@ -1,4 +1,4 @@
-export type VehicleStatus = "available" | "rented" | "maintenance" | "impound";
+export type VehicleStatus = "available" | "rented" | "inspection" | "maintenance" | "impound";
 export type DriverStatus = "active" | "suspended" | "pending";
 export type PayStatus = "current" | "late" | "defaulted";
 export type PaymentStatus = "paid" | "late" | "missed";
