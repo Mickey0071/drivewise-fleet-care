@@ -12,6 +12,8 @@ type AuthCtx = {
   loading: boolean;
   roleLoading: boolean;
   roleError: string | null;
+  mustResetPassword: boolean;
+  refreshMustReset: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signInWithGoogle: () => Promise<{ error?: string }>;
   resetPassword: (email: string) => Promise<{ error?: string }>;
@@ -26,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roleLoading, setRoleLoading] = useState(false);
   const [roleError, setRoleError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mustResetPassword, setMustResetPassword] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -34,22 +37,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       if (s?.user) {
         setRole(null);
-        setTimeout(() => fetchRole(s.user.id), 0);
+        setTimeout(() => { fetchRole(s.user.id); fetchMustReset(s.user.id); }, 0);
       } else {
         setRole(null);
         setRoleError(null);
         setRoleLoading(false);
+        setMustResetPassword(false);
       }
     });
     supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return;
       setSession(data.session);
-      if (data.session?.user) await fetchRole(data.session.user.id);
+      if (data.session?.user) {
+        await fetchRole(data.session.user.id);
+        await fetchMustReset(data.session.user.id);
+      }
       else setRoleLoading(false);
       setLoading(false);
     });
     return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, []);
+
+  async function fetchMustReset(userId: string) {
+    const { data } = await supabase.from("profiles").select("must_reset_password").eq("id", userId).maybeSingle();
+    setMustResetPassword(Boolean(data?.must_reset_password));
+  }
 
   async function fetchRole(userId: string) {
     setRoleLoading(true);
@@ -81,6 +93,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     roleLoading,
     roleError,
+    mustResetPassword,
+    async refreshMustReset() {
+      if (session?.user) await fetchMustReset(session.user.id);
+    },
     async signIn(email, password) {
       const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
       return { error: error?.message };
@@ -99,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(null);
       setRoleError(null);
       setRoleLoading(false);
+      setMustResetPassword(false);
       await supabase.auth.signOut();
     },
   };

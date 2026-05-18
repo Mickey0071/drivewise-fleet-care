@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { useServerFn } from "@tanstack/react-start";
+import { clearMustResetPassword } from "@/lib/admin-users.functions";
 import logo from "@/assets/camauto-logo.jpeg";
 
 export const Route = createFileRoute("/reset-password")({
@@ -16,6 +19,8 @@ export const Route = createFileRoute("/reset-password")({
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
+  const { session, mustResetPassword, refreshMustReset } = useAuth();
+  const clearFlag = useServerFn(clearMustResetPassword);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -37,12 +42,14 @@ function ResetPasswordPage() {
     }
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password });
-    setBusy(false);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Password updated");
-      navigate({ to: "/login" });
+    if (error) { setBusy(false); toast.error(error.message); return; }
+    if (session && mustResetPassword) {
+      try { await clearFlag(); await refreshMustReset(); } catch (e) { console.error(e); }
     }
+    setBusy(false);
+    toast.success("Password updated");
+    if (session) navigate({ to: "/" });
+    else navigate({ to: "/login" });
   }
 
   return (
