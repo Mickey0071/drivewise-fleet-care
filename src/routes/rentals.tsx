@@ -1251,7 +1251,12 @@ function ReceiptDialog({ rental, onClose }: { rental: Rental | null; onClose: ()
   return (
     <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Receipt — {rental?.id}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <div className="flex items-center gap-3">
+            <img src={logoUrl} alt="Camauto" className="h-10 w-auto object-contain" />
+            <DialogTitle>Camauto Receipt — {rental?.id}</DialogTitle>
+          </div>
+        </DialogHeader>
         {rental && v && d && (
           <div className="space-y-3 text-sm">
             <div className="rounded-lg border bg-muted/30 p-3">
