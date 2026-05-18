@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { vehicles, payments, maintenance, drivers, rentals, fmtMoney, fmtDate, vehicleById, driverById } from "@/lib/mock/data";
+import { isVehicleBookable } from "@/lib/mock/store";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -13,11 +14,11 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const counts = {
-    available: vehicles.filter(v => v.status === "available").length,
-    rented: vehicles.filter(v => v.status === "rented").length,
+    available: vehicles.filter(v => isVehicleBookable(v.id)).length,
+    rented: vehicles.filter(v => !isVehicleBookable(v.id) && v.status === "rented").length,
     maintenance: vehicles.filter(v => v.status === "maintenance").length,
     impound: vehicles.filter(v => v.status === "impound").length,
-    pending: rentals.filter(r => r.reservationStatus === "pending").length,
+    pending: rentals.filter(r => r.reservationStatus === "pending" && !r.endDate).length,
   };
   const today = new Date();
   const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
