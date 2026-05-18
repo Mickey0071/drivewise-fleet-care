@@ -183,7 +183,7 @@ function AuthGate() {
       navigate({ to: home });
     }
     // Non-admin users (runners/drivers) use the runner hub — restrict their routes
-    if (role !== "admin") {
+    if (role === "runner" || role === "driver") {
       const allowed = RUNNER_ALLOWED.some(p => path === p || path.startsWith(p + "/"));
       if (!allowed) navigate({ to: "/checklist" });
     }
@@ -211,7 +211,7 @@ function AuthGate() {
   if (isPublic) return <Outlet />;
   if (!session) return null;
 
-  if (role && role !== "admin") {
+  if (role === "runner" || role === "driver") {
     return (
       <>
         <RunnerLayout />
