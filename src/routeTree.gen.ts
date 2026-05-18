@@ -35,6 +35,7 @@ import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
+import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
 
@@ -168,6 +169,11 @@ const RentPortalRentalIdRoute = RentPortalRentalIdRouteImport.update({
   path: '/rent/portal/$rentalId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InspectVehicleIdTokenRoute = InspectVehicleIdTokenRouteImport.update({
+  id: '/inspect/$vehicleId/$token',
+  path: '/inspect/$vehicleId/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/sign/$token': typeof SignTokenRoute
+  '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -237,6 +244,7 @@ export interface FileRoutesByTo {
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/sign/$token': typeof SignTokenRoute
+  '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -268,6 +276,7 @@ export interface FileRoutesById {
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/sign/$token': typeof SignTokenRoute
+  '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -300,6 +309,7 @@ export interface FileRouteTypes {
     | '/rent/$token'
     | '/rent/paid'
     | '/sign/$token'
+    | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
@@ -330,6 +340,7 @@ export interface FileRouteTypes {
     | '/rent/$token'
     | '/rent/paid'
     | '/sign/$token'
+    | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
@@ -360,6 +371,7 @@ export interface FileRouteTypes {
     | '/rent/$token'
     | '/rent/paid'
     | '/sign/$token'
+    | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
@@ -390,6 +402,7 @@ export interface RootRouteChildren {
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
   SignTokenRoute: typeof SignTokenRoute
+  InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -579,6 +592,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RentPortalRentalIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/inspect/$vehicleId/$token': {
+      id: '/inspect/$vehicleId/$token'
+      path: '/inspect/$vehicleId/$token'
+      fullPath: '/inspect/$vehicleId/$token'
+      preLoaderRoute: typeof InspectVehicleIdTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -631,6 +651,7 @@ const rootRouteChildren: RootRouteChildren = {
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
   SignTokenRoute: SignTokenRoute,
+  InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,

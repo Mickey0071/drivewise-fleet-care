@@ -5,7 +5,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicles, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, swapVehicle } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, markReturnedAwaitingInspection, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, swapVehicle } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
@@ -22,6 +22,7 @@ import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
+import { startReturnInspection } from "@/lib/inspection.functions";
 import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
@@ -708,6 +709,7 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
   const d = rental ? driverById(rental.driverId) : null;
   const checkout = rental ? getInspectionsForRental(rental.id).find(i => i.type === "check-out") : undefined;
   const sendSmsFn = useServerFn(sendRentalSms);
+  const startInspectionFn = useServerFn(startReturnInspection);
   const settings = useAgreementSettings();
   const [mileage, setMileage] = useState(0);
   const [fuelLevel, setFuelLevel] = useState(100);
@@ -780,11 +782,27 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
     const noteParts = [rental.notes, checklistSummary, notes.trim() ? `Return: ${notes.trim()}` : ""].filter(Boolean);
     updateRental(rental.id, { notes: noteParts.join(" · ") });
     try { localStorage.removeItem(`return-checklist:${rental.id}`); } catch { /* ignore */ }
-    markReturned(rental.id);
+    markReturnedAwaitingInspection(rental.id);
     const drove = checkout ? mileage - checkout.mileage : 0;
-    toast.success("Vehicle returned", {
+    toast.success("Vehicle returned — awaiting runner inspection", {
       description: `${v.year} ${v.make} ${v.model}${drove > 0 ? ` · ${drove.toLocaleString()} mi driven` : ""}`,
     });
+    // Kick off runner inspection (SMS public link)
+    const runnerPhone = settings.company.runnerInspectionPhone?.trim();
+    if (!runnerPhone) {
+      toast.warning("No runner inspection phone configured", { description: "Set it under Rental Agreement → Company." });
+    } else {
+      const origin = getPublicAppOrigin();
+      startInspectionFn({ data: {
+        vehicleId: v.id,
+        rentalId: rental.id,
+        runnerPhone,
+        origin,
+        vehicleLabel: `${v.year} ${v.make} ${v.model} (${v.plate})`,
+      }})
+        .then(() => toast.success("Runner inspection link sent"))
+        .catch(e => toast.error("Could not send inspection link", { description: e instanceof Error ? e.message : String(e) }));
+    }
     onClose();
   }
   return (

@@ -1,4 +1,4 @@
-export type VehicleStatus = "available" | "rented" | "maintenance" | "impound";
+export type VehicleStatus = "available" | "rented" | "inspection" | "maintenance" | "impound";
 export type DriverStatus = "active" | "suspended" | "pending";
 export type PayStatus = "current" | "late" | "defaulted";
 export type PaymentStatus = "paid" | "late" | "missed";
@@ -36,7 +36,7 @@ export interface Rental {
   signedAt?: string;
   signedBy?: string;
   agreementVersion?: string;
-  reservationStatus?: "pending" | "active" | "completed";
+  reservationStatus?: "pending" | "active" | "completed" | "returned";
   pendingCreatedAt?: string;
   paymentReceived?: boolean;
   extensions?: RentalExtension[];

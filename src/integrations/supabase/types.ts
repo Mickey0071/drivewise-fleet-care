@@ -458,6 +458,30 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_inspections: {
+        Row: {
+          created_at: string
+          rental_id: string
+          runner_phone: string | null
+          token: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          rental_id: string
+          runner_phone?: string | null
+          token: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          rental_id?: string
+          runner_phone?: string | null
+          token?: string
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

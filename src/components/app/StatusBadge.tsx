@@ -13,16 +13,22 @@ const toneClasses: Record<Tone, string> = {
 const map: Record<string, Tone> = {
   available: "success", paid: "success", current: "success", active: "success", sent: "success",
   rented: "info", "check-in": "info", "check-out": "info",
-  maintenance: "warning", late: "warning", pending: "warning", contested: "warning", draft: "warning",
+  maintenance: "warning", late: "warning", pending: "warning", contested: "warning", draft: "warning", inspection: "warning",
   impound: "danger", missed: "danger", defaulted: "danger", suspended: "danger", failed: "danger",
   inactive: "muted", approved: "info",
 };
 
+const labelOverrides: Record<string, string> = {
+  inspection: "Inspection Pending",
+};
+
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
-  const tone = map[status.toLowerCase()] ?? "muted";
+  const key = status.toLowerCase();
+  const tone = map[key] ?? "muted";
+  const label = labelOverrides[key] ?? status;
   return (
     <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize", toneClasses[tone], className)}>
-      {status}
+      {label}
     </span>
   );
 }

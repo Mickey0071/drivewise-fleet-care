@@ -703,6 +703,22 @@ export function markReturned(id: string, endDate?: string) {
   emit();
 }
 
+/** Mark a rental returned but leave the vehicle in "inspection" status
+ *  until the runner submits the post-return inspection. */
+export function markReturnedAwaitingInspection(id: string, endDate?: string) {
+  const r = rentals.find(r => r.id === id);
+  if (!r) return;
+  r.endDate = endDate || new Date().toISOString().slice(0, 10);
+  r.reservationStatus = "returned";
+  const v = vehicles.find(v => v.id === r.vehicleId);
+  if (v) {
+    v.status = "inspection";
+    cloudWrite("vehicle:update", supabase.from("vehicles").update({ status: "inspection" }).eq("id", v.id));
+  }
+  cloudWrite("rental:update", supabase.from("rentals").update({ ...toRental(r), reservation_status: "returned" }).eq("id", r.id));
+  emit();
+}
+
 /** Swap the vehicle on an active rental. Old vehicle → available, new → rented. */
 export function swapVehicle(rentalId: string, newVehicleId: string) {
   const r = rentals.find(x => x.id === rentalId);
