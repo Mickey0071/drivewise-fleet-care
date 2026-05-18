@@ -12,6 +12,7 @@ import { sendSigningLink } from "@/lib/sign.functions";
 import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus, Repeat, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { US_STATES, formatAddressBlock, formatFullName } from "@/lib/us-states";
 
 const STEPS = ["Vehicle", "Client", "Dates", "Review"] as const;
 type Step = 0 | 1 | 2 | 3;
@@ -50,7 +51,16 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [vehQ, setVehQ] = useState("");
   const [drvQ, setDrvQ] = useState("");
   const [showAddDriver, setShowAddDriver] = useState(false);
-  const [newDriver, setNewDriver] = useState({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber" as "Uber" | "Lyft" | "Both", dateOfBirth: "", address: "" });
+  const emptyDriver = {
+    firstName: "", middleInitial: "", lastName: "",
+    phone: "", email: "",
+    licenseNumber: "", dlState: "", licenseExpiry: "",
+    rideshare: "Uber" as "Uber" | "Lyft" | "Both",
+    dateOfBirth: "",
+    streetAddress: "", aptUnit: "", city: "", state: "", zipCode: "",
+    altContactName: "", altContactPhone: "",
+  };
+  const [newDriver, setNewDriver] = useState(emptyDriver);
   const [isSwap, setIsSwap] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -87,28 +97,51 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     setDeposit(300); setNotes(""); setVehQ(""); setDrvQ("");
     setShowAddDriver(false);
     setIsSwap(false);
-    setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber", dateOfBirth: "", address: "" });
+    setNewDriver(emptyDriver);
   }
   async function createDriver() {
-    if (!newDriver.fullName.trim()) {
-      toast.error("Name required");
+    if (!newDriver.firstName.trim() || !newDriver.lastName.trim()) {
+      toast.error("First and last name are required");
       return;
     }
+    const fullName = formatFullName({
+      firstName: newDriver.firstName,
+      middleInitial: newDriver.middleInitial,
+      lastName: newDriver.lastName,
+    });
+    const address = formatAddressBlock({
+      streetAddress: newDriver.streetAddress,
+      aptUnit: newDriver.aptUnit,
+      city: newDriver.city,
+      state: newDriver.state,
+      zipCode: newDriver.zipCode,
+    });
     try {
       const d = addDriver({
-        fullName: newDriver.fullName.trim(),
+        fullName,
         phone: newDriver.phone.trim() || "—",
         email: newDriver.email.trim() || "no-email@camauto.local",
         licenseNumber: newDriver.licenseNumber.trim() || "—",
-        licenseExpiry: "2030-01-01",
+        licenseExpiry: newDriver.licenseExpiry || "2030-01-01",
         rideshare: newDriver.rideshare,
         dateOfBirth: newDriver.dateOfBirth || undefined,
-        address: newDriver.address.trim() || undefined,
+        address: address || undefined,
+        firstName: newDriver.firstName.trim(),
+        middleInitial: newDriver.middleInitial.trim() || undefined,
+        lastName: newDriver.lastName.trim(),
+        dlState: newDriver.dlState || undefined,
+        streetAddress: newDriver.streetAddress.trim() || undefined,
+        aptUnit: newDriver.aptUnit.trim() || undefined,
+        city: newDriver.city.trim() || undefined,
+        state: newDriver.state || undefined,
+        zipCode: newDriver.zipCode.trim() || undefined,
+        altContactName: newDriver.altContactName.trim() || undefined,
+        altContactPhone: newDriver.altContactPhone.trim() || undefined,
       });
       await (d as { cloudReady?: Promise<unknown> }).cloudReady;
       setDriverId(d.id);
       setShowAddDriver(false);
-      setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber", dateOfBirth: "", address: "" });
+      setNewDriver(emptyDriver);
       toast.success("Client saved", { description: d.fullName });
     } catch (e) {
       toast.error("Client was not saved", { description: e instanceof Error ? e.message : "Try again" });
@@ -279,7 +312,14 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                   type="button"
                   onClick={() => {
                     setShowAddDriver(true);
-                    if (drvQ.trim()) setNewDriver(n => ({ ...n, fullName: drvQ.trim() }));
+                    if (drvQ.trim()) {
+                      const parts = drvQ.trim().split(/\s+/);
+                      setNewDriver(n => ({
+                        ...n,
+                        firstName: parts[0] ?? "",
+                        lastName: parts.slice(1).join(" ") ?? "",
+                      }));
+                    }
                   }}
                   className="flex w-full items-center gap-3 rounded-lg border border-dashed bg-card p-3 text-left text-sm transition hover:border-primary/50 hover:bg-muted/50"
                 >
@@ -296,14 +336,45 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                     <div className="font-medium">New client</div>
                     <button type="button" onClick={() => setShowAddDriver(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div><Label htmlFor="nd-name">Full name</Label><Input id="nd-name" value={newDriver.fullName} onChange={e => setNewDriver({ ...newDriver, fullName: e.target.value })} /></div>
-                    <div><Label htmlFor="nd-phone">Phone</Label><Input id="nd-phone" value={newDriver.phone} onChange={e => setNewDriver({ ...newDriver, phone: e.target.value })} /></div>
-                    <div><Label htmlFor="nd-email">Email</Label><Input id="nd-email" type="email" value={newDriver.email} onChange={e => setNewDriver({ ...newDriver, email: e.target.value })} /></div>
-                    <div><Label htmlFor="nd-lic">License #</Label><Input id="nd-lic" value={newDriver.licenseNumber} onChange={e => setNewDriver({ ...newDriver, licenseNumber: e.target.value })} /></div>
-                    <div><Label htmlFor="nd-dob">Date of birth</Label><Input id="nd-dob" type="date" value={newDriver.dateOfBirth} onChange={e => setNewDriver({ ...newDriver, dateOfBirth: e.target.value })} /></div>
-                    <div className="sm:col-span-2"><Label htmlFor="nd-addr">Address</Label><Input id="nd-addr" placeholder="123 Main St, Camden, NJ 08104" value={newDriver.address} onChange={e => setNewDriver({ ...newDriver, address: e.target.value })} /></div>
-                    <div className="sm:col-span-2">
+                  <div className="space-y-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Personal</div>
+                    <div className="grid gap-3 sm:grid-cols-6">
+                      <div className="sm:col-span-3"><Label htmlFor="nd-fn">First name *</Label><Input id="nd-fn" value={newDriver.firstName} onChange={e => setNewDriver({ ...newDriver, firstName: e.target.value })} /></div>
+                      <div className="sm:col-span-1"><Label htmlFor="nd-mi">M.I.</Label><Input id="nd-mi" maxLength={2} value={newDriver.middleInitial} onChange={e => setNewDriver({ ...newDriver, middleInitial: e.target.value })} /></div>
+                      <div className="sm:col-span-2"><Label htmlFor="nd-ln">Last name *</Label><Input id="nd-ln" value={newDriver.lastName} onChange={e => setNewDriver({ ...newDriver, lastName: e.target.value })} /></div>
+                      <div className="sm:col-span-2"><Label htmlFor="nd-phone">Phone</Label><Input id="nd-phone" value={newDriver.phone} onChange={e => setNewDriver({ ...newDriver, phone: e.target.value })} /></div>
+                      <div className="sm:col-span-2"><Label htmlFor="nd-email">Email</Label><Input id="nd-email" type="email" value={newDriver.email} onChange={e => setNewDriver({ ...newDriver, email: e.target.value })} /></div>
+                      <div className="sm:col-span-2"><Label htmlFor="nd-dob">Date of birth</Label><Input id="nd-dob" type="date" value={newDriver.dateOfBirth} onChange={e => setNewDriver({ ...newDriver, dateOfBirth: e.target.value })} /></div>
+                    </div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">License</div>
+                    <div className="grid gap-3 sm:grid-cols-6">
+                      <div className="sm:col-span-3"><Label htmlFor="nd-lic">DL number</Label><Input id="nd-lic" value={newDriver.licenseNumber} onChange={e => setNewDriver({ ...newDriver, licenseNumber: e.target.value })} /></div>
+                      <div className="sm:col-span-1">
+                        <Label htmlFor="nd-dls">DL state</Label>
+                        <select id="nd-dls" className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm" value={newDriver.dlState} onChange={e => setNewDriver({ ...newDriver, dlState: e.target.value })}>
+                          <option value="">—</option>
+                          {US_STATES.map(s => <option key={s.code} value={s.code}>{s.code}</option>)}
+                        </select>
+                      </div>
+                      <div className="sm:col-span-2"><Label htmlFor="nd-lex">DL expiration</Label><Input id="nd-lex" type="date" value={newDriver.licenseExpiry} onChange={e => setNewDriver({ ...newDriver, licenseExpiry: e.target.value })} /></div>
+                    </div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">Address &amp; Alternate Contact</div>
+                    <div className="grid gap-3 sm:grid-cols-6">
+                      <div className="sm:col-span-4"><Label htmlFor="nd-st">Street address</Label><Input id="nd-st" placeholder="123 Main St" value={newDriver.streetAddress} onChange={e => setNewDriver({ ...newDriver, streetAddress: e.target.value })} /></div>
+                      <div className="sm:col-span-2"><Label htmlFor="nd-apt">Apt / Unit</Label><Input id="nd-apt" placeholder="4B" value={newDriver.aptUnit} onChange={e => setNewDriver({ ...newDriver, aptUnit: e.target.value })} /></div>
+                      <div className="sm:col-span-3"><Label htmlFor="nd-city">City</Label><Input id="nd-city" value={newDriver.city} onChange={e => setNewDriver({ ...newDriver, city: e.target.value })} /></div>
+                      <div className="sm:col-span-1">
+                        <Label htmlFor="nd-state">State</Label>
+                        <select id="nd-state" className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm" value={newDriver.state} onChange={e => setNewDriver({ ...newDriver, state: e.target.value })}>
+                          <option value="">—</option>
+                          {US_STATES.map(s => <option key={s.code} value={s.code}>{s.code}</option>)}
+                        </select>
+                      </div>
+                      <div className="sm:col-span-2"><Label htmlFor="nd-zip">ZIP</Label><Input id="nd-zip" placeholder="08081" value={newDriver.zipCode} onChange={e => setNewDriver({ ...newDriver, zipCode: e.target.value })} /></div>
+                      <div className="sm:col-span-3"><Label htmlFor="nd-altn">Alt contact name</Label><Input id="nd-altn" value={newDriver.altContactName} onChange={e => setNewDriver({ ...newDriver, altContactName: e.target.value })} /></div>
+                      <div className="sm:col-span-3"><Label htmlFor="nd-altp">Alt contact phone</Label><Input id="nd-altp" placeholder="+12675551234" value={newDriver.altContactPhone} onChange={e => setNewDriver({ ...newDriver, altContactPhone: e.target.value })} /></div>
+                    </div>
+                    <div>
                       <Label htmlFor="nd-rs">Rideshare</Label>
                       <select id="nd-rs" className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm" value={newDriver.rideshare} onChange={e => setNewDriver({ ...newDriver, rideshare: e.target.value as "Uber" | "Lyft" | "Both" })}>
                         <option value="Uber">Uber</option>
