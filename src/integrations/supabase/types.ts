@@ -160,6 +160,7 @@ export type Database = {
           inspector_name: string | null
           job_type: string | null
           mileage: number
+          notes: string | null
           ready_to_rent: boolean | null
           rental_id: string
           submitted_at: string | null
@@ -177,6 +178,7 @@ export type Database = {
           inspector_name?: string | null
           job_type?: string | null
           mileage?: number
+          notes?: string | null
           ready_to_rent?: boolean | null
           rental_id: string
           submitted_at?: string | null
@@ -194,6 +196,7 @@ export type Database = {
           inspector_name?: string | null
           job_type?: string | null
           mileage?: number
+          notes?: string | null
           ready_to_rent?: boolean | null
           rental_id?: string
           submitted_at?: string | null
