@@ -1213,6 +1213,8 @@ function ReceiptDialog({ rental, onClose }: { rental: Rental | null; onClose: ()
       <style>
         body{font-family:system-ui,sans-serif;max-width:680px;margin:24px auto;padding:0 16px;color:#111}
         h1{margin:0 0 4px;font-size:22px}
+        .brand{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+        .brand img{height:56px;width:auto;object-fit:contain}
         .meta{color:#666;font-size:12px;margin-bottom:24px}
         .box{border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;font-size:13px}
         table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
@@ -1223,7 +1225,7 @@ function ReceiptDialog({ rental, onClose }: { rental: Rental | null; onClose: ()
         .totals .grand{font-size:18px;font-weight:700;margin-top:6px}
         @media print { button{display:none} }
       </style></head><body>
-      <h1>Rentalprise Auto — Receipt</h1>
+      <div class="brand"><img src="${esc(new URL(logoUrl, window.location.origin).href)}" alt="Camauto"/><h1>Camauto — Receipt</h1></div>
       <div class="meta">Reservation ${esc(rental.id)} · Issued ${esc(new Date().toLocaleString())}</div>
       <div class="box">
         <strong>${esc(v.year)} ${esc(v.make)} ${esc(v.model)}</strong> · Plate ${esc(v.plate)} · VIN ${esc(v.vin)}<br/>
