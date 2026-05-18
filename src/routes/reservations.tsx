@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { rentals, payments, vehicleById, driverById, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { useStoreVersion, pendingExpiresAt, currentPeriodPaid } from "@/lib/mock/store";
@@ -231,6 +232,7 @@ function DetailSheet({ rental, onClose }: { rental: Rental | null; onClose: () =
   const balance = balanceFor(rental.id);
   const hold = pendingExpiresAt(rental);
   const rentalPayments = payments.filter((p) => p.rentalId === rental.id);
+  const hasDocs = !!(rental.licenseImageUrl || rental.selfieImageUrl || rental.clientSignatureUrl || rental.signatureDataUrl);
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
@@ -242,7 +244,15 @@ function DetailSheet({ rental, onClose }: { rental: Rental | null; onClose: () =
           </div>
         </SheetHeader>
 
-        <div className="mt-4 space-y-5 text-sm">
+        <Tabs defaultValue="overview" className="mt-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="documents">
+              Documents {hasDocs && <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="mt-4 space-y-5 text-sm">
           <Section title="Reservation">
             <Row k="Status" v={reservationLabel(rental).label} />
             <Row k="Start" v={fmtDate(rental.startDate)} />
@@ -308,9 +318,114 @@ function DetailSheet({ rental, onClose }: { rental: Rental | null; onClose: () =
             </Button>
             <Button variant="outline" onClick={onClose}>Close</Button>
           </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="documents" className="mt-4 space-y-5 text-sm">
+            {!hasDocs && (
+              <div className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
+                No documents uploaded yet. The renter uploads their license, selfie and signs the agreement from the signing link.
+              </div>
+            )}
+
+            <DocCard
+              title="Driver's License"
+              url={rental.licenseImageUrl}
+              emptyHint="Renter hasn't uploaded a license yet."
+            />
+            <DocCard
+              title="Selfie / ID Verification"
+              url={rental.selfieImageUrl}
+              emptyHint="Renter hasn't uploaded a selfie yet."
+            />
+            <DocCard
+              title="Renter Signature (signed agreement)"
+              url={rental.clientSignatureUrl}
+              emptyHint="Agreement not signed by renter yet."
+              caption={
+                rental.clientSignedAt
+                  ? `Signed ${new Date(rental.clientSignedAt).toLocaleString()}`
+                  : undefined
+              }
+              whiteBg
+            />
+            {rental.signatureDataUrl && !rental.clientSignatureUrl && (
+              <DocCard
+                title="In-store Signature"
+                url={rental.signatureDataUrl}
+                emptyHint=""
+                caption={rental.signedAt ? `Signed ${new Date(rental.signedAt).toLocaleString()}` : undefined}
+                whiteBg
+              />
+            )}
+
+            <div className="rounded-lg border p-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Rental Agreement
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <div>
+                  <div>Version: {rental.agreementVersion ?? "—"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {rental.signedAt
+                      ? `Signed ${new Date(rental.signedAt).toLocaleString()}`
+                      : "Not signed yet"}
+                  </div>
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/rentals">Open agreement</Link>
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function DocCard({
+  title,
+  url,
+  emptyHint,
+  caption,
+  whiteBg,
+}: {
+  title: string;
+  url?: string;
+  emptyHint: string;
+  caption?: string;
+  whiteBg?: boolean;
+}) {
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+        {url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            Open <ExternalLink className="h-3 w-3" />
+          </a>
+        )}
+      </div>
+      {url ? (
+        <a href={url} target="_blank" rel="noreferrer" className="block">
+          <img
+            src={url}
+            alt={title}
+            className={`max-h-64 w-full rounded border object-contain ${whiteBg ? "bg-white p-2" : "bg-muted/30"}`}
+          />
+          {caption && <div className="mt-1 text-xs text-muted-foreground">{caption}</div>}
+        </a>
+      ) : (
+        <div className="rounded border border-dashed p-4 text-center text-xs text-muted-foreground">
+          {emptyHint}
+        </div>
+      )}
+    </div>
   );
 }
 
