@@ -34,7 +34,7 @@ function RunnerPortalPage() {
   const tasks = useMemo<Task[]>(() => {
     const list: Task[] = [];
     // Deliveries pending (rentals without check-out inspection)
-    rentals.filter(r => !r.endDate).forEach(r => {
+    rentals.filter(r => !r.endDate && ((r.reservationStatus ?? "active") === "active" || r.reservationStatus === "pending")).forEach(r => {
       const insps = getInspectionsForRental(r.id);
       const delivered = insps.some(i => i.type === "check-out");
       if (!delivered) {
