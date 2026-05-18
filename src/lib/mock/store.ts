@@ -702,6 +702,29 @@ export function markReturned(id: string, endDate?: string) {
   emit();
 }
 
+/** Swap the vehicle on an active rental. Old vehicle → available, new → rented. */
+export function swapVehicle(rentalId: string, newVehicleId: string) {
+  const r = rentals.find(x => x.id === rentalId);
+  if (!r) throw new Error("Rental not found");
+  if (r.vehicleId === newVehicleId) throw new Error("Already on that vehicle");
+  const newV = vehicles.find(v => v.id === newVehicleId);
+  if (!newV) throw new Error("New vehicle not found");
+  if (newV.status !== "available") throw new Error("Target vehicle is not available");
+  const oldV = vehicles.find(v => v.id === r.vehicleId);
+  const oldVehicleId = r.vehicleId;
+  r.vehicleId = newVehicleId;
+  r.notes = [r.notes, `Swapped vehicle ${oldVehicleId} → ${newVehicleId} on ${new Date().toISOString().slice(0, 10)}`].filter(Boolean).join(" · ");
+  newV.status = "rented";
+  if (oldV) {
+    oldV.status = "available";
+    cloudWrite("vehicle:update", supabase.from("vehicles").update({ status: "available" }).eq("id", oldV.id));
+  }
+  cloudWrite("vehicle:update", supabase.from("vehicles").update({ status: "rented" }).eq("id", newV.id));
+  cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
+  emit();
+  return { oldVehicleId, newVehicle: newV };
+}
+
 /** Compute additional periods + charge for extending a rental. */
 export function computeExtensionCharge(rental: Rental, newEndDate: string): { periods: number; periodLabel: "day" | "week" | "month"; additionalAmount: number } {
   const period = rental.billingPeriod ?? "weekly";
