@@ -17,51 +17,84 @@ export type Database = {
       drivers: {
         Row: {
           address: string | null
+          alt_contact_name: string | null
+          alt_contact_phone: string | null
+          apt_unit: string | null
+          city: string | null
           created_at: string
           date_added: string
           date_of_birth: string | null
+          dl_state: string | null
           email: string
+          first_name: string | null
           full_name: string
           id: string
           insurance_on_file: boolean
+          last_name: string | null
           license_expiry: string
           license_number: string
+          middle_initial: string | null
           phone: string
           rideshare: string
+          state: string | null
           status: string
+          street_address: string | null
           updated_at: string
+          zip_code: string | null
         }
         Insert: {
           address?: string | null
+          alt_contact_name?: string | null
+          alt_contact_phone?: string | null
+          apt_unit?: string | null
+          city?: string | null
           created_at?: string
           date_added?: string
           date_of_birth?: string | null
+          dl_state?: string | null
           email: string
+          first_name?: string | null
           full_name: string
           id: string
           insurance_on_file?: boolean
+          last_name?: string | null
           license_expiry: string
           license_number: string
+          middle_initial?: string | null
           phone: string
           rideshare?: string
+          state?: string | null
           status?: string
+          street_address?: string | null
           updated_at?: string
+          zip_code?: string | null
         }
         Update: {
           address?: string | null
+          alt_contact_name?: string | null
+          alt_contact_phone?: string | null
+          apt_unit?: string | null
+          city?: string | null
           created_at?: string
           date_added?: string
           date_of_birth?: string | null
+          dl_state?: string | null
           email?: string
+          first_name?: string | null
           full_name?: string
           id?: string
           insurance_on_file?: boolean
+          last_name?: string | null
           license_expiry?: string
           license_number?: string
+          middle_initial?: string | null
           phone?: string
           rideshare?: string
+          state?: string | null
           status?: string
+          street_address?: string | null
           updated_at?: string
+          zip_code?: string | null
         }
         Relationships: []
       }
