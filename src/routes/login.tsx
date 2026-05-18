@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -10,21 +10,15 @@ import logo from "@/assets/camauto-logo.jpeg";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — Camauto Rentals" }] }),
-  validateSearch: (s: Record<string, unknown>) => ({ confirmed: s.confirmed === "1" || s.confirmed === 1 ? true : false }),
   component: LoginPage,
 });
 
 function LoginPage() {
   const { session, role, roleLoading, signIn, loading } = useAuth();
   const nav = useNavigate();
-  const { confirmed } = useSearch({ from: "/login" });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (confirmed) toast.success("Email confirmed! Sign in to request access.");
-  }, [confirmed]);
 
   useEffect(() => {
     if (loading || roleLoading || !session || !role) return;
