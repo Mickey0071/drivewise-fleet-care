@@ -28,6 +28,7 @@ import { Route as FleetRouteImport } from './routes/fleet'
 import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as DriversRouteImport } from './routes/drivers'
 import { Route as DriverPortalRouteImport } from './routes/driver-portal'
+import { Route as ChecklistRouteImport } from './routes/checklist'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
@@ -134,6 +135,11 @@ const DriverPortalRoute = DriverPortalRouteImport.update({
   path: '/driver-portal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChecklistRoute = ChecklistRouteImport.update({
+  id: '/checklist',
+  path: '/checklist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -190,6 +196,7 @@ const ApiPublicHooksSendRemindersRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/checklist': typeof ChecklistRoute
   '/driver-portal': typeof DriverPortalRoute
   '/drivers': typeof DriversRoute
   '/expenses': typeof ExpensesRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/checklist': typeof ChecklistRoute
   '/driver-portal': typeof DriverPortalRoute
   '/drivers': typeof DriversRoute
   '/expenses': typeof ExpensesRoute
@@ -253,6 +261,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/checklist': typeof ChecklistRoute
   '/driver-portal': typeof DriverPortalRoute
   '/drivers': typeof DriversRoute
   '/expenses': typeof ExpensesRoute
@@ -286,6 +295,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/calendar'
+    | '/checklist'
     | '/driver-portal'
     | '/drivers'
     | '/expenses'
@@ -317,6 +327,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/calendar'
+    | '/checklist'
     | '/driver-portal'
     | '/drivers'
     | '/expenses'
@@ -348,6 +359,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/calendar'
+    | '/checklist'
     | '/driver-portal'
     | '/drivers'
     | '/expenses'
@@ -380,6 +392,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
+  ChecklistRoute: typeof ChecklistRoute
   DriverPortalRoute: typeof DriverPortalRoute
   DriversRoute: typeof DriversRoute
   ExpensesRoute: typeof ExpensesRoute
@@ -543,6 +556,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DriverPortalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/checklist': {
+      id: '/checklist'
+      path: '/checklist'
+      fullPath: '/checklist'
+      preLoaderRoute: typeof ChecklistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/calendar': {
       id: '/calendar'
       path: '/calendar'
@@ -629,6 +649,7 @@ const FleetRouteWithChildren = FleetRoute._addFileChildren(FleetRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
+  ChecklistRoute: ChecklistRoute,
   DriverPortalRoute: DriverPortalRoute,
   DriversRoute: DriversRoute,
   ExpensesRoute: ExpensesRoute,
