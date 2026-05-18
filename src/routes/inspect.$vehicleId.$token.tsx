@@ -8,23 +8,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CheckCircle2, ClipboardCheck, AlertTriangle } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, AlertTriangle, Wrench } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/inspect/$vehicleId/$token")({
   head: () => ({ meta: [{ title: "Vehicle Inspection — Camauto Rentals" }] }),
   component: InspectPage,
 });
 
-const CHECKLIST_ITEMS = [
-  "Exterior damage check",
-  "Interior cleanliness",
-  "Mileage recorded",
-  "Keys returned",
-  "Both key fobs present",
-  "Tire condition acceptable",
-  "No warning lights on dash",
-];
+const INSPECTION_ITEMS = [
+  { key: "tires", label: "Tires" },
+  { key: "fluids", label: "Fluids" },
+  { key: "brakes", label: "Brakes" },
+  { key: "lights", label: "Lights" },
+  { key: "body", label: "Body" },
+  { key: "interior", label: "Interior" },
+] as const;
+type ItemKey = typeof INSPECTION_ITEMS[number]["key"];
+type ItemState = { status: "pass" | "fail" | null; notes: string };
 
 interface Loaded {
   vehicleId: string;
@@ -40,15 +42,22 @@ function InspectPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [data, setData] = useState<Loaded | null>(null);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<null | { failedItems: string[]; maintenanceCreated: boolean }>(null);
 
   const [mileage, setMileage] = useState<number>(0);
   const [fuelLevel, setFuelLevel] = useState<number>(100);
   const [damageNoted, setDamageNoted] = useState(false);
-  const [completedBy, setCompletedBy] = useState("");
+  const [inspectorName, setInspectorName] = useState("");
   const [notes, setNotes] = useState("");
-  const [check, setCheck] = useState<Record<string, boolean>>({});
+  const [items, setItems] = useState<Record<ItemKey, ItemState>>(() =>
+    INSPECTION_ITEMS.reduce((acc, i) => { acc[i.key] = { status: null, notes: "" }; return acc; }, {} as Record<ItemKey, ItemState>)
+  );
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("runner_name") : "";
+    if (saved) setInspectorName(saved);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,25 +78,41 @@ function InspectPage() {
 
   async function onSubmit() {
     if (!data) return;
-    if (!completedBy.trim()) { toast.error("Please enter your name"); return; }
-    const missing = CHECKLIST_ITEMS.filter(i => !check[i]);
+    const name = inspectorName.trim();
+    if (!name) { toast.error("Please enter your name"); return; }
+    const missing = INSPECTION_ITEMS.filter(i => !items[i.key].status);
     if (missing.length > 0) {
-      toast.error("Complete every checklist item", { description: `${missing.length} remaining` });
+      toast.error("Mark every item Pass or Fail", { description: `${missing.length} remaining` });
       return;
     }
+    const failMissingNotes = INSPECTION_ITEMS.filter(i => items[i.key].status === "fail" && !items[i.key].notes.trim());
+    if (failMissingNotes.length > 0) {
+      toast.error("Add notes for every failed item", { description: failMissingNotes.map(i => i.label).join(", ") });
+      return;
+    }
+    if (typeof window !== "undefined") localStorage.setItem("runner_name", name);
     setSubmitting(true);
     try {
-      await submitFn({ data: {
+      const itemsPayload = INSPECTION_ITEMS.reduce((acc, i) => {
+        acc[i.key] = { status: items[i.key].status as "pass" | "fail", notes: items[i.key].notes.trim() || undefined };
+        return acc;
+      }, {} as Record<ItemKey, { status: "pass" | "fail"; notes?: string }>);
+      const checklistFlat = INSPECTION_ITEMS.reduce<Record<string, boolean>>((acc, i) => {
+        acc[i.label] = items[i.key].status === "pass"; return acc;
+      }, {});
+      const res = await submitFn({ data: {
         vehicleId,
         token,
         mileage: Number(mileage) || 0,
         fuelLevel: Number(fuelLevel) || 0,
         damageNoted,
-        completedBy: completedBy.trim(),
+        completedBy: name,
+        inspectorName: name,
         notes: notes.trim() || undefined,
-        checklist: CHECKLIST_ITEMS.reduce<Record<string, boolean>>((acc, k) => { acc[k] = !!check[k]; return acc; }, {}),
+        checklist: checklistFlat,
+        items: itemsPayload,
       }});
-      setDone(true);
+      setDone({ failedItems: res.failedItems || [], maintenanceCreated: !!res.maintenanceCreated });
     } catch (e) {
       toast.error("Submission failed", { description: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -115,10 +140,28 @@ function InspectPage() {
     return (
       <PageShell>
         <Card>
-          <CardContent className="py-10 text-center space-y-3">
+          <CardContent className="py-8 text-center space-y-4">
             <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
             <p className="text-lg font-semibold">Inspection submitted</p>
-            <p className="text-sm text-muted-foreground">Vehicle returned to the available pool. You can close this page.</p>
+            {done.failedItems.length > 0 ? (
+              <div className="space-y-3 text-left">
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3">
+                  <div className="text-sm font-medium text-destructive">Failed items</div>
+                  <ul className="mt-1 list-disc pl-5 text-sm">
+                    {done.failedItems.map((i) => <li key={i}>{i}</li>)}
+                  </ul>
+                </div>
+                {done.maintenanceCreated && (
+                  <div className="flex items-start gap-2 rounded-md border bg-muted/30 p-3 text-sm">
+                    <Wrench className="mt-0.5 h-4 w-4 text-primary" />
+                    <span>A maintenance ticket was auto-created and the vehicle is flagged for follow-up.</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">All items passed. Vehicle returned to the available pool.</p>
+            )}
+            <p className="text-xs text-muted-foreground">You can close this page.</p>
           </CardContent>
         </Card>
       </PageShell>
@@ -150,22 +193,52 @@ function InspectPage() {
             </div>
           </div>
           <div>
-            <Label htmlFor="by">Your name</Label>
-            <Input id="by" value={completedBy} onChange={(e) => setCompletedBy(e.target.value)} placeholder="Runner name" />
+            <Label htmlFor="by">Inspector name</Label>
+            <Input id="by" value={inspectorName} onChange={(e) => setInspectorName(e.target.value)} placeholder="Your name" />
           </div>
 
-          <div className="rounded-md border bg-muted/30 p-3 space-y-2">
-            <div className="text-sm font-medium">Checklist</div>
-            {CHECKLIST_ITEMS.map((item) => (
-              <label key={item} className="flex items-start gap-2 text-sm">
-                <Checkbox
-                  checked={!!check[item]}
-                  onCheckedChange={(v) => setCheck(s => ({ ...s, [item]: v === true }))}
-                  className="mt-0.5"
-                />
-                <span>{item}</span>
-              </label>
-            ))}
+          <div className="space-y-3">
+            <div className="text-sm font-medium">Inspection checklist</div>
+            {INSPECTION_ITEMS.map((item) => {
+              const state = items[item.key];
+              return (
+                <div key={item.key} className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm font-medium">{item.label}</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setItems(s => ({ ...s, [item.key]: { ...s[item.key], status: "pass" } }))}
+                      className={cn(
+                        "h-12 rounded-md border text-sm font-medium transition",
+                        state.status === "pass"
+                          ? "border-success bg-success text-success-foreground"
+                          : "bg-background hover:bg-muted"
+                      )}
+                    >Pass</button>
+                    <button
+                      type="button"
+                      onClick={() => setItems(s => ({ ...s, [item.key]: { ...s[item.key], status: "fail" } }))}
+                      className={cn(
+                        "h-12 rounded-md border text-sm font-medium transition",
+                        state.status === "fail"
+                          ? "border-destructive bg-destructive text-destructive-foreground"
+                          : "bg-background hover:bg-muted"
+                      )}
+                    >Fail</button>
+                  </div>
+                  {state.status === "fail" && (
+                    <Textarea
+                      rows={2}
+                      placeholder="What's wrong? (required)"
+                      value={state.notes}
+                      onChange={(e) => setItems(s => ({ ...s, [item.key]: { ...s[item.key], notes: e.target.value } }))}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <label className="flex items-center gap-2 text-sm">
