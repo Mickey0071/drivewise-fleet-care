@@ -21,7 +21,7 @@ import { Share2, Camera, Pencil, Images } from "lucide-react";
 export const Route = createFileRoute("/fleet")({
   head: () => ({ meta: [{ title: "Fleet — Camauto Rentals" }] }),
   validateSearch: (search: Record<string, unknown>) => ({
-    status: (search.status as "available" | "rented" | "maintenance" | "impound" | undefined) ?? undefined,
+    status: (search.status as "available" | "rented" | "inspection" | "maintenance" | "impound" | undefined) ?? undefined,
   }),
   component: FleetPage,
 });
