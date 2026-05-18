@@ -17,6 +17,8 @@ import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehiclePhotosDialog } from "@/components/app/VehiclePhotosDialog";
 import { Share2, Camera, Pencil, Images } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/fleet")({
   head: () => ({ meta: [{ title: "Fleet — Camauto Rentals" }] }),
@@ -88,7 +90,14 @@ function FleetPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="text-xs text-muted-foreground">{v.id} · Tag #{v.plate}</div>
-                    <div className="mt-0.5 font-semibold">{v.year} {v.make} {v.model}</div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2 font-semibold">
+                      <span>{v.year} {v.make} {v.model}</span>
+                      {v.hasOpenIssues && (
+                        <Badge variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                          <AlertTriangle className="mr-1 h-3 w-3" /> Open issue
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="mt-3 flex items-center justify-between text-sm">
