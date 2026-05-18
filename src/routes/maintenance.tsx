@@ -8,7 +8,10 @@ import { Wrench, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ReportActions } from "@/components/app/ReportActions";
 import { LogServiceDialog } from "@/components/app/LogServiceDialog";
+import { EditMaintenanceDialog } from "@/components/app/EditMaintenanceDialog";
 import { useState } from "react";
+import { useStoreVersion } from "@/lib/mock/store";
+import type { Maintenance } from "@/lib/mock/data";
 
 export const Route = createFileRoute("/maintenance")({
   head: () => ({ meta: [{ title: "Maintenance — Camauto Rentals" }] }),
@@ -16,7 +19,9 @@ export const Route = createFileRoute("/maintenance")({
 });
 
 function MaintenancePage() {
+  useStoreVersion();
   const [logOpen, setLogOpen] = useState(false);
+  const [editRecord, setEditRecord] = useState<Maintenance | null>(null);
   const today = new Date();
   const soon = new Date(today); soon.setDate(today.getDate() + 14);
   const due = maintenance.filter(m => new Date(m.nextServiceDue) <= soon);
@@ -103,23 +108,42 @@ function MaintenancePage() {
             const v = vehicleById(m.vehicleId);
             const isOverdue = new Date(m.nextServiceDue) < today;
             const days = isOverdue ? daysOverdue(m.nextServiceDue) : 0;
+            const isOpen = !m.dateCompleted;
             return (
-              <div key={m.id} className={`flex flex-wrap items-center justify-between gap-3 p-4 ${isOverdue ? "bg-destructive/5" : ""}`}>
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setEditRecord(m)}
+                className={`flex w-full flex-wrap items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-muted/40 ${isOverdue ? "bg-destructive/5" : ""}`}
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 font-medium">
                     {m.serviceType}
                     {isOverdue && <Badge variant="destructive">{days}d overdue</Badge>}
+                    {isOpen && (
+                      <Badge variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                        Open
+                      </Badge>
+                    )}
+                    {m.sourceInspectionId && (
+                      <Badge variant="outline">From inspection</Badge>
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {v?.year} {v?.make} {v?.model} · {v?.plate} · {m.vendor} · {fmtDate(m.dateCompleted)}
+                    {v?.year} {v?.make} {v?.model} · {v?.plate} · {m.vendor} · {m.dateCompleted ? fmtDate(m.dateCompleted) : "open"}
                   </div>
                 </div>
                 <span className="font-semibold">{fmtMoney(m.cost)}</span>
-              </div>
+              </button>
             );
           })}
         </CardContent>
       </Card>
+      <EditMaintenanceDialog
+        open={!!editRecord}
+        onOpenChange={(o) => { if (!o) setEditRecord(null); }}
+        record={editRecord}
+      />
     </div>
   );
 }

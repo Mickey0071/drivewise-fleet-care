@@ -18,6 +18,7 @@ export interface Vehicle {
   ezPassTag?: string;
   registrationExpiry?: string;
   insuranceExpiry?: string;
+  hasOpenIssues?: boolean;
 }
 export interface Driver {
   id: string; fullName: string; phone: string; email: string;
@@ -82,11 +83,27 @@ export interface Maintenance {
   id: string; vehicleId: string; serviceType: string; cost: number;
   vendor: string; dateCompleted: string; mileageAtService: number;
   nextServiceDue: string; notes?: string;
+  sourceInspectionId?: string;
+  createdAt?: string;
 }
 export interface Inspection {
   id: string; vehicleId: string; rentalId: string;
   type: "check-in" | "check-out"; date: string; mileage: number;
   fuelLevel: number; damageNoted: boolean; completedBy: string;
+  inspectorName?: string;
+  tiresStatus?: "pass" | "fail";
+  fluidsStatus?: "pass" | "fail";
+  brakesStatus?: "pass" | "fail";
+  lightsStatus?: "pass" | "fail";
+  bodyStatus?: "pass" | "fail";
+  interiorStatus?: "pass" | "fail";
+  tiresNotes?: string;
+  fluidsNotes?: string;
+  brakesNotes?: string;
+  lightsNotes?: string;
+  bodyNotes?: string;
+  interiorNotes?: string;
+  createdAt?: string;
 }
 export interface Violation {
   id: string; vehicleId: string; driverId?: string;

@@ -36,6 +36,7 @@ const fromVehicle = (r: any) => ({
   ezPassTag: r.ez_pass_tag ?? undefined,
   registrationExpiry: r.registration_expiry ?? undefined,
   insuranceExpiry: r.insurance_expiry ?? undefined,
+  hasOpenIssues: !!r.has_open_issues,
 });
 const toVehicle = (v: any) => ({
   id: v.id, make: v.make, model: v.model, year: v.year, vin: v.vin,
@@ -180,6 +181,20 @@ const fromInspection = (r: any): Inspection => ({
   id: r.id, vehicleId: r.vehicle_id, rentalId: r.rental_id,
   type: r.type, date: r.date, mileage: r.mileage, fuelLevel: r.fuel_level,
   damageNoted: r.damage_noted, completedBy: r.completed_by,
+  inspectorName: r.inspector_name ?? undefined,
+  tiresStatus: r.tires_status ?? undefined,
+  fluidsStatus: r.fluids_status ?? undefined,
+  brakesStatus: r.brakes_status ?? undefined,
+  lightsStatus: r.lights_status ?? undefined,
+  bodyStatus: r.body_status ?? undefined,
+  interiorStatus: r.interior_status ?? undefined,
+  tiresNotes: r.tires_notes ?? undefined,
+  fluidsNotes: r.fluids_notes ?? undefined,
+  brakesNotes: r.brakes_notes ?? undefined,
+  lightsNotes: r.lights_notes ?? undefined,
+  bodyNotes: r.body_notes ?? undefined,
+  interiorNotes: r.interior_notes ?? undefined,
+  createdAt: r.created_at ?? undefined,
 });
 const toInspection = (i: Inspection) => ({
   id: i.id, vehicle_id: i.vehicleId, rental_id: i.rentalId,
@@ -250,6 +265,8 @@ const fromMaintenance = (r: any): Maintenance => ({
   vendor: r.vendor, dateCompleted: r.date_completed,
   mileageAtService: r.mileage_at_service, cost: Number(r.cost),
   nextServiceDue: r.next_service_due, notes: r.notes ?? undefined,
+  sourceInspectionId: r.source_inspection_id ?? undefined,
+  createdAt: r.created_at ?? undefined,
 });
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,

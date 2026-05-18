@@ -1,11 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { vehicles, drivers, vehicleById, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { vehicles, drivers, vehicleById, fmtMoney, fmtDate, maintenance } from "@/lib/mock/data";
 import { addRental, hasConflict, addDriver, getActiveRentalForDriver, isVehicleBookable, markReturned, useStoreVersion } from "@/lib/mock/store";
 import { useServerFn } from "@tanstack/react-start";
 import { sendSigningLink } from "@/lib/sign.functions";
@@ -63,6 +73,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [newDriver, setNewDriver] = useState(emptyDriver);
   const [isSwap, setIsSwap] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [openIssueWarning, setOpenIssueWarning] = useState(false);
+  const [openIssueAcknowledged, setOpenIssueAcknowledged] = useState(false);
 
   useEffect(() => {
     if (open && initialVehicleId) {
@@ -168,6 +180,10 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   async function confirm() {
     if (!vehicle || !driver || !startDate) return;
     if (saving) return;
+    if (vehicle.hasOpenIssues && !openIssueAcknowledged) {
+      setOpenIssueWarning(true);
+      return;
+    }
     if (existingRental && !isSwap) {
       toast.error("Renter already has an active rental", { description: "Tick the swap box on the Client step to close the existing rental." });
       return;
@@ -239,6 +255,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={close}>
       <DialogContent
         className="flex h-screen w-screen max-w-none flex-col gap-0 rounded-none border-0 p-0 sm:max-w-none"
@@ -545,6 +562,41 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
         </div>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={openIssueWarning} onOpenChange={setOpenIssueWarning}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            Vehicle has open maintenance
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {vehicle ? (
+              <>
+                This vehicle has{" "}
+                <span className="font-semibold">
+                  {maintenance.filter(m => m.vehicleId === vehicle.id && !m.dateCompleted).length}
+                </span>{" "}
+                open maintenance issue(s). Rent anyway?
+              </>
+            ) : null}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setOpenIssueAcknowledged(true);
+              setOpenIssueWarning(false);
+              // Re-trigger confirm now that user has acknowledged
+              setTimeout(() => { void confirm(); }, 0);
+            }}
+          >
+            Proceed
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 
