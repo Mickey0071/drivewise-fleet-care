@@ -16,7 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { vehicles, drivers, vehicleById, fmtMoney, fmtDate, maintenance } from "@/lib/mock/data";
-import { addRental, hasConflict, addDriver, getActiveRentalForDriver, isVehicleBookable, markReturned, useStoreVersion } from "@/lib/mock/store";
+import { addRental, hasConflict, addDriver, getActiveRentalForDriver, isVehicleBookable, markReturnedAwaitingInspection, awaitingPostReturnInspection, useStoreVersion } from "@/lib/mock/store";
+import { useAuth } from "@/hooks/use-auth";
+import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { sendSigningLink } from "@/lib/sign.functions";
 import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus, Repeat, AlertTriangle } from "lucide-react";
@@ -48,6 +50,8 @@ interface Props {
 
 export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: Props) {
   useStoreVersion();
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const sendSignLinkFn = useServerFn(sendSigningLink);
   const [step, setStep] = useState<Step>(0);
   const [vehicleId, setVehicleId] = useState<string | null>(null);
@@ -75,6 +79,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [saving, setSaving] = useState(false);
   const [openIssueWarning, setOpenIssueWarning] = useState(false);
   const [openIssueAcknowledged, setOpenIssueAcknowledged] = useState(false);
+  const [inspectionOverride, setInspectionOverride] = useState(false);
 
   useEffect(() => {
     if (open && initialVehicleId) {
@@ -88,7 +93,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const existingRental = driver ? getActiveRentalForDriver(driver.id) : null;
 
   const availableVehicles = useMemo(
-    () => vehicles.filter(v => isVehicleBookable(v.id) && (
+    () => vehicles.filter(v => (isVehicleBookable(v.id) || awaitingPostReturnInspection(v.id)) && (
       vehQ === "" ||
       `${v.year} ${v.make} ${v.model} ${v.plate}`.toLowerCase().includes(vehQ.toLowerCase())
     )),
@@ -110,6 +115,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     setShowAddDriver(false);
     setIsSwap(false);
     setNewDriver(emptyDriver);
+    setInspectionOverride(false);
   }
   async function createDriver() {
     if (!newDriver.firstName.trim() || !newDriver.lastName.trim()) {
@@ -180,6 +186,12 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   async function confirm() {
     if (!vehicle || !driver || !startDate) return;
     if (saving) return;
+    if (awaitingPostReturnInspection(vehicle.id) && !(isAdmin && inspectionOverride)) {
+      toast.error("Vehicle needs a runner inspection first", {
+        description: "Submit a passing post-return checklist before booking this vehicle.",
+      });
+      return;
+    }
     if (vehicle.hasOpenIssues && !openIssueAcknowledged) {
       setOpenIssueWarning(true);
       return;
@@ -193,7 +205,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       return;
     }
     if (existingRental && isSwap) {
-      markReturned(existingRental.id, startDate);
+      markReturnedAwaitingInspection(existingRental.id, startDate);
     }
     setSaving(true);
     try {
@@ -289,6 +301,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
               <div className="grid gap-2 sm:grid-cols-2">
                 {availableVehicles.map(v => {
                   const selected = v.id === vehicleId;
+                  const needsInspection = awaitingPostReturnInspection(v.id);
                   return (
                     <button
                       key={v.id}
@@ -297,11 +310,19 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                       className={cn(
                         "flex items-start gap-3 rounded-lg border bg-card p-3 text-left transition hover:border-primary/50",
                         selected && "border-primary ring-2 ring-primary/20",
+                        needsInspection && "border-destructive/50 bg-destructive/5",
                       )}
                     >
                       <Car className="mt-0.5 h-5 w-5 text-muted-foreground" />
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium">{v.year} {v.make} {v.model}</div>
+                        <div className="flex flex-wrap items-center gap-2 font-medium">
+                          <span>{v.year} {v.make} {v.model}</span>
+                          {needsInspection && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+                              <AlertTriangle className="h-3 w-3" /> Needs inspection
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-muted-foreground">{v.plate} · {v.mileage.toLocaleString()} mi · Tier {v.riskTier}</div>
                         <div className="mt-1 text-sm font-semibold">{fmtMoney(v.weeklyRate)}/wk</div>
                       </div>
@@ -512,6 +533,35 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
 
           {step === 3 && (
             <div className="space-y-3">
+              {vehicle && awaitingPostReturnInspection(vehicle.id) && (
+                <div className="rounded-lg border border-destructive/60 bg-destructive/10 p-3 text-sm">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                    <div className="flex-1">
+                      <div className="font-semibold text-destructive">Post-return inspection required</div>
+                      <p className="mt-1 text-muted-foreground">
+                        This vehicle was just returned. A runner must submit a passing checklist before it can be rented again.
+                      </p>
+                      <Link
+                        to="/checklist"
+                        className="mt-2 inline-flex text-xs font-medium text-primary hover:underline"
+                      >
+                        Open runner checklist →
+                      </Link>
+                      {isAdmin && (
+                        <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={inspectionOverride}
+                            onChange={(e) => setInspectionOverride(e.target.checked)}
+                          />
+                          <span>Override — book without inspection (admin)</span>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               <ReviewRow icon={<Car className="h-4 w-4" />} label="Vehicle" value={vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model} · ${vehicle.plate}` : "—"} />
               <ReviewRow icon={<User className="h-4 w-4" />} label="Client" value={driver ? `${driver.fullName} · ${driver.phone}` : "—"} />
               <ReviewRow icon={<CalendarDays className="h-4 w-4" />} label="Dates" value={`${startDate ? fmtDate(startDate) : "—"}${endDate ? ` → ${fmtDate(endDate)}` : " · open-ended"}`} />
@@ -554,7 +604,11 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
               Continue <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           ) : (
-            <Button size="sm" onClick={confirm} disabled={saving}>
+            <Button
+              size="sm"
+              onClick={confirm}
+              disabled={saving || (!!vehicle && awaitingPostReturnInspection(vehicle.id) && !(isAdmin && inspectionOverride))}
+            >
               <Check className="mr-1 h-4 w-4" /> {saving ? "Saving…" : "Save as pending"}
             </Button>
           )}

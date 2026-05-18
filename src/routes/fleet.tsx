@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addVehicle, isVehicleBookable, updateVehicleImage, uploadVehiclePhoto, useStoreVersion } from "@/lib/mock/store";
+import { addVehicle, isVehicleBookable, awaitingPostReturnInspection, updateVehicleImage, uploadVehiclePhoto, useStoreVersion } from "@/lib/mock/store";
 import { toast } from "sonner";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
@@ -92,6 +92,11 @@ function FleetPage() {
                     <div className="text-xs text-muted-foreground">{v.id} · Tag #{v.plate}</div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-2 font-semibold">
                       <span>{v.year} {v.make} {v.model}</span>
+                      {awaitingPostReturnInspection(v.id) && (
+                        <Badge variant="outline" className="border-destructive/60 bg-destructive/10 text-destructive">
+                          <AlertTriangle className="mr-1 h-3 w-3" /> Needs inspection
+                        </Badge>
+                      )}
                       {v.hasOpenIssues && (
                         <Badge variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300">
                           <AlertTriangle className="mr-1 h-3 w-3" /> Open issue
