@@ -154,7 +154,7 @@ function RootComponent() {
 }
 
 function AuthGate() {
-  const { session, role, loading, roleLoading, roleError, signOut } = useAuth();
+  const { session, role, loading, roleLoading, roleError, signOut, mustResetPassword } = useAuth();
   useStoreVersion();
   const [storeLoadError, setStoreLoadError] = useState<string | null>(null);
   const path = useRouterState({ select: (r) => r.location.pathname });
@@ -177,7 +177,15 @@ function AuthGate() {
   }, [loading, session, isPublic, navigate]);
 
   useEffect(() => {
+    if (loading || !session) return;
+    if (mustResetPassword && path !== "/reset-password") {
+      navigate({ to: "/reset-password" });
+    }
+  }, [loading, session, mustResetPassword, path, navigate]);
+
+  useEffect(() => {
     if (loading || roleLoading || !session || !role) return;
+    if (mustResetPassword) return;
     const guard = ROUTE_ROLES.find(g => path.startsWith(g.prefix));
     if (guard && !guard.roles.includes(role)) {
       const home = role === "driver" || role === "runner" ? "/checklist" : "/";
