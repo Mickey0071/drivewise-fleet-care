@@ -128,9 +128,13 @@ function RentalsPage() {
     navigate({ to: "/rentals", search: {}, replace: true });
   }, [paid, navigate]);
 
-  const pending = rentals.filter(r => r.reservationStatus === "pending" && !r.endDate);
-  const active = rentals.filter(r => (r.reservationStatus ?? "active") === "active" && !r.endDate);
-  const completed = rentals.filter(r => !!r.endDate || r.reservationStatus === "returned" || r.reservationStatus === "completed");
+  // Bucket purely by reservationStatus. `endDate` is the *planned* end of the
+  // rental (set on the booking form), not the actual return date — using it
+  // here would push every new reservation with a planned end straight into
+  // the Returned tab.
+  const pending = rentals.filter(r => r.reservationStatus === "pending");
+  const active = rentals.filter(r => (r.reservationStatus ?? "active") === "active");
+  const completed = rentals.filter(r => r.reservationStatus === "returned" || r.reservationStatus === "completed");
 
   function renderCard(r: Rental) {
     const v = vehicleById(r.vehicleId);
