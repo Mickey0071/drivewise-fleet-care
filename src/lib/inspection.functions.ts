@@ -139,7 +139,7 @@ export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
       type: "check-in",
       date: new Date().toISOString().slice(0, 10),
       mileage: data.mileage,
-      fuel_level: data.fuelLevel == null ? null : String(data.fuelLevel),
+      fuel_level: data.fuelLevel == null ? "full" : String(data.fuelLevel),
       damage_noted: data.damageNoted,
       completed_by: data.completedBy.trim(),
       inspector_name: (data.inspectorName || data.completedBy).trim(),
