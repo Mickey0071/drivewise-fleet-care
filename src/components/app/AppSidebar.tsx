@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
-  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, ListChecks, Truck, ChevronDown,
+  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, ListChecks, Truck, ChevronDown, UsersRound,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -42,6 +42,9 @@ const financeItems: Item[] = [
 const portalItems: Item[] = [
   { title: "Runner Portal", url: "/staff-portal", icon: UserCog, roles: ["admin", "runner"] },
   { title: "Renter Portal", url: "/driver-portal", icon: IdCard, roles: ["admin", "driver"] },
+];
+const settingsItems: Item[] = [
+  { title: "Team & Access", url: "/admin/users", icon: UsersRound, roles: ["admin"] },
 ];
 
 export function AppSidebar() {
@@ -132,6 +135,7 @@ export function AppSidebar() {
         )}
         {renderGroup("Finance", filter(financeItems))}
         {renderGroup("Portals", filter(portalItems))}
+        {renderGroup("Settings", filter(settingsItems))}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-3">
         {!collapsed && user && (
