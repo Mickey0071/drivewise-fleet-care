@@ -1,18 +1,23 @@
-## Goal
-Make the freshly updated `ghlPitToken` value take effect in the preview, and confirm code/secret naming match.
+I’ll fix the two places causing this:
 
-## Findings
-- Secret in Lovable Cloud: `ghlPitToken` — exact case match to `process.env.ghlPitToken`.
-- Read in 3 files: `src/lib/ghl.server.ts`, `src/lib/ghl.functions.ts`, `src/lib/payment-link.functions.ts`.
-- No remaining references to the old `GHL_PIT_TOKEN` name in source.
-- Legacy `GHL_PIT_TOKEN` and `GHL_LOCATION_ID` secrets still exist in Cloud but are unused.
+1. **New Reservation → New Client form**
+   - Replace the single **Full name** input with separate **First name, M.I., Last name** fields.
+   - Replace the single **Address** input with separate **Street address, Apt/Unit, City, State, ZIP** fields.
+   - Add separate **DL State** and **DL Expiration** fields next to **License #**.
+   - Save every field into its matching customer database column, while still generating the combined `full_name` and `address` only for backwards compatibility.
 
-## Plan
-1. Restart the preview dev server so the worker re-reads env vars and picks up the new `ghlPitToken` (`code--restart_dev_server`).
-2. Ask you to retry "Send Payment Link" on a pending reservation. The toast now surfaces the exact upstream error if GHL still rejects — share it if it fails again.
-3. (Optional cleanup, on your go-ahead) Delete the unused `GHL_PIT_TOKEN` and `GHL_LOCATION_ID` legacy secrets so only the camelCase versions remain.
+2. **Public rental link application**
+   - Replace **Full legal name** with separate first/middle/last fields.
+   - Add separate DL state/expiration and Apt/Unit fields.
+   - Save those separate fields to the customer record, not just the combined fields.
+   - Update the agreement preview on that page to use the separated address/name/license fields.
 
-## Notes
-- Published deployments pick up new secret values on the next request — no manual redeploy needed there.
-- The preview worker caches env at startup, which is why a restart is required after rotating a secret.
-- No source changes needed.
+3. **No token/payment charge after signing/application**
+   - Stop automatically creating or texting Stripe payment links when a renter signs an agreement.
+   - Stop automatically creating/opening a payment link after the public rental application is submitted.
+   - Keep the reservation/application saved as pending so staff can handle payment manually.
+   - Change the client-facing thank-you copy so it says **“Thank you for choosing Camauto”** with no payment prompt.
+
+4. **Validation and compatibility**
+   - Keep existing customer list/search working by using the generated full name for display/search.
+   - Keep old records readable even if they only have legacy `full_name`/`address` values.

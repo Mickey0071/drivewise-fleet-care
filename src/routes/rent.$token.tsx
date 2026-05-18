@@ -10,6 +10,7 @@ import { SignaturePad } from "@/components/app/SignaturePad";
 import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { toast } from "sonner";
 import { CheckCircle2, Loader2, Camera, FileSignature, IdCard, User, ArrowLeft, ArrowRight } from "lucide-react";
+import { US_STATES, formatFullName, formatAddressBlock } from "@/lib/us-states";
 
 export const Route = createFileRoute("/rent/$token")({
   head: () => ({ meta: [{ title: "Rent a vehicle — Camauto Rentals" }] }),
@@ -26,12 +27,17 @@ function RentPage() {
   const [info, setInfo] = useState<Info | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [middleInitial, setMiddleInitial] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
+  const [dlState, setDlState] = useState("");
+  const [licenseExpiry, setLicenseExpiry] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [address, setAddress] = useState("");
+  const [aptUnit, setAptUnit] = useState("");
   const [city, setCity] = useState("");
   const [stateRegion, setStateRegion] = useState("");
   const [zip, setZip] = useState("");
@@ -41,7 +47,6 @@ function RentPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [step, setStep] = useState<"details" | "agreement" | "sign">("details");
 
   useEffect(() => {
@@ -51,7 +56,7 @@ function RentPage() {
   }, [token, fetchInfo]);
 
   async function handleSubmit() {
-    if (!fullName.trim()) return toast.error("Enter your full name");
+    if (!firstName.trim() || !lastName.trim()) return toast.error("Enter your first and last name");
     if (!phone.trim()) return toast.error("Enter your phone");
     if (!email.trim()) return toast.error("Email is required");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return toast.error("Enter a valid email address");
@@ -65,15 +70,23 @@ function RentPage() {
     if (!sig) return toast.error("Sign the agreement");
     setSubmitting(true);
     try {
-      const res = await submit({
+      const fullName = formatFullName({ firstName, middleInitial, lastName });
+      await submit({
         data: {
           token,
           fullName: fullName.trim(),
+          firstName: firstName.trim(),
+          middleInitial: middleInitial.trim() || undefined,
+          lastName: lastName.trim(),
           phone: phone.trim(),
           email: email.trim(),
           licenseNumber: licenseNumber.trim(),
+          licenseExpiry: licenseExpiry || undefined,
+          dlState: dlState || undefined,
           dateOfBirth: dateOfBirth || undefined,
           address: address.trim() || undefined,
+          streetAddress: address.trim() || undefined,
+          aptUnit: aptUnit.trim() || undefined,
           city: city.trim() || undefined,
           state: stateRegion.trim() || undefined,
           zip: zip.trim() || undefined,
@@ -82,13 +95,8 @@ function RentPage() {
           signatureDataUrl: sig,
         },
       });
-      setPaymentUrl(res?.paymentUrl ?? null);
       setDone(true);
-      toast.success("Application received!");
-      if (res?.paymentUrl) {
-        // Auto-open Stripe checkout
-        window.open(res.paymentUrl, "_blank", "noopener");
-      }
+      toast.success("Thank you for choosing Camauto");
     } catch (e) {
       toast.error("Submission failed", { description: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -118,19 +126,10 @@ function RentPage() {
       <div className="mx-auto max-w-lg p-6">
         <Card className="p-8 text-center space-y-3">
           <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" />
-          <h1 className="text-xl font-semibold">Application received</h1>
+          <h1 className="text-xl font-semibold">Thank you for choosing Camauto</h1>
           <p className="text-sm text-muted-foreground">
-            Thanks! We received your information, ID, and signed agreement.
-            {paymentUrl ? " Complete your first payment below to confirm pickup." : " We'll be in touch shortly to confirm pickup."}
+            We received your information, ID, and signed agreement. We'll be in touch shortly to confirm pickup.
           </p>
-          {paymentUrl && (
-            <a href={paymentUrl} target="_blank" rel="noopener noreferrer">
-              <Button className="w-full">Pay now</Button>
-            </a>
-          )}
-          {paymentUrl && (
-            <p className="text-xs text-muted-foreground">We also texted this link to your phone.</p>
-          )}
         </Card>
       </div>
     );
@@ -158,45 +157,69 @@ function RentPage() {
       {step === "details" && (
         <>
           <Card className="p-4 space-y-3">
-            <SectionHeader icon={<User className="h-4 w-4" />} title="Your info" done={!!fullName && !!phone && !!email && !!licenseNumber && !!dateOfBirth && !!address && !!city && !!stateRegion} />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="fn">Full legal name</Label>
-                <Input id="fn" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <SectionHeader icon={<User className="h-4 w-4" />} title="Your info" done={!!firstName && !!lastName && !!phone && !!email && !!licenseNumber && !!dateOfBirth && !!address && !!city && !!stateRegion} />
+            <div className="grid gap-3 sm:grid-cols-6">
+              <div className="sm:col-span-3">
+                <Label htmlFor="fn">First name</Label>
+                <Input id="fn" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
               </div>
-              <div>
+              <div className="sm:col-span-1">
+                <Label htmlFor="mi">M.I.</Label>
+                <Input id="mi" maxLength={2} value={middleInitial} onChange={(e) => setMiddleInitial(e.target.value)} />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="ln2">Last name</Label>
+                <Input id="ln2" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              </div>
+              <div className="sm:col-span-3">
                 <Label htmlFor="ph">Phone</Label>
                 <Input id="ph" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </div>
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-3">
                 <Label htmlFor="em">Email</Label>
                 <Input id="em" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
-              <div>
+              <div className="sm:col-span-3">
                 <Label htmlFor="dob">Date of birth</Label>
                 <Input id="dob" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
               </div>
-              <div>
-                <Label htmlFor="ln">License number</Label>
+              <div className="sm:col-span-3">
+                <Label htmlFor="ln">DL number</Label>
                 <Input id="ln" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
               </div>
               <div className="sm:col-span-2">
+                <Label htmlFor="dlst">DL state</Label>
+                <select id="dlst" className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm" value={dlState} onChange={(e) => setDlState(e.target.value)}>
+                  <option value="">—</option>
+                  {US_STATES.map(s => <option key={s.code} value={s.code}>{s.code}</option>)}
+                </select>
+              </div>
+              <div className="sm:col-span-4">
+                <Label htmlFor="lex">DL expiration</Label>
+                <Input id="lex" type="date" value={licenseExpiry} onChange={(e) => setLicenseExpiry(e.target.value)} />
+              </div>
+              <div className="sm:col-span-4">
                 <Label htmlFor="ad">Street address</Label>
                 <Input id="ad" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Main St" />
               </div>
-              <div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="apt">Apt / Unit</Label>
+                <Input id="apt" value={aptUnit} onChange={(e) => setAptUnit(e.target.value)} placeholder="4B" />
+              </div>
+              <div className="sm:col-span-3">
                 <Label htmlFor="city">City</Label>
                 <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Camden" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="st">State</Label>
-                  <Input id="st" value={stateRegion} onChange={(e) => setStateRegion(e.target.value)} placeholder="NJ" maxLength={20} />
-                </div>
-                <div>
-                  <Label htmlFor="zip">ZIP</Label>
-                  <Input id="zip" value={zip} onChange={(e) => setZip(e.target.value)} placeholder="08104" maxLength={10} />
-                </div>
+              <div className="sm:col-span-1">
+                <Label htmlFor="st">State</Label>
+                <select id="st" className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm" value={stateRegion} onChange={(e) => setStateRegion(e.target.value)}>
+                  <option value="">—</option>
+                  {US_STATES.map(s => <option key={s.code} value={s.code}>{s.code}</option>)}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="zip">ZIP</Label>
+                <Input id="zip" value={zip} onChange={(e) => setZip(e.target.value)} placeholder="08104" maxLength={10} />
               </div>
             </div>
           </Card>
@@ -215,7 +238,7 @@ function RentPage() {
             className="w-full"
             size="lg"
             onClick={() => {
-              if (!fullName.trim() || !phone.trim() || !email.trim() || !dateOfBirth || !address.trim() || !city.trim() || !stateRegion.trim() || !licenseNumber.trim() || !licenseUrl || !selfieUrl) {
+              if (!firstName.trim() || !lastName.trim() || !phone.trim() || !email.trim() || !dateOfBirth || !address.trim() || !city.trim() || !stateRegion.trim() || !licenseNumber.trim() || !licenseUrl || !selfieUrl) {
                 return toast.error("Complete all fields, license photo, and selfie first");
               }
               setStep("agreement");
@@ -245,13 +268,22 @@ function RentPage() {
                   agreementVersion: null,
                 } as any}
                 driver={{
-                  fullName,
+                  fullName: formatFullName({ firstName, middleInitial, lastName }),
+                  firstName,
+                  middleInitial,
+                  lastName,
                   dateOfBirth: dateOfBirth || null,
                   licenseNumber,
-                  licenseExpiry: "",
+                  licenseExpiry: licenseExpiry || "",
+                  dlState,
                   phone,
                   email,
-                  address: [address, city, [stateRegion, zip].filter(Boolean).join(" ")].filter(Boolean).join(", "),
+                  address: formatAddressBlock({ streetAddress: address, aptUnit, city, state: stateRegion, zipCode: zip }),
+                  streetAddress: address,
+                  aptUnit,
+                  city,
+                  state: stateRegion,
+                  zipCode: zip,
                 } as any}
                 vehicle={{
                   year: info.vehicle?.year ?? "",
