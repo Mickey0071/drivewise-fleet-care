@@ -708,6 +708,7 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
   const d = rental ? driverById(rental.driverId) : null;
   const checkout = rental ? getInspectionsForRental(rental.id).find(i => i.type === "check-out") : undefined;
   const sendSmsFn = useServerFn(sendRentalSms);
+  const settings = useAgreementSettings();
   const [mileage, setMileage] = useState(0);
   const [fuelLevel, setFuelLevel] = useState(100);
   const [damageNoted, setDamageNoted] = useState(false);
@@ -746,9 +747,34 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
     if (damageNoted) {
       const renter = d?.fullName ?? rental.driverId;
       const msg = `Rentalprise Auto: New damage reported on return of ${v.year} ${v.make} ${v.model} (Plate ${v.plate}) by ${renter}. Odo ${Number(mileage).toLocaleString()} mi · Fuel ${fuelLevel}%. Received by ${completedBy.trim()}.${notes.trim() ? ` Notes: ${notes.trim()}` : ""}`;
-      sendSmsFn({ data: { phone: "+12672213977", message: msg.slice(0, 1000), name: "Damage Alert" } })
-        .then(() => toast.success("Damage alert SMS sent"))
-        .catch(e => toast.error("Damage SMS failed", { description: e instanceof Error ? e.message : String(e) }));
+      const alertPhone = settings.company.damageAlertPhone?.trim();
+      if (alertPhone) {
+        sendSmsFn({ data: { phone: alertPhone, message: msg.slice(0, 1000), name: "Damage Alert" } })
+          .then(() => toast.success("Damage alert SMS sent"))
+          .catch(e => toast.error("Damage SMS failed", { description: e instanceof Error ? e.message : String(e) }));
+      } else {
+        toast.warning("No damage alert phone configured", { description: "Set it under Rental Agreement → Company." });
+      }
+      // Auto-create a maintenance record flagged as damage from return
+      try {
+        addMaintenance({
+          vehicleId: v.id,
+          serviceType: "Damage from rental return",
+          cost: 0,
+          vendor: "TBD",
+          dateCompleted: new Date().toISOString().slice(0, 10),
+          mileageAtService: Number(mileage) || v.mileage,
+          nextServiceDue: new Date().toISOString().slice(0, 10),
+          notes: `Damage reported on return of rental ${rental.id} (${v.plate}) by ${renter}. Received by ${completedBy.trim()}.${notes.trim() ? ` Details: ${notes.trim()}` : ""}`,
+        });
+      } catch (e) {
+        console.error("Failed to auto-create damage maintenance record", e);
+      }
+    } else if (d?.phone) {
+      // Clean return — send renter confirmation
+      const confirmMsg = "Your vehicle return has been confirmed. Thanks for renting with Camauto!";
+      sendSmsFn({ data: { phone: d.phone, message: confirmMsg, name: d.fullName } })
+        .catch(e => console.error("Renter return SMS failed", e));
     }
     const checklistSummary = `Return checklist: ${RETURN_CHECKLIST.length}/${RETURN_CHECKLIST.length} verified by ${completedBy.trim()}`;
     const noteParts = [rental.notes, checklistSummary, notes.trim() ? `Return: ${notes.trim()}` : ""].filter(Boolean);
