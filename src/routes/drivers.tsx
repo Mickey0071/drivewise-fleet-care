@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addDriver, useStoreVersion } from "@/lib/mock/store";
 import { toast } from "sonner";
+import { US_STATES, formatAddressBlock, formatFullName } from "@/lib/us-states";
 
 export const Route = createFileRoute("/drivers")({
   head: () => ({ meta: [{ title: "Renters — Camauto Rentals" }] }),
@@ -71,20 +72,68 @@ function DriversPage() {
 }
 
 function AddRenterDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
+  // Personal
+  const [firstName, setFirstName] = useState("");
+  const [middleInitial, setMiddleInitial] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  // License
   const [licenseNumber, setLicenseNumber] = useState("");
+  const [dlState, setDlState] = useState("");
   const [licenseExpiry, setLicenseExpiry] = useState("");
+  // Address
+  const [streetAddress, setStreetAddress] = useState("");
+  const [aptUnit, setAptUnit] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  // Alt contact
+  const [altContactName, setAltContactName] = useState("");
+  const [altContactPhone, setAltContactPhone] = useState("");
+  // Rideshare (kept)
   const [rideshare, setRideshare] = useState<"Uber" | "Lyft" | "Both">("Uber");
 
   function reset() {
-    setFullName(""); setPhone(""); setEmail(""); setLicenseNumber(""); setLicenseExpiry(""); setRideshare("Uber");
+    setFirstName(""); setMiddleInitial(""); setLastName(""); setDateOfBirth("");
+    setEmail(""); setPhone("");
+    setLicenseNumber(""); setDlState(""); setLicenseExpiry("");
+    setStreetAddress(""); setAptUnit(""); setCity(""); setState(""); setZipCode("");
+    setAltContactName(""); setAltContactPhone("");
+    setRideshare("Uber");
   }
+
   async function save() {
-    if (!fullName || !phone) { toast.error("Name and phone are required"); return; }
+    if (!firstName.trim() || !lastName.trim()) {
+      toast.error("First and last name are required"); return;
+    }
+    if (!phone.trim()) { toast.error("Phone is required"); return; }
+    if (phone && !/^\+?[1-9]\d{6,14}$/.test(phone.replace(/[\s().-]/g, ""))) {
+      toast.error("Phone must be E.164 format (e.g. +12675551234)"); return;
+    }
+    const fullName = formatFullName({ firstName, middleInitial, lastName });
+    const address = formatAddressBlock({ streetAddress, aptUnit, city, state, zipCode });
     try {
-      const d = addDriver({ fullName, phone, email, licenseNumber, licenseExpiry: licenseExpiry || "2030-01-01", rideshare });
+      const d = addDriver({
+        fullName, phone: phone.trim(), email: email.trim(),
+        licenseNumber: licenseNumber.trim(),
+        licenseExpiry: licenseExpiry || "2030-01-01",
+        rideshare,
+        dateOfBirth: dateOfBirth || undefined,
+        address: address || undefined,
+        firstName: firstName.trim(),
+        middleInitial: middleInitial.trim() || undefined,
+        lastName: lastName.trim(),
+        dlState: dlState || undefined,
+        streetAddress: streetAddress.trim() || undefined,
+        aptUnit: aptUnit.trim() || undefined,
+        city: city.trim() || undefined,
+        state: state || undefined,
+        zipCode: zipCode.trim() || undefined,
+        altContactName: altContactName.trim() || undefined,
+        altContactPhone: altContactPhone.trim() || undefined,
+      });
       await (d as { cloudReady?: Promise<unknown> }).cloudReady;
       toast.success("Renter added", { description: `${d.fullName} (${d.id})` });
       reset(); onClose();
@@ -92,33 +141,84 @@ function AddRenterDialog({ open, onClose }: { open: boolean; onClose: () => void
       toast.error("Renter was not saved to cloud", { description: e?.message ?? "Try again" });
     }
   }
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader><DialogTitle>Add renter</DialogTitle></DialogHeader>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2"><Label>Full name *</Label><Input value={fullName} onChange={e => setFullName(e.target.value)} /></div>
-          <div><Label>Phone *</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+12675551234" /></div>
-          <div><Label>Email</Label><Input value={email} onChange={e => setEmail(e.target.value)} /></div>
-          <div><Label>License #</Label><Input value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} /></div>
-          <div><Label>License expiry</Label><Input type="date" value={licenseExpiry} onChange={e => setLicenseExpiry(e.target.value)} /></div>
-          <div className="sm:col-span-2">
-            <Label>Rideshare</Label>
-            <Select value={rideshare} onValueChange={(v) => setRideshare(v as "Uber" | "Lyft" | "Both")}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Uber">Uber</SelectItem>
-                <SelectItem value="Lyft">Lyft</SelectItem>
-                <SelectItem value="Both">Both</SelectItem>
-              </SelectContent>
-            </Select>
+
+        <Section title="Personal Info">
+          <div className="grid gap-3 sm:grid-cols-6">
+            <div className="sm:col-span-3"><Label>First name *</Label><Input value={firstName} onChange={e => setFirstName(e.target.value)} /></div>
+            <div className="sm:col-span-1"><Label>M.I.</Label><Input maxLength={2} value={middleInitial} onChange={e => setMiddleInitial(e.target.value)} /></div>
+            <div className="sm:col-span-2"><Label>Last name *</Label><Input value={lastName} onChange={e => setLastName(e.target.value)} /></div>
+            <div className="sm:col-span-2"><Label>Date of birth</Label><Input type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} /></div>
+            <div className="sm:col-span-2"><Label>Email</Label><Input type="email" value={email} onChange={e => setEmail(e.target.value)} /></div>
+            <div className="sm:col-span-2"><Label>Phone (E.164) *</Label><Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+12675551234" /></div>
           </div>
-        </div>
+        </Section>
+
+        <Section title="License Info">
+          <div className="grid gap-3 sm:grid-cols-6">
+            <div className="sm:col-span-3"><Label>DL number</Label><Input value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} /></div>
+            <div className="sm:col-span-1">
+              <Label>DL state</Label>
+              <Select value={dlState} onValueChange={setDlState}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  {US_STATES.map(s => <SelectItem key={s.code} value={s.code}>{s.code}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-2"><Label>DL expiration</Label><Input type="date" value={licenseExpiry} onChange={e => setLicenseExpiry(e.target.value)} /></div>
+            <div className="sm:col-span-3">
+              <Label>Rideshare</Label>
+              <Select value={rideshare} onValueChange={(v) => setRideshare(v as "Uber" | "Lyft" | "Both")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Uber">Uber</SelectItem>
+                  <SelectItem value="Lyft">Lyft</SelectItem>
+                  <SelectItem value="Both">Both</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </Section>
+
+        <Section title="Address & Alternate Contact">
+          <div className="grid gap-3 sm:grid-cols-6">
+            <div className="sm:col-span-4"><Label>Street address</Label><Input value={streetAddress} onChange={e => setStreetAddress(e.target.value)} placeholder="123 Main St" /></div>
+            <div className="sm:col-span-2"><Label>Apt / Unit</Label><Input value={aptUnit} onChange={e => setAptUnit(e.target.value)} placeholder="4B" /></div>
+            <div className="sm:col-span-3"><Label>City</Label><Input value={city} onChange={e => setCity(e.target.value)} /></div>
+            <div className="sm:col-span-1">
+              <Label>State</Label>
+              <Select value={state} onValueChange={setState}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  {US_STATES.map(s => <SelectItem key={s.code} value={s.code}>{s.code}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-2"><Label>ZIP</Label><Input value={zipCode} onChange={e => setZipCode(e.target.value)} placeholder="08081" /></div>
+            <div className="sm:col-span-3"><Label>Alt contact name</Label><Input value={altContactName} onChange={e => setAltContactName(e.target.value)} /></div>
+            <div className="sm:col-span-3"><Label>Alt contact phone</Label><Input value={altContactPhone} onChange={e => setAltContactPhone(e.target.value)} placeholder="+12675551234" /></div>
+          </div>
+        </Section>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
           <Button onClick={save}>Add renter</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+      {children}
+    </div>
   );
 }
