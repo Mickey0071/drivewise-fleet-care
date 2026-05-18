@@ -1062,6 +1062,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
 }
 
 function AgreementDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  // placeholder marker
   const v = rental ? vehicleById(rental.vehicleId) : null;
   const d = rental ? driverById(rental.driverId) : null;
   return (
