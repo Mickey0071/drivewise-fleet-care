@@ -693,12 +693,13 @@ export function markReturned(id: string, endDate?: string) {
   const r = rentals.find(r => r.id === id);
   if (!r) return;
   r.endDate = endDate || new Date().toISOString().slice(0, 10);
+  r.reservationStatus = "returned";
   const v = vehicles.find(v => v.id === r.vehicleId);
   if (v) {
     v.status = "available";
     cloudWrite("vehicle:update", supabase.from("vehicles").update({ status: "available" }).eq("id", v.id));
   }
-  cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
+  cloudWrite("rental:update", supabase.from("rentals").update({ ...toRental(r), reservation_status: "returned" }).eq("id", r.id));
   emit();
 }
 
