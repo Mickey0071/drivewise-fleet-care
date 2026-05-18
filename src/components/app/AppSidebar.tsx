@@ -15,18 +15,18 @@ import logo from "@/assets/camauto-logo.jpeg";
 
 type Item = { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] };
 const adminItems: Item[] = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["admin"] },
-  { title: "Fleet", url: "/fleet", icon: Car, roles: ["admin"] },
-  { title: "Customers", url: "/drivers", icon: Users, roles: ["admin"] },
-  { title: "All Reservations", url: "/reservations", icon: ListChecks, roles: ["admin"] },
-  { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin"] },
-  { title: "Calendar", url: "/calendar", icon: Calendar, roles: ["admin"] },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["admin", "runner"] },
+  { title: "Fleet", url: "/fleet", icon: Car, roles: ["admin", "runner"] },
+  { title: "Customers", url: "/drivers", icon: Users, roles: ["admin", "runner"] },
+  { title: "All Reservations", url: "/reservations", icon: ListChecks, roles: ["admin", "runner"] },
+  { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin", "runner"] },
+  { title: "Calendar", url: "/calendar", icon: Calendar, roles: ["admin", "runner"] },
   { title: "Payments", url: "/payments", icon: DollarSign, roles: ["admin"] },
-  { title: "Inspections", url: "/inspections", icon: ClipboardCheck, roles: ["admin"] },
-  { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["admin"] },
-  { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ["admin"] },
+  { title: "Inspections", url: "/inspections", icon: ClipboardCheck, roles: ["admin", "runner"] },
+  { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["admin", "runner"] },
+  { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ["admin", "runner"] },
   { title: "Insurance", url: "/insurance", icon: Shield, roles: ["admin"] },
-  { title: "Runner Reports", url: "/runner-reports", icon: ClipboardList, roles: ["admin"] },
+  { title: "Runner Reports", url: "/runner-reports", icon: ClipboardList, roles: ["admin", "runner"] },
   { title: "Rental Agreement", url: "/rental-agreement", icon: ScrollText, roles: ["admin"] },
   { title: "SMS log", url: "/sms-log", icon: MessageSquare, roles: ["admin"] },
 ];
