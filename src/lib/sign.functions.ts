@@ -2,8 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
-import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
-import { getRequestHeader } from "@tanstack/react-start/server";
 
 function genToken() {
   const bytes = new Uint8Array(16);
