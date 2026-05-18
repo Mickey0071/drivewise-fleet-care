@@ -14,6 +14,7 @@ type AuthCtx = {
   roleError: string | null;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signInWithGoogle: () => Promise<{ error?: string }>;
+  resetPassword: (email: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 };
 
@@ -87,6 +88,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async signInWithGoogle() {
       const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
       return { error: result.error instanceof Error ? result.error.message : undefined };
+    },
+    async resetPassword(email) {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      return { error: error?.message };
     },
     async signOut() {
       setRole(null);
