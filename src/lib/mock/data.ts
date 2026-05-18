@@ -89,20 +89,13 @@ export interface Maintenance {
 export interface Inspection {
   id: string; vehicleId: string; rentalId: string;
   type: "check-in" | "check-out"; date: string; mileage: number;
-  fuelLevel: number; damageNoted: boolean; completedBy: string;
+  fuelLevel: number | string; damageNoted: boolean; completedBy: string;
   inspectorName?: string;
-  tiresStatus?: "pass" | "fail";
-  fluidsStatus?: "pass" | "fail";
-  brakesStatus?: "pass" | "fail";
-  lightsStatus?: "pass" | "fail";
-  bodyStatus?: "pass" | "fail";
-  interiorStatus?: "pass" | "fail";
-  tiresNotes?: string;
-  fluidsNotes?: string;
-  brakesNotes?: string;
-  lightsNotes?: string;
-  bodyNotes?: string;
-  interiorNotes?: string;
+  jobType?: string;
+  checklistItems?: Record<string, "pass" | "fail" | "na">;
+  readyToRent?: boolean;
+  submittedAt?: string;
+  notes?: string;
   createdAt?: string;
 }
 export interface Violation {
