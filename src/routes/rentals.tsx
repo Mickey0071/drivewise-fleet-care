@@ -342,6 +342,11 @@ function RentalsPage() {
                       <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
                     </Button>
                   )}
+                  {!r.endDate && (
+                    <Button variant="outline" size="sm" onClick={() => setSwapping(r)}>
+                      <ArrowLeftRight className="mr-1 h-4 w-4" /> Swap vehicle
+                    </Button>
+                  )}
                   {r.signatureDataUrl && (
                     <Button variant="ghost" size="sm" onClick={() => setViewingAgreement(r)}>
                       <FileSignature className="mr-1 h-4 w-4" /> View agreement
