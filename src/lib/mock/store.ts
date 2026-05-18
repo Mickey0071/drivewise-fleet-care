@@ -1021,6 +1021,17 @@ export function updateDriver(id: string, fields: Partial<Omit<Driver, "id">>) {
   if (fields.status !== undefined) patch.status = fields.status;
   if (fields.dateOfBirth !== undefined) patch.date_of_birth = fields.dateOfBirth ?? null;
   if (fields.address !== undefined) patch.address = fields.address ?? null;
+  if (fields.firstName !== undefined) patch.first_name = fields.firstName ?? null;
+  if (fields.middleInitial !== undefined) patch.middle_initial = fields.middleInitial ?? null;
+  if (fields.lastName !== undefined) patch.last_name = fields.lastName ?? null;
+  if (fields.dlState !== undefined) patch.dl_state = fields.dlState ?? null;
+  if (fields.streetAddress !== undefined) patch.street_address = fields.streetAddress ?? null;
+  if (fields.aptUnit !== undefined) patch.apt_unit = fields.aptUnit ?? null;
+  if (fields.city !== undefined) patch.city = fields.city ?? null;
+  if (fields.state !== undefined) patch.state = fields.state ?? null;
+  if (fields.zipCode !== undefined) patch.zip_code = fields.zipCode ?? null;
+  if (fields.altContactName !== undefined) patch.alt_contact_name = fields.altContactName ?? null;
+  if (fields.altContactPhone !== undefined) patch.alt_contact_phone = fields.altContactPhone ?? null;
   const cloudReady = cloudWrite("driver:update", supabase.from("drivers").update(patch as never).eq("id", id)).catch((error) => {
     Object.assign(d, prev);
     emit();
