@@ -595,7 +595,11 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
               Continue <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
           ) : (
-            <Button size="sm" onClick={confirm} disabled={saving}>
+            <Button
+              size="sm"
+              onClick={confirm}
+              disabled={saving || (!!vehicle && awaitingPostReturnInspection(vehicle.id) && !(isAdmin && inspectionOverride))}
+            >
               <Check className="mr-1 h-4 w-4" /> {saving ? "Saving…" : "Save as pending"}
             </Button>
           )}
