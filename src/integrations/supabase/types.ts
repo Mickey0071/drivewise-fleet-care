@@ -150,38 +150,77 @@ export type Database = {
       }
       inspections: {
         Row: {
+          body_notes: string | null
+          body_status: string | null
+          brakes_notes: string | null
+          brakes_status: string | null
           completed_by: string
           created_at: string
           damage_noted: boolean
           date: string
+          fluids_notes: string | null
+          fluids_status: string | null
           fuel_level: number
           id: string
+          inspector_name: string | null
+          interior_notes: string | null
+          interior_status: string | null
+          lights_notes: string | null
+          lights_status: string | null
           mileage: number
           rental_id: string
+          tires_notes: string | null
+          tires_status: string | null
           type: string
           vehicle_id: string
         }
         Insert: {
+          body_notes?: string | null
+          body_status?: string | null
+          brakes_notes?: string | null
+          brakes_status?: string | null
           completed_by: string
           created_at?: string
           damage_noted?: boolean
           date: string
+          fluids_notes?: string | null
+          fluids_status?: string | null
           fuel_level?: number
           id: string
+          inspector_name?: string | null
+          interior_notes?: string | null
+          interior_status?: string | null
+          lights_notes?: string | null
+          lights_status?: string | null
           mileage?: number
           rental_id: string
+          tires_notes?: string | null
+          tires_status?: string | null
           type: string
           vehicle_id: string
         }
         Update: {
+          body_notes?: string | null
+          body_status?: string | null
+          brakes_notes?: string | null
+          brakes_status?: string | null
           completed_by?: string
           created_at?: string
           damage_noted?: boolean
           date?: string
+          fluids_notes?: string | null
+          fluids_status?: string | null
           fuel_level?: number
           id?: string
+          inspector_name?: string | null
+          interior_notes?: string | null
+          interior_status?: string | null
+          lights_notes?: string | null
+          lights_status?: string | null
           mileage?: number
           rental_id?: string
+          tires_notes?: string | null
+          tires_status?: string | null
           type?: string
           vehicle_id?: string
         }
@@ -319,12 +358,13 @@ export type Database = {
         Row: {
           cost: number
           created_at: string
-          date_completed: string
+          date_completed: string | null
           id: string
           mileage_at_service: number
           next_service_due: string
           notes: string | null
           service_type: string
+          source_inspection_id: string | null
           updated_at: string
           vehicle_id: string
           vendor: string
@@ -332,12 +372,13 @@ export type Database = {
         Insert: {
           cost?: number
           created_at?: string
-          date_completed?: string
+          date_completed?: string | null
           id: string
           mileage_at_service?: number
           next_service_due?: string
           notes?: string | null
           service_type: string
+          source_inspection_id?: string | null
           updated_at?: string
           vehicle_id: string
           vendor: string
@@ -345,17 +386,26 @@ export type Database = {
         Update: {
           cost?: number
           created_at?: string
-          date_completed?: string
+          date_completed?: string | null
           id?: string
           mileage_at_service?: number
           next_service_due?: string
           notes?: string | null
           service_type?: string
+          source_inspection_id?: string | null
           updated_at?: string
           vehicle_id?: string
           vendor?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_source_inspection_id_fkey"
+            columns: ["source_inspection_id"]
+            isOneToOne: false
+            referencedRelation: "inspections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
@@ -975,6 +1025,7 @@ export type Database = {
           ez_pass_tag: string | null
           fuel_level_pickup: string | null
           fuel_type: string | null
+          has_open_issues: boolean
           id: string
           image_url: string | null
           insurance_expiry: string | null
@@ -1001,6 +1052,7 @@ export type Database = {
           ez_pass_tag?: string | null
           fuel_level_pickup?: string | null
           fuel_type?: string | null
+          has_open_issues?: boolean
           id: string
           image_url?: string | null
           insurance_expiry?: string | null
@@ -1027,6 +1079,7 @@ export type Database = {
           ez_pass_tag?: string | null
           fuel_level_pickup?: string | null
           fuel_type?: string | null
+          has_open_issues?: boolean
           id?: string
           image_url?: string | null
           insurance_expiry?: string | null
