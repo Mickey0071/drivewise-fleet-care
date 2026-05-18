@@ -2,48 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { createStripeClient } from "@/lib/stripe.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
-
-function checkoutOrigin(): string {
-  const origin = getRequestHeader("origin") || getRequestHeader("referer");
-  if (origin) {
-    try { return new URL(origin).origin; } catch { /* ignore */ }
-  }
-  return process.env.PUBLIC_APP_ORIGIN ?? "";
-}
-
-async function createRentalCheckoutUrl(opts: {
-  rentalId: string;
-  amountCents: number;
-  description: string;
-  customerEmail?: string;
-}): Promise<string | null> {
-  try {
-    const env = process.env.STRIPE_LIVE_API_KEY ? "live" : "sandbox";
-    const stripe = createStripeClient(env);
-    const origin = checkoutOrigin();
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: [{
-        price_data: {
-          currency: "usd",
-          product_data: { name: opts.description },
-          unit_amount: Math.max(50, Math.round(opts.amountCents)),
-        },
-        quantity: 1,
-      }],
-      success_url: `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}&rental_id=${encodeURIComponent(opts.rentalId)}`,
-      cancel_url: `${origin}/rent/paid?canceled=1&rental_id=${encodeURIComponent(opts.rentalId)}`,
-      ...(opts.customerEmail ? { customer_email: opts.customerEmail } : {}),
-      metadata: { kind: "rental_first_payment", rental_id: opts.rentalId },
-    });
-    return session.url ?? null;
-  } catch (e) {
-    console.error("createRentalCheckoutUrl failed", e);
-    return null;
-  }
-}
 
 function genToken() {
   const bytes = new Uint8Array(16);
