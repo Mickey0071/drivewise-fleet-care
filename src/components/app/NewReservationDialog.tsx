@@ -561,6 +561,41 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
         </div>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={openIssueWarning} onOpenChange={setOpenIssueWarning}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            Vehicle has open maintenance
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {vehicle ? (
+              <>
+                This vehicle has{" "}
+                <span className="font-semibold">
+                  {maintenance.filter(m => m.vehicleId === vehicle.id && !m.dateCompleted).length}
+                </span>{" "}
+                open maintenance issue(s). Rent anyway?
+              </>
+            ) : null}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setOpenIssueAcknowledged(true);
+              setOpenIssueWarning(false);
+              // Re-trigger confirm now that user has acknowledged
+              setTimeout(() => { void confirm(); }, 0);
+            }}
+          >
+            Proceed
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 
