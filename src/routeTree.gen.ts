@@ -16,6 +16,7 @@ import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
 import { Route as ReservationsRouteImport } from './routes/reservations'
 import { Route as RentalsRouteImport } from './routes/rentals'
 import { Route as RentalAgreementRouteImport } from './routes/rental-agreement'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PnlRouteImport } from './routes/pnl'
 import { Route as PayrollReturnRouteImport } from './routes/payroll-return'
 import { Route as PayrollRouteImport } from './routes/payroll'
@@ -74,6 +75,11 @@ const RentalsRoute = RentalsRouteImport.update({
 const RentalAgreementRoute = RentalAgreementRouteImport.update({
   id: '/rental-agreement',
   path: '/rental-agreement',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PnlRoute = PnlRouteImport.update({
@@ -216,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
+  '/profile': typeof ProfileRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/reservations': typeof ReservationsRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
+  '/profile': typeof ProfileRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/reservations': typeof ReservationsRoute
@@ -283,6 +291,7 @@ export interface FileRoutesById {
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
+  '/profile': typeof ProfileRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/reservations': typeof ReservationsRoute
@@ -318,6 +327,7 @@ export interface FileRouteTypes {
     | '/payroll'
     | '/payroll-return'
     | '/pnl'
+    | '/profile'
     | '/rental-agreement'
     | '/rentals'
     | '/reservations'
@@ -351,6 +361,7 @@ export interface FileRouteTypes {
     | '/payroll'
     | '/payroll-return'
     | '/pnl'
+    | '/profile'
     | '/rental-agreement'
     | '/rentals'
     | '/reservations'
@@ -384,6 +395,7 @@ export interface FileRouteTypes {
     | '/payroll'
     | '/payroll-return'
     | '/pnl'
+    | '/profile'
     | '/rental-agreement'
     | '/rentals'
     | '/reservations'
@@ -418,6 +430,7 @@ export interface RootRouteChildren {
   PayrollRoute: typeof PayrollRoute
   PayrollReturnRoute: typeof PayrollReturnRoute
   PnlRoute: typeof PnlRoute
+  ProfileRoute: typeof ProfileRoute
   RentalAgreementRoute: typeof RentalAgreementRoute
   RentalsRoute: typeof RentalsRoute
   ReservationsRoute: typeof ReservationsRoute
@@ -483,6 +496,13 @@ declare module '@tanstack/react-router' {
       path: '/rental-agreement'
       fullPath: '/rental-agreement'
       preLoaderRoute: typeof RentalAgreementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pnl': {
@@ -683,6 +703,7 @@ const rootRouteChildren: RootRouteChildren = {
   PayrollRoute: PayrollRoute,
   PayrollReturnRoute: PayrollReturnRoute,
   PnlRoute: PnlRoute,
+  ProfileRoute: ProfileRoute,
   RentalAgreementRoute: RentalAgreementRoute,
   RentalsRoute: RentalsRoute,
   ReservationsRoute: ReservationsRoute,
