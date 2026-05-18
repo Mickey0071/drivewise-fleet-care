@@ -8,6 +8,7 @@ export interface AgreementSettings {
     phone: string;
     website: string;
     damageAlertPhone: string;
+    runnerInspectionPhone: string;
   };
   fees: {
     dailyLateFee: string;
@@ -31,6 +32,7 @@ export const DEFAULT_SETTINGS: AgreementSettings = {
     phone: "(866) 625-5550",
     website: "camautorentals.com",
     damageAlertPhone: "+12672213977",
+    runnerInspectionPhone: "+12672213977",
   },
   fees: {
     dailyLateFee: "$25",
