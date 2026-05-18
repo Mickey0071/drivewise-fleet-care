@@ -93,6 +93,15 @@ export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
     completedBy: string;
     notes?: string;
     checklist: Record<string, boolean>;
+    inspectorName?: string;
+    items?: {
+      tires?: { status: "pass" | "fail"; notes?: string };
+      fluids?: { status: "pass" | "fail"; notes?: string };
+      brakes?: { status: "pass" | "fail"; notes?: string };
+      lights?: { status: "pass" | "fail"; notes?: string };
+      body?: { status: "pass" | "fail"; notes?: string };
+      interior?: { status: "pass" | "fail"; notes?: string };
+    };
   }) => {
     if (!input.vehicleId) throw new Error("vehicleId required");
     if (!input.token || input.token.length < 16) throw new Error("invalid token");
@@ -122,6 +131,7 @@ export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
 
     // Insert inspection record
     const inspectionId = `IN-${Date.now().toString(36).toUpperCase()}`;
+    const it = data.items || {};
     const { error: insErr } = await supabaseAdmin.from("inspections").insert({
       id: inspectionId,
       vehicle_id: data.vehicleId,
@@ -132,6 +142,19 @@ export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
       fuel_level: data.fuelLevel,
       damage_noted: data.damageNoted,
       completed_by: data.completedBy.trim(),
+      inspector_name: (data.inspectorName || data.completedBy).trim(),
+      tires_status: it.tires?.status ?? null,
+      tires_notes: it.tires?.notes ?? null,
+      fluids_status: it.fluids?.status ?? null,
+      fluids_notes: it.fluids?.notes ?? null,
+      brakes_status: it.brakes?.status ?? null,
+      brakes_notes: it.brakes?.notes ?? null,
+      lights_status: it.lights?.status ?? null,
+      lights_notes: it.lights?.notes ?? null,
+      body_status: it.body?.status ?? null,
+      body_notes: it.body?.notes ?? null,
+      interior_status: it.interior?.status ?? null,
+      interior_notes: it.interior?.notes ?? null,
     });
     if (insErr) throw new Error(insErr.message);
 
@@ -167,5 +190,8 @@ export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
       console.error("inspection summary sms failed", e);
     }
 
-    return { ok: true, damageNoted: data.damageNoted };
+    const failedItems = Object.entries(it)
+      .filter(([, v]) => v?.status === "fail")
+      .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
+    return { ok: true, damageNoted: data.damageNoted, failedItems, maintenanceCreated: failedItems.length > 0 || data.damageNoted };
   });
