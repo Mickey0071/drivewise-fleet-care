@@ -255,6 +255,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={close}>
       <DialogContent
         className="flex h-screen w-screen max-w-none flex-col gap-0 rounded-none border-0 p-0 sm:max-w-none"
