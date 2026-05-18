@@ -14,15 +14,16 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { session, signIn, signInWithGoogle, loading } = useAuth();
+  const { session, role, roleLoading, signIn, signInWithGoogle, loading } = useAuth();
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && session) nav({ to: "/" });
-  }, [loading, session, nav]);
+    if (loading || roleLoading || !session || !role) return;
+    nav({ to: role === "admin" ? "/" : "/checklist" });
+  }, [loading, roleLoading, session, role, nav]);
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +32,13 @@ function LoginPage() {
     setBusy(false);
     if (error) toast.error(error);
     else toast.success("Welcome back");
+  }
+
+  async function handleGoogleSignIn() {
+    setBusy(true);
+    const { error } = await signInWithGoogle();
+    setBusy(false);
+    if (error) toast.error(error);
   }
 
   return (
@@ -44,7 +52,7 @@ function LoginPage() {
           <p className="text-sm text-muted-foreground">Sign in to manage your fleet</p>
         </CardHeader>
         <CardContent>
-          <Button type="button" variant="outline" className="mb-4 w-full" onClick={signInWithGoogle}>
+          <Button type="button" variant="outline" className="mb-4 w-full" onClick={handleGoogleSignIn} disabled={busy}>
             Continue with Google
           </Button>
           <div className="relative mb-4 text-center text-xs uppercase text-muted-foreground">
@@ -52,7 +60,7 @@ function LoginPage() {
             <div className="absolute inset-y-1/2 left-0 right-0 h-px bg-border" />
           </div>
           <form onSubmit={handleSignIn} className="space-y-3">
-            <div><Label htmlFor="si-email">Email</Label><Input id="si-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} /></div>
+            <div><Label htmlFor="si-email">Email</Label><Input id="si-email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></div>
             <div><Label htmlFor="si-pw">Password</Label><Input id="si-pw" type="password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
             <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
           </form>
