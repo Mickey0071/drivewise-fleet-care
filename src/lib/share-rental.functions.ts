@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { getRequestHeader } from "@tanstack/react-start/server";
 
 function genToken() {
   const bytes = new Uint8Array(16);
