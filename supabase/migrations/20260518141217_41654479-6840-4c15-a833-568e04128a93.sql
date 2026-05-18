@@ -1,0 +1,1 @@
+ALTER TABLE public.inspections ALTER COLUMN rental_id DROP NOT NULL;
