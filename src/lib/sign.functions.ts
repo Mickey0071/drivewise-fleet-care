@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
 import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
+import { getRequestHeader } from "@tanstack/react-start/server";
 
 function genToken() {
   const bytes = new Uint8Array(16);
@@ -285,26 +286,39 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
         if (driver?.phone && amountCents >= 50) {
           const env: StripeEnv = process.env.STRIPE_LIVE_API_KEY ? "live" : "sandbox";
           const stripe = createStripeClient(env);
-          const origin = process.env.PUBLIC_APP_ORIGIN || "https://camautorentals.lovable.app";
-          const session = await stripe.checkout.sessions.create({
-            mode: "payment",
-            line_items: [{
-              price_data: {
-                currency: "usd",
-                product_data: { name: `Rental ${rental.id} — first ${periodLabel}` },
-                unit_amount: amountCents,
-              },
-              quantity: 1,
-            }],
-            success_url: `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}&rental_id=${encodeURIComponent(rental.id)}`,
-            cancel_url: `${origin}/rent/paid?canceled=1&rental_id=${encodeURIComponent(rental.id)}`,
-            metadata: { kind: "rental_first_payment", rental_id: rental.id },
+          const originHeader = getRequestHeader("origin") || getRequestHeader("referer");
+          let origin = process.env.PUBLIC_APP_ORIGIN || "https://camautorentals.lovable.app";
+          if (originHeader) {
+            try { origin = new URL(originHeader).origin; } catch { /* keep fallback */ }
+          }
+          origin = origin.replace(/\/$/, "");
+          const metadata = { kind: "rental_first_payment", rental_id: rental.id };
+          const product = await stripe.products.create({
+            name: `Rental ${rental.id} — first ${periodLabel}`,
+            metadata: { rental_id: rental.id },
           });
-          if (session.url) {
+          const price = await stripe.prices.create({
+            product: product.id,
+            currency: "usd",
+            unit_amount: amountCents,
+          });
+          const link = await stripe.paymentLinks.create({
+            line_items: [{ price: price.id, quantity: 1 }],
+            metadata,
+            payment_intent_data: { metadata },
+            after_completion: {
+              type: "redirect" as const,
+              redirect: {
+                url: `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}&rental_id=${encodeURIComponent(rental.id)}`,
+              },
+            },
+            restrictions: { completed_sessions: { limit: 1 } },
+          });
+          if (link.url) {
             const amt = `$${(amountCents / 100).toFixed(2)}`;
             await sendSms(
               driver.phone,
-              `Camauto Rentals: Thanks for signing! Final step — please pay ${amt} for your first ${periodLabel} to release the vehicle: ${session.url}`,
+              `Camauto Rentals: Thanks for signing! Final step — please pay ${amt} for your first ${periodLabel} to release the vehicle: ${link.url}`,
               driver.full_name ?? null,
             );
           }
