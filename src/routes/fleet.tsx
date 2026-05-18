@@ -116,7 +116,7 @@ function FleetPage() {
               >
                 Profile
               </Button>
-              {v.status === "available" && (
+              {isVehicleBookable(v.id) && (
                 <Button
                   variant="outline"
                   size="sm"
