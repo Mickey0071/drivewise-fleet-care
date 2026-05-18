@@ -968,6 +968,7 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
 function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
   const v = rental ? vehicleById(rental.vehicleId) : null;
   const d = rental ? driverById(rental.driverId) : null;
+  const sendSmsFn = useServerFn(sendRentalSms);
   const [newEndDate, setNewEndDate] = useState("");
   const [sig, setSig] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
@@ -994,6 +995,12 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
       signedBy: d.fullName,
       agreementVersion: AGREEMENT_VERSION,
     });
+    if (d.phone) {
+      const amountStr = ext && ext.additionalAmount > 0 ? ` Amount due: ${fmtMoney(ext.additionalAmount)}.` : "";
+      const msg = `Camauto Rentals: Your rental of the ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""} has been extended through ${fmtDate(newEndDate)}.${amountStr} Reply with any questions.`;
+      sendSmsFn({ data: { phone: d.phone, message: msg.slice(0, 1000), name: d.fullName } })
+        .catch(e => console.error("Extension SMS failed", e));
+    }
     toast.success("Rental extended", {
       description: `${v?.year} ${v?.make} ${v?.model} → ${fmtDate(newEndDate)}${ext && ext.additionalAmount > 0 ? ` · ${fmtMoney(ext.additionalAmount)} added to receipt` : ""}`,
     });
