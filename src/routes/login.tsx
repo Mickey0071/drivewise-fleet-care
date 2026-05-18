@@ -40,12 +40,6 @@ function LoginPage() {
     else toast.success("Welcome back");
   }
 
-  async function handleGoogleSignIn() {
-    setBusy(true);
-    const { error } = await signInWithGoogle();
-    setBusy(false);
-    if (error) toast.error(error);
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
