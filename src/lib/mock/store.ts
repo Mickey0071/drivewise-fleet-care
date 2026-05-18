@@ -1112,6 +1112,18 @@ export function addInspection(input: Omit<Inspection, "id">) {
     v.mileage = input.mileage;
     cloudWrite("vehicle:update", supabase.from("vehicles").update({ mileage: input.mileage }).eq("id", v.id));
   }
+  // If this is a passing post-return inspection, lift the inspection hold so
+  // the vehicle becomes bookable again. Failing inspections leave the vehicle
+  // in the "inspection" status and flag has_open_issues via the DB trigger.
+  if (v && v.status === "inspection") {
+    const isReturnJob = input.jobType === "vehicle_return";
+    const checklistFailed = Object.values(input.checklistItems ?? {}).some(x => x === "fail");
+    const passing = isReturnJob && input.readyToRent === true && !input.damageNoted && !checklistFailed;
+    if (passing) {
+      v.status = "available";
+      cloudWrite("vehicle:update", supabase.from("vehicles").update({ status: "available" }).eq("id", v.id));
+    }
+  }
   emit();
   return insp;
 }
