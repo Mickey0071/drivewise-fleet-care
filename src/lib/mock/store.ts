@@ -147,6 +147,35 @@ const toPayment = (p: Payment) => ({
   amount: p.amount, due_date: p.dueDate, paid_date: p.paidDate ?? null,
   method: p.method ?? null, status: p.status,
 });
+
+function rentalBlocksVehicle(r: Rental, ignoreRentalId?: string) {
+  if (r.id === ignoreRentalId) return false;
+  if (r.endDate) return false;
+  const status = r.reservationStatus ?? "active";
+  return status === "active" || status === "pending";
+}
+
+export function isVehicleBookable(vehicleId: string, ignoreRentalId?: string) {
+  const vehicle = vehicles.find(v => v.id === vehicleId);
+  if (!vehicle) return false;
+  if (vehicle.status === "maintenance" || vehicle.status === "impound") return false;
+  return !rentals.some(r => r.vehicleId === vehicleId && rentalBlocksVehicle(r, ignoreRentalId));
+}
+
+function reconcileVehicleAvailability(persist = false) {
+  for (const v of vehicles) {
+    const blocking = rentals.find(r => r.vehicleId === v.id && rentalBlocksVehicle(r));
+    const nextStatus = blocking && (blocking.reservationStatus ?? "active") === "active"
+      ? "rented"
+      : !blocking && (v.status === "rented" || v.status === "inspection")
+        ? "available"
+        : v.status;
+    if (nextStatus !== v.status) {
+      v.status = nextStatus;
+      if (persist) cloudWrite("vehicle:status-reconcile", supabase.from("vehicles").update({ status: nextStatus }).eq("id", v.id));
+    }
+  }
+}
 const fromInspection = (r: any): Inspection => ({
   id: r.id, vehicleId: r.vehicle_id, rentalId: r.rental_id,
   type: r.type, date: r.date, mileage: r.mileage, fuelLevel: r.fuel_level,
