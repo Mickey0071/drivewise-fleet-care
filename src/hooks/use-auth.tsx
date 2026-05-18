@@ -10,8 +10,10 @@ type AuthCtx = {
   user: User | null;
   role: AppRole | null;
   loading: boolean;
+  roleLoading: boolean;
+  roleError: string | null;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: () => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
 };
 
@@ -20,33 +22,55 @@ const Ctx = createContext<AuthCtx | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [roleLoading, setRoleLoading] = useState(false);
+  const [roleError, setRoleError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (!mounted) return;
       setSession(s);
       if (s?.user) {
+        setRole(null);
         setTimeout(() => fetchRole(s.user.id), 0);
       } else {
         setRole(null);
+        setRoleError(null);
+        setRoleLoading(false);
       }
     });
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!mounted) return;
       setSession(data.session);
-      if (data.session?.user) fetchRole(data.session.user.id);
+      if (data.session?.user) await fetchRole(data.session.user.id);
+      else setRoleLoading(false);
       setLoading(false);
     });
-    return () => sub.subscription.unsubscribe();
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
   }, []);
 
   async function fetchRole(userId: string) {
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-    if (!data || data.length === 0) { setRole(null); return; }
-    // Admin > runner > driver priority
+    setRoleLoading(true);
+    setRoleError(null);
+    const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    if (error) {
+      setRole(null);
+      setRoleError(error.message);
+      setRoleLoading(false);
+      return;
+    }
+    if (!data || data.length === 0) {
+      setRole(null);
+      setRoleLoading(false);
+      return;
+    }
     const roles = data.map(r => r.role as AppRole);
     if (roles.includes("admin")) setRole("admin");
     else if (roles.includes("runner")) setRole("runner");
-    else setRole("driver");
+    else if (roles.includes("driver")) setRole("driver");
+    else setRole(null);
+    setRoleLoading(false);
   }
 
   const value: AuthCtx = {
@@ -54,14 +78,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: session?.user ?? null,
     role,
     loading,
+    roleLoading,
+    roleError,
     async signIn(email, password) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
       return { error: error?.message };
     },
     async signInWithGoogle() {
-      await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+      const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+      return { error: result.error instanceof Error ? result.error.message : undefined };
     },
-    async signOut() { await supabase.auth.signOut(); },
+    async signOut() {
+      setRole(null);
+      setRoleError(null);
+      setRoleLoading(false);
+      await supabase.auth.signOut();
+    },
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
