@@ -25,6 +25,21 @@ export interface Driver {
   rideshare: "Uber" | "Lyft" | "Both"; status: DriverStatus; dateAdded: string;
   dateOfBirth?: string;
   address?: string;
+  // Split name fields
+  firstName?: string;
+  middleInitial?: string;
+  lastName?: string;
+  // License extras
+  dlState?: string;
+  // Address parts
+  streetAddress?: string;
+  aptUnit?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  // Alternate contact
+  altContactName?: string;
+  altContactPhone?: string;
 }
 export interface Rental {
   id: string; vehicleId: string; driverId: string; startDate: string;
