@@ -14,7 +14,7 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { session, role, roleLoading, signIn, signInWithGoogle, loading } = useAuth();
+  const { session, role, roleLoading, signIn, signInWithGoogle, resetPassword, loading } = useAuth();
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,6 +41,18 @@ function LoginPage() {
     if (error) toast.error(error);
   }
 
+  async function handleResetPassword() {
+    if (!email.trim()) {
+      toast.error("Enter your email first");
+      return;
+    }
+    setBusy(true);
+    const { error } = await resetPassword(email);
+    setBusy(false);
+    if (error) toast.error(error);
+    else toast.success("Password reset email sent");
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
@@ -61,8 +73,11 @@ function LoginPage() {
           </div>
           <form onSubmit={handleSignIn} className="space-y-3">
             <div><Label htmlFor="si-email">Email</Label><Input id="si-email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></div>
-            <div><Label htmlFor="si-pw">Password</Label><Input id="si-pw" type="password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
+            <div><Label htmlFor="si-pw">Password</Label><Input id="si-pw" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
             <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
+            <Button type="button" variant="ghost" className="w-full" disabled={busy} onClick={handleResetPassword}>
+              Forgot password?
+            </Button>
           </form>
         </CardContent>
       </Card>
