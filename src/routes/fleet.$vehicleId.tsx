@@ -13,6 +13,9 @@ import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useRef, useState } from "react";
 import { ArrowLeft, Link2, Camera, Pencil } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
 import { toast } from "sonner";
 
 const REPAIR_KEYWORDS = ["brake", "transmission", "repair", "pads", "engine", "battery", "tire", "body", "glass", "diagnostic"];
@@ -32,12 +35,14 @@ function VehicleDetail() {
   const [reserveOpen, setReserveOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   if (!v) return <div className="text-muted-foreground">Vehicle not found.</div>;
 
   const vRentals = rentals.filter(r => r.vehicleId === v.id);
   const vMx = maintenance.filter(m => m.vehicleId === v.id);
+  const openIssues = vMx.filter(m => !m.dateCompleted);
   const vRepairs = vMx.filter(m => REPAIR_KEYWORDS.some(keyword => m.serviceType.toLowerCase().includes(keyword)));
   const vViol = violations.filter(x => x.vehicleId === v.id);
   const vInsp = inspections.filter(i => i.vehicleId === v.id);
@@ -126,6 +131,11 @@ function VehicleDetail() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={v.status} />
+            {v.hasOpenIssues && (
+              <Badge variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                <AlertTriangle className="mr-1 h-3 w-3" /> Open issue
+              </Badge>
+            )}
             {bookable && (
               <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
                 Share rental link
@@ -144,6 +154,33 @@ function VehicleDetail() {
           </div>
         }
       />
+
+      {openIssues.length > 0 && (
+        <Card className="mb-4 border-amber-500/40 bg-amber-500/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              Open Issues ({openIssues.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {openIssues.map(m => (
+              <div key={m.id} className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium">{m.serviceType}</div>
+                  {m.notes && <div className="mt-0.5 whitespace-pre-line text-xs text-muted-foreground">{m.notes}</div>}
+                  <div className="mt-0.5 text-xs text-muted-foreground">Opened {fmtDate(m.createdAt?.slice(0, 10))}</div>
+                </div>
+                {m.sourceInspectionId && (
+                  <Button size="sm" variant="outline" onClick={() => setInspectionDetailId(m.sourceInspectionId!)}>
+                    View inspection
+                  </Button>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {isCurrentlyRented && activeDriver && (
         <Card className="mb-4 border-primary/40 bg-primary/5">
@@ -291,6 +328,11 @@ function VehicleDetail() {
         open={editOpen}
         onOpenChange={setEditOpen}
         vehicle={v}
+      />
+      <InspectionDetailDialog
+        inspectionId={inspectionDetailId}
+        open={!!inspectionDetailId}
+        onOpenChange={(o) => { if (!o) setInspectionDetailId(null); }}
       />
       <div className="mt-6 flex justify-start">
         <Button variant="outline" asChild>
