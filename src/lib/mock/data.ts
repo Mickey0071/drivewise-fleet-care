@@ -36,7 +36,7 @@ export interface Rental {
   signedAt?: string;
   signedBy?: string;
   agreementVersion?: string;
-  reservationStatus?: "pending" | "active" | "completed";
+  reservationStatus?: "pending" | "active" | "completed" | "returned";
   pendingCreatedAt?: string;
   paymentReceived?: boolean;
   extensions?: RentalExtension[];
