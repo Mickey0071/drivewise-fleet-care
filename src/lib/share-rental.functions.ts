@@ -274,13 +274,19 @@ export const submitShareApplication = createServerFn({ method: "POST" })
   .inputValidator((input: {
     token: string;
     fullName: string;
+    firstName?: string;
+    middleInitial?: string;
+    lastName?: string;
     phone: string;
     email: string;
     licenseNumber: string;
     licenseExpiry?: string;
+    dlState?: string;
     rideshare?: "Uber" | "Lyft" | "Both";
     dateOfBirth?: string;
     address?: string;
+    streetAddress?: string;
+    aptUnit?: string;
     city?: string;
     state?: string;
     zip?: string;
@@ -297,6 +303,12 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     reqStr(input.email, "Email");
     reqStr(input.licenseNumber, "License number", 60);
     if (input.licenseExpiry && input.licenseExpiry.length > 20) throw new Error("Invalid license expiry");
+    if (input.dlState && input.dlState.length > 4) throw new Error("Invalid DL state");
+    if (input.firstName && input.firstName.length > 80) throw new Error("First name too long");
+    if (input.middleInitial && input.middleInitial.length > 4) throw new Error("Middle initial too long");
+    if (input.lastName && input.lastName.length > 80) throw new Error("Last name too long");
+    if (input.streetAddress && input.streetAddress.length > 200) throw new Error("Street too long");
+    if (input.aptUnit && input.aptUnit.length > 30) throw new Error("Apt/Unit too long");
     if (input.rideshare && !["Uber", "Lyft", "Both"].includes(input.rideshare)) throw new Error("Invalid rideshare");
     if (input.dateOfBirth && input.dateOfBirth.length > 20) throw new Error("Invalid DOB");
     if (input.address && input.address.length > 300) throw new Error("Address too long");
@@ -345,6 +357,15 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       address: [data.address?.trim(), data.city?.trim(), [data.state?.trim(), data.zip?.trim()].filter(Boolean).join(" ")]
         .filter(Boolean)
         .join(", ") || null,
+      first_name: data.firstName?.trim() || null,
+      middle_initial: data.middleInitial?.trim() || null,
+      last_name: data.lastName?.trim() || null,
+      dl_state: data.dlState || null,
+      street_address: data.streetAddress?.trim() || data.address?.trim() || null,
+      apt_unit: data.aptUnit?.trim() || null,
+      city: data.city?.trim() || null,
+      state: data.state?.trim() || null,
+      zip_code: data.zip?.trim() || null,
     });
     if (dErr) throw new Error(`Could not create renter: ${dErr.message}`);
 
@@ -387,24 +408,11 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       .update({ consumed_rental_id: rentalId, consumed_at: nowIso })
       .eq("token", data.token);
 
-    // Acknowledgment SMS
-    // First-payment Stripe checkout link
-    const amountCents = Math.round(Number(link.rate) * 100);
-    const periodLabel = link.billing_period === "daily" ? "day" : link.billing_period === "monthly" ? "month" : "week";
-    const description = `Camauto Rentals: first ${periodLabel} payment for ${link.vehicle_id}`;
-    const paymentUrl = await createRentalCheckoutUrl({
-      rentalId,
-      amountCents,
-      description,
-      customerEmail: data.email.trim(),
-    });
-
+    // Acknowledgment SMS — no payment link. Staff handles payment manually.
     try {
       await sendSms(
         data.phone.trim(),
-        paymentUrl
-          ? `Camauto Rentals: Thanks ${data.fullName.trim().split(" ")[0]}! Pay your first ${periodLabel} ($${(amountCents/100).toFixed(2)}) to confirm pickup: ${paymentUrl}`
-          : "Camauto Rentals: Thanks! Your application has been received. We'll be in touch shortly to confirm pickup.",
+        `Thank you for choosing Camauto, ${data.fullName.trim().split(" ")[0]}! Your application has been received. We'll be in touch shortly to confirm pickup.`,
         data.fullName.trim(),
       );
     } catch (e) {
@@ -431,5 +439,5 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       console.error("admin notify sms failed", e);
     }
 
-    return { ok: true, rentalId, paymentUrl };
+    return { ok: true, rentalId, paymentUrl: null as string | null };
   });
