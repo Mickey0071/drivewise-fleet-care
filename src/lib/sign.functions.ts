@@ -254,81 +254,20 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       .update({ insurance_on_file: true })
       .eq("id", rental.driver_id);
 
-    // After signing: if not yet paid, text the renter a Stripe payment link
-    // so the reservation can flip to "on rent" once payment lands.
+    // After signing: send a plain thank-you. No automatic payment link —
+    // staff handles payment manually.
     try {
       const { data: driver } = await supabaseAdmin
         .from("drivers")
         .select("phone, full_name")
         .eq("id", rental.driver_id)
         .single();
-
-      if (rental.payment_received) {
-        if (driver?.phone) {
-          await sendSms(
-            driver.phone,
-            "Camauto Rentals: Thank you! Your signed agreement and ID have been received — your reservation is confirmed.",
-            driver.full_name ?? null,
-          );
-        }
-      } else {
-        // Pull rate to charge first period
-        const { data: full } = await supabaseAdmin
-          .from("rentals")
-          .select("rate, weekly_rate, billing_period")
-          .eq("id", rental.id)
-          .single();
-        const amount = Number(full?.rate ?? full?.weekly_rate ?? 0);
-        const period = (full?.billing_period as string) ?? "weekly";
-        const periodLabel = period === "daily" ? "day" : period === "monthly" ? "month" : "week";
-        const amountCents = Math.round(amount * 100);
-
-        if (driver?.phone && amountCents >= 50) {
-          const env: StripeEnv = process.env.STRIPE_LIVE_API_KEY ? "live" : "sandbox";
-          const stripe = createStripeClient(env);
-          const originHeader = getRequestHeader("origin") || getRequestHeader("referer");
-          let origin = process.env.PUBLIC_APP_ORIGIN || "https://camautorentals.lovable.app";
-          if (originHeader) {
-            try { origin = new URL(originHeader).origin; } catch { /* keep fallback */ }
-          }
-          origin = origin.replace(/\/$/, "");
-          const metadata = { kind: "rental_first_payment", rental_id: rental.id };
-          const product = await stripe.products.create({
-            name: `Rental ${rental.id} — first ${periodLabel}`,
-            metadata: { rental_id: rental.id },
-          });
-          const price = await stripe.prices.create({
-            product: product.id,
-            currency: "usd",
-            unit_amount: amountCents,
-          });
-          const link = await stripe.paymentLinks.create({
-            line_items: [{ price: price.id, quantity: 1 }],
-            metadata,
-            payment_intent_data: { metadata },
-            after_completion: {
-              type: "redirect" as const,
-              redirect: {
-                url: `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}&rental_id=${encodeURIComponent(rental.id)}`,
-              },
-            },
-            restrictions: { completed_sessions: { limit: 1 } },
-          });
-          if (link.url) {
-            const amt = `$${(amountCents / 100).toFixed(2)}`;
-            await sendSms(
-              driver.phone,
-              `Camauto Rentals: Thanks for signing! Final step — please pay ${amt} for your first ${periodLabel} to release the vehicle: ${link.url}`,
-              driver.full_name ?? null,
-            );
-          }
-        } else if (driver?.phone) {
-          await sendSms(
-            driver.phone,
-            "Camauto Rentals: Thanks for signing! We'll be in touch with payment instructions shortly.",
-            driver.full_name ?? null,
-          );
-        }
+      if (driver?.phone) {
+        await sendSms(
+          driver.phone,
+          "Thank you for choosing Camauto. Your signed agreement and ID have been received.",
+          driver.full_name ?? null,
+        );
       }
     } catch (e) {
       console.error("post-sign notify failed", e);
