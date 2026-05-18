@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { vehicles, drivers, vehicleById, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { addRental, hasConflict, addDriver, getActiveRentalForDriver, markReturned, useStoreVersion } from "@/lib/mock/store";
+import { addRental, hasConflict, addDriver, getActiveRentalForDriver, isVehicleBookable, markReturned, useStoreVersion } from "@/lib/mock/store";
 import { useServerFn } from "@tanstack/react-start";
 import { sendSigningLink } from "@/lib/sign.functions";
 import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus, Repeat, AlertTriangle } from "lucide-react";
@@ -66,7 +66,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const existingRental = driver ? getActiveRentalForDriver(driver.id) : null;
 
   const availableVehicles = useMemo(
-    () => vehicles.filter(v => v.status === "available" && (
+    () => vehicles.filter(v => isVehicleBookable(v.id) && (
       vehQ === "" ||
       `${v.year} ${v.make} ${v.model} ${v.plate}`.toLowerCase().includes(vehQ.toLowerCase())
     )),
