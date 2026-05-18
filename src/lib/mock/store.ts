@@ -199,7 +199,8 @@ const fromInspection = (r: any): Inspection => ({
 const toInspection = (i: Inspection) => ({
   id: i.id, vehicle_id: i.vehicleId, rental_id: i.rentalId,
   type: i.type, date: i.date, mileage: i.mileage,
-  fuel_level: i.fuelLevel, damage_noted: i.damageNoted, completed_by: i.completedBy,
+  fuel_level: i.fuelLevel == null ? null : String(i.fuelLevel),
+  damage_noted: i.damageNoted, completed_by: i.completedBy,
 });
 const fromExpense = (r: any): Expense => ({
   id: r.id, category: r.category, amount: Number(r.amount), date: r.date,

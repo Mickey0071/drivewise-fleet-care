@@ -139,22 +139,10 @@ export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
       type: "check-in",
       date: new Date().toISOString().slice(0, 10),
       mileage: data.mileage,
-      fuel_level: data.fuelLevel,
+      fuel_level: data.fuelLevel == null ? null : String(data.fuelLevel),
       damage_noted: data.damageNoted,
       completed_by: data.completedBy.trim(),
       inspector_name: (data.inspectorName || data.completedBy).trim(),
-      tires_status: it.tires?.status ?? null,
-      tires_notes: it.tires?.notes ?? null,
-      fluids_status: it.fluids?.status ?? null,
-      fluids_notes: it.fluids?.notes ?? null,
-      brakes_status: it.brakes?.status ?? null,
-      brakes_notes: it.brakes?.notes ?? null,
-      lights_status: it.lights?.status ?? null,
-      lights_notes: it.lights?.notes ?? null,
-      body_status: it.body?.status ?? null,
-      body_notes: it.body?.notes ?? null,
-      interior_status: it.interior?.status ?? null,
-      interior_notes: it.interior?.notes ?? null,
     });
     if (insErr) throw new Error(insErr.message);
 
