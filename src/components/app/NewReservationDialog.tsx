@@ -186,6 +186,12 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   async function confirm() {
     if (!vehicle || !driver || !startDate) return;
     if (saving) return;
+    if (awaitingPostReturnInspection(vehicle.id) && !(isAdmin && inspectionOverride)) {
+      toast.error("Vehicle needs a runner inspection first", {
+        description: "Submit a passing post-return checklist before booking this vehicle.",
+      });
+      return;
+    }
     if (vehicle.hasOpenIssues && !openIssueAcknowledged) {
       setOpenIssueWarning(true);
       return;
