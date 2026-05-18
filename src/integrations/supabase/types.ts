@@ -150,77 +150,53 @@ export type Database = {
       }
       inspections: {
         Row: {
-          body_notes: string | null
-          body_status: string | null
-          brakes_notes: string | null
-          brakes_status: string | null
+          checklist_items: Json | null
           completed_by: string
           created_at: string
           damage_noted: boolean
           date: string
-          fluids_notes: string | null
-          fluids_status: string | null
-          fuel_level: number
+          fuel_level: string
           id: string
           inspector_name: string | null
-          interior_notes: string | null
-          interior_status: string | null
-          lights_notes: string | null
-          lights_status: string | null
+          job_type: string | null
           mileage: number
+          ready_to_rent: boolean | null
           rental_id: string
-          tires_notes: string | null
-          tires_status: string | null
+          submitted_at: string | null
           type: string
           vehicle_id: string
         }
         Insert: {
-          body_notes?: string | null
-          body_status?: string | null
-          brakes_notes?: string | null
-          brakes_status?: string | null
+          checklist_items?: Json | null
           completed_by: string
           created_at?: string
           damage_noted?: boolean
           date: string
-          fluids_notes?: string | null
-          fluids_status?: string | null
-          fuel_level?: number
+          fuel_level: string
           id: string
           inspector_name?: string | null
-          interior_notes?: string | null
-          interior_status?: string | null
-          lights_notes?: string | null
-          lights_status?: string | null
+          job_type?: string | null
           mileage?: number
+          ready_to_rent?: boolean | null
           rental_id: string
-          tires_notes?: string | null
-          tires_status?: string | null
+          submitted_at?: string | null
           type: string
           vehicle_id: string
         }
         Update: {
-          body_notes?: string | null
-          body_status?: string | null
-          brakes_notes?: string | null
-          brakes_status?: string | null
+          checklist_items?: Json | null
           completed_by?: string
           created_at?: string
           damage_noted?: boolean
           date?: string
-          fluids_notes?: string | null
-          fluids_status?: string | null
-          fuel_level?: number
+          fuel_level?: string
           id?: string
           inspector_name?: string | null
-          interior_notes?: string | null
-          interior_status?: string | null
-          lights_notes?: string | null
-          lights_status?: string | null
+          job_type?: string | null
           mileage?: number
+          ready_to_rent?: boolean | null
           rental_id?: string
-          tires_notes?: string | null
-          tires_status?: string | null
+          submitted_at?: string | null
           type?: string
           vehicle_id?: string
         }
@@ -963,6 +939,42 @@ export type Database = {
           stripe_subscription_id?: string | null
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          id: string
+          make: string | null
+          model: string | null
+          plate: string | null
+          priority_level: string | null
+          runner_name: string | null
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          make?: string | null
+          model?: string | null
+          plate?: string | null
+          priority_level?: string | null
+          runner_name?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          make?: string | null
+          model?: string | null
+          plate?: string | null
+          priority_level?: string | null
+          runner_name?: string | null
+          updated_at?: string
+          year?: number | null
         }
         Relationships: []
       }
