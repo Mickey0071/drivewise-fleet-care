@@ -5,7 +5,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicles, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, markReturnedAwaitingInspection, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, swapVehicle } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, markReturnedAwaitingInspection, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
@@ -128,9 +128,9 @@ function RentalsPage() {
     navigate({ to: "/rentals", search: {}, replace: true });
   }, [paid, navigate]);
 
-  const pending = rentals.filter(r => r.reservationStatus === "pending");
+  const pending = rentals.filter(r => r.reservationStatus === "pending" && !r.endDate);
   const active = rentals.filter(r => (r.reservationStatus ?? "active") === "active" && !r.endDate);
-  const completed = rentals.filter(r => !!r.endDate);
+  const completed = rentals.filter(r => !!r.endDate || r.reservationStatus === "returned" || r.reservationStatus === "completed");
 
   function renderCard(r: Rental) {
     const v = vehicleById(r.vehicleId);
