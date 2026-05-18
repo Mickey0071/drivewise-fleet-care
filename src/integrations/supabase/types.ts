@@ -553,6 +553,7 @@ export type Database = {
           full_name: string | null
           id: string
           last_name: string | null
+          must_reset_password: boolean
           phone: string | null
           staff_ref: string | null
           updated_at: string
@@ -565,6 +566,7 @@ export type Database = {
           full_name?: string | null
           id: string
           last_name?: string | null
+          must_reset_password?: boolean
           phone?: string | null
           staff_ref?: string | null
           updated_at?: string
@@ -577,6 +579,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           last_name?: string | null
+          must_reset_password?: boolean
           phone?: string | null
           staff_ref?: string | null
           updated_at?: string
