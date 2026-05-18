@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/stripe/v1";
 
@@ -11,6 +12,7 @@ const Input = z.object({
 });
 
 export const createPayrollFundingSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => Input.parse(d))
   .handler(async ({ data }) => {
     const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
@@ -56,6 +58,7 @@ export const createPayrollFundingSession = createServerFn({ method: "POST" })
 const StatusInput = z.object({ sessionId: z.string().min(1).max(200) });
 
 export const getPayrollFundingStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => StatusInput.parse(d))
   .handler(async ({ data }) => {
     const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
