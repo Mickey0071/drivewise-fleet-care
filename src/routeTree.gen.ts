@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as StaffPortalRouteImport } from './routes/staff-portal'
 import { Route as SmsLogRouteImport } from './routes/sms-log'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReservationsRouteImport } from './routes/reservations'
@@ -27,6 +28,7 @@ import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InsuranceRouteImport } from './routes/insurance'
 import { Route as InspectionsRouteImport } from './routes/inspections'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FleetRouteImport } from './routes/fleet'
 import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as DriversRouteImport } from './routes/drivers'
@@ -38,6 +40,7 @@ import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
@@ -56,6 +59,11 @@ const StaffPortalRoute = StaffPortalRouteImport.update({
 const SmsLogRoute = SmsLogRouteImport.update({
   id: '/sms-log',
   path: '/sms-log',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RunnerReportsRoute = RunnerReportsRouteImport.update({
@@ -133,6 +141,11 @@ const InspectionsRoute = InspectionsRouteImport.update({
   path: '/inspections',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FleetRoute = FleetRouteImport.update({
   id: '/fleet',
   path: '/fleet',
@@ -188,6 +201,11 @@ const FleetVehicleIdRoute = FleetVehicleIdRouteImport.update({
   path: '/$vehicleId',
   getParentRoute: () => FleetRoute,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RentPortalRentalIdRoute = RentPortalRentalIdRouteImport.update({
   id: '/rent/portal/$rentalId',
   path: '/rent/portal/$rentalId',
@@ -219,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/drivers': typeof DriversRoute
   '/expenses': typeof ExpensesRoute
   '/fleet': typeof FleetRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inspections': typeof InspectionsRoute
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
@@ -234,9 +253,11 @@ export interface FileRoutesByFullPath {
   '/reservations': typeof ReservationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
+  '/signup': typeof SignupRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -254,6 +275,7 @@ export interface FileRoutesByTo {
   '/drivers': typeof DriversRoute
   '/expenses': typeof ExpensesRoute
   '/fleet': typeof FleetRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inspections': typeof InspectionsRoute
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
@@ -269,9 +291,11 @@ export interface FileRoutesByTo {
   '/reservations': typeof ReservationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
+  '/signup': typeof SignupRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -290,6 +314,7 @@ export interface FileRoutesById {
   '/drivers': typeof DriversRoute
   '/expenses': typeof ExpensesRoute
   '/fleet': typeof FleetRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inspections': typeof InspectionsRoute
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
@@ -305,9 +330,11 @@ export interface FileRoutesById {
   '/reservations': typeof ReservationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
+  '/signup': typeof SignupRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -327,6 +354,7 @@ export interface FileRouteTypes {
     | '/drivers'
     | '/expenses'
     | '/fleet'
+    | '/forgot-password'
     | '/inspections'
     | '/insurance'
     | '/login'
@@ -342,9 +370,11 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/reset-password'
     | '/runner-reports'
+    | '/signup'
     | '/sms-log'
     | '/staff-portal'
     | '/violations'
+    | '/admin/users'
     | '/fleet/$vehicleId'
     | '/rent/$token'
     | '/rent/paid'
@@ -362,6 +392,7 @@ export interface FileRouteTypes {
     | '/drivers'
     | '/expenses'
     | '/fleet'
+    | '/forgot-password'
     | '/inspections'
     | '/insurance'
     | '/login'
@@ -377,9 +408,11 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/reset-password'
     | '/runner-reports'
+    | '/signup'
     | '/sms-log'
     | '/staff-portal'
     | '/violations'
+    | '/admin/users'
     | '/fleet/$vehicleId'
     | '/rent/$token'
     | '/rent/paid'
@@ -397,6 +430,7 @@ export interface FileRouteTypes {
     | '/drivers'
     | '/expenses'
     | '/fleet'
+    | '/forgot-password'
     | '/inspections'
     | '/insurance'
     | '/login'
@@ -412,9 +446,11 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/reset-password'
     | '/runner-reports'
+    | '/signup'
     | '/sms-log'
     | '/staff-portal'
     | '/violations'
+    | '/admin/users'
     | '/fleet/$vehicleId'
     | '/rent/$token'
     | '/rent/paid'
@@ -433,6 +469,7 @@ export interface RootRouteChildren {
   DriversRoute: typeof DriversRoute
   ExpensesRoute: typeof ExpensesRoute
   FleetRoute: typeof FleetRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   InspectionsRoute: typeof InspectionsRoute
   InsuranceRoute: typeof InsuranceRoute
   LoginRoute: typeof LoginRoute
@@ -448,9 +485,11 @@ export interface RootRouteChildren {
   ReservationsRoute: typeof ReservationsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RunnerReportsRoute: typeof RunnerReportsRoute
+  SignupRoute: typeof SignupRoute
   SmsLogRoute: typeof SmsLogRoute
   StaffPortalRoute: typeof StaffPortalRoute
   ViolationsRoute: typeof ViolationsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
   SignTokenRoute: typeof SignTokenRoute
@@ -481,6 +520,13 @@ declare module '@tanstack/react-router' {
       path: '/sms-log'
       fullPath: '/sms-log'
       preLoaderRoute: typeof SmsLogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/runner-reports': {
@@ -588,6 +634,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InspectionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/fleet': {
       id: '/fleet'
       path: '/fleet'
@@ -665,6 +718,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FleetVehicleIdRouteImport
       parentRoute: typeof FleetRoute
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rent/portal/$rentalId': {
       id: '/rent/portal/$rentalId'
       path: '/rent/portal/$rentalId'
@@ -714,6 +774,7 @@ const rootRouteChildren: RootRouteChildren = {
   DriversRoute: DriversRoute,
   ExpensesRoute: ExpensesRoute,
   FleetRoute: FleetRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   InspectionsRoute: InspectionsRoute,
   InsuranceRoute: InsuranceRoute,
   LoginRoute: LoginRoute,
@@ -729,9 +790,11 @@ const rootRouteChildren: RootRouteChildren = {
   ReservationsRoute: ReservationsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RunnerReportsRoute: RunnerReportsRoute,
+  SignupRoute: SignupRoute,
   SmsLogRoute: SmsLogRoute,
   StaffPortalRoute: StaffPortalRoute,
   ViolationsRoute: ViolationsRoute,
+  AdminUsersRoute: AdminUsersRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
   SignTokenRoute: SignTokenRoute,
