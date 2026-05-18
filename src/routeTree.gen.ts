@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as StaffPortalRouteImport } from './routes/staff-portal'
 import { Route as SmsLogRouteImport } from './routes/sms-log'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReservationsRouteImport } from './routes/reservations'
@@ -56,6 +57,11 @@ const StaffPortalRoute = StaffPortalRouteImport.update({
 const SmsLogRoute = SmsLogRouteImport.update({
   id: '/sms-log',
   path: '/sms-log',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RunnerReportsRoute = RunnerReportsRouteImport.update({
@@ -234,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/reservations': typeof ReservationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
+  '/signup': typeof SignupRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
@@ -269,6 +276,7 @@ export interface FileRoutesByTo {
   '/reservations': typeof ReservationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
+  '/signup': typeof SignupRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
@@ -305,6 +313,7 @@ export interface FileRoutesById {
   '/reservations': typeof ReservationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
+  '/signup': typeof SignupRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
@@ -342,6 +351,7 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/reset-password'
     | '/runner-reports'
+    | '/signup'
     | '/sms-log'
     | '/staff-portal'
     | '/violations'
@@ -377,6 +387,7 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/reset-password'
     | '/runner-reports'
+    | '/signup'
     | '/sms-log'
     | '/staff-portal'
     | '/violations'
@@ -412,6 +423,7 @@ export interface FileRouteTypes {
     | '/reservations'
     | '/reset-password'
     | '/runner-reports'
+    | '/signup'
     | '/sms-log'
     | '/staff-portal'
     | '/violations'
@@ -448,6 +460,7 @@ export interface RootRouteChildren {
   ReservationsRoute: typeof ReservationsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RunnerReportsRoute: typeof RunnerReportsRoute
+  SignupRoute: typeof SignupRoute
   SmsLogRoute: typeof SmsLogRoute
   StaffPortalRoute: typeof StaffPortalRoute
   ViolationsRoute: typeof ViolationsRoute
@@ -481,6 +494,13 @@ declare module '@tanstack/react-router' {
       path: '/sms-log'
       fullPath: '/sms-log'
       preLoaderRoute: typeof SmsLogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/runner-reports': {
@@ -729,6 +749,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReservationsRoute: ReservationsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RunnerReportsRoute: RunnerReportsRoute,
+  SignupRoute: SignupRoute,
   SmsLogRoute: SmsLogRoute,
   StaffPortalRoute: StaffPortalRoute,
   ViolationsRoute: ViolationsRoute,
@@ -743,3 +764,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
