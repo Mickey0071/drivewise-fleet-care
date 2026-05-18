@@ -285,6 +285,7 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
         if (driver?.phone && amountCents >= 50) {
           const env: StripeEnv = process.env.STRIPE_LIVE_API_KEY ? "live" : "sandbox";
           const stripe = createStripeClient(env);
+          const origin = process.env.PUBLIC_APP_ORIGIN || "https://camautorentals.lovable.app";
           const session = await stripe.checkout.sessions.create({
             mode: "payment",
             line_items: [{
@@ -295,8 +296,8 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
               },
               quantity: 1,
             }],
-            success_url: "https://rentalprise.app/paid?session_id={CHECKOUT_SESSION_ID}",
-            cancel_url: "https://rentalprise.app/paid?canceled=1",
+            success_url: `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}&rental_id=${encodeURIComponent(rental.id)}`,
+            cancel_url: `${origin}/rent/paid?canceled=1&rental_id=${encodeURIComponent(rental.id)}`,
             metadata: { kind: "rental_first_payment", rental_id: rental.id },
           });
           if (session.url) {
