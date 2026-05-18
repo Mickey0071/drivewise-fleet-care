@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { vehicleById, rentals, maintenance, violations, inspections, payments, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
-import { uploadVehiclePhoto, updateVehicleImage, useStoreVersion } from "@/lib/mock/store";
+import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, useStoreVersion } from "@/lib/mock/store";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
@@ -49,7 +49,8 @@ function VehicleDetail() {
   const violationTotal = vViol.reduce((s, x) => s + x.amount, 0);
   const expenseTotal = maintenanceTotal + violationTotal;
   const netTotal = incomeTotal - expenseTotal;
-  const activeRental = vRentals.find(r => !r.endDate) ?? vRentals[0];
+  const activeRental = vRentals.find(r => !r.endDate && ((r.reservationStatus ?? "active") === "active" || r.reservationStatus === "pending")) ?? vRentals[0];
+  const bookable = isVehicleBookable(v.id);
   const activeDriver = activeRental ? driverById(activeRental.driverId) : null;
   const isCurrentlyRented = v.status === "rented" && !!activeRental && !activeRental.endDate;
   const nextDue = vPayments.find(p => p.status !== "paid");
@@ -125,7 +126,7 @@ function VehicleDetail() {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={v.status} />
-            {v.status === "available" && (
+            {bookable && (
               <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
                 Share rental link
               </Button>
@@ -135,7 +136,7 @@ function VehicleDetail() {
             </Button>
             <Button
               size="sm"
-              disabled={v.status !== "available"}
+              disabled={!bookable}
               onClick={() => setReserveOpen(true)}
             >
               Reserve

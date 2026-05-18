@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { updateVehicle, deleteVehicle, uploadVehiclePhoto, updateVehicleImage } from "@/lib/mock/store";
-import { rentals } from "@/lib/mock/data";
+import { updateVehicle, deleteVehicle, isVehicleBookable, uploadVehiclePhoto, updateVehicleImage } from "@/lib/mock/store";
 import type { Vehicle, VehicleStatus } from "@/lib/mock/data";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -74,7 +73,7 @@ export function EditVehicleDialog({
 
   if (!vehicle) return null;
 
-  const hasActiveRental = rentals.some(r => r.vehicleId === vehicle.id && !r.endDate);
+  const hasActiveRental = !isVehicleBookable(vehicle.id);
 
   async function save() {
     if (!vehicle) return;

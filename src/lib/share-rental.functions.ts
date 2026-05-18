@@ -90,6 +90,18 @@ async function nextId(table: "rentals" | "drivers", prefix: "R" | "D", floor: nu
   return `${prefix}-${n + 1}`;
 }
 
+async function vehicleHasOpenReservation(vehicleId: string) {
+  const { data } = await supabaseAdmin
+    .from("rentals")
+    .select("id, reservation_status, end_date")
+    .eq("vehicle_id", vehicleId)
+    .is("end_date", null);
+  return (data ?? []).some((r: any) => {
+    const status = r.reservation_status ?? "active";
+    return status === "active" || status === "pending";
+  });
+}
+
 /** Create a public share link for an available vehicle. */
 export const createShareLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -112,7 +124,8 @@ export const createShareLink = createServerFn({ method: "POST" })
       .eq("id", data.vehicleId)
       .single();
     if (vErr || !vehicle) throw new Error("Vehicle not found");
-    if (vehicle.status !== "available") throw new Error("Vehicle is not available");
+    if (["maintenance", "impound"].includes(vehicle.status)) throw new Error("Vehicle is not available");
+    if (await vehicleHasOpenReservation(data.vehicleId)) throw new Error("Vehicle is not available");
 
     const token = genToken();
     const { error } = await supabaseAdmin.from("rental_share_links").insert({
@@ -353,7 +366,8 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       .eq("id", link.vehicle_id)
       .single();
     if (vErr || !vehicle) throw new Error("Vehicle not found");
-    if (vehicle.status !== "available") throw new Error("This vehicle is no longer available");
+    if (["maintenance", "impound"].includes(vehicle.status)) throw new Error("This vehicle is no longer available");
+    if (await vehicleHasOpenReservation(link.vehicle_id)) throw new Error("This vehicle is no longer available");
 
     // Create driver
     const driverId = await nextId("drivers", "D", 100);
@@ -407,9 +421,6 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       selfie_image_url: selfieUrl,
     });
     if (rErr) throw new Error(`Could not create rental: ${rErr.message}`);
-
-    // Mark vehicle rented
-    await supabaseAdmin.from("vehicles").update({ status: "rented" }).eq("id", link.vehicle_id);
 
     // Mark link consumed
     await supabaseAdmin

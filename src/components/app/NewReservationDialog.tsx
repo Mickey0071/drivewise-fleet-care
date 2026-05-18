@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { vehicles, drivers, vehicleById, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { addRental, hasConflict, addDriver, getActiveRentalForDriver, markReturned, useStoreVersion } from "@/lib/mock/store";
+import { addRental, hasConflict, addDriver, getActiveRentalForDriver, isVehicleBookable, markReturned, useStoreVersion } from "@/lib/mock/store";
 import { useServerFn } from "@tanstack/react-start";
 import { sendSigningLink } from "@/lib/sign.functions";
 import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus, Repeat, AlertTriangle } from "lucide-react";
@@ -66,7 +66,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const existingRental = driver ? getActiveRentalForDriver(driver.id) : null;
 
   const availableVehicles = useMemo(
-    () => vehicles.filter(v => v.status === "available" && (
+    () => vehicles.filter(v => isVehicleBookable(v.id) && (
       vehQ === "" ||
       `${v.year} ${v.make} ${v.model} ${v.plate}`.toLowerCase().includes(vehQ.toLowerCase())
     )),
@@ -89,25 +89,30 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     setIsSwap(false);
     setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber", dateOfBirth: "", address: "" });
   }
-  function createDriver() {
+  async function createDriver() {
     if (!newDriver.fullName.trim()) {
       toast.error("Name required");
       return;
     }
-    const d = addDriver({
-      fullName: newDriver.fullName.trim(),
-      phone: newDriver.phone.trim(),
-      email: newDriver.email.trim(),
-      licenseNumber: newDriver.licenseNumber.trim() || "—",
-      licenseExpiry: "",
-      rideshare: newDriver.rideshare,
-      dateOfBirth: newDriver.dateOfBirth || undefined,
-      address: newDriver.address.trim() || undefined,
-    });
-    setDriverId(d.id);
-    setShowAddDriver(false);
-    setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber", dateOfBirth: "", address: "" });
-    toast.success("Client added", { description: d.fullName });
+    try {
+      const d = addDriver({
+        fullName: newDriver.fullName.trim(),
+        phone: newDriver.phone.trim() || "—",
+        email: newDriver.email.trim() || "no-email@camauto.local",
+        licenseNumber: newDriver.licenseNumber.trim() || "—",
+        licenseExpiry: "2030-01-01",
+        rideshare: newDriver.rideshare,
+        dateOfBirth: newDriver.dateOfBirth || undefined,
+        address: newDriver.address.trim() || undefined,
+      });
+      await (d as { cloudReady?: Promise<unknown> }).cloudReady;
+      setDriverId(d.id);
+      setShowAddDriver(false);
+      setNewDriver({ fullName: "", phone: "", email: "", licenseNumber: "", rideshare: "Uber", dateOfBirth: "", address: "" });
+      toast.success("Client saved", { description: d.fullName });
+    } catch (e) {
+      toast.error("Client was not saved", { description: e instanceof Error ? e.message : "Try again" });
+    }
   }
 
 

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addVehicle, updateVehicleImage, uploadVehiclePhoto, useStoreVersion } from "@/lib/mock/store";
+import { addVehicle, isVehicleBookable, updateVehicleImage, uploadVehiclePhoto, useStoreVersion } from "@/lib/mock/store";
 import { toast } from "sonner";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
@@ -40,7 +40,7 @@ function FleetPage() {
 
   if (pathname !== "/fleet") return <Outlet />;
 
-  const filtered = status ? vehicles.filter(v => v.status === status) : vehicles;
+  const filtered = status === "available" ? vehicles.filter(v => isVehicleBookable(v.id)) : status ? vehicles.filter(v => v.status === status) : vehicles;
   return (
     <div>
       <PageHeader
@@ -116,7 +116,7 @@ function FleetPage() {
               >
                 Profile
               </Button>
-              {v.status === "available" && (
+              {isVehicleBookable(v.id) && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -137,7 +137,7 @@ function FleetPage() {
               <Button
                 size="sm"
                 className="flex-1"
-                disabled={v.status !== "available"}
+                disabled={!isVehicleBookable(v.id)}
                 onClick={() => setReserveVehicleId(v.id)}
               >
                 Reserve
