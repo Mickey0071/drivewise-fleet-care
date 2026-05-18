@@ -15,7 +15,7 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { session, role, roleLoading, signIn, signInWithGoogle, loading } = useAuth();
+  const { session, role, roleLoading, signIn, loading } = useAuth();
   const nav = useNavigate();
   const { confirmed } = useSearch({ from: "/login" });
   const [email, setEmail] = useState("");
