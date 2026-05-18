@@ -1,13 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useState } from "react";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
-  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, ListChecks,
+  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, ListChecks, Truck, ChevronDown,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { unreadReportCount, useStoreVersion } from "@/lib/mock/store";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -21,14 +23,16 @@ const adminItems: Item[] = [
   { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin", "runner"] },
   { title: "Calendar", url: "/calendar", icon: Calendar, roles: ["admin", "runner"] },
   { title: "Payments", url: "/payments", icon: DollarSign, roles: ["admin"] },
-  { title: "Inspections", url: "/inspections", icon: ClipboardCheck, roles: ["admin", "runner"] },
-  { title: "Checklist", url: "/checklist", icon: ListChecks, roles: ["admin", "runner", "driver"] },
   { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["admin", "runner"] },
   { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ["admin", "runner"] },
   { title: "Insurance", url: "/insurance", icon: Shield, roles: ["admin"] },
   { title: "Runner Reports", url: "/runner-reports", icon: ClipboardList, roles: ["admin", "runner"] },
   { title: "Rental Agreement", url: "/rental-agreement", icon: ScrollText, roles: ["admin"] },
   { title: "SMS log", url: "/sms-log", icon: MessageSquare, roles: ["admin"] },
+];
+const runnersItems: Item[] = [
+  { title: "New Inspection", url: "/checklist", icon: ListChecks, roles: ["admin"] },
+  { title: "Inspection History", url: "/inspections", icon: ClipboardCheck, roles: ["admin"] },
 ];
 const financeItems: Item[] = [
   { title: "P&L", url: "/pnl", icon: TrendingUp, roles: ["admin"] },
@@ -49,6 +53,9 @@ export function AppSidebar() {
   const unread = unreadReportCount();
   const { role, user, signOut } = useAuth();
   const filter = (items: Item[]) => role ? items.filter(i => i.roles.includes(role)) : [];
+  const visibleRunners = filter(runnersItems);
+  const runnersActive = visibleRunners.some(i => isActive(i.url));
+  const [runnersOpen, setRunnersOpen] = useState(runnersActive);
 
   const renderGroup = (label: string, items: Item[]) => items.length === 0 ? null : (
     <SidebarGroup>
@@ -89,6 +96,40 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         {renderGroup("Operations", filter(adminItems))}
+        {visibleRunners.length > 0 && (
+          <SidebarGroup>
+            {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/60">Runners</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <Collapsible open={collapsed ? true : runnersOpen} onOpenChange={setRunnersOpen}>
+                <SidebarMenu>
+                  {!collapsed && (
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton isActive={runnersActive} className="w-full">
+                          <Truck className="h-4 w-4 shrink-0" />
+                          <span className="flex-1 text-left">Runners</span>
+                          <ChevronDown className={`h-4 w-4 transition-transform ${runnersOpen ? "rotate-180" : ""}`} />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                    </SidebarMenuItem>
+                  )}
+                  <CollapsibleContent>
+                    {visibleRunners.map((item) => (
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton asChild isActive={isActive(item.url)} className={collapsed ? "" : "pl-8"}>
+                          <Link to={item.url} className="flex items-center gap-3">
+                            <item.icon className="h-4 w-4 shrink-0" />
+                            {!collapsed && <span>{item.title}</span>}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </CollapsibleContent>
+                </SidebarMenu>
+              </Collapsible>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
         {renderGroup("Finance", filter(financeItems))}
         {renderGroup("Portals", filter(portalItems))}
       </SidebarContent>

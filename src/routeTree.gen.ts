@@ -16,10 +16,12 @@ import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
 import { Route as ReservationsRouteImport } from './routes/reservations'
 import { Route as RentalsRouteImport } from './routes/rentals'
 import { Route as RentalAgreementRouteImport } from './routes/rental-agreement'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PnlRouteImport } from './routes/pnl'
 import { Route as PayrollReturnRouteImport } from './routes/payroll-return'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as PaymentsRouteImport } from './routes/payments'
+import { Route as MyTasksRouteImport } from './routes/my-tasks'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InsuranceRouteImport } from './routes/insurance'
@@ -75,6 +77,11 @@ const RentalAgreementRoute = RentalAgreementRouteImport.update({
   path: '/rental-agreement',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PnlRoute = PnlRouteImport.update({
   id: '/pnl',
   path: '/pnl',
@@ -93,6 +100,11 @@ const PayrollRoute = PayrollRouteImport.update({
 const PaymentsRoute = PaymentsRouteImport.update({
   id: '/payments',
   path: '/payments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyTasksRoute = MyTasksRouteImport.update({
+  id: '/my-tasks',
+  path: '/my-tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MaintenanceRoute = MaintenanceRouteImport.update({
@@ -205,10 +217,12 @@ export interface FileRoutesByFullPath {
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/my-tasks': typeof MyTasksRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
+  '/profile': typeof ProfileRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/reservations': typeof ReservationsRoute
@@ -237,10 +251,12 @@ export interface FileRoutesByTo {
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/my-tasks': typeof MyTasksRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
+  '/profile': typeof ProfileRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/reservations': typeof ReservationsRoute
@@ -270,10 +286,12 @@ export interface FileRoutesById {
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/my-tasks': typeof MyTasksRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
+  '/profile': typeof ProfileRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/reservations': typeof ReservationsRoute
@@ -304,10 +322,12 @@ export interface FileRouteTypes {
     | '/insurance'
     | '/login'
     | '/maintenance'
+    | '/my-tasks'
     | '/payments'
     | '/payroll'
     | '/payroll-return'
     | '/pnl'
+    | '/profile'
     | '/rental-agreement'
     | '/rentals'
     | '/reservations'
@@ -336,10 +356,12 @@ export interface FileRouteTypes {
     | '/insurance'
     | '/login'
     | '/maintenance'
+    | '/my-tasks'
     | '/payments'
     | '/payroll'
     | '/payroll-return'
     | '/pnl'
+    | '/profile'
     | '/rental-agreement'
     | '/rentals'
     | '/reservations'
@@ -368,10 +390,12 @@ export interface FileRouteTypes {
     | '/insurance'
     | '/login'
     | '/maintenance'
+    | '/my-tasks'
     | '/payments'
     | '/payroll'
     | '/payroll-return'
     | '/pnl'
+    | '/profile'
     | '/rental-agreement'
     | '/rentals'
     | '/reservations'
@@ -401,10 +425,12 @@ export interface RootRouteChildren {
   InsuranceRoute: typeof InsuranceRoute
   LoginRoute: typeof LoginRoute
   MaintenanceRoute: typeof MaintenanceRoute
+  MyTasksRoute: typeof MyTasksRoute
   PaymentsRoute: typeof PaymentsRoute
   PayrollRoute: typeof PayrollRoute
   PayrollReturnRoute: typeof PayrollReturnRoute
   PnlRoute: typeof PnlRoute
+  ProfileRoute: typeof ProfileRoute
   RentalAgreementRoute: typeof RentalAgreementRoute
   RentalsRoute: typeof RentalsRoute
   ReservationsRoute: typeof ReservationsRoute
@@ -472,6 +498,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RentalAgreementRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pnl': {
       id: '/pnl'
       path: '/pnl'
@@ -498,6 +531,13 @@ declare module '@tanstack/react-router' {
       path: '/payments'
       fullPath: '/payments'
       preLoaderRoute: typeof PaymentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-tasks': {
+      id: '/my-tasks'
+      path: '/my-tasks'
+      fullPath: '/my-tasks'
+      preLoaderRoute: typeof MyTasksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/maintenance': {
@@ -658,10 +698,12 @@ const rootRouteChildren: RootRouteChildren = {
   InsuranceRoute: InsuranceRoute,
   LoginRoute: LoginRoute,
   MaintenanceRoute: MaintenanceRoute,
+  MyTasksRoute: MyTasksRoute,
   PaymentsRoute: PaymentsRoute,
   PayrollRoute: PayrollRoute,
   PayrollReturnRoute: PayrollReturnRoute,
   PnlRoute: PnlRoute,
+  ProfileRoute: ProfileRoute,
   RentalAgreementRoute: RentalAgreementRoute,
   RentalsRoute: RentalsRoute,
   ReservationsRoute: ReservationsRoute,

@@ -1,74 +1,72 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app/PageHeader";
-import { StatusBadge } from "@/components/app/StatusBadge";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { inspections, vehicleById, rentalById, driverById, fmtDate } from "@/lib/mock/data";
-import { Camera, Upload } from "lucide-react";
+import { inspections, vehicleById, fmtDate } from "@/lib/mock/data";
+import { useStoreVersion } from "@/lib/mock/store";
+import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/inspections")({
-  head: () => ({ meta: [{ title: "Inspections — Camauto Rentals" }] }),
+  head: () => ({ meta: [{ title: "Inspection History — Camauto Rentals" }] }),
   component: InspectionsPage,
 });
 
 function InspectionsPage() {
+  useStoreVersion();
+  const { role, user } = useAuth();
+  const isAdmin = role === "admin";
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const myName = typeof window !== "undefined" ? localStorage.getItem("inspector_name") || "" : "";
+
+  const rows = useMemo(() => {
+    const all = [...inspections].sort((a, b) => (b.submittedAt ?? b.createdAt ?? b.date).localeCompare(a.submittedAt ?? a.createdAt ?? a.date));
+    if (isAdmin) return all;
+    return all.filter(i =>
+      (myName && i.inspectorName?.toLowerCase() === myName.toLowerCase()) ||
+      (user?.id && i.completedBy === user.id)
+    );
+  }, [isAdmin, myName, user?.id]);
+
   return (
     <div>
-      <PageHeader title="Inspection Tool" subtitle="Document vehicle condition at check-in and check-out" />
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="text-base">New inspection</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Type"><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option>check-in</option><option>check-out</option></select></Field>
-              <Field label="Vehicle"><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option>V-001 GRN-241</option><option>V-002 GRN-118</option></select></Field>
-              <Field label="Mileage"><Input placeholder="42180" /></Field>
-              <Field label="Fuel level %"><Input placeholder="100" /></Field>
-            </div>
-            <Field label="Damage noted">
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="flex-1">No</Button>
-                <Button variant="outline" size="sm" className="flex-1">Yes</Button>
-              </div>
-            </Field>
-            <div className="rounded-md border-2 border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              <Camera className="mx-auto mb-2 h-6 w-6" />
-              Tap to capture or upload damage photos
-            </div>
-            <Button className="w-full"><Upload className="mr-2 h-4 w-4" />Submit inspection</Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-base">Recent inspections</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {inspections.map(i => {
-              const v = vehicleById(i.vehicleId);
-              const r = rentalById(i.rentalId);
-              const d = r ? driverById(r.driverId) : null;
-              return (
-                <div key={i.id} className="rounded-md border border-border bg-card p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium">{v?.year} {v?.make} {v?.model} · {v?.plate}</div>
-                    <StatusBadge status={i.type} />
+      <PageHeader
+        title={isAdmin ? "Inspection History" : "My Inspection History"}
+        subtitle={isAdmin ? "Audit log of all submitted vehicle inspections" : "Inspections you have submitted"}
+      />
+      <Card>
+        <CardContent className="space-y-2 py-4">
+          {rows.length === 0 && (
+            <div className="py-10 text-center text-sm text-muted-foreground">No inspections yet.</div>
+          )}
+          {rows.map(i => {
+            const v = vehicleById(i.vehicleId);
+            const fails = i.checklistItems ? Object.values(i.checklistItems).filter(x => x === "fail").length : 0;
+            return (
+              <div key={i.id} className="flex items-center justify-between rounded-md border border-border bg-card p-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                    <span>{v ? `${v.year} ${v.make} ${v.model} · ${v.plate}` : i.vehicleId}</span>
+                    {i.readyToRent === false && <Badge variant="destructive">Needs mechanic</Badge>}
+                    {i.readyToRent === true && <Badge variant="secondary">Ready</Badge>}
+                    {fails > 0 && <Badge variant="outline">{fails} fail{fails === 1 ? "" : "s"}</Badge>}
                   </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {fmtDate(i.date)} · {i.mileage.toLocaleString()} mi · Fuel {i.fuelLevel}%
-                    {d && ` · ${d.fullName}`}
+                  <div className="mt-1 truncate text-xs text-muted-foreground">
+                    {fmtDate(i.date)} · {i.mileage.toLocaleString()} mi
+                    {i.inspectorName && ` · ${i.inspectorName}`}
+                    {i.jobType && ` · ${i.jobType.replace(/_/g, " ")}`}
                   </div>
-                  {i.damageNoted && <div className="mt-2 text-xs font-medium text-destructive">Damage flagged</div>}
                 </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      </div>
+                <Button variant="outline" size="sm" onClick={() => setOpenId(i.id)}>View</Button>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+      <InspectionDetailDialog inspectionId={openId} open={!!openId} onOpenChange={(v) => !v && setOpenId(null)} />
     </div>
   );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><Label className="mb-1.5 block text-xs">{label}</Label>{children}</div>;
 }

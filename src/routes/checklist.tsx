@@ -16,7 +16,7 @@ import { CHECKLIST_SECTIONS, JOB_TYPE_LABELS, FUEL_LEVEL_LABELS } from "@/lib/ch
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/checklist")({
-  head: () => ({ meta: [{ title: "Vehicle Condition Checklist — Camauto Rentals" }] }),
+  head: () => ({ meta: [{ title: "New Inspection — Camauto Rentals" }] }),
   component: ChecklistPage,
 });
 
@@ -228,7 +228,7 @@ function ChecklistPage() {
   if (done) {
     return (
       <div className="mx-auto max-w-2xl space-y-4 pb-24">
-        <PageHeader title="✅ Checklist Submitted" subtitle="Inspection recorded successfully" />
+        <PageHeader title="✅ Inspection Submitted" subtitle="Inspection recorded successfully" />
         <Card>
           <CardContent className="space-y-3 pt-6">
             <Row label="Vehicle">{done.vehicle ? `${done.vehicle.year} ${done.vehicle.make} ${done.vehicle.model} — ${done.vehicle.plate}` : done.vehicle ?? "—"}</Row>
@@ -269,7 +269,7 @@ function ChecklistPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 pb-32">
-      <PageHeader title="Vehicle Condition Checklist" subtitle="Submit a full condition check after a runner job" />
+      <PageHeader title="New Inspection" subtitle="Submit a full condition check after a runner job" />
 
       {/* SECTION 1 — Job Info */}
       <Card>

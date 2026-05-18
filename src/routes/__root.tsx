@@ -19,6 +19,7 @@ import { ThemeToggle } from "@/components/app/ThemeToggle";
 import { GlobalSearch } from "@/components/app/GlobalSearch";
 import { AuthProvider, useAuth, type AppRole } from "@/hooks/use-auth";
 import { hydrateFromCloud, isStoreHydrated, useStoreVersion } from "@/lib/mock/store";
+import { RunnerLayout } from "@/components/app/RunnerLayout";
 
 const ROUTE_ROLES: { prefix: string; roles: AppRole[] }[] = [
   { prefix: "/staff-portal", roles: ["admin", "runner"] },
@@ -29,6 +30,7 @@ const ROUTE_ROLES: { prefix: string; roles: AppRole[] }[] = [
   { prefix: "/expenses", roles: ["admin"] },
 ];
 const PUBLIC_ROUTES = ["/login", "/sign", "/rent"];
+const RUNNER_ALLOWED = ["/checklist", "/inspections", "/my-tasks", "/profile"];
 
 function NotFoundComponent() {
   return (
@@ -180,9 +182,11 @@ function AuthGate() {
       const home = role === "driver" ? "/driver-portal" : role === "runner" ? "/staff-portal" : "/";
       navigate({ to: home });
     }
-    // Drivers/runners shouldn't see the admin dashboard
-    if (path === "/" && role === "driver") navigate({ to: "/driver-portal" });
-    if (path === "/" && role === "runner") navigate({ to: "/staff-portal" });
+    // Non-admin users (runners/drivers) use the runner hub — restrict their routes
+    if (role === "runner" || role === "driver") {
+      const allowed = RUNNER_ALLOWED.some(p => path === p || path.startsWith(p + "/"));
+      if (!allowed) navigate({ to: "/checklist" });
+    }
   }, [loading, session, role, path, navigate]);
 
   if (loading || (!!session && !isPublic && !storeLoadError && !isStoreHydrated())) {
@@ -206,6 +210,15 @@ function AuthGate() {
   }
   if (isPublic) return <Outlet />;
   if (!session) return null;
+
+  if (role === "runner" || role === "driver") {
+    return (
+      <>
+        <RunnerLayout />
+        <Toaster />
+      </>
+    );
+  }
 
   return (
     <SidebarProvider>
