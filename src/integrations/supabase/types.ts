@@ -1035,6 +1035,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_driver_id: { Args: never; Returns: string }
       get_share_link_public: {
         Args: { _token: string }
         Returns: {
