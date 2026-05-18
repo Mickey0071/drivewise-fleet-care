@@ -69,11 +69,30 @@ function ChecklistPage() {
     ticketCreated: boolean;
   }>(null);
 
-  // Load inspector name from localStorage
+  // Load inspector name: prefer authenticated profile (first + last name), fall back to localStorage.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem(INSPECTOR_KEY);
-    if (saved) setInspectorName(saved);
+    let cancelled = false;
+    (async () => {
+      const { data: sess } = await supabase.auth.getUser();
+      const uid = sess.user?.id;
+      if (uid) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("first_name, last_name, full_name")
+          .eq("id", uid)
+          .maybeSingle();
+        const fromProfile = data
+          ? ([data.first_name, data.last_name].filter(Boolean).join(" ") || data.full_name || "")
+          : "";
+        if (!cancelled && fromProfile) { setInspectorName(fromProfile); return; }
+      }
+      if (cancelled) return;
+      if (typeof window !== "undefined") {
+        const saved = window.localStorage.getItem(INSPECTOR_KEY);
+        if (saved) setInspectorName(saved);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // Load vehicles
