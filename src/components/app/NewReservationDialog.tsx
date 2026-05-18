@@ -199,7 +199,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       return;
     }
     if (existingRental && isSwap) {
-      markReturned(existingRental.id, startDate);
+      markReturnedAwaitingInspection(existingRental.id, startDate);
     }
     setSaving(true);
     try {
