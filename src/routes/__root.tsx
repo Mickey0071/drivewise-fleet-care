@@ -29,7 +29,7 @@ const ROUTE_ROLES: { prefix: string; roles: AppRole[] }[] = [
   { prefix: "/pnl", roles: ["admin"] },
   { prefix: "/expenses", roles: ["admin"] },
 ];
-const PUBLIC_ROUTES = ["/login", "/sign", "/rent"];
+const PUBLIC_ROUTES = ["/login", "/reset-password", "/sign", "/rent"];
 const RUNNER_ALLOWED = ["/checklist", "/inspections", "/my-tasks", "/profile"];
 
 function NotFoundComponent() {
@@ -154,21 +154,22 @@ function RootComponent() {
 }
 
 function AuthGate() {
-  const { session, role, loading } = useAuth();
+  const { session, role, loading, roleLoading, roleError, signOut } = useAuth();
   useStoreVersion();
   const [storeLoadError, setStoreLoadError] = useState<string | null>(null);
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
   const isPublic = PUBLIC_ROUTES.some(p => path.startsWith(p));
+  const isRunner = role === "runner" || role === "driver";
 
   useEffect(() => {
-    if (loading || !session) return;
+    if (loading || roleLoading || !session || !role || isRunner) return;
     setStoreLoadError(null);
     hydrateFromCloud({ force: true }).catch((error) => {
       console.error(error);
       setStoreLoadError(error instanceof Error ? error.message : "Cloud data did not load.");
     });
-  }, [loading, session]);
+  }, [loading, roleLoading, session, role, isRunner]);
 
   useEffect(() => {
     if (loading) return;
@@ -176,10 +177,10 @@ function AuthGate() {
   }, [loading, session, isPublic, navigate]);
 
   useEffect(() => {
-    if (loading || !session || !role) return;
+    if (loading || roleLoading || !session || !role) return;
     const guard = ROUTE_ROLES.find(g => path.startsWith(g.prefix));
     if (guard && !guard.roles.includes(role)) {
-      const home = role === "driver" ? "/driver-portal" : role === "runner" ? "/staff-portal" : "/";
+      const home = role === "driver" || role === "runner" ? "/checklist" : "/";
       navigate({ to: home });
     }
     // Non-admin users (runners/drivers) use the runner hub — restrict their routes
@@ -187,9 +188,9 @@ function AuthGate() {
       const allowed = RUNNER_ALLOWED.some(p => path === p || path.startsWith(p + "/"));
       if (!allowed) navigate({ to: "/checklist" });
     }
-  }, [loading, session, role, path, navigate]);
+  }, [loading, roleLoading, session, role, path, navigate]);
 
-  if (loading || (!!session && !isPublic && !storeLoadError && !isStoreHydrated())) {
+  if (loading || roleLoading || (!!session && !isPublic && !isRunner && !storeLoadError && !isStoreHydrated())) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
   if (!!session && !isPublic && storeLoadError) {
@@ -210,8 +211,26 @@ function AuthGate() {
   }
   if (isPublic) return <Outlet />;
   if (!session) return null;
+  if (!role) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="max-w-md text-center">
+          <h1 className="text-xl font-semibold text-foreground">Account pending approval</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {roleError ? `We couldn't load your account role: ${roleError}` : "Your login works, but your account needs a role before you can access Camauto."}
+          </p>
+          <button
+            onClick={() => signOut()}
+            className="mt-6 inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  if (role === "runner" || role === "driver") {
+  if (isRunner) {
     return (
       <>
         <RunnerLayout />
