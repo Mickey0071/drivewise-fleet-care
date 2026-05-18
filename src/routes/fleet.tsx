@@ -106,7 +106,7 @@ function FleetPage() {
                 onClick={() => setPhotosVehicleId(v.id)}
                 title="Manage & share photos"
               >
-                <Images className="h-4 w-4" />
+                <Images className="mr-1 h-4 w-4" /> Share photos
               </Button>
               <Button
                 variant="outline"
