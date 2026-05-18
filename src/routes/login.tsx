@@ -69,9 +69,8 @@ function LoginPage() {
             <div><Label htmlFor="si-email">Email</Label><Input id="si-email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></div>
             <div><Label htmlFor="si-pw">Password</Label><Input id="si-pw" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
             <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
-            <div className="flex items-center justify-between pt-1 text-xs">
+            <div className="pt-1 text-xs">
               <Link to="/forgot-password" className="font-medium text-primary hover:underline">Forgot password?</Link>
-              <Link to="/signup" className="font-medium text-primary hover:underline">Create an account</Link>
             </div>
           </form>
         </CardContent>
