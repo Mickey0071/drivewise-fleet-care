@@ -44,7 +44,7 @@ function ResetPasswordPage() {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) { setBusy(false); toast.error(error.message); return; }
     if (session && mustResetPassword) {
-      try { await clearFlag({ data: undefined }); await refreshMustReset(); } catch (e) { console.error(e); }
+      try { await clearFlag(); await refreshMustReset(); } catch (e) { console.error(e); }
     }
     setBusy(false);
     toast.success("Password updated");
