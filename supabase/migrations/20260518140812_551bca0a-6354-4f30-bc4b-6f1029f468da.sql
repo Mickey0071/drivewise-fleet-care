@@ -1,0 +1,1 @@
+ALTER TABLE public.inspections ADD COLUMN notes TEXT;
