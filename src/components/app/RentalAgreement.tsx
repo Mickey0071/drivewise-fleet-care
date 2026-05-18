@@ -2,6 +2,7 @@ import logo from "@/assets/camauto-logo.jpeg";
 import type { Driver, Rental, Vehicle } from "@/lib/mock/data";
 import { fmtDate, fmtMoney } from "@/lib/mock/data";
 import { useAgreementSettings, renderClauseBody } from "@/lib/agreementSettings";
+import { formatAddressBlock, formatFullName } from "@/lib/us-states";
 
 interface Props {
   rental: Rental;
@@ -34,6 +35,16 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
   const rate = Number(rental.rate ?? rental.weeklyRate ?? 0);
   const exts = rental.extensions ?? [];
   const currentEnd = exts.length ? exts[exts.length - 1].newEndDate : rental.endDate;
+  const composedName = driver.firstName || driver.lastName
+    ? formatFullName({ firstName: driver.firstName, middleInitial: driver.middleInitial, lastName: driver.lastName })
+    : driver.fullName;
+  const composedAddress = driver.streetAddress || driver.city || driver.state || driver.zipCode
+    ? formatAddressBlock({
+        streetAddress: driver.streetAddress, aptUnit: driver.aptUnit,
+        city: driver.city, state: driver.state, zipCode: driver.zipCode,
+      })
+    : (driver.address ?? "");
+  const dlStateExp = [driver.dlState, driver.licenseExpiry ? fmtDate(driver.licenseExpiry) : ""].filter(Boolean).join(" / ");
 
   return (
     <div className="mx-auto max-w-[8.5in] bg-white p-10 font-sans text-[13px] text-zinc-900 print:p-8">
@@ -56,16 +67,22 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
       {/* RENTER */}
       <SectionLabel>Renter Information</SectionLabel>
       <div className="grid grid-cols-2 gap-2">
-        <Field label="Full Legal Name" value={driver.fullName} />
+        <Field label="Full Legal Name" value={composedName} />
         <Field label="Date of Birth" value={driver.dateOfBirth ? fmtDate(driver.dateOfBirth) : ""} />
         <Field label="Driver License Number" value={driver.licenseNumber} />
-        <Field label="DL State / Expiration Date" value={fmtDate(driver.licenseExpiry)} />
+        <Field label="DL State / Expiration Date" value={dlStateExp || fmtDate(driver.licenseExpiry)} />
         <Field label="Phone Number" value={driver.phone} />
         <Field label="Email Address" value={driver.email} />
       </div>
       <div className="mt-2 grid grid-cols-1 gap-2">
-        <Field label="Street Address, City, State, ZIP" value={driver.address ?? ""} />
+        <Field label="Street Address, City, State, ZIP" value={composedAddress} />
       </div>
+      {(driver.altContactName || driver.altContactPhone) && (
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <Field label="Alternate Contact Name" value={driver.altContactName ?? ""} />
+          <Field label="Alternate Contact Phone" value={driver.altContactPhone ?? ""} />
+        </div>
+      )}
 
       {/* INSURANCE */}
       <div className="mt-3 grid grid-cols-3 gap-2">
@@ -157,7 +174,7 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
             ) : null}
           </div>
           <div className="text-[10px] uppercase tracking-wide text-zinc-600">Renter Signature</div>
-          <div className="mt-2"><Field label="Print Name" value={rental.signedBy ?? driver.fullName} /></div>
+          <div className="mt-2"><Field label="Print Name" value={rental.signedBy ?? composedName} /></div>
           <div className="mt-2"><Field label="Date" value={rental.signedAt ? fmtDate(rental.signedAt.slice(0, 10)) : ""} /></div>
         </div>
         <div>

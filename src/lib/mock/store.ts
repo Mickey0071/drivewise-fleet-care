@@ -59,6 +59,17 @@ const fromDriver = (r: any) => ({
   status: r.status, dateAdded: r.date_added,
   dateOfBirth: r.date_of_birth ?? undefined,
   address: r.address ?? undefined,
+  firstName: r.first_name ?? undefined,
+  middleInitial: r.middle_initial ?? undefined,
+  lastName: r.last_name ?? undefined,
+  dlState: r.dl_state ?? undefined,
+  streetAddress: r.street_address ?? undefined,
+  aptUnit: r.apt_unit ?? undefined,
+  city: r.city ?? undefined,
+  state: r.state ?? undefined,
+  zipCode: r.zip_code ?? undefined,
+  altContactName: r.alt_contact_name ?? undefined,
+  altContactPhone: r.alt_contact_phone ?? undefined,
 });
 const toDriver = (d: any) => ({
   id: d.id, full_name: d.fullName, phone: d.phone, email: d.email,
@@ -67,6 +78,17 @@ const toDriver = (d: any) => ({
   status: d.status, date_added: d.dateAdded,
   date_of_birth: d.dateOfBirth ?? null,
   address: d.address ?? null,
+  first_name: d.firstName ?? null,
+  middle_initial: d.middleInitial ?? null,
+  last_name: d.lastName ?? null,
+  dl_state: d.dlState ?? null,
+  street_address: d.streetAddress ?? null,
+  apt_unit: d.aptUnit ?? null,
+  city: d.city ?? null,
+  state: d.state ?? null,
+  zip_code: d.zipCode ?? null,
+  alt_contact_name: d.altContactName ?? null,
+  alt_contact_phone: d.altContactPhone ?? null,
 });
 const fromRental = (r: any, exts: any[] = []): Rental => ({
   id: r.id, vehicleId: r.vehicle_id, driverId: r.driver_id,
@@ -999,6 +1021,17 @@ export function updateDriver(id: string, fields: Partial<Omit<Driver, "id">>) {
   if (fields.status !== undefined) patch.status = fields.status;
   if (fields.dateOfBirth !== undefined) patch.date_of_birth = fields.dateOfBirth ?? null;
   if (fields.address !== undefined) patch.address = fields.address ?? null;
+  if (fields.firstName !== undefined) patch.first_name = fields.firstName ?? null;
+  if (fields.middleInitial !== undefined) patch.middle_initial = fields.middleInitial ?? null;
+  if (fields.lastName !== undefined) patch.last_name = fields.lastName ?? null;
+  if (fields.dlState !== undefined) patch.dl_state = fields.dlState ?? null;
+  if (fields.streetAddress !== undefined) patch.street_address = fields.streetAddress ?? null;
+  if (fields.aptUnit !== undefined) patch.apt_unit = fields.aptUnit ?? null;
+  if (fields.city !== undefined) patch.city = fields.city ?? null;
+  if (fields.state !== undefined) patch.state = fields.state ?? null;
+  if (fields.zipCode !== undefined) patch.zip_code = fields.zipCode ?? null;
+  if (fields.altContactName !== undefined) patch.alt_contact_name = fields.altContactName ?? null;
+  if (fields.altContactPhone !== undefined) patch.alt_contact_phone = fields.altContactPhone ?? null;
   const cloudReady = cloudWrite("driver:update", supabase.from("drivers").update(patch as never).eq("id", id)).catch((error) => {
     Object.assign(d, prev);
     emit();
