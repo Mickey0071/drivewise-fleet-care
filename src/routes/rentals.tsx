@@ -411,6 +411,7 @@ function RentalsPage() {
       <DeliveryDialog rental={delivering} onClose={() => setDelivering(null)} />
       <ReturnDialog rental={returning} onClose={() => setReturning(null)} />
       <ExtendRentalDialog rental={extending} onClose={() => setExtending(null)} />
+      <SwapVehicleDialog rental={swapping} onClose={() => setSwapping(null)} />
       <AgreementDialog rental={viewingAgreement} onClose={() => setViewingAgreement(null)} />
       <CaptureSignatureDialog rental={signing} onClose={() => setSigning(null)} />
       <ChargeRentalDialog
