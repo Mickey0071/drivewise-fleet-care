@@ -52,6 +52,7 @@ function RentalsPage() {
   const [delivering, setDelivering] = useState<Rental | null>(null);
   const [returning, setReturning] = useState<Rental | null>(null);
   const [extending, setExtending] = useState<Rental | null>(null);
+  const [swapping, setSwapping] = useState<Rental | null>(null);
   const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
   const [signing, setSigning] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
