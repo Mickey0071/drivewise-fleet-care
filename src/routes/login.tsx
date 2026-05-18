@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -10,15 +10,21 @@ import logo from "@/assets/camauto-logo.jpeg";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — Camauto Rentals" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({ confirmed: s.confirmed === "1" || s.confirmed === 1 ? true : false }),
   component: LoginPage,
 });
 
 function LoginPage() {
-  const { session, role, roleLoading, signIn, signInWithGoogle, resetPassword, loading } = useAuth();
+  const { session, role, roleLoading, signIn, signInWithGoogle, loading } = useAuth();
   const nav = useNavigate();
+  const { confirmed } = useSearch({ from: "/login" });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (confirmed) toast.success("Email confirmed! Sign in to request access.");
+  }, [confirmed]);
 
   useEffect(() => {
     if (loading || roleLoading || !session || !role) return;
@@ -39,18 +45,6 @@ function LoginPage() {
     const { error } = await signInWithGoogle();
     setBusy(false);
     if (error) toast.error(error);
-  }
-
-  async function handleResetPassword() {
-    if (!email.trim()) {
-      toast.error("Enter your email first");
-      return;
-    }
-    setBusy(true);
-    const { error } = await resetPassword(email);
-    setBusy(false);
-    if (error) toast.error(error);
-    else toast.success("Password reset email sent");
   }
 
   return (
@@ -75,9 +69,10 @@ function LoginPage() {
             <div><Label htmlFor="si-email">Email</Label><Input id="si-email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></div>
             <div><Label htmlFor="si-pw">Password</Label><Input id="si-pw" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
             <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
-            <Button type="button" variant="ghost" className="w-full" disabled={busy} onClick={handleResetPassword}>
-              Forgot password?
-            </Button>
+            <div className="flex items-center justify-between pt-1 text-xs">
+              <Link to="/forgot-password" className="font-medium text-primary hover:underline">Forgot password?</Link>
+              <Link to="/signup" className="font-medium text-primary hover:underline">Create an account</Link>
+            </div>
           </form>
         </CardContent>
       </Card>

@@ -40,6 +40,7 @@ import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
@@ -200,6 +201,11 @@ const FleetVehicleIdRoute = FleetVehicleIdRouteImport.update({
   path: '/$vehicleId',
   getParentRoute: () => FleetRoute,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RentPortalRentalIdRoute = RentPortalRentalIdRouteImport.update({
   id: '/rent/portal/$rentalId',
   path: '/rent/portal/$rentalId',
@@ -251,6 +257,7 @@ export interface FileRoutesByFullPath {
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -288,6 +295,7 @@ export interface FileRoutesByTo {
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -326,6 +334,7 @@ export interface FileRoutesById {
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
   '/violations': typeof ViolationsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -365,6 +374,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/staff-portal'
     | '/violations'
+    | '/admin/users'
     | '/fleet/$vehicleId'
     | '/rent/$token'
     | '/rent/paid'
@@ -402,6 +412,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/staff-portal'
     | '/violations'
+    | '/admin/users'
     | '/fleet/$vehicleId'
     | '/rent/$token'
     | '/rent/paid'
@@ -439,6 +450,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/staff-portal'
     | '/violations'
+    | '/admin/users'
     | '/fleet/$vehicleId'
     | '/rent/$token'
     | '/rent/paid'
@@ -477,6 +489,7 @@ export interface RootRouteChildren {
   SmsLogRoute: typeof SmsLogRoute
   StaffPortalRoute: typeof StaffPortalRoute
   ViolationsRoute: typeof ViolationsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
   SignTokenRoute: typeof SignTokenRoute
@@ -705,6 +718,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FleetVehicleIdRouteImport
       parentRoute: typeof FleetRoute
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rent/portal/$rentalId': {
       id: '/rent/portal/$rentalId'
       path: '/rent/portal/$rentalId'
@@ -774,6 +794,7 @@ const rootRouteChildren: RootRouteChildren = {
   SmsLogRoute: SmsLogRoute,
   StaffPortalRoute: StaffPortalRoute,
   ViolationsRoute: ViolationsRoute,
+  AdminUsersRoute: AdminUsersRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
   SignTokenRoute: SignTokenRoute,
