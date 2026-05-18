@@ -1,5 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createFileRoute } from "@tanstack/react-router";
 import logo from "@/assets/camauto-logo-full.jpeg";
 
 export const Route = createFileRoute("/rent/paid")({
@@ -13,16 +12,8 @@ export const Route = createFileRoute("/rent/paid")({
 });
 
 function PaidPage() {
-  const { rental_id: rentalId } = Route.useSearch();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!rentalId) return;
-    const t = setTimeout(() => {
-      navigate({ to: "/rent/portal/$rentalId", params: { rentalId } });
-    }, 5000);
-    return () => clearTimeout(t);
-  }, [rentalId, navigate]);
+  const { canceled } = Route.useSearch();
+  const isCanceled = canceled === "1" || canceled === "true";
 
   return (
     <div
@@ -44,7 +35,7 @@ function PaidPage() {
       />
       <h1
         style={{
-          color: "#16a34a",
+          color: isCanceled ? "#52525b" : "#16a34a",
           fontSize: "1.75rem",
           fontWeight: 600,
           textAlign: "center",
@@ -52,13 +43,13 @@ function PaidPage() {
           lineHeight: 1.2,
         }}
       >
-        Thank you for choosing Camauto Rentals
+        {isCanceled ? "Payment was not completed" : "Thank you for choosing Camauto"}
       </h1>
-      {rentalId && (
-        <p style={{ color: "#6b7280", fontSize: "0.875rem", margin: 0, textAlign: "center" }}>
-          Taking you to your reservation…
-        </p>
-      )}
+      <p style={{ color: "#6b7280", fontSize: "0.875rem", margin: 0, textAlign: "center" }}>
+        {isCanceled
+          ? "You can close this page and request a new payment link from Camauto Rentals."
+          : "Your payment has been received. You can close this page."}
+      </p>
     </div>
   );
 }
