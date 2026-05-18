@@ -40,6 +40,10 @@ export interface Rental {
   pendingCreatedAt?: string;
   paymentReceived?: boolean;
   extensions?: RentalExtension[];
+  licenseImageUrl?: string;
+  selfieImageUrl?: string;
+  clientSignatureUrl?: string;
+  clientSignedAt?: string;
 }
 export interface RentalExtension {
   id: string;
