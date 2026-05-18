@@ -1,11 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { vehicles, drivers, vehicleById, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { vehicles, drivers, vehicleById, fmtMoney, fmtDate, maintenance } from "@/lib/mock/data";
 import { addRental, hasConflict, addDriver, getActiveRentalForDriver, isVehicleBookable, markReturned, useStoreVersion } from "@/lib/mock/store";
 import { useServerFn } from "@tanstack/react-start";
 import { sendSigningLink } from "@/lib/sign.functions";
@@ -63,6 +73,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [newDriver, setNewDriver] = useState(emptyDriver);
   const [isSwap, setIsSwap] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [openIssueWarning, setOpenIssueWarning] = useState(false);
 
   useEffect(() => {
     if (open && initialVehicleId) {
@@ -168,6 +179,10 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   async function confirm() {
     if (!vehicle || !driver || !startDate) return;
     if (saving) return;
+    if (vehicle.hasOpenIssues && !openIssueWarning) {
+      setOpenIssueWarning(true);
+      return;
+    }
     if (existingRental && !isSwap) {
       toast.error("Renter already has an active rental", { description: "Tick the swap box on the Client step to close the existing rental." });
       return;
