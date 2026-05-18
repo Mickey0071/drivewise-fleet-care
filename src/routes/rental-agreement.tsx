@@ -127,6 +127,7 @@ function RentalAgreementSettingsPage() {
                 <Field label="Phone" value={draft.company.phone} onChange={(v) => updateCompany("phone", v)} />
                 <Field label="Website" value={draft.company.website} onChange={(v) => updateCompany("website", v)} />
                 <Field label="Damage alert SMS recipient (E.164 phone)" value={draft.company.damageAlertPhone} onChange={(v) => updateCompany("damageAlertPhone", v)} className="sm:col-span-2" />
+                <Field label="Runner inspection SMS recipient (E.164 phone)" value={draft.company.runnerInspectionPhone} onChange={(v) => updateCompany("runnerInspectionPhone", v)} className="sm:col-span-2" />
                 <Field label="Agreement version tag" value={draft.agreementVersion} onChange={(v) => setDraft({ ...draft, agreementVersion: v })} />
               </CardContent>
             </Card>
