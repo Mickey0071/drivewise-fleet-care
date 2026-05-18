@@ -74,6 +74,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [isSwap, setIsSwap] = useState(false);
   const [saving, setSaving] = useState(false);
   const [openIssueWarning, setOpenIssueWarning] = useState(false);
+  const [openIssueAcknowledged, setOpenIssueAcknowledged] = useState(false);
 
   useEffect(() => {
     if (open && initialVehicleId) {
@@ -179,7 +180,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   async function confirm() {
     if (!vehicle || !driver || !startDate) return;
     if (saving) return;
-    if (vehicle.hasOpenIssues && !openIssueWarning) {
+    if (vehicle.hasOpenIssues && !openIssueAcknowledged) {
       setOpenIssueWarning(true);
       return;
     }
