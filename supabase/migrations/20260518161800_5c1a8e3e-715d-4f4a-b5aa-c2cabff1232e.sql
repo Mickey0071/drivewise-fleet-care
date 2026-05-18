@@ -1,0 +1,1 @@
+UPDATE public.profiles SET must_reset_password = false WHERE email = 'perfectionstyles451@yahoo.com';
