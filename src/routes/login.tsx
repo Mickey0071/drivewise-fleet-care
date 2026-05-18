@@ -58,13 +58,6 @@ function LoginPage() {
           <p className="text-sm text-muted-foreground">Sign in to manage your fleet</p>
         </CardHeader>
         <CardContent>
-          <Button type="button" variant="outline" className="mb-4 w-full" onClick={handleGoogleSignIn} disabled={busy}>
-            Continue with Google
-          </Button>
-          <div className="relative mb-4 text-center text-xs uppercase text-muted-foreground">
-            <span className="relative z-10 bg-card px-2">or</span>
-            <div className="absolute inset-y-1/2 left-0 right-0 h-px bg-border" />
-          </div>
           <form onSubmit={handleSignIn} className="space-y-3">
             <div><Label htmlFor="si-email">Email</Label><Input id="si-email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></div>
             <div><Label htmlFor="si-pw">Password</Label><Input id="si-pw" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
