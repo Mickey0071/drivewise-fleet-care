@@ -165,3 +165,154 @@ function AdminUsersPage() {
     </div>
   );
 }
+
+function generatePassword(len = 14): string {
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghijkmnopqrstuvwxyz";
+  const nums = "23456789";
+  const syms = "!@#$%^&*";
+  const all = upper + lower + nums + syms;
+  const pick = (s: string) => s[Math.floor(Math.random() * s.length)];
+  const required = [pick(upper), pick(lower), pick(nums), pick(syms)];
+  const rest = Array.from({ length: Math.max(0, len - required.length) }, () => pick(all));
+  return [...required, ...rest].sort(() => Math.random() - 0.5).join("");
+}
+
+function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> }) {
+  const createUser = useServerFn(adminCreateUser);
+  const [open, setOpen] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState(() => generatePassword());
+  const [showPwd, setShowPwd] = useState(false);
+  const [role, setRole] = useState<AppRole>("driver");
+  const [mustReset, setMustReset] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  function reset() {
+    setFirstName(""); setLastName(""); setPhone(""); setEmail("");
+    setPassword(generatePassword()); setShowPwd(false);
+    setRole("driver"); setMustReset(true);
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || password.length < 8) {
+      toast.error("Fill all required fields (password ≥ 8 chars)");
+      return;
+    }
+    setBusy(true);
+    try {
+      await createUser({ data: {
+        email: email.trim(),
+        password,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        phone: phone.trim() || null,
+        role,
+        must_reset_password: mustReset,
+      }});
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const text = `User created. Send them:\nEmail: ${email.trim()}\nTemp password: ${password}\nLogin at: ${origin}/login`;
+      toast.success("User created", {
+        description: (
+          <div className="space-y-2">
+            <pre className="whitespace-pre-wrap rounded bg-muted p-2 text-xs">{text}</pre>
+            <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(text); toast.success("Copied"); }}>
+              <Copy className="mr-1 h-3 w-3" /> Copy
+            </Button>
+          </div>
+        ),
+        duration: 30000,
+      });
+      setOpen(false);
+      reset();
+      await onCreated();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create user");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Button onClick={() => { reset(); setOpen(true); }}>
+        <Plus className="mr-1 h-4 w-4" /> Add User
+      </Button>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add User</DialogTitle></DialogHeader>
+          <form onSubmit={submit} className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="fn">First name</Label>
+                <Input id="fn" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+              </div>
+              <div>
+                <Label htmlFor="ln">Last name</Label>
+                <Input id="ln" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="ph">Phone (optional)</Label>
+              <Input id="ph" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="em">Email</Label>
+              <Input id="em" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+            <div>
+              <Label htmlFor="pw">Temporary password</Label>
+              <div className="flex gap-1">
+                <div className="relative flex-1">
+                  <Input
+                    id="pw"
+                    type={showPwd ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    minLength={8}
+                    required
+                    className="pr-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd((s) => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPwd ? "Hide password" : "Show password"}
+                  >
+                    {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <Button type="button" variant="outline" size="icon" onClick={() => setPassword(generatePassword())} title="Generate">
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div>
+              <Label>Role</Label>
+              <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="driver">Driver</SelectItem>
+                  <SelectItem value="runner">Runner</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={mustReset} onCheckedChange={(v) => setMustReset(v === true)} />
+              Force password reset on first login
+            </label>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
+              <Button type="submit" disabled={busy}>{busy ? "Creating…" : "Create User"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
