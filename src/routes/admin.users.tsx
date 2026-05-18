@@ -94,9 +94,12 @@ function AdminUsersPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Team & Access</h1>
-        <p className="text-sm text-muted-foreground">Approve new sign-ups and manage roles for runners, drivers, and admins.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Team & Access</h1>
+          <p className="text-sm text-muted-foreground">Approve new sign-ups and manage roles for runners, drivers, and admins.</p>
+        </div>
+        <AddUserButton onCreated={load} />
       </div>
       <Card>
         <CardHeader><CardTitle>All users</CardTitle></CardHeader>
