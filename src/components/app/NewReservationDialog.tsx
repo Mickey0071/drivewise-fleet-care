@@ -16,7 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { vehicles, drivers, vehicleById, fmtMoney, fmtDate, maintenance } from "@/lib/mock/data";
-import { addRental, hasConflict, addDriver, getActiveRentalForDriver, isVehicleBookable, markReturned, useStoreVersion } from "@/lib/mock/store";
+import { addRental, hasConflict, addDriver, getActiveRentalForDriver, isVehicleBookable, markReturnedAwaitingInspection, awaitingPostReturnInspection, useStoreVersion } from "@/lib/mock/store";
+import { useAuth } from "@/hooks/use-auth";
+import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { sendSigningLink } from "@/lib/sign.functions";
 import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus, Repeat, AlertTriangle } from "lucide-react";
@@ -48,6 +50,8 @@ interface Props {
 
 export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: Props) {
   useStoreVersion();
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const sendSignLinkFn = useServerFn(sendSigningLink);
   const [step, setStep] = useState<Step>(0);
   const [vehicleId, setVehicleId] = useState<string | null>(null);
@@ -75,6 +79,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [saving, setSaving] = useState(false);
   const [openIssueWarning, setOpenIssueWarning] = useState(false);
   const [openIssueAcknowledged, setOpenIssueAcknowledged] = useState(false);
+  const [inspectionOverride, setInspectionOverride] = useState(false);
 
   useEffect(() => {
     if (open && initialVehicleId) {
@@ -88,7 +93,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const existingRental = driver ? getActiveRentalForDriver(driver.id) : null;
 
   const availableVehicles = useMemo(
-    () => vehicles.filter(v => isVehicleBookable(v.id) && (
+    () => vehicles.filter(v => (isVehicleBookable(v.id) || awaitingPostReturnInspection(v.id)) && (
       vehQ === "" ||
       `${v.year} ${v.make} ${v.model} ${v.plate}`.toLowerCase().includes(vehQ.toLowerCase())
     )),
@@ -110,6 +115,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     setShowAddDriver(false);
     setIsSwap(false);
     setNewDriver(emptyDriver);
+    setInspectionOverride(false);
   }
   async function createDriver() {
     if (!newDriver.firstName.trim() || !newDriver.lastName.trim()) {
