@@ -162,7 +162,7 @@ export type Database = {
           mileage: number
           notes: string | null
           ready_to_rent: boolean | null
-          rental_id: string
+          rental_id: string | null
           submitted_at: string | null
           type: string
           vehicle_id: string
@@ -180,7 +180,7 @@ export type Database = {
           mileage?: number
           notes?: string | null
           ready_to_rent?: boolean | null
-          rental_id: string
+          rental_id?: string | null
           submitted_at?: string | null
           type: string
           vehicle_id: string
@@ -198,7 +198,7 @@ export type Database = {
           mileage?: number
           notes?: string | null
           ready_to_rent?: boolean | null
-          rental_id?: string
+          rental_id?: string | null
           submitted_at?: string | null
           type?: string
           vehicle_id?: string

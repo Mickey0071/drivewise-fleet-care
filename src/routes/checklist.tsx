@@ -189,7 +189,7 @@ function ChecklistPage() {
       const { error } = await supabase.from("inspections").insert({
         id: inspectionId,
         vehicle_id: vehicleId,
-        rental_id: "STANDALONE",
+        rental_id: null,
         type: "check-in",
         date: new Date().toISOString().slice(0, 10),
         mileage: vehicle?.mileage ?? 0,
