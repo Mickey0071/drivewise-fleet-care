@@ -156,19 +156,33 @@ function rentalBlocksVehicle(r: Rental, ignoreRentalId?: string) {
   return status === "active" || status === "pending";
 }
 
-export function isVehicleBookable(vehicleId: string, ignoreRentalId?: string) {
+/** A vehicle is "awaiting post-return inspection" once it has been returned
+ *  and before a runner has submitted a passing return inspection. We track
+ *  this with the existing `vehicles.status = "inspection"` flag, which is
+ *  set in markReturnedAwaitingInspection and cleared in addInspection when a
+ *  passing return-type inspection lands. */
+export function awaitingPostReturnInspection(vehicleId: string) {
+  const v = vehicles.find(x => x.id === vehicleId);
+  return !!v && v.status === "inspection";
+}
+
+export function isVehicleBookable(vehicleId: string, ignoreRentalId?: string, allowOverride = false) {
   const vehicle = vehicles.find(v => v.id === vehicleId);
   if (!vehicle) return false;
   if (vehicle.status === "maintenance" || vehicle.status === "impound") return false;
+  if (vehicle.status === "inspection" && !allowOverride) return false;
   return !rentals.some(r => r.vehicleId === vehicleId && rentalBlocksVehicle(r, ignoreRentalId));
 }
 
 function reconcileVehicleAvailability(persist = false) {
   for (const v of vehicles) {
     const blocking = rentals.find(r => r.vehicleId === v.id && rentalBlocksVehicle(r));
+    // Only auto-flip "rented" → "available" when no blocking rental remains.
+    // Vehicles in "inspection" stay there until a passing post-return
+    // inspection is submitted (handled in addInspection).
     const nextStatus = blocking && (blocking.reservationStatus ?? "active") === "active"
       ? "rented"
-      : !blocking && (v.status === "rented" || v.status === "inspection")
+      : !blocking && v.status === "rented"
         ? "available"
         : v.status;
     if (nextStatus !== v.status) {
