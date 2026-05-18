@@ -13,6 +13,7 @@ import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as StaffPortalRouteImport } from './routes/staff-portal'
 import { Route as SmsLogRouteImport } from './routes/sms-log'
 import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReservationsRouteImport } from './routes/reservations'
 import { Route as RentalsRouteImport } from './routes/rentals'
 import { Route as RentalAgreementRouteImport } from './routes/rental-agreement'
@@ -60,6 +61,11 @@ const SmsLogRoute = SmsLogRouteImport.update({
 const RunnerReportsRoute = RunnerReportsRouteImport.update({
   id: '/runner-reports',
   path: '/runner-reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReservationsRoute = ReservationsRouteImport.update({
@@ -226,6 +232,7 @@ export interface FileRoutesByFullPath {
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/reservations': typeof ReservationsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
@@ -260,6 +267,7 @@ export interface FileRoutesByTo {
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/reservations': typeof ReservationsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
@@ -295,6 +303,7 @@ export interface FileRoutesById {
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/reservations': typeof ReservationsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
@@ -331,6 +340,7 @@ export interface FileRouteTypes {
     | '/rental-agreement'
     | '/rentals'
     | '/reservations'
+    | '/reset-password'
     | '/runner-reports'
     | '/sms-log'
     | '/staff-portal'
@@ -365,6 +375,7 @@ export interface FileRouteTypes {
     | '/rental-agreement'
     | '/rentals'
     | '/reservations'
+    | '/reset-password'
     | '/runner-reports'
     | '/sms-log'
     | '/staff-portal'
@@ -399,6 +410,7 @@ export interface FileRouteTypes {
     | '/rental-agreement'
     | '/rentals'
     | '/reservations'
+    | '/reset-password'
     | '/runner-reports'
     | '/sms-log'
     | '/staff-portal'
@@ -434,6 +446,7 @@ export interface RootRouteChildren {
   RentalAgreementRoute: typeof RentalAgreementRoute
   RentalsRoute: typeof RentalsRoute
   ReservationsRoute: typeof ReservationsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   RunnerReportsRoute: typeof RunnerReportsRoute
   SmsLogRoute: typeof SmsLogRoute
   StaffPortalRoute: typeof StaffPortalRoute
@@ -475,6 +488,13 @@ declare module '@tanstack/react-router' {
       path: '/runner-reports'
       fullPath: '/runner-reports'
       preLoaderRoute: typeof RunnerReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reservations': {
@@ -707,6 +727,7 @@ const rootRouteChildren: RootRouteChildren = {
   RentalAgreementRoute: RentalAgreementRoute,
   RentalsRoute: RentalsRoute,
   ReservationsRoute: ReservationsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   RunnerReportsRoute: RunnerReportsRoute,
   SmsLogRoute: SmsLogRoute,
   StaffPortalRoute: StaffPortalRoute,
@@ -722,3 +743,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
