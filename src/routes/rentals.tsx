@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
@@ -387,26 +388,39 @@ function RentalsPage() {
           </div>
         }
       />
-      <Tabs defaultValue={pending.length > 0 ? "pending" : "active"} className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="active">On Rent ({active.length})</TabsTrigger>
-          <TabsTrigger value="pending">
-            Pending {pending.length > 0 && <span className="ml-1 rounded-full bg-amber-500/20 px-2 text-xs text-amber-700 dark:text-amber-400">{pending.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="completed">Returned ({completed.length})</TabsTrigger>
-        </TabsList>
-        <TabsContent value="active" className="flex flex-col gap-3 mt-0">
-          {active.length === 0 ? <EmptyState label="No vehicles currently on rent." /> : active.map(renderCard)}
-        </TabsContent>
-        <TabsContent value="pending" className="flex flex-col gap-3 mt-0">
-          {pending.length === 0 ? (
-            <EmptyState label="No pending reservations. New reservations are held here for 24h until signature + payment." />
-          ) : pending.map(renderCard)}
-        </TabsContent>
-        <TabsContent value="completed" className="flex flex-col gap-3 mt-0">
-          {completed.length === 0 ? <EmptyState label="No returned rentals yet." /> : completed.map(renderCard)}
-        </TabsContent>
-      </Tabs>
+      <div className="space-y-4">
+        <Collapsible defaultOpen>
+          <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/40 px-4 py-3 text-sm font-semibold hover:bg-muted/60 transition-colors">
+            <span>On Rent <span className="ml-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">{active.length}</span></span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>svg]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="flex flex-col gap-3 pt-3">
+            {active.length === 0 ? <EmptyState label="No vehicles currently on rent." /> : active.map(renderCard)}
+          </CollapsibleContent>
+        </Collapsible>
+
+        <Collapsible defaultOpen>
+          <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/40 px-4 py-3 text-sm font-semibold hover:bg-muted/60 transition-colors">
+            <span>Pending <span className="ml-1.5 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400">{pending.length}</span></span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>svg]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="flex flex-col gap-3 pt-3">
+            {pending.length === 0 ? (
+              <EmptyState label="No pending reservations. New reservations are held here for 24h until signature + payment." />
+            ) : pending.map(renderCard)}
+          </CollapsibleContent>
+        </Collapsible>
+
+        <Collapsible>
+          <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/40 px-4 py-3 text-sm font-semibold hover:bg-muted/60 transition-colors">
+            <span>Returned <span className="ml-1.5 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">{completed.length}</span></span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>svg]:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="flex flex-col gap-3 pt-3">
+            {completed.length === 0 ? <EmptyState label="No returned rentals yet." /> : completed.map(renderCard)}
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
       <EditRentalDialog rental={editing} onClose={() => setEditing(null)} />
       <DeliveryDialog rental={delivering} onClose={() => setDelivering(null)} />
