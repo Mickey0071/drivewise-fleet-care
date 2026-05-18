@@ -4,12 +4,12 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
-import { rentals, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid } from "@/lib/mock/store";
+import { rentals, vehicles, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { useStoreVersion, updateRental, markReturned, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, swapVehicle } from "@/lib/mock/store";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
+import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
@@ -51,6 +52,7 @@ function RentalsPage() {
   const [delivering, setDelivering] = useState<Rental | null>(null);
   const [returning, setReturning] = useState<Rental | null>(null);
   const [extending, setExtending] = useState<Rental | null>(null);
+  const [swapping, setSwapping] = useState<Rental | null>(null);
   const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
   const [signing, setSigning] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
@@ -340,6 +342,11 @@ function RentalsPage() {
                       <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
                     </Button>
                   )}
+                  {!r.endDate && (
+                    <Button variant="outline" size="sm" onClick={() => setSwapping(r)}>
+                      <ArrowLeftRight className="mr-1 h-4 w-4" /> Swap vehicle
+                    </Button>
+                  )}
                   {r.signatureDataUrl && (
                     <Button variant="ghost" size="sm" onClick={() => setViewingAgreement(r)}>
                       <FileSignature className="mr-1 h-4 w-4" /> View agreement
@@ -404,6 +411,7 @@ function RentalsPage() {
       <DeliveryDialog rental={delivering} onClose={() => setDelivering(null)} />
       <ReturnDialog rental={returning} onClose={() => setReturning(null)} />
       <ExtendRentalDialog rental={extending} onClose={() => setExtending(null)} />
+      <SwapVehicleDialog rental={swapping} onClose={() => setSwapping(null)} />
       <AgreementDialog rental={viewingAgreement} onClose={() => setViewingAgreement(null)} />
       <CaptureSignatureDialog rental={signing} onClose={() => setSigning(null)} />
       <ChargeRentalDialog
@@ -700,6 +708,7 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
   const d = rental ? driverById(rental.driverId) : null;
   const checkout = rental ? getInspectionsForRental(rental.id).find(i => i.type === "check-out") : undefined;
   const sendSmsFn = useServerFn(sendRentalSms);
+  const settings = useAgreementSettings();
   const [mileage, setMileage] = useState(0);
   const [fuelLevel, setFuelLevel] = useState(100);
   const [damageNoted, setDamageNoted] = useState(false);
@@ -738,9 +747,34 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
     if (damageNoted) {
       const renter = d?.fullName ?? rental.driverId;
       const msg = `Rentalprise Auto: New damage reported on return of ${v.year} ${v.make} ${v.model} (Plate ${v.plate}) by ${renter}. Odo ${Number(mileage).toLocaleString()} mi · Fuel ${fuelLevel}%. Received by ${completedBy.trim()}.${notes.trim() ? ` Notes: ${notes.trim()}` : ""}`;
-      sendSmsFn({ data: { phone: "+12672213977", message: msg.slice(0, 1000), name: "Damage Alert" } })
-        .then(() => toast.success("Damage alert SMS sent"))
-        .catch(e => toast.error("Damage SMS failed", { description: e instanceof Error ? e.message : String(e) }));
+      const alertPhone = settings.company.damageAlertPhone?.trim();
+      if (alertPhone) {
+        sendSmsFn({ data: { phone: alertPhone, message: msg.slice(0, 1000), name: "Damage Alert" } })
+          .then(() => toast.success("Damage alert SMS sent"))
+          .catch(e => toast.error("Damage SMS failed", { description: e instanceof Error ? e.message : String(e) }));
+      } else {
+        toast.warning("No damage alert phone configured", { description: "Set it under Rental Agreement → Company." });
+      }
+      // Auto-create a maintenance record flagged as damage from return
+      try {
+        addMaintenance({
+          vehicleId: v.id,
+          serviceType: "Damage from rental return",
+          cost: 0,
+          vendor: "TBD",
+          dateCompleted: new Date().toISOString().slice(0, 10),
+          mileageAtService: Number(mileage) || v.mileage,
+          nextServiceDue: new Date().toISOString().slice(0, 10),
+          notes: `Damage reported on return of rental ${rental.id} (${v.plate}) by ${renter}. Received by ${completedBy.trim()}.${notes.trim() ? ` Details: ${notes.trim()}` : ""}`,
+        });
+      } catch (e) {
+        console.error("Failed to auto-create damage maintenance record", e);
+      }
+    } else if (d?.phone) {
+      // Clean return — send renter confirmation
+      const confirmMsg = "Your vehicle return has been confirmed. Thanks for renting with Camauto!";
+      sendSmsFn({ data: { phone: d.phone, message: confirmMsg, name: d.fullName } })
+        .catch(e => console.error("Renter return SMS failed", e));
     }
     const checklistSummary = `Return checklist: ${RETURN_CHECKLIST.length}/${RETURN_CHECKLIST.length} verified by ${completedBy.trim()}`;
     const noteParts = [rental.notes, checklistSummary, notes.trim() ? `Return: ${notes.trim()}` : ""].filter(Boolean);
@@ -934,6 +968,7 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
 function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
   const v = rental ? vehicleById(rental.vehicleId) : null;
   const d = rental ? driverById(rental.driverId) : null;
+  const sendSmsFn = useServerFn(sendRentalSms);
   const [newEndDate, setNewEndDate] = useState("");
   const [sig, setSig] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
@@ -960,6 +995,12 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
       signedBy: d.fullName,
       agreementVersion: AGREEMENT_VERSION,
     });
+    if (d.phone) {
+      const amountStr = ext && ext.additionalAmount > 0 ? ` Amount due: ${fmtMoney(ext.additionalAmount)}.` : "";
+      const msg = `Camauto Rentals: Your rental of the ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""} has been extended through ${fmtDate(newEndDate)}.${amountStr} Reply with any questions.`;
+      sendSmsFn({ data: { phone: d.phone, message: msg.slice(0, 1000), name: d.fullName } })
+        .catch(e => console.error("Extension SMS failed", e));
+    }
     toast.success("Rental extended", {
       description: `${v?.year} ${v?.make} ${v?.model} → ${fmtDate(newEndDate)}${ext && ext.additionalAmount > 0 ? ` · ${fmtMoney(ext.additionalAmount)} added to receipt` : ""}`,
     });
@@ -1021,6 +1062,74 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
 }
 
 function AgreementDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  return <AgreementDialogInner rental={rental} onClose={onClose} />;
+}
+
+function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  const sendSmsFn = useServerFn(sendRentalSms);
+  const [newVehicleId, setNewVehicleId] = useState<string>("");
+  useStoreVersion();
+  useEffect(() => { if (rental) setNewVehicleId(""); }, [rental]);
+  if (!rental) return <Dialog open={false} onOpenChange={() => {}}><DialogContent /></Dialog>;
+  const currentV = vehicleById(rental.vehicleId);
+  const d = driverById(rental.driverId);
+  const available = vehicles.filter(v => v.status === "available" && v.id !== rental.vehicleId);
+  function confirm() {
+    if (!rental || !newVehicleId) { toast.error("Pick a replacement vehicle"); return; }
+    try {
+      const { newVehicle } = swapVehicle(rental.id, newVehicleId);
+      if (d?.phone) {
+        const msg = `Camauto Rentals: Your rental has been swapped to a ${newVehicle.year} ${newVehicle.make} ${newVehicle.model} (Plate ${newVehicle.plate}). Contact us with any questions.`;
+        sendSmsFn({ data: { phone: d.phone, message: msg.slice(0, 1000), name: d.fullName } })
+          .catch(e => console.error("Swap SMS failed", e));
+      }
+      toast.success("Vehicle swapped", { description: `${newVehicle.year} ${newVehicle.make} ${newVehicle.model}` });
+      onClose();
+    } catch (e) {
+      toast.error("Swap failed", { description: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  return (
+    <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Swap vehicle</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="rounded-md border bg-muted/30 p-3 text-sm">
+            <div className="text-xs uppercase text-muted-foreground">Currently on rental</div>
+            <div className="font-medium">{currentV?.year} {currentV?.make} {currentV?.model} · {currentV?.plate}</div>
+            <div className="text-xs text-muted-foreground mt-1">Renter: {d?.fullName}</div>
+          </div>
+          <div>
+            <Label>Replacement vehicle</Label>
+            {available.length === 0 ? (
+              <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">No available vehicles in the fleet.</div>
+            ) : (
+              <select
+                value={newVehicleId}
+                onChange={(e) => setNewVehicleId(e.target.value)}
+                className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Select a vehicle…</option>
+                {available.map(v => (
+                  <option key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</option>
+                ))}
+              </select>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            The old vehicle will be marked Available and the new vehicle will be marked Rented. The renter will get an SMS with the new vehicle details.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={confirm} disabled={!newVehicleId}><ArrowLeftRight className="mr-1 h-4 w-4" /> Confirm swap</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AgreementDialogInner({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
   const v = rental ? vehicleById(rental.vehicleId) : null;
   const d = rental ? driverById(rental.driverId) : null;
   return (

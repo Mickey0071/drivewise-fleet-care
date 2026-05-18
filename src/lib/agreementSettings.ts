@@ -7,6 +7,7 @@ export interface AgreementSettings {
     address: string;
     phone: string;
     website: string;
+    damageAlertPhone: string;
   };
   fees: {
     dailyLateFee: string;
@@ -29,6 +30,7 @@ export const DEFAULT_SETTINGS: AgreementSettings = {
     address: "416 Sicklerville Rd, Sicklerville, NJ 08081",
     phone: "(866) 625-5550",
     website: "camautorentals.com",
+    damageAlertPhone: "+12672213977",
   },
   fees: {
     dailyLateFee: "$25",
