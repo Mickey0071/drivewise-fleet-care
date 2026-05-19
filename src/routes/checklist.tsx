@@ -451,6 +451,32 @@ function ChecklistPage() {
     return (
       <div className="mx-auto max-w-2xl space-y-4 pb-24">
         <PageHeader title="✅ Inspection Submitted" subtitle="Inspection recorded successfully" />
+        {done.returnResult && (
+          done.returnResult.final_charge != null ? (
+            <div className="rounded-md border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-sm">
+              <div className="font-medium text-emerald-700 dark:text-emerald-300">
+                ✅ Rental returned. Final charge: ${done.returnResult.final_charge.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} for {done.returnResult.days_used} {done.returnResult.days_used === 1 ? "day" : "days"}.
+                {done.returnResult.miles_driven != null ? ` ${done.returnResult.miles_driven.toLocaleString()} miles driven.` : ""}
+              </div>
+              <div className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-200/80">
+                {done.returnResult.sms_status === "sent"
+                  ? "📱 Receipt SMS sent to customer."
+                  : done.returnResult.sms_status === "skipped_no_phone"
+                    ? "📱 Receipt SMS skipped (no phone on file)."
+                    : "📱 Receipt SMS skipped (no charge calculated)."}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm">
+              <div className="font-medium text-amber-700 dark:text-amber-300">
+                ✅ Rental returned. Final charge will be calculated manually — billing fields were missing.
+              </div>
+              <div className="mt-1 text-xs text-amber-800/80 dark:text-amber-200/80">
+                📱 Receipt SMS skipped (no charge calculated).
+              </div>
+            </div>
+          )
+        )}
         <Card>
           <CardContent className="space-y-3 pt-6">
             <Row label="Vehicle">{done.vehicle ? `${done.vehicle.year} ${done.vehicle.make} ${done.vehicle.model} — ${done.vehicle.plate}` : done.vehicle ?? "—"}</Row>
@@ -491,7 +517,14 @@ function ChecklistPage() {
           <Button variant="outline" className="h-12" onClick={() => reset(true)}>
             New Inspection
           </Button>
-          <Button className="h-12" onClick={() => navigate({ to: "/" })}>
+          <Button
+            className="h-12"
+            onClick={() =>
+              done.returnResult && rental_id
+                ? navigate({ to: "/rentals" })
+                : navigate({ to: "/" })
+            }
+          >
             Done
           </Button>
         </div>
@@ -502,6 +535,21 @@ function ChecklistPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4 pb-32">
       <PageHeader title="New Inspection" subtitle="Submit a full condition check after a runner job" />
+
+      {isReturnMode && returnError && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
+          <div className="font-medium text-destructive">{returnError}</div>
+          <Button className="mt-2 h-9" variant="outline" onClick={() => navigate({ to: "/rentals" })}>
+            Back to Rentals
+          </Button>
+        </div>
+      )}
+
+      {isReturnMode && returnBanner && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm">
+          <div className="font-medium text-amber-700 dark:text-amber-300">{returnBanner}</div>
+        </div>
+      )}
 
       {taskBanner && (
         <div className="rounded-md border border-blue-500/40 bg-blue-500/5 px-4 py-3 text-sm">
