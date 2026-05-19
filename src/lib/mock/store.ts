@@ -636,6 +636,7 @@ export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymen
     billingCadence: cadence,
     rateAmount,
     autoRenew: input.autoRenew ?? true,
+    skipDailyMinimum: input.skipDailyMinimum ?? false,
     currentPeriodEnd,
   };
   rentals.push(rental);
