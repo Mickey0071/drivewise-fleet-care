@@ -731,6 +731,8 @@ export type Database = {
       }
       rentals: {
         Row: {
+          agreement_pdf_generated_at: string | null
+          agreement_pdf_url: string | null
           agreement_version: string | null
           auto_renew: boolean
           billing_cadence: string | null
@@ -770,6 +772,8 @@ export type Database = {
           weekly_rate: number
         }
         Insert: {
+          agreement_pdf_generated_at?: string | null
+          agreement_pdf_url?: string | null
           agreement_version?: string | null
           auto_renew?: boolean
           billing_cadence?: string | null
@@ -809,6 +813,8 @@ export type Database = {
           weekly_rate?: number
         }
         Update: {
+          agreement_pdf_generated_at?: string | null
+          agreement_pdf_url?: string | null
           agreement_version?: string | null
           auto_renew?: boolean
           billing_cadence?: string | null
