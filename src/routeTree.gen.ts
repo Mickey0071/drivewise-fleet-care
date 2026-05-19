@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
+import { Route as VendorsRouteImport } from './routes/vendors'
 import { Route as StaffPortalRouteImport } from './routes/staff-portal'
 import { Route as SmsLogRouteImport } from './routes/sms-log'
 import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
@@ -51,6 +52,11 @@ import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/pu
 const ViolationsRoute = ViolationsRouteImport.update({
   id: '/violations',
   path: '/violations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VendorsRoute = VendorsRouteImport.update({
+  id: '/vendors',
+  path: '/vendors',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StaffPortalRoute = StaffPortalRouteImport.update({
@@ -268,6 +274,7 @@ export interface FileRoutesByFullPath {
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
+  '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -308,6 +315,7 @@ export interface FileRoutesByTo {
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
+  '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -349,6 +357,7 @@ export interface FileRoutesById {
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
+  '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -391,6 +400,7 @@ export interface FileRouteTypes {
     | '/runner-reports'
     | '/sms-log'
     | '/staff-portal'
+    | '/vendors'
     | '/violations'
     | '/admin/users'
     | '/fleet/$vehicleId'
@@ -431,6 +441,7 @@ export interface FileRouteTypes {
     | '/runner-reports'
     | '/sms-log'
     | '/staff-portal'
+    | '/vendors'
     | '/violations'
     | '/admin/users'
     | '/fleet/$vehicleId'
@@ -471,6 +482,7 @@ export interface FileRouteTypes {
     | '/runner-reports'
     | '/sms-log'
     | '/staff-portal'
+    | '/vendors'
     | '/violations'
     | '/admin/users'
     | '/fleet/$vehicleId'
@@ -512,6 +524,7 @@ export interface RootRouteChildren {
   RunnerReportsRoute: typeof RunnerReportsRoute
   SmsLogRoute: typeof SmsLogRoute
   StaffPortalRoute: typeof StaffPortalRoute
+  VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   RentTokenRoute: typeof RentTokenRoute
@@ -532,6 +545,13 @@ declare module '@tanstack/react-router' {
       path: '/violations'
       fullPath: '/violations'
       preLoaderRoute: typeof ViolationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vendors': {
+      id: '/vendors'
+      path: '/vendors'
+      fullPath: '/vendors'
+      preLoaderRoute: typeof VendorsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/staff-portal': {
@@ -833,6 +853,7 @@ const rootRouteChildren: RootRouteChildren = {
   RunnerReportsRoute: RunnerReportsRoute,
   SmsLogRoute: SmsLogRoute,
   StaffPortalRoute: StaffPortalRoute,
+  VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
   AdminUsersRoute: AdminUsersRoute,
   RentTokenRoute: RentTokenRoute,
@@ -848,3 +869,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
