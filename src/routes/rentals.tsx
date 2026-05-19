@@ -32,6 +32,7 @@ import { sendRentalSms } from "@/lib/rental-sms.functions";
 import { startReturnInspection } from "@/lib/inspection.functions";
 import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
+import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { toast } from "sonner";
@@ -75,6 +76,8 @@ function RentalsPage() {
   const getSignLinkFn = useServerFn(getSigningLink);
   const sendPayLinkFn = useServerFn(sendPaymentLink);
   const [payLinkSendingId, setPayLinkSendingId] = useState<string | null>(null);
+  const genPdfFn = useServerFn(generateAgreementPdf);
+  const [pdfRegenId, setPdfRegenId] = useState<string | null>(null);
   useStoreVersion();
   // Notify staff when a remote signature arrives (via realtime) and the
   // reservation flips from pending → active.
@@ -370,6 +373,40 @@ function RentalsPage() {
                       <FileSignature className="mr-1 h-4 w-4" /> View agreement
                     </Button>
                   )}
+                  {r.agreementPdfUrl ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title={r.agreementPdfGeneratedAt ? `Generated ${new Date(r.agreementPdfGeneratedAt).toLocaleString()}` : undefined}
+                      onClick={() => window.open(r.agreementPdfUrl!, "_blank", "noopener")}
+                    >
+                      📄 Agreement PDF
+                    </Button>
+                  ) : (r.clientSignedAt || r.signedAt) ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={pdfRegenId === r.id}
+                      onClick={async () => {
+                        setPdfRegenId(r.id);
+                        try {
+                          const res = await genPdfFn({ data: { rentalId: r.id } });
+                          if (res?.url) {
+                            toast.success("Agreement PDF generated");
+                            await ensureRentalSynced(r.id);
+                          } else {
+                            toast.error("Could not generate agreement PDF", { description: res?.error ?? "Unknown error" });
+                          }
+                        } catch (e) {
+                          toast.error("Could not generate agreement PDF", { description: e instanceof Error ? e.message : String(e) });
+                        } finally {
+                          setPdfRegenId(null);
+                        }
+                      }}
+                    >
+                      📄 {pdfRegenId === r.id ? "Generating…" : "Regenerate PDF"}
+                    </Button>
+                  ) : null}
                   {r.paymentLinkAutoSentAt && !r.paymentReceived && (
                     <span
                       title={`Auto-sent ${new Date(r.paymentLinkAutoSentAt).toLocaleString()}`}

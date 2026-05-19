@@ -67,6 +67,8 @@ export interface Rental {
   clientSignatureUrl?: string;
   clientSignedAt?: string;
   paymentLinkAutoSentAt?: string;
+  agreementPdfUrl?: string;
+  agreementPdfGeneratedAt?: string;
 }
 export interface RentalExtension {
   id: string;
