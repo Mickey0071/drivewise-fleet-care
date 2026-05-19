@@ -372,6 +372,14 @@ function RentalsPage() {
                       Payment link auto-sent
                     </span>
                   )}
+                  {r.billingCadence === "daily" && r.skipDailyMinimum && (
+                    <span
+                      title="Only 1 day collected upfront instead of the standard 2-day minimum"
+                      className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+                    >
+                      1-day upfront (override)
+                    </span>
+                  )}
                   <Button variant="ghost" size="sm" onClick={() => setReceipt(r)}>
                     <Receipt className="mr-1 h-4 w-4" /> Receipt
                   </Button>
