@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import logo from "@/assets/camauto-logo.jpeg";
+import { resolveUsernameToEmail } from "@/lib/login-lookup.functions";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in — Camauto Rentals" }] }),
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const { session, role, roleLoading, signIn, loading } = useAuth();
   const nav = useNavigate();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -28,7 +29,20 @@ function LoginPage() {
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    const { error } = await signIn(email, password);
+    const raw = identifier.trim();
+    let emailToUse: string;
+    if (raw.includes("@")) {
+      emailToUse = raw;
+    } else {
+      const uname = raw.toLowerCase();
+      try {
+        const { email } = await resolveUsernameToEmail({ data: { username: uname } });
+        emailToUse = email ?? `${uname}@camauto.local`;
+      } catch {
+        emailToUse = `${uname}@camauto.local`;
+      }
+    }
+    const { error } = await signIn(emailToUse, password);
     setBusy(false);
     if (error) toast.error(error);
     else toast.success("Welcome back");
@@ -47,7 +61,7 @@ function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignIn} className="space-y-3">
-            <div><Label htmlFor="si-email">Email</Label><Input id="si-email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></div>
+            <div><Label htmlFor="si-id">Username or Email</Label><Input id="si-id" type="text" autoComplete="username" required placeholder="e.g. johnrunner or you@email.com" value={identifier} onChange={e => setIdentifier(e.target.value)} /></div>
             <div><Label htmlFor="si-pw">Password</Label><Input id="si-pw" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} /></div>
             <Button type="submit" className="w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</Button>
             <div className="pt-1 text-xs">
