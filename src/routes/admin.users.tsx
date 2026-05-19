@@ -469,6 +469,7 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [realEmail, setRealEmail] = useState("");
   const [username, setUsername] = useState("");
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
@@ -479,7 +480,7 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
   const [busy, setBusy] = useState(false);
 
   function reset() {
-    setFirstName(""); setLastName(""); setPhone(""); setUsername("");
+    setFirstName(""); setLastName(""); setPhone(""); setRealEmail(""); setUsername("");
     setUsernameError(null); setCheckingUsername(false);
     setPassword(generatePassword()); setShowPwd(false);
     setRole("driver"); setMustReset(true);
@@ -531,6 +532,7 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         phone: phone.trim() || null,
+        real_email: realEmail.trim() || null,
         role,
         must_reset_password: mustReset,
       }});
@@ -579,6 +581,13 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
             <div>
               <Label htmlFor="ph">Phone (optional)</Label>
               <Input id="ph" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="re">Real Email (optional)</Label>
+              <Input id="re" type="email" value={realEmail} onChange={(e) => setRealEmail(e.target.value)} />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Used for password reset and notifications. Different from the username login.
+              </p>
             </div>
             <div>
               <Label htmlFor="un">Username</Label>
