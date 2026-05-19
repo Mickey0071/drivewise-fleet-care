@@ -393,6 +393,76 @@ function generatePassword(len = 14): string {
   return [...required, ...rest].sort(() => Math.random() - 0.5).join("");
 }
 
+function InlineContactField({
+  value,
+  placeholder,
+  type,
+  onSave,
+}: {
+  value: string | null;
+  placeholder: string;
+  type: "tel" | "email";
+  onSave: (val: string | null) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? "");
+  const [busy, setBusy] = useState(false);
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => { setDraft(value ?? ""); setEditing(true); }}
+        className="group inline-flex items-center gap-1 text-sm hover:text-primary"
+      >
+        <span className={value ? "" : "text-muted-foreground"}>{value ?? "—"}</span>
+        <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60" />
+      </button>
+    );
+  }
+
+  async function save() {
+    const trimmed = draft.trim();
+    if (type === "email" && trimmed.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      toast.error("Invalid email format");
+      return;
+    }
+    setBusy(true);
+    try {
+      await onSave(trimmed.length === 0 ? null : trimmed);
+      toast.success("Saved");
+      setEditing(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        autoFocus
+        type={type}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder={placeholder}
+        className="h-7 w-40 text-sm"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); void save(); }
+          if (e.key === "Escape") { setEditing(false); }
+        }}
+      />
+      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={save} disabled={busy} aria-label="Save">
+        <Check className="h-3 w-3" />
+      </Button>
+      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(false)} disabled={busy} aria-label="Cancel">
+        <X className="h-3 w-3" />
+      </Button>
+    </div>
+  );
+}
+
 function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> }) {
   const createUser = useServerFn(adminCreateUser);
   const [open, setOpen] = useState(false);
