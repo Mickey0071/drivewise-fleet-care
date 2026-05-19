@@ -110,3 +110,44 @@ export const adminDeleteUser = createServerFn({ method: "POST" })
 
     return { success: true };
   });
+
+export const adminResetUserPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      user_id: z.string().uuid(),
+      new_password: z.string().min(8).max(128),
+      force_reset: z.boolean(),
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    const { data: roles, error: roleErr } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    if (roleErr) throw new Error(roleErr.message);
+    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+    if (!isAdmin) throw new Error("Admins only");
+
+    const { error: updErr } = await supabaseAdmin.auth.admin.updateUserById(
+      data.user_id,
+      { password: data.new_password }
+    );
+    if (updErr) throw new Error(updErr.message);
+
+    const { data: prof, error: profErr } = await supabaseAdmin
+      .from("profiles")
+      .update({ must_reset_password: data.force_reset })
+      .eq("id", data.user_id)
+      .select("username, email")
+      .maybeSingle();
+    if (profErr) throw new Error(profErr.message);
+
+    const username =
+      prof?.username ??
+      (prof?.email && prof.email.endsWith("@camauto.local")
+        ? prof.email.split("@")[0]
+        : prof?.email ?? "user");
+
+    return { success: true, username };
+  });
