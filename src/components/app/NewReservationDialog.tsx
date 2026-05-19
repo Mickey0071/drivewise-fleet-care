@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { vehicles, drivers, vehicleById, fmtMoney, fmtDate, maintenance } from "@/lib/mock/data";
 import { addRental, hasConflict, addDriver, getActiveRentalForDriver, isVehicleBookable, markReturnedAwaitingInspection, awaitingPostReturnInspection, useStoreVersion } from "@/lib/mock/store";
 import { useAuth } from "@/hooks/use-auth";
@@ -61,6 +62,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [billingPeriod, setBillingPeriod] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [rate, setRate] = useState<number>(0);
   const [deposit, setDeposit] = useState<number>(300);
+  const [skipDailyMin, setSkipDailyMin] = useState<boolean>(false);
   const [notes, setNotes] = useState("");
   const [vehQ, setVehQ] = useState("");
   const [drvQ, setDrvQ] = useState("");
@@ -220,6 +222,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       billingPeriod,
       rate,
       depositPaid: deposit,
+      skipDailyMinimum: billingPeriod === "daily" ? skipDailyMin : false,
       notes: isSwap && existingRental
         ? `Vehicle swap from rental ${existingRental.id}.${notes ? ` ${notes}` : ""}`
         : (notes || undefined),
