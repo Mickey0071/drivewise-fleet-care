@@ -1021,6 +1021,7 @@ export type Database = {
           runner_name: string | null
           runner_notes: string | null
           status: string
+          task_mode: string | null
           task_type: string
           updated_at: string
           year: number | null
@@ -1043,6 +1044,7 @@ export type Database = {
           runner_name?: string | null
           runner_notes?: string | null
           status?: string
+          task_mode?: string | null
           task_type?: string
           updated_at?: string
           year?: number | null
@@ -1065,6 +1067,7 @@ export type Database = {
           runner_name?: string | null
           runner_notes?: string | null
           status?: string
+          task_mode?: string | null
           task_type?: string
           updated_at?: string
           year?: number | null
