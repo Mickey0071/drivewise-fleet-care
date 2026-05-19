@@ -81,6 +81,58 @@ export async function upsertContact(phone: string, name?: string | null): Promis
   return id as string;
 }
 
+export async function upsertContactByEmail(email: string, name?: string | null, phone?: string | null): Promise<string> {
+  const [firstName, ...rest] = (name || "").trim().split(/\s+/);
+  const payload: Record<string, unknown> = {
+    locationId: getEnv("ghlLocationId"),
+    email,
+  };
+  if (phone) payload.phone = toE164(phone);
+  if (firstName) payload.firstName = firstName;
+  if (rest.length) payload.lastName = rest.join(" ");
+  const data = await ghlFetch("/contacts/upsert", payload);
+  const id = data?.contact?.id || data?.id;
+  if (!id) throw new Error(`GHL upsert returned no contact id: ${JSON.stringify(data)}`);
+  return id as string;
+}
+
+function maskEmail(e: string): string {
+  const [u, d] = (e || "").split("@");
+  if (!u || !d) return "(none)";
+  return `${u.slice(0, 2)}***@${d}`;
+}
+
+export async function sendEmail(
+  email: string,
+  subject: string,
+  html: string,
+  opts?: { name?: string | null; phone?: string | null; attachments?: string[] },
+) {
+  const clean = (email || "").trim();
+  if (!clean || !clean.includes("@")) {
+    throw new Error("No valid email on file");
+  }
+  const masked = maskEmail(clean);
+  try {
+    const contactId = await upsertContactByEmail(clean, opts?.name ?? null, opts?.phone ?? null);
+    const payload: Record<string, unknown> = {
+      type: "Email",
+      contactId,
+      subject,
+      html,
+      emailTo: clean,
+    };
+    if (opts?.attachments && opts.attachments.length) {
+      payload.attachments = opts.attachments;
+    }
+    await ghlFetch("/conversations/messages", payload);
+    console.log(`[email] sent ok to=${masked}`);
+  } catch (e) {
+    console.error(`[email] failed to=${masked}: ${e instanceof Error ? e.message : String(e)}`);
+    throw e;
+  }
+}
+
 export function normalizePhone(raw: string): string {
   return toE164(raw);
 }
