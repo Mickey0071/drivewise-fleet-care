@@ -180,9 +180,31 @@ function AdminUsersPage() {
                           </Select>
                         </TableCell>
                         <TableCell>
-                          <Button size="sm" disabled={!dirty || saving === p.id} onClick={() => saveRole(p.id)}>
-                            {saving === p.id ? "Saving…" : "Save"}
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" disabled={!dirty || saving === p.id} onClick={() => saveRole(p.id)}>
+                              {saving === p.id ? "Saving…" : "Save"}
+                            </Button>
+                            {user?.id === p.id ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-block">
+                                      <Button size="sm" variant="destructive" disabled className="cursor-not-allowed">
+                                        <Trash2 className="mr-1 h-4 w-4" /> Delete
+                                      </Button>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>You can't delete your own account.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : (
+                              <Button size="sm" variant="destructive" onClick={() => handleDelete(p)}>
+                                <Trash2 className="mr-1 h-4 w-4" /> Delete
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
