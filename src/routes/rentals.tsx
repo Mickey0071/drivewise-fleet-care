@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import logoUrl from "@/assets/camauto-logo-full.jpeg";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
 import { NewTaskDialog } from "@/components/app/NewTaskDialog";
+import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
@@ -63,6 +64,8 @@ function RentalsPage() {
   const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
   const [signing, setSigning] = useState<Rental | null>(null);
   const [taskRental, setTaskRental] = useState<Rental | null>(null);
+  const [returnChoiceRental, setReturnChoiceRental] = useState<Rental | null>(null);
+  const [returnDispatchRental, setReturnDispatchRental] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
   const [receipt, setReceipt] = useState<Rental | null>(null);
   const [chatting, setChatting] = useState<Rental | null>(null);
@@ -350,6 +353,11 @@ function RentalsPage() {
                     </Button>
                   )}
                   {!r.endDate && (
+                    <Button variant="outline" size="sm" onClick={() => setReturnChoiceRental(r)}>
+                      <Undo2 className="mr-1 h-4 w-4" /> Return Vehicle
+                    </Button>
+                  )}
+                  {!r.endDate && (
                     <Button variant="outline" size="sm" onClick={() => setExtending(r)}>
                       <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
                     </Button>
@@ -485,6 +493,33 @@ function RentalsPage() {
             linked_rental_id: taskRental.id,
             address: d?.streetAddress ?? d?.address ?? "",
             description: `Pickup ${vLabel} from ${d?.fullName ?? "renter"}`,
+          };
+        })() : undefined}
+      />
+      <ReturnVehicleDialog
+        rental={returnChoiceRental}
+        onClose={() => setReturnChoiceRental(null)}
+        onDispatchRunner={(r) => {
+          setReturnChoiceRental(null);
+          setReturnDispatchRental(r);
+        }}
+      />
+      <NewTaskDialog
+        open={!!returnDispatchRental}
+        onOpenChange={(o) => { if (!o) setReturnDispatchRental(null); }}
+        prefill={returnDispatchRental ? (() => {
+          const v = vehicleById(returnDispatchRental.vehicleId);
+          const d = driverById(returnDispatchRental.driverId);
+          const vLabel = v
+            ? `${v.year} ${v.make} ${v.model} ${v.plate}`
+            : returnDispatchRental.vehicleId;
+          return {
+            task_type: "pickup" as const,
+            linked_vehicle_id: returnDispatchRental.vehicleId,
+            linked_rental_id: returnDispatchRental.id,
+            address: d?.streetAddress ?? d?.address ?? "",
+            description: `Retrieve ${vLabel} from ${d?.fullName ?? "renter"}`,
+            mode: "return" as const,
           };
         })() : undefined}
       />

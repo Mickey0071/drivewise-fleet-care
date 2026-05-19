@@ -19,6 +19,7 @@ const CreateInput = z.object({
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   priority: Priority.default("normal"),
   notify_sms: z.boolean().default(true),
+  task_mode: z.enum(["return"]).nullable().optional(),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -99,6 +100,7 @@ export const adminCreateTask = createServerFn({ method: "POST" })
         make: vehicleMake,
         model: vehicleModel,
         year: vehicleYear,
+        task_mode: data.task_mode ?? null,
       })
       .select("id")
       .single();
