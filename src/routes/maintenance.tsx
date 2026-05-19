@@ -7,7 +7,6 @@ import { Wrench, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ReportActions } from "@/components/app/ReportActions";
 import { LogServiceDialog } from "@/components/app/LogServiceDialog";
-import { EditMaintenanceDialog } from "@/components/app/EditMaintenanceDialog";
 import { ResolveMaintenanceDialog } from "@/components/app/ResolveMaintenanceDialog";
 import { useState } from "react";
 import { useStoreVersion } from "@/lib/mock/store";
@@ -21,7 +20,6 @@ export const Route = createFileRoute("/maintenance")({
 function MaintenancePage() {
   useStoreVersion();
   const [logOpen, setLogOpen] = useState(false);
-  const [editRecord, setEditRecord] = useState<Maintenance | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const today = new Date();
   const open = maintenance.filter(m => !m.dateCompleted)
@@ -118,28 +116,56 @@ function MaintenancePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Resolved history ({resolved.length})</CardTitle>
+          <CardTitle className="text-base">Completed issues ({resolved.length})</CardTitle>
         </CardHeader>
         <CardContent className="divide-y divide-border p-0">
           {resolved.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">No resolved records yet.</div>
+            <div className="p-6 text-center text-sm text-muted-foreground">No completed issues yet.</div>
           ) : resolved.map(m => {
             const v = vehicleById(m.vehicleId);
+            // Parse resolution line appended by ResolveMaintenanceDialog:
+            // "Resolved YYYY-MM-DD by NAME: WHAT (cost $X.XX)"
+            const resLine = (m.notes ?? "")
+              .split("\n")
+              .reverse()
+              .find(l => l.startsWith("Resolved "));
+            let whatFixed = "";
+            let completedBy = m.vendor;
+            if (resLine) {
+              const match = resLine.match(/^Resolved \d{4}-\d{2}-\d{2} by ([^:]+):\s*(.*?)(?:\s*\(cost \$[\d.]+\))?$/);
+              if (match) {
+                completedBy = match[1].trim();
+                whatFixed = match[2].trim();
+              }
+            }
             return (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setEditRecord(m)}
-                className="flex w-full flex-wrap items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-muted/40"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">{m.serviceType}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {v?.year} {v?.make} {v?.model} · {v?.plate} · {m.vendor} · {fmtDate(m.dateCompleted)}
+              <div key={m.id} className="grid grid-cols-12 items-start gap-3 p-4">
+                <div className="col-span-12 sm:col-span-3 min-w-0">
+                  <div className="text-sm font-medium truncate">
+                    {v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}
                   </div>
+                  <div className="text-xs text-muted-foreground">Tag #{v?.plate ?? "—"}</div>
                 </div>
-                <span className="font-semibold">{fmtMoney(m.cost)}</span>
-              </button>
+                <div className="col-span-12 sm:col-span-4 min-w-0">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Issue</div>
+                  <div className="text-sm">{m.serviceType}</div>
+                  {whatFixed && (
+                    <>
+                      <div className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">What was fixed</div>
+                      <div className="text-sm">{whatFixed}</div>
+                    </>
+                  )}
+                </div>
+                <div className="col-span-6 sm:col-span-2 min-w-0">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Completed</div>
+                  <div className="text-sm">{fmtDate(m.dateCompleted)}</div>
+                  <div className="text-xs text-muted-foreground truncate">by {completedBy}</div>
+                </div>
+                <div className="col-span-6 sm:col-span-3 text-right">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Cost</div>
+                  <div className="text-sm font-semibold">{fmtMoney(m.cost)}</div>
+                </div>
+              </div>
             );
           })}
         </CardContent>
@@ -149,11 +175,6 @@ function MaintenancePage() {
         open={!!resolveRecord}
         onOpenChange={(o) => { if (!o) setResolveRecord(null); }}
         record={resolveRecord}
-      />
-      <EditMaintenanceDialog
-        open={!!editRecord}
-        onOpenChange={(o) => { if (!o) setEditRecord(null); }}
-        record={editRecord}
       />
     </div>
   );
