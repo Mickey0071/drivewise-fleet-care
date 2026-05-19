@@ -16,6 +16,7 @@ import { CHECKLIST_SECTIONS, JOB_TYPE_LABELS, FUEL_LEVEL_LABELS } from "@/lib/ch
 import { cn } from "@/lib/utils";
 import { useServerFn } from "@tanstack/react-start";
 import { completeTaskFromInspection } from "@/lib/tasks.functions";
+import { closeoutRental } from "@/lib/return.functions";
 import { z } from "zod";
 
 export const Route = createFileRoute("/checklist")({
@@ -61,8 +62,10 @@ const ITEM_LABELS: Record<string, string> = (() => {
 
 function ChecklistPage() {
   const navigate = useNavigate();
-  const { task_id } = Route.useSearch();
+  const { task_id, rental_id, mode } = Route.useSearch();
+  const isReturnMode = mode === "return" && !!rental_id;
   const completeTask = useServerFn(completeTaskFromInspection);
+  const closeout = useServerFn(closeoutRental);
   const [taskBanner, setTaskBanner] = useState<string | null>(null);
   const [taskLockedVehicle, setTaskLockedVehicle] = useState<string | null>(null);
   const [maintenanceLinked, setMaintenanceLinked] = useState<string | null>(null);
@@ -80,6 +83,18 @@ function ChecklistPage() {
   const [openSection, setOpenSection] = useState<string>(CHECKLIST_SECTIONS[0].title);
   const [submitting, setSubmitting] = useState(false);
   const [todayCount, setTodayCount] = useState<number>(0);
+  const [returnMileage, setReturnMileage] = useState<string>("");
+  const [returnBanner, setReturnBanner] = useState<string | null>(null);
+  const [returnRental, setReturnRental] = useState<{
+    id: string;
+    vehicle_id: string;
+    driver_id: string;
+    start_date: string | null;
+    end_date: string | null;
+    mileage_out: number | null;
+    latest_expected_end: string | null;
+  } | null>(null);
+  const [returnError, setReturnError] = useState<string | null>(null);
   const [done, setDone] = useState<null | {
     vehicle: VehicleRow | null;
     inspector: string;
@@ -90,6 +105,12 @@ function ChecklistPage() {
     ticketCreated: boolean;
     taskCompleted: boolean;
     maintenanceSynced: boolean;
+    returnResult?: {
+      final_charge: number | null;
+      days_used: number;
+      miles_driven: number | null;
+      sms_status: "sent" | "skipped_no_phone" | "skipped_no_charge";
+    };
   }>(null);
 
   // Load inspector name: prefer authenticated profile (first + last name), fall back to localStorage.
@@ -137,6 +158,74 @@ function ChecklistPage() {
     })();
     return () => { cancelled = true; };
   }, [task_id]);
+
+  // Return-mode bootstrap: fetch rental + driver + extensions to build banner
+  useEffect(() => {
+    if (!isReturnMode || !rental_id) return;
+    let cancelled = false;
+    (async () => {
+      const { data: rental, error } = await supabase
+        .from("rentals")
+        .select("id, vehicle_id, driver_id, start_date, end_date, mileage_out, returned_at")
+        .eq("id", rental_id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error || !rental) {
+        setReturnError("Rental not found.");
+        return;
+      }
+      if (rental.returned_at) {
+        toast.error("This rental has already been returned.");
+        navigate({ to: "/rentals" });
+        return;
+      }
+
+      const [{ data: driver }, { data: vehicle }, { data: exts }] = await Promise.all([
+        supabase.from("drivers").select("first_name, last_name, full_name").eq("id", rental.driver_id).maybeSingle(),
+        supabase.from("vehicles").select("id, year, make, model, plate, status, mileage").eq("id", rental.vehicle_id).maybeSingle(),
+        supabase.from("rental_extensions").select("new_end_date").eq("rental_id", rental.id),
+      ]);
+      if (cancelled) return;
+
+      // Lock vehicle dropdown and job type.
+      setVehicleId(rental.vehicle_id);
+      setJobType("vehicle_return");
+      if (vehicle) {
+        setVehicles((prev) => (prev.some((v) => v.id === vehicle.id) ? prev : [...prev, vehicle as VehicleRow]));
+      }
+
+      let latestExpectedEnd: string | null = rental.end_date ?? null;
+      for (const e of exts ?? []) {
+        if (!latestExpectedEnd || (e.new_end_date && e.new_end_date > latestExpectedEnd)) {
+          latestExpectedEnd = e.new_end_date;
+        }
+      }
+
+      setReturnRental({
+        id: rental.id,
+        vehicle_id: rental.vehicle_id,
+        driver_id: rental.driver_id,
+        start_date: rental.start_date ?? null,
+        end_date: rental.end_date ?? null,
+        mileage_out: rental.mileage_out ?? null,
+        latest_expected_end: latestExpectedEnd,
+      });
+
+      const customerName =
+        [driver?.first_name, driver?.last_name].filter(Boolean).join(" ") ||
+        driver?.full_name ||
+        "Customer";
+      const vLabel = vehicle
+        ? `${vehicle.year ?? ""} ${vehicle.make ?? ""} ${vehicle.model ?? ""} ${vehicle.plate ?? ""}`.trim()
+        : rental.vehicle_id;
+      const fmt = (d: string | null) =>
+        d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) : "—";
+      setReturnBanner(
+        `🔄 Returning ${vLabel}. Customer: ${customerName}. Rental started ${fmt(rental.start_date)}. Expected return: ${fmt(latestExpectedEnd)}.`
+      );
+    })();
+    return () => { cancelled = true; };
+  }, [isReturnMode, rental_id, navigate]);
 
   // Load vehicles
   useEffect(() => {
@@ -195,8 +284,16 @@ function ChecklistPage() {
     if (!jobType) m.push("job type");
     if (ready === null) m.push("ready to rent status");
     if (!fuel) m.push("fuel level");
+    if (isReturnMode) {
+      const n = Number(returnMileage);
+      if (!returnMileage.trim() || !Number.isInteger(n) || n < 0) {
+        m.push("return mileage");
+      } else if (returnRental?.mileage_out != null && n < returnRental.mileage_out) {
+        m.push(`mileage ≥ ${returnRental.mileage_out}`);
+      }
+    }
     return m;
-  }, [inspectorName, vehicleId, jobType, ready, fuel]);
+  }, [inspectorName, vehicleId, jobType, ready, fuel, isReturnMode, returnMileage, returnRental]);
 
   const canSubmit = missing.length === 0 && !submitting;
 
@@ -251,10 +348,10 @@ function ChecklistPage() {
       const { error } = await supabase.from("inspections").insert({
         id: inspectionId,
         vehicle_id: vehicleId,
-        rental_id: null,
+        rental_id: isReturnMode && returnRental ? returnRental.id : null,
         type: "check-in",
         date: new Date().toISOString().slice(0, 10),
-        mileage: vehicle?.mileage ?? 0,
+        mileage: isReturnMode ? Number(returnMileage) : (vehicle?.mileage ?? 0),
         fuel_level: fuel,
         damage_noted: hasDamage,
         completed_by: inspector,
@@ -270,6 +367,35 @@ function ChecklistPage() {
       persistInspector();
 
       const ticketCreated = counts.fail > 0 || hasDamage || ready === "needs_mechanic";
+
+      // Return-mode closeout: server fn handles rental update + SMS receipt.
+      let returnResult: {
+        final_charge: number | null;
+        days_used: number;
+        miles_driven: number | null;
+        sms_status: "sent" | "skipped_no_phone" | "skipped_no_charge";
+      } | undefined;
+      if (isReturnMode && returnRental) {
+        try {
+          const res = await closeout({
+            data: {
+              rental_id: returnRental.id,
+              inspection_id: inspectionId,
+              mileage_in: Number(returnMileage),
+            },
+          });
+          if (!res.alreadyReturned) {
+            returnResult = {
+              final_charge: res.final_charge ?? null,
+              days_used: res.days_used,
+              miles_driven: res.miles_driven ?? null,
+              sms_status: res.sms_status,
+            };
+          }
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Failed to close out rental");
+        }
+      }
 
       // If completing a dispatched task, mark it done + push summary to maintenance.
       let taskCompleted = false;
@@ -311,6 +437,7 @@ function ChecklistPage() {
         ticketCreated,
         taskCompleted,
         maintenanceSynced,
+        returnResult,
       });
       toast.success("Checklist submitted");
     } catch (e) {
@@ -324,6 +451,32 @@ function ChecklistPage() {
     return (
       <div className="mx-auto max-w-2xl space-y-4 pb-24">
         <PageHeader title="✅ Inspection Submitted" subtitle="Inspection recorded successfully" />
+        {done.returnResult && (
+          done.returnResult.final_charge != null ? (
+            <div className="rounded-md border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-sm">
+              <div className="font-medium text-emerald-700 dark:text-emerald-300">
+                ✅ Rental returned. Final charge: ${done.returnResult.final_charge.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} for {done.returnResult.days_used} {done.returnResult.days_used === 1 ? "day" : "days"}.
+                {done.returnResult.miles_driven != null ? ` ${done.returnResult.miles_driven.toLocaleString()} miles driven.` : ""}
+              </div>
+              <div className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-200/80">
+                {done.returnResult.sms_status === "sent"
+                  ? "📱 Receipt SMS sent to customer."
+                  : done.returnResult.sms_status === "skipped_no_phone"
+                    ? "📱 Receipt SMS skipped (no phone on file)."
+                    : "📱 Receipt SMS skipped (no charge calculated)."}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm">
+              <div className="font-medium text-amber-700 dark:text-amber-300">
+                ✅ Rental returned. Final charge will be calculated manually — billing fields were missing.
+              </div>
+              <div className="mt-1 text-xs text-amber-800/80 dark:text-amber-200/80">
+                📱 Receipt SMS skipped (no charge calculated).
+              </div>
+            </div>
+          )
+        )}
         <Card>
           <CardContent className="space-y-3 pt-6">
             <Row label="Vehicle">{done.vehicle ? `${done.vehicle.year} ${done.vehicle.make} ${done.vehicle.model} — ${done.vehicle.plate}` : done.vehicle ?? "—"}</Row>
@@ -364,7 +517,14 @@ function ChecklistPage() {
           <Button variant="outline" className="h-12" onClick={() => reset(true)}>
             New Inspection
           </Button>
-          <Button className="h-12" onClick={() => navigate({ to: "/" })}>
+          <Button
+            className="h-12"
+            onClick={() =>
+              done.returnResult && rental_id
+                ? navigate({ to: "/rentals" })
+                : navigate({ to: "/" })
+            }
+          >
             Done
           </Button>
         </div>
@@ -375,6 +535,21 @@ function ChecklistPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4 pb-32">
       <PageHeader title="New Inspection" subtitle="Submit a full condition check after a runner job" />
+
+      {isReturnMode && returnError && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
+          <div className="font-medium text-destructive">{returnError}</div>
+          <Button className="mt-2 h-9" variant="outline" onClick={() => navigate({ to: "/rentals" })}>
+            Back to Rentals
+          </Button>
+        </div>
+      )}
+
+      {isReturnMode && returnBanner && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm">
+          <div className="font-medium text-amber-700 dark:text-amber-300">{returnBanner}</div>
+        </div>
+      )}
 
       {taskBanner && (
         <div className="rounded-md border border-blue-500/40 bg-blue-500/5 px-4 py-3 text-sm">
@@ -406,13 +581,14 @@ function ChecklistPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="vehicle">Vehicle *</Label>
-              {taskLockedVehicle ? (
+              {isReturnMode || taskLockedVehicle ? (
                 <div className="flex h-11 items-center rounded-md border border-input bg-muted/40 px-3 text-sm">
                   {(() => {
-                    const v = vehicles.find(x => x.id === taskLockedVehicle);
+                    const lockedId = (isReturnMode ? vehicleId : taskLockedVehicle) ?? "";
+                    const v = vehicles.find(x => x.id === lockedId);
                     return v
                       ? `${v.year} ${v.make} ${v.model} — ${v.plate}`
-                      : `Vehicle: ${taskLockedVehicle}`;
+                      : `Vehicle: ${lockedId}`;
                   })()}
                 </div>
               ) : (
@@ -430,6 +606,31 @@ function ChecklistPage() {
               )}
             </div>
           </div>
+          {isReturnMode && (
+            <div className="space-y-1.5">
+              <Label htmlFor="return-mileage">Return Mileage *</Label>
+              <Input
+                id="return-mileage"
+                type="number"
+                inputMode="numeric"
+                min={returnRental?.mileage_out ?? 0}
+                value={returnMileage}
+                onChange={(e) => setReturnMileage(e.target.value)}
+                placeholder="e.g. 84210"
+                className="h-11"
+              />
+              <div className="text-xs text-muted-foreground">
+                {returnRental?.mileage_out != null
+                  ? `Mileage at pickup: ${returnRental.mileage_out.toLocaleString()} (rental started with this reading)`
+                  : "No starting mileage on record."}
+              </div>
+              {returnMileage.trim() && returnRental?.mileage_out != null && Number(returnMileage) < returnRental.mileage_out && (
+                <div className="text-xs text-destructive">
+                  Return mileage must be at least {returnRental.mileage_out.toLocaleString()}.
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
             <span className="text-muted-foreground">Jobs completed today</span>
             <Badge variant="secondary" className="text-sm">{todayCount}</Badge>
@@ -442,16 +643,18 @@ function ChecklistPage() {
         <CardContent className="space-y-3 pt-6">
           <Label>Job type *</Label>
           <div className="grid grid-cols-2 gap-2">
-            {JOB_TYPES.map(jt => (
+            {(isReturnMode ? (["vehicle_return"] as JobType[]) : JOB_TYPES).map(jt => (
               <button
                 key={jt}
                 type="button"
-                onClick={() => setJobType(jt)}
+                onClick={() => { if (!isReturnMode) setJobType(jt); }}
+                disabled={isReturnMode}
                 className={cn(
                   "min-h-14 rounded-md border px-3 py-3 text-left text-sm transition-colors",
                   jobType === jt
                     ? "border-primary bg-primary/10 font-semibold"
-                    : "border-border bg-background hover:bg-accent"
+                    : "border-border bg-background hover:bg-accent",
+                  isReturnMode && "cursor-default opacity-90"
                 )}
               >
                 {JOB_TYPE_LABELS[jt]}
