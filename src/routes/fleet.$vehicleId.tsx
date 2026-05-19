@@ -18,6 +18,8 @@ import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
+import { ResolveMaintenanceDialog } from "@/components/app/ResolveMaintenanceDialog";
+import type { Maintenance } from "@/lib/mock/data";
 import { toast } from "sonner";
 
 const REPAIR_KEYWORDS = ["brake", "transmission", "repair", "pads", "engine", "battery", "tire", "body", "glass", "diagnostic"];
@@ -40,6 +42,7 @@ function VehicleDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
+  const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   if (!v) return <div className="text-muted-foreground">Vehicle not found.</div>;
@@ -165,10 +168,10 @@ function VehicleDetail() {
       />
 
       {openIssues.length > 0 && (
-        <Card className="mb-4 border-amber-500/40 bg-amber-500/5">
+        <Card className="mb-4 border-destructive/40 bg-destructive/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertTriangle className="h-4 w-4 text-destructive" />
               Open Issues ({openIssues.length})
             </CardTitle>
           </CardHeader>
@@ -180,11 +183,16 @@ function VehicleDetail() {
                   {m.notes && <div className="mt-0.5 whitespace-pre-line text-xs text-muted-foreground">{m.notes}</div>}
                   <div className="mt-0.5 text-xs text-muted-foreground">Opened {fmtDate(m.createdAt?.slice(0, 10))}</div>
                 </div>
-                {m.sourceInspectionId && (
-                  <Button size="sm" variant="outline" onClick={() => setInspectionDetailId(m.sourceInspectionId!)}>
-                    View inspection
+                <div className="flex flex-wrap gap-2">
+                  {m.sourceInspectionId && (
+                    <Button size="sm" variant="outline" onClick={() => setInspectionDetailId(m.sourceInspectionId!)}>
+                      View inspection
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={() => setResolveRecord(m)}>
+                    Mark Resolved
                   </Button>
-                )}
+                </div>
               </div>
             ))}
           </CardContent>
