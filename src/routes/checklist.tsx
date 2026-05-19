@@ -21,7 +21,11 @@ import { z } from "zod";
 export const Route = createFileRoute("/checklist")({
   head: () => ({ meta: [{ title: "New Inspection — Camauto Rentals" }] }),
   validateSearch: (s: Record<string, unknown>) =>
-    z.object({ task_id: z.string().optional() }).parse(s),
+    z.object({
+      task_id: z.string().optional(),
+      rental_id: z.string().optional(),
+      mode: z.enum(["return"]).optional(),
+    }).parse(s),
   component: ChecklistPage,
 });
 
