@@ -178,7 +178,6 @@ function rentalBlocksVehicle(
   if (ignoreRentalId && r.id === ignoreRentalId) return false;
   const status = r.reservationStatus ?? "active";
   if (status !== "active" && status !== "pending") return false;
-  if (r.returnedAt) return false;
 
   // No new window provided → block all active/pending unreturned rentals.
   if (!newStart) return true;
