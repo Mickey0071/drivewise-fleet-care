@@ -182,16 +182,18 @@ function MyTasksPage() {
                   <Button
                     size="sm"
                     onClick={() =>
-                      navigate({
-                        to: "/checklist",
-                        search:
-                          t.task_mode === "return"
-                            ? { task_id: t.id, mode: "return", rental_id: t.linked_rental_id ?? undefined }
-                            : { task_id: t.id },
-                      })
+                      t.task_type === "dmv"
+                        ? navigate({ to: "/dmv-task", search: { task_id: t.id } })
+                        : navigate({
+                            to: "/checklist",
+                            search:
+                              t.task_mode === "return"
+                                ? { task_id: t.id, mode: "return", rental_id: t.linked_rental_id ?? undefined }
+                                : { task_id: t.id },
+                          })
                     }
                   >
-                    Complete with Inspection
+                    {t.task_type === "dmv" ? "Complete DMV Run" : "Complete with Inspection"}
                   </Button>
                 </div>
               )}

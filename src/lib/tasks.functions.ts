@@ -172,6 +172,10 @@ export const completeTaskFromInspection = createServerFn({ method: "POST" })
       maintenance_id = maint.id;
     }
 
+    void notifyAdmins(`✅ Task completed`, data.task_id).catch((e) =>
+      console.error("[task complete notify] failed:", e instanceof Error ? e.message : e),
+    );
+
     return { ok: true, maintenance_id };
   });
 
@@ -184,6 +188,89 @@ export const startTask = createServerFn({ method: "POST" })
       .update({ status: "in_progress" })
       .eq("id", data.task_id);
     if (error) throw new Error(error.message);
+
+    // Notify admins that the runner has started the task.
+    void notifyAdmins(
+      `🟢 Task started`,
+      data.task_id,
+    ).catch((e) => console.error("[task start notify] failed:", e instanceof Error ? e.message : e));
+
+    return { ok: true };
+  });
+
+// Send an SMS to every admin with a phone number on file. Best-effort.
+async function notifyAdmins(headline: string, taskId: string) {
+  const { data: task } = await supabaseAdmin
+    .from("tasks")
+    .select("task_type, description, year, make, model, plate, runner_name")
+    .eq("id", taskId)
+    .maybeSingle();
+  const vehicleLabel = task?.year
+    ? `${task.year} ${task.make ?? ""} ${task.model ?? ""} ${task.plate ?? ""}`.trim()
+    : "";
+  const lines = [
+    headline,
+    task ? `Type: ${taskTypeLabel(task.task_type)}` : null,
+    task?.runner_name ? `Runner: ${task.runner_name}` : null,
+    vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
+    task?.description ? task.description : null,
+    `Task: ${taskId}`,
+  ].filter(Boolean) as string[];
+  const body = lines.join("\n");
+
+  const { data: adminRoles } = await supabaseAdmin
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "admin");
+  const ids = (adminRoles ?? []).map((r) => r.user_id);
+  if (ids.length === 0) return;
+  const { data: admins } = await supabaseAdmin
+    .from("profiles")
+    .select("phone, full_name, first_name, last_name")
+    .in("id", ids);
+  const seen = new Set<string>();
+  for (const a of admins ?? []) {
+    if (!a.phone || seen.has(a.phone)) continue;
+    seen.add(a.phone);
+    const name = [a.first_name, a.last_name].filter(Boolean).join(" ") || a.full_name || "Admin";
+    void sendSms(a.phone, body, name).catch((e) =>
+      console.error("[admin notify] failed:", e instanceof Error ? e.message : e),
+    );
+  }
+}
+
+const DmvDocsInput = z.object({
+  task_id: z.string().min(1).max(80),
+  documents: z.record(z.string().max(80), z.boolean()).default({}),
+  notes: z.string().max(4000).default(""),
+});
+
+export const completeDmvTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => DmvDocsInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const checkedLabels = Object.entries(data.documents)
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+    const summary =
+      `DMV run completed at ${new Date().toISOString()}. ` +
+      `Documents handled: ${checkedLabels.length ? checkedLabels.join(", ") : "(none marked)"}. ` +
+      `Notes: ${data.notes.trim() || "(none)"}.`;
+
+    const { error } = await context.supabase
+      .from("tasks")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        runner_notes: summary,
+      })
+      .eq("id", data.task_id);
+    if (error) throw new Error(error.message);
+
+    void notifyAdmins(`✅ DMV task completed`, data.task_id).catch((e) =>
+      console.error("[dmv complete notify] failed:", e instanceof Error ? e.message : e),
+    );
+
     return { ok: true };
   });
 

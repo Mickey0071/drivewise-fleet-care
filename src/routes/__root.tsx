@@ -47,7 +47,7 @@ const ROUTE_ROLES: { prefix: string; roles: AppRole[] }[] = [
   { prefix: "/expenses", roles: ["admin"] },
 ];
 const PUBLIC_ROUTES = ["/login", "/forgot-password", "/reset-password", "/sign", "/rent"];
-const RUNNER_ALLOWED = ["/checklist", "/inspections", "/my-tasks", "/profile"];
+const RUNNER_ALLOWED = ["/checklist", "/dmv-task", "/inspections", "/my-tasks", "/profile"];
 
 function NotFoundComponent() {
   return (
