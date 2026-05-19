@@ -115,7 +115,7 @@ export const adminCreateTask = createServerFn({ method: "POST" })
         data.description ? data.description : null,
         data.address ? `Address: ${data.address}` : null,
         data.due_date ? `Due: ${data.due_date}` : null,
-        `Open: ${origin}/my-tasks/${id}`,
+        `Open: ${origin}/my-tasks?task_id=${id}`,
       ].filter(Boolean) as string[];
       const body = lines.join("\n");
       // Intentionally not awaited — best-effort background send.
@@ -225,7 +225,7 @@ export const resendTaskSms = createServerFn({ method: "POST" })
       task.description ? task.description : null,
       task.address ? `Address: ${task.address}` : null,
       task.due_date ? `Due: ${task.due_date}` : null,
-      `Open: ${origin}/my-tasks/${task.id}`,
+      `Open: ${origin}/my-tasks?task_id=${task.id}`,
     ].filter(Boolean) as string[];
 
     try {

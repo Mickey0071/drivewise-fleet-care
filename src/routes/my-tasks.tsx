@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
@@ -14,6 +15,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/my-tasks")({
+  validateSearch: (search: Record<string, unknown>) =>
+    z.object({ task_id: z.string().optional() }).parse(search),
   head: () => ({ meta: [{ title: "My Tasks — Camauto Runner Hub" }] }),
   component: MyTasksPage,
 });
@@ -41,20 +44,36 @@ function MyTasksPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const doStart = useServerFn(startTask);
+  const { task_id: focusTaskId } = Route.useSearch();
   const [tasks, setTasks] = useState<TaskRow[]>([]);
   const [tab, setTab] = useState<"today" | "all" | "overdue" | "completed">("today");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const focusNotifiedRef = useRef(false);
 
   async function load() {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("tasks")
-      .select("id, task_type, status, priority_level, description, address, due_date, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at")
-      .eq("assigned_to_user_id", user.id)
-      .order("due_date", { ascending: true });
-    setTasks((data ?? []) as TaskRow[]);
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const query = supabase
+        .from("tasks")
+        .select("id, task_type, status, priority_level, description, address, due_date, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at")
+        .eq("assigned_to_user_id", user.id)
+        .order("due_date", { ascending: true });
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Request timed out after 10s")), 10000),
+      );
+      const { data, error } = await Promise.race([query, timeout]) as Awaited<typeof query>;
+      if (error) throw error;
+      setTasks((data ?? []) as TaskRow[]);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Failed to load tasks");
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user?.id]);
 
@@ -67,6 +86,30 @@ function MyTasksPage() {
     if (t.status === "completed") return false;
     return t.due_date === null || t.due_date <= today;
   }), [tasks, tab, today]);
+
+  // When opening via SMS link with ?task_id=, switch to the right tab, scroll,
+  // and briefly highlight the card. If the id doesn't belong to this runner,
+  // warn once.
+  useEffect(() => {
+    if (!focusTaskId || loading) return;
+    const target = tasks.find(t => t.id === focusTaskId);
+    if (!target) {
+      if (!focusNotifiedRef.current) {
+        focusNotifiedRef.current = true;
+        toast.error("Task not found in your assignments.");
+      }
+      return;
+    }
+    // Pick a tab that contains the task so it renders.
+    if (target.status === "completed") setTab("completed");
+    else setTab("all");
+    setHighlightId(target.id);
+    const t = setTimeout(() => {
+      cardRefs.current[target.id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+    const clearT = setTimeout(() => setHighlightId(null), 3000);
+    return () => { clearTimeout(t); clearTimeout(clearT); };
+  }, [focusTaskId, loading, tasks]);
 
   async function start(id: string) {
     try { await doStart({ data: { task_id: id } }); toast.success("Task started"); load(); }
@@ -86,13 +129,23 @@ function MyTasksPage() {
       </Tabs>
 
       {loading ? <p className="text-sm text-muted-foreground">Loading…</p>
+      : loadError ? (
+        <Card><CardContent className="space-y-3 py-8 text-center text-sm">
+          <p className="text-destructive">{loadError}</p>
+          <Button size="sm" variant="outline" onClick={load}>Retry</Button>
+        </CardContent></Card>
+      )
       : filtered.length === 0 ? (
         <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">No tasks here.</CardContent></Card>
       ) : filtered.map(t => {
         const typeLabel = TASK_TYPE_OPTIONS.find(o => o.value === t.task_type)?.label ?? t.task_type;
         const overdue = t.due_date && t.due_date < today && t.status !== "completed";
         return (
-          <Card key={t.id}>
+          <Card
+            key={t.id}
+            ref={(el) => { cardRefs.current[t.id] = el; }}
+            className={cn(highlightId === t.id && "ring-2 ring-emerald-500 transition-shadow")}
+          >
             <CardContent className="space-y-2 pt-5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className={cn("rounded-md px-2 py-0.5 text-xs font-medium", TYPE_COLORS[t.task_type] ?? TYPE_COLORS.other)}>{typeLabel}</span>
