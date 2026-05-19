@@ -314,7 +314,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
 
         <div className="flex-1 overflow-y-auto bg-muted/30 px-4 py-4">
           <div key={step} className="mx-auto w-full max-w-3xl animate-in fade-in slide-in-from-right-4 duration-200">
-          {step === 0 && (
+          {step === 1 && (
             <div className="space-y-3">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -324,6 +324,19 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                   value={vehQ}
                   onChange={e => setVehQ(e.target.value)}
                 />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>
+                  <span className="font-semibold text-foreground">{availableVehicles.length}</span>{" "}
+                  vehicle{availableVehicles.length === 1 ? "" : "s"} available for{" "}
+                  {startDate ? fmtDate(startDate) : "—"}
+                  {endDate ? ` → ${fmtDate(endDate)}` : " · open-ended"}
+                </span>
+                {vehicleClearedNotice && (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-medium text-amber-700 dark:text-amber-300">
+                    <AlertTriangle className="h-3 w-3" /> Your previous pick is no longer available for these dates — pick another.
+                  </span>
+                )}
               </div>
               {availableVehicles.length === 0 && (
                 <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
@@ -366,7 +379,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
             </div>
           )}
 
-          {step === 1 && (
+          {step === 2 && (
             <div className="space-y-3">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -511,12 +524,11 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
             </div>
           )}
 
-          {step === 2 && (
+          {step === 0 && (
             <div className="space-y-4">
-              <div className="rounded-lg border bg-card p-3 text-sm">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">Vehicle</div>
-                <div className="font-medium">{vehicle?.year} {vehicle?.make} {vehicle?.model} · {vehicle?.plate}</div>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter the rental window first — we'll only show vehicles that are free for these dates.
+              </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="start">Start date</Label>
@@ -549,7 +561,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                 </div>
                 <div>
                   <Label htmlFor="rate">Rate ({rateSuffix(billingPeriod)})</Label>
-                  <Input id="rate" type="number" min={0} value={rate} onChange={e => setRate(Number(e.target.value))} />
+                  <Input id="rate" type="number" min={0} value={rate} onChange={e => setRate(Number(e.target.value))} placeholder={vehicle ? String(defaultRate(vehicle, billingPeriod)) : "Pick a vehicle to auto-fill"} />
                 </div>
                 <div>
                   <Label htmlFor="dep">Deposit</Label>
