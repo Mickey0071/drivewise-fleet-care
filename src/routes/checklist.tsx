@@ -581,13 +581,14 @@ function ChecklistPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="vehicle">Vehicle *</Label>
-              {taskLockedVehicle ? (
+              {isReturnMode || taskLockedVehicle ? (
                 <div className="flex h-11 items-center rounded-md border border-input bg-muted/40 px-3 text-sm">
                   {(() => {
-                    const v = vehicles.find(x => x.id === taskLockedVehicle);
+                    const lockedId = (isReturnMode ? vehicleId : taskLockedVehicle) ?? "";
+                    const v = vehicles.find(x => x.id === lockedId);
                     return v
                       ? `${v.year} ${v.make} ${v.model} — ${v.plate}`
-                      : `Vehicle: ${taskLockedVehicle}`;
+                      : `Vehicle: ${lockedId}`;
                   })()}
                 </div>
               ) : (
@@ -605,6 +606,31 @@ function ChecklistPage() {
               )}
             </div>
           </div>
+          {isReturnMode && (
+            <div className="space-y-1.5">
+              <Label htmlFor="return-mileage">Return Mileage *</Label>
+              <Input
+                id="return-mileage"
+                type="number"
+                inputMode="numeric"
+                min={returnRental?.mileage_out ?? 0}
+                value={returnMileage}
+                onChange={(e) => setReturnMileage(e.target.value)}
+                placeholder="e.g. 84210"
+                className="h-11"
+              />
+              <div className="text-xs text-muted-foreground">
+                {returnRental?.mileage_out != null
+                  ? `Mileage at pickup: ${returnRental.mileage_out.toLocaleString()} (rental started with this reading)`
+                  : "No starting mileage on record."}
+              </div>
+              {returnMileage.trim() && returnRental?.mileage_out != null && Number(returnMileage) < returnRental.mileage_out && (
+                <div className="text-xs text-destructive">
+                  Return mileage must be at least {returnRental.mileage_out.toLocaleString()}.
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
             <span className="text-muted-foreground">Jobs completed today</span>
             <Badge variant="secondary" className="text-sm">{todayCount}</Badge>
@@ -617,16 +643,18 @@ function ChecklistPage() {
         <CardContent className="space-y-3 pt-6">
           <Label>Job type *</Label>
           <div className="grid grid-cols-2 gap-2">
-            {JOB_TYPES.map(jt => (
+            {(isReturnMode ? (["vehicle_return"] as JobType[]) : JOB_TYPES).map(jt => (
               <button
                 key={jt}
                 type="button"
-                onClick={() => setJobType(jt)}
+                onClick={() => { if (!isReturnMode) setJobType(jt); }}
+                disabled={isReturnMode}
                 className={cn(
                   "min-h-14 rounded-md border px-3 py-3 text-left text-sm transition-colors",
                   jobType === jt
                     ? "border-primary bg-primary/10 font-semibold"
-                    : "border-border bg-background hover:bg-accent"
+                    : "border-border bg-background hover:bg-accent",
+                  isReturnMode && "cursor-default opacity-90"
                 )}
               >
                 {JOB_TYPE_LABELS[jt]}
