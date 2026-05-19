@@ -364,6 +364,14 @@ function RentalsPage() {
                       <FileSignature className="mr-1 h-4 w-4" /> View agreement
                     </Button>
                   )}
+                  {r.paymentLinkAutoSentAt && !r.paymentReceived && (
+                    <span
+                      title={`Auto-sent ${new Date(r.paymentLinkAutoSentAt).toLocaleString()}`}
+                      className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                    >
+                      Payment link auto-sent
+                    </span>
+                  )}
                   <Button variant="ghost" size="sm" onClick={() => setReceipt(r)}>
                     <Receipt className="mr-1 h-4 w-4" /> Receipt
                   </Button>
