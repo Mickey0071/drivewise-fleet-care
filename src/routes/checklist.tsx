@@ -84,6 +84,7 @@ function ChecklistPage() {
   const [submitting, setSubmitting] = useState(false);
   const [todayCount, setTodayCount] = useState<number>(0);
   const [returnMileage, setReturnMileage] = useState<string>("");
+  const [jobMileage, setJobMileage] = useState<string>("");
   const [returnBanner, setReturnBanner] = useState<string | null>(null);
   const [returnRental, setReturnRental] = useState<{
     id: string;
@@ -299,8 +300,15 @@ function ChecklistPage() {
         m.push(`mileage ≥ ${returnRental.mileage_out}`);
       }
     }
+    // Require mileage for vehicle_return / repossession job types (outside return-mode flow)
+    if (!isReturnMode && (jobType === "vehicle_return" || jobType === "repossession")) {
+      const n = Number(jobMileage);
+      if (!jobMileage.trim() || !Number.isInteger(n) || n < 0) {
+        m.push("current mileage");
+      }
+    }
     return m;
-  }, [inspectorName, vehicleId, jobType, ready, fuel, isReturnMode, returnMileage, returnRental]);
+  }, [inspectorName, vehicleId, jobType, ready, fuel, isReturnMode, returnMileage, returnRental, jobMileage]);
 
   const canSubmit = missing.length === 0 && !submitting;
 
@@ -326,6 +334,7 @@ function ChecklistPage() {
     setDamageFiles([]);
     setFuel("");
     setNotes("");
+    setJobMileage("");
     setOpenSection(CHECKLIST_SECTIONS[0].title);
     setDone(null);
     if (!keepInspector) setInspectorName("");
@@ -358,7 +367,9 @@ function ChecklistPage() {
         rental_id: isReturnMode && returnRental ? returnRental.id : null,
         type: "check-in",
         date: new Date().toISOString().slice(0, 10),
-        mileage: isReturnMode ? Number(returnMileage) : (vehicle?.mileage ?? 0),
+        mileage: isReturnMode
+          ? Number(returnMileage)
+          : (jobMileage.trim() ? Number(jobMileage) : (vehicle?.mileage ?? 0)),
         fuel_level: fuel,
         damage_noted: hasDamage,
         completed_by: inspector,
@@ -414,6 +425,7 @@ function ChecklistPage() {
         const summary =
           `Inspection submitted at ${new Date().toISOString()}. ` +
           `Job type: ${JOB_TYPE_LABELS[jobType as JobType]}. ` +
+          `Mileage: ${isReturnMode ? Number(returnMileage) : (jobMileage.trim() ? Number(jobMileage) : (vehicle?.mileage ?? 0))}. ` +
           `Results: ${counts.pass} Pass, ${counts.fail} Fail, ${counts.na} N/A. ` +
           `Ready to rent: ${ready === "ready" ? "yes" : "no"}. ` +
           `Fuel: ${FUEL_LEVEL_LABELS[fuel as FuelKey]}. ` +
@@ -579,7 +591,7 @@ function ChecklistPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 pb-32">
+    <div className="mx-auto max-w-3xl space-y-4 pb-40">
       <PageHeader title="New Inspection" subtitle="Submit a full condition check after a runner job" />
 
       {isReturnMode && returnError && (
@@ -675,6 +687,23 @@ function ChecklistPage() {
                   Return mileage must be at least {returnRental.mileage_out.toLocaleString()}.
                 </div>
               )}
+            </div>
+          )}
+          {!isReturnMode && (jobType === "vehicle_return" || jobType === "repossession") && (
+            <div className="space-y-1.5">
+              <Label htmlFor="job-mileage">
+                {jobType === "repossession" ? "Mileage when repossessed *" : "Mileage at return *"}
+              </Label>
+              <Input
+                id="job-mileage"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={jobMileage}
+                onChange={(e) => setJobMileage(e.target.value)}
+                placeholder="e.g. 84210"
+                className="h-11"
+              />
             </div>
           )}
           <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
@@ -897,8 +926,11 @@ function ChecklistPage() {
         </CardContent>
       </Card>
 
-      {/* Sticky submit */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:px-6">
+      {/* Sticky submit — sits above the runner bottom nav (~56px) so it's always tappable on mobile */}
+      <div
+        className="fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:px-6"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 64px)" }}
+      >
         <div className="mx-auto max-w-3xl space-y-2">
           {missing.length > 0 && (
             <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">

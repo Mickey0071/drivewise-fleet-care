@@ -130,7 +130,7 @@ function DmvTaskPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4 pb-24">
+    <div className="mx-auto max-w-2xl space-y-4 pb-40">
       <PageHeader title="📋 DMV Run" subtitle="Paperwork only — no vehicle inspection needed" />
 
       {(taskBanner || vehicleLabel) && (
@@ -213,9 +213,16 @@ function DmvTaskPage() {
         </CardContent>
       </Card>
 
-      <Button className="h-12 w-full text-base font-semibold" disabled={submitting} onClick={submit}>
-        {submitting ? "Submitting…" : "Mark DMV Run Complete"}
-      </Button>
+      <div
+        className="fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:px-6"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 64px)" }}
+      >
+        <div className="mx-auto max-w-2xl">
+          <Button className="h-12 w-full text-base font-semibold" disabled={submitting} onClick={submit}>
+            {submitting ? "Submitting…" : "Mark DMV Run Complete"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
