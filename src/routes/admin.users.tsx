@@ -9,13 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { adminCreateUser, adminDeleteUser } from "@/lib/admin-users.functions";
+import { adminCreateUser, adminDeleteUser, adminResetUserPassword } from "@/lib/admin-users.functions";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { Eye, EyeOff, RefreshCw, Plus, Copy, Trash2 } from "lucide-react";
+import { Eye, EyeOff, RefreshCw, Plus, Copy, Trash2, KeyRound } from "lucide-react";
 
 export const Route = createFileRoute("/admin/users")({
   head: () => ({ meta: [{ title: "Team & Access — Camauto Rentals" }] }),
@@ -48,6 +48,14 @@ function AdminUsersPage() {
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const doDelete = useServerFn(adminDeleteUser);
+  const doResetPwd = useServerFn(adminResetUserPassword);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState<Profile | null>(null);
+  const [resetPwd, setResetPwd] = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [resetShow, setResetShow] = useState(false);
+  const [resetForce, setResetForce] = useState(true);
+  const [resetBusy, setResetBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -119,6 +127,55 @@ function AdminUsersPage() {
     }
   }
 
+  function handleResetPassword(profile: Profile) {
+    setResetTarget(profile);
+    setResetPwd("");
+    setResetConfirm("");
+    setResetShow(false);
+    setResetForce(true);
+    setResetOpen(true);
+  }
+
+  const resetUsernameLabel = resetTarget
+    ? (resetTarget.username
+        ?? (resetTarget.email?.endsWith("@camauto.local")
+              ? resetTarget.email.split("@")[0]
+              : resetTarget.email)
+        ?? "user")
+    : "";
+  const resetMatches = resetPwd.length >= 8 && resetPwd === resetConfirm;
+
+  async function confirmResetPassword() {
+    if (!resetTarget || !resetMatches) return;
+    setResetBusy(true);
+    try {
+      const res = await doResetPwd({ data: {
+        user_id: resetTarget.id,
+        new_password: resetPwd,
+        force_reset: resetForce,
+      }});
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const text = `Password reset for ${res.username}. Send them:\nUsername: ${res.username}\nNew temp password: ${resetPwd}\nLogin at: ${origin}/login`;
+      toast.success("Password reset", {
+        description: (
+          <div className="space-y-2">
+            <pre className="whitespace-pre-wrap rounded bg-muted p-2 text-xs">{text}</pre>
+            <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(text); toast.success("Copied"); }}>
+              <Copy className="mr-1 h-3 w-3" /> Copy
+            </Button>
+          </div>
+        ),
+        duration: 30000,
+      });
+      setResetOpen(false);
+      setResetTarget(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to reset password");
+    } finally {
+      setResetBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
@@ -183,6 +240,9 @@ function AdminUsersPage() {
                           <div className="flex items-center gap-2">
                             <Button size="sm" disabled={!dirty || saving === p.id} onClick={() => saveRole(p.id)}>
                               {saving === p.id ? "Saving…" : "Save"}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleResetPassword(p)}>
+                              <KeyRound className="mr-1 h-4 w-4" /> Reset Password
                             </Button>
                             {user?.id === p.id ? (
                               <TooltipProvider>
