@@ -36,6 +36,8 @@ import { Route as ChecklistRouteImport } from './routes/checklist'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
+import { Route as RunnersTasksRouteImport } from './routes/runners.tasks'
+import { Route as RunnersNewTaskRouteImport } from './routes/runners.new-task'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
@@ -180,6 +182,16 @@ const SignTokenRoute = SignTokenRouteImport.update({
   path: '/sign/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RunnersTasksRoute = RunnersTasksRouteImport.update({
+  id: '/runners/tasks',
+  path: '/runners/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RunnersNewTaskRoute = RunnersNewTaskRouteImport.update({
+  id: '/runners/new-task',
+  path: '/runners/new-task',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RentPaidRoute = RentPaidRouteImport.update({
   id: '/rent/paid',
   path: '/rent/paid',
@@ -254,6 +266,8 @@ export interface FileRoutesByFullPath {
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
+  '/runners/new-task': typeof RunnersNewTaskRoute
+  '/runners/tasks': typeof RunnersTasksRoute
   '/sign/$token': typeof SignTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
@@ -291,6 +305,8 @@ export interface FileRoutesByTo {
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
+  '/runners/new-task': typeof RunnersNewTaskRoute
+  '/runners/tasks': typeof RunnersTasksRoute
   '/sign/$token': typeof SignTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
@@ -329,6 +345,8 @@ export interface FileRoutesById {
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
+  '/runners/new-task': typeof RunnersNewTaskRoute
+  '/runners/tasks': typeof RunnersTasksRoute
   '/sign/$token': typeof SignTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
@@ -368,6 +386,8 @@ export interface FileRouteTypes {
     | '/fleet/$vehicleId'
     | '/rent/$token'
     | '/rent/paid'
+    | '/runners/new-task'
+    | '/runners/tasks'
     | '/sign/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
@@ -405,6 +425,8 @@ export interface FileRouteTypes {
     | '/fleet/$vehicleId'
     | '/rent/$token'
     | '/rent/paid'
+    | '/runners/new-task'
+    | '/runners/tasks'
     | '/sign/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
@@ -442,6 +464,8 @@ export interface FileRouteTypes {
     | '/fleet/$vehicleId'
     | '/rent/$token'
     | '/rent/paid'
+    | '/runners/new-task'
+    | '/runners/tasks'
     | '/sign/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
@@ -479,6 +503,8 @@ export interface RootRouteChildren {
   AdminUsersRoute: typeof AdminUsersRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
+  RunnersNewTaskRoute: typeof RunnersNewTaskRoute
+  RunnersTasksRoute: typeof RunnersTasksRoute
   SignTokenRoute: typeof SignTokenRoute
   InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
@@ -677,6 +703,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/runners/tasks': {
+      id: '/runners/tasks'
+      path: '/runners/tasks'
+      fullPath: '/runners/tasks'
+      preLoaderRoute: typeof RunnersTasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/runners/new-task': {
+      id: '/runners/new-task'
+      path: '/runners/new-task'
+      fullPath: '/runners/new-task'
+      preLoaderRoute: typeof RunnersNewTaskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rent/paid': {
       id: '/rent/paid'
       path: '/rent/paid'
@@ -776,6 +816,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminUsersRoute: AdminUsersRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
+  RunnersNewTaskRoute: RunnersNewTaskRoute,
+  RunnersTasksRoute: RunnersTasksRoute,
   SignTokenRoute: SignTokenRoute,
   InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
