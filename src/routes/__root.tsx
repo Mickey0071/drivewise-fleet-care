@@ -209,7 +209,7 @@ function AuthGate() {
       navigate({ to: home });
     }
     // Non-admin users (runners/drivers) use the runner hub — restrict their routes
-    if (role === "runner" || role === "driver") {
+    if ((role === "runner" || role === "driver") && !isPublic) {
       const allowed = RUNNER_ALLOWED.some(p => path === p || path.startsWith(p + "/"));
       if (!allowed) navigate({ to: "/checklist" });
     }
