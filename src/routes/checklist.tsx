@@ -14,9 +14,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { supabase } from "@/integrations/supabase/client";
 import { CHECKLIST_SECTIONS, JOB_TYPE_LABELS, FUEL_LEVEL_LABELS } from "@/lib/checklist-items";
 import { cn } from "@/lib/utils";
+import { useServerFn } from "@tanstack/react-start";
+import { completeTaskFromInspection } from "@/lib/tasks.functions";
+import { z } from "zod";
 
 export const Route = createFileRoute("/checklist")({
   head: () => ({ meta: [{ title: "New Inspection — Camauto Rentals" }] }),
+  validateSearch: (s: Record<string, unknown>) =>
+    z.object({ task_id: z.string().optional() }).parse(s),
   component: ChecklistPage,
 });
 
@@ -45,6 +50,11 @@ function vehicleLabel(v: VehicleRow) {
 
 function ChecklistPage() {
   const navigate = useNavigate();
+  const { task_id } = Route.useSearch();
+  const completeTask = useServerFn(completeTaskFromInspection);
+  const [taskBanner, setTaskBanner] = useState<string | null>(null);
+  const [taskLockedVehicle, setTaskLockedVehicle] = useState<string | null>(null);
+  const [maintenanceLinked, setMaintenanceLinked] = useState<string | null>(null);
 
   const [inspectorName, setInspectorName] = useState("");
   const [vehicles, setVehicles] = useState<VehicleRow[]>([]);
@@ -94,6 +104,26 @@ function ChecklistPage() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // If route was opened from My Tasks, load task + lock vehicle
+  useEffect(() => {
+    if (!task_id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("tasks")
+        .select("description, linked_vehicle_id")
+        .eq("id", task_id)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      setTaskBanner(data.description ?? `Task ${task_id}`);
+      if (data.linked_vehicle_id) {
+        setTaskLockedVehicle(data.linked_vehicle_id);
+        setVehicleId(data.linked_vehicle_id);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [task_id]);
 
   // Load vehicles
   useEffect(() => {
