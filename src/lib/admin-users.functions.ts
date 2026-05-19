@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const createUserSchema = z.object({
-  email: z.string().trim().toLowerCase().email().max(255),
+  username: z.string().trim().toLowerCase().min(3).max(30).regex(/^[a-z0-9._-]+$/),
   password: z.string().min(8).max(128),
   first_name: z.string().trim().min(1).max(80),
   last_name: z.string().trim().min(1).max(80),
@@ -26,8 +26,19 @@ export const adminCreateUser = createServerFn({ method: "POST" })
     const isAdmin = (roles ?? []).some((r) => r.role === "admin");
     if (!isAdmin) throw new Error("Admins only");
 
+    // Uniqueness check (case-insensitive)
+    const { data: existing, error: existErr } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .ilike("username", data.username)
+      .maybeSingle();
+    if (existErr) throw new Error(existErr.message);
+    if (existing) throw new Error("Username already taken.");
+
+    const fakeEmail = `${data.username}@camauto.local`;
+
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
+      email: fakeEmail,
       password: data.password,
       email_confirm: true,
       user_metadata: {
@@ -35,6 +46,7 @@ export const adminCreateUser = createServerFn({ method: "POST" })
         last_name: data.last_name,
         full_name: `${data.first_name} ${data.last_name}`.trim(),
         phone: data.phone ?? null,
+        username: data.username,
       },
     });
     if (createErr || !created.user) throw new Error(createErr?.message ?? "Failed to create user");
@@ -49,7 +61,8 @@ export const adminCreateUser = createServerFn({ method: "POST" })
         last_name: data.last_name,
         full_name: `${data.first_name} ${data.last_name}`.trim(),
         phone: data.phone ?? null,
-        email: data.email,
+        email: fakeEmail,
+        username: data.username,
         must_reset_password: data.must_reset_password,
       })
       .eq("id", userId);
@@ -62,7 +75,7 @@ export const adminCreateUser = createServerFn({ method: "POST" })
       .insert({ user_id: userId, role: data.role });
     if (insErr) throw new Error(insErr.message);
 
-    return { user_id: userId, email: data.email };
+    return { user_id: userId, username: data.username };
   });
 
 export const clearMustResetPassword = createServerFn({ method: "POST" })
