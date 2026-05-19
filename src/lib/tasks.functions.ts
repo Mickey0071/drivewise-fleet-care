@@ -203,6 +203,9 @@ export const resendTaskSms = createServerFn({ method: "POST" })
     if (tErr) throw new Error(tErr.message);
     if (!task) throw new Error("Task not found");
 
+    if (!task.assigned_to_user_id) {
+      return { ok: false, sms_status: "skipped_no_phone" as const };
+    }
     const { data: runner } = await supabaseAdmin
       .from("profiles")
       .select("phone, first_name, last_name, full_name, username")
