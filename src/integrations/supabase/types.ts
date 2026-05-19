@@ -1223,6 +1223,36 @@ export type Database = {
         }
         Relationships: []
       }
+      vendors: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          phone: string
+          reference_number: string | null
+          service_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          phone: string
+          reference_number?: string | null
+          service_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string
+          reference_number?: string | null
+          service_type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       violations: {
         Row: {
           amount: number

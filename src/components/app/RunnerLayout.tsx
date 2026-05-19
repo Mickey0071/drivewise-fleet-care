@@ -1,11 +1,12 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { ClipboardList, History, Rabbit, User, LogOut } from "lucide-react";
+import { ClipboardList, History, Phone, Rabbit, User, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/camauto-logo.jpeg";
 
 const tabs = [
   { to: "/checklist", label: "Task Portal", icon: ClipboardList, emoji: "📋" },
+  { to: "/vendors", label: "Vendors", icon: Phone, emoji: "📞" },
   { to: "/inspections", label: "My History", icon: History, emoji: "📜" },
   { to: "/my-tasks", label: "My Tasks", icon: Rabbit, emoji: "🏃" },
   { to: "/profile", label: "Profile", icon: User, emoji: "👤" },
@@ -32,7 +33,7 @@ export function RunnerLayout() {
         <Outlet />
       </main>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur">
-        <ul className="mx-auto grid max-w-2xl grid-cols-4">
+        <ul className="mx-auto grid max-w-2xl grid-cols-5">
           {tabs.map((t) => {
             const active = path === t.to || path.startsWith(t.to + "/");
             return (
