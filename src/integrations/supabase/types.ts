@@ -158,6 +158,7 @@ export type Database = {
           fuel_level: string
           id: string
           inspector_name: string | null
+          is_return_inspection: boolean
           job_type: string | null
           mileage: number
           notes: string | null
@@ -176,6 +177,7 @@ export type Database = {
           fuel_level: string
           id: string
           inspector_name?: string | null
+          is_return_inspection?: boolean
           job_type?: string | null
           mileage?: number
           notes?: string | null
@@ -194,6 +196,7 @@ export type Database = {
           fuel_level?: string
           id?: string
           inspector_name?: string | null
+          is_return_inspection?: boolean
           job_type?: string | null
           mileage?: number
           notes?: string | null
@@ -739,8 +742,12 @@ export type Database = {
           deposit_paid: number
           driver_id: string
           end_date: string | null
+          final_charge_amount: number | null
+          final_charge_breakdown: Json | null
           id: string
           license_image_url: string | null
+          mileage_in: number | null
+          mileage_out: number | null
           notes: string | null
           payment_received: boolean
           payment_status: string
@@ -748,6 +755,8 @@ export type Database = {
           rate: number | null
           rate_amount: number | null
           reservation_status: string | null
+          return_inspection_id: string | null
+          returned_at: string | null
           selfie_image_url: string | null
           sign_token: string | null
           signature_data_url: string | null
@@ -770,8 +779,12 @@ export type Database = {
           deposit_paid?: number
           driver_id: string
           end_date?: string | null
+          final_charge_amount?: number | null
+          final_charge_breakdown?: Json | null
           id: string
           license_image_url?: string | null
+          mileage_in?: number | null
+          mileage_out?: number | null
           notes?: string | null
           payment_received?: boolean
           payment_status?: string
@@ -779,6 +792,8 @@ export type Database = {
           rate?: number | null
           rate_amount?: number | null
           reservation_status?: string | null
+          return_inspection_id?: string | null
+          returned_at?: string | null
           selfie_image_url?: string | null
           sign_token?: string | null
           signature_data_url?: string | null
@@ -801,8 +816,12 @@ export type Database = {
           deposit_paid?: number
           driver_id?: string
           end_date?: string | null
+          final_charge_amount?: number | null
+          final_charge_breakdown?: Json | null
           id?: string
           license_image_url?: string | null
+          mileage_in?: number | null
+          mileage_out?: number | null
           notes?: string | null
           payment_received?: boolean
           payment_status?: string
@@ -810,6 +829,8 @@ export type Database = {
           rate?: number | null
           rate_amount?: number | null
           reservation_status?: string | null
+          return_inspection_id?: string | null
+          returned_at?: string | null
           selfie_image_url?: string | null
           sign_token?: string | null
           signature_data_url?: string | null
