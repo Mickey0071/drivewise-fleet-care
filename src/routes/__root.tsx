@@ -12,7 +12,7 @@ import {
 import { useEffect, useState } from "react";
 
 import appCss from "../styles.css?url";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app/AppSidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeToggle } from "@/components/app/ThemeToggle";
@@ -20,6 +20,23 @@ import { GlobalSearch } from "@/components/app/GlobalSearch";
 import { AuthProvider, useAuth, type AppRole } from "@/hooks/use-auth";
 import { hydrateFromCloud, isStoreHydrated, useStoreVersion } from "@/lib/mock/store";
 import { RunnerLayout } from "@/components/app/RunnerLayout";
+import { Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+function HamburgerTrigger() {
+  const { toggleSidebar } = useSidebar();
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8"
+      aria-label="Toggle sidebar"
+      onClick={toggleSidebar}
+    >
+      <Menu className="h-5 w-5" />
+    </Button>
+  );
+}
 
 const ROUTE_ROLES: { prefix: string; roles: AppRole[] }[] = [
   { prefix: "/staff-portal", roles: ["admin", "runner"] },
@@ -253,7 +270,7 @@ function AuthGate() {
         <AppSidebar />
         <div className="flex flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
-            <SidebarTrigger />
+            <HamburgerTrigger />
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-success" />
               <span className="text-xs text-muted-foreground">Signed in as {role ?? "—"}</span>
