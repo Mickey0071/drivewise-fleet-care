@@ -16,6 +16,7 @@ import { CHECKLIST_SECTIONS, JOB_TYPE_LABELS, FUEL_LEVEL_LABELS } from "@/lib/ch
 import { cn } from "@/lib/utils";
 import { useServerFn } from "@tanstack/react-start";
 import { completeTaskFromInspection } from "@/lib/tasks.functions";
+import { closeoutRental } from "@/lib/return.functions";
 import { z } from "zod";
 
 export const Route = createFileRoute("/checklist")({
@@ -61,8 +62,10 @@ const ITEM_LABELS: Record<string, string> = (() => {
 
 function ChecklistPage() {
   const navigate = useNavigate();
-  const { task_id } = Route.useSearch();
+  const { task_id, rental_id, mode } = Route.useSearch();
+  const isReturnMode = mode === "return" && !!rental_id;
   const completeTask = useServerFn(completeTaskFromInspection);
+  const closeout = useServerFn(closeoutRental);
   const [taskBanner, setTaskBanner] = useState<string | null>(null);
   const [taskLockedVehicle, setTaskLockedVehicle] = useState<string | null>(null);
   const [maintenanceLinked, setMaintenanceLinked] = useState<string | null>(null);
@@ -80,6 +83,18 @@ function ChecklistPage() {
   const [openSection, setOpenSection] = useState<string>(CHECKLIST_SECTIONS[0].title);
   const [submitting, setSubmitting] = useState(false);
   const [todayCount, setTodayCount] = useState<number>(0);
+  const [returnMileage, setReturnMileage] = useState<string>("");
+  const [returnBanner, setReturnBanner] = useState<string | null>(null);
+  const [returnRental, setReturnRental] = useState<{
+    id: string;
+    vehicle_id: string;
+    driver_id: string;
+    start_date: string | null;
+    end_date: string | null;
+    mileage_out: number | null;
+    latest_expected_end: string | null;
+  } | null>(null);
+  const [returnError, setReturnError] = useState<string | null>(null);
   const [done, setDone] = useState<null | {
     vehicle: VehicleRow | null;
     inspector: string;
@@ -90,6 +105,12 @@ function ChecklistPage() {
     ticketCreated: boolean;
     taskCompleted: boolean;
     maintenanceSynced: boolean;
+    returnResult?: {
+      final_charge: number | null;
+      days_used: number;
+      miles_driven: number | null;
+      sms_status: "sent" | "skipped_no_phone" | "skipped_no_charge";
+    };
   }>(null);
 
   // Load inspector name: prefer authenticated profile (first + last name), fall back to localStorage.
@@ -137,6 +158,74 @@ function ChecklistPage() {
     })();
     return () => { cancelled = true; };
   }, [task_id]);
+
+  // Return-mode bootstrap: fetch rental + driver + extensions to build banner
+  useEffect(() => {
+    if (!isReturnMode || !rental_id) return;
+    let cancelled = false;
+    (async () => {
+      const { data: rental, error } = await supabase
+        .from("rentals")
+        .select("id, vehicle_id, driver_id, start_date, end_date, mileage_out, returned_at")
+        .eq("id", rental_id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error || !rental) {
+        setReturnError("Rental not found.");
+        return;
+      }
+      if (rental.returned_at) {
+        toast.error("This rental has already been returned.");
+        navigate({ to: "/rentals" });
+        return;
+      }
+
+      const [{ data: driver }, { data: vehicle }, { data: exts }] = await Promise.all([
+        supabase.from("drivers").select("first_name, last_name, full_name").eq("id", rental.driver_id).maybeSingle(),
+        supabase.from("vehicles").select("id, year, make, model, plate, status, mileage").eq("id", rental.vehicle_id).maybeSingle(),
+        supabase.from("rental_extensions").select("new_end_date").eq("rental_id", rental.id),
+      ]);
+      if (cancelled) return;
+
+      // Lock vehicle dropdown and job type.
+      setVehicleId(rental.vehicle_id);
+      setJobType("vehicle_return");
+      if (vehicle) {
+        setVehicles((prev) => (prev.some((v) => v.id === vehicle.id) ? prev : [...prev, vehicle as VehicleRow]));
+      }
+
+      let latestExpectedEnd: string | null = rental.end_date ?? null;
+      for (const e of exts ?? []) {
+        if (!latestExpectedEnd || (e.new_end_date && e.new_end_date > latestExpectedEnd)) {
+          latestExpectedEnd = e.new_end_date;
+        }
+      }
+
+      setReturnRental({
+        id: rental.id,
+        vehicle_id: rental.vehicle_id,
+        driver_id: rental.driver_id,
+        start_date: rental.start_date ?? null,
+        end_date: rental.end_date ?? null,
+        mileage_out: rental.mileage_out ?? null,
+        latest_expected_end: latestExpectedEnd,
+      });
+
+      const customerName =
+        [driver?.first_name, driver?.last_name].filter(Boolean).join(" ") ||
+        driver?.full_name ||
+        "Customer";
+      const vLabel = vehicle
+        ? `${vehicle.year ?? ""} ${vehicle.make ?? ""} ${vehicle.model ?? ""} ${vehicle.plate ?? ""}`.trim()
+        : rental.vehicle_id;
+      const fmt = (d: string | null) =>
+        d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) : "—";
+      setReturnBanner(
+        `🔄 Returning ${vLabel}. Customer: ${customerName}. Rental started ${fmt(rental.start_date)}. Expected return: ${fmt(latestExpectedEnd)}.`
+      );
+    })();
+    return () => { cancelled = true; };
+  }, [isReturnMode, rental_id, navigate]);
 
   // Load vehicles
   useEffect(() => {
@@ -195,8 +284,16 @@ function ChecklistPage() {
     if (!jobType) m.push("job type");
     if (ready === null) m.push("ready to rent status");
     if (!fuel) m.push("fuel level");
+    if (isReturnMode) {
+      const n = Number(returnMileage);
+      if (!returnMileage.trim() || !Number.isInteger(n) || n < 0) {
+        m.push("return mileage");
+      } else if (returnRental?.mileage_out != null && n < returnRental.mileage_out) {
+        m.push(`mileage ≥ ${returnRental.mileage_out}`);
+      }
+    }
     return m;
-  }, [inspectorName, vehicleId, jobType, ready, fuel]);
+  }, [inspectorName, vehicleId, jobType, ready, fuel, isReturnMode, returnMileage, returnRental]);
 
   const canSubmit = missing.length === 0 && !submitting;
 
@@ -251,10 +348,10 @@ function ChecklistPage() {
       const { error } = await supabase.from("inspections").insert({
         id: inspectionId,
         vehicle_id: vehicleId,
-        rental_id: null,
+        rental_id: isReturnMode && returnRental ? returnRental.id : null,
         type: "check-in",
         date: new Date().toISOString().slice(0, 10),
-        mileage: vehicle?.mileage ?? 0,
+        mileage: isReturnMode ? Number(returnMileage) : (vehicle?.mileage ?? 0),
         fuel_level: fuel,
         damage_noted: hasDamage,
         completed_by: inspector,
@@ -270,6 +367,35 @@ function ChecklistPage() {
       persistInspector();
 
       const ticketCreated = counts.fail > 0 || hasDamage || ready === "needs_mechanic";
+
+      // Return-mode closeout: server fn handles rental update + SMS receipt.
+      let returnResult: {
+        final_charge: number | null;
+        days_used: number;
+        miles_driven: number | null;
+        sms_status: "sent" | "skipped_no_phone" | "skipped_no_charge";
+      } | undefined;
+      if (isReturnMode && returnRental) {
+        try {
+          const res = await closeout({
+            data: {
+              rental_id: returnRental.id,
+              inspection_id: inspectionId,
+              mileage_in: Number(returnMileage),
+            },
+          });
+          if (!res.alreadyReturned) {
+            returnResult = {
+              final_charge: res.final_charge ?? null,
+              days_used: res.days_used,
+              miles_driven: res.miles_driven ?? null,
+              sms_status: res.sms_status,
+            };
+          }
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Failed to close out rental");
+        }
+      }
 
       // If completing a dispatched task, mark it done + push summary to maintenance.
       let taskCompleted = false;
@@ -311,6 +437,7 @@ function ChecklistPage() {
         ticketCreated,
         taskCompleted,
         maintenanceSynced,
+        returnResult,
       });
       toast.success("Checklist submitted");
     } catch (e) {
