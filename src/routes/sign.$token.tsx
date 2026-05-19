@@ -99,6 +99,10 @@ function SignPage() {
             Your signed agreement, driver's license, and selfie were received.
             We'll be in touch shortly to coordinate vehicle delivery.
           </p>
+          <div className="mt-4 rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-foreground">
+            📱 A payment link will be texted to your phone in the next minute.
+            Please complete payment to confirm your reservation.
+          </div>
         </Card>
       </div>
     );
