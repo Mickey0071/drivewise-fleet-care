@@ -173,7 +173,13 @@ function MyTasksPage() {
                 </p>
               )}
               {t.status === "completed" ? (
-                <p className="text-xs text-muted-foreground">Completed at {t.completed_at ? new Date(t.completed_at).toLocaleString() : "—"}</p>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <p>Completed at {t.completed_at ? new Date(t.completed_at).toLocaleString() : "—"}</p>
+                  {(() => {
+                    const m = t.runner_notes?.match(/Mileage:\s*([\d,]+)/i);
+                    return m ? <p>Mileage recorded: {m[1]}</p> : null;
+                  })()}
+                </div>
               ) : (
                 <div className="flex flex-wrap gap-2 pt-1">
                   {t.status === "pending" && (
