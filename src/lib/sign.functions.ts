@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
 import { sendPaymentLinkInternal } from "@/lib/payment-link.functions";
+import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import type { StripeEnv } from "@/lib/stripe.server";
 
 /**
@@ -367,6 +368,37 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
     // pay immediately. Guarded helper logs/swallows all failures so the
     // signing UI never hangs or surfaces errors.
     void autoSendFirstPaymentLink(rental.id);
+
+    // Fire-and-forget: generate the signed agreement PDF and text it to the
+    // renter. Worker may terminate background work — acceptable for v1.
+    void generateAgreementPdf({ data: { rentalId: rental.id } })
+      .then(async (res) => {
+        if (!res.url) {
+          console.warn(`[agreement-pdf] rental=${rental.id} generation returned no url`);
+          return;
+        }
+        console.log(`[agreement-pdf] rental=${rental.id} generated ok, url=${res.url}`);
+        try {
+          const { data: driver } = await supabaseAdmin
+            .from("drivers")
+            .select("phone, full_name, first_name, last_name")
+            .eq("id", rental.driver_id)
+            .single();
+          if (driver?.phone) {
+            const name = driver.full_name
+              ?? [driver.first_name, driver.last_name].filter(Boolean).join(" ")
+              ?? null;
+            await sendSms(
+              driver.phone,
+              `Camauto Rentals: Your signed rental agreement is ready: ${res.url}`,
+              name,
+            );
+          }
+        } catch (e) {
+          console.error(`[agreement-pdf-sms] rental=${rental.id} FAILED:`, e);
+        }
+      })
+      .catch((e) => console.error(`[agreement-pdf] rental=${rental.id} FAILED:`, e));
 
     return { ok: true };
   });
