@@ -353,6 +353,11 @@ function RentalsPage() {
                     </Button>
                   )}
                   {!r.endDate && (
+                    <Button variant="outline" size="sm" onClick={() => setReturnChoiceRental(r)}>
+                      <Undo2 className="mr-1 h-4 w-4" /> Return Vehicle
+                    </Button>
+                  )}
+                  {!r.endDate && (
                     <Button variant="outline" size="sm" onClick={() => setExtending(r)}>
                       <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
                     </Button>
