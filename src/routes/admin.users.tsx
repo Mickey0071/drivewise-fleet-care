@@ -98,6 +98,27 @@ function AdminUsersPage() {
     toast.success("Role updated");
   }
 
+  function handleDelete(profile: Profile) {
+    setDeleteTarget(profile);
+    setDeleteOpen(true);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    try {
+      await doDelete({ data: { user_id: deleteTarget.id } });
+      toast.success("User deleted");
+      setDeleteOpen(false);
+      setDeleteTarget(null);
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete user");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
