@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
-import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
@@ -9,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ReportActions } from "@/components/app/ReportActions";
 import { LogServiceDialog } from "@/components/app/LogServiceDialog";
 import { EditMaintenanceDialog } from "@/components/app/EditMaintenanceDialog";
+import { ResolveMaintenanceDialog } from "@/components/app/ResolveMaintenanceDialog";
 import { useState } from "react";
 import { useStoreVersion } from "@/lib/mock/store";
 import type { Maintenance } from "@/lib/mock/data";
@@ -22,19 +22,22 @@ function MaintenancePage() {
   useStoreVersion();
   const [logOpen, setLogOpen] = useState(false);
   const [editRecord, setEditRecord] = useState<Maintenance | null>(null);
+  const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const today = new Date();
-  const soon = new Date(today); soon.setDate(today.getDate() + 14);
-  const due = maintenance.filter(m => new Date(m.nextServiceDue) <= soon);
-  const overdue = maintenance.filter(m => new Date(m.nextServiceDue) < today);
-  const totalCost = maintenance.reduce((s, m) => s + m.cost, 0);
-  const daysOverdue = (d: string) =>
-    Math.floor((today.getTime() - new Date(d).getTime()) / (1000 * 60 * 60 * 24));
+  const open = maintenance.filter(m => !m.dateCompleted)
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+  const resolved = maintenance.filter(m => !!m.dateCompleted)
+    .sort((a, b) => (b.dateCompleted ?? "").localeCompare(a.dateCompleted ?? ""));
+  const totalCost = resolved.reduce((s, m) => s + m.cost, 0);
+  const daysSince = (d?: string) => d
+    ? Math.floor((today.getTime() - new Date(d).getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
 
   return (
     <div>
       <PageHeader
-        title="Maintenance Log"
-        subtitle="Per-vehicle service history"
+        title="Maintenance"
+        subtitle={`${open.length} open issue${open.length === 1 ? "" : "s"} across the fleet`}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ReportActions csv={{
@@ -52,85 +55,87 @@ function MaintenancePage() {
       <LogServiceDialog open={logOpen} onOpenChange={setLogOpen} />
 
       <div className="mb-6 grid grid-cols-3 gap-3">
-        <KPI label="YTD spend" value={fmtMoney(totalCost)} icon={Wrench} />
-        <KPI label="Service records" value={String(maintenance.length)} icon={Wrench} />
-        <KPI label="Overdue" value={String(overdue.length)} icon={AlertTriangle} tone={overdue.length ? "text-destructive" : "text-foreground"} />
+        <KPI label="Open issues" value={String(open.length)} icon={AlertTriangle} tone={open.length ? "text-destructive" : "text-foreground"} />
+        <KPI label="Resolved" value={String(resolved.length)} icon={Wrench} />
+        <KPI label="Repair spend" value={fmtMoney(totalCost)} icon={Wrench} />
       </div>
 
-      {overdue.length > 0 && (
-        <Card className="mb-6 border-destructive/40 bg-destructive/5">
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" />Overdue services</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {overdue.map(m => {
-              const v = vehicleById(m.vehicleId);
-              const days = daysOverdue(m.nextServiceDue);
-              return (
-                <div key={m.id} className="flex items-center justify-between rounded-md bg-card border border-destructive/30 px-3 py-2">
-                  <div>
-                    <div className="text-sm font-medium">{v?.year} {v?.make} {v?.model} · {v?.plate}</div>
-                    <div className="text-xs text-muted-foreground">{m.serviceType} · was due {fmtDate(m.nextServiceDue)}</div>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+            Open issues ({open.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="divide-y divide-border p-0">
+          {open.length === 0 ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              No open maintenance issues. The fleet is in good shape.
+            </div>
+          ) : open.map(m => {
+            const v = vehicleById(m.vehicleId);
+            const age = daysSince(m.createdAt?.slice(0, 10));
+            const priority = age >= 14 ? "high" : age >= 5 ? "medium" : "normal";
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setResolveRecord(m)}
+                className="grid w-full grid-cols-12 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+              >
+                <div className="col-span-12 sm:col-span-4 min-w-0">
+                  <div className="truncate text-sm font-medium">
+                    {v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="destructive">{days} {days === 1 ? "day" : "days"} overdue</Badge>
-                    <Button size="sm" variant="outline">Schedule</Button>
-                  </div>
+                  <div className="text-xs text-muted-foreground">Tag #{v?.plate ?? "—"}</div>
                 </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
-
-      {due.length > 0 && (
-        <Card className="mb-6 border-warning/40 bg-warning/5">
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-warning-foreground" />Service due within 2 weeks</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {due.map(m => {
-              const v = vehicleById(m.vehicleId);
-              return (
-                <div key={m.id} className="flex items-center justify-between rounded-md bg-card border border-border px-3 py-2">
-                  <div>
-                    <div className="text-sm font-medium">{v?.year} {v?.make} {v?.model} · {v?.plate}</div>
-                    <div className="text-xs text-muted-foreground">Due {fmtDate(m.nextServiceDue)}</div>
-                  </div>
-                  <Button size="sm" variant="outline">Schedule</Button>
+                <div className="col-span-8 sm:col-span-5 min-w-0">
+                  <div className="truncate text-sm">{m.serviceType}</div>
+                  {m.sourceInspectionId && (
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">From inspection</div>
+                  )}
                 </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      )}
+                <div className="col-span-2 sm:col-span-2 text-xs text-muted-foreground">
+                  {m.createdAt ? fmtDate(m.createdAt.slice(0, 10)) : "—"}
+                </div>
+                <div className="col-span-2 sm:col-span-1 flex justify-end">
+                  <Badge
+                    variant={priority === "high" ? "destructive" : "outline"}
+                    className={
+                      priority === "medium"
+                        ? "border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                        : ""
+                    }
+                  >
+                    {priority}
+                  </Badge>
+                </div>
+              </button>
+            );
+          })}
+        </CardContent>
+      </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Service history</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Resolved history ({resolved.length})</CardTitle>
+        </CardHeader>
         <CardContent className="divide-y divide-border p-0">
-          {maintenance.map(m => {
+          {resolved.length === 0 ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">No resolved records yet.</div>
+          ) : resolved.map(m => {
             const v = vehicleById(m.vehicleId);
-            const isOverdue = new Date(m.nextServiceDue) < today;
-            const days = isOverdue ? daysOverdue(m.nextServiceDue) : 0;
-            const isOpen = !m.dateCompleted;
             return (
               <button
                 key={m.id}
                 type="button"
                 onClick={() => setEditRecord(m)}
-                className={`flex w-full flex-wrap items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-muted/40 ${isOverdue ? "bg-destructive/5" : ""}`}
+                className="flex w-full flex-wrap items-center justify-between gap-3 p-4 text-left transition-colors hover:bg-muted/40"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 font-medium">
-                    {m.serviceType}
-                    {isOverdue && <Badge variant="destructive">{days}d overdue</Badge>}
-                    {isOpen && (
-                      <Badge variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                        Open
-                      </Badge>
-                    )}
-                    {m.sourceInspectionId && (
-                      <Badge variant="outline">From inspection</Badge>
-                    )}
-                  </div>
+                  <div className="text-sm font-medium">{m.serviceType}</div>
                   <div className="text-xs text-muted-foreground">
-                    {v?.year} {v?.make} {v?.model} · {v?.plate} · {m.vendor} · {m.dateCompleted ? fmtDate(m.dateCompleted) : "open"}
+                    {v?.year} {v?.make} {v?.model} · {v?.plate} · {m.vendor} · {fmtDate(m.dateCompleted)}
                   </div>
                 </div>
                 <span className="font-semibold">{fmtMoney(m.cost)}</span>
@@ -139,6 +144,12 @@ function MaintenancePage() {
           })}
         </CardContent>
       </Card>
+
+      <ResolveMaintenanceDialog
+        open={!!resolveRecord}
+        onOpenChange={(o) => { if (!o) setResolveRecord(null); }}
+        record={resolveRecord}
+      />
       <EditMaintenanceDialog
         open={!!editRecord}
         onOpenChange={(o) => { if (!o) setEditRecord(null); }}
