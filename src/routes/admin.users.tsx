@@ -202,6 +202,7 @@ function AdminUsersPage() {
                     <TableHead>Name</TableHead>
                     <TableHead>Username / Email</TableHead>
                     <TableHead>Phone</TableHead>
+                    <TableHead>Contact Email</TableHead>
                     <TableHead>Signed up</TableHead>
                     <TableHead>Current role</TableHead>
                     <TableHead>Assign role</TableHead>
@@ -222,7 +223,28 @@ function AdminUsersPage() {
                             ? (p.username ?? p.email.split("@")[0])
                             : (p.username ?? p.email ?? "—")}
                         </TableCell>
-                        <TableCell>{p.phone ?? "—"}</TableCell>
+                        <TableCell>
+                          <InlineContactField
+                            value={p.phone}
+                            placeholder="Add phone"
+                            type="tel"
+                            onSave={async (val) => {
+                              await doUpdateContact({ data: { user_id: p.id, phone: val, real_email: p.real_email ?? "" } });
+                              setProfiles((list) => list.map((x) => x.id === p.id ? { ...x, phone: val } : x));
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <InlineContactField
+                            value={p.real_email}
+                            placeholder="Add email"
+                            type="email"
+                            onSave={async (val) => {
+                              await doUpdateContact({ data: { user_id: p.id, phone: p.phone, real_email: val ?? "" } });
+                              setProfiles((list) => list.map((x) => x.id === p.id ? { ...x, real_email: val } : x));
+                            }}
+                          />
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           {current ? <Badge variant={current === "admin" ? "default" : "secondary"}>{current}</Badge> : <Badge variant="outline">pending</Badge>}
