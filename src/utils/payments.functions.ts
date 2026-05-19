@@ -59,7 +59,7 @@ export const createWeeklyRentalCheckout = createServerFn({ method: "POST" })
       line_items: [{
         price_data: {
           currency: "usd",
-          product: "weekly_vehicle_rental",
+          product_data: { name: "Weekly vehicle rental" },
           recurring: { interval: "week" },
           unit_amount: data.amountInCents,
         },
@@ -111,7 +111,7 @@ export const createDepositCheckout = createServerFn({ method: "POST" })
       line_items: [{
         price_data: {
           currency: "usd",
-          product: "rental_advance_deposit",
+          product_data: { name: "Rental advance deposit" },
           unit_amount: data.amountInCents,
         },
         quantity: 1,
