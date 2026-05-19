@@ -689,6 +689,23 @@ function ChecklistPage() {
               )}
             </div>
           )}
+          {!isReturnMode && (jobType === "vehicle_return" || jobType === "repossession") && (
+            <div className="space-y-1.5">
+              <Label htmlFor="job-mileage">
+                {jobType === "repossession" ? "Mileage when repossessed *" : "Mileage at return *"}
+              </Label>
+              <Input
+                id="job-mileage"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                value={jobMileage}
+                onChange={(e) => setJobMileage(e.target.value)}
+                placeholder="e.g. 84210"
+                className="h-11"
+              />
+            </div>
+          )}
           <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
             <span className="text-muted-foreground">Jobs completed today</span>
             <Badge variant="secondary" className="text-sm">{todayCount}</Badge>
