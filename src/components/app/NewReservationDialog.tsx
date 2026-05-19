@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { vehicles, drivers, vehicleById, fmtMoney, fmtDate, maintenance } from "@/lib/mock/data";
-import { addRental, hasConflict, addDriver, getActiveRentalForDriver, isVehicleBookable, markReturnedAwaitingInspection, awaitingPostReturnInspection, useStoreVersion } from "@/lib/mock/store";
+import { addRental, hasConflict, addDriver, getActiveRentalForDriver, isVehicleBookable, markReturnedAwaitingInspection, awaitingPostReturnInspection, useStoreVersion, checkVehicleOverlapInDb } from "@/lib/mock/store";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { US_STATES, formatAddressBlock, formatFullName } from "@/lib/us-states";
 
-const STEPS = ["Vehicle", "Client", "Dates", "Review"] as const;
+const STEPS = ["Dates", "Vehicle", "Client", "Review"] as const;
 type Step = 0 | 1 | 2 | 3;
 
 type BillingPeriod = "daily" | "weekly" | "monthly";
@@ -86,7 +86,9 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   useEffect(() => {
     if (open && initialVehicleId) {
       setVehicleId(initialVehicleId);
-      setStep(1);
+      // Still start at Dates (step 0) — vehicle is preselected and we need
+      // dates entered before we can validate it.
+      setStep(0);
     }
   }, [open, initialVehicleId]);
 
@@ -95,12 +97,30 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const existingRental = driver ? getActiveRentalForDriver(driver.id) : null;
 
   const availableVehicles = useMemo(
-    () => vehicles.filter(v => (isVehicleBookable(v.id) || awaitingPostReturnInspection(v.id)) && (
-      vehQ === "" ||
-      `${v.year} ${v.make} ${v.model} ${v.plate}`.toLowerCase().includes(vehQ.toLowerCase())
-    )),
-    [vehQ]
+    () => vehicles.filter(v => {
+      const bookable = startDate
+        ? isVehicleBookable(v.id, startDate, endDate || null)
+        : isVehicleBookable(v.id);
+      if (!bookable && !awaitingPostReturnInspection(v.id)) return false;
+      return (
+        vehQ === "" ||
+        `${v.year} ${v.make} ${v.model} ${v.plate}`.toLowerCase().includes(vehQ.toLowerCase())
+      );
+    }),
+    [vehQ, startDate, endDate]
   );
+
+  // If dates change after a vehicle is picked, clear stale selection.
+  const [vehicleClearedNotice, setVehicleClearedNotice] = useState(false);
+  useEffect(() => {
+    if (!vehicleId || !startDate) return;
+    const stillOk = isVehicleBookable(vehicleId, startDate, endDate || null)
+      || awaitingPostReturnInspection(vehicleId);
+    if (!stillOk) {
+      setVehicleId(null);
+      setVehicleClearedNotice(true);
+    }
+  }, [startDate, endDate, vehicleId]);
 
   const filteredDrivers = useMemo(
     () => drivers.filter(d => d.status !== "suspended" && (
@@ -175,13 +195,14 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   }
 
   const canNext =
-    (step === 0 && !!vehicle) ||
-    (step === 1 && !!driver && (!existingRental || isSwap)) ||
-    (step === 2 && !!startDate && rate > 0) ||
+    (step === 0 && !!startDate) ||
+    (step === 1 && !!vehicle) ||
+    (step === 2 && !!driver && (!existingRental || isSwap)) ||
     step === 3;
 
   function next() {
-    if (step === 0 && vehicle) setRate(prev => prev || defaultRate(vehicle, billingPeriod));
+    // When leaving the Vehicle step (1), seed the default rate.
+    if (step === 1 && vehicle) setRate(prev => prev || defaultRate(vehicle, billingPeriod));
     if (step < 3) setStep((step + 1) as Step);
   }
 
@@ -204,6 +225,14 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     }
     if (hasConflict(vehicle.id, startDate, endDate || undefined)) {
       toast.error("Booking conflict", { description: `${vehicle.year} ${vehicle.make} ${vehicle.model} already has a rental overlapping these dates.` });
+      return;
+    }
+    // Cross-session race guard — query the cloud DB before we commit.
+    const dbHit = await checkVehicleOverlapInDb(vehicle.id, startDate, endDate || null);
+    if (dbHit) {
+      toast.error("Booking conflict", {
+        description: `Another session booked ${vehicle.year} ${vehicle.make} ${vehicle.model} for an overlapping window (rental ${dbHit.conflictId}). Pick a different vehicle or dates.`,
+      });
       return;
     }
     if (existingRental && isSwap) {
