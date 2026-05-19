@@ -162,11 +162,35 @@ const toPayment = (p: Payment) => ({
   method: p.method ?? null, status: p.status,
 });
 
-function rentalBlocksVehicle(r: Rental, ignoreRentalId?: string) {
-  if (r.id === ignoreRentalId) return false;
-  if (r.endDate) return false;
+/** Does an existing rental block a vehicle from a new booking?
+ *  When `newStart` is omitted (reconcile / picker before dates are entered),
+ *  any active+unreturned rental is considered blocking — this preserves the
+ *  "vehicle is marked rented" behavior driven by reconcileVehicleAvailability.
+ *  When `newStart` is provided, we do a real date-range overlap check so
+ *  bounded rentals (with an end_date) correctly block overlapping windows.
+ */
+function rentalBlocksVehicle(
+  r: Rental,
+  ignoreRentalId?: string,
+  newStart?: Date | null,
+  newEnd?: Date | null,
+) {
+  if (ignoreRentalId && r.id === ignoreRentalId) return false;
   const status = r.reservationStatus ?? "active";
-  return status === "active" || status === "pending";
+  if (status !== "active" && status !== "pending") return false;
+  if (r.returnedAt) return false;
+
+  // No new window provided → block all active/pending unreturned rentals.
+  if (!newStart) return true;
+
+  const existingStart = r.startDate ? new Date(r.startDate) : null;
+  if (!existingStart) return true; // malformed; treat as blocking
+  const INF = new Date("2999-12-31");
+  const existingEnd = r.endDate ? new Date(r.endDate) : INF;
+  const nEnd = newEnd ?? INF;
+
+  // Inclusive overlap: ranges intersect iff existingStart <= nEnd AND existingEnd >= newStart
+  return existingStart <= nEnd && existingEnd >= newStart;
 }
 
 /** A vehicle is "awaiting post-return inspection" once it has been returned
@@ -179,12 +203,20 @@ export function awaitingPostReturnInspection(vehicleId: string) {
   return !!v && v.status === "inspection";
 }
 
-export function isVehicleBookable(vehicleId: string, ignoreRentalId?: string, allowOverride = false) {
+export function isVehicleBookable(
+  vehicleId: string,
+  newStart?: Date | string | null,
+  newEnd?: Date | string | null,
+  allowOverride = false,
+  ignoreRentalId?: string,
+) {
   const vehicle = vehicles.find(v => v.id === vehicleId);
   if (!vehicle) return false;
   if (vehicle.status === "maintenance" || vehicle.status === "impound") return false;
   if (vehicle.status === "inspection" && !allowOverride) return false;
-  return !rentals.some(r => r.vehicleId === vehicleId && rentalBlocksVehicle(r, ignoreRentalId));
+  const s = newStart == null ? null : (newStart instanceof Date ? newStart : new Date(newStart));
+  const e = newEnd == null ? null : (newEnd instanceof Date ? newEnd : new Date(newEnd));
+  return !rentals.some(r => r.vehicleId === vehicleId && rentalBlocksVehicle(r, ignoreRentalId, s, e));
 }
 
 function reconcileVehicleAvailability(persist = false) {
