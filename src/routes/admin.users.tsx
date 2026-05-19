@@ -24,6 +24,7 @@ export const Route = createFileRoute("/admin/users")({
 type Profile = {
   id: string;
   email: string | null;
+  username: string | null;
   first_name: string | null;
   last_name: string | null;
   full_name: string | null;
@@ -46,7 +47,7 @@ function AdminUsersPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: pData, error: pErr }, { data: rData, error: rErr }] = await Promise.all([
-      supabase.from("profiles").select("id, email, first_name, last_name, full_name, phone, created_at").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id, email, username, first_name, last_name, full_name, phone, created_at").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id, role"),
     ]);
     if (pErr) toast.error(pErr.message);
@@ -114,7 +115,7 @@ function AdminUsersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
+                    <TableHead>Username / Email</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Signed up</TableHead>
                     <TableHead>Current role</TableHead>
@@ -131,7 +132,11 @@ function AdminUsersPage() {
                     return (
                       <TableRow key={p.id}>
                         <TableCell className="font-medium">{displayName}</TableCell>
-                        <TableCell>{p.email ?? "—"}</TableCell>
+                        <TableCell>
+                          {p.email && p.email.endsWith("@camauto.local")
+                            ? (p.username ?? p.email.split("@")[0])
+                            : (p.username ?? p.email ?? "—")}
+                        </TableCell>
                         <TableCell>{p.phone ?? "—"}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
