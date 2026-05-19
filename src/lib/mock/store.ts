@@ -112,6 +112,7 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   selfieImageUrl: r.selfie_image_url ?? undefined,
   clientSignatureUrl: r.client_signature_url ?? undefined,
   clientSignedAt: r.client_signed_at ?? undefined,
+  paymentLinkAutoSentAt: r.payment_link_auto_sent_at ?? undefined,
   extensions: exts.filter(e => e.rental_id === r.id).map(fromExt),
 });
 const toRental = (r: any) => ({
