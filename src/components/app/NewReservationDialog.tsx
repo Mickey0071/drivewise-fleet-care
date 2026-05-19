@@ -527,6 +527,15 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                   <Input id="dep" type="number" min={0} value={deposit} onChange={e => setDeposit(Number(e.target.value))} />
                 </div>
               </div>
+              {billingPeriod === "daily" && (
+                <div className="flex items-center justify-between rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+                  <div className="pr-3">
+                    <Label className="block">Skip 2-day minimum (family &amp; friends)</Label>
+                    <p className="text-xs text-muted-foreground">When ON, only 1 day is collected upfront. Default is 2 days.</p>
+                  </div>
+                  <Switch checked={skipDailyMin} onCheckedChange={setSkipDailyMin} />
+                </div>
+              )}
               <div>
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea id="notes" rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Pickup location, condition notes…" />
