@@ -555,6 +555,7 @@ export type Database = {
           last_name: string | null
           must_reset_password: boolean
           phone: string | null
+          real_email: string | null
           staff_ref: string | null
           updated_at: string
           username: string | null
@@ -569,6 +570,7 @@ export type Database = {
           last_name?: string | null
           must_reset_password?: boolean
           phone?: string | null
+          real_email?: string | null
           staff_ref?: string | null
           updated_at?: string
           username?: string | null
@@ -583,6 +585,7 @@ export type Database = {
           last_name?: string | null
           must_reset_password?: boolean
           phone?: string | null
+          real_email?: string | null
           staff_ref?: string | null
           updated_at?: string
           username?: string | null
