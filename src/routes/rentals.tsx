@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import logoUrl from "@/assets/camauto-logo-full.jpeg";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
 import { NewTaskDialog } from "@/components/app/NewTaskDialog";
+import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
@@ -63,6 +64,8 @@ function RentalsPage() {
   const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
   const [signing, setSigning] = useState<Rental | null>(null);
   const [taskRental, setTaskRental] = useState<Rental | null>(null);
+  const [returnChoiceRental, setReturnChoiceRental] = useState<Rental | null>(null);
+  const [returnDispatchRental, setReturnDispatchRental] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
   const [receipt, setReceipt] = useState<Rental | null>(null);
   const [chatting, setChatting] = useState<Rental | null>(null);
