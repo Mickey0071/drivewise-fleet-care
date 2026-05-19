@@ -185,6 +185,54 @@ export const startTask = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+function taskTypeLabelExport(t: string): string {
+  return taskTypeLabel(t);
+}
+
+export const resendTaskSms = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ task_id: z.string().min(1).max(80) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+
+    const { data: task, error: tErr } = await supabaseAdmin
+      .from("tasks")
+      .select("id, task_type, description, address, due_date, assigned_to_user_id, year, make, model, plate, runner_name")
+      .eq("id", data.task_id)
+      .maybeSingle();
+    if (tErr) throw new Error(tErr.message);
+    if (!task) throw new Error("Task not found");
+
+    const { data: runner } = await supabaseAdmin
+      .from("profiles")
+      .select("phone, first_name, last_name, full_name, username")
+      .eq("id", task.assigned_to_user_id)
+      .maybeSingle();
+    if (!runner?.phone) {
+      return { ok: false, sms_status: "skipped_no_phone" as const };
+    }
+    const runnerName = [runner.first_name, runner.last_name].filter(Boolean).join(" ")
+      || runner.full_name || runner.username || task.runner_name || "Runner";
+
+    const origin = process.env.PUBLIC_APP_ORIGIN ?? "https://camautorentals.lovable.app";
+    const vehicleLabel = task.year ? `${task.year} ${task.make ?? ""} ${task.model ?? ""} ${task.plate ?? ""}`.trim() : "";
+    const lines = [
+      `Camauto Task (resend): ${taskTypeLabelExport(task.task_type)}`,
+      vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
+      task.description ? task.description : null,
+      task.address ? `Address: ${task.address}` : null,
+      task.due_date ? `Due: ${task.due_date}` : null,
+      `Open: ${origin}/my-tasks/${task.id}`,
+    ].filter(Boolean) as string[];
+
+    try {
+      await sendSms(runner.phone, lines.join("\n"), runnerName);
+      return { ok: true, sms_status: "sent" as const };
+    } catch (e) {
+      return { ok: false, sms_status: "failed" as const, error: e instanceof Error ? e.message : "SMS failed" };
+    }
+  });
+
 export const listAssignableRunners = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
