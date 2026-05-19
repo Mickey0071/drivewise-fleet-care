@@ -962,39 +962,80 @@ export type Database = {
       }
       tasks: {
         Row: {
+          address: string | null
+          assigned_to_user_id: string | null
+          completed_at: string | null
+          completed_inspection_id: string | null
           created_at: string
+          description: string | null
+          due_date: string | null
           id: string
+          linked_rental_id: string | null
+          linked_vehicle_id: string | null
           make: string | null
           model: string | null
           plate: string | null
           priority_level: string | null
           runner_name: string | null
+          runner_notes: string | null
+          status: string
+          task_type: string
           updated_at: string
           year: number | null
         }
         Insert: {
+          address?: string | null
+          assigned_to_user_id?: string | null
+          completed_at?: string | null
+          completed_inspection_id?: string | null
           created_at?: string
+          description?: string | null
+          due_date?: string | null
           id?: string
+          linked_rental_id?: string | null
+          linked_vehicle_id?: string | null
           make?: string | null
           model?: string | null
           plate?: string | null
           priority_level?: string | null
           runner_name?: string | null
+          runner_notes?: string | null
+          status?: string
+          task_type?: string
           updated_at?: string
           year?: number | null
         }
         Update: {
+          address?: string | null
+          assigned_to_user_id?: string | null
+          completed_at?: string | null
+          completed_inspection_id?: string | null
           created_at?: string
+          description?: string | null
+          due_date?: string | null
           id?: string
+          linked_rental_id?: string | null
+          linked_vehicle_id?: string | null
           make?: string | null
           model?: string | null
           plate?: string | null
           priority_level?: string | null
           runner_name?: string | null
+          runner_notes?: string | null
+          status?: string
+          task_type?: string
           updated_at?: string
           year?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_linked_vehicle_id_fkey"
+            columns: ["linked_vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
