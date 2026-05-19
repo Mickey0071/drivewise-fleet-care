@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { sendSigningLink } from "@/lib/sign.functions";
+import { sendAgreementToCustomer } from "@/lib/agreement-delivery.functions";
 import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, Search, UserPlus, Repeat, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -54,6 +55,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const { role } = useAuth();
   const isAdmin = role === "admin";
   const sendSignLinkFn = useServerFn(sendSigningLink);
+  const sendAgreementFn = useServerFn(sendAgreementToCustomer);
   const [step, setStep] = useState<Step>(0);
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [driverId, setDriverId] = useState<string | null>(null);
@@ -267,27 +269,48 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
         description: `${driver.fullName} · ${vehicle.year} ${vehicle.make} ${vehicle.model} — vehicle held 24h until signature + payment`,
       });
     }
-    // Auto-text the renter the signing link — wait for the cloud insert to land first
-    if (driver.phone) {
+    // Auto-generate the pre-filled Rental Agreement PDF and deliver to the
+    // renter via SMS + Email. Also send the signing link via SMS so they can
+    // complete the e-signature step.
+    {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       void (async () => {
         try {
-          // Make sure the rental (and driver, if just created) exist in the cloud DB
-          // before the server function tries to look them up.
           const driverReady = (driver as { cloudReady?: Promise<unknown> }).cloudReady;
           if (driverReady) await driverReady;
           await (newRental as { cloudReady?: Promise<unknown> }).cloudReady;
-          await sendSignLinkFn({ data: { rentalId: newRental.id, origin } });
-          toast.success("Signing link texted to renter", { description: driver.phone });
+
+          // 1) Generate PDF and deliver via SMS + Email
+          const res = await sendAgreementFn({ data: { rentalId: newRental.id, origin } });
+          if (res?.ok && res.smsSent && res.emailSent) {
+            toast.success("Rental Agreement sent to customer via email and text");
+          } else if (res?.ok) {
+            const channels = [
+              res.smsSent ? "text" : null,
+              res.emailSent ? "email" : null,
+            ].filter(Boolean).join(" and ");
+            toast.success(`Rental Agreement sent via ${channels}`, {
+              description: res.errors?.length ? res.errors.join(" · ") : undefined,
+            });
+          } else {
+            toast.error("Could not send Rental Agreement", {
+              description: res?.errors?.join(" · ") ?? "Unknown error",
+            });
+          }
+
+          // 2) Also text the signing link (separate short SMS for quick sign)
+          if (driver.phone) {
+            try {
+              await sendSignLinkFn({ data: { rentalId: newRental.id, origin } });
+            } catch {
+              // Non-fatal — the agreement SMS already includes the sign link.
+            }
+          }
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Unknown error";
-          toast.error("Could not text signing link", { description: msg });
+          toast.error("Could not send Rental Agreement", { description: msg });
         }
       })();
-    } else {
-      toast.warning("No phone on file — signing link not sent", {
-        description: "Add a phone number to the renter to enable auto-text.",
-      });
     }
     close(false);
     } catch (e) {
