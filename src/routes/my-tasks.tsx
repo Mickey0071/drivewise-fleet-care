@@ -27,6 +27,8 @@ type TaskRow = {
   year: number | null; make: string | null; model: string | null; plate: string | null;
   completed_at: string | null; completed_inspection_id: string | null; runner_notes: string | null;
   created_at: string;
+  task_mode: string | null;
+  linked_rental_id: string | null;
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -60,7 +62,7 @@ function MyTasksPage() {
     try {
       const query = supabase
         .from("tasks")
-        .select("id, task_type, status, priority_level, description, address, due_date, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at")
+        .select("id, task_type, status, priority_level, description, address, due_date, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at, task_mode, linked_rental_id")
         .eq("assigned_to_user_id", user.id)
         .order("due_date", { ascending: true });
       const timeout = new Promise<never>((_, reject) =>
@@ -177,7 +179,18 @@ function MyTasksPage() {
                   {t.status === "pending" && (
                     <Button size="sm" variant="outline" onClick={() => start(t.id)}>Start Task</Button>
                   )}
-                  <Button size="sm" onClick={() => navigate({ to: "/checklist", search: { task_id: t.id } })}>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      navigate({
+                        to: "/checklist",
+                        search:
+                          t.task_mode === "return"
+                            ? { task_id: t.id, mode: "return", rental_id: t.linked_rental_id ?? undefined }
+                            : { task_id: t.id },
+                      })
+                    }
+                  >
                     Complete with Inspection
                   </Button>
                 </div>
