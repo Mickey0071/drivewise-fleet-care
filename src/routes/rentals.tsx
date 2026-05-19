@@ -70,6 +70,7 @@ function RentalsPage() {
   const [charging, setCharging] = useState<Rental | null>(null);
   const [receipt, setReceipt] = useState<Rental | null>(null);
   const [chatting, setChatting] = useState<Rental | null>(null);
+  const [detail, setDetail] = useState<Rental | null>(null);
   // (Mark as Returned now opens the full Return Inspection dialog directly.)
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
@@ -146,6 +147,33 @@ function RentalsPage() {
   const pending = rentals.filter(r => r.reservationStatus === "pending");
   const active = rentals.filter(r => (r.reservationStatus ?? "active") === "active");
   const completed = rentals.filter(r => r.reservationStatus === "returned" || r.reservationStatus === "completed");
+
+  function renderRow(r: Rental) {
+    const v = vehicleById(r.vehicleId);
+    const d = driverById(r.driverId);
+    const isPending = r.reservationStatus === "pending";
+    return (
+      <button
+        key={r.id}
+        type="button"
+        onClick={() => setDetail(r)}
+        className="grid w-full grid-cols-12 items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-left text-sm transition-colors hover:border-primary hover:bg-accent/40"
+      >
+        <span className="col-span-2 truncate font-mono text-xs text-muted-foreground">{r.id}</span>
+        <span className="col-span-3 truncate font-medium">{d?.fullName ?? r.driverId}</span>
+        <span className="col-span-3 truncate text-muted-foreground">
+          {v ? `${v.year} ${v.make} ${v.model}` : r.vehicleId}
+          {v?.plate ? <span className="ml-1 text-xs">· {v.plate}</span> : null}
+        </span>
+        <span className="col-span-2 flex items-center">
+          {isPending ? <StatusBadge status="pending" /> : <StatusBadge status={r.paymentStatus} />}
+        </span>
+        <span className="col-span-2 truncate text-right text-xs text-muted-foreground">
+          {fmtDate(r.startDate)}{r.endDate ? ` → ${fmtDate(r.endDate)}` : ""}
+        </span>
+      </button>
+    );
+  }
 
   function renderCard(r: Rental) {
     const v = vehicleById(r.vehicleId);
@@ -468,8 +496,8 @@ function RentalsPage() {
             <span>On Rent <span className="ml-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">{active.length}</span></span>
             <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>svg]:rotate-180" />
           </CollapsibleTrigger>
-          <CollapsibleContent className="flex flex-col gap-3 pt-3">
-            {active.length === 0 ? <EmptyState label="No vehicles currently on rent." /> : active.map(renderCard)}
+          <CollapsibleContent className="flex flex-col gap-1.5 pt-2">
+            {active.length === 0 ? <EmptyState label="No vehicles currently on rent." /> : active.map(renderRow)}
           </CollapsibleContent>
         </Collapsible>
 
@@ -478,10 +506,10 @@ function RentalsPage() {
             <span>Pending <span className="ml-1.5 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400">{pending.length}</span></span>
             <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>svg]:rotate-180" />
           </CollapsibleTrigger>
-          <CollapsibleContent className="flex flex-col gap-3 pt-3">
+          <CollapsibleContent className="flex flex-col gap-1.5 pt-2">
             {pending.length === 0 ? (
               <EmptyState label="No pending reservations. New reservations are held here for 24h until signature + payment." />
-            ) : pending.map(renderCard)}
+            ) : pending.map(renderRow)}
           </CollapsibleContent>
         </Collapsible>
 
@@ -490,12 +518,20 @@ function RentalsPage() {
             <span>Returned <span className="ml-1.5 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">{completed.length}</span></span>
             <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>svg]:rotate-180" />
           </CollapsibleTrigger>
-          <CollapsibleContent className="flex flex-col gap-3 pt-3">
-            {completed.length === 0 ? <EmptyState label="No returned rentals yet." /> : completed.map(renderCard)}
+          <CollapsibleContent className="flex flex-col gap-1.5 pt-2">
+            {completed.length === 0 ? <EmptyState label="No returned rentals yet." /> : completed.map(renderRow)}
           </CollapsibleContent>
         </Collapsible>
       </div>
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
+      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Reservation details</DialogTitle>
+          </DialogHeader>
+          {detail && renderCard(detail)}
+        </DialogContent>
+      </Dialog>
       <EditRentalDialog rental={editing} onClose={() => setEditing(null)} />
       <DeliveryDialog rental={delivering} onClose={() => setDelivering(null)} />
       <ReturnDialog rental={returning} onClose={() => setReturning(null)} />
