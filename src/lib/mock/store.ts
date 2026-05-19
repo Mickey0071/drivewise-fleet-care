@@ -926,6 +926,10 @@ export function swapVehicle(rentalId: string, newVehicleId: string) {
   const newV = vehicles.find(v => v.id === newVehicleId);
   if (!newV) throw new Error("New vehicle not found");
   if (newV.status !== "available") throw new Error("Target vehicle is not available");
+  // Guard against double-booking the target vehicle for this rental's window.
+  if (hasConflict(newVehicleId, r.startDate, r.endDate ?? undefined, r.id)) {
+    throw new Error(`Cannot swap: ${newV.year} ${newV.make} ${newV.model} is already booked during this rental's dates.`);
+  }
   const oldV = vehicles.find(v => v.id === r.vehicleId);
   const oldVehicleId = r.vehicleId;
   r.vehicleId = newVehicleId;
@@ -965,6 +969,10 @@ export function extendRental(
 ) {
   const r = rentals.find(r => r.id === id);
   if (!r) return;
+  // Guard against an extension overlapping another rental for the same vehicle.
+  if (hasConflict(r.vehicleId, r.startDate, newEndDate, r.id)) {
+    throw new Error(`Cannot extend: vehicle already has another rental overlapping the new end date.`);
+  }
   const prev = r.endDate;
   const { periods, periodLabel, additionalAmount } = computeExtensionCharge(r, newEndDate);
   r.endDate = newEndDate;
