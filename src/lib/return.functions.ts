@@ -161,15 +161,17 @@ export const closeoutRental = createServerFn({ method: "POST" })
             wasExtended ? "Includes extension." : null,
             "Thanks for renting with us.",
           ].filter(Boolean) as string[];
-          // Intentionally not awaited.
-          void sendSms(driver.phone, lines.join("\n"), driver.full_name ?? null)
-            .then(() => console.log(`[return-receipt] rental=${rental.id} sent ok`))
-            .catch((e) =>
-              console.error(
-                `[return-receipt] rental=${rental.id} FAILED: ${e instanceof Error ? e.message : String(e)}`,
-              ),
+          // Awaited: in the Worker runtime, unawaited promises are cancelled
+          // when the handler returns, which silently dropped the receipt SMS.
+          try {
+            await sendSms(driver.phone, lines.join("\n"), driver.full_name ?? null);
+            console.log(`[return-receipt] rental=${rental.id} sent ok`);
+            smsStatus = "sent";
+          } catch (e) {
+            console.error(
+              `[return-receipt] rental=${rental.id} FAILED: ${e instanceof Error ? e.message : String(e)}`,
             );
-          smsStatus = "sent";
+          }
         }
       } catch (e) {
         console.error(`[return-receipt] rental=${rental.id} lookup failed:`, e);
