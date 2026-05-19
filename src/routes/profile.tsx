@@ -8,6 +8,8 @@ import { LogOut, KeyRound } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { updateOwnContact } from "@/lib/admin-users.functions";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "Profile — Camauto Runner Hub" }] }),
@@ -20,11 +22,16 @@ type Profile = {
   full_name: string | null;
   phone: string | null;
   email: string | null;
+  real_email: string | null;
 };
 
 function ProfilePage() {
   const { user, role, signOut } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [phone, setPhone] = useState("");
+  const [realEmail, setRealEmail] = useState("");
+  const [savingContact, setSavingContact] = useState(false);
+  const saveContact = useServerFn(updateOwnContact);
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [changing, setChanging] = useState(false);
@@ -35,9 +42,14 @@ function ProfilePage() {
     let cancelled = false;
     (async () => {
       const { data } = await supabase.from("profiles")
-        .select("first_name, last_name, full_name, phone, email")
+        .select("first_name, last_name, full_name, phone, email, real_email")
         .eq("id", user.id).maybeSingle();
-      if (!cancelled) setProfile((data as Profile) ?? null);
+      if (!cancelled) {
+        const p = (data as Profile) ?? null;
+        setProfile(p);
+        setPhone(p?.phone ?? "");
+        setRealEmail(p?.real_email ?? "");
+      }
     })();
     return () => { cancelled = true; };
   }, [user]);
@@ -58,15 +70,49 @@ function ProfilePage() {
     toast.success("Password updated");
   }
 
+  async function saveContactInfo(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmedEmail = realEmail.trim();
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error("Invalid email format"); return;
+    }
+    setSavingContact(true);
+    try {
+      await saveContact({ data: { phone: phone.trim() || null, real_email: trimmedEmail || "" } });
+      setProfile((p) => p ? { ...p, phone: phone.trim() || null, real_email: trimmedEmail || null } : p);
+      toast.success("Contact info updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSavingContact(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">Profile</h1>
       <Card>
         <CardContent className="space-y-4 py-6">
           <Row label="Name" value={displayName} />
-          <Row label="Email" value={profile?.email ?? user?.email ?? "—"} />
-          <Row label="Phone" value={profile?.phone ?? "—"} />
+          <Row label="Login" value={profile?.email && profile.email.endsWith("@camauto.local") ? profile.email.split("@")[0] : (profile?.email ?? user?.email ?? "—")} />
           <Row label="Role" value={role ?? "—"} />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle className="text-base">Contact info</CardTitle></CardHeader>
+        <CardContent>
+          <form onSubmit={saveContactInfo} className="space-y-3">
+            <div>
+              <Label htmlFor="p-phone">Phone</Label>
+              <Input id="p-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="p-email">Contact Email</Label>
+              <Input id="p-email" type="email" value={realEmail} onChange={(e) => setRealEmail(e.target.value)} />
+              <p className="mt-1 text-xs text-muted-foreground">Used for password reset and notifications.</p>
+            </div>
+            <Button type="submit" disabled={savingContact}>{savingContact ? "Saving…" : "Save contact info"}</Button>
+          </form>
         </CardContent>
       </Card>
       <Card>

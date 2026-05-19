@@ -9,13 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { adminCreateUser, adminDeleteUser, adminResetUserPassword } from "@/lib/admin-users.functions";
+import { adminCreateUser, adminDeleteUser, adminResetUserPassword, adminUpdateUserContact } from "@/lib/admin-users.functions";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { Eye, EyeOff, RefreshCw, Plus, Copy, Trash2, KeyRound } from "lucide-react";
+import { Eye, EyeOff, RefreshCw, Plus, Copy, Trash2, KeyRound, Pencil, Check, X } from "lucide-react";
 
 export const Route = createFileRoute("/admin/users")({
   head: () => ({ meta: [{ title: "Team & Access — Camauto Rentals" }] }),
@@ -25,6 +25,7 @@ export const Route = createFileRoute("/admin/users")({
 type Profile = {
   id: string;
   email: string | null;
+  real_email: string | null;
   username: string | null;
   first_name: string | null;
   last_name: string | null;
@@ -49,6 +50,7 @@ function AdminUsersPage() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const doDelete = useServerFn(adminDeleteUser);
   const doResetPwd = useServerFn(adminResetUserPassword);
+  const doUpdateContact = useServerFn(adminUpdateUserContact);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<Profile | null>(null);
   const [resetPwd, setResetPwd] = useState("");
@@ -60,7 +62,7 @@ function AdminUsersPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: pData, error: pErr }, { data: rData, error: rErr }] = await Promise.all([
-      supabase.from("profiles").select("id, email, username, first_name, last_name, full_name, phone, created_at").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id, email, real_email, username, first_name, last_name, full_name, phone, created_at").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id, role"),
     ]);
     if (pErr) toast.error(pErr.message);
@@ -200,6 +202,7 @@ function AdminUsersPage() {
                     <TableHead>Name</TableHead>
                     <TableHead>Username / Email</TableHead>
                     <TableHead>Phone</TableHead>
+                    <TableHead>Contact Email</TableHead>
                     <TableHead>Signed up</TableHead>
                     <TableHead>Current role</TableHead>
                     <TableHead>Assign role</TableHead>
@@ -220,7 +223,28 @@ function AdminUsersPage() {
                             ? (p.username ?? p.email.split("@")[0])
                             : (p.username ?? p.email ?? "—")}
                         </TableCell>
-                        <TableCell>{p.phone ?? "—"}</TableCell>
+                        <TableCell>
+                          <InlineContactField
+                            value={p.phone}
+                            placeholder="Add phone"
+                            type="tel"
+                            onSave={async (val) => {
+                              await doUpdateContact({ data: { user_id: p.id, phone: val, real_email: p.real_email ?? "" } });
+                              setProfiles((list) => list.map((x) => x.id === p.id ? { ...x, phone: val } : x));
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <InlineContactField
+                            value={p.real_email}
+                            placeholder="Add email"
+                            type="email"
+                            onSave={async (val) => {
+                              await doUpdateContact({ data: { user_id: p.id, phone: p.phone, real_email: val ?? "" } });
+                              setProfiles((list) => list.map((x) => x.id === p.id ? { ...x, real_email: val } : x));
+                            }}
+                          />
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           {current ? <Badge variant={current === "admin" ? "default" : "secondary"}>{current}</Badge> : <Badge variant="outline">pending</Badge>}
@@ -369,12 +393,83 @@ function generatePassword(len = 14): string {
   return [...required, ...rest].sort(() => Math.random() - 0.5).join("");
 }
 
+function InlineContactField({
+  value,
+  placeholder,
+  type,
+  onSave,
+}: {
+  value: string | null;
+  placeholder: string;
+  type: "tel" | "email";
+  onSave: (val: string | null) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? "");
+  const [busy, setBusy] = useState(false);
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => { setDraft(value ?? ""); setEditing(true); }}
+        className="group inline-flex items-center gap-1 text-sm hover:text-primary"
+      >
+        <span className={value ? "" : "text-muted-foreground"}>{value ?? "—"}</span>
+        <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-60" />
+      </button>
+    );
+  }
+
+  async function save() {
+    const trimmed = draft.trim();
+    if (type === "email" && trimmed.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      toast.error("Invalid email format");
+      return;
+    }
+    setBusy(true);
+    try {
+      await onSave(trimmed.length === 0 ? null : trimmed);
+      toast.success("Saved");
+      setEditing(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        autoFocus
+        type={type}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder={placeholder}
+        className="h-7 w-40 text-sm"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); void save(); }
+          if (e.key === "Escape") { setEditing(false); }
+        }}
+      />
+      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={save} disabled={busy} aria-label="Save">
+        <Check className="h-3 w-3" />
+      </Button>
+      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(false)} disabled={busy} aria-label="Cancel">
+        <X className="h-3 w-3" />
+      </Button>
+    </div>
+  );
+}
+
 function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> }) {
   const createUser = useServerFn(adminCreateUser);
   const [open, setOpen] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [realEmail, setRealEmail] = useState("");
   const [username, setUsername] = useState("");
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
@@ -385,7 +480,7 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
   const [busy, setBusy] = useState(false);
 
   function reset() {
-    setFirstName(""); setLastName(""); setPhone(""); setUsername("");
+    setFirstName(""); setLastName(""); setPhone(""); setRealEmail(""); setUsername("");
     setUsernameError(null); setCheckingUsername(false);
     setPassword(generatePassword()); setShowPwd(false);
     setRole("driver"); setMustReset(true);
@@ -437,6 +532,7 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         phone: phone.trim() || null,
+        real_email: realEmail.trim() || null,
         role,
         must_reset_password: mustReset,
       }});
@@ -485,6 +581,13 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
             <div>
               <Label htmlFor="ph">Phone (optional)</Label>
               <Input id="ph" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="re">Real Email (optional)</Label>
+              <Input id="re" type="email" value={realEmail} onChange={(e) => setRealEmail(e.target.value)} />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Used for password reset and notifications. Different from the username login.
+              </p>
             </div>
             <div>
               <Label htmlFor="un">Username</Label>

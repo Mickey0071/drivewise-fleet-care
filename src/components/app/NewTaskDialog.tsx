@@ -110,7 +110,8 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
 
   function runnerLabel(r: Runner) {
     const name = [r.first_name, r.last_name].filter(Boolean).join(" ") || r.username || "Runner";
-    return r.username ? `${name} (${r.username})` : name;
+    const base = r.username ? `${name} (${r.username})` : name;
+    return `${r.phone ? "📱" : "🚫📱"} ${base}`;
   }
 
   async function submit() {
@@ -245,10 +246,17 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={notifySms} onCheckedChange={(v) => setNotifySms(v === true)} />
-            Notify via SMS
-          </label>
+          <div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={notifySms} onCheckedChange={(v) => setNotifySms(v === true)} />
+              Notify via SMS
+            </label>
+            {notifySms && selectedRunner && !selectedRunner.phone && (
+              <p className="mt-1 text-xs text-amber-600">
+                ⚠️ This runner has no phone on file — SMS will be skipped. They'll only see the task on their My Tasks page when they log in.
+              </p>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>

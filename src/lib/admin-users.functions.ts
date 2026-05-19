@@ -9,6 +9,7 @@ const createUserSchema = z.object({
   first_name: z.string().trim().min(1).max(80),
   last_name: z.string().trim().min(1).max(80),
   phone: z.string().trim().max(40).optional().nullable(),
+  real_email: z.string().trim().email().max(255).optional().nullable().or(z.literal("")),
   role: z.enum(["admin", "runner", "driver"]),
   must_reset_password: z.boolean(),
 });
@@ -64,6 +65,7 @@ export const adminCreateUser = createServerFn({ method: "POST" })
         email: fakeEmail,
         username: data.username,
         must_reset_password: data.must_reset_password,
+        real_email: data.real_email && data.real_email.length > 0 ? data.real_email : null,
       })
       .eq("id", userId);
     if (profErr) throw new Error(profErr.message);
@@ -150,4 +152,53 @@ export const adminResetUserPassword = createServerFn({ method: "POST" })
         : prof?.email ?? "user");
 
     return { success: true, username };
+  });
+
+const contactSchema = z.object({
+  user_id: z.string().uuid(),
+  phone: z.string().trim().max(40).nullable(),
+  real_email: z.string().trim().email().max(255).nullable().or(z.literal("")),
+});
+
+export const adminUpdateUserContact = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => contactSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: roles, error: roleErr } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    if (roleErr) throw new Error(roleErr.message);
+    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+    if (!isAdmin) throw new Error("Admins only");
+
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        phone: data.phone && data.phone.length > 0 ? data.phone : null,
+        real_email: data.real_email && data.real_email.length > 0 ? data.real_email : null,
+      })
+      .eq("id", data.user_id);
+    if (error) throw new Error(error.message);
+    return { success: true };
+  });
+
+export const updateOwnContact = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      phone: z.string().trim().max(40).nullable(),
+      real_email: z.string().trim().email().max(255).nullable().or(z.literal("")),
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        phone: data.phone && data.phone.length > 0 ? data.phone : null,
+        real_email: data.real_email && data.real_email.length > 0 ? data.real_email : null,
+      })
+      .eq("id", context.userId);
+    if (error) throw new Error(error.message);
+    return { success: true };
   });
