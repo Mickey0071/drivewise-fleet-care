@@ -12,7 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { NewTaskDialog, TASK_TYPE_OPTIONS } from "@/components/app/NewTaskDialog";
 import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
-import { Plus } from "lucide-react";
+import { Plus, Send } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { resendTaskSms } from "@/lib/tasks.functions";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/runners/tasks")({
   head: () => ({ meta: [{ title: "Runner Tasks — Camauto Rentals" }] }),
@@ -45,6 +48,22 @@ function RunnerTasksPage() {
   const [newOpen, setNewOpen] = useState(false);
   const [detail, setDetail] = useState<TaskRow | null>(null);
   const [inspId, setInspId] = useState<string | null>(null);
+  const [resending, setResending] = useState<string | null>(null);
+  const resendFn = useServerFn(resendTaskSms);
+
+  async function handleResend(taskId: string) {
+    setResending(taskId);
+    try {
+      const res = await resendFn({ data: { task_id: taskId } });
+      if (res.sms_status === "sent") toast.success("SMS resent");
+      else if (res.sms_status === "skipped_no_phone") toast.error("Runner has no phone on file");
+      else toast.error(`SMS failed: ${res.error ?? "unknown"}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Resend failed");
+    } finally {
+      setResending(null);
+    }
+  }
 
   const [fStatus, setFStatus] = useState("all");
   const [fType, setFType] = useState("all");
@@ -145,7 +164,14 @@ function RunnerTasksPage() {
                       <TableCell>
                         <Badge variant={t.status === "completed" ? "default" : t.status === "in_progress" ? "secondary" : "outline"}>{t.status}</Badge>
                       </TableCell>
-                      <TableCell><Button size="sm" variant="outline" onClick={() => setDetail(t)}>View</Button></TableCell>
+                      <TableCell className="space-x-2 whitespace-nowrap">
+                        <Button size="sm" variant="outline" onClick={() => setDetail(t)}>View</Button>
+                        {t.status !== "completed" && t.status !== "cancelled" && (
+                          <Button size="sm" variant="secondary" disabled={resending === t.id} onClick={() => handleResend(t.id)}>
+                            <Send className="mr-1 h-3 w-3" />{resending === t.id ? "Sending…" : "Resend SMS"}
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
