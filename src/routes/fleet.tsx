@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { vehicles, fmtMoney } from "@/lib/mock/data";
+import { maintenance as maintenanceList } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -57,7 +58,9 @@ function FleetPage() {
         </div>
       )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map(v => (
+        {filtered.map(v => {
+          const openIssueCount = maintenanceList.filter(m => m.vehicleId === v.id && !m.dateCompleted).length;
+          return (
           <Card
             key={v.id}
             role="button"
@@ -97,9 +100,12 @@ function FleetPage() {
                           <AlertTriangle className="mr-1 h-3 w-3" /> Needs inspection
                         </Badge>
                       )}
-                      {v.hasOpenIssues && (
-                        <Badge variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300">
-                          <AlertTriangle className="mr-1 h-3 w-3" /> Open issue
+                      {(openIssueCount > 0 || v.hasOpenIssues) && (
+                        <Badge variant="destructive">
+                          <AlertTriangle className="mr-1 h-3 w-3" />
+                          {openIssueCount > 0
+                            ? `${openIssueCount} issue${openIssueCount === 1 ? "" : "s"}`
+                            : "Open issue"}
                         </Badge>
                       )}
                     </div>
@@ -158,7 +164,8 @@ function FleetPage() {
               </Button>
             </div>
           </Card>
-        ))}
+          );
+        })}
       </div>
       <AddVehicleDialog open={open} onClose={() => setOpen(false)} />
       <NewReservationDialog
