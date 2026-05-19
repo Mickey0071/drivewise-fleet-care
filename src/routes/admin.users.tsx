@@ -215,6 +215,22 @@ function AdminUsersPage() {
           )}
         </CardContent>
       </Card>
+      <Dialog open={deleteOpen} onOpenChange={(v) => { setDeleteOpen(v); if (!v) setDeleteTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete user?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Delete {deleteTarget?.username ?? deleteTarget?.email ?? "this user"}? This permanently removes their account and all roles. This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleteBusy}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleteBusy}>
+              {deleteBusy ? "Deleting…" : "Confirm Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
