@@ -619,6 +619,10 @@ export function hasConflict(vehicleId: string, startDate: string, endDate?: stri
 }
 
 export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymentStatus?: Rental["paymentStatus"] }) {
+  const cadence: "daily" | "weekly" =
+    input.billingCadence ?? (input.billingPeriod === "daily" ? "daily" : "weekly");
+  const rateAmount = input.rateAmount ?? input.rate ?? input.weeklyRate ?? 0;
+  const currentPeriodEnd = input.currentPeriodEnd ?? calcCurrentPeriodEnd(input.startDate, cadence);
   const rental: Rental = {
     id: nextRentalId(),
     paymentStatus: "current",
@@ -626,6 +630,10 @@ export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymen
     pendingCreatedAt: new Date().toISOString(),
     paymentReceived: false,
     ...input,
+    billingCadence: cadence,
+    rateAmount,
+    autoRenew: input.autoRenew ?? true,
+    currentPeriodEnd,
   };
   rentals.push(rental);
   const cloudReady = cloudWrite("rental:insert", supabase.from("rentals").insert(toRental(rental))).catch((error) => {
@@ -635,6 +643,37 @@ export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymen
   });
   emit();
   return Object.assign(rental, { cloudReady });
+}
+
+/** Advance startDate by cadence increments until on/after today. */
+export function calcCurrentPeriodEnd(startDate: string, cadence: "daily" | "weekly"): string {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(startDate + "T00:00:00");
+  const step = cadence === "daily" ? 1 : 7;
+  if (d.getTime() >= today.getTime()) return d.toISOString().slice(0, 10);
+  const diffDays = Math.ceil((today.getTime() - d.getTime()) / 86_400_000);
+  const periods = Math.ceil(diffDays / step);
+  d.setDate(d.getDate() + periods * step);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Find an unpaid Payment matching the rental's current_period_end,
+ *  or synthesize and persist one so the existing RecordPaymentDialog can use it. */
+export function getOrCreateDuePaymentForRental(rentalId: string): Payment | null {
+  const r = rentals.find(x => x.id === rentalId);
+  if (!r) return null;
+  const due = r.currentPeriodEnd ?? calcCurrentPeriodEnd(r.startDate, (r.billingCadence ?? "weekly"));
+  const amount = r.rateAmount ?? r.rate ?? r.weeklyRate ?? 0;
+  const existing = payments.find(p => p.rentalId === r.id && p.status !== "paid" && p.dueDate === due);
+  if (existing) return existing;
+  const p: Payment = {
+    id: nextPaymentId(), rentalId: r.id, driverId: r.driverId,
+    amount, dueDate: due, status: "late",
+  };
+  payments.push(p);
+  cloudWrite("payment:insert", supabase.from("payments").insert(toPayment(p)));
+  emit();
+  return p;
 }
 
 export async function ensureRentalSynced(id: string) {
