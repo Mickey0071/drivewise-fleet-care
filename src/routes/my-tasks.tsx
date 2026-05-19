@@ -124,7 +124,7 @@ function MyTasksPage() {
                   {t.status === "pending" && (
                     <Button size="sm" variant="outline" onClick={() => start(t.id)}>Start Task</Button>
                   )}
-                  <Button size="sm" onClick={() => navigate({ to: "/checklist", search: { task_id: t.id } as never })}>
+                  <Button size="sm" onClick={() => navigate({ to: "/checklist", search: { task_id: t.id } })}>
                     Complete with Inspection
                   </Button>
                 </div>

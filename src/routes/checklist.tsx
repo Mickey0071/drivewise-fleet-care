@@ -48,6 +48,13 @@ function vehicleLabel(v: VehicleRow) {
   return `${v.year} ${v.make} ${v.model} — ${v.plate} [${v.status}]`;
 }
 
+// Flat key->label lookup for building the runner_notes summary
+const ITEM_LABELS: Record<string, string> = (() => {
+  const m: Record<string, string> = {};
+  for (const s of CHECKLIST_SECTIONS) for (const it of s.items) m[it.key] = it.label;
+  return m;
+})();
+
 function ChecklistPage() {
   const navigate = useNavigate();
   const { task_id } = Route.useSearch();
@@ -77,6 +84,8 @@ function ChecklistPage() {
     fuel: FuelKey;
     ready: ReadyState;
     ticketCreated: boolean;
+    taskCompleted: boolean;
+    maintenanceSynced: boolean;
   }>(null);
 
   // Load inspector name: prefer authenticated profile (first + last name), fall back to localStorage.
@@ -257,6 +266,37 @@ function ChecklistPage() {
       persistInspector();
 
       const ticketCreated = counts.fail > 0 || hasDamage || ready === "needs_mechanic";
+
+      // If completing a dispatched task, mark it done + push summary to maintenance.
+      let taskCompleted = false;
+      let maintenanceSynced = false;
+      if (task_id) {
+        const failedLabels = Object.entries(items)
+          .filter(([, v]) => v === "fail")
+          .map(([k]) => ITEM_LABELS[k] ?? k);
+        const summary =
+          `Inspection submitted at ${new Date().toISOString()}. ` +
+          `Job type: ${JOB_TYPE_LABELS[jobType as JobType]}. ` +
+          `Results: ${counts.pass} Pass, ${counts.fail} Fail, ${counts.na} N/A. ` +
+          `Ready to rent: ${ready === "ready" ? "yes" : "no"}. ` +
+          `Fuel: ${FUEL_LEVEL_LABELS[fuel as FuelKey]}. ` +
+          `Notes: ${notes.trim() || "(none)"}. ` +
+          `Failed items: ${failedLabels.length ? failedLabels.join(", ") : "(none)"}. ` +
+          `Photos: ${damageFiles.length}.`;
+        try {
+          const res = await completeTask({ data: {
+            task_id,
+            inspection_id: inspectionId,
+            runner_notes: summary,
+          }});
+          taskCompleted = true;
+          maintenanceSynced = !!res.maintenance_id;
+          if (res.maintenance_id) setMaintenanceLinked(res.maintenance_id);
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Failed to mark task complete");
+        }
+      }
+
       setDone({
         vehicle,
         inspector,
@@ -265,6 +305,8 @@ function ChecklistPage() {
         fuel: fuel as FuelKey,
         ready,
         ticketCreated,
+        taskCompleted,
+        maintenanceSynced,
       });
       toast.success("Checklist submitted");
     } catch (e) {
@@ -304,6 +346,16 @@ function ChecklistPage() {
             </div>
           </div>
         )}
+        {done.taskCompleted && (
+          <div className="rounded-md border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-sm">
+            <div className="flex items-center gap-2 font-medium text-emerald-700 dark:text-emerald-300">
+              <CheckCircle2 className="h-4 w-4" />
+              {done.maintenanceSynced
+                ? "✅ Task marked complete. Notes synced to maintenance ticket."
+                : "✅ Task marked complete."}
+            </div>
+          </div>
+        )}
         <div className="grid gap-2 sm:grid-cols-2">
           <Button variant="outline" className="h-12" onClick={() => reset(true)}>
             New Inspection
@@ -319,6 +371,18 @@ function ChecklistPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-4 pb-32">
       <PageHeader title="New Inspection" subtitle="Submit a full condition check after a runner job" />
+
+      {taskBanner && (
+        <div className="rounded-md border border-blue-500/40 bg-blue-500/5 px-4 py-3 text-sm">
+          <div className="flex items-start gap-2">
+            <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+            <div>
+              <div className="font-medium text-blue-700 dark:text-blue-300">Completing task</div>
+              <div className="text-blue-800/90 dark:text-blue-200/90">{taskBanner}</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SECTION 1 — Job Info */}
       <Card>
@@ -338,17 +402,28 @@ function ChecklistPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="vehicle">Vehicle *</Label>
-              <select
-                id="vehicle"
-                value={vehicleId}
-                onChange={(e) => setVehicleId(e.target.value)}
-                className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                <option value="">Select a vehicle…</option>
-                {vehicles.map(v => (
-                  <option key={v.id} value={v.id}>{vehicleLabel(v)}</option>
-                ))}
-              </select>
+              {taskLockedVehicle ? (
+                <div className="flex h-11 items-center rounded-md border border-input bg-muted/40 px-3 text-sm">
+                  {(() => {
+                    const v = vehicles.find(x => x.id === taskLockedVehicle);
+                    return v
+                      ? `${v.year} ${v.make} ${v.model} — ${v.plate}`
+                      : `Vehicle: ${taskLockedVehicle}`;
+                  })()}
+                </div>
+              ) : (
+                <select
+                  id="vehicle"
+                  value={vehicleId}
+                  onChange={(e) => setVehicleId(e.target.value)}
+                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">Select a vehicle…</option>
+                  {vehicles.map(v => (
+                    <option key={v.id} value={v.id}>{vehicleLabel(v)}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
           <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">

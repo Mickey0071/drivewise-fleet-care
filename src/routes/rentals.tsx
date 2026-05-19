@@ -21,6 +21,7 @@ import { SignaturePad } from "@/components/app/SignaturePad";
 import logoUrl from "@/assets/camauto-logo-full.jpeg";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
+import { NewTaskDialog } from "@/components/app/NewTaskDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
@@ -49,7 +50,7 @@ const AGREEMENT_VERSION = "v1.0";
 function RentalsPage() {
   const navigate = Route.useNavigate();
   const { paid } = Route.useSearch();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [newOpen, setNewOpen] = useState(false);
   const [editing, setEditing] = useState<Rental | null>(null);
   const [delivering, setDelivering] = useState<Rental | null>(null);
@@ -58,6 +59,7 @@ function RentalsPage() {
   const [swapping, setSwapping] = useState<Rental | null>(null);
   const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
   const [signing, setSigning] = useState<Rental | null>(null);
+  const [taskRental, setTaskRental] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
   const [receipt, setReceipt] = useState<Rental | null>(null);
   const [chatting, setChatting] = useState<Rental | null>(null);
@@ -362,6 +364,11 @@ function RentalsPage() {
                   <Button variant="ghost" size="sm" onClick={() => setReceipt(r)}>
                     <Receipt className="mr-1 h-4 w-4" /> Receipt
                   </Button>
+                  {role === "admin" && (
+                    <Button variant="ghost" size="sm" onClick={() => setTaskRental(r)}>
+                      <Send className="mr-1 h-4 w-4" /> Send Task
+                    </Button>
+                  )}
                 </>
               )}
             </div>
@@ -446,6 +453,21 @@ function RentalsPage() {
         onOpenChange={(o) => !o && setChatting(null)}
         renterName={chatting ? (driverById(chatting.driverId)?.fullName ?? "") : ""}
         phone={chatting ? (driverById(chatting.driverId)?.phone ?? "") : ""}
+      />
+      <NewTaskDialog
+        open={!!taskRental}
+        onOpenChange={(o) => { if (!o) setTaskRental(null); }}
+        prefill={taskRental ? (() => {
+          const v = vehicleById(taskRental.vehicleId);
+          const d = driverById(taskRental.driverId);
+          const vLabel = v ? `${v.year} ${v.make} ${v.model}` : taskRental.vehicleId;
+          return {
+            linked_vehicle_id: taskRental.vehicleId,
+            linked_rental_id: taskRental.id,
+            address: d?.streetAddress ?? d?.address ?? "",
+            description: `Pickup ${vLabel} from ${d?.fullName ?? "renter"}`,
+          };
+        })() : undefined}
       />
     </div>
   );

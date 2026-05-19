@@ -10,10 +10,12 @@ import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, useStoreVers
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
+import { NewTaskDialog } from "@/components/app/NewTaskDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useRef, useState } from "react";
-import { ArrowLeft, Link2, Camera, Pencil } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
 import { toast } from "sonner";
@@ -32,9 +34,11 @@ function VehicleDetail() {
   const { vehicleId } = Route.useParams();
   const { tab } = Route.useSearch();
   const v = vehicleById(vehicleId);
+  const { role } = useAuth();
   const [reserveOpen, setReserveOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [taskOpen, setTaskOpen] = useState(false);
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -144,6 +148,11 @@ function VehicleDetail() {
             <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="mr-1 h-4 w-4" />Edit
             </Button>
+            {role === "admin" && (
+              <Button size="sm" variant="outline" onClick={() => setTaskOpen(true)}>
+                <Send className="mr-1 h-4 w-4" />Send Task to Runner
+              </Button>
+            )}
             <Button
               size="sm"
               disabled={!bookable}
@@ -333,6 +342,11 @@ function VehicleDetail() {
         inspectionId={inspectionDetailId}
         open={!!inspectionDetailId}
         onOpenChange={(o) => { if (!o) setInspectionDetailId(null); }}
+      />
+      <NewTaskDialog
+        open={taskOpen}
+        onOpenChange={setTaskOpen}
+        prefill={{ linked_vehicle_id: v.id }}
       />
       <div className="mt-6 flex justify-start">
         <Button variant="outline" asChild>
