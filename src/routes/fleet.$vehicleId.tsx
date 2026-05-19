@@ -356,6 +356,11 @@ function VehicleDetail() {
         onOpenChange={setTaskOpen}
         prefill={{ linked_vehicle_id: v.id }}
       />
+      <ResolveMaintenanceDialog
+        open={!!resolveRecord}
+        onOpenChange={(o) => { if (!o) setResolveRecord(null); }}
+        record={resolveRecord}
+      />
       <div className="mt-6 flex justify-start">
         <Button variant="outline" asChild>
           <Link to="/fleet"><ArrowLeft className="mr-1 h-4 w-4" />Back to Fleet</Link>
