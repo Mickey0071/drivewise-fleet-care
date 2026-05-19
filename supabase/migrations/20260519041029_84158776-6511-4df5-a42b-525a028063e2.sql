@@ -1,0 +1,2 @@
+ALTER TABLE public.rentals ADD COLUMN IF NOT EXISTS skip_daily_minimum BOOLEAN NOT NULL DEFAULT false;
+COMMENT ON COLUMN public.rentals.skip_daily_minimum IS 'When true, daily rentals only collect 1 day upfront instead of the standard 2-day minimum. Override for trusted family/friends only.';

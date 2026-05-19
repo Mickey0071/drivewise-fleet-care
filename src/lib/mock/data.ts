@@ -53,6 +53,7 @@ export interface Rental {
   rateAmount?: number;
   autoRenew?: boolean;
   currentPeriodEnd?: string;
+  skipDailyMinimum?: boolean;
   signatureDataUrl?: string;
   signedAt?: string;
   signedBy?: string;

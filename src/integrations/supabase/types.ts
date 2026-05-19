@@ -763,6 +763,7 @@ export type Database = {
           signature_data_url: string | null
           signed_at: string | null
           signed_by: string | null
+          skip_daily_minimum: boolean
           start_date: string
           updated_at: string
           vehicle_id: string
@@ -801,6 +802,7 @@ export type Database = {
           signature_data_url?: string | null
           signed_at?: string | null
           signed_by?: string | null
+          skip_daily_minimum?: boolean
           start_date: string
           updated_at?: string
           vehicle_id: string
@@ -839,6 +841,7 @@ export type Database = {
           signature_data_url?: string | null
           signed_at?: string | null
           signed_by?: string | null
+          skip_daily_minimum?: boolean
           start_date?: string
           updated_at?: string
           vehicle_id?: string

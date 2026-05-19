@@ -102,6 +102,7 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   rateAmount: r.rate_amount != null ? Number(r.rate_amount) : undefined,
   autoRenew: r.auto_renew ?? undefined,
   currentPeriodEnd: r.current_period_end ?? undefined,
+  skipDailyMinimum: r.skip_daily_minimum ?? false,
   signatureDataUrl: r.signature_data_url ?? undefined,
   signedAt: r.signed_at ?? undefined, signedBy: r.signed_by ?? undefined,
   agreementVersion: r.agreement_version ?? undefined,
@@ -125,6 +126,7 @@ const toRental = (r: any) => ({
   rate_amount: r.rateAmount ?? null,
   auto_renew: r.autoRenew ?? true,
   current_period_end: r.currentPeriodEnd ?? null,
+  skip_daily_minimum: r.skipDailyMinimum ?? false,
   signature_data_url: r.signatureDataUrl ?? null,
   signed_at: r.signedAt ?? null, signed_by: r.signedBy ?? null,
   agreement_version: r.agreementVersion ?? null,
@@ -634,6 +636,7 @@ export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymen
     billingCadence: cadence,
     rateAmount,
     autoRenew: input.autoRenew ?? true,
+    skipDailyMinimum: input.skipDailyMinimum ?? false,
     currentPeriodEnd,
   };
   rentals.push(rental);
