@@ -9,13 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { adminCreateUser, adminDeleteUser, adminResetUserPassword } from "@/lib/admin-users.functions";
+import { adminCreateUser, adminDeleteUser, adminResetUserPassword, adminUpdateUserContact } from "@/lib/admin-users.functions";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { Eye, EyeOff, RefreshCw, Plus, Copy, Trash2, KeyRound } from "lucide-react";
+import { Eye, EyeOff, RefreshCw, Plus, Copy, Trash2, KeyRound, Pencil, Check, X } from "lucide-react";
 
 export const Route = createFileRoute("/admin/users")({
   head: () => ({ meta: [{ title: "Team & Access — Camauto Rentals" }] }),
@@ -25,6 +25,7 @@ export const Route = createFileRoute("/admin/users")({
 type Profile = {
   id: string;
   email: string | null;
+  real_email: string | null;
   username: string | null;
   first_name: string | null;
   last_name: string | null;
@@ -49,6 +50,7 @@ function AdminUsersPage() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const doDelete = useServerFn(adminDeleteUser);
   const doResetPwd = useServerFn(adminResetUserPassword);
+  const doUpdateContact = useServerFn(adminUpdateUserContact);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetTarget, setResetTarget] = useState<Profile | null>(null);
   const [resetPwd, setResetPwd] = useState("");
@@ -60,7 +62,7 @@ function AdminUsersPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data: pData, error: pErr }, { data: rData, error: rErr }] = await Promise.all([
-      supabase.from("profiles").select("id, email, username, first_name, last_name, full_name, phone, created_at").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id, email, real_email, username, first_name, last_name, full_name, phone, created_at").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("user_id, role"),
     ]);
     if (pErr) toast.error(pErr.message);
