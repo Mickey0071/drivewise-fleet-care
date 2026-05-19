@@ -104,10 +104,10 @@ export const adminCreateTask = createServerFn({ method: "POST" })
       .single();
     if (insErr || !created) throw new Error(insErr?.message ?? "Failed to create task");
 
-    // Build & send SMS
-    let smsStatus: "sent" | "skipped_no_phone" | "failed" = "skipped_no_phone";
-    let smsError: string | null = null;
+    // Fire-and-forget SMS so a slow/failed GHL call never blocks task creation.
+    let smsStatus: "queued" | "skipped_no_phone" = "skipped_no_phone";
     if (data.notify_sms && runner?.phone) {
+      smsStatus = "queued";
       const origin = process.env.PUBLIC_APP_ORIGIN ?? "https://camautorentals.lovable.app";
       const lines = [
         `Camauto Task: ${taskTypeLabel(data.task_type)}`,
@@ -117,16 +117,14 @@ export const adminCreateTask = createServerFn({ method: "POST" })
         data.due_date ? `Due: ${data.due_date}` : null,
         `Open: ${origin}/my-tasks/${id}`,
       ].filter(Boolean) as string[];
-      try {
-        await sendSms(runner.phone, lines.join("\n"), runnerName);
-        smsStatus = "sent";
-      } catch (e) {
-        smsStatus = "failed";
-        smsError = e instanceof Error ? e.message : "SMS failed";
-      }
+      const body = lines.join("\n");
+      // Intentionally not awaited — best-effort background send.
+      void sendSms(runner.phone, body, runnerName)
+        .then(() => console.log(`[task sms] sent task=${created.id}`))
+        .catch((e) => console.error(`[task sms] failed task=${created.id}:`, e instanceof Error ? e.message : e));
     }
 
-    return { task_id: created.id, runner_name: runnerName, sms_status: smsStatus, sms_error: smsError };
+    return { task_id: created.id, runner_name: runnerName, sms_status: smsStatus, sms_error: null };
   });
 
 export const completeTaskFromInspection = createServerFn({ method: "POST" })

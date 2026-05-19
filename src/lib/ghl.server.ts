@@ -7,8 +7,25 @@ function getEnv(key: string): string {
   return v;
 }
 
+const GHL_TIMEOUT_MS = 12000;
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = GHL_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error(`GHL request timed out after ${timeoutMs}ms: ${url}`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function ghlFetch(path: string, body: unknown) {
-  const res = await fetch(`${GHL_BASE}${path}`, {
+  const res = await fetchWithTimeout(`${GHL_BASE}${path}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${getEnv("ghlPitToken")}`,
@@ -26,7 +43,7 @@ async function ghlFetch(path: string, body: unknown) {
 }
 
 async function ghlGet(path: string) {
-  const res = await fetch(`${GHL_BASE}${path}`, {
+  const res = await fetchWithTimeout(`${GHL_BASE}${path}`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${getEnv("ghlPitToken")}`,
