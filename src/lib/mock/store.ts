@@ -162,11 +162,34 @@ const toPayment = (p: Payment) => ({
   method: p.method ?? null, status: p.status,
 });
 
-function rentalBlocksVehicle(r: Rental, ignoreRentalId?: string) {
-  if (r.id === ignoreRentalId) return false;
-  if (r.endDate) return false;
+/** Does an existing rental block a vehicle from a new booking?
+ *  When `newStart` is omitted (reconcile / picker before dates are entered),
+ *  any active+unreturned rental is considered blocking — this preserves the
+ *  "vehicle is marked rented" behavior driven by reconcileVehicleAvailability.
+ *  When `newStart` is provided, we do a real date-range overlap check so
+ *  bounded rentals (with an end_date) correctly block overlapping windows.
+ */
+function rentalBlocksVehicle(
+  r: Rental,
+  ignoreRentalId?: string,
+  newStart?: Date | null,
+  newEnd?: Date | null,
+) {
+  if (ignoreRentalId && r.id === ignoreRentalId) return false;
   const status = r.reservationStatus ?? "active";
-  return status === "active" || status === "pending";
+  if (status !== "active" && status !== "pending") return false;
+
+  // No new window provided → block all active/pending unreturned rentals.
+  if (!newStart) return true;
+
+  const existingStart = r.startDate ? new Date(r.startDate) : null;
+  if (!existingStart) return true; // malformed; treat as blocking
+  const INF = new Date("2999-12-31");
+  const existingEnd = r.endDate ? new Date(r.endDate) : INF;
+  const nEnd = newEnd ?? INF;
+
+  // Inclusive overlap: ranges intersect iff existingStart <= nEnd AND existingEnd >= newStart
+  return existingStart <= nEnd && existingEnd >= newStart;
 }
 
 /** A vehicle is "awaiting post-return inspection" once it has been returned
@@ -179,12 +202,20 @@ export function awaitingPostReturnInspection(vehicleId: string) {
   return !!v && v.status === "inspection";
 }
 
-export function isVehicleBookable(vehicleId: string, ignoreRentalId?: string, allowOverride = false) {
+export function isVehicleBookable(
+  vehicleId: string,
+  newStart?: Date | string | null,
+  newEnd?: Date | string | null,
+  allowOverride = false,
+  ignoreRentalId?: string,
+) {
   const vehicle = vehicles.find(v => v.id === vehicleId);
   if (!vehicle) return false;
   if (vehicle.status === "maintenance" || vehicle.status === "impound") return false;
   if (vehicle.status === "inspection" && !allowOverride) return false;
-  return !rentals.some(r => r.vehicleId === vehicleId && rentalBlocksVehicle(r, ignoreRentalId));
+  const s = newStart == null ? null : (newStart instanceof Date ? newStart : new Date(newStart));
+  const e = newEnd == null ? null : (newEnd instanceof Date ? newEnd : new Date(newEnd));
+  return !rentals.some(r => r.vehicleId === vehicleId && rentalBlocksVehicle(r, ignoreRentalId, s, e));
 }
 
 function reconcileVehicleAvailability(persist = false) {
@@ -610,20 +641,56 @@ function nextPaymentId() {
   return `P-${n + 1}`;
 }
 
-/** True if vehicle has any open (no endDate) or date-overlapping rental */
+/** True if vehicle has any active/pending rental overlapping [start, end?]. */
 export function hasConflict(vehicleId: string, startDate: string, endDate?: string, ignoreRentalId?: string) {
-  const start = new Date(startDate).getTime();
-  const end = endDate ? new Date(endDate).getTime() : Infinity;
-  return rentals.some(r => {
-    if (r.vehicleId !== vehicleId) return false;
-    if (!rentalBlocksVehicle(r, ignoreRentalId)) return false;
-    const rs = new Date(r.startDate).getTime();
-    const re = r.endDate ? new Date(r.endDate).getTime() : Infinity;
-    return rs <= end && re >= start;
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : null;
+  return rentals.some(r =>
+    r.vehicleId === vehicleId && rentalBlocksVehicle(r, ignoreRentalId, start, end),
+  );
+}
+
+/** Live overlap check against the cloud DB. Use before write operations to
+ *  catch cross-session double-bookings that the in-memory store hasn't seen yet. */
+export async function checkVehicleOverlapInDb(
+  vehicleId: string,
+  startDate: string,
+  endDate?: string | null,
+  ignoreRentalId?: string,
+): Promise<{ conflictId: string; startDate: string; endDate: string | null } | null> {
+  let q = supabase
+    .from("rentals")
+    .select("id, start_date, end_date, reservation_status, returned_at")
+    .eq("vehicle_id", vehicleId)
+    .is("returned_at", null)
+    .in("reservation_status", ["active", "pending"]);
+  if (ignoreRentalId) q = q.neq("id", ignoreRentalId);
+  const { data, error } = await q;
+  if (error) {
+    // Don't block on transient cloud errors — sync in-memory check is still in place.
+    console.warn("[checkVehicleOverlapInDb] cloud query failed, skipping live check:", error.message);
+    return null;
+  }
+  const nStart = new Date(startDate);
+  const INF = new Date("2999-12-31");
+  const nEnd = endDate ? new Date(endDate) : INF;
+  const hit = (data ?? []).find(row => {
+    if (!row.start_date) return true;
+    const cStart = new Date(row.start_date);
+    const cEnd = row.end_date ? new Date(row.end_date) : INF;
+    return cStart <= nEnd && cEnd >= nStart;
   });
+  return hit ? { conflictId: hit.id, startDate: hit.start_date, endDate: hit.end_date } : null;
 }
 
 export function addRental(input: Omit<Rental, "id" | "paymentStatus"> & { paymentStatus?: Rental["paymentStatus"] }) {
+  // Synchronous in-memory overlap guard. Defense-in-depth alongside the
+  // optional async checkVehicleOverlapInDb callers should run before this.
+  if (hasConflict(input.vehicleId, input.startDate, input.endDate ?? undefined)) {
+    const v = vehicles.find(x => x.id === input.vehicleId);
+    const label = v ? `${v.year} ${v.make} ${v.model} (${v.plate})` : input.vehicleId;
+    throw new Error(`Cannot create rental: ${label} is already booked during these dates.`);
+  }
   const cadence: "daily" | "weekly" =
     input.billingCadence ?? (input.billingPeriod === "daily" ? "daily" : "weekly");
   const rateAmount = input.rateAmount ?? input.rate ?? input.weeklyRate ?? 0;
@@ -859,6 +926,10 @@ export function swapVehicle(rentalId: string, newVehicleId: string) {
   const newV = vehicles.find(v => v.id === newVehicleId);
   if (!newV) throw new Error("New vehicle not found");
   if (newV.status !== "available") throw new Error("Target vehicle is not available");
+  // Guard against double-booking the target vehicle for this rental's window.
+  if (hasConflict(newVehicleId, r.startDate, r.endDate ?? undefined, r.id)) {
+    throw new Error(`Cannot swap: ${newV.year} ${newV.make} ${newV.model} is already booked during this rental's dates.`);
+  }
   const oldV = vehicles.find(v => v.id === r.vehicleId);
   const oldVehicleId = r.vehicleId;
   r.vehicleId = newVehicleId;
@@ -898,6 +969,10 @@ export function extendRental(
 ) {
   const r = rentals.find(r => r.id === id);
   if (!r) return;
+  // Guard against an extension overlapping another rental for the same vehicle.
+  if (hasConflict(r.vehicleId, r.startDate, newEndDate, r.id)) {
+    throw new Error(`Cannot extend: vehicle already has another rental overlapping the new end date.`);
+  }
   const prev = r.endDate;
   const { periods, periodLabel, additionalAmount } = computeExtensionCharge(r, newEndDate);
   r.endDate = newEndDate;
