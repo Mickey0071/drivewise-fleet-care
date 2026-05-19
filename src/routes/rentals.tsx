@@ -1005,6 +1005,7 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
   const [billingCadence, setBillingCadence] = useState<"daily" | "weekly">("weekly");
   const [rateAmount, setRateAmount] = useState<number>(0);
   const [autoRenew, setAutoRenew] = useState<boolean>(true);
+  const [skipDailyMin, setSkipDailyMin] = useState<boolean>(false);
   useEffect(() => {
     if (rental) {
       setWeeklyRate(rental.weeklyRate);
@@ -1014,6 +1015,7 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
       setBillingCadence(rental.billingCadence ?? (rental.billingPeriod === "daily" ? "daily" : "weekly"));
       setRateAmount(rental.rateAmount ?? rental.rate ?? rental.weeklyRate ?? 0);
       setAutoRenew(rental.autoRenew ?? true);
+      setSkipDailyMin(rental.skipDailyMinimum ?? false);
     }
   }, [rental]);
   const computedPeriodEnd = rental ? calcCurrentPeriodEnd(rental.startDate, billingCadence) : "";
@@ -1026,6 +1028,7 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
       billingCadence,
       rateAmount,
       autoRenew,
+      skipDailyMinimum: billingCadence === "daily" ? skipDailyMin : false,
       currentPeriodEnd: computedPeriodEnd,
     });
     toast.success("Reservation updated");
@@ -1059,6 +1062,15 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
             </div>
             <Switch checked={autoRenew} onCheckedChange={setAutoRenew} />
           </div>
+          {billingCadence === "daily" && (
+            <div className="sm:col-span-2 flex items-center justify-between rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+              <div>
+                <Label className="block">Skip 2-day minimum (family &amp; friends)</Label>
+                <p className="text-xs text-muted-foreground">When ON, only 1 day is collected upfront. Default is 2 days.</p>
+              </div>
+              <Switch checked={skipDailyMin} onCheckedChange={setSkipDailyMin} />
+            </div>
+          )}
           <div className="sm:col-span-2 rounded-md border bg-muted/30 p-3 text-sm">
             <div className="text-xs uppercase text-muted-foreground">Current period ends</div>
             <div className="mt-1 font-medium">{computedPeriodEnd ? fmtDate(computedPeriodEnd) : "—"}</div>
