@@ -166,7 +166,7 @@ function ChecklistPage() {
     (async () => {
       const { data: rental, error } = await supabase
         .from("rentals")
-        .select("id, vehicle_id, driver_id, start_date, end_date, mileage_out, returned_at")
+        .select("id, vehicle_id, driver_id, start_date, end_date, mileage_out, returned_at, reservation_status, final_charge_amount")
         .eq("id", rental_id)
         .maybeSingle();
       if (cancelled) return;
@@ -174,7 +174,14 @@ function ChecklistPage() {
         setReturnError("Rental not found.");
         return;
       }
-      if (rental.returned_at) {
+      // Only block if the rental was truly closed out (status flipped + final charge calculated).
+      // Stale `returned_at` left over from seed data should not prevent a real return.
+      const trulyClosed =
+        !!rental.returned_at &&
+        (rental.reservation_status === "returned" ||
+          rental.reservation_status === "completed" ||
+          rental.final_charge_amount != null);
+      if (trulyClosed) {
         toast.error("This rental has already been returned.");
         navigate({ to: "/rentals" });
         return;

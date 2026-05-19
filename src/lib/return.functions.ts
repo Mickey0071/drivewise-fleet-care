@@ -38,12 +38,17 @@ export const closeoutRental = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { data: rental, error: rErr } = await supabaseAdmin
       .from("rentals")
-      .select("id, vehicle_id, driver_id, start_date, end_date, signed_at, created_at, billing_cadence, rate_amount, skip_daily_minimum, mileage_out, returned_at")
+      .select("id, vehicle_id, driver_id, start_date, end_date, signed_at, created_at, billing_cadence, rate_amount, skip_daily_minimum, mileage_out, returned_at, reservation_status, final_charge_amount")
       .eq("id", data.rental_id)
       .maybeSingle();
     if (rErr) throw new Error(rErr.message);
     if (!rental) throw new Error("Rental not found");
-    if (rental.returned_at) {
+    const trulyClosed =
+      !!rental.returned_at &&
+      (rental.reservation_status === "returned" ||
+        rental.reservation_status === "completed" ||
+        rental.final_charge_amount != null);
+    if (trulyClosed) {
       return { ok: true, alreadyReturned: true as const };
     }
 
