@@ -48,6 +48,11 @@ export interface Rental {
   paymentStatus: PayStatus; notes?: string;
   billingPeriod?: "daily" | "weekly" | "monthly";
   rate?: number;
+  // New billing-fee fields (separate from legacy rate / billingPeriod)
+  billingCadence?: "daily" | "weekly";
+  rateAmount?: number;
+  autoRenew?: boolean;
+  currentPeriodEnd?: string;
   signatureDataUrl?: string;
   signedAt?: string;
   signedBy?: string;
