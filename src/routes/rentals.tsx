@@ -496,6 +496,33 @@ function RentalsPage() {
           };
         })() : undefined}
       />
+      <ReturnVehicleDialog
+        rental={returnChoiceRental}
+        onClose={() => setReturnChoiceRental(null)}
+        onDispatchRunner={(r) => {
+          setReturnChoiceRental(null);
+          setReturnDispatchRental(r);
+        }}
+      />
+      <NewTaskDialog
+        open={!!returnDispatchRental}
+        onOpenChange={(o) => { if (!o) setReturnDispatchRental(null); }}
+        prefill={returnDispatchRental ? (() => {
+          const v = vehicleById(returnDispatchRental.vehicleId);
+          const d = driverById(returnDispatchRental.driverId);
+          const vLabel = v
+            ? `${v.year} ${v.make} ${v.model} ${v.plate}`
+            : returnDispatchRental.vehicleId;
+          return {
+            task_type: "pickup" as const,
+            linked_vehicle_id: returnDispatchRental.vehicleId,
+            linked_rental_id: returnDispatchRental.id,
+            address: d?.streetAddress ?? d?.address ?? "",
+            description: `Retrieve ${vLabel} from ${d?.fullName ?? "renter"}`,
+            mode: "return" as const,
+          };
+        })() : undefined}
+      />
     </div>
   );
 }
