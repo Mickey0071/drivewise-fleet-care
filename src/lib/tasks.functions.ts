@@ -172,6 +172,10 @@ export const completeTaskFromInspection = createServerFn({ method: "POST" })
       maintenance_id = maint.id;
     }
 
+    void notifyAdmins(`✅ Task completed`, data.task_id).catch((e) =>
+      console.error("[task complete notify] failed:", e instanceof Error ? e.message : e),
+    );
+
     return { ok: true, maintenance_id };
   });
 
