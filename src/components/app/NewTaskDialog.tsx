@@ -130,8 +130,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         notify_sms: notifySms,
       }});
       const smsBlurb =
-        res.sms_status === "sent" ? "SMS delivered"
-        : res.sms_status === "failed" ? `SMS failed: ${res.sms_error ?? "unknown"}`
+        res.sms_status === "queued" ? "SMS sending in background"
         : "SMS skipped (no phone on file)";
       toast.success(`Task sent to ${res.runner_name} — ${smsBlurb}`);
       onOpenChange(false);
