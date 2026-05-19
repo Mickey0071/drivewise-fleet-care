@@ -729,10 +729,13 @@ export type Database = {
       rentals: {
         Row: {
           agreement_version: string | null
+          auto_renew: boolean
+          billing_cadence: string | null
           billing_period: string | null
           client_signature_url: string | null
           client_signed_at: string | null
           created_at: string
+          current_period_end: string | null
           deposit_paid: number
           driver_id: string
           end_date: string | null
@@ -743,6 +746,7 @@ export type Database = {
           payment_status: string
           pending_created_at: string | null
           rate: number | null
+          rate_amount: number | null
           reservation_status: string | null
           selfie_image_url: string | null
           sign_token: string | null
@@ -756,10 +760,13 @@ export type Database = {
         }
         Insert: {
           agreement_version?: string | null
+          auto_renew?: boolean
+          billing_cadence?: string | null
           billing_period?: string | null
           client_signature_url?: string | null
           client_signed_at?: string | null
           created_at?: string
+          current_period_end?: string | null
           deposit_paid?: number
           driver_id: string
           end_date?: string | null
@@ -770,6 +777,7 @@ export type Database = {
           payment_status?: string
           pending_created_at?: string | null
           rate?: number | null
+          rate_amount?: number | null
           reservation_status?: string | null
           selfie_image_url?: string | null
           sign_token?: string | null
@@ -783,10 +791,13 @@ export type Database = {
         }
         Update: {
           agreement_version?: string | null
+          auto_renew?: boolean
+          billing_cadence?: string | null
           billing_period?: string | null
           client_signature_url?: string | null
           client_signed_at?: string | null
           created_at?: string
+          current_period_end?: string | null
           deposit_paid?: number
           driver_id?: string
           end_date?: string | null
@@ -797,6 +808,7 @@ export type Database = {
           payment_status?: string
           pending_created_at?: string | null
           rate?: number | null
+          rate_amount?: number | null
           reservation_status?: string | null
           selfie_image_url?: string | null
           sign_token?: string | null
