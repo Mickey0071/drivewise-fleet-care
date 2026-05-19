@@ -454,6 +454,21 @@ function RentalsPage() {
         renterName={chatting ? (driverById(chatting.driverId)?.fullName ?? "") : ""}
         phone={chatting ? (driverById(chatting.driverId)?.phone ?? "") : ""}
       />
+      <NewTaskDialog
+        open={!!taskRental}
+        onOpenChange={(o) => { if (!o) setTaskRental(null); }}
+        prefill={taskRental ? (() => {
+          const v = vehicleById(taskRental.vehicleId);
+          const d = driverById(taskRental.driverId);
+          const vLabel = v ? `${v.year} ${v.make} ${v.model}` : taskRental.vehicleId;
+          return {
+            linked_vehicle_id: taskRental.vehicleId,
+            linked_rental_id: taskRental.id,
+            address: d?.streetAddress ?? d?.address ?? "",
+            description: `Pickup ${vLabel} from ${d?.fullName ?? "renter"}`,
+          };
+        })() : undefined}
+      />
     </div>
   );
 }
