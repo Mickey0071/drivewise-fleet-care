@@ -6,6 +6,7 @@ import logo from "@/assets/camauto-logo.jpeg";
 
 const tabs = [
   { to: "/checklist", label: "Task Portal", icon: ClipboardList, emoji: "📋" },
+  { to: "/vendors", label: "Vendors", icon: Phone, emoji: "📞" },
   { to: "/inspections", label: "My History", icon: History, emoji: "📜" },
   { to: "/my-tasks", label: "My Tasks", icon: Rabbit, emoji: "🏃" },
   { to: "/profile", label: "Profile", icon: User, emoji: "👤" },
