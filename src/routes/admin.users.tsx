@@ -184,7 +184,9 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
   const [password, setPassword] = useState(() => generatePassword());
   const [showPwd, setShowPwd] = useState(false);
   const [role, setRole] = useState<AppRole>("driver");
@@ -192,21 +194,54 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
   const [busy, setBusy] = useState(false);
 
   function reset() {
-    setFirstName(""); setLastName(""); setPhone(""); setEmail("");
+    setFirstName(""); setLastName(""); setPhone(""); setUsername("");
+    setUsernameError(null); setCheckingUsername(false);
     setPassword(generatePassword()); setShowPwd(false);
     setRole("driver"); setMustReset(true);
   }
 
+  function validateUsername(value: string): string | null {
+    const v = value.trim();
+    if (!v) return "Username is required.";
+    if (v.includes("@")) return "No @ symbol allowed.";
+    if (v.length < 3) return "Must be at least 3 characters.";
+    if (v.length > 30) return "Must be at most 30 characters.";
+    if (!/^[a-z0-9._-]+$/.test(v)) return "Only lowercase letters, numbers, dots, underscores, hyphens.";
+    return null;
+  }
+
+  useEffect(() => {
+    const v = username.trim().toLowerCase();
+    const syntaxErr = validateUsername(v);
+    if (syntaxErr) { setUsernameError(v ? syntaxErr : null); return; }
+    setCheckingUsername(true);
+    const t = setTimeout(async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("username", v)
+        .maybeSingle();
+      setCheckingUsername(false);
+      if (error) { setUsernameError(error.message); return; }
+      setUsernameError(data ? "Username already taken." : null);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [username]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || password.length < 8) {
+    const uname = username.trim().toLowerCase();
+    const uErr = validateUsername(uname);
+    if (uErr) { setUsernameError(uErr); return; }
+    if (usernameError) return;
+    if (!firstName.trim() || !lastName.trim() || password.length < 8) {
       toast.error("Fill all required fields (password ≥ 8 chars)");
       return;
     }
     setBusy(true);
     try {
       await createUser({ data: {
-        email: email.trim(),
+        username: uname,
         password,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
@@ -215,7 +250,7 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
         must_reset_password: mustReset,
       }});
       const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const text = `User created. Send them:\nEmail: ${email.trim()}\nTemp password: ${password}\nLogin at: ${origin}/login`;
+      const text = `User created. Send them:\nUsername: ${uname}\nTemp password: ${password}\nLogin at: ${origin}/login`;
       toast.success("User created", {
         description: (
           <div className="space-y-2">
@@ -261,8 +296,23 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
               <Input id="ph" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
             <div>
-              <Label htmlFor="em">Email</Label>
-              <Input id="em" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Label htmlFor="un">Username</Label>
+              <Input
+                id="un"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                required
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Runner will log in with this username. No email required.
+              </p>
+              {usernameError && (
+                <p className="mt-1 text-xs text-destructive">{usernameError}</p>
+              )}
             </div>
             <div>
               <Label htmlFor="pw">Temporary password</Label>
@@ -308,7 +358,9 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
             </label>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
-              <Button type="submit" disabled={busy}>{busy ? "Creating…" : "Create User"}</Button>
+              <Button type="submit" disabled={busy || !!usernameError || checkingUsername || !username.trim()}>
+                {busy ? "Creating…" : "Create User"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
