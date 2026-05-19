@@ -36,6 +36,7 @@ export type NewTaskPrefill = {
   linked_rental_id?: string;
   description?: string;
   address?: string;
+  mode?: "return";
 };
 
 type Props = {
@@ -128,6 +129,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         due_date: dueDate || null,
         priority,
         notify_sms: notifySms,
+        task_mode: prefill?.mode ?? null,
       }});
       const smsBlurb =
         res.sms_status === "queued" ? "SMS sending in background"
