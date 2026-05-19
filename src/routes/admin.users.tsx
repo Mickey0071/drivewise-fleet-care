@@ -38,12 +38,16 @@ type RoleRow = { user_id: string; role: AppRole };
 type RoleOption = AppRole | "none";
 
 function AdminUsersPage() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<Record<string, AppRole | null>>({});
   const [pending, setPending] = useState<Record<string, RoleOption>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const doDelete = useServerFn(adminDeleteUser);
 
   const load = useCallback(async () => {
     setLoading(true);
