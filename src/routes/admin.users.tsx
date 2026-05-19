@@ -9,12 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
-import { adminCreateUser } from "@/lib/admin-users.functions";
+import { adminCreateUser, adminDeleteUser } from "@/lib/admin-users.functions";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, EyeOff, RefreshCw, Plus, Copy } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
+import { Eye, EyeOff, RefreshCw, Plus, Copy, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/users")({
   head: () => ({ meta: [{ title: "Team & Access — Camauto Rentals" }] }),
@@ -37,12 +38,16 @@ type RoleRow = { user_id: string; role: AppRole };
 type RoleOption = AppRole | "none";
 
 function AdminUsersPage() {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<Record<string, AppRole | null>>({});
   const [pending, setPending] = useState<Record<string, RoleOption>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const doDelete = useServerFn(adminDeleteUser);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,6 +96,27 @@ function AdminUsersPage() {
     setPending(prev => { const n = { ...prev }; delete n[userId]; return n; });
     setSaving(null);
     toast.success("Role updated");
+  }
+
+  function handleDelete(profile: Profile) {
+    setDeleteTarget(profile);
+    setDeleteOpen(true);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    try {
+      await doDelete({ data: { user_id: deleteTarget.id } });
+      toast.success("User deleted");
+      setDeleteOpen(false);
+      setDeleteTarget(null);
+      await load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete user");
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
   return (
@@ -154,9 +180,31 @@ function AdminUsersPage() {
                           </Select>
                         </TableCell>
                         <TableCell>
-                          <Button size="sm" disabled={!dirty || saving === p.id} onClick={() => saveRole(p.id)}>
-                            {saving === p.id ? "Saving…" : "Save"}
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" disabled={!dirty || saving === p.id} onClick={() => saveRole(p.id)}>
+                              {saving === p.id ? "Saving…" : "Save"}
+                            </Button>
+                            {user?.id === p.id ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-block">
+                                      <Button size="sm" variant="destructive" disabled className="cursor-not-allowed">
+                                        <Trash2 className="mr-1 h-4 w-4" /> Delete
+                                      </Button>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>You can't delete your own account.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : (
+                              <Button size="sm" variant="destructive" onClick={() => handleDelete(p)}>
+                                <Trash2 className="mr-1 h-4 w-4" /> Delete
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -167,6 +215,22 @@ function AdminUsersPage() {
           )}
         </CardContent>
       </Card>
+      <Dialog open={deleteOpen} onOpenChange={(v) => { setDeleteOpen(v); if (!v) setDeleteTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete user?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Delete {deleteTarget?.username ?? deleteTarget?.email ?? "this user"}? This permanently removes their account and all roles. This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleteBusy}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleteBusy}>
+              {deleteBusy ? "Deleting…" : "Confirm Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
