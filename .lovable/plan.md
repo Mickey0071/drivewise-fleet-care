@@ -1,156 +1,182 @@
-## Diagnosis
 
-The task SMS flow is currently blocking task creation because `adminCreateTask` directly awaits `sendSms(...)`. If the GHL fetch hangs, the server function never returns, so the UI stays on Loading.
+# Diagnostic: Signature → Payment Link Flow
 
-### Actual `adminCreateTask` SMS code
+This is a read-only diagnosis. Nothing is being changed. Findings for each numbered item:
 
-```ts
-import { sendSms } from "@/lib/ghl.server";
+---
 
-// ...
+## 1) Signature flow
 
-// Build & send SMS
-let smsStatus: "sent" | "skipped_no_phone" | "failed" = "skipped_no_phone";
-let smsError: string | null = null;
-if (data.notify_sms && runner?.phone) {
-  const origin = process.env.PUBLIC_APP_ORIGIN ?? "https://camautorentals.lovable.app";
-  const lines = [
-    `Camauto Task: ${taskTypeLabel(data.task_type)}`,
-    vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
-    data.description ? data.description : null,
-    data.address ? `Address: ${data.address}` : null,
-    data.due_date ? `Due: ${data.due_date}` : null,
-    `Open: ${origin}/my-tasks/${id}`,
-  ].filter(Boolean) as string[];
-  try {
-    await sendSms(runner.phone, lines.join("\n"), runnerName);
-    smsStatus = "sent";
-  } catch (e) {
-    smsStatus = "failed";
-    smsError = e instanceof Error ? e.message : "SMS failed";
-  }
-}
+**Route:** `src/routes/sign.$token.tsx` serves `/sign/$token`. The customer:
+1. Loads `getRentalForSigning({ token })` → fetches rental + vehicle + driver.
+2. Step 1: uploads driver's-license photo + selfie.
+3. Step 2: reads the `<RentalAgreement />` component, types full name, signs with `<SignaturePad />`, clicks **Submit & complete reservation**.
+4. Client calls `submitSigningPackage({ token, signatureDataUrl, licenseDataUrl, selfieDataUrl, signedBy })`.
 
-return { task_id: created.id, runner_name: runnerName, sms_status: smsStatus, sms_error: smsError };
+**Server handler:** `src/lib/sign.functions.ts → submitSigningPackage` (lines 184–275).
+
+Fields written to `rentals` on submit:
+- `client_signature_url` (storage path of uploaded signature PNG)
+- `signature_data_url` (same URL — duplicated for legacy compatibility)
+- `license_image_url`
+- `selfie_image_url`
+- `client_signed_at` = now
+- `signed_at` = now
+- `signed_by` = typed name
+- `agreement_version` = `"v1.0"`
+- `reservation_status` → `"active"` **only if** the rental was `pending` AND `payment_received = true`. Otherwise stays `pending`.
+
+Side effects:
+- `drivers.insurance_on_file` set to `true`.
+- SMS sent to renter (line 263–268):
+
+  > "Thank you for choosing Camauto. Your signed agreement and ID have been received."
+
+- **No payment link is sent here.** The code comment at line 255 explicitly states: *"After signing: send a plain thank-you. No automatic payment link — staff handles payment manually."*
+- Idempotent: if `client_signature_url` already set, returns early with `{ alreadySigned: true }` and skips upload + SMS.
+
+---
+
+## 2) Payment link generation
+
+**Only one generator:** `src/lib/payment-link.functions.ts → sendPaymentLink` (createServerFn, auth-required).
+
+How it works:
+1. Validates `phone`, `amountCents (≥ 50)`, `description`, `environment ("sandbox"|"live")`, optional `rentalId`, `paymentId`.
+2. Resolves origin from `Origin`/`Referer` header (fallback `PUBLIC_APP_ORIGIN` secret).
+3. **Dynamically creates a fresh Stripe Product + Price + Payment Link per call** via `stripe.paymentLinks.create(...)`. No hardcoded URL, no config-stored link.
+4. Metadata `{ kind: "first_payment" | "payment_link", rental_id, payment_id }` is set on the Link AND on `payment_intent_data.metadata` so the webhook can find the rental on completion.
+5. `after_completion.redirect.url` → `{origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}&rental_id=…`.
+6. `restrictions.completed_sessions.limit = 1` — one-time use.
+7. Sends SMS via GHL with body:
+
+   > `Rentalprise Auto: $X.XX due. Pay: https://buy.stripe.com/…`
+
+**Triggers (callers) — all manual button clicks:**
+- `src/routes/rentals.tsx` line 285 — staff clicks the **"Send Payment Link"** button on a rental row (only when `!paymentReceived`).
+- `src/routes/payments.tsx` line 40 — staff sends a payment link from the Payments page.
+
+There is **no scheduled job, webhook, or post-signature hook** that calls `sendPaymentLink`. Generation is 100% manual today.
+
+---
+
+## 3) Customer-facing SMS templates
+
+All SMS go through `src/lib/ghl.server.ts → sendSms()` (GHL/LeadConnector API, `+1` E.164 normalization, 12s timeout). All call sites:
+
+| Location | Recipient | Body |
+|---|---|---|
+| `share-rental.functions.ts:125` (`sendShareLinkSms`) | Customer | "Camauto Rentals: You're invited to rent a vehicle. Complete your application … {url}" |
+| `share-rental.functions.ts:412` (after share-flow submit) | Customer | "Thank you for choosing Camauto, {first}! Your application has been received. We'll be in touch shortly to confirm pickup." |
+| `share-rental.functions.ts:430` | Admin who made the share link | "Camauto Rentals: New rental application received from {name} ({phone}) for vehicle {id}. Rental {rentalId}." |
+| `sign.functions.ts:78` (`sendSigningLink`) | Customer | "Camauto Rentals: Please complete your rental agreement online and upload your driver's license + selfie here: {origin}/sign/{token}. You do not need to come in to sign." |
+| `sign.functions.ts:264` (post-signature) | Customer | "Thank you for choosing Camauto. Your signed agreement and ID have been received." |
+| `payment-link.functions.ts:117` (`sendPaymentLink`) | Customer | "Rentalprise Auto: $X.XX due. Pay: {stripe url}" ← **only SMS containing a payment link** |
+| `rental-sms.functions.ts:14` (`sendRentalSms`) | Customer (generic) | Caller-supplied body. Used by `rentals.tsx` for damage alerts, return confirmation ("Your vehicle return has been confirmed. Thanks for renting with Camauto!"), extension confirmations, and swap confirmations. |
+| `renter-chat.functions.ts:24` | Customer | Free-form staff reply in the renter chat thread. |
+| `vehicle-photo-share.functions.ts:28` | Customer | Vehicle photo gallery share link. |
+| `api/public/payments/webhook.ts:111` | Customer (driver profile) | "Rentalprise Auto: Payment received ($X.XX). Your rental is now active — see you at pickup!" |
+| `api/public/payments/webhook.ts:152` | Customer | "Rentalprise Auto: Your rental subscription is active ($X.XX). Welcome aboard!" |
+| `api/public/payments/webhook.ts:191` | Customer | "Rentalprise Auto: Your subscription has been canceled. You'll retain access until {date}." |
+| `api/public/hooks/send-reminders.ts:129` | Customer | Templated payment-due reminder (cron-driven). |
+| `inspection.functions.ts:43,176` | Runner / summary phone | Runner-facing — not customer. |
+| `tasks.functions.ts:122,232` | Runner | Runner-facing — not customer. |
+
+Only `payment-link.functions.ts` currently injects a payment link into a customer SMS.
+
+---
+
+## 4) Customer-facing email
+
+**There is no email infrastructure in the project.** No SMTP, Resend, SendGrid, Postmark, or `nodemailer` is imported anywhere.
+
+`ShareRentalDialog.tsx` has a `handleSendEmail` helper, but it only opens the user's local mail client via `mailto:` — it doesn't send through any server.
+
+Sign + payment flows are SMS-only today.
+
+---
+
+## 5) Rentals table — full column list
+
+```
+id                       text
+vehicle_id               text
+driver_id                text
+start_date               date
+end_date                 date
+weekly_rate              numeric
+deposit_paid             numeric
+payment_status           text
+notes                    text
+billing_period           text
+rate                     numeric
+signature_data_url       text           ← legacy signature URL
+signed_at                timestamptz
+signed_by                text
+agreement_version        text
+reservation_status       text           ← "pending" | "active" | …
+pending_created_at       timestamptz
+payment_received         boolean        ← flipped by Stripe webhook
+created_at               timestamptz
+updated_at               timestamptz
+sign_token               text           ← /sign/$token gate
+client_signature_url     text           ← canonical signature URL
+client_signed_at         timestamptz
+license_image_url        text
+selfie_image_url         text
+billing_cadence          text           ← "daily" | "weekly"
+rate_amount              numeric
+auto_renew               boolean
+current_period_end       date
+returned_at              timestamptz    ← (added earlier today, all NULL)
+return_inspection_id     text
+mileage_out              integer
+mileage_in               integer
+final_charge_amount      numeric
+final_charge_breakdown   jsonb
 ```
 
-### Actual `sendSms` code from `src/lib/ghl.server.ts`
+Signature-related: `sign_token`, `signature_data_url`, `client_signature_url`, `client_signed_at`, `signed_at`, `signed_by`, `agreement_version`, `license_image_url`, `selfie_image_url`.
 
-```ts
-const GHL_BASE = "https://services.leadconnectorhq.com";
-const GHL_VERSION = "2021-07-28";
+Payment-related: `payment_received`, `payment_status`, `deposit_paid`, `rate`, `rate_amount`, `weekly_rate`, `billing_period`, `billing_cadence`, `current_period_end`, `auto_renew`.
 
-function getEnv(key: string): string {
-  const v = process.env[key];
-  if (!v) throw new Error(`${key} is not configured`);
-  return v;
-}
+There is **no** column linking a rental to a generated Stripe Payment Link (no `payment_link_url`, no `payment_link_id`, no `payment_link_sent_at`). Each click of "Send Payment Link" mints a new Stripe Product/Price/Link with no record kept on the rental row.
 
-async function ghlFetch(path: string, body: unknown) {
-  const res = await fetch(`${GHL_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${getEnv("ghlPitToken")}`,
-      Version: GHL_VERSION,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`GHL ${path} ${res.status}: ${text}`);
-  }
-  return res.json();
-}
+---
 
-export async function sendSms(phone: string, message: string, name?: string | null) {
-  const normalized = toE164(phone);
-  if (!normalized) {
-    console.error("[sms] no phone on file");
-    throw new Error("No phone number on file");
-  }
-  const masked = maskPhone(normalized);
-  try {
-    const contactId = await upsertContact(normalized, name);
-    await ghlFetch("/conversations/messages", {
-      type: "SMS",
-      contactId,
-      message,
-    });
-    console.log(`[sms] sent ok phone=${masked}`);
-  } catch (e) {
-    console.error(`[sms] failed phone=${masked}: ${e instanceof Error ? e.message : String(e)}`);
-    throw e;
-  }
-}
-```
+## 6) Stripe integration — fully wired
 
-### Secrets/env check
+**Secrets present:**
+- `STRIPE_SANDBOX_API_KEY`
+- `STRIPE_LIVE_API_KEY`
+- `PAYMENTS_SANDBOX_WEBHOOK_SECRET`
+- `PAYMENTS_LIVE_WEBHOOK_SECRET`
+- `LOVABLE_API_KEY` (for the connector gateway)
+- `PUBLIC_APP_ORIGIN`
 
-The code does **not** use `GHL_API_KEY`. It uses:
+**Client utility:** `src/lib/stripe.server.ts`
+- `createStripeClient(env)` — Stripe SDK pointed at Lovable's connector-gateway proxy (`connector-gateway.lovable.dev/stripe`) with API version `2026-03-25.dahlia`.
+- `verifyWebhook(req, env)` — manual HMAC-SHA256 verification with 5-minute timestamp tolerance and rotation-safe multi-`v1` matching.
 
-- `ghlPitToken`: set
-- `ghlLocationId`: set
-- `GHL_PIT_TOKEN`: set
-- `GHL_LOCATION_ID`: set
-- `GHL_API_KEY`: missing
+**Browser-side:** `src/lib/stripe.ts` — exposes `getStripe()` (loadStripe) and `getStripeEnvironment()` derived from `VITE_PAYMENTS_CLIENT_TOKEN` (`pk_test_` ⇒ sandbox).
 
-So `GHL_API_KEY` missing is not itself the bug, because this project’s GHL code is wired to `ghlPitToken` and `ghlLocationId`.
+**Webhook handler:** `src/routes/api/public/payments/webhook.ts` → `POST /api/public/payments/webhook?env=sandbox|live`. Handles:
+- `checkout.session.completed` (lines 29–118) — when `session.metadata.rental_id` is present and `kind ≠ subscription`:
+  - Inserts a `subscriptions` ledger row.
+  - Updates `rentals.payment_received = true`, `reservation_status = 'active'`, clears `pending_created_at`.
+  - Sets `vehicles.status = 'rented'`.
+  - Upserts a paid `payments` row for the first period and inserts the next scheduled payment.
+  - SMS receipt to the driver profile.
+- `customer.subscription.created` / `.updated` / `.deleted` — upserts the `subscriptions` row, sends activation/cancellation SMS.
 
-### Is GHL actually working in this project?
+So **Stripe round-trip is complete**: link → checkout → webhook → rental flipped active → driver gets receipt SMS.
 
-Answer: **yes, likely working**.
+---
 
-Evidence:
+## Summary of the gap
 
-- `sendSms` is used by multiple existing features: vehicle photo share, payment links, rental SMS, renter chat, inspections, signing, and share-rental flows.
-- Production/preview logs from the last hour include:
+Today, the only thing connecting "signature received" to "payment link sent" is a **human clicking the "Send Payment Link" button** on the Rentals page. After `submitSigningPackage` runs, the renter receives a plain thank-you SMS and the reservation stays `pending` until either (a) staff manually generates a payment link via `sendPaymentLink` and the renter pays, or (b) `payment_received` is already true (e.g. deposit collected another way) — in which case the reservation flips to `active` at signing.
 
-```text
-[sms] sent ok phone=***5946
-```
+There is no automation, scheduled job, or event hook bridging step 3 → step 4. That bridge is the natural place for new automation, and `sendPaymentLink` already does the heavy lifting (Stripe Link creation + SMS + metadata for the existing webhook).
 
-So this is not just unused scaffolding. The bug is more likely that the new task flow is synchronously waiting on SMS, and the GHL fetch has no timeout.
-
-### Does `sendSms` have a fetch timeout?
-
-No. `ghlFetch` and `ghlGet` call `fetch(...)` without `AbortController`, so if GHL stalls, task creation can stall indefinitely.
-
-## Implementation plan
-
-1. Update `src/lib/ghl.server.ts`
-   - Add a shared timeout helper using `AbortController`.
-   - Apply it to both `ghlFetch` and `ghlGet`.
-   - Use a short timeout, e.g. 12–15 seconds.
-   - Return a clear error like `GHL /conversations/messages timed out after 12000ms`.
-
-2. Update `src/lib/tasks.functions.ts`
-   - Keep task insertion first.
-   - Build the SMS message after the task is inserted.
-   - Fire SMS in a background/best-effort promise and do **not** await it before returning.
-   - Log SMS success/failure server-side with task id and masked phone.
-   - Return immediately after insert with something like:
-
-```ts
-return {
-  task_id: created.id,
-  runner_name: runnerName,
-  sms_status: data.notify_sms && runner?.phone ? "queued" : "skipped_no_phone",
-  sms_error: null,
-};
-```
-
-3. Preserve existing behavior for no-phone runners
-   - If `notify_sms` is true but there is no phone, return `skipped_no_phone` immediately.
-   - Do not block task creation.
-
-4. Verification
-   - Re-run the relevant TypeScript/build check through the normal harness.
-   - Confirm the code no longer awaits `sendSms` inside `adminCreateTask`.
-   - Confirm all GHL fetch calls now have timeout coverage.
-   - Use server logs after a test task send to confirm either `[task sms] sent` or `[task sms] failed`, while the UI returns success either way.
-
-## Expected result
-
-Admin task creation will no longer hang on Loading because database insert succeeds and returns immediately. SMS becomes best-effort: it can succeed, fail, or time out without blocking the New Task modal.
+When you're ready, tell me how you want the bridge to behave (auto-send on signature? on a delay? only for certain rentals?) and I'll write an implementation plan.
