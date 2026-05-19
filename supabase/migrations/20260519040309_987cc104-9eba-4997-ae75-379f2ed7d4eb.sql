@@ -1,0 +1,1 @@
+ALTER TABLE public.rentals ADD COLUMN IF NOT EXISTS payment_link_auto_sent_at TIMESTAMPTZ;

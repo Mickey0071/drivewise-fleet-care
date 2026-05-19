@@ -65,6 +65,7 @@ export interface Rental {
   selfieImageUrl?: string;
   clientSignatureUrl?: string;
   clientSignedAt?: string;
+  paymentLinkAutoSentAt?: string;
 }
 export interface RentalExtension {
   id: string;
