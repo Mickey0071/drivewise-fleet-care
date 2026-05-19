@@ -240,9 +240,10 @@ async function notifyAdmins(headline: string, taskId: string) {
 }
 
 const DmvDocsInput = z.object({
-  task_id: z.string().min(1).max(80),
+  task_id: z.string().min(1).max(80).optional(),
   documents: z.record(z.string().max(80), z.boolean()).default({}),
   notes: z.string().max(4000).default(""),
+  vehicle_id: z.string().min(1).max(80).optional(),
 });
 
 export const completeDmvTask = createServerFn({ method: "POST" })
@@ -257,21 +258,104 @@ export const completeDmvTask = createServerFn({ method: "POST" })
       `Documents handled: ${checkedLabels.length ? checkedLabels.join(", ") : "(none marked)"}. ` +
       `Notes: ${data.notes.trim() || "(none)"}.`;
 
-    const { error } = await context.supabase
-      .from("tasks")
-      .update({
-        status: "completed",
-        completed_at: new Date().toISOString(),
-        runner_notes: summary,
-      })
-      .eq("id", data.task_id);
-    if (error) throw new Error(error.message);
+    if (data.task_id) {
+      const { error } = await context.supabase
+        .from("tasks")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          runner_notes: summary,
+        })
+        .eq("id", data.task_id);
+      if (error) throw new Error(error.message);
 
-    void notifyAdmins(`✅ DMV task completed`, data.task_id).catch((e) =>
-      console.error("[dmv complete notify] failed:", e instanceof Error ? e.message : e),
-    );
+      void notifyAdmins(`✅ DMV task completed`, data.task_id).catch((e) =>
+        console.error("[dmv complete notify] failed:", e instanceof Error ? e.message : e),
+      );
+    } else {
+      // Standalone DMV run (no task assigned) — broadcast a custom summary to admins.
+      void notifyAdminsRaw(`✅ DMV run completed (standalone)\n${summary}${data.vehicle_id ? `\nVehicle: ${data.vehicle_id}` : ""}`)
+        .catch((e) => console.error("[dmv standalone notify] failed:", e instanceof Error ? e.message : e));
+    }
 
     return { ok: true };
+  });
+
+// Broadcast a free-form message to every admin's phone. Best-effort.
+async function notifyAdminsRaw(body: string) {
+  const { data: adminRoles } = await supabaseAdmin
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "admin");
+  const ids = (adminRoles ?? []).map((r) => r.user_id);
+  if (ids.length === 0) return;
+  const { data: admins } = await supabaseAdmin
+    .from("profiles")
+    .select("phone, full_name, first_name, last_name")
+    .in("id", ids);
+  const seen = new Set<string>();
+  for (const a of admins ?? []) {
+    if (!a.phone || seen.has(a.phone)) continue;
+    seen.add(a.phone);
+    const name = [a.first_name, a.last_name].filter(Boolean).join(" ") || a.full_name || "Admin";
+    void sendSms(a.phone, body, name).catch((e) =>
+      console.error("[admin notify raw] failed:", e instanceof Error ? e.message : e),
+    );
+  }
+}
+
+const MechanicDropoffInput = z.object({
+  vehicle_id: z.string().min(1).max(80),
+  mechanic_type: z.string().min(1).max(120),
+  reason: z.string().min(1).max(2000),
+  notes: z.string().max(2000).default(""),
+});
+
+export const createMechanicDropoff = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => MechanicDropoffInput.parse(input))
+  .handler(async ({ data, context }) => {
+    // Look up vehicle for SMS context + mileage default
+    const { data: vehicle } = await supabaseAdmin
+      .from("vehicles")
+      .select("year, make, model, plate, mileage")
+      .eq("id", data.vehicle_id)
+      .maybeSingle();
+    const vehicleLabel = vehicle
+      ? `${vehicle.year ?? ""} ${vehicle.make ?? ""} ${vehicle.model ?? ""} ${vehicle.plate ?? ""}`.trim()
+      : data.vehicle_id;
+
+    const id = `MN-${crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase()}`;
+    const composedNotes = [
+      `Mechanic type: ${data.mechanic_type}`,
+      `Reason for drop off: ${data.reason}`,
+      data.notes.trim() ? `Notes: ${data.notes.trim()}` : null,
+    ].filter(Boolean).join("\n");
+
+    // Use the user-scoped client so RLS enforces runner/admin insert policy.
+    const { error } = await context.supabase
+      .from("maintenance")
+      .insert({
+        id,
+        vehicle_id: data.vehicle_id,
+        service_type: `Mechanic drop-off: ${data.mechanic_type}`,
+        vendor: data.mechanic_type,
+        date_completed: null,
+        mileage_at_service: vehicle?.mileage ?? 0,
+        cost: 0,
+        notes: composedNotes,
+        next_service_due: new Date().toISOString().slice(0, 10),
+      });
+    if (error) throw new Error(error.message);
+
+    // Flip the vehicle's open-issue flag so it shows the warning.
+    await supabaseAdmin.from("vehicles").update({ has_open_issues: true }).eq("id", data.vehicle_id);
+
+    void notifyAdminsRaw(
+      `🔧 Vehicle dropped at mechanic\nVehicle: ${vehicleLabel}\n${composedNotes}\nMaintenance: ${id}`,
+    ).catch((e) => console.error("[mechanic dropoff notify] failed:", e instanceof Error ? e.message : e));
+
+    return { ok: true, maintenance_id: id };
   });
 
 function taskTypeLabelExport(t: string): string {
