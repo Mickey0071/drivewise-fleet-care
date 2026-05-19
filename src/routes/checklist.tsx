@@ -539,6 +539,45 @@ function ChecklistPage() {
     );
   }
 
+  // Job-type gate: when the runner opens the Task Portal fresh (no return mode,
+  // no task assignment, no job picked), force them to choose a job type first.
+  // DMV and Mechanic Run route to their dedicated paperwork-only screens; the
+  // remaining types fall through to the full inspection checklist below.
+  const inGuidedFlow = isReturnMode || !!task_id;
+  if (!inGuidedFlow && !jobType) {
+    const PICKER: { value: JobType; title: string; subtitle: string }[] = [
+      { value: "vehicle_return", title: JOB_TYPE_LABELS.vehicle_return, subtitle: "Full inspection checklist" },
+      { value: "inspection",     title: JOB_TYPE_LABELS.inspection,     subtitle: "Full inspection checklist" },
+      { value: "repossession",   title: JOB_TYPE_LABELS.repossession,   subtitle: "Full inspection checklist" },
+      { value: "new_acquisition",title: JOB_TYPE_LABELS.new_acquisition,subtitle: "Full inspection checklist" },
+      { value: "dmv_reg",        title: JOB_TYPE_LABELS.dmv_reg,        subtitle: "Paperwork checklist (POA, corp docs, title…)" },
+      { value: "mechanic_run",   title: JOB_TYPE_LABELS.mechanic_run,   subtitle: "Drop off — mechanic type & reason" },
+    ];
+    const pick = (jt: JobType) => {
+      if (jt === "dmv_reg") { navigate({ to: "/dmv-task" }); return; }
+      if (jt === "mechanic_run") { navigate({ to: "/mechanic-task" }); return; }
+      setJobType(jt);
+    };
+    return (
+      <div className="mx-auto max-w-2xl space-y-4 pb-24">
+        <PageHeader title="Task Portal" subtitle="Pick the job you're doing right now" />
+        <div className="grid gap-2 sm:grid-cols-2">
+          {PICKER.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              onClick={() => pick(p.value)}
+              className="min-h-20 rounded-lg border border-border bg-background px-4 py-3 text-left transition-colors hover:border-primary hover:bg-primary/5"
+            >
+              <div className="text-base font-semibold">{p.title}</div>
+              <div className="text-xs text-muted-foreground">{p.subtitle}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-4 pb-32">
       <PageHeader title="New Inspection" subtitle="Submit a full condition check after a runner job" />
