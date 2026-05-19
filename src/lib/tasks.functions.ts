@@ -21,10 +21,11 @@ const CreateInput = z.object({
   notify_sms: z.boolean().default(true),
 });
 
-async function assertAdmin(supabase: { from: (t: string) => { select: (c: string) => { eq: (k: string, v: string) => Promise<{ data: { role: string }[] | null; error: { message: string } | null }> } } }, userId: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function assertAdmin(supabase: any, userId: string) {
   const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
   if (error) throw new Error(error.message);
-  if (!(data ?? []).some((r) => r.role === "admin")) throw new Error("Admins only");
+  if (!(data ?? []).some((r: { role: string }) => r.role === "admin")) throw new Error("Admins only");
 }
 
 function taskTypeLabel(t: string): string {
