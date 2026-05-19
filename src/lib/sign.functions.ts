@@ -15,7 +15,7 @@ async function autoSendFirstPaymentLink(rentalId: string): Promise<void> {
   try {
     const { data: rental, error } = await supabaseAdmin
       .from("rentals")
-      .select("id, driver_id, vehicle_id, billing_cadence, rate_amount, payment_received, payment_link_auto_sent_at")
+      .select("id, driver_id, vehicle_id, billing_cadence, rate_amount, payment_received, payment_link_auto_sent_at, skip_daily_minimum")
       .eq("id", rentalId)
       .maybeSingle();
     if (error || !rental) {
@@ -49,22 +49,33 @@ async function autoSendFirstPaymentLink(rentalId: string): Promise<void> {
       return;
     }
 
-    // Upfront amount per spec: daily → rate × 2, weekly → rate × 1
-    const multiplier = rental.billing_cadence === "daily" ? 2 : 1;
-    const upfront = rate * multiplier;
-    const amountCents = Math.round(upfront * 100);
+    // Upfront periods: weekly = 1 week; daily = 2 days by default,
+    // 1 day when the per-rental "skip_daily_minimum" override is on
+    // (trusted family/friends).
+    const cadence = rental.billing_cadence;
+    const skipDailyMin = !!rental.skip_daily_minimum;
+    const periodsUpfront = cadence === "daily" ? (skipDailyMin ? 1 : 2) : 1;
+    const amountCents = Math.round(rate * periodsUpfront * 100);
     if (amountCents < 50) {
       console.warn(`[auto-pay-link] skip ${rentalId}: amount below Stripe minimum (${amountCents}¢)`);
       return;
     }
 
-    const periodLbl = rental.billing_cadence === "daily" ? "2 days" : "week";
-    const description = `First ${periodLbl} — ${vehicle?.year ?? ""} ${vehicle?.make ?? ""} ${vehicle?.model ?? ""}`.trim();
+    const periodLbl =
+      cadence === "daily" ? (skipDailyMin ? "1 day" : "2 days") : "1 week";
+    const description =
+      `First payment — ${periodLbl} up front — ${vehicle?.year ?? ""} ${vehicle?.make ?? ""} ${vehicle?.model ?? ""}`.trim();
     // Default to live in production. STRIPE_ENV override is honored if set.
     const envOverride = process.env.STRIPE_ENV as StripeEnv | undefined;
     const environment: StripeEnv = envOverride === "sandbox" || envOverride === "live" ? envOverride : "live";
 
-    console.log(`[auto-pay-link] sending ${rentalId}`, { amountCents, cadence: rental.billing_cadence, environment });
+    console.log(`[auto-pay-link] sending ${rentalId}`, {
+      amountCents,
+      cadence,
+      periodsUpfront,
+      skip_daily_minimum: skipDailyMin,
+      environment,
+    });
     await sendPaymentLinkInternal({
       phone: driver.phone,
       name: driver.full_name ?? undefined,
