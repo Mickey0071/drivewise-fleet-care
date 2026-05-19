@@ -41,6 +41,7 @@ function MechanicTaskPage() {
   const [customType, setCustomType] = useState("");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
+  const [mileage, setMileage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -57,7 +58,9 @@ function MechanicTaskPage() {
   }, []);
 
   const effectiveType = mechanicType === "Other" ? customType.trim() : mechanicType;
-  const canSubmit = !!vehicleId && !!effectiveType && reason.trim().length > 0 && !submitting;
+  const mileageNum = Number(mileage);
+  const mileageValid = mileage.trim().length > 0 && Number.isInteger(mileageNum) && mileageNum >= 0;
+  const canSubmit = !!vehicleId && !!effectiveType && reason.trim().length > 0 && mileageValid && !submitting;
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -68,7 +71,7 @@ function MechanicTaskPage() {
           vehicle_id: vehicleId,
           mechanic_type: effectiveType,
           reason: reason.trim(),
-          notes: notes.trim(),
+          notes: [`Mileage: ${mileageNum}`, notes.trim()].filter(Boolean).join("\n"),
         },
       });
       toast.success("Mechanic drop-off logged");
@@ -85,7 +88,7 @@ function MechanicTaskPage() {
       <div className="mx-auto max-w-2xl space-y-4 pb-24">
         <PageHeader title="✅ Mechanic Drop-off Logged" subtitle="Maintenance ticket created and admins notified" />
         <div className="grid gap-2 sm:grid-cols-2">
-          <Button variant="outline" className="h-12" onClick={() => { setDone(false); setVehicleId(""); setReason(""); setNotes(""); setCustomType(""); }}>
+          <Button variant="outline" className="h-12" onClick={() => { setDone(false); setVehicleId(""); setReason(""); setNotes(""); setCustomType(""); setMileage(""); }}>
             Log another
           </Button>
           <Button className="h-12" onClick={() => navigate({ to: "/checklist" })}>
@@ -97,7 +100,7 @@ function MechanicTaskPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4 pb-24">
+    <div className="mx-auto max-w-2xl space-y-4 pb-40">
       <PageHeader title="🔧 Mechanic Drop-off" subtitle="Tell us which mechanic and why the vehicle is being dropped off" />
 
       <Card>
@@ -116,6 +119,22 @@ function MechanicTaskPage() {
               </option>
             ))}
           </select>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-2 pt-6">
+          <Label htmlFor="mech-mileage">Current mileage *</Label>
+          <Input
+            id="mech-mileage"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={mileage}
+            onChange={(e) => setMileage(e.target.value)}
+            placeholder="e.g. 84210"
+            className="h-11"
+          />
         </CardContent>
       </Card>
 
@@ -172,9 +191,16 @@ function MechanicTaskPage() {
         </CardContent>
       </Card>
 
-      <Button className="h-12 w-full text-base font-semibold" disabled={!canSubmit} onClick={submit}>
-        {submitting ? "Submitting…" : "Log Mechanic Drop-off"}
-      </Button>
+      <div
+        className="fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:px-6"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 64px)" }}
+      >
+        <div className="mx-auto max-w-2xl">
+          <Button className="h-12 w-full text-base font-semibold" disabled={!canSubmit} onClick={submit}>
+            {submitting ? "Submitting…" : "Log Mechanic Drop-off"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
