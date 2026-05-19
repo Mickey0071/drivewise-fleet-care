@@ -291,6 +291,68 @@ function AdminUsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={resetOpen} onOpenChange={(v) => { setResetOpen(v); if (!v) setResetTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset password for {resetUsernameLabel}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="rpw">New Password</Label>
+              <div className="flex gap-1">
+                <div className="relative flex-1">
+                  <Input
+                    id="rpw"
+                    type={resetShow ? "text" : "password"}
+                    value={resetPwd}
+                    onChange={(e) => setResetPwd(e.target.value)}
+                    minLength={8}
+                    className="pr-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setResetShow((s) => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={resetShow ? "Hide password" : "Show password"}
+                  >
+                    {resetShow ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => { const p = generatePassword(12); setResetPwd(p); setResetConfirm(p); }}
+                >
+                  Generate
+                </Button>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="rpwc">Confirm New Password</Label>
+              <Input
+                id="rpwc"
+                type={resetShow ? "text" : "password"}
+                value={resetConfirm}
+                onChange={(e) => setResetConfirm(e.target.value)}
+                minLength={8}
+              />
+              {resetConfirm.length > 0 && resetPwd !== resetConfirm && (
+                <p className="mt-1 text-xs text-destructive">Passwords don't match.</p>
+              )}
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={resetForce} onCheckedChange={(v) => setResetForce(v === true)} />
+              Force password reset on next login
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetOpen(false)} disabled={resetBusy}>Cancel</Button>
+            <Button onClick={confirmResetPassword} disabled={resetBusy || !resetMatches}>
+              {resetBusy ? "Resetting…" : "Reset Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
