@@ -14,7 +14,6 @@ import { Route as StaffPortalRouteImport } from './routes/staff-portal'
 import { Route as SmsLogRouteImport } from './routes/sms-log'
 import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as ReservationsRouteImport } from './routes/reservations'
 import { Route as RentalsRouteImport } from './routes/rentals'
 import { Route as RentalAgreementRouteImport } from './routes/rental-agreement'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -70,11 +69,6 @@ const RunnerReportsRoute = RunnerReportsRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReservationsRoute = ReservationsRouteImport.update({
-  id: '/reservations',
-  path: '/reservations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RentalsRoute = RentalsRouteImport.update({
@@ -256,7 +250,6 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
-  '/reservations': typeof ReservationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
@@ -295,7 +288,6 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
-  '/reservations': typeof ReservationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
@@ -335,7 +327,6 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
-  '/reservations': typeof ReservationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
@@ -376,7 +367,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/rental-agreement'
     | '/rentals'
-    | '/reservations'
     | '/reset-password'
     | '/runner-reports'
     | '/sms-log'
@@ -415,7 +405,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/rental-agreement'
     | '/rentals'
-    | '/reservations'
     | '/reset-password'
     | '/runner-reports'
     | '/sms-log'
@@ -454,7 +443,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/rental-agreement'
     | '/rentals'
-    | '/reservations'
     | '/reset-password'
     | '/runner-reports'
     | '/sms-log'
@@ -494,7 +482,6 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   RentalAgreementRoute: typeof RentalAgreementRoute
   RentalsRoute: typeof RentalsRoute
-  ReservationsRoute: typeof ReservationsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RunnerReportsRoute: typeof RunnerReportsRoute
   SmsLogRoute: typeof SmsLogRoute
@@ -547,13 +534,6 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reservations': {
-      id: '/reservations'
-      path: '/reservations'
-      fullPath: '/reservations'
-      preLoaderRoute: typeof ReservationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rentals': {
@@ -807,7 +787,6 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   RentalAgreementRoute: RentalAgreementRoute,
   RentalsRoute: RentalsRoute,
-  ReservationsRoute: ReservationsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RunnerReportsRoute: RunnerReportsRoute,
   SmsLogRoute: SmsLogRoute,
@@ -827,3 +806,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
