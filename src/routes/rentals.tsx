@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicles, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { useStoreVersion, updateRental, markReturnedAwaitingInspection, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle } from "@/lib/mock/store";
+import { calcCurrentPeriodEnd } from "@/lib/mock/store";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
@@ -991,17 +994,32 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
   const [depositPaid, setDepositPaid] = useState(0);
   const [endDate, setEndDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [billingCadence, setBillingCadence] = useState<"daily" | "weekly">("weekly");
+  const [rateAmount, setRateAmount] = useState<number>(0);
+  const [autoRenew, setAutoRenew] = useState<boolean>(true);
   useEffect(() => {
     if (rental) {
       setWeeklyRate(rental.weeklyRate);
       setDepositPaid(rental.depositPaid);
       setEndDate(rental.endDate ?? "");
       setNotes(rental.notes ?? "");
+      setBillingCadence(rental.billingCadence ?? (rental.billingPeriod === "daily" ? "daily" : "weekly"));
+      setRateAmount(rental.rateAmount ?? rental.rate ?? rental.weeklyRate ?? 0);
+      setAutoRenew(rental.autoRenew ?? true);
     }
   }, [rental]);
+  const computedPeriodEnd = rental ? calcCurrentPeriodEnd(rental.startDate, billingCadence) : "";
   function save() {
     if (!rental) return;
-    updateRental(rental.id, { weeklyRate, depositPaid, endDate: endDate || undefined, notes: notes || undefined });
+    updateRental(rental.id, {
+      weeklyRate, depositPaid,
+      endDate: endDate || undefined,
+      notes: notes || undefined,
+      billingCadence,
+      rateAmount,
+      autoRenew,
+      currentPeriodEnd: computedPeriodEnd,
+    });
     toast.success("Reservation updated");
     onClose();
   }
@@ -1012,6 +1030,32 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
         <div className="grid gap-3 sm:grid-cols-2">
           <div><Label>Weekly rate</Label><Input type="number" value={weeklyRate} onChange={e => setWeeklyRate(Number(e.target.value))} /></div>
           <div><Label>Deposit</Label><Input type="number" value={depositPaid} onChange={e => setDepositPaid(Number(e.target.value))} /></div>
+          <div>
+            <Label>Billing cadence</Label>
+            <Select value={billingCadence} onValueChange={(v) => setBillingCadence(v as "daily" | "weekly")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="daily">Daily</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Rate amount ($/period)</Label>
+            <Input type="number" min={0} value={rateAmount} onChange={e => setRateAmount(Number(e.target.value))} />
+          </div>
+          <div className="sm:col-span-2 flex items-center justify-between rounded-md border p-3">
+            <div>
+              <Label className="block">Auto-renew</Label>
+              <p className="text-xs text-muted-foreground">Keep advancing the billing period after each payment.</p>
+            </div>
+            <Switch checked={autoRenew} onCheckedChange={setAutoRenew} />
+          </div>
+          <div className="sm:col-span-2 rounded-md border bg-muted/30 p-3 text-sm">
+            <div className="text-xs uppercase text-muted-foreground">Current period ends</div>
+            <div className="mt-1 font-medium">{computedPeriodEnd ? fmtDate(computedPeriodEnd) : "—"}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Calculated from start date + cadence. Not user-editable.</p>
+          </div>
           <div className="sm:col-span-2"><Label>End date</Label><Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
           <div className="sm:col-span-2"><Label>Notes</Label><Textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} /></div>
         </div>
