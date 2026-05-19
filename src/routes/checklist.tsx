@@ -591,7 +591,7 @@ function ChecklistPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 pb-32">
+    <div className="mx-auto max-w-3xl space-y-4 pb-40">
       <PageHeader title="New Inspection" subtitle="Submit a full condition check after a runner job" />
 
       {isReturnMode && returnError && (
@@ -926,8 +926,11 @@ function ChecklistPage() {
         </CardContent>
       </Card>
 
-      {/* Sticky submit */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:px-6">
+      {/* Sticky submit — sits above the runner bottom nav (~56px) so it's always tappable on mobile */}
+      <div
+        className="fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:px-6"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 64px)" }}
+      >
         <div className="mx-auto max-w-3xl space-y-2">
           {missing.length > 0 && (
             <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">
