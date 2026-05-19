@@ -749,6 +749,7 @@ export type Database = {
           mileage_in: number | null
           mileage_out: number | null
           notes: string | null
+          payment_link_auto_sent_at: string | null
           payment_received: boolean
           payment_status: string
           pending_created_at: string | null
@@ -786,6 +787,7 @@ export type Database = {
           mileage_in?: number | null
           mileage_out?: number | null
           notes?: string | null
+          payment_link_auto_sent_at?: string | null
           payment_received?: boolean
           payment_status?: string
           pending_created_at?: string | null
@@ -823,6 +825,7 @@ export type Database = {
           mileage_in?: number | null
           mileage_out?: number | null
           notes?: string | null
+          payment_link_auto_sent_at?: string | null
           payment_received?: boolean
           payment_status?: string
           pending_created_at?: string | null
