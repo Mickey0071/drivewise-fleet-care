@@ -72,42 +72,21 @@ function MaintenancePage() {
             </div>
           ) : open.map(m => {
             const v = vehicleById(m.vehicleId);
-            const age = daysSince(m.createdAt?.slice(0, 10));
-            const priority = age >= 14 ? "high" : age >= 5 ? "medium" : "normal";
+            const issue = (m.serviceType ?? "").split("\n")[0].trim();
             return (
               <button
                 key={m.id}
                 type="button"
                 onClick={() => setResolveRecord(m)}
-                className="grid w-full grid-cols-12 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
               >
-                <div className="col-span-12 sm:col-span-4 min-w-0">
+                <div className="min-w-0 shrink-0 basis-1/3">
                   <div className="truncate text-sm font-medium">
                     {v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}
                   </div>
                   <div className="text-xs text-muted-foreground">Tag #{v?.plate ?? "—"}</div>
                 </div>
-                <div className="col-span-8 sm:col-span-5 min-w-0">
-                  <div className="truncate text-sm">{m.serviceType}</div>
-                  {m.sourceInspectionId && (
-                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">From inspection</div>
-                  )}
-                </div>
-                <div className="col-span-2 sm:col-span-2 text-xs text-muted-foreground">
-                  {m.createdAt ? fmtDate(m.createdAt.slice(0, 10)) : "—"}
-                </div>
-                <div className="col-span-2 sm:col-span-1 flex justify-end">
-                  <Badge
-                    variant={priority === "high" ? "destructive" : "outline"}
-                    className={
-                      priority === "medium"
-                        ? "border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                        : ""
-                    }
-                  >
-                    {priority}
-                  </Badge>
-                </div>
+                <div className="min-w-0 flex-1 truncate text-sm">{issue}</div>
               </button>
             );
           })}
