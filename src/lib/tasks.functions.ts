@@ -113,13 +113,12 @@ export const adminCreateTask = createServerFn({ method: "POST" })
     let smsError: string | null = null;
     if (data.notify_sms && runner?.phone) {
       const origin = process.env.PUBLIC_APP_ORIGIN ?? "https://camautorentals.lovable.app";
+      const vehicleForMsg = vehicleLabel || "vehicle";
       const lines = [
-        `Camauto Task: ${taskTypeLabel(data.task_type)}`,
-        vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
-        data.description ? data.description : null,
+        `New task assigned: ${taskTypeLabel(data.task_type)} for ${vehicleForMsg}. Check your app.`,
         data.address ? `Address: ${data.address}` : null,
         data.due_date ? `Due: ${data.due_date}` : null,
-        `Open: ${origin}/my-tasks?task_id=${id}`,
+        `Open: ${origin}/my-tasks/${id}`,
       ].filter(Boolean) as string[];
       const body = lines.join("\n");
       try {
