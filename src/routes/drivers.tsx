@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addDriver, useStoreVersion } from "@/lib/mock/store";
+import { updateDriver } from "@/lib/mock/store";
+import type { Driver } from "@/lib/mock/data";
 import { toast } from "sonner";
 import { US_STATES, formatAddressBlock, formatFullName } from "@/lib/us-states";
 
@@ -22,6 +24,7 @@ export const Route = createFileRoute("/drivers")({
 function DriversPage() {
   useStoreVersion();
   const [open, setOpen] = useState(false);
+  const [editDriver, setEditDriver] = useState<Driver | null>(null);
   const today = new Date();
   const soon = new Date(today); soon.setDate(today.getDate() + 60);
 
@@ -59,7 +62,7 @@ function DriversPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {lateCount > 0 && <StatusBadge status="late" />}
-                  <Button variant="outline" size="sm">View profile</Button>
+                  <Button variant="outline" size="sm" onClick={() => setEditDriver(d)}>Edit</Button>
                 </div>
               </CardContent>
             </Card>
@@ -67,8 +70,78 @@ function DriversPage() {
         })}
       </div>
       <AddRenterDialog open={open} onClose={() => setOpen(false)} />
+      <EditRenterDialog driver={editDriver} onClose={() => setEditDriver(null)} />
     </div>
   );
+}
+
+function EditRenterDialog({ driver, onClose }: { driver: Driver | null; onClose: () => void }) {
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  // sync when driver changes
+  const open = !!driver;
+  const driverId = driver?.id ?? null;
+  // re-init on open
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useStateInit(driverId, () => {
+    setPhone(driver?.phone ?? "");
+    setEmail(driver?.email ?? "");
+  });
+
+  async function save() {
+    if (!driver) return;
+    const trimmedPhone = phone.trim();
+    const trimmedEmail = email.trim();
+    if (!trimmedPhone) { toast.error("Phone is required"); return; }
+    if (!/^\+?[1-9]\d{6,14}$/.test(trimmedPhone.replace(/[\s().-]/g, ""))) {
+      toast.error("Phone must be E.164 format (e.g. +12675551234)"); return;
+    }
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error("Invalid email"); return;
+    }
+    setSaving(true);
+    try {
+      await updateDriver(driver.id, { phone: trimmedPhone, email: trimmedEmail });
+      toast.success("Renter updated");
+      onClose();
+    } catch (e: any) {
+      toast.error("Update failed", { description: e?.message ?? "Try again" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit {driver?.fullName ?? "renter"}</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div>
+            <Label>Phone (E.164) *</Label>
+            <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+12675551234" />
+          </div>
+          <div>
+            <Label>Email</Label>
+            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Helper: re-run init callback whenever the key changes (e.g. when a different driver opens)
+function useStateInit(key: string | null, init: () => void) {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffectImport(() => { if (key) init(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [key]);
 }
 
 function AddRenterDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
