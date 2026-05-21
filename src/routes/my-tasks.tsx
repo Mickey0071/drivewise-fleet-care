@@ -185,13 +185,24 @@ function MyTasksPage() {
                   })()}
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="flex flex-wrap gap-2 pt-1 cursor-pointer rounded-md p-2 -m-2 active:bg-muted/60 transition-colors"
+                  onClick={() => navigate({ to: "/my-tasks/$taskId", params: { taskId: t.id } })}
+                >
                   {t.status === "pending" && (
-                    <Button size="sm" variant="outline" onClick={() => start(t.id)}>Start Task</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-11 sm:h-9 active:scale-95 transition-transform"
+                      onClick={(e) => { e.stopPropagation(); start(t.id); }}
+                    >
+                      Start Task
+                    </Button>
                   )}
                   <Button
                     size="sm"
-                    onClick={() => navigate({ to: "/my-tasks/$taskId", params: { taskId: t.id } })}
+                    className="h-11 sm:h-9 active:scale-95 transition-transform"
+                    onClick={(e) => { e.stopPropagation(); navigate({ to: "/my-tasks/$taskId", params: { taskId: t.id } }); }}
                   >
                     Open task
                   </Button>
