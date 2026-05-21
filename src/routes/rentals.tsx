@@ -646,6 +646,10 @@ function RentalsPage() {
         userEmail={user?.email}
         userId={user?.id}
       />
+      <ViolationChargeDialog
+        rental={violationFor}
+        onClose={() => setViolationFor(null)}
+      />
       <ReceiptDialog rental={receipt} onClose={() => setReceipt(null)} />
       <NotifyRenterDialog
         open={!!chatting}
