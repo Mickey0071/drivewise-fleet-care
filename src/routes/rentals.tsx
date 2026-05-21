@@ -1382,25 +1382,31 @@ function AgreementDialog({ rental, onClose }: { rental: Rental | null; onClose: 
 function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
   const sendSmsFn = useServerFn(sendRentalSms);
   const [newVehicleId, setNewVehicleId] = useState<string>("");
+  const [reason, setReason] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
   useStoreVersion();
-  useEffect(() => { if (rental) setNewVehicleId(""); }, [rental]);
+  useEffect(() => { if (rental) { setNewVehicleId(""); setReason(""); } }, [rental]);
   if (!rental) return <Dialog open={false} onOpenChange={() => {}}><DialogContent /></Dialog>;
   const currentV = vehicleById(rental.vehicleId);
   const d = driverById(rental.driverId);
   const available = vehicles.filter(v => isVehicleBookable(v.id) && v.id !== rental.vehicleId);
   function confirm() {
     if (!rental || !newVehicleId) { toast.error("Pick a replacement vehicle"); return; }
+    if (!reason.trim()) { toast.error("Reason for swap is required"); return; }
+    setSubmitting(true);
     try {
-      const { newVehicle } = swapVehicle(rental.id, newVehicleId);
+      const { newVehicle } = swapVehicle(rental.id, newVehicleId, reason.trim());
       if (d?.phone) {
-        const msg = `Camauto Rentals: Your rental has been swapped to a ${newVehicle.year} ${newVehicle.make} ${newVehicle.model} (Plate ${newVehicle.plate}). Contact us with any questions.`;
+        const msg = `Your vehicle has been swapped to ${newVehicle.year} ${newVehicle.make} ${newVehicle.model} (Plate ${newVehicle.plate}). Your rental continues.`;
         sendSmsFn({ data: { phone: d.phone, message: msg.slice(0, 1000), name: d.fullName } })
           .catch(e => console.error("Swap SMS failed", e));
       }
-      toast.success("Vehicle swapped", { description: `${newVehicle.year} ${newVehicle.make} ${newVehicle.model}` });
+      toast.success("Vehicle swapped successfully", { description: `${newVehicle.year} ${newVehicle.make} ${newVehicle.model}` });
       onClose();
     } catch (e) {
       toast.error("Swap failed", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSubmitting(false);
     }
   }
   return (
@@ -1430,13 +1436,26 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
               </select>
             )}
           </div>
+          <div>
+            <Label htmlFor="swap-reason">Reason for swap <span className="text-destructive">*</span></Label>
+            <Textarea
+              id="swap-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Mechanical issue with current vehicle, renter requested upgrade…"
+              className="mt-1"
+              rows={3}
+            />
+          </div>
           <p className="text-xs text-muted-foreground">
             The old vehicle will be marked Available and the new vehicle will be marked Rented. The renter will get an SMS with the new vehicle details.
           </p>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={confirm} disabled={!newVehicleId}><ArrowLeftRight className="mr-1 h-4 w-4" /> Confirm swap</Button>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
+          <Button onClick={confirm} disabled={!newVehicleId || !reason.trim() || submitting}>
+            <ArrowLeftRight className="mr-1 h-4 w-4" /> Confirm Swap
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

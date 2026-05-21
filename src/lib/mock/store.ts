@@ -921,7 +921,7 @@ export function markReturnedAwaitingInspection(id: string, endDate?: string) {
 }
 
 /** Swap the vehicle on an active rental. Old vehicle → available, new → rented. */
-export function swapVehicle(rentalId: string, newVehicleId: string) {
+export function swapVehicle(rentalId: string, newVehicleId: string, reason?: string) {
   const r = rentals.find(x => x.id === rentalId);
   if (!r) throw new Error("Rental not found");
   if (r.vehicleId === newVehicleId) throw new Error("Already on that vehicle");
@@ -935,7 +935,11 @@ export function swapVehicle(rentalId: string, newVehicleId: string) {
   const oldV = vehicles.find(v => v.id === r.vehicleId);
   const oldVehicleId = r.vehicleId;
   r.vehicleId = newVehicleId;
-  r.notes = [r.notes, `Swapped vehicle ${oldVehicleId} → ${newVehicleId} on ${new Date().toISOString().slice(0, 10)}`].filter(Boolean).join(" · ");
+  const stamp = new Date().toISOString();
+  const historyLine =
+    `Swapped vehicle ${oldVehicleId} → ${newVehicleId} on ${stamp.slice(0, 10)}` +
+    (reason ? ` — Reason: ${reason}` : "");
+  r.notes = [r.notes, historyLine].filter(Boolean).join(" · ");
   newV.status = "rented";
   if (oldV) {
     oldV.status = "available";
