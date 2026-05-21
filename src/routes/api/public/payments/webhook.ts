@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import { type StripeEnv, verifyWebhook } from "@/lib/stripe.server";
+import { type StripeEnv, verifyWebhook, createStripeClient } from "@/lib/stripe.server";
 import { sendSms } from "@/lib/ghl.server";
 import { sendReceiptToCustomer } from "@/lib/receipt.functions";
 
@@ -27,6 +27,44 @@ function fmtAmount(cents: number | null | undefined): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+// --- Name match helpers --------------------------------------------------
+function normalizeName(s: string | null | undefined): string {
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z\s]/g, " ")
+    .replace(/\b(mr|mrs|ms|miss|dr|jr|sr|ii|iii|iv)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+function nameTokens(s: string): string[] {
+  return normalizeName(s).split(" ").filter((t) => t.length > 1);
+}
+/**
+ * Returns 1.0 if every license token (>=2 chars) appears in the cardholder
+ * name, 0 if none do, partial otherwise. First + last must both match for a
+ * pass (score >= 0.66 with both first and last token present).
+ */
+function nameMatchScore(cardName: string, licenseName: string): number {
+  const card = nameTokens(cardName);
+  const lic = nameTokens(licenseName);
+  if (!card.length || !lic.length) return 0;
+  const cardSet = new Set(card);
+  let hits = 0;
+  for (const t of lic) if (cardSet.has(t)) hits++;
+  return hits / lic.length;
+}
+function namesMatch(cardName: string, licenseName: string): boolean {
+  const score = nameMatchScore(cardName, licenseName);
+  if (score >= 0.99) return true;
+  // Require first + last token match (positions 0 and last of license).
+  const lic = nameTokens(licenseName);
+  const card = new Set(nameTokens(cardName));
+  if (lic.length >= 2 && card.has(lic[0]) && card.has(lic[lic.length - 1])) return true;
+  return false;
+}
+
 async function handleCheckoutCompleted(session: any, env: StripeEnv) {
   const userId = session.metadata?.userId || null;
   const rentalId = session.metadata?.rental_id || null;
@@ -37,6 +75,87 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
   // treated as the first weekly payment when rental_id is present.)
   if (rentalId && kind !== "subscription" && kind !== "weekly_subscription") {
     const sb = getSupabase();
+
+    // -------- Cardholder-name vs license-name validation --------
+    // Pull the PaymentIntent + Charge to get billing_details.name and the
+    // PaymentMethod id we'll persist for future charges.
+    const stripe = createStripeClient(env);
+    let cardholderName = "";
+    let paymentMethodId: string | null = null;
+    let chargeId: string | null = null;
+    try {
+      const piId = typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id;
+      if (piId) {
+        const pi = await stripe.paymentIntents.retrieve(piId, {
+          expand: ["latest_charge", "payment_method"],
+        });
+        const charge: any = pi.latest_charge && typeof pi.latest_charge !== "string" ? pi.latest_charge : null;
+        cardholderName = charge?.billing_details?.name || (pi as any).payment_method?.billing_details?.name || "";
+        paymentMethodId = typeof pi.payment_method === "string" ? pi.payment_method : (pi.payment_method?.id ?? null);
+        chargeId = charge?.id ?? null;
+      }
+    } catch (e) {
+      console.error("[webhook] failed to load PaymentIntent for name check", e);
+    }
+
+    // Look up the renter's license name.
+    const { data: rentalPre } = await sb.from("rentals")
+      .select("id, driver_id")
+      .eq("id", rentalId)
+      .maybeSingle();
+    let licenseName = "";
+    if (rentalPre?.driver_id) {
+      const { data: drv } = await sb.from("drivers")
+        .select("full_name, first_name, last_name")
+        .eq("id", rentalPre.driver_id)
+        .maybeSingle();
+      licenseName = drv?.full_name
+        || [drv?.first_name, drv?.last_name].filter(Boolean).join(" ")
+        || "";
+    }
+
+    const score = cardholderName && licenseName ? nameMatchScore(cardholderName, licenseName) : 0;
+    const matched = !!(cardholderName && licenseName && namesMatch(cardholderName, licenseName));
+
+    if (cardholderName && licenseName && !matched) {
+      // Mismatch — refund the charge, do NOT activate the rental.
+      console.warn(`[webhook] name mismatch rental=${rentalId} card="${cardholderName}" license="${licenseName}" score=${score}`);
+      try {
+        if (chargeId) await stripe.refunds.create({ charge: chargeId });
+      } catch (e) {
+        console.error("[webhook] refund failed", e);
+      }
+      await sb.from("rentals").update({
+        cardholder_name: cardholderName,
+        name_match_status: "mismatched",
+        name_match_score: score,
+        updated_at: new Date().toISOString(),
+      }).eq("id", rentalId);
+      await sb.from("subscriptions").insert({
+        user_id: userId,
+        rental_id: rentalId,
+        stripe_customer_id: session.customer,
+        stripe_session_id: session.id,
+        kind: "refunded_name_mismatch",
+        amount_cents: session.amount_total ?? null,
+        status: "refunded",
+        environment: env,
+      } as any);
+
+      const profile = await getProfile(userId);
+      if (profile?.phone) {
+        await sendSms(
+          profile.phone,
+          `Rentalprise Auto: Your payment was refunded — the card name (${cardholderName}) doesn't match your driver's license (${licenseName}). Please retry with a card in your name.`,
+          profile.full_name
+        );
+      }
+      return;
+    }
+    // -------- end name validation --------
+
     // Record the payment in the subscriptions ledger for accounting.
     await getSupabase().from("subscriptions").insert({
       user_id: userId,
@@ -61,6 +180,11 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         reservation_status: "active",
         activated_at: new Date().toISOString(),
         pending_created_at: null,
+        stripe_customer_id: session.customer ?? null,
+        stripe_payment_method_id: paymentMethodId,
+        cardholder_name: cardholderName || null,
+        name_match_status: matched ? "matched" : (cardholderName ? "unverified" : "unverified"),
+        name_match_score: score || null,
         updated_at: new Date().toISOString(),
       }).eq("id", rental.id);
 
