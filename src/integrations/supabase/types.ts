@@ -625,6 +625,45 @@ export type Database = {
         }
         Relationships: []
       }
+      rental_charges: {
+        Row: {
+          amount: number
+          charge_date: string
+          created_at: string
+          environment: string
+          error_msg: string | null
+          id: string
+          period_label: string | null
+          rental_id: string
+          status: string
+          stripe_payment_intent_id: string | null
+        }
+        Insert: {
+          amount?: number
+          charge_date?: string
+          created_at?: string
+          environment?: string
+          error_msg?: string | null
+          id?: string
+          period_label?: string | null
+          rental_id: string
+          status: string
+          stripe_payment_intent_id?: string | null
+        }
+        Update: {
+          amount?: number
+          charge_date?: string
+          created_at?: string
+          environment?: string
+          error_msg?: string | null
+          id?: string
+          period_label?: string | null
+          rental_id?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+        }
+        Relationships: []
+      }
       rental_extensions: {
         Row: {
           additional_amount: number

@@ -49,6 +49,7 @@ import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$re
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
+import { Route as ApiPublicHooksAutoRenewChargesRouteImport } from './routes/api/public/hooks/auto-renew-charges'
 
 const ViolationsRoute = ViolationsRouteImport.update({
   id: '/violations',
@@ -252,6 +253,12 @@ const ApiPublicHooksSendRemindersRoute =
     path: '/api/public/hooks/send-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksAutoRenewChargesRoute =
+  ApiPublicHooksAutoRenewChargesRouteImport.update({
+    id: '/api/public/hooks/auto-renew-charges',
+    path: '/api/public/hooks/auto-renew-charges',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -292,6 +299,7 @@ export interface FileRoutesByFullPath {
   '/sign/$token': typeof SignTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
+  '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -334,6 +342,7 @@ export interface FileRoutesByTo {
   '/sign/$token': typeof SignTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
+  '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -377,6 +386,7 @@ export interface FileRoutesById {
   '/sign/$token': typeof SignTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
+  '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -421,6 +431,7 @@ export interface FileRouteTypes {
     | '/sign/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
+    | '/api/public/hooks/auto-renew-charges'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -463,6 +474,7 @@ export interface FileRouteTypes {
     | '/sign/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
+    | '/api/public/hooks/auto-renew-charges'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
   id:
@@ -505,6 +517,7 @@ export interface FileRouteTypes {
     | '/sign/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
+    | '/api/public/hooks/auto-renew-charges'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
@@ -546,6 +559,7 @@ export interface RootRouteChildren {
   SignTokenRoute: typeof SignTokenRoute
   InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
+  ApiPublicHooksAutoRenewChargesRoute: typeof ApiPublicHooksAutoRenewChargesRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
@@ -832,6 +846,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSendRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/auto-renew-charges': {
+      id: '/api/public/hooks/auto-renew-charges'
+      path: '/api/public/hooks/auto-renew-charges'
+      fullPath: '/api/public/hooks/auto-renew-charges'
+      preLoaderRoute: typeof ApiPublicHooksAutoRenewChargesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -893,6 +914,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignTokenRoute: SignTokenRoute,
   InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
+  ApiPublicHooksAutoRenewChargesRoute: ApiPublicHooksAutoRenewChargesRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
