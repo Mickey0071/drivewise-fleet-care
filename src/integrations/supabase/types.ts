@@ -757,6 +757,8 @@ export type Database = {
           pending_created_at: string | null
           rate: number | null
           rate_amount: number | null
+          receipt_pdf_generated_at: string | null
+          receipt_pdf_url: string | null
           reservation_status: string | null
           return_inspection_id: string | null
           returned_at: string | null
@@ -798,6 +800,8 @@ export type Database = {
           pending_created_at?: string | null
           rate?: number | null
           rate_amount?: number | null
+          receipt_pdf_generated_at?: string | null
+          receipt_pdf_url?: string | null
           reservation_status?: string | null
           return_inspection_id?: string | null
           returned_at?: string | null
@@ -839,6 +843,8 @@ export type Database = {
           pending_created_at?: string | null
           rate?: number | null
           rate_amount?: number | null
+          receipt_pdf_generated_at?: string | null
+          receipt_pdf_url?: string | null
           reservation_status?: string | null
           return_inspection_id?: string | null
           returned_at?: string | null

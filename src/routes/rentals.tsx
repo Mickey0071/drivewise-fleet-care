@@ -33,6 +33,7 @@ import { startReturnInspection } from "@/lib/inspection.functions";
 import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
+import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { toast } from "sonner";
@@ -79,6 +80,8 @@ function RentalsPage() {
   const [payLinkSendingId, setPayLinkSendingId] = useState<string | null>(null);
   const genPdfFn = useServerFn(generateAgreementPdf);
   const [pdfRegenId, setPdfRegenId] = useState<string | null>(null);
+  const genReceiptFn = useServerFn(generateReceiptPdf);
+  const [receiptRegenId, setReceiptRegenId] = useState<string | null>(null);
   useStoreVersion();
   // Notify staff when a remote signature arrives (via realtime) and the
   // reservation flips from pending → active.
@@ -490,6 +493,40 @@ function RentalsPage() {
                       }}
                     >
                       📄 {pdfRegenId === r.id ? "Generating…" : "Regenerate PDF"}
+                    </Button>
+                  ) : null}
+                  {r.receiptPdfUrl ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title={r.receiptPdfGeneratedAt ? `Generated ${new Date(r.receiptPdfGeneratedAt).toLocaleString()}` : undefined}
+                      onClick={() => window.open(r.receiptPdfUrl!, "_blank", "noopener")}
+                    >
+                      📄 Receipt
+                    </Button>
+                  ) : r.paymentReceived ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={receiptRegenId === r.id}
+                      onClick={async () => {
+                        setReceiptRegenId(r.id);
+                        try {
+                          const res = await genReceiptFn({ data: { rentalId: r.id } });
+                          if (res?.url) {
+                            toast.success("Receipt PDF generated");
+                            await ensureRentalSynced(r.id);
+                          } else {
+                            toast.error("Could not generate receipt", { description: res?.error ?? "Unknown error" });
+                          }
+                        } catch (e) {
+                          toast.error("Could not generate receipt", { description: e instanceof Error ? e.message : String(e) });
+                        } finally {
+                          setReceiptRegenId(null);
+                        }
+                      }}
+                    >
+                      📄 {receiptRegenId === r.id ? "Generating…" : "Generate Receipt"}
                     </Button>
                   ) : null}
                   {r.paymentLinkAutoSentAt && !r.paymentReceived && (

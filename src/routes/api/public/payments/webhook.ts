@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { type StripeEnv, verifyWebhook } from "@/lib/stripe.server";
 import { sendSms } from "@/lib/ghl.server";
+import { sendReceiptToCustomer } from "@/lib/receipt.functions";
 
 let _supabase: any = null;
 function getSupabase(): any {
@@ -113,6 +114,20 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         `Rentalprise Auto: Payment received${amt ? " (" + amt + ")" : ""}. Your rental is now active — see you at pickup!`,
         profile.full_name
       );
+    }
+
+    // Generate & deliver the payment receipt PDF (fire-and-forget; never throws).
+    try {
+      await sendReceiptToCustomer({
+        data: {
+          rentalId,
+          paymentAmountCents: session.amount_total ?? undefined,
+          paymentMethod: "Stripe",
+          paymentReference: session.id,
+        },
+      });
+    } catch (e) {
+      console.error(`[receipt] rental=${rentalId} delivery failed`, e);
     }
   }
 }
