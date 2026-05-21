@@ -29,6 +29,7 @@ import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
+import { chargeViolation } from "@/lib/violation-charge.functions";
 import { startReturnInspection } from "@/lib/inspection.functions";
 import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
@@ -69,6 +70,7 @@ function RentalsPage() {
   const [returnChoiceRental, setReturnChoiceRental] = useState<Rental | null>(null);
   const [returnDispatchRental, setReturnDispatchRental] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
+  const [violationFor, setViolationFor] = useState<Rental | null>(null);
   const [receipt, setReceipt] = useState<Rental | null>(null);
   const [chatting, setChatting] = useState<Rental | null>(null);
   const [detail, setDetail] = useState<Rental | null>(null);
@@ -456,6 +458,11 @@ function RentalsPage() {
                       <ArrowLeftRight className="mr-1 h-4 w-4" /> Swap vehicle
                     </Button>
                   )}
+                  {role === "admin" && (
+                    <Button variant="outline" size="sm" onClick={() => setViolationFor(r)}>
+                      <DollarSign className="mr-1 h-4 w-4" /> Charge for Violation
+                    </Button>
+                  )}
                   {r.signatureDataUrl && (
                     <Button variant="ghost" size="sm" onClick={() => setViewingAgreement(r)}>
                       <FileSignature className="mr-1 h-4 w-4" /> View agreement
@@ -638,6 +645,10 @@ function RentalsPage() {
         onClose={() => setCharging(null)}
         userEmail={user?.email}
         userId={user?.id}
+      />
+      <ViolationChargeDialog
+        rental={violationFor}
+        onClose={() => setViolationFor(null)}
       />
       <ReceiptDialog rental={receipt} onClose={() => setReceipt(null)} />
       <NotifyRenterDialog
@@ -1601,6 +1612,107 @@ function ReceiptDialog({ rental, onClose }: { rental: Rental | null; onClose: ()
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Close</Button>
           <Button onClick={printReceipt}><Printer className="mr-1 h-4 w-4" /> Print / Save PDF</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ViolationChargeDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const chargeFn = useServerFn(chargeViolation);
+
+  useEffect(() => {
+    if (rental) {
+      setAmount("");
+      setDescription("");
+      setError(null);
+      setSubmitting(false);
+    }
+  }, [rental?.id]);
+
+  if (!rental) return null;
+  const driver = driverById(rental.driverId);
+
+  async function submit() {
+    setError(null);
+    const amt = Number(amount);
+    if (!Number.isFinite(amt) || amt <= 0) {
+      setError("Enter a valid amount greater than zero");
+      return;
+    }
+    if (!description.trim()) {
+      setError("Enter a description");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await chargeFn({
+        data: { rentalId: rental!.id, amount: amt, description: description.trim() },
+      });
+      toast.success("Charged successfully", {
+        description: `$${Number(res.amount).toFixed(2)} — ${description.trim()}`,
+      });
+      onClose();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg);
+      toast.error("Charge failed", { description: msg });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!rental} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Charge for Violation</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
+            Rental <span className="font-mono">{rental.id}</span>
+            {driver?.fullName ? <> · {driver.fullName}</> : null}
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="violation-amount">Amount (USD)</Label>
+            <Input
+              id="violation-amount"
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              placeholder="75.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              disabled={submitting}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="violation-desc">Description</Label>
+            <Input
+              id="violation-desc"
+              placeholder="e.g., Parking ticket, Late return fee"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={submitting}
+            />
+          </div>
+          {error && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+              {error}
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
+          <Button onClick={submit} disabled={submitting}>
+            <DollarSign className="mr-1 h-4 w-4" />
+            {submitting ? "Charging…" : "Charge card"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
