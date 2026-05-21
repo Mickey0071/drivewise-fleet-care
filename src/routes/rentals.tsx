@@ -458,6 +458,11 @@ function RentalsPage() {
                       <ArrowLeftRight className="mr-1 h-4 w-4" /> Swap vehicle
                     </Button>
                   )}
+                  {role === "admin" && (
+                    <Button variant="outline" size="sm" onClick={() => setViolationFor(r)}>
+                      <DollarSign className="mr-1 h-4 w-4" /> Charge for Violation
+                    </Button>
+                  )}
                   {r.signatureDataUrl && (
                     <Button variant="ghost" size="sm" onClick={() => setViewingAgreement(r)}>
                       <FileSignature className="mr-1 h-4 w-4" /> View agreement
