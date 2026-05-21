@@ -59,6 +59,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       await sb.from("rentals").update({
         payment_received: true,
         reservation_status: "active",
+        activated_at: new Date().toISOString(),
         pending_created_at: null,
         updated_at: new Date().toISOString(),
       }).eq("id", rental.id);
