@@ -13,7 +13,7 @@ import {
 import { ArrowLeft, MapPin, CheckCircle2, ClipboardList, Wrench, Car, AlertOctagon, Phone, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/my-tasks/$taskId")({
+export const Route = createFileRoute("/my-tasks_/$taskId")({
   head: () => ({ meta: [{ title: "Task Detail — Camauto Runner Hub" }] }),
   component: TaskDetailPage,
 });
