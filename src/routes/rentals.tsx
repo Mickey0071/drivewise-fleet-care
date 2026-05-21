@@ -80,6 +80,8 @@ function RentalsPage() {
   const [payLinkSendingId, setPayLinkSendingId] = useState<string | null>(null);
   const genPdfFn = useServerFn(generateAgreementPdf);
   const [pdfRegenId, setPdfRegenId] = useState<string | null>(null);
+  const genReceiptFn = useServerFn(generateReceiptPdf);
+  const [receiptRegenId, setReceiptRegenId] = useState<string | null>(null);
   useStoreVersion();
   // Notify staff when a remote signature arrives (via realtime) and the
   // reservation flips from pending → active.
