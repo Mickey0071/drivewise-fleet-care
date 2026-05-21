@@ -32,6 +32,7 @@ function SignPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [step, setStep] = useState<"identity" | "agreement">("identity");
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     fetchInfo({ data: { token } })
@@ -42,6 +43,18 @@ function SignPage() {
       })
       .catch((e) => setLoadError(e instanceof Error ? e.message : String(e)));
   }, [token, fetchInfo]);
+
+  // Auto-advance to agreement step once both ID and selfie are uploaded.
+  useEffect(() => {
+    if (step !== "identity") return;
+    if (!licenseUrl || !selfieUrl) return;
+    setVerifying(true);
+    const t = setTimeout(() => {
+      setVerifying(false);
+      setStep("agreement");
+    }, 900);
+    return () => clearTimeout(t);
+  }, [licenseUrl, selfieUrl, step]);
 
   async function handleSubmit() {
     if (!sig) return toast.error("Please sign the agreement");
@@ -178,10 +191,14 @@ function SignPage() {
           <Button
             className="w-full bg-[#2db84b] hover:bg-[#27a341] text-white"
             size="lg"
-            disabled={!licenseUrl || !selfieUrl}
+            disabled={!licenseUrl || !selfieUrl || verifying}
             onClick={() => setStep("agreement")}
           >
-            Continue <ArrowRight className="ml-2 h-4 w-4" />
+            {verifying ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying…</>
+            ) : (
+              <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>
+            )}
           </Button>
         </>
       ) : (
