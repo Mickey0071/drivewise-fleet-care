@@ -95,7 +95,7 @@ export const generateReceiptPdf = createServerFn({ method: "POST" })
         settings: DEFAULT_SETTINGS,
       };
 
-      const pdfBuffer = renderReceiptPdf(pdfData);
+      const pdfBuffer = await renderReceiptPdf(pdfData);
 
       const timestamp = Date.now();
       const path = `${rentalId}/receipt-${timestamp}.pdf`;
