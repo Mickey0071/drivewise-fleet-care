@@ -281,13 +281,21 @@ function PhotoCapture({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const MAX_BYTES = 5 * 1024 * 1024;
 
+  // Keep status in sync with the parent value so the "Uploaded" state is preserved
+  // even if this component re-renders or remounts after the parent updates state.
+  useEffect(() => {
+    if (value && status !== "uploaded" && status !== "uploading") {
+      setStatus("uploaded");
+    }
+  }, [value, status]);
+
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    console.log(`[${label}] file selected:`, file.name, `${(file.size / 1024 / 1024).toFixed(2)}MB`);
+    console.log(`${label} file selected: ${file.name}, size: ${file.size} bytes`);
     if (file.size > MAX_BYTES) {
       const msg = "File too large, max 5MB";
-      console.error(`[${label}] ${msg}`);
+      console.error(`${label} upload failed: ${msg}`);
       setErrorMsg(msg);
       setStatus("error");
       toast.error(msg);
@@ -296,21 +304,23 @@ function PhotoCapture({
     }
     setErrorMsg(null);
     setStatus("uploading");
-    console.log(`[${label}] uploading...`);
+    console.log(`Uploading ${label}...`);
     const reader = new FileReader();
     reader.onerror = () => {
-      console.error(`[${label}] FileReader error`);
-      setErrorMsg("Could not read file");
+      const msg = "Could not read file";
+      console.error(`${label} upload failed: ${msg}`);
+      setErrorMsg(msg);
       setStatus("error");
-      toast.error("Could not read file");
+      toast.error(msg);
     };
     reader.onload = () => {
       const img = new Image();
       img.onerror = () => {
-        console.error(`[${label}] image decode error`);
-        setErrorMsg("Invalid image file");
+        const msg = "Invalid image file";
+        console.error(`${label} upload failed: ${msg}`);
+        setErrorMsg(msg);
         setStatus("error");
-        toast.error("Invalid image file");
+        toast.error(msg);
       };
       img.onload = () => {
         try {
@@ -328,13 +338,14 @@ function PhotoCapture({
             ctx.drawImage(img, 0, 0, w, h);
             onChange(canvas.toDataURL("image/jpeg", 0.85));
           }
-          console.log(`[${label}] upload complete`);
+          console.log(`${label} uploaded successfully`);
           setStatus("uploaded");
         } catch (err) {
-          console.error(`[${label}] processing error`, err);
-          setErrorMsg("Could not process image");
+          const msg = err instanceof Error ? err.message : "Could not process image";
+          console.error(`${label} upload failed: ${msg}`, err);
+          setErrorMsg(msg);
           setStatus("error");
-          toast.error("Could not process image");
+          toast.error(msg);
         }
       };
       img.src = reader.result as string;
