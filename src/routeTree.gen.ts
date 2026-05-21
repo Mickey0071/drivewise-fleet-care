@@ -42,7 +42,7 @@ import { Route as RunnersTasksRouteImport } from './routes/runners.tasks'
 import { Route as RunnersNewTaskRouteImport } from './routes/runners.new-task'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
-import { Route as MyTasksTaskIdRouteImport } from './routes/my-tasks.$taskId'
+import { Route as MyTasksTaskIdRouteImport } from './routes/my-tasks_.$taskId'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
@@ -217,9 +217,9 @@ const RentTokenRoute = RentTokenRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const MyTasksTaskIdRoute = MyTasksTaskIdRouteImport.update({
-  id: '/$taskId',
-  path: '/$taskId',
-  getParentRoute: () => MyTasksRoute,
+  id: '/my-tasks_/$taskId',
+  path: '/my-tasks/$taskId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const FleetVehicleIdRoute = FleetVehicleIdRouteImport.update({
   id: '/$vehicleId',
@@ -275,7 +275,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/mechanic-task': typeof MechanicTaskRoute
-  '/my-tasks': typeof MyTasksRouteWithChildren
+  '/my-tasks': typeof MyTasksRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
@@ -318,7 +318,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/mechanic-task': typeof MechanicTaskRoute
-  '/my-tasks': typeof MyTasksRouteWithChildren
+  '/my-tasks': typeof MyTasksRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
@@ -362,7 +362,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/mechanic-task': typeof MechanicTaskRoute
-  '/my-tasks': typeof MyTasksRouteWithChildren
+  '/my-tasks': typeof MyTasksRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
@@ -378,7 +378,7 @@ export interface FileRoutesById {
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
-  '/my-tasks/$taskId': typeof MyTasksTaskIdRoute
+  '/my-tasks_/$taskId': typeof MyTasksTaskIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/runners/new-task': typeof RunnersNewTaskRoute
@@ -509,7 +509,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/admin/users'
     | '/fleet/$vehicleId'
-    | '/my-tasks/$taskId'
+    | '/my-tasks_/$taskId'
     | '/rent/$token'
     | '/rent/paid'
     | '/runners/new-task'
@@ -537,7 +537,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MaintenanceRoute: typeof MaintenanceRoute
   MechanicTaskRoute: typeof MechanicTaskRoute
-  MyTasksRoute: typeof MyTasksRouteWithChildren
+  MyTasksRoute: typeof MyTasksRoute
   PaymentsRoute: typeof PaymentsRoute
   PayrollRoute: typeof PayrollRoute
   PayrollReturnRoute: typeof PayrollReturnRoute
@@ -552,6 +552,7 @@ export interface RootRouteChildren {
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  MyTasksTaskIdRoute: typeof MyTasksTaskIdRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
   RunnersNewTaskRoute: typeof RunnersNewTaskRoute
@@ -797,12 +798,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RentTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/my-tasks/$taskId': {
-      id: '/my-tasks/$taskId'
-      path: '/$taskId'
+    '/my-tasks_/$taskId': {
+      id: '/my-tasks_/$taskId'
+      path: '/my-tasks/$taskId'
       fullPath: '/my-tasks/$taskId'
       preLoaderRoute: typeof MyTasksTaskIdRouteImport
-      parentRoute: typeof MyTasksRoute
+      parentRoute: typeof rootRouteImport
     }
     '/fleet/$vehicleId': {
       id: '/fleet/$vehicleId'
@@ -866,17 +867,6 @@ const FleetRouteChildren: FleetRouteChildren = {
 
 const FleetRouteWithChildren = FleetRoute._addFileChildren(FleetRouteChildren)
 
-interface MyTasksRouteChildren {
-  MyTasksTaskIdRoute: typeof MyTasksTaskIdRoute
-}
-
-const MyTasksRouteChildren: MyTasksRouteChildren = {
-  MyTasksTaskIdRoute: MyTasksTaskIdRoute,
-}
-
-const MyTasksRouteWithChildren =
-  MyTasksRoute._addFileChildren(MyTasksRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
@@ -892,7 +882,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MaintenanceRoute: MaintenanceRoute,
   MechanicTaskRoute: MechanicTaskRoute,
-  MyTasksRoute: MyTasksRouteWithChildren,
+  MyTasksRoute: MyTasksRoute,
   PaymentsRoute: PaymentsRoute,
   PayrollRoute: PayrollRoute,
   PayrollReturnRoute: PayrollReturnRoute,
@@ -907,6 +897,7 @@ const rootRouteChildren: RootRouteChildren = {
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
   AdminUsersRoute: AdminUsersRoute,
+  MyTasksTaskIdRoute: MyTasksTaskIdRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
   RunnersNewTaskRoute: RunnersNewTaskRoute,
@@ -921,3 +912,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
