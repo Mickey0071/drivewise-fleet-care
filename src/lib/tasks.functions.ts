@@ -106,10 +106,12 @@ export const adminCreateTask = createServerFn({ method: "POST" })
       .single();
     if (insErr || !created) throw new Error(insErr?.message ?? "Failed to create task");
 
-    // Fire-and-forget SMS so a slow/failed GHL call never blocks task creation.
-    let smsStatus: "queued" | "skipped_no_phone" = "skipped_no_phone";
+    // Debug logging for SMS dispatch
+    console.log(`[adminCreateTask] task=${created.id} notify_sms=${data.notify_sms} runner_phone=${runner?.phone ?? "(none)"} will_send=${Boolean(data.notify_sms && runner?.phone)}`);
+
+    let smsStatus: "sent" | "failed" | "skipped_no_phone" = "skipped_no_phone";
+    let smsError: string | null = null;
     if (data.notify_sms && runner?.phone) {
-      smsStatus = "queued";
       const origin = process.env.PUBLIC_APP_ORIGIN ?? "https://camautorentals.lovable.app";
       const lines = [
         `Camauto Task: ${taskTypeLabel(data.task_type)}`,
@@ -120,13 +122,20 @@ export const adminCreateTask = createServerFn({ method: "POST" })
         `Open: ${origin}/my-tasks?task_id=${id}`,
       ].filter(Boolean) as string[];
       const body = lines.join("\n");
-      // Intentionally not awaited — best-effort background send.
-      void sendSms(runner.phone, body, runnerName)
-        .then(() => console.log(`[task sms] sent task=${created.id}`))
-        .catch((e) => console.error(`[task sms] failed task=${created.id}:`, e instanceof Error ? e.message : e));
+      try {
+        await sendSms(runner.phone, body, runnerName);
+        smsStatus = "sent";
+        console.log(`[adminCreateTask] sendSms OK task=${created.id}`);
+      } catch (e) {
+        smsStatus = "failed";
+        smsError = e instanceof Error ? e.message : String(e);
+        console.error(`[adminCreateTask] sendSms FAILED task=${created.id}:`, smsError);
+      }
+    } else {
+      console.log(`[adminCreateTask] sendSms SKIPPED task=${created.id} reason=${!data.notify_sms ? "notify_sms=false" : "no runner phone"}`);
     }
 
-    return { task_id: created.id, runner_name: runnerName, sms_status: smsStatus, sms_error: null };
+    return { task_id: created.id, runner_name: runnerName, sms_status: smsStatus, sms_error: smsError };
   });
 
 export const completeTaskFromInspection = createServerFn({ method: "POST" })
