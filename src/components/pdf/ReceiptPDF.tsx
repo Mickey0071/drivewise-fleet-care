@@ -1,4 +1,3 @@
-import { jsPDF } from "jspdf";
 import type { AgreementSettings } from "@/lib/agreementSettings";
 
 /**
@@ -70,7 +69,9 @@ function fmtMoney(n: number): string {
  * Render the receipt to a PDF Uint8Array using jsPDF (no WASM).
  * Units are points; page is US Letter (612 x 792 pt).
  */
-export function renderReceiptPdf(data: ReceiptPDFData): Uint8Array {
+export async function renderReceiptPdf(data: ReceiptPDFData): Promise<Uint8Array> {
+  // Lazy-load jsPDF so it isn't pulled into the SSR/Worker bundle at module init.
+  const { jsPDF } = await import("jspdf");
   const { rental, driver, vehicle, payment, settings } = data;
   const c = settings.company;
   const rateLabel = (() => {
