@@ -157,7 +157,7 @@ function MyTasksPage() {
               "cursor-pointer transition-shadow hover:shadow-md",
               highlightId === t.id && "ring-2 ring-emerald-500",
             )}
-            onClick={() => navigate({ to: "/my-tasks/$taskId", params: { taskId: t.id } })}
+            onClick={() => { console.log("Card clicked for", t.id); navigate({ to: "/my-tasks/$taskId", params: { taskId: t.id } }); }}
           >
             <CardContent className="space-y-2 pt-5">
               <div className="flex flex-wrap items-center gap-2">
@@ -194,7 +194,7 @@ function MyTasksPage() {
               ) : (
                 <div
                   className="flex flex-wrap gap-2 pt-1 cursor-pointer rounded-md p-2 -m-2 active:bg-muted/60 transition-colors"
-                  onClick={() => navigate({ to: "/my-tasks/$taskId", params: { taskId: t.id } })}
+                  onClick={() => { console.log("Action row clicked for", t.id); navigate({ to: "/my-tasks/$taskId", params: { taskId: t.id } }); }}
                 >
                   {t.status === "pending" && (
                     <Button
