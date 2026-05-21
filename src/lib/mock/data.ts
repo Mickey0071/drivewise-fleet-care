@@ -69,6 +69,8 @@ export interface Rental {
   paymentLinkAutoSentAt?: string;
   agreementPdfUrl?: string;
   agreementPdfGeneratedAt?: string;
+  receiptPdfUrl?: string;
+  receiptPdfGeneratedAt?: string;
 }
 export interface RentalExtension {
   id: string;
