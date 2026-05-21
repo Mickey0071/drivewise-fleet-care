@@ -29,6 +29,7 @@ import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
+import { chargeViolation } from "@/lib/violation-charge.functions";
 import { startReturnInspection } from "@/lib/inspection.functions";
 import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
@@ -69,6 +70,7 @@ function RentalsPage() {
   const [returnChoiceRental, setReturnChoiceRental] = useState<Rental | null>(null);
   const [returnDispatchRental, setReturnDispatchRental] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
+  const [violationFor, setViolationFor] = useState<Rental | null>(null);
   const [receipt, setReceipt] = useState<Rental | null>(null);
   const [chatting, setChatting] = useState<Rental | null>(null);
   const [detail, setDetail] = useState<Rental | null>(null);
