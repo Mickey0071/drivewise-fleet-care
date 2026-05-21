@@ -116,9 +116,13 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   }
 
   async function submit() {
-    if (!assignedTo) { toast.error("Pick a runner"); return; }
-    setBusy(true);
     try {
+      if (!assignedTo) {
+        toast.error("Pick a runner");
+        return;
+      }
+      setBusy(true);
+      console.log(`About to create task with notify_sms: ${notifySms}`);
       const res = await createTask({ data: {
         assigned_to_user_id: assignedTo,
         task_type: taskType,
@@ -131,6 +135,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         notify_sms: notifySms,
         task_mode: prefill?.mode ?? null,
       }});
+      console.log("Task created successfully");
       console.log(`[NewTaskDialog] Task created. notify_sms was: ${notifySms}, runner_phone: ${selectedRunner?.phone ?? "(none)"}, sms_status: ${res.sms_status}${res.sms_error ? ` (${res.sms_error})` : ""}`);
       if (res.sms_status === "sent") {
         toast.success(`Task created and SMS sent to ${res.runner_name}`);
@@ -142,7 +147,9 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
       onOpenChange(false);
       onCreated?.();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to create task");
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      console.error("[NewTaskDialog] Submit failed:", e);
+      toast.error(`Failed to create task: ${errorMsg}`);
     } finally {
       setBusy(false);
     }
