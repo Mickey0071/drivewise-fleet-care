@@ -30,7 +30,10 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
     handlers: {
       POST: async ({ request }) => {
         const cronSecret = request.headers.get("x-cron-secret");
-        if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
+        const apiKey = request.headers.get("apikey");
+        const validCronSecret = !!cronSecret && cronSecret === process.env.CRON_SECRET;
+        const validApiKey = !!apiKey && apiKey === process.env.SUPABASE_PUBLISHABLE_KEY;
+        if (!validCronSecret && !validApiKey) {
           return new Response("Unauthorized", { status: 401 });
         }
         const target = tomorrowISO();
