@@ -319,6 +319,7 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       signed_by: string;
       agreement_version: string;
       reservation_status?: string;
+      activated_at?: string;
     } = {
       client_signature_url: signatureUrl,
       license_image_url: licenseUrl,
@@ -331,6 +332,7 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
     };
     if (rental.reservation_status === "pending" && rental.payment_received) {
       update.reservation_status = "active";
+      update.activated_at = nowIso;
     }
 
     const { error: upErr } = await supabaseAdmin
