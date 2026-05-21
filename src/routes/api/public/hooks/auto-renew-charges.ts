@@ -82,13 +82,9 @@ export const Route = createFileRoute("/api/public/hooks/auto-renew-charges")({
             const succeededCount = (priorCharges ?? []).filter((c) => c.status === "succeeded").length;
             const lastAttempt = (priorCharges ?? [])[0];
 
-            // periods_paid = 1 (initial checkout) + succeeded auto-charges
+            // periods_paid = 1 (initial checkout) + succeeded auto-charges.
+            // Next charge is due exactly periods_paid intervals after activation.
             let nextDue = new Date(activated);
-            for (let i = 0; i < succeededCount + 1; i++) nextDue = addInterval(nextDue, cadence);
-            // Subtract one to get "due at the start of the upcoming period"
-            nextDue = addInterval(nextDue, cadence);
-            // Actually: next charge is due exactly (succeeded + 1) periods after activation.
-            nextDue = new Date(activated);
             for (let i = 0; i < succeededCount + 1; i++) nextDue = addInterval(nextDue, cadence);
 
             if (nextDue.getTime() > now.getTime()) {
