@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -80,15 +80,13 @@ function EditRenterDialog({ driver, onClose }: { driver: Driver | null; onClose:
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // sync when driver changes
   const open = !!driver;
-  const driverId = driver?.id ?? null;
-  // re-init on open
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useStateInit(driverId, () => {
-    setPhone(driver?.phone ?? "");
-    setEmail(driver?.email ?? "");
-  });
+  useEffect(() => {
+    if (driver) {
+      setPhone(driver.phone ?? "");
+      setEmail(driver.email ?? "");
+    }
+  }, [driver]);
 
   async function save() {
     if (!driver) return;
@@ -138,11 +136,6 @@ function EditRenterDialog({ driver, onClose }: { driver: Driver | null; onClose:
   );
 }
 
-// Helper: re-run init callback whenever the key changes (e.g. when a different driver opens)
-function useStateInit(key: string | null, init: () => void) {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useEffectImport(() => { if (key) init(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [key]);
-}
 
 function AddRenterDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   // Personal
