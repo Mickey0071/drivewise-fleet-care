@@ -731,6 +731,7 @@ export type Database = {
       }
       rentals: {
         Row: {
+          activated_at: string | null
           agreement_pdf_generated_at: string | null
           agreement_pdf_url: string | null
           agreement_version: string | null
@@ -774,6 +775,7 @@ export type Database = {
           weekly_rate: number
         }
         Insert: {
+          activated_at?: string | null
           agreement_pdf_generated_at?: string | null
           agreement_pdf_url?: string | null
           agreement_version?: string | null
@@ -817,6 +819,7 @@ export type Database = {
           weekly_rate?: number
         }
         Update: {
+          activated_at?: string | null
           agreement_pdf_generated_at?: string | null
           agreement_pdf_url?: string | null
           agreement_version?: string | null

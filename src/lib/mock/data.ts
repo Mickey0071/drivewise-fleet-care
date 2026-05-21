@@ -61,6 +61,7 @@ export interface Rental {
   reservationStatus?: "pending" | "active" | "completed" | "returned";
   pendingCreatedAt?: string;
   paymentReceived?: boolean;
+  activatedAt?: string;
   extensions?: RentalExtension[];
   licenseImageUrl?: string;
   selfieImageUrl?: string;

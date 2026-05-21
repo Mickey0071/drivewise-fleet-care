@@ -30,7 +30,10 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
     handlers: {
       POST: async ({ request }) => {
         const cronSecret = request.headers.get("x-cron-secret");
-        if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
+        const apiKey = request.headers.get("apikey");
+        const validCronSecret = !!cronSecret && cronSecret === process.env.CRON_SECRET;
+        const validApiKey = !!apiKey && apiKey === process.env.SUPABASE_PUBLISHABLE_KEY;
+        if (!validCronSecret && !validApiKey) {
           return new Response("Unauthorized", { status: 401 });
         }
         const target = tomorrowISO();
@@ -82,6 +85,20 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           return Response.json({ ok: false, stage: "due_today", error: dueTodayErr.message }, { status: 500 });
         }
 
+        // 5) 2-hour check-in SMS: rentals activated 2-3 hours ago
+        const nowMs = Date.now();
+        const checkinWindowStart = new Date(nowMs - 3 * 60 * 60 * 1000).toISOString();
+        const checkinWindowEnd = new Date(nowMs - 2 * 60 * 60 * 1000).toISOString();
+        const { data: checkinRentals, error: checkinErr } = await supabaseAdmin
+          .from("rentals")
+          .select("id, driver_id, vehicle_id, activated_at, reservation_status")
+          .eq("reservation_status", "active")
+          .gte("activated_at", checkinWindowStart)
+          .lte("activated_at", checkinWindowEnd);
+        if (checkinErr) {
+          return Response.json({ ok: false, stage: "checkin", error: checkinErr.message }, { status: 500 });
+        }
+
         // Collect driver ids to fetch contact info in one go
         const driverIds = Array.from(
           new Set([
@@ -89,6 +106,7 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
             ...(endingRentals ?? []).map((r) => r.driver_id),
             ...(pastDuePayments ?? []).map((p) => p.driver_id),
             ...(dueTodayPayments ?? []).map((p) => p.driver_id),
+            ...(checkinRentals ?? []).map((r) => r.driver_id),
           ])
         );
         const driversById = new Map<string, { phone: string | null; full_name: string | null }>();
@@ -100,8 +118,22 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           (drivers ?? []).forEach((d) => driversById.set(d.id, { phone: d.phone, full_name: d.full_name }));
         }
 
+        // Fetch vehicle info for check-in messages
+        const checkinVehicleIds = Array.from(
+          new Set((checkinRentals ?? []).map((r) => r.vehicle_id).filter(Boolean))
+        );
+        const vehiclesById = new Map<string, { year: number | null; make: string | null; model: string | null }>();
+        if (checkinVehicleIds.length) {
+          const { data: vs } = await supabaseAdmin
+            .from("vehicles")
+            .select("id, year, make, model")
+            .in("id", checkinVehicleIds);
+          (vs ?? []).forEach((v) => vehiclesById.set(v.id, { year: v.year, make: v.make, model: v.model }));
+        }
+
         // Skip already-sent reminders (renter reminders use tomorrow's date,
         // admin past-due alerts use today's date as the dedupe key).
+        // For check-in, dedupe is per-rental regardless of date — fetched separately.
         const { data: alreadySent } = await supabaseAdmin
           .from("reminder_log")
           .select("rental_id, reminder_type, target_date")
@@ -110,9 +142,21 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           (alreadySent ?? []).map((r) => `${r.rental_id}:${r.reminder_type}:${r.target_date}`)
         );
 
+        // Dedupe for checkin_2h: ANY past log for this rental + type
+        const checkinRentalIds = (checkinRentals ?? []).map((r) => r.id);
+        const checkinSent = new Set<string>();
+        if (checkinRentalIds.length) {
+          const { data: prior } = await supabaseAdmin
+            .from("reminder_log")
+            .select("rental_id")
+            .eq("reminder_type", "checkin_2h")
+            .in("rental_id", checkinRentalIds);
+          (prior ?? []).forEach((r) => checkinSent.add(r.rental_id));
+        }
+
         async function logAndSend(
           rentalId: string,
-          type: "payment_due" | "rental_return" | "admin_past_due" | "admin_due_today",
+          type: "payment_due" | "rental_return" | "admin_past_due" | "admin_due_today" | "checkin_2h",
           phone: string | null,
           name: string | null,
           message: string,
@@ -171,6 +215,36 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           await logAndSend("DIGEST", "admin_due_today", ADMIN_PHONE, "Admin", msg, today);
         }
 
+        // Check-in SMS — once per rental, ~2 hours after activation
+        for (const r of checkinRentals ?? []) {
+          if (checkinSent.has(r.id)) {
+            results.push({ rentalId: r.id, type: "checkin_2h", skipped: "already_sent" });
+            continue;
+          }
+          const drv = driversById.get(r.driver_id);
+          if (!drv?.phone) {
+            results.push({ rentalId: r.id, type: "checkin_2h", skipped: "no_phone" });
+            continue;
+          }
+          const v = vehiclesById.get(r.vehicle_id);
+          const vehicleLabel = v ? `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}`.trim() : "vehicle";
+          const firstName = (drv.full_name ?? "").split(" ")[0] || "there";
+          const msg = `Hi ${firstName}, your Camauto rental is underway. How's everything going with your ${vehicleLabel}? Any issues?`;
+          try {
+            await sendSms(drv.phone, msg, drv.full_name);
+            await supabaseAdmin.from("reminder_log").insert({
+              rental_id: r.id,
+              reminder_type: "checkin_2h",
+              target_date: todayISO(),
+              phone: drv.phone,
+              message: msg,
+            });
+            results.push({ rentalId: r.id, type: "checkin_2h", phone: drv.phone, sent: true });
+          } catch (e: any) {
+            results.push({ rentalId: r.id, type: "checkin_2h", error: e?.message ?? String(e) });
+          }
+        }
+
         return Response.json({
           ok: true,
           target_date: target,
@@ -178,6 +252,7 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           rentals_ending: endingRentals?.length ?? 0,
           admin_past_due: pastDuePayments?.length ?? 0,
           admin_due_today: dueTodayPayments?.length ?? 0,
+          checkin_2h: checkinRentals?.length ?? 0,
           results,
         });
       },

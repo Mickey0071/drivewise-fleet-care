@@ -108,6 +108,7 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   agreementVersion: r.agreement_version ?? undefined,
   reservationStatus: r.reservation_status ?? undefined,
   pendingCreatedAt: r.pending_created_at ?? undefined,
+  activatedAt: r.activated_at ?? undefined,
   paymentReceived: !!r.payment_received,
   licenseImageUrl: r.license_image_url ?? undefined,
   selfieImageUrl: r.selfie_image_url ?? undefined,
@@ -136,6 +137,7 @@ const toRental = (r: any) => ({
   agreement_version: r.agreementVersion ?? null,
   reservation_status: r.reservationStatus ?? null,
   pending_created_at: r.pendingCreatedAt ?? null,
+  activated_at: r.activatedAt ?? null,
   payment_received: !!r.paymentReceived,
 });
 const fromExt = (r: any): RentalExtension => ({
@@ -819,6 +821,7 @@ function tryActivate(rental: Rental) {
   if (!rental.paymentReceived) return false;
   rental.reservationStatus = "active";
   rental.pendingCreatedAt = undefined;
+  rental.activatedAt = new Date().toISOString();
   const v = vehicles.find(v => v.id === rental.vehicleId);
   if (v) {
     v.status = "rented";
