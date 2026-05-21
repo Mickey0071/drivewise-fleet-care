@@ -83,6 +83,50 @@ function RentalsPage() {
   // Notify staff when a remote signature arrives (via realtime) and the
   // reservation flips from pending → active.
   const seenSignedRef = useRef<Set<string>>(new Set());
+  const startInspectionFn = useServerFn(startReturnInspection);
+  const inspectionSettings = useAgreementSettings();
+  // Track previous reservationStatus per rental so we only fire the runner
+  // inspection SMS on the transition into "active" (a.k.a. "On Rent"), not
+  // on every render of an already-active rental.
+  const prevStatusRef = useRef<Map<string, string>>(new Map());
+  const sentInspectionRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    for (const r of rentals) {
+      const status = r.reservationStatus ?? "active";
+      const previous = prev.get(r.id);
+      prev.set(r.id, status);
+      // First time we see this rental — record baseline only.
+      if (previous === undefined) continue;
+      // Only act on transitions FROM pending INTO active (vehicle picked up).
+      if (previous === "active" || status !== "active") continue;
+      if (sentInspectionRef.current.has(r.id)) continue;
+      sentInspectionRef.current.add(r.id);
+      const v = vehicleById(r.vehicleId);
+      if (!v) continue;
+      const runnerPhone = inspectionSettings.company.runnerInspectionPhone?.trim();
+      if (!runnerPhone) {
+        toast.warning("No runner inspection phone configured", {
+          description: "Set it under Rental Agreement → Company.",
+        });
+        continue;
+      }
+      startInspectionFn({ data: {
+        vehicleId: v.id,
+        rentalId: r.id,
+        runnerPhone,
+        origin: getPublicAppOrigin(),
+        vehicleLabel: `${v.year} ${v.make} ${v.model} (${v.plate})`,
+      }})
+        .then(() => toast.success("Runner inspection link sent"))
+        .catch(e => {
+          sentInspectionRef.current.delete(r.id);
+          toast.error("Could not send inspection link", {
+            description: e instanceof Error ? e.message : String(e),
+          });
+        });
+    }
+  });
   useEffect(() => {
     for (const r of rentals) {
       const key = `${r.id}:${r.signatureDataUrl ? 1 : 0}:${r.reservationStatus ?? "active"}`;
