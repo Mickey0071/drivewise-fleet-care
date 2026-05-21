@@ -209,7 +209,12 @@ function MyTasksPage() {
                   <Button
                     size="sm"
                     className="h-11 sm:h-9 active:scale-95 transition-transform"
-                    onClick={(e) => { e.stopPropagation(); navigate({ to: "/my-tasks/$taskId", params: { taskId: t.id } }); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log("Open Task clicked for", t.id);
+                      toast("Opening task…");
+                      navigate({ to: "/my-tasks/$taskId", params: { taskId: t.id } });
+                    }}
                   >
                     Open task
                   </Button>
