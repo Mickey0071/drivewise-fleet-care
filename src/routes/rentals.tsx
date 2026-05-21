@@ -932,7 +932,6 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
   const d = rental ? driverById(rental.driverId) : null;
   const checkout = rental ? getInspectionsForRental(rental.id).find(i => i.type === "check-out") : undefined;
   const sendSmsFn = useServerFn(sendRentalSms);
-  const startInspectionFn = useServerFn(startReturnInspection);
   const settings = useAgreementSettings();
   const [mileage, setMileage] = useState(0);
   const [fuelLevel, setFuelLevel] = useState(100);
@@ -1010,22 +1009,6 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
     toast.success("Vehicle returned — awaiting runner inspection", {
       description: `${v.year} ${v.make} ${v.model}${drove > 0 ? ` · ${drove.toLocaleString()} mi driven` : ""}`,
     });
-    // Kick off runner inspection (SMS public link)
-    const runnerPhone = settings.company.runnerInspectionPhone?.trim();
-    if (!runnerPhone) {
-      toast.warning("No runner inspection phone configured", { description: "Set it under Rental Agreement → Company." });
-    } else {
-      const origin = getPublicAppOrigin();
-      startInspectionFn({ data: {
-        vehicleId: v.id,
-        rentalId: rental.id,
-        runnerPhone,
-        origin,
-        vehicleLabel: `${v.year} ${v.make} ${v.model} (${v.plate})`,
-      }})
-        .then(() => toast.success("Runner inspection link sent"))
-        .catch(e => toast.error("Could not send inspection link", { description: e instanceof Error ? e.message : String(e) }));
-    }
     onClose();
   }
   return (
