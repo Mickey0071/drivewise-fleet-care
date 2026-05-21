@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { ReceiptPDF, type ReceiptPDFData } from "@/components/pdf/ReceiptPDF";
+import { renderReceiptPdf, type ReceiptPDFData } from "@/components/pdf/ReceiptPDF";
 import { DEFAULT_SETTINGS } from "@/lib/agreementSettings";
 import { sendSms, sendEmail } from "@/lib/ghl.server";
 
@@ -95,8 +95,7 @@ export const generateReceiptPdf = createServerFn({ method: "POST" })
         settings: DEFAULT_SETTINGS,
       };
 
-      const { renderToBuffer } = await import("@react-pdf/renderer");
-      const pdfBuffer = await renderToBuffer(ReceiptPDF(pdfData));
+      const pdfBuffer = renderReceiptPdf(pdfData);
 
       const timestamp = Date.now();
       const path = `${rentalId}/receipt-${timestamp}.pdf`;
