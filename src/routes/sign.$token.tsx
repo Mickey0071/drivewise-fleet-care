@@ -275,29 +275,67 @@ function PhotoCapture({
   useCamera?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [status, setStatus] = useState<"idle" | "uploading" | "uploaded" | "error">(
+    value ? "uploaded" : "idle",
+  );
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const MAX_BYTES = 5 * 1024 * 1024;
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error("Image too large (max 8MB)");
+    console.log(`[${label}] file selected:`, file.name, `${(file.size / 1024 / 1024).toFixed(2)}MB`);
+    if (file.size > MAX_BYTES) {
+      const msg = "File too large, max 5MB";
+      console.error(`[${label}] ${msg}`);
+      setErrorMsg(msg);
+      setStatus("error");
+      toast.error(msg);
+      if (inputRef.current) inputRef.current.value = "";
       return;
     }
+    setErrorMsg(null);
+    setStatus("uploading");
+    console.log(`[${label}] uploading...`);
     const reader = new FileReader();
+    reader.onerror = () => {
+      console.error(`[${label}] FileReader error`);
+      setErrorMsg("Could not read file");
+      setStatus("error");
+      toast.error("Could not read file");
+    };
     reader.onload = () => {
       const img = new Image();
+      img.onerror = () => {
+        console.error(`[${label}] image decode error`);
+        setErrorMsg("Invalid image file");
+        setStatus("error");
+        toast.error("Invalid image file");
+      };
       img.onload = () => {
-        const max = 1600;
-        const scale = Math.min(1, max / Math.max(img.width, img.height));
-        const w = Math.round(img.width * scale);
-        const h = Math.round(img.height * scale);
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) { onChange(reader.result as string); return; }
-        ctx.drawImage(img, 0, 0, w, h);
-        onChange(canvas.toDataURL("image/jpeg", 0.85));
+        try {
+          const max = 1600;
+          const scale = Math.min(1, max / Math.max(img.width, img.height));
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            onChange(reader.result as string);
+          } else {
+            ctx.drawImage(img, 0, 0, w, h);
+            onChange(canvas.toDataURL("image/jpeg", 0.85));
+          }
+          console.log(`[${label}] upload complete`);
+          setStatus("uploaded");
+        } catch (err) {
+          console.error(`[${label}] processing error`, err);
+          setErrorMsg("Could not process image");
+          setStatus("error");
+          toast.error("Could not process image");
+        }
       };
       img.src = reader.result as string;
     };
@@ -314,31 +352,50 @@ function PhotoCapture({
         className="hidden"
         onChange={onFile}
       />
-      {value ? (
+      {value && status !== "uploading" && status !== "error" ? (
         <div className="space-y-2">
           <img
             src={value}
             alt={label}
             className="max-h-48 w-full rounded border object-contain bg-muted/30"
           />
+          <div className="flex items-center justify-between gap-2">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600">
+              <CheckCircle2 className="h-4 w-4" /> Uploaded
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => inputRef.current?.click()}
+            >
+              Replace
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-1">
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            className="w-full"
+            disabled={status === "uploading"}
             onClick={() => inputRef.current?.click()}
           >
-            Replace
+            {status === "uploading" ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading…
+              </>
+            ) : status === "error" ? (
+              `Retry — ${label}`
+            ) : (
+              label
+            )}
           </Button>
+          {status === "error" && errorMsg && (
+            <p className="text-xs text-destructive">{errorMsg}</p>
+          )}
         </div>
-      ) : (
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={() => inputRef.current?.click()}
-        >
-          {label}
-        </Button>
       )}
     </div>
   );
