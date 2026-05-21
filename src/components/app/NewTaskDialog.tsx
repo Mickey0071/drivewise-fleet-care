@@ -131,10 +131,14 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         notify_sms: notifySms,
         task_mode: prefill?.mode ?? null,
       }});
-      const smsBlurb =
-        res.sms_status === "queued" ? "SMS sending in background"
-        : "SMS skipped (no phone on file)";
-      toast.success(`Task sent to ${res.runner_name} — ${smsBlurb}`);
+      console.log(`[NewTaskDialog] Task created. notify_sms was: ${notifySms}, runner_phone: ${selectedRunner?.phone ?? "(none)"}, sms_status: ${res.sms_status}${res.sms_error ? ` (${res.sms_error})` : ""}`);
+      if (res.sms_status === "sent") {
+        toast.success(`Task created and SMS sent to ${res.runner_name}`);
+      } else if (res.sms_status === "failed") {
+        toast.error(`Task created but SMS failed — check runner phone number`);
+      } else {
+        toast.warning(`Task created for ${res.runner_name} — SMS skipped (no phone on file)`);
+      }
       onOpenChange(false);
       onCreated?.();
     } catch (e) {
