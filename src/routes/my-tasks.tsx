@@ -43,7 +43,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 function MyTasksPage() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const navigate = useNavigate();
   const doStart = useServerFn(startTask);
   const { task_id: focusTaskId } = Route.useSearch();
@@ -55,8 +55,15 @@ function MyTasksPage() {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const focusNotifiedRef = useRef(false);
 
+  // Admins don't have personal tasks here — send them to the management view.
+  useEffect(() => {
+    if (role === "admin") {
+      navigate({ to: "/runners/tasks", replace: true });
+    }
+  }, [role, navigate]);
+
   async function load() {
-    if (!user) return;
+    if (!user || role === "admin") return;
     setLoading(true);
     setLoadError(null);
     try {
