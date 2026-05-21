@@ -401,12 +401,10 @@ export const resendTaskSms = createServerFn({ method: "POST" })
     const origin = process.env.PUBLIC_APP_ORIGIN ?? "https://camautorentals.lovable.app";
     const vehicleLabel = task.year ? `${task.year} ${task.make ?? ""} ${task.model ?? ""} ${task.plate ?? ""}`.trim() : "";
     const lines = [
-      `Camauto Task (resend): ${taskTypeLabelExport(task.task_type)}`,
-      vehicleLabel ? `Vehicle: ${vehicleLabel}` : null,
-      task.description ? task.description : null,
+      `New task assigned (resend): ${taskTypeLabelExport(task.task_type)} for ${vehicleLabel || "vehicle"}. Check your app.`,
       task.address ? `Address: ${task.address}` : null,
       task.due_date ? `Due: ${task.due_date}` : null,
-      `Open: ${origin}/my-tasks?task_id=${task.id}`,
+      `Open: ${origin}/my-tasks/${task.id}`,
     ].filter(Boolean) as string[];
 
     try {
