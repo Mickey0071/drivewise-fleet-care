@@ -1,10 +1,9 @@
-import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
+import { jsPDF } from "jspdf";
 import type { AgreementSettings } from "@/lib/agreementSettings";
 
 /**
- * Server-rendered Payment Receipt PDF.
- * Uses Helvetica (built-in PDF font) so it works in the Cloudflare Workers
- * SSR runtime without fontkit/filesystem access.
+ * Server-rendered Payment Receipt PDF using jsPDF (no WASM, no DOM).
+ * Works in the Cloudflare Workers SSR runtime.
  */
 
 export interface ReceiptPDFData {
@@ -41,103 +40,10 @@ export interface ReceiptPDFData {
 }
 
 const COLOR_GREEN = "#2db84b";
-const COLOR_BORDER = "#cccccc";
-const COLOR_TEXT = "#1a1a1a";
-const COLOR_MUTED = "#666666";
-
-const styles = StyleSheet.create({
-  page: {
-    fontFamily: "Helvetica",
-    fontSize: 10,
-    color: COLOR_TEXT,
-    paddingTop: 40,
-    paddingBottom: 48,
-    paddingHorizontal: 40,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    borderBottomWidth: 2,
-    borderBottomColor: COLOR_GREEN,
-    paddingBottom: 8,
-    marginBottom: 14,
-  },
-  brand: { fontSize: 18, fontFamily: "Helvetica-Bold", color: COLOR_GREEN },
-  companyMeta: { fontSize: 8, color: COLOR_MUTED, textAlign: "right", lineHeight: 1.4 },
-  title: {
-    textAlign: "center",
-    fontSize: 14,
-    fontFamily: "Helvetica-Bold",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginTop: 4,
-    marginBottom: 2,
-  },
-  subtitle: { textAlign: "center", fontSize: 9, color: COLOR_MUTED, marginBottom: 14 },
-  sectionBar: {
-    backgroundColor: COLOR_GREEN,
-    color: "#ffffff",
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  row: { flexDirection: "row", marginBottom: 4 },
-  labelCell: { width: 130, color: COLOR_MUTED, fontFamily: "Helvetica-Bold", fontSize: 9 },
-  valueCell: { flex: 1, fontSize: 10 },
-  totalsBox: {
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: COLOR_BORDER,
-    padding: 10,
-  },
-  totalsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 3,
-  },
-  totalsLabel: { fontSize: 10, color: COLOR_TEXT },
-  totalsValue: { fontSize: 10, fontFamily: "Helvetica-Bold" },
-  grandRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 6,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: COLOR_BORDER,
-  },
-  grandLabel: { fontSize: 11, fontFamily: "Helvetica-Bold" },
-  grandValue: { fontSize: 12, fontFamily: "Helvetica-Bold", color: COLOR_GREEN },
-  paidStamp: {
-    marginTop: 18,
-    alignSelf: "center",
-    borderWidth: 2,
-    borderColor: COLOR_GREEN,
-    color: COLOR_GREEN,
-    paddingVertical: 6,
-    paddingHorizontal: 18,
-    fontFamily: "Helvetica-Bold",
-    fontSize: 16,
-    letterSpacing: 2,
-  },
-  footer: {
-    position: "absolute",
-    bottom: 18,
-    left: 40,
-    right: 40,
-    textAlign: "center",
-    fontSize: 7,
-    color: COLOR_MUTED,
-    borderTopWidth: 1,
-    borderTopColor: COLOR_GREEN,
-    paddingTop: 4,
-  },
-});
+const COLOR_TEXT: [number, number, number] = [26, 26, 26];
+const COLOR_MUTED: [number, number, number] = [102, 102, 102];
+const COLOR_BORDER: [number, number, number] = [204, 204, 204];
+const RGB_GREEN: [number, number, number] = [45, 184, 75];
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -160,16 +66,11 @@ function fmtMoney(n: number): string {
   return `$${(Math.round(n * 100) / 100).toFixed(2)}`;
 }
 
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.labelCell}>{label}</Text>
-      <Text style={styles.valueCell}>{value || "—"}</Text>
-    </View>
-  );
-}
-
-export function ReceiptPDF(data: ReceiptPDFData) {
+/**
+ * Render the receipt to a PDF Uint8Array using jsPDF (no WASM).
+ * Units are points; page is US Letter (612 x 792 pt).
+ */
+export function renderReceiptPdf(data: ReceiptPDFData): Uint8Array {
   const { rental, driver, vehicle, payment, settings } = data;
   const c = settings.company;
   const rateLabel = (() => {
@@ -178,71 +79,159 @@ export function ReceiptPDF(data: ReceiptPDFData) {
     return `${fmtMoney(Number(amt))} / ${cadence === "daily" ? "day" : cadence === "monthly" ? "month" : "week"}`;
   })();
 
-  return (
-    <Document>
-      <Page size="LETTER" style={styles.page}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.brand}>{c.dba}</Text>
-            <Text style={{ fontSize: 8, color: COLOR_MUTED, marginTop: 2 }}>{c.legalName}</Text>
-          </View>
-          <View>
-            <Text style={styles.companyMeta}>{c.address}</Text>
-            <Text style={styles.companyMeta}>{c.phone}</Text>
-            <Text style={styles.companyMeta}>{c.website}</Text>
-          </View>
-        </View>
+  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const left = 40;
+  const right = pageW - 40;
+  let y = 40;
 
-        <Text style={styles.title}>Payment Receipt</Text>
-        <Text style={styles.subtitle}>
-          Reservation #{rental.id} • Issued {fmtDateTime(payment.paidAt)}
-        </Text>
+  // ---- Header ----
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(...RGB_GREEN);
+  doc.text(c.dba, left, y + 14);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...COLOR_MUTED);
+  doc.text(c.legalName, left, y + 26);
 
-        <Text style={styles.sectionBar}>Customer</Text>
-        <Field label="Name" value={driver.fullName} />
-        <Field label="Phone" value={driver.phone} />
-        <Field label="Email" value={driver.email} />
+  doc.setFontSize(8);
+  doc.setTextColor(...COLOR_MUTED);
+  [c.address, c.phone, c.website].forEach((line, i) => {
+    doc.text(line, right, y + 10 + i * 10, { align: "right" });
+  });
 
-        <Text style={styles.sectionBar}>Vehicle</Text>
-        <Field label="Vehicle" value={`${vehicle.year} ${vehicle.make} ${vehicle.model}`} />
-        <Field label="Plate" value={vehicle.plate} />
-        <Field label="VIN" value={vehicle.vin} />
+  y += 38;
+  doc.setDrawColor(...RGB_GREEN);
+  doc.setLineWidth(2);
+  doc.line(left, y, right, y);
 
-        <Text style={styles.sectionBar}>Rental Period</Text>
-        <Field label="Start" value={fmtDate(rental.startDate)} />
-        <Field label="End" value={rental.endDate ? fmtDate(rental.endDate) : "Open-ended"} />
-        <Field label="Rate" value={rateLabel} />
+  // ---- Title ----
+  y += 22;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.setTextColor(...COLOR_TEXT);
+  doc.text("PAYMENT RECEIPT", pageW / 2, y, { align: "center" });
 
-        <Text style={styles.sectionBar}>Payment</Text>
-        <Field label="Method" value={payment.method} />
-        <Field label="Reference" value={payment.reference ?? ""} />
-        <Field label="Date" value={fmtDateTime(payment.paidAt)} />
+  y += 14;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...COLOR_MUTED);
+  doc.text(`Reservation #${rental.id}  •  Issued ${fmtDateTime(payment.paidAt)}`, pageW / 2, y, {
+    align: "center",
+  });
 
-        <View style={styles.totalsBox}>
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabel}>Total Charge</Text>
-            <Text style={styles.totalsValue}>{fmtMoney(payment.totalCost)}</Text>
-          </View>
-          <View style={styles.totalsRow}>
-            <Text style={styles.totalsLabel}>Amount Paid</Text>
-            <Text style={styles.totalsValue}>{fmtMoney(payment.amount)}</Text>
-          </View>
-          <View style={styles.grandRow}>
-            <Text style={styles.grandLabel}>Balance Due</Text>
-            <Text style={styles.grandValue}>{fmtMoney(payment.balanceDue)}</Text>
-          </View>
-        </View>
+  y += 18;
 
-        {payment.balanceDue <= 0 && <Text style={styles.paidStamp}>PAID</Text>}
+  const sectionBar = (label: string) => {
+    y += 6;
+    doc.setFillColor(...RGB_GREEN);
+    doc.rect(left, y, right - left, 16, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text(label.toUpperCase(), left + 6, y + 11);
+    y += 22;
+  };
 
-        <Text
-          style={styles.footer}
-          render={({ pageNumber, totalPages }) =>
-            `${c.dba} — Receipt for Reservation #${rental.id}  |  Page ${pageNumber} of ${totalPages}`
-          }
-          fixed
-        />
-      </Page>
-    </Document>
+  const field = (label: string, value: string) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...COLOR_MUTED);
+    doc.text(label, left, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...COLOR_TEXT);
+    const v = value || "—";
+    const wrapped = doc.splitTextToSize(v, right - left - 140);
+    doc.text(wrapped, left + 140, y);
+    y += 14 * (Array.isArray(wrapped) ? wrapped.length : 1);
+  };
+
+  sectionBar("Customer");
+  field("Name", driver.fullName);
+  field("Phone", driver.phone);
+  field("Email", driver.email);
+
+  sectionBar("Vehicle");
+  field("Vehicle", `${vehicle.year} ${vehicle.make} ${vehicle.model}`);
+  field("Plate", vehicle.plate);
+  field("VIN", vehicle.vin);
+
+  sectionBar("Rental Period");
+  field("Start", fmtDate(rental.startDate));
+  field("End", rental.endDate ? fmtDate(rental.endDate) : "Open-ended");
+  field("Rate", rateLabel);
+
+  sectionBar("Payment");
+  field("Method", payment.method);
+  field("Reference", payment.reference ?? "");
+  field("Date", fmtDateTime(payment.paidAt));
+
+  // ---- Totals box ----
+  y += 8;
+  const boxTop = y;
+  const boxH = 64;
+  doc.setDrawColor(...COLOR_BORDER);
+  doc.setLineWidth(1);
+  doc.rect(left, boxTop, right - left, boxH);
+
+  const rowY = (i: number) => boxTop + 14 + i * 14;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(...COLOR_TEXT);
+  doc.text("Total Charge", left + 10, rowY(0));
+  doc.setFont("helvetica", "bold");
+  doc.text(fmtMoney(payment.totalCost), right - 10, rowY(0), { align: "right" });
+
+  doc.setFont("helvetica", "normal");
+  doc.text("Amount Paid", left + 10, rowY(1));
+  doc.setFont("helvetica", "bold");
+  doc.text(fmtMoney(payment.amount), right - 10, rowY(1), { align: "right" });
+
+  // separator
+  doc.setDrawColor(...COLOR_BORDER);
+  doc.line(left + 6, rowY(2) - 4, right - 6, rowY(2) - 4);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(...COLOR_TEXT);
+  doc.text("Balance Due", left + 10, rowY(2) + 4);
+  doc.setFontSize(12);
+  doc.setTextColor(...RGB_GREEN);
+  doc.text(fmtMoney(payment.balanceDue), right - 10, rowY(2) + 4, { align: "right" });
+
+  y = boxTop + boxH + 18;
+
+  // ---- PAID stamp ----
+  if (payment.balanceDue <= 0) {
+    const stampW = 110;
+    const stampH = 30;
+    const stampX = (pageW - stampW) / 2;
+    doc.setDrawColor(...RGB_GREEN);
+    doc.setLineWidth(2);
+    doc.rect(stampX, y, stampW, stampH);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(...RGB_GREEN);
+    doc.text("PAID", pageW / 2, y + 21, { align: "center" });
+  }
+
+  // ---- Footer ----
+  doc.setDrawColor(...RGB_GREEN);
+  doc.setLineWidth(1);
+  doc.line(left, pageH - 30, right, pageH - 30);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(...COLOR_MUTED);
+  doc.text(
+    `${c.dba} — Receipt for Reservation #${rental.id}`,
+    pageW / 2,
+    pageH - 18,
+    { align: "center" },
   );
+
+  const ab = doc.output("arraybuffer");
+  return new Uint8Array(ab);
 }
