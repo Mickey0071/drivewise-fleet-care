@@ -495,6 +495,40 @@ function RentalsPage() {
                       📄 {pdfRegenId === r.id ? "Generating…" : "Regenerate PDF"}
                     </Button>
                   ) : null}
+                  {r.receiptPdfUrl ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title={r.receiptPdfGeneratedAt ? `Generated ${new Date(r.receiptPdfGeneratedAt).toLocaleString()}` : undefined}
+                      onClick={() => window.open(r.receiptPdfUrl!, "_blank", "noopener")}
+                    >
+                      📄 Receipt
+                    </Button>
+                  ) : r.paymentReceived ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={receiptRegenId === r.id}
+                      onClick={async () => {
+                        setReceiptRegenId(r.id);
+                        try {
+                          const res = await genReceiptFn({ data: { rentalId: r.id } });
+                          if (res?.url) {
+                            toast.success("Receipt PDF generated");
+                            await ensureRentalSynced(r.id);
+                          } else {
+                            toast.error("Could not generate receipt", { description: res?.error ?? "Unknown error" });
+                          }
+                        } catch (e) {
+                          toast.error("Could not generate receipt", { description: e instanceof Error ? e.message : String(e) });
+                        } finally {
+                          setReceiptRegenId(null);
+                        }
+                      }}
+                    >
+                      📄 {receiptRegenId === r.id ? "Generating…" : "Generate Receipt"}
+                    </Button>
+                  ) : null}
                   {r.paymentLinkAutoSentAt && !r.paymentReceived && (
                     <span
                       title={`Auto-sent ${new Date(r.paymentLinkAutoSentAt).toLocaleString()}`}
