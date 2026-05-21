@@ -146,7 +146,11 @@ function MyTasksPage() {
           <Card
             key={t.id}
             ref={(el) => { cardRefs.current[t.id] = el; }}
-            className={cn(highlightId === t.id && "ring-2 ring-emerald-500 transition-shadow")}
+            className={cn(
+              "cursor-pointer transition-shadow hover:shadow-md",
+              highlightId === t.id && "ring-2 ring-emerald-500",
+            )}
+            onClick={() => navigate({ to: "/my-tasks/$taskId", params: { taskId: t.id } })}
           >
             <CardContent className="space-y-2 pt-5">
               <div className="flex flex-wrap items-center gap-2">
@@ -181,25 +185,15 @@ function MyTasksPage() {
                   })()}
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-2 pt-1">
+                <div className="flex flex-wrap gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
                   {t.status === "pending" && (
                     <Button size="sm" variant="outline" onClick={() => start(t.id)}>Start Task</Button>
                   )}
                   <Button
                     size="sm"
-                    onClick={() =>
-                      t.task_type === "dmv"
-                        ? navigate({ to: "/dmv-task", search: { task_id: t.id } })
-                        : navigate({
-                            to: "/checklist",
-                            search:
-                              t.task_mode === "return"
-                                ? { task_id: t.id, mode: "return", rental_id: t.linked_rental_id ?? undefined }
-                                : { task_id: t.id },
-                          })
-                    }
+                    onClick={() => navigate({ to: "/my-tasks/$taskId", params: { taskId: t.id } })}
                   >
-                    {t.task_type === "dmv" ? "Complete DMV Run" : "Complete with Inspection"}
+                    Open task
                   </Button>
                 </div>
               )}
