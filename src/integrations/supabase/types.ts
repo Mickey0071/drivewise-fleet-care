@@ -738,6 +738,7 @@ export type Database = {
           auto_renew: boolean
           billing_cadence: string | null
           billing_period: string | null
+          cardholder_name: string | null
           client_signature_url: string | null
           client_signed_at: string | null
           created_at: string
@@ -751,6 +752,8 @@ export type Database = {
           license_image_url: string | null
           mileage_in: number | null
           mileage_out: number | null
+          name_match_score: number | null
+          name_match_status: string | null
           notes: string | null
           payment_link_auto_sent_at: string | null
           payment_received: boolean
@@ -770,6 +773,8 @@ export type Database = {
           signed_by: string | null
           skip_daily_minimum: boolean
           start_date: string
+          stripe_customer_id: string | null
+          stripe_payment_method_id: string | null
           updated_at: string
           vehicle_id: string
           weekly_rate: number
@@ -782,6 +787,7 @@ export type Database = {
           auto_renew?: boolean
           billing_cadence?: string | null
           billing_period?: string | null
+          cardholder_name?: string | null
           client_signature_url?: string | null
           client_signed_at?: string | null
           created_at?: string
@@ -795,6 +801,8 @@ export type Database = {
           license_image_url?: string | null
           mileage_in?: number | null
           mileage_out?: number | null
+          name_match_score?: number | null
+          name_match_status?: string | null
           notes?: string | null
           payment_link_auto_sent_at?: string | null
           payment_received?: boolean
@@ -814,6 +822,8 @@ export type Database = {
           signed_by?: string | null
           skip_daily_minimum?: boolean
           start_date: string
+          stripe_customer_id?: string | null
+          stripe_payment_method_id?: string | null
           updated_at?: string
           vehicle_id: string
           weekly_rate?: number
@@ -826,6 +836,7 @@ export type Database = {
           auto_renew?: boolean
           billing_cadence?: string | null
           billing_period?: string | null
+          cardholder_name?: string | null
           client_signature_url?: string | null
           client_signed_at?: string | null
           created_at?: string
@@ -839,6 +850,8 @@ export type Database = {
           license_image_url?: string | null
           mileage_in?: number | null
           mileage_out?: number | null
+          name_match_score?: number | null
+          name_match_status?: string | null
           notes?: string | null
           payment_link_auto_sent_at?: string | null
           payment_received?: boolean
@@ -858,6 +871,8 @@ export type Database = {
           signed_by?: string | null
           skip_daily_minimum?: boolean
           start_date?: string
+          stripe_customer_id?: string | null
+          stripe_payment_method_id?: string | null
           updated_at?: string
           vehicle_id?: string
           weekly_rate?: number
