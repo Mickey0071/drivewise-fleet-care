@@ -453,7 +453,7 @@ function RentalsPage() {
                       <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
                     </Button>
                   )}
-                  {((r.reservationStatus ?? "active") === "active") && (
+                  {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (
                     <Button variant="outline" size="sm" onClick={() => setSwapping(r)}>
                       <ArrowLeftRight className="mr-1 h-4 w-4" /> Swap vehicle
                     </Button>
