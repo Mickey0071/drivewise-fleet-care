@@ -125,6 +125,12 @@ function MyTasksPage() {
     catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
   }
 
+  function openTask(taskId: string) {
+    console.log("Open Task clicked for", taskId);
+    toast("Opening task…");
+    navigate({ to: "/my-tasks_/$taskId", params: { taskId } });
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-3 pb-24">
       <h1 className="text-2xl font-semibold tracking-tight">My Tasks</h1>
@@ -154,7 +160,7 @@ function MyTasksPage() {
             key={t.id}
             ref={(el) => { cardRefs.current[t.id] = el; }}
             className={cn(
-              "cursor-pointer transition-shadow hover:shadow-md",
+              "relative cursor-pointer transition-shadow hover:shadow-md",
               highlightId === t.id && "ring-2 ring-emerald-500",
             )}
             onClick={() => { console.log("Card clicked for", t.id); navigate({ to: "/my-tasks_/$taskId", params: { taskId: t.id } }); }}
@@ -193,7 +199,7 @@ function MyTasksPage() {
                 </div>
               ) : (
                 <div
-                  className="flex flex-wrap gap-2 pt-1 cursor-pointer rounded-md p-2 -m-2 active:bg-muted/60 transition-colors"
+                  className="relative z-10 flex flex-wrap gap-2 pt-1 cursor-pointer rounded-md p-2 -m-2 active:bg-muted/60 transition-colors pointer-events-auto"
                   onClick={() => { console.log("Action row clicked for", t.id); navigate({ to: "/my-tasks_/$taskId", params: { taskId: t.id } }); }}
                 >
                   {t.status === "pending" && (
@@ -207,13 +213,13 @@ function MyTasksPage() {
                     </Button>
                   )}
                   <Button
+                    type="button"
                     size="sm"
-                    className="h-11 sm:h-9 active:scale-95 transition-transform"
-                    onClick={(e) => {
+                    className="relative z-20 h-11 sm:h-9 active:scale-95 transition-transform pointer-events-auto touch-manipulation"
+                    onTouchStart={(e) => {
+                      e.preventDefault();
                       e.stopPropagation();
-                      console.log("Open Task clicked for", t.id);
-                      toast("Opening task…");
-                      navigate({ to: "/my-tasks_/$taskId", params: { taskId: t.id } });
+                      openTask(t.id);
                     }}
                   >
                     Open task
