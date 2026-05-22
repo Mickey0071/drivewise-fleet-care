@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2 } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -64,6 +64,7 @@ function RentalsPage() {
   const [returning, setReturning] = useState<Rental | null>(null);
   const [extending, setExtending] = useState<Rental | null>(null);
   const [swapping, setSwapping] = useState<Rental | null>(null);
+  const [stoppingAutoBill, setStoppingAutoBill] = useState<Rental | null>(null);
   const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
   const [signing, setSigning] = useState<Rental | null>(null);
   const [taskRental, setTaskRental] = useState<Rental | null>(null);
@@ -458,6 +459,11 @@ function RentalsPage() {
                       <ArrowLeftRight className="mr-1 h-4 w-4" /> Swap vehicle
                     </Button>
                   )}
+                  {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (r.autoRenew ?? true) && (
+                    <Button variant="outline" size="sm" onClick={() => setStoppingAutoBill(r)}>
+                      <Ban className="mr-1 h-4 w-4" /> Stop Auto-Renewal
+                    </Button>
+                  )}
                   {role === "admin" && (
                     <Button variant="outline" size="sm" onClick={() => setViolationFor(r)}>
                       <DollarSign className="mr-1 h-4 w-4" /> Charge for Violation
@@ -638,6 +644,7 @@ function RentalsPage() {
       <ReturnDialog rental={returning} onClose={() => setReturning(null)} />
       <ExtendRentalDialog rental={extending} onClose={() => setExtending(null)} />
       <SwapVehicleDialog rental={swapping} onClose={() => setSwapping(null)} />
+      <StopAutoBillDialog rental={stoppingAutoBill} onClose={() => setStoppingAutoBill(null)} />
       <AgreementDialog rental={viewingAgreement} onClose={() => setViewingAgreement(null)} />
       <CaptureSignatureDialog rental={signing} onClose={() => setSigning(null)} />
       <ChargeRentalDialog
