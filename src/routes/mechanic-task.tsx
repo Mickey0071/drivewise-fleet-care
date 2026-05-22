@@ -100,7 +100,7 @@ function MechanicTaskPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4 pb-40">
+    <div className="mx-auto max-w-2xl space-y-4 pb-48">
       <PageHeader title="🔧 Mechanic Drop-off" subtitle="Tell us which mechanic and why the vehicle is being dropped off" />
 
       <Card>
@@ -193,7 +193,7 @@ function MechanicTaskPage() {
 
       <div
         className="fixed inset-x-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:px-6"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 64px)" }}
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
       >
         <div className="mx-auto max-w-2xl">
           <Button className="h-12 w-full text-base font-semibold" disabled={!canSubmit} onClick={submit}>
