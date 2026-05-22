@@ -1725,3 +1725,53 @@ function ViolationChargeDialog({ rental, onClose }: { rental: Rental | null; onC
     </Dialog>
   );
 }
+
+function StopAutoBillDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  const sendSmsFn = useServerFn(sendRentalSms);
+  const settings = useAgreementSettings();
+  const [submitting, setSubmitting] = useState(false);
+  if (!rental) return <Dialog open={false} onOpenChange={() => {}}><DialogContent /></Dialog>;
+  const d = driverById(rental.driverId);
+  const v = vehicleById(rental.vehicleId);
+  async function confirm() {
+    if (!rental) return;
+    setSubmitting(true);
+    try {
+      updateRental(rental.id, { autoRenew: false });
+      const renterName = d?.fullName ?? rental.driverId;
+      const vehLabel = v ? `${v.year} ${v.make} ${v.model} (Plate ${v.plate})` : "your vehicle";
+      if (d?.phone) {
+        sendSmsFn({ data: { phone: d.phone, message: `Auto-renewal has been stopped for ${vehLabel}. No further charges will be made.`, name: d.fullName } })
+          .catch(e => console.error("Renter SMS failed", e));
+      }
+      const mgmtPhone = settings.company.damageAlertPhone?.trim();
+      if (mgmtPhone) {
+        sendSmsFn({ data: { phone: mgmtPhone, message: `${renterName} auto-renewal stopped`, name: "Management Alert" } })
+          .catch(e => console.error("Management SMS failed", e));
+      }
+      toast.success("Auto-billing stopped");
+      onClose();
+    } catch (e) {
+      toast.error("Failed to stop auto-billing", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+  return (
+    <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Stop Auto-Renewal</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Stop charging for this rental? The reservation stays active, but daily/weekly charges will stop.
+        </p>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
+          <Button onClick={confirm} disabled={submitting}>
+            <Ban className="mr-1 h-4 w-4" />
+            {submitting ? "Stopping…" : "Stop Auto-Renewal"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
