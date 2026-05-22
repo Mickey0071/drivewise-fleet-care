@@ -4,13 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { startTask } from "@/lib/tasks.functions";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { ArrowLeft, MapPin, CheckCircle2, ClipboardList, Wrench, Car, AlertOctagon, Phone, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, ClipboardList, Wrench, Car, AlertOctagon, Phone, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/my-tasks_/$taskId")({
@@ -59,7 +54,6 @@ export default function TaskDetailPage() {
   const [task, setTask] = useState<TaskRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pendingSwitch, setPendingSwitch] = useState<WorkflowKey | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,127 +123,43 @@ export default function TaskDetailPage() {
   }
 
   const matched = inferWorkflow(task);
-  const matchedLabel = WORKFLOWS[matched].label;
-  const MatchedIcon = WORKFLOWS[matched].icon;
-  const overdue = task.due_date && task.due_date < new Date().toISOString().slice(0, 10) && task.status !== "completed";
-  const secondary = (Object.keys(WORKFLOWS) as WorkflowKey[]).filter((k) => k !== matched);
+  const allKeys = Object.keys(WORKFLOWS) as WorkflowKey[];
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4 pb-24">
+    <div className="mx-auto max-w-2xl space-y-6 pb-24">
       <Link to="/my-tasks" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> Back to tasks
       </Link>
 
-      <Card>
-        <CardContent className="space-y-3 pt-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="text-sm">{matchedLabel}</Badge>
-            {task.priority_level === "urgent" && <Badge variant="destructive">🚨 Urgent</Badge>}
-            {task.priority_level === "flexible" && <Badge variant="secondary">🕐 Flexible</Badge>}
-            {task.status === "in_progress" && <Badge>In progress</Badge>}
-            {task.status === "completed" && (
-              <Badge className="bg-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3" /> Completed</Badge>
-            )}
-          </div>
+      <div>
+        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Choose a workflow
+        </p>
+        {task.year && (
+          <p className="text-sm text-muted-foreground">
+            {task.year} {task.make} {task.model}{task.plate ? ` — ${task.plate}` : ""}
+          </p>
+        )}
+      </div>
 
-          {task.year && (
-            <p className="text-lg font-semibold">
-              {task.year} {task.make} {task.model}{task.plate ? ` — ${task.plate}` : ""}
-            </p>
-          )}
-          {task.description && <p className="text-sm">{task.description}</p>}
-          {task.address && (
-            <a
-              className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-              href={`https://maps.google.com/?q=${encodeURIComponent(task.address)}`}
-              target="_blank" rel="noopener noreferrer"
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {allKeys.map((k) => {
+          const Icon = WORKFLOWS[k].icon;
+          const isMatched = k === matched;
+          return (
+            <Button
+              key={k}
+              variant={isMatched ? "default" : "outline"}
+              className="h-24 flex-col gap-2 text-sm"
+              onClick={() => startAndOpen(k, task)}
+              disabled={task.status === "completed"}
             >
-              <MapPin className="h-3 w-3" /> {task.address}
-            </a>
-          )}
-          <div className="grid gap-1 text-xs text-muted-foreground">
-            <p>Assigned {new Date(task.created_at).toLocaleString()}</p>
-            {task.due_date && (
-              <p className={overdue ? "font-semibold text-destructive" : undefined}>
-                Due {task.due_date}{overdue ? " (overdue)" : ""}
-              </p>
-            )}
-            {task.completed_at && <p>Completed {new Date(task.completed_at).toLocaleString()}</p>}
-          </div>
-          {task.runner_notes && (
-            <div className="rounded-md bg-muted/50 p-3 text-sm">
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Notes</p>
-              <p className="whitespace-pre-wrap">{task.runner_notes}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {task.status !== "completed" && (
-        <Card>
-          <CardContent className="space-y-4 pt-6">
-            <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Suggested workflow
-              </p>
-              <Button
-                size="lg"
-                className="h-14 w-full text-base"
-                onClick={() => startAndOpen(matched, task)}
-              >
-                <MatchedIcon className="mr-2 h-5 w-5" />
-                Start {matchedLabel}
-              </Button>
-            </div>
-
-            <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Switch to:
-              </p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {secondary.map((k) => {
-                  const Icon = WORKFLOWS[k].icon;
-                  return (
-                    <Button
-                      key={k}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPendingSwitch(k)}
-                    >
-                      <Icon className="mr-1.5 h-4 w-4" />
-                      {WORKFLOWS[k].label}
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <AlertDialog open={pendingSwitch !== null} onOpenChange={(o) => { if (!o) setPendingSwitch(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Switch workflow?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Switching from <b>{matchedLabel}</b> to <b>{pendingSwitch ? WORKFLOWS[pendingSwitch].label : ""}</b>?
-              The task's recorded type won't change.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                const k = pendingSwitch;
-                setPendingSwitch(null);
-                if (k) startAndOpen(k, task);
-              }}
-            >
-              Yes, switch
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <Icon className="h-6 w-6" />
+              {WORKFLOWS[k].label}
+            </Button>
+          );
+        })}
+      </div>
     </div>
   );
 }
