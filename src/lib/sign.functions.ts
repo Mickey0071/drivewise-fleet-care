@@ -252,7 +252,7 @@ export const getRentalForSigning = createServerFn({ method: "POST" })
     } catch (e) {
       console.error("[getRentalForSigning] vehicle/driver query threw:", e);
     }
-    return {
+    const payload = {
       rentalId: rental.id,
       startDate: rental.start_date,
       endDate: rental.end_date ?? null,
@@ -288,6 +288,10 @@ export const getRentalForSigning = createServerFn({ method: "POST" })
       licenseUploaded: !!rental.license_image_url,
       selfieUploaded: !!rental.selfie_image_url,
     };
+    // Force a plain, JSON-safe POJO to avoid Seroval serialization errors
+    // (e.g. when Supabase returns objects with non-cloneable prototypes
+    // or numeric strings that confuse the streaming serializer).
+    return JSON.parse(JSON.stringify(payload)) as typeof payload;
   });
 
 /** Public: submit the renter's signed package (signature + license + selfie). */
