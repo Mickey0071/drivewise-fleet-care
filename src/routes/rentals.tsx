@@ -39,6 +39,7 @@ import { exportRentalReportPdf, exportRentalReportZip, exportRentalEvidencePacke
 import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { closeoutRental } from "@/lib/return.functions";
+import { createExtensionLink } from "@/lib/extension-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
@@ -1474,19 +1475,19 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
 function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
   const v = rental ? vehicleById(rental.vehicleId) : null;
   const d = rental ? driverById(rental.driverId) : null;
-  const sendSmsFn = useServerFn(sendRentalSms);
+  const createLinkFn = useServerFn(createExtensionLink);
   const [newEndDate, setNewEndDate] = useState("");
   const [duration, setDuration] = useState<"7" | "14" | "21" | "custom">("7");
-  const [sig, setSig] = useState<string | null>(null);
-  const [accepted, setAccepted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [sentInfo, setSentInfo] = useState<{ signUrl: string; amount: number; newEnd: string; phone: string | null; smsSent: boolean } | null>(null);
   useEffect(() => {
     if (rental) {
       const base = rental.endDate ? new Date(rental.endDate) : new Date();
       base.setDate(base.getDate() + 7);
       setNewEndDate(base.toISOString().slice(0, 10));
       setDuration("7");
-      setSig(null);
-      setAccepted(false);
+      setSentInfo(null);
+      setSubmitting(false);
     }
   }, [rental]);
   function applyDuration(value: "7" | "14" | "21" | "custom") {
@@ -1498,35 +1499,36 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
     setNewEndDate(base.toISOString().slice(0, 10));
   }
   const charge = rental && newEndDate ? computeExtensionCharge(rental, newEndDate) : null;
-  function confirm() {
+  async function sendLink() {
     if (!rental || !newEndDate || !d) return;
     if (rental.endDate && newEndDate <= rental.endDate) {
       toast.error("New end date must be after the current end date");
       return;
     }
-    if (!accepted) { toast.error("Renter must accept the extension addendum"); return; }
-    if (!sig) { toast.error("Signature required for the addendum"); return; }
-    const ext = extendRental(rental.id, newEndDate, {
-      signatureDataUrl: sig,
-      signedBy: d.fullName,
-      agreementVersion: AGREEMENT_VERSION,
-    });
-    if (d.phone) {
-      const amountStr = ext && ext.additionalAmount > 0 ? ` Amount due: ${fmtMoney(ext.additionalAmount)}.` : "";
-      const msg = `Camauto Rentals: Your rental of the ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""} has been extended through ${fmtDate(newEndDate)}.${amountStr} Reply with any questions.`;
-      sendSmsFn({ data: { phone: d.phone, message: msg.slice(0, 1000), name: d.fullName } })
-        .catch(e => console.error("Extension SMS failed", e));
+    if (!charge || charge.periods < 1) { toast.error("Pick a duration"); return; }
+    setSubmitting(true);
+    try {
+      const r = await createLinkFn({ data: { rentalId: rental.id, periods: charge.periods, periodLabel: charge.periodLabel } });
+      setSentInfo({ signUrl: r.signUrl, amount: r.additionalAmount, newEnd: r.newEndDate, phone: r.renterPhone, smsSent: r.smsSent });
+      toast.success(r.smsSent ? "Extension link sent to renter" : "Extension link created");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not create extension link");
+    } finally {
+      setSubmitting(false);
     }
-    toast.success("Rental extended", {
-      description: `${v?.year} ${v?.make} ${v?.model} → ${fmtDate(newEndDate)}${ext && ext.additionalAmount > 0 ? ` · ${fmtMoney(ext.additionalAmount)} added to receipt` : ""}`,
-    });
-    onClose();
+  }
+  function copyLink() {
+    if (!sentInfo) return;
+    navigator.clipboard.writeText(sentInfo.signUrl).then(
+      () => toast.success("Link copied"),
+      () => toast.error("Couldn't copy"),
+    );
   }
   return (
     <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Extend rental</DialogTitle></DialogHeader>
-        {rental && v && d && (
+        {rental && v && d && !sentInfo && (
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
             <div className="rounded-lg border bg-muted/30 p-3 text-sm">
               <div className="font-medium">{v.year} {v.make} {v.model} · {v.plate}</div>
@@ -1562,7 +1564,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
             </div>
             {charge && charge.additionalAmount > 0 && (
               <div className="rounded-md border bg-card p-3 text-sm">
-                <div className="text-xs uppercase text-muted-foreground">Extension charge (added to receipt)</div>
+                <div className="text-xs uppercase text-muted-foreground">Extension charge</div>
                 <div className="mt-1 flex items-baseline justify-between">
                   <span>{charge.periods} additional {charge.periodLabel}{charge.periods === 1 ? "" : "s"} × {fmtMoney(rental.rate ?? rental.weeklyRate)}</span>
                   <span className="text-lg font-bold">{fmtMoney(charge.additionalAmount)}</span>
@@ -1570,28 +1572,41 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
               </div>
             )}
             <div className="rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
-              <div className="font-semibold text-foreground">EXTENSION ADDENDUM TO RENTAL AGREEMENT {AGREEMENT_VERSION}</div>
-              <p className="mt-2">
-                This addendum extends the rental of <span className="font-medium text-foreground">{v.year} {v.make} {v.model} (Plate {v.plate})</span> by{" "}
-                <span className="font-medium text-foreground">{charge?.periods ?? 0} {charge?.periodLabel}{(charge?.periods ?? 0) === 1 ? "" : "s"}</span>
-                {rental.endDate ? <> from {fmtDate(rental.endDate)}</> : null} through{" "}
-                <span className="font-medium text-foreground">{newEndDate ? fmtDate(newEndDate) : "—"}</span>.
-                Renter agrees to pay an additional <span className="font-medium text-foreground">{fmtMoney(charge?.additionalAmount ?? 0)}</span> at the contracted rate of {fmtMoney(rental.rate ?? rental.weeklyRate)}/{(rental.billingPeriod ?? "weekly").replace("ly", "")}. All other terms of the original agreement remain in full force.
-              </p>
+              The renter will receive a text with one link. On that page they review the Extension
+              Agreement, sign, and pay {charge?.additionalAmount ? fmtMoney(charge.additionalAmount) : ""} via Stripe.
+              Once paid, the reservation end date, calendar, and P&amp;L update automatically.
             </div>
-            <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" className="mt-0.5 h-4 w-4" checked={accepted} onChange={e => setAccepted(e.target.checked)} />
-              <span>I, <span className="font-medium">{d.fullName}</span>, agree to the extension and the additional charge above.</span>
-            </label>
-            <div>
-              <Label className="mb-1 block">Renter signature (addendum)</Label>
-              <SignaturePad value={sig ?? undefined} onChange={setSig} />
+            {!d.phone && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-xs text-amber-800">
+                No phone number on file for this renter — we'll generate the link but you'll need to share it manually.
+              </div>
+            )}
+          </div>
+        )}
+        {sentInfo && (
+          <div className="space-y-4">
+            <div className="rounded-md border bg-green-50 dark:bg-green-950/30 p-3 text-sm">
+              <div className="font-semibold text-green-700 dark:text-green-300 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                {sentInfo.smsSent ? `Link sent to ${sentInfo.phone}` : "Link created"}
+              </div>
+              <div className="text-xs text-muted-foreground mt-2">
+                Once the renter signs and pays {fmtMoney(sentInfo.amount)}, the reservation extends to {fmtDate(sentInfo.newEnd)} automatically.
+              </div>
+            </div>
+            <div className="rounded-md border p-2 text-xs flex items-center gap-2 bg-muted/30">
+              <code className="flex-1 truncate">{sentInfo.signUrl}</code>
+              <Button variant="outline" size="sm" onClick={copyLink}><Copy className="h-3.5 w-3.5" /></Button>
             </div>
           </div>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={confirm}><CalendarPlus className="mr-1 h-4 w-4" /> Confirm extension</Button>
+          <Button variant="outline" onClick={onClose}>{sentInfo ? "Done" : "Cancel"}</Button>
+          {!sentInfo && (
+            <Button onClick={sendLink} disabled={submitting}>
+              <Send className="mr-1 h-4 w-4" /> {submitting ? "Sending…" : "Send Extension Link to Renter"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
