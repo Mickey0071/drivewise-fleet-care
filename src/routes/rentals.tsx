@@ -35,6 +35,7 @@ import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { downloadClientPacket } from "@/lib/client-packet.functions";
+import { exportRentalReportPdf, exportRentalReportZip } from "@/lib/rental-report.functions";
 import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
@@ -88,6 +89,37 @@ function RentalsPage() {
   const [receiptRegenId, setReceiptRegenId] = useState<string | null>(null);
   const downloadPacketFn = useServerFn(downloadClientPacket);
   const [packetId, setPacketId] = useState<string | null>(null);
+  const exportPdfFn = useServerFn(exportRentalReportPdf);
+  const exportZipFn = useServerFn(exportRentalReportZip);
+  const [reportId, setReportId] = useState<string | null>(null);
+
+  async function handleExportReport(r: Rental, kind: "pdf" | "zip") {
+    setReportId(r.id);
+    try {
+      const res = kind === "pdf"
+        ? await exportPdfFn({ data: { rentalId: r.id } })
+        : await exportZipFn({ data: { rentalId: r.id } });
+      const bin = atob(res.base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: res.mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success(`Report ${kind.toUpperCase()} downloaded`);
+    } catch (e) {
+      toast.error("Export failed", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setReportId(null);
+    }
+  }
 
   async function handleDownloadPacket(r: Rental) {
     setPacketId(r.id);
