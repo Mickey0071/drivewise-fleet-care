@@ -621,7 +621,10 @@ function RentalsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => handleExportReport(r, "pdf")}>
-                        📄 Download as PDF
+                        📄 Download Full Report (PDF)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleExportReport(r, "evidence")}>
+                        📎 Download Evidence Packet (PDF)
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleExportReport(r, "zip")}>
                         🗂️ Download as ZIP (PDF + images + CSV)
