@@ -227,7 +227,7 @@ function RentalsPage() {
         });
       }
     }
-  });
+  }, [rentals]);
   // Prune any pending reservations whose 24h hold has expired,
   // and warn once when a hold drops below 2 hours remaining.
   useEffect(() => {
