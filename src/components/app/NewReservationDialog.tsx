@@ -584,11 +584,11 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                 </div>
                 <div>
                   <Label htmlFor="rate">Rate ({rateSuffix(billingPeriod)})</Label>
-                  <Input id="rate" type="number" min={0} value={rate} onChange={e => setRate(Number(e.target.value))} placeholder={vehicle ? String(defaultRate(vehicle, billingPeriod)) : "Pick a vehicle to auto-fill"} />
+                  <Input id="rate" type="number" inputMode="decimal" min={0} value={rate || ""} onChange={e => setRate(Number(e.target.value))} placeholder={vehicle ? String(defaultRate(vehicle, billingPeriod)) : "Pick a vehicle to auto-fill"} />
                 </div>
                 <div>
                   <Label htmlFor="dep">Deposit</Label>
-                  <Input id="dep" type="number" min={0} value={deposit} onChange={e => setDeposit(Number(e.target.value))} />
+                  <Input id="dep" type="number" inputMode="decimal" min={0} placeholder="Enter amount" value={deposit || ""} onChange={e => setDeposit(Number(e.target.value))} />
                 </div>
               </div>
               {billingPeriod === "daily" && (
