@@ -221,10 +221,34 @@ function MyRentalDetailPage() {
         <CardHeader className="pb-2"><CardTitle className="text-base">Documents</CardTitle></CardHeader>
         <CardContent className="divide-y divide-border p-0">
           <DocRow icon={<FileText className="h-4 w-4" />} label="Rental Agreement (PDF)" url={r.agreement_pdf_url} />
-          <DocRow icon={<IdCard className="h-4 w-4" />} label="Driver's License" url={r.license_image_url} />
-          <DocRow icon={<ImageIcon className="h-4 w-4" />} label="Selfie" url={r.selfie_image_url} />
           <DocRow icon={<Receipt className="h-4 w-4" />} label="Receipt (PDF)" url={r.receipt_pdf_url} />
-          <DocRow icon={<FileText className="h-4 w-4" />} label="Signature" url={r.client_signature_url} />
+          {isStaff && (
+            <>
+              <DocRow icon={<IdCard className="h-4 w-4" />} label="Driver's License" url={r.license_image_url} />
+              <DocRow icon={<ImageIcon className="h-4 w-4" />} label="Selfie" url={r.selfie_image_url} />
+              <DocRow icon={<FileText className="h-4 w-4" />} label="Signature" url={r.client_signature_url} />
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Renter actions */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-base">Actions</CardTitle></CardHeader>
+        <CardContent className="flex flex-wrap gap-2 p-4">
+          {canExtend && (
+            <Button variant="outline" onClick={() => setExtendOpen(true)}>
+              <CalendarPlus className="mr-2 h-4 w-4" /> Extend Rental
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => setSupportOpen(true)}>
+            <MessageSquare className="mr-2 h-4 w-4" /> Contact Support
+          </Button>
+          {isStaff && isActive && (
+            <Button variant="destructive" onClick={() => setCancelOpen(true)}>
+              <Ban className="mr-2 h-4 w-4" /> Cancel Rental
+            </Button>
+          )}
         </CardContent>
       </Card>
 
