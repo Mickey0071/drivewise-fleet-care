@@ -271,11 +271,15 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
 
     // Look up the renter's license name.
     const { data: rentalPre } = await sb.from("rentals")
-      .select("id, driver_id")
+      .select("id, driver_id, third_party_payer, payer_name_extracted, payer_phone")
       .eq("id", rentalId)
       .maybeSingle();
     let licenseName = "";
-    if (rentalPre?.driver_id) {
+    let nameSource: "license" | "payer_id" = "license";
+    if (rentalPre?.third_party_payer && rentalPre?.payer_name_extracted) {
+      licenseName = String(rentalPre.payer_name_extracted);
+      nameSource = "payer_id";
+    } else if (rentalPre?.driver_id) {
       const { data: drv } = await sb.from("drivers")
         .select("full_name, first_name, last_name")
         .eq("id", rentalPre.driver_id)
@@ -290,7 +294,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
 
     if (cardholderName && licenseName && !matched) {
       // Mismatch — refund the charge, do NOT activate the rental.
-      console.warn(`[webhook] name mismatch rental=${rentalId} card="${cardholderName}" license="${licenseName}" score=${score}`);
+      console.warn(`[webhook] name mismatch rental=${rentalId} card="${cardholderName}" ${nameSource}="${licenseName}" score=${score}`);
       try {
         if (chargeId) await stripe.refunds.create({ charge: chargeId });
       } catch (e) {
@@ -314,12 +318,15 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       } as any);
 
       const profile = await getProfile(userId);
+      const mismatchMsg = nameSource === "payer_id"
+        ? `Rentalprise Auto: Payment refunded — the card name (${cardholderName}) doesn't match the payer's ID (${licenseName}). Please retry with a matching card.`
+        : `Rentalprise Auto: Your payment was refunded — the card name (${cardholderName}) doesn't match your driver's license (${licenseName}). Please retry with a card in your name.`;
       if (profile?.phone) {
-        await sendSms(
-          profile.phone,
-          `Rentalprise Auto: Your payment was refunded — the card name (${cardholderName}) doesn't match your driver's license (${licenseName}). Please retry with a card in your name.`,
-          profile.full_name
-        );
+        await sendSms(profile.phone, mismatchMsg, profile.full_name);
+      }
+      // Also notify the third-party payer when their card was used.
+      if (rentalPre?.third_party_payer && rentalPre?.payer_phone) {
+        try { await sendSms(String(rentalPre.payer_phone), mismatchMsg, null); } catch {}
       }
       return;
     }
@@ -408,6 +415,21 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         `Rentalprise Auto: Payment received${amt ? " (" + amt + ")" : ""}. Your rental is now active — see you at pickup!`,
         profile.full_name
       );
+    }
+
+    // Notify the third-party payer when their card was used.
+    if (rentalPre?.third_party_payer && rentalPre?.payer_phone) {
+      try {
+        const amt = fmtAmount(session.amount_total);
+        const renterLabel = profile?.full_name || "the renter";
+        await sendSms(
+          String(rentalPre.payer_phone),
+          `Camauto Rentals: Payment processed${amt ? " (" + amt + ")" : ""} for ${renterLabel}'s rental. Thank you!`,
+          null,
+        );
+      } catch (e) {
+        console.error("[webhook] payer SMS failed", e);
+      }
     }
 
     // Generate & deliver the payment receipt PDF (fire-and-forget; never throws).
