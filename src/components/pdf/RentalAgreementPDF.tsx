@@ -1,11 +1,9 @@
-import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import type { AgreementSettings } from "@/lib/agreementSettings";
 import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
 
 /**
- * Server-rendered PDF version of the rental agreement.
- * Uses only built-in PDF fonts (Helvetica) so it works in the Cloudflare
- * Workers SSR runtime without fontkit filesystem access.
+ * Server-rendered Vehicle Rental Agreement PDF using jsPDF (no WASM, no DOM).
+ * Works in the Cloudflare Workers SSR runtime.
  */
 
 export interface RentalAgreementPDFData {
@@ -13,7 +11,7 @@ export interface RentalAgreementPDFData {
     id: string;
     startDate: string;
     endDate: string | null;
-    billingCadence: string | null; // "daily" | "weekly" | "monthly"
+    billingCadence: string | null;
     billingPeriod: string | null;
     rateAmount: number | null;
     rate: number | null;
@@ -66,139 +64,17 @@ export interface RentalAgreementPDFData {
     signedBy: string | null;
   }>;
   settings: AgreementSettings;
-  /** PNG bytes of the renter's signature, or null if not yet captured. */
-  signaturePng: Buffer | null;
+  /** PNG bytes of the renter's signature (Buffer or Uint8Array), or null. */
+  signaturePng: Buffer | Uint8Array | null;
 }
 
-const COLOR_GREEN = "#2db84b";
-const COLOR_BORDER = "#cccccc";
-const COLOR_TEXT = "#1a1a1a";
-const COLOR_MUTED = "#666666";
-
-const styles = StyleSheet.create({
-  page: {
-    fontFamily: "Helvetica",
-    fontSize: 9,
-    color: COLOR_TEXT,
-    paddingTop: 36,
-    paddingBottom: 48,
-    paddingHorizontal: 36,
-  },
-  header: {
-    alignItems: "center",
-    borderBottomWidth: 2,
-    borderBottomColor: COLOR_GREEN,
-    paddingBottom: 8,
-    marginBottom: 10,
-  },
-  logo: { width: 96, height: 95, marginBottom: 4 },
-  companyRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    width: "100%",
-    marginTop: 2,
-  },
-  brand: { fontSize: 16, fontFamily: "Helvetica-Bold", color: COLOR_GREEN },
-  companyMeta: { fontSize: 8, color: COLOR_MUTED, textAlign: "right", lineHeight: 1.35 },
-  title: {
-    textAlign: "center",
-    fontSize: 13,
-    fontFamily: "Helvetica-Bold",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginTop: 4,
-  },
-  subtitle: {
-    textAlign: "center",
-    fontSize: 8,
-    color: COLOR_MUTED,
-    marginBottom: 10,
-  },
-  sectionBar: {
-    backgroundColor: COLOR_GREEN,
-    color: "#ffffff",
-    paddingVertical: 3,
-    paddingHorizontal: 6,
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginTop: 10,
-    marginBottom: 6,
-  },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 0 },
-  cell: { padding: 3 },
-  cellLabel: {
-    fontSize: 7,
-    color: COLOR_MUTED,
-    fontFamily: "Helvetica-Bold",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    marginBottom: 1,
-  },
-  cellValue: {
-    fontSize: 9,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#444",
-    paddingVertical: 2,
-    minHeight: 14,
-  },
-  clauseTitle: {
-    fontSize: 9,
-    fontFamily: "Helvetica-Bold",
-    marginTop: 5,
-    marginBottom: 2,
-  },
-  clauseBody: { fontSize: 8.5, lineHeight: 1.4, color: "#222" },
-  sigRow: { flexDirection: "row", gap: 24, marginTop: 8 },
-  sigCol: { flex: 1 },
-  sigBox: {
-    height: 50,
-    borderBottomWidth: 1.5,
-    borderBottomColor: "#000",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    marginBottom: 2,
-  },
-  sigImage: { maxHeight: 48, width: "auto" },
-  sigLabel: {
-    fontSize: 7,
-    textTransform: "uppercase",
-    color: COLOR_MUTED,
-    letterSpacing: 0.4,
-  },
-  table: { marginTop: 4, borderWidth: 0.5, borderColor: COLOR_BORDER },
-  tableHeader: {
-    flexDirection: "row",
-    backgroundColor: COLOR_GREEN,
-  },
-  tableHeaderCell: {
-    color: "#fff",
-    fontFamily: "Helvetica-Bold",
-    fontSize: 8,
-    padding: 4,
-    flex: 1,
-  },
-  tableRow: { flexDirection: "row", borderTopWidth: 0.5, borderTopColor: COLOR_BORDER },
-  tableCell: { padding: 4, fontSize: 8, flex: 1 },
-  footer: {
-    position: "absolute",
-    bottom: 18,
-    left: 36,
-    right: 36,
-    textAlign: "center",
-    fontSize: 7,
-    color: COLOR_MUTED,
-    borderTopWidth: 1,
-    borderTopColor: COLOR_GREEN,
-    paddingTop: 4,
-  },
-});
+const RGB_GREEN: [number, number, number] = [45, 184, 75];
+const RGB_TEXT: [number, number, number] = [26, 26, 26];
+const RGB_MUTED: [number, number, number] = [102, 102, 102];
+const RGB_BORDER: [number, number, number] = [204, 204, 204];
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "";
-  // Accept "YYYY-MM-DD" or full ISO.
   const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -220,15 +96,6 @@ function renderClauseText(body: string, s: AgreementSettings): string {
     .replaceAll("{{CLEANING_FEE}}", s.fees.cleaningFeeRange);
 }
 
-function Field({ label, value, width }: { label: string; value: string | number | null | undefined; width: string }) {
-  return (
-    <View style={[styles.cell, { width }]}>
-      <Text style={styles.cellLabel}>{label}</Text>
-      <Text style={styles.cellValue}>{value == null || value === "" ? " " : String(value)}</Text>
-    </View>
-  );
-}
-
 function composedName(d: RentalAgreementPDFData["driver"]) {
   const parts = [d.firstName, d.middleInitial, d.lastName].filter(Boolean);
   return parts.length ? parts.join(" ") : d.fullName;
@@ -243,7 +110,32 @@ function composedAddress(d: RentalAgreementPDFData["driver"]) {
   return d.address ?? "";
 }
 
-export function RentalAgreementPDF({ rental, driver, vehicle, extensions, settings, signaturePng }: RentalAgreementPDFData) {
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  // btoa is available in Workers runtime
+  return typeof btoa !== "undefined"
+    ? btoa(binary)
+    : Buffer.from(bytes).toString("base64");
+}
+
+/**
+ * Render the rental agreement to a PDF Uint8Array using jsPDF (no WASM).
+ */
+export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Promise<Uint8Array> {
+  const { jsPDF } = await import("jspdf");
+  const { rental, driver, vehicle, extensions, settings, signaturePng } = data;
+  const c = settings.company;
+
+  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const left = 36;
+  const right = pageW - 36;
+  const contentW = right - left;
+  const bottomLimit = pageH - 48;
+  let y = 40;
+
   const periodLabel =
     rental.billingCadence === "daily" || rental.billingPeriod === "daily"
       ? "day"
@@ -260,168 +152,311 @@ export function RentalAgreementPDF({ rental, driver, vehicle, extensions, settin
     .filter(Boolean)
     .join(" / ");
 
-  return (
-    <Document>
-      <Page size="LETTER" style={styles.page}>
-        {/* HEADER */}
-        <View style={styles.header}>
-          <Image src={CAMAUTO_LOGO_BASE64} style={styles.logo} />
-          <View style={styles.companyRow}>
-            <View>
-              <Text style={styles.brand}>{settings.company.dba}</Text>
-              <Text style={{ fontSize: 8, color: COLOR_MUTED, marginTop: 2 }}>{settings.company.legalName}</Text>
-            </View>
-            <View>
-              <Text style={styles.companyMeta}>{settings.company.address}</Text>
-              <Text style={styles.companyMeta}>Phone: {settings.company.phone}</Text>
-              <Text style={styles.companyMeta}>{settings.company.website}</Text>
-            </View>
-          </View>
-        </View>
+  const drawFooter = () => {
+    doc.setDrawColor(...RGB_GREEN);
+    doc.setLineWidth(1);
+    doc.line(left, pageH - 30, right, pageH - 30);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(...RGB_MUTED);
+    const footer = `${c.legalName} d/b/a ${c.dba}  |  ${c.address}  |  ${c.phone}  |  ${c.website}${
+      rental.agreementVersion ? `   |   Agreement version: ${rental.agreementVersion}` : ""
+    }`;
+    doc.text(footer, pageW / 2, pageH - 18, { align: "center" });
+  };
 
-        <Text style={styles.title}>Vehicle Rental Agreement</Text>
-        <Text style={styles.subtitle}>
-          Please read this agreement carefully before signing. All terms are binding upon execution.
-        </Text>
+  const ensureSpace = (needed: number) => {
+    if (y + needed > bottomLimit) {
+      drawFooter();
+      doc.addPage();
+      y = 40;
+    }
+  };
 
-        {/* RENTER */}
-        <Text style={styles.sectionBar}>Renter Information</Text>
-        <View style={styles.grid}>
-          <Field label="Full Legal Name" value={fullName} width="50%" />
-          <Field label="Date of Birth" value={driver.dateOfBirth ? fmtDate(driver.dateOfBirth) : ""} width="50%" />
-          <Field label="Driver License #" value={driver.licenseNumber} width="50%" />
-          <Field label="DL State / Expiration" value={dlStateExp} width="50%" />
-          <Field label="Phone" value={driver.phone} width="50%" />
-          <Field label="Email" value={driver.email} width="50%" />
-          <Field label="Address" value={fullAddress} width="100%" />
-          {(driver.altContactName || driver.altContactPhone) ? (
-            <>
-              <Field label="Alt Contact Name" value={driver.altContactName ?? ""} width="50%" />
-              <Field label="Alt Contact Phone" value={driver.altContactPhone ?? ""} width="50%" />
-            </>
-          ) : null}
-        </View>
+  // ---- HEADER (first page) ----
+  const logoW = 90;
+  const logoH = 89;
+  doc.addImage(CAMAUTO_LOGO_BASE64, "JPEG", (pageW - logoW) / 2, y, logoW, logoH);
+  y += logoH + 4;
 
-        {/* VEHICLE */}
-        <Text style={styles.sectionBar}>Vehicle Information</Text>
-        <View style={styles.grid}>
-          <Field label="Year" value={vehicle.year} width="16.66%" />
-          <Field label="Make" value={vehicle.make} width="16.66%" />
-          <Field label="Model" value={vehicle.model} width="16.66%" />
-          <Field label="Color" value={vehicle.color ?? ""} width="16.66%" />
-          <Field label="License Plate" value={vehicle.plate} width="16.66%" />
-          <Field label="VIN" value={vehicle.vin} width="16.66%" />
-          <Field label="Fuel Level Out" value={vehicle.fuelLevelPickup ?? ""} width="33%" />
-          <Field label="EZ-Pass Tag #" value={vehicle.ezPassTag ?? ""} width="33%" />
-          <Field label="Pickup Date" value={fmtDate(rental.startDate)} width="34%" />
-        </View>
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(...RGB_GREEN);
+  doc.text(c.dba, left, y + 12);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...RGB_MUTED);
+  doc.text(c.legalName, left, y + 22);
+  [c.address, `Phone: ${c.phone}`, c.website].forEach((line, i) => {
+    doc.text(line, right, y + 10 + i * 10, { align: "right" });
+  });
+  y += 32;
+  doc.setDrawColor(...RGB_GREEN);
+  doc.setLineWidth(2);
+  doc.line(left, y, right, y);
+  y += 18;
 
-        {/* TERMS */}
-        <Text style={styles.sectionBar}>Rental Terms</Text>
-        <View style={styles.grid}>
-          <Field label={`Rate ($/${periodLabel})`} value={fmtMoney(rate)} width="25%" />
-          <Field label="Daily Late Fee" value={settings.fees.dailyLateFee} width="25%" />
-          <Field label="Rental Start" value={fmtDate(rental.startDate)} width="25%" />
-          <Field label="Mileage Cap/Wk" value={settings.fees.mileageCapPerWeek} width="25%" />
-          <Field label="Security Deposit" value={fmtMoney(Number(rental.depositPaid ?? 0))} width="33%" />
-          <Field label="Payment Method" value="" width="33%" />
-          <Field label="Current End Date" value={currentEnd ? fmtDate(currentEnd) : "Open-ended"} width="34%" />
-        </View>
-
-        {/* EXTENSIONS */}
-        {extensions.length > 0 ? (
-          <>
-            <Text style={styles.sectionBar}>Extensions &amp; Amendments</Text>
-            <View style={styles.table}>
-              <View style={styles.tableHeader}>
-                <Text style={styles.tableHeaderCell}>Extended On</Text>
-                <Text style={styles.tableHeaderCell}>Previous End</Text>
-                <Text style={styles.tableHeaderCell}>New End</Text>
-                <Text style={styles.tableHeaderCell}>Periods</Text>
-                <Text style={styles.tableHeaderCell}>Additional</Text>
-                <Text style={styles.tableHeaderCell}>Signed By</Text>
-              </View>
-              {extensions.map((e) => (
-                <View key={e.id} style={styles.tableRow}>
-                  <Text style={styles.tableCell}>{fmtDate(e.extendedAt.slice(0, 10))}</Text>
-                  <Text style={styles.tableCell}>{e.previousEndDate ? fmtDate(e.previousEndDate) : "—"}</Text>
-                  <Text style={styles.tableCell}>{fmtDate(e.newEndDate)}</Text>
-                  <Text style={styles.tableCell}>{e.periods} {e.periodLabel}{e.periods === 1 ? "" : "s"}</Text>
-                  <Text style={styles.tableCell}>{fmtMoney(e.additionalAmount)}</Text>
-                  <Text style={styles.tableCell}>{e.signedBy ?? "—"}</Text>
-                </View>
-              ))}
-            </View>
-          </>
-        ) : null}
-
-        {/* TERMS & CONDITIONS */}
-        <Text style={styles.sectionBar}>Terms &amp; Conditions</Text>
-        <View>
-          {settings.clauses.map((c, i) => (
-            <View key={i} wrap={false}>
-              <Text style={styles.clauseTitle}>{i + 1}. {c.title}</Text>
-              <Text style={styles.clauseBody}>{renderClauseText(c.body, settings)}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* VIOLATIONS & INCIDENTALS */}
-        <Text style={styles.sectionBar}>Violations &amp; Incidentals</Text>
-        <Text style={{ fontSize: 8.5, lineHeight: 1.4, marginBottom: 4 }}>
-          Your card on file will be charged for any of the following:
-        </Text>
-        <View style={{ marginLeft: 12, marginBottom: 6 }}>
-          <Text style={{ fontSize: 8.5, lineHeight: 1.5 }}>• Parking tickets or traffic violations: actual fine amount</Text>
-          <Text style={{ fontSize: 8.5, lineHeight: 1.5 }}>• Late return fees: {settings.fees.dailyLateFee} per day</Text>
-          <Text style={{ fontSize: 8.5, lineHeight: 1.5 }}>• Damage to vehicle: repair cost</Text>
-          <Text style={{ fontSize: 8.5, lineHeight: 1.5 }}>• Cleaning fees: {settings.fees.cleaningFeeRange} if excessively soiled</Text>
-          <Text style={{ fontSize: 8.5, lineHeight: 1.5 }}>• Mileage overage: {settings.fees.excessMileageRate} per mile (if applicable)</Text>
-          <Text style={{ fontSize: 8.5, lineHeight: 1.5 }}>• Other violations or damages: actual cost</Text>
-        </View>
-        <Text style={{ fontSize: 8.5, lineHeight: 1.4, marginBottom: 6 }}>
-          You authorize {settings.company.dba} to charge your card without further notice for any of these charges.
-        </Text>
-
-        {/* SIGNATURES */}
-        <Text style={styles.sectionBar}>Signatures</Text>
-        <Text style={{ fontSize: 8.5, marginBottom: 6 }}>
-          By signing below, Renter acknowledges having read, understood, and agreed to all terms of this Vehicle Rental Agreement.
-        </Text>
-        <View style={styles.sigRow}>
-          <View style={styles.sigCol}>
-            <View style={styles.sigBox}>
-              {signaturePng ? <Image src={signaturePng} style={styles.sigImage} /> : null}
-            </View>
-            <Text style={styles.sigLabel}>Renter Signature</Text>
-            <View style={{ marginTop: 6 }}>
-              <Text style={styles.cellLabel}>Print Name</Text>
-              <Text style={styles.cellValue}>{rental.signedBy ?? fullName}</Text>
-            </View>
-            <View style={{ marginTop: 4 }}>
-              <Text style={styles.cellLabel}>Date</Text>
-              <Text style={styles.cellValue}>{rental.signedAt ? fmtDate(rental.signedAt.slice(0, 10)) : (rental.clientSignedAt ? fmtDate(rental.clientSignedAt.slice(0, 10)) : "")}</Text>
-            </View>
-          </View>
-          <View style={styles.sigCol}>
-            <View style={styles.sigBox} />
-            <Text style={styles.sigLabel}>{settings.company.dba} Representative</Text>
-            <View style={{ marginTop: 6 }}>
-              <Text style={styles.cellLabel}>Print Name</Text>
-              <Text style={styles.cellValue}> </Text>
-            </View>
-            <View style={{ marginTop: 4 }}>
-              <Text style={styles.cellLabel}>Date</Text>
-              <Text style={styles.cellValue}> </Text>
-            </View>
-          </View>
-        </View>
-
-        <Text style={styles.footer} fixed>
-          {settings.company.legalName} d/b/a {settings.company.dba}  |  {settings.company.address}  |  {settings.company.phone}  |  {settings.company.website}
-          {rental.agreementVersion ? `   |   Agreement version: ${rental.agreementVersion}` : ""}
-        </Text>
-      </Page>
-    </Document>
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(...RGB_TEXT);
+  doc.text("VEHICLE RENTAL AGREEMENT", pageW / 2, y, { align: "center" });
+  y += 12;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...RGB_MUTED);
+  doc.text(
+    "Please read this agreement carefully before signing. All terms are binding upon execution.",
+    pageW / 2,
+    y,
+    { align: "center" },
   );
+  y += 10;
+
+  const sectionBar = (label: string) => {
+    ensureSpace(28);
+    y += 6;
+    doc.setFillColor(...RGB_GREEN);
+    doc.rect(left, y, contentW, 14, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text(label.toUpperCase(), left + 6, y + 10);
+    y += 20;
+  };
+
+  const drawFieldsRow = (
+    fields: Array<{ label: string; value: string; widthPct: number }>,
+  ) => {
+    ensureSpace(28);
+    let x = left;
+    fields.forEach((f) => {
+      const w = (contentW * f.widthPct) / 100;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      doc.setTextColor(...RGB_MUTED);
+      doc.text(f.label.toUpperCase(), x + 2, y + 8);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(...RGB_TEXT);
+      const v = f.value || " ";
+      const wrapped = doc.splitTextToSize(v, w - 4);
+      doc.text(wrapped, x + 2, y + 20);
+      // bottom underline
+      doc.setDrawColor(68, 68, 68);
+      doc.setLineWidth(0.4);
+      doc.line(x + 2, y + 24, x + w - 2, y + 24);
+      x += w;
+    });
+    y += 30;
+  };
+
+  // ---- RENTER ----
+  sectionBar("Renter Information");
+  drawFieldsRow([
+    { label: "Full Legal Name", value: fullName, widthPct: 50 },
+    { label: "Date of Birth", value: driver.dateOfBirth ? fmtDate(driver.dateOfBirth) : "", widthPct: 50 },
+  ]);
+  drawFieldsRow([
+    { label: "Driver License #", value: driver.licenseNumber, widthPct: 50 },
+    { label: "DL State / Expiration", value: dlStateExp, widthPct: 50 },
+  ]);
+  drawFieldsRow([
+    { label: "Phone", value: driver.phone, widthPct: 50 },
+    { label: "Email", value: driver.email, widthPct: 50 },
+  ]);
+  drawFieldsRow([{ label: "Address", value: fullAddress, widthPct: 100 }]);
+  if (driver.altContactName || driver.altContactPhone) {
+    drawFieldsRow([
+      { label: "Alt Contact Name", value: driver.altContactName ?? "", widthPct: 50 },
+      { label: "Alt Contact Phone", value: driver.altContactPhone ?? "", widthPct: 50 },
+    ]);
+  }
+
+  // ---- VEHICLE ----
+  sectionBar("Vehicle Information");
+  drawFieldsRow([
+    { label: "Year", value: String(vehicle.year ?? ""), widthPct: 16.66 },
+    { label: "Make", value: vehicle.make, widthPct: 16.66 },
+    { label: "Model", value: vehicle.model, widthPct: 16.66 },
+    { label: "Color", value: vehicle.color ?? "", widthPct: 16.66 },
+    { label: "Plate", value: vehicle.plate, widthPct: 16.66 },
+    { label: "VIN", value: vehicle.vin, widthPct: 16.7 },
+  ]);
+  drawFieldsRow([
+    { label: "Fuel Level Out", value: vehicle.fuelLevelPickup ?? "", widthPct: 33 },
+    { label: "EZ-Pass Tag #", value: vehicle.ezPassTag ?? "", widthPct: 33 },
+    { label: "Pickup Date", value: fmtDate(rental.startDate), widthPct: 34 },
+  ]);
+
+  // ---- TERMS ----
+  sectionBar("Rental Terms");
+  drawFieldsRow([
+    { label: `Rate ($/${periodLabel})`, value: fmtMoney(rate), widthPct: 25 },
+    { label: "Daily Late Fee", value: settings.fees.dailyLateFee, widthPct: 25 },
+    { label: "Rental Start", value: fmtDate(rental.startDate), widthPct: 25 },
+    { label: "Mileage Cap/Wk", value: settings.fees.mileageCapPerWeek, widthPct: 25 },
+  ]);
+  drawFieldsRow([
+    { label: "Security Deposit", value: fmtMoney(Number(rental.depositPaid ?? 0)), widthPct: 33 },
+    { label: "Payment Method", value: "", widthPct: 33 },
+    { label: "Current End Date", value: currentEnd ? fmtDate(currentEnd) : "Open-ended", widthPct: 34 },
+  ]);
+
+  // ---- EXTENSIONS ----
+  if (extensions.length > 0) {
+    sectionBar("Extensions & Amendments");
+    const cols = ["Extended", "Prev End", "New End", "Periods", "Additional", "Signed By"];
+    const colW = contentW / cols.length;
+    ensureSpace(20);
+    doc.setFillColor(...RGB_GREEN);
+    doc.rect(left, y, contentW, 14, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+    cols.forEach((cName, i) => doc.text(cName, left + i * colW + 4, y + 10));
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...RGB_TEXT);
+    extensions.forEach((e) => {
+      ensureSpace(16);
+      const row = [
+        fmtDate(e.extendedAt.slice(0, 10)),
+        e.previousEndDate ? fmtDate(e.previousEndDate) : "—",
+        fmtDate(e.newEndDate),
+        `${e.periods} ${e.periodLabel}${e.periods === 1 ? "" : "s"}`,
+        fmtMoney(e.additionalAmount),
+        e.signedBy ?? "—",
+      ];
+      row.forEach((cell, i) => doc.text(String(cell), left + i * colW + 4, y + 10));
+      doc.setDrawColor(...RGB_BORDER);
+      doc.setLineWidth(0.4);
+      doc.line(left, y + 14, right, y + 14);
+      y += 14;
+    });
+    y += 4;
+  }
+
+  // ---- TERMS & CONDITIONS ----
+  sectionBar("Terms & Conditions");
+  settings.clauses.forEach((clause, i) => {
+    const titleLine = `${i + 1}. ${clause.title}`;
+    const bodyText = renderClauseText(clause.body, settings);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...RGB_TEXT);
+    const titleLines = doc.splitTextToSize(titleLine, contentW);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    const bodyLines = doc.splitTextToSize(bodyText, contentW);
+    const needed = titleLines.length * 11 + bodyLines.length * 11 + 4;
+    ensureSpace(needed);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...RGB_TEXT);
+    doc.text(titleLines, left, y + 9);
+    y += titleLines.length * 11 + 2;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(34, 34, 34);
+    doc.text(bodyLines, left, y + 9);
+    y += bodyLines.length * 11 + 4;
+  });
+
+  // ---- VIOLATIONS ----
+  sectionBar("Violations & Incidentals");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(...RGB_TEXT);
+  ensureSpace(14);
+  doc.text("Your card on file will be charged for any of the following:", left, y + 9);
+  y += 14;
+  const bullets = [
+    "Parking tickets or traffic violations: actual fine amount",
+    `Late return fees: ${settings.fees.dailyLateFee} per day`,
+    "Damage to vehicle: repair cost",
+    `Cleaning fees: ${settings.fees.cleaningFeeRange} if excessively soiled`,
+    `Mileage overage: ${settings.fees.excessMileageRate} per mile (if applicable)`,
+    "Other violations or damages: actual cost",
+  ];
+  bullets.forEach((b) => {
+    ensureSpace(12);
+    doc.text(`• ${b}`, left + 10, y + 9);
+    y += 12;
+  });
+  ensureSpace(16);
+  doc.text(
+    doc.splitTextToSize(
+      `You authorize ${c.dba} to charge your card without further notice for any of these charges.`,
+      contentW,
+    ),
+    left,
+    y + 9,
+  );
+  y += 16;
+
+  // ---- SIGNATURES ----
+  sectionBar("Signatures");
+  ensureSpace(20);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(...RGB_TEXT);
+  doc.text(
+    doc.splitTextToSize(
+      "By signing below, Renter acknowledges having read, understood, and agreed to all terms of this Vehicle Rental Agreement.",
+      contentW,
+    ),
+    left,
+    y + 9,
+  );
+  y += 18;
+
+  ensureSpace(110);
+  const colW2 = (contentW - 24) / 2;
+  const sigTop = y;
+  const sigBoxH = 50;
+
+  // Renter signature box
+  if (signaturePng) {
+    try {
+      const bytes = signaturePng instanceof Uint8Array ? signaturePng : new Uint8Array(signaturePng);
+      const dataUrl = `data:image/png;base64,${bytesToBase64(bytes)}`;
+      doc.addImage(dataUrl, "PNG", left + 4, sigTop, colW2 - 8, sigBoxH - 4);
+    } catch (e) {
+      console.warn("[agreement-pdf] signature image embed failed", e);
+    }
+  }
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(1.2);
+  doc.line(left, sigTop + sigBoxH, left + colW2, sigTop + sigBoxH);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(...RGB_MUTED);
+  doc.text("RENTER SIGNATURE", left, sigTop + sigBoxH + 10);
+
+  // Company rep signature line
+  const rcolX = left + colW2 + 24;
+  doc.line(rcolX, sigTop + sigBoxH, rcolX + colW2, sigTop + sigBoxH);
+  doc.text(`${c.dba.toUpperCase()} REPRESENTATIVE`, rcolX, sigTop + sigBoxH + 10);
+
+  y = sigTop + sigBoxH + 18;
+
+  // Print name / date rows
+  drawFieldsRow([
+    { label: "Print Name", value: rental.signedBy ?? fullName, widthPct: 50 },
+    {
+      label: "Date",
+      value: rental.signedAt
+        ? fmtDate(rental.signedAt.slice(0, 10))
+        : rental.clientSignedAt
+          ? fmtDate(rental.clientSignedAt.slice(0, 10))
+          : "",
+      widthPct: 50,
+    },
+  ]);
+
+  drawFooter();
+
+  const ab = doc.output("arraybuffer");
+  return new Uint8Array(ab);
 }
