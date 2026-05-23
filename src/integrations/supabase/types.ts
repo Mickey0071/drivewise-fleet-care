@@ -1309,27 +1309,33 @@ export type Database = {
       }
       vendors: {
         Row: {
+          address: string | null
           created_at: string
           id: string
           name: string
+          notes: string | null
           phone: string
           reference_number: string | null
           service_type: string | null
           updated_at: string
         }
         Insert: {
+          address?: string | null
           created_at?: string
           id?: string
           name: string
+          notes?: string | null
           phone: string
           reference_number?: string | null
           service_type?: string | null
           updated_at?: string
         }
         Update: {
+          address?: string | null
           created_at?: string
           id?: string
           name?: string
+          notes?: string | null
           phone?: string
           reference_number?: string | null
           service_type?: string | null
