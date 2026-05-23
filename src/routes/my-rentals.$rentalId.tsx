@@ -4,13 +4,22 @@ import { useEffect, useState } from "react";
 import { getMyRentalDetail } from "@/lib/my-rentals.functions";
 import { downloadClientPacket } from "@/lib/client-packet.functions";
 import { createCustomRenterPayment } from "@/lib/custom-renter-payment.functions";
+import { requestRentalExtension, cancelRentalByAdmin } from "@/lib/renter-actions.functions";
+import { useAuth } from "@/hooks/use-auth";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   ArrowLeft, Loader2, FileText, IdCard, Receipt, Download,
-  Camera, AlertTriangle, CheckCircle2, Image as ImageIcon, CreditCard,
+  AlertTriangle, Image as ImageIcon, CreditCard, CalendarPlus, MessageSquare, Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 
