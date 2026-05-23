@@ -6,6 +6,7 @@
  * with date and amount, rental + vehicle context. Images embedded at low
  * resolution with PDF stream compression to keep size in the ~2-5MB range.
  */
+import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
 
 export interface EvidencePacketData {
   rental: {
