@@ -10,12 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { adminCreateUser, adminDeleteUser, adminResetUserPassword, adminUpdateUserContact } from "@/lib/admin-users.functions";
+import { sendStaffSetupLink } from "@/lib/staff-setup.functions";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
-import { Eye, EyeOff, RefreshCw, Plus, Copy, Trash2, KeyRound, Pencil, Check, X } from "lucide-react";
+import { Eye, EyeOff, RefreshCw, Plus, Copy, Trash2, KeyRound, Pencil, Check, X, Send } from "lucide-react";
 
 export const Route = createFileRoute("/admin/users")({
   head: () => ({ meta: [{ title: "Team & Access — Camauto Rentals" }] }),
@@ -256,6 +257,7 @@ function AdminUsersPage() {
                               <SelectItem value="none">None</SelectItem>
                               <SelectItem value="driver">Driver</SelectItem>
                               <SelectItem value="runner">Runner</SelectItem>
+                            <SelectItem value="va">Virtual Assistant</SelectItem>
                               <SelectItem value="admin">Admin</SelectItem>
                             </SelectContent>
                           </Select>
@@ -268,6 +270,7 @@ function AdminUsersPage() {
                             <Button size="sm" variant="outline" onClick={() => handleResetPassword(p)}>
                               <KeyRound className="mr-1 h-4 w-4" /> Reset Password
                             </Button>
+                            <SendSetupLinkButton profile={p} />
                             {user?.id === p.id ? (
                               <TooltipProvider>
                                 <Tooltip>
