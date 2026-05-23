@@ -1111,7 +1111,7 @@ function DeliveryDialog({ rental, onClose }: { rental: Rental | null; onClose: (
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="dl-mi">Odometer (mi)</Label>
-                <Input id="dl-mi" type="number" value={mileage} onChange={e => setMileage(Number(e.target.value))} />
+                <Input id="dl-mi" type="number" inputMode="numeric" placeholder="Enter mileage" value={mileage || ""} onChange={e => setMileage(Number(e.target.value))} />
               </div>
               <div>
                 <Label htmlFor="dl-fuel">Fuel level (%)</Label>
@@ -1261,7 +1261,7 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="rt-mi">Return odometer (mi)</Label>
-                <Input id="rt-mi" type="number" value={mileage} onChange={e => setMileage(Number(e.target.value))} />
+                <Input id="rt-mi" type="number" inputMode="numeric" placeholder="Enter mileage" value={mileage || ""} onChange={e => setMileage(Number(e.target.value))} />
               </div>
               <div>
                 <Label htmlFor="rt-fuel">Fuel level (%)</Label>
