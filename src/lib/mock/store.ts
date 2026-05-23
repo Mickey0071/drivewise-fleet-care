@@ -907,6 +907,19 @@ export function markReturned(id: string, endDate?: string) {
   emit();
 }
 
+/** Local-only optimistic update after a server-side return completes.
+ *  Does NOT write to cloud (server fn already did). Safe to call alongside
+ *  realtime — idempotent. */
+export function syncLocalReturn(rentalId: string) {
+  const r = rentals.find(x => x.id === rentalId);
+  if (r) {
+    r.reservationStatus = "returned";
+    const v = vehicles.find(v => v.id === r.vehicleId);
+    if (v && v.status === "rented") v.status = "available";
+  }
+  emit();
+}
+
 /** Mark a rental returned but leave the vehicle in "inspection" status
  *  until the runner submits the post-return inspection. */
 export function markReturnedAwaitingInspection(id: string, endDate?: string) {
