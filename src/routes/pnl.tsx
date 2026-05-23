@@ -2,32 +2,144 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { payments, expenses, payrollRuns, staffById, vehicles, vehicleById, driverById, rentals, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { payments, expenses, payrollRuns, staffById, vehicles, vehicleById, driverById, rentals, violations, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
-import { Users } from "lucide-react";
+import { Users, CreditCard, Banknote, TrendingUp, TrendingDown } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 import { downloadPnLExcel } from "@/lib/pnl-excel";
 import { FileSpreadsheet } from "lucide-react";
+import { useMemo, useState } from "react";
 
 export const Route = createFileRoute("/pnl")({
   head: () => ({ meta: [{ title: "P&L — Camauto Rentals" }] }),
   component: PnLPage,
 });
 
+type PayChannel = "all" | "stripe" | "cash";
+
+function channelOf(method?: string): "stripe" | "cash" {
+  const m = (method ?? "").toLowerCase();
+  if (m === "stripe" || m === "card") return "stripe";
+  return "cash"; // cash, zelle, unspecified
+}
+
+function ymKey(d: string) { return d.slice(0, 7); }
+function ymLabel(ym: string) {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(Date.UTC(y, (m ?? 1) - 1, 1)).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+}
+function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+function startOfYear() { return `${new Date().getFullYear()}-01-01`; }
+
 function PnLPage() {
   useStoreVersion();
+  const [channel, setChannel] = useState<PayChannel>("all");
+  const [rangeFrom, setRangeFrom] = useState<string>("");
+  const [rangeTo, setRangeTo] = useState<string>("");
 
-  // Real revenue from paid payments (rental + extension charges flow through here)
-  const rentalRevenue = payments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
-  const totalRevenue = rentalRevenue;
+  const data = useMemo(() => {
+    const paid = payments.filter(p => p.status === "paid");
+    const inRange = (d?: string) => {
+      if (!d) return false;
+      if (rangeFrom && d < rangeFrom) return false;
+      if (rangeTo && d > rangeTo) return false;
+      return true;
+    };
+    const matchesChannel = (m?: string) => channel === "all" || channelOf(m) === channel;
+
+    // Extension payment ids (so we don't double-count with rental income)
+    const extensionPaymentIds = new Set<string>();
+    rentals.forEach(r => r.extensions?.forEach(e => { if (e.paymentId) extensionPaymentIds.add(e.paymentId); }));
+
+    const filteredPaid = paid.filter(p => matchesChannel(p.method) && inRange(p.paidDate ?? p.dueDate));
+
+    const stripeTotal = paid.filter(p => channelOf(p.method) === "stripe" && inRange(p.paidDate ?? p.dueDate)).reduce((s, p) => s + p.amount, 0);
+    const cashTotal = paid.filter(p => channelOf(p.method) === "cash" && inRange(p.paidDate ?? p.dueDate)).reduce((s, p) => s + p.amount, 0);
+
+    // Income monthly buckets
+    const incomeByMonth: Record<string, { rental: number; extensions: number; violations: number }> = {};
+    const ensureI = (k: string) => (incomeByMonth[k] ??= { rental: 0, extensions: 0, violations: 0 });
+
+    filteredPaid.forEach(p => {
+      const k = ymKey(p.paidDate ?? p.dueDate);
+      const bucket = ensureI(k);
+      if (extensionPaymentIds.has(p.id)) bucket.extensions += p.amount;
+      else bucket.rental += p.amount;
+    });
+    // Extensions without an explicit payment record
+    rentals.forEach(r => r.extensions?.forEach(e => {
+      if (e.paymentId) return;
+      if (!inRange(e.extendedAt?.slice(0, 10))) return;
+      ensureI(ymKey(e.extendedAt)).extensions += e.additionalAmount;
+    }));
+    // Violations (paid)
+    const paidViolations = violations.filter(v => v.status === "paid" && inRange(v.dateIssued));
+    paidViolations.forEach(v => { ensureI(ymKey(v.dateIssued)).violations += v.amount; });
+
+    // Expenses monthly buckets
+    const expByMonth: Record<string, { maintenance: number; payroll: number; other: number }> = {};
+    const ensureE = (k: string) => (expByMonth[k] ??= { maintenance: 0, payroll: 0, other: 0 });
+    expenses.forEach(e => {
+      if (!inRange(e.date)) return;
+      const b = ensureE(ymKey(e.date));
+      const c = e.category.toLowerCase();
+      if (c.includes("maint")) b.maintenance += e.amount;
+      else if (c.includes("payroll")) b.payroll += e.amount;
+      else b.other += e.amount;
+    });
+    // Maintenance table (separate source for service records)
+    // Avoid double-counting: only add maintenance records that aren't already in expenses
+    // (kept off by default — expenses is the canonical ledger)
+
+    const incomeRows = Object.entries(incomeByMonth)
+      .map(([k, v]) => ({ ym: k, ...v, total: v.rental + v.extensions + v.violations }))
+      .sort((a, b) => b.ym.localeCompare(a.ym));
+    const expenseRows = Object.entries(expByMonth)
+      .map(([k, v]) => ({ ym: k, ...v, total: v.maintenance + v.payroll + v.other }))
+      .sort((a, b) => b.ym.localeCompare(a.ym));
+
+    const totalRevenue = incomeRows.reduce((s, r) => s + r.total, 0);
+    const totalExpenses = expenseRows.reduce((s, r) => s + r.total, 0);
+
+    // Weekly averages (income)
+    const sumPaidSince = (sinceISO: string) =>
+      paid.filter(p => matchesChannel(p.method) && (p.paidDate ?? p.dueDate) >= sinceISO).reduce((s, p) => s + p.amount, 0);
+    const sumExpensesSince = (sinceISO: string) =>
+      expenses.filter(e => e.date >= sinceISO).reduce((s, e) => s + e.amount, 0);
+
+    const last7Income = sumPaidSince(daysAgo(7));
+    const last28Income = sumPaidSince(daysAgo(28));
+    const ytdIncome = sumPaidSince(startOfYear());
+    const last7Expense = sumExpensesSince(daysAgo(7));
+    const last28Expense = sumExpensesSince(daysAgo(28));
+
+    // Combined trend by month (for the chart)
+    const allMonths = Array.from(new Set([...incomeRows.map(r => r.ym), ...expenseRows.map(r => r.ym)])).sort();
+    const trend = allMonths.map(ym => ({
+      ym,
+      income: incomeByMonth[ym] ? incomeByMonth[ym].rental + incomeByMonth[ym].extensions + incomeByMonth[ym].violations : 0,
+      expense: expByMonth[ym] ? expByMonth[ym].maintenance + expByMonth[ym].payroll + expByMonth[ym].other : 0,
+    })).map(r => ({ ...r, net: r.income - r.expense }));
+
+    return {
+      stripeTotal, cashTotal, totalRevenue, totalExpenses,
+      incomeRows, expenseRows, trend,
+      last7Income, last28Income, ytdIncome,
+      last7Expense, last28Expense,
+    };
+  }, [channel, rangeFrom, rangeTo]);
+
+  const rentalRevenue = data.incomeRows.reduce((s, r) => s + r.rental, 0);
+  const totalRevenue = data.totalRevenue;
 
   const byCat = expenses.reduce<Record<string, number>>((acc, e) => {
     acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc;
   }, {});
-  const totalExpenses = Object.values(byCat).reduce((a, b) => a + b, 0);
+  const totalExpenses = data.totalExpenses || Object.values(byCat).reduce((a, b) => a + b, 0);
   const payroll = byCat.payroll ?? 0;
   const net = totalRevenue - totalExpenses;
   const margin = totalRevenue > 0 ? (net / totalRevenue) * 100 : 0;
+  const trendMax = Math.max(1, ...data.trend.map(t => Math.max(t.income, t.expense)));
 
   // Per-vehicle P&L (revenue mapped via rental → driver_id → paid payments)
   const perVehicle = vehicles.map(v => {
@@ -46,12 +158,32 @@ function PnLPage() {
     <div>
       <PageHeader
         title="P&L Dashboard"
-        subtitle="Live revenue from paid invoices · live expenses from your logger"
+        subtitle="Income, expenses, and net — across Stripe and cash channels"
         action={
           <div className="flex gap-2">
-            <select className="h-9 rounded-md border border-input bg-background px-3 text-sm">
-              <option>This month</option><option>This week</option><option>This quarter</option>
+            <select
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              value={channel}
+              onChange={(e) => setChannel(e.target.value as PayChannel)}
+            >
+              <option value="all">All payment types</option>
+              <option value="stripe">Stripe only</option>
+              <option value="cash">Cash / Zelle only</option>
             </select>
+            <input
+              type="date"
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={rangeFrom}
+              onChange={(e) => setRangeFrom(e.target.value)}
+              aria-label="From date"
+            />
+            <input
+              type="date"
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={rangeTo}
+              onChange={(e) => setRangeTo(e.target.value)}
+              aria-label="To date"
+            />
             <Button
               variant="default"
               size="sm"
@@ -182,6 +314,200 @@ function PnLPage() {
         </Card>
       </div>
 
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-xs uppercase text-muted-foreground">Stripe income</div>
+              <CreditCard className="h-4 w-4 text-primary" />
+            </div>
+            <div className="mt-1 text-2xl font-bold">{fmtMoney(data.stripeTotal)}</div>
+            <div className="text-xs text-muted-foreground">Card &amp; Stripe-charged payments</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-xs uppercase text-muted-foreground">Cash / Zelle income</div>
+              <Banknote className="h-4 w-4 text-success" />
+            </div>
+            <div className="mt-1 text-2xl font-bold">{fmtMoney(data.cashTotal)}</div>
+            <div className="text-xs text-muted-foreground">Recorded cash &amp; Zelle</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs uppercase text-muted-foreground">Channel split</div>
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full bg-primary"
+                style={{ width: `${(data.stripeTotal + data.cashTotal) > 0 ? (data.stripeTotal / (data.stripeTotal + data.cashTotal)) * 100 : 0}%` }}
+              />
+            </div>
+            <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+              <span>Stripe {data.stripeTotal + data.cashTotal > 0 ? Math.round((data.stripeTotal / (data.stripeTotal + data.cashTotal)) * 100) : 0}%</span>
+              <span>Cash {data.stripeTotal + data.cashTotal > 0 ? Math.round((data.cashTotal / (data.stripeTotal + data.cashTotal)) * 100) : 0}%</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <Avg label="Income · last 7d" value={data.last7Income} weeks={1} tone="text-success" />
+        <Avg label="Income · last 28d" value={data.last28Income} weeks={4} tone="text-success" />
+        <Avg label="Income · YTD" value={data.ytdIncome} weeks={Math.max(1, Math.ceil((Date.now() - new Date(startOfYear()).getTime()) / (7 * 86400000)))} tone="text-success" />
+        <Avg label="Expenses · last 7d" value={data.last7Expense} weeks={1} tone="text-destructive" />
+        <Avg label="Expenses · last 28d" value={data.last28Expense} weeks={4} tone="text-destructive" />
+      </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <TrendingUp className="h-4 w-4 text-primary" /> Income vs expenses trend
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {data.trend.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No activity in the selected range.</p>
+          ) : (
+            <div className="space-y-3">
+              {data.trend.map(row => (
+                <div key={row.ym}>
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium">{ymLabel(row.ym)}</span>
+                    <span className="text-muted-foreground">
+                      <span className="text-success">{fmtMoney(row.income)}</span>
+                      {" · "}
+                      <span className="text-destructive">{fmtMoney(row.expense)}</span>
+                      {" · "}
+                      <span className={row.net >= 0 ? "text-success" : "text-destructive"}>
+                        {row.net >= 0 ? "+" : ""}{fmtMoney(row.net)}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="mt-1 flex h-3 w-full gap-px overflow-hidden rounded">
+                    <div className="h-full bg-success/70" style={{ width: `${(row.income / trendMax) * 50}%` }} />
+                    <div className="h-full bg-destructive/70" style={{ width: `${(row.expense / trendMax) * 50}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-4 w-4 text-success" /> Monthly income
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {data.incomeRows.length === 0 ? (
+              <p className="p-6 text-sm text-muted-foreground">No income in range.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-2">Month</th>
+                      <th className="px-4 py-2 text-right">Rental</th>
+                      <th className="px-4 py-2 text-right">Extensions</th>
+                      <th className="px-4 py-2 text-right">Violations</th>
+                      <th className="px-4 py-2 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {data.incomeRows.map(r => (
+                      <tr key={r.ym}>
+                        <td className="px-4 py-2 font-medium">{ymLabel(r.ym)}</td>
+                        <td className="px-4 py-2 text-right">{fmtMoney(r.rental)}</td>
+                        <td className="px-4 py-2 text-right">{fmtMoney(r.extensions)}</td>
+                        <td className="px-4 py-2 text-right">{fmtMoney(r.violations)}</td>
+                        <td className="px-4 py-2 text-right font-semibold text-success">{fmtMoney(r.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingDown className="h-4 w-4 text-destructive" /> Monthly expenses
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {data.expenseRows.length === 0 ? (
+              <p className="p-6 text-sm text-muted-foreground">No expenses in range.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-2">Month</th>
+                      <th className="px-4 py-2 text-right">Maintenance</th>
+                      <th className="px-4 py-2 text-right">Payroll</th>
+                      <th className="px-4 py-2 text-right">Other</th>
+                      <th className="px-4 py-2 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {data.expenseRows.map(r => (
+                      <tr key={r.ym}>
+                        <td className="px-4 py-2 font-medium">{ymLabel(r.ym)}</td>
+                        <td className="px-4 py-2 text-right">{fmtMoney(r.maintenance)}</td>
+                        <td className="px-4 py-2 text-right">{fmtMoney(r.payroll)}</td>
+                        <td className="px-4 py-2 text-right">{fmtMoney(r.other)}</td>
+                        <td className="px-4 py-2 text-right font-semibold text-destructive">{fmtMoney(r.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">Monthly net P&amp;L</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2">Month</th>
+                  <th className="px-4 py-2 text-right">Income</th>
+                  <th className="px-4 py-2 text-right">Expenses</th>
+                  <th className="px-4 py-2 text-right">Net</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {data.trend.length === 0 ? (
+                  <tr><td colSpan={4} className="p-4 text-center text-muted-foreground">No data in range.</td></tr>
+                ) : [...data.trend].reverse().map(row => (
+                  <tr key={row.ym}>
+                    <td className="px-4 py-2 font-medium">{ymLabel(row.ym)}</td>
+                    <td className="px-4 py-2 text-right text-success">{fmtMoney(row.income)}</td>
+                    <td className="px-4 py-2 text-right text-destructive">{fmtMoney(row.expense)}</td>
+                    <td className={`px-4 py-2 text-right font-semibold ${row.net >= 0 ? "text-success" : "text-destructive"}`}>
+                      {row.net >= 0 ? "+" : ""}{fmtMoney(row.net)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader><CardTitle className="text-base">Revenue</CardTitle></CardHeader>
@@ -299,6 +625,18 @@ function Big({ label, value, tone }: { label: string; value: number; tone: strin
     <div className="text-xs uppercase text-muted-foreground">{label}</div>
     <div className={`mt-1 text-2xl font-bold ${tone}`}>{fmtMoney(value)}</div>
   </CardContent></Card>;
+}
+function Avg({ label, value, weeks, tone }: { label: string; value: number; weeks: number; tone: string }) {
+  const perWeek = weeks > 0 ? value / weeks : 0;
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-xs uppercase text-muted-foreground">{label}</div>
+        <div className={`mt-1 text-xl font-bold ${tone}`}>{fmtMoney(value)}</div>
+        <div className="text-xs text-muted-foreground">~{fmtMoney(perWeek)} / week</div>
+      </CardContent>
+    </Card>
+  );
 }
 function Bar({ label, value, total, tone }: { label: string; value: number; total: number; tone: string }) {
   const pct = total > 0 ? (value / total) * 100 : 0;
