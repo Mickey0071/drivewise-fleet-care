@@ -222,18 +222,37 @@ export const getRentalForSigning = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data }) => {
-    const { data: rental, error } = await supabaseAdmin
+    let rental: any, error: any;
+    try {
+      const res = await supabaseAdmin
       .from("rentals")
       .select("id, vehicle_id, driver_id, start_date, end_date, weekly_rate, rate, billing_period, deposit_paid, reservation_status, client_signature_url, license_image_url, selfie_image_url, client_signed_at, signed_at, signed_by, agreement_version")
       .eq("sign_token", data.token)
       .maybeSingle();
-    if (error) throw new Error(error.message);
+      rental = res.data;
+      error = res.error;
+    } catch (e) {
+      console.error("[getRentalForSigning] rental query threw:", e);
+      throw new Error("Lookup failed");
+    }
+    if (error) {
+      console.error("[getRentalForSigning] rental query error:", error);
+      throw new Error(error.message ?? "Lookup failed");
+    }
     if (!rental) throw new Error("This signing link is invalid or expired");
 
-    const [{ data: vehicle }, { data: driver }] = await Promise.all([
-      supabaseAdmin.from("vehicles").select("year, make, model, plate, vin, color, mileage, fuel_level_pickup, ez_pass_tag").eq("id", rental.vehicle_id).maybeSingle(),
-      supabaseAdmin.from("drivers").select("full_name, email, phone, license_number, license_expiry, date_of_birth, address").eq("id", rental.driver_id).maybeSingle(),
-    ]);
+    let vehicle: any = null, driver: any = null;
+    try {
+      const [vRes, dRes] = await Promise.all([
+        supabaseAdmin.from("vehicles").select("year, make, model, plate, vin, color, mileage, fuel_level_pickup, ez_pass_tag").eq("id", rental.vehicle_id).maybeSingle(),
+        supabaseAdmin.from("drivers").select("full_name, email, phone, license_number, license_expiry, date_of_birth, address").eq("id", rental.driver_id).maybeSingle(),
+      ]);
+      vehicle = vRes.data;
+      driver = dRes.data;
+    } catch (e) {
+      console.error("[getRentalForSigning] vehicle/driver query threw:", e);
+    }
+    const out = {
 
     return {
       rentalId: rental.id,
