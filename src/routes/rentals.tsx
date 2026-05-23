@@ -34,6 +34,7 @@ import { startReturnInspection } from "@/lib/inspection.functions";
 import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
+import { downloadClientPacket } from "@/lib/client-packet.functions";
 import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
