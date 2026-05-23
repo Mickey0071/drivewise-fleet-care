@@ -553,6 +553,23 @@ function RentalsPage() {
                       {packetId === r.id ? "Preparing…" : "Download packet"}
                     </Button>
                   )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" disabled={reportId === r.id}>
+                        <Download className="mr-1 h-4 w-4" />
+                        {reportId === r.id ? "Preparing…" : "Export Report"}
+                        <ChevronDown className="ml-1 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleExportReport(r, "pdf")}>
+                        📄 Download as PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleExportReport(r, "zip")}>
+                        🗂️ Download as ZIP (PDF + images + CSV)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   {r.agreementPdfUrl ? (
                     <Button
                       variant="outline"
