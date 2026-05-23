@@ -39,6 +39,7 @@ import { Route as ChecklistRouteImport } from './routes/checklist'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
+import { Route as SetupTokenRouteImport } from './routes/setup.$token'
 import { Route as RunnersTasksRouteImport } from './routes/runners.tasks'
 import { Route as RunnersNewTaskRouteImport } from './routes/runners.new-task'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
@@ -203,6 +204,11 @@ const SignTokenRoute = SignTokenRouteImport.update({
   path: '/sign/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SetupTokenRoute = SetupTokenRouteImport.update({
+  id: '/setup/$token',
+  path: '/setup/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RunnersTasksRoute = RunnersTasksRouteImport.update({
   id: '/runners/tasks',
   path: '/runners/tasks',
@@ -310,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/rent/paid': typeof RentPaidRoute
   '/runners/new-task': typeof RunnersNewTaskRoute
   '/runners/tasks': typeof RunnersTasksRoute
+  '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
@@ -355,6 +362,7 @@ export interface FileRoutesByTo {
   '/rent/paid': typeof RentPaidRoute
   '/runners/new-task': typeof RunnersNewTaskRoute
   '/runners/tasks': typeof RunnersTasksRoute
+  '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
@@ -401,6 +409,7 @@ export interface FileRoutesById {
   '/rent/paid': typeof RentPaidRoute
   '/runners/new-task': typeof RunnersNewTaskRoute
   '/runners/tasks': typeof RunnersTasksRoute
+  '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
@@ -448,6 +457,7 @@ export interface FileRouteTypes {
     | '/rent/paid'
     | '/runners/new-task'
     | '/runners/tasks'
+    | '/setup/$token'
     | '/sign/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
@@ -493,6 +503,7 @@ export interface FileRouteTypes {
     | '/rent/paid'
     | '/runners/new-task'
     | '/runners/tasks'
+    | '/setup/$token'
     | '/sign/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
@@ -538,6 +549,7 @@ export interface FileRouteTypes {
     | '/rent/paid'
     | '/runners/new-task'
     | '/runners/tasks'
+    | '/setup/$token'
     | '/sign/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
@@ -582,6 +594,7 @@ export interface RootRouteChildren {
   RentPaidRoute: typeof RentPaidRoute
   RunnersNewTaskRoute: typeof RunnersNewTaskRoute
   RunnersTasksRoute: typeof RunnersTasksRoute
+  SetupTokenRoute: typeof SetupTokenRoute
   SignTokenRoute: typeof SignTokenRoute
   InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
@@ -802,6 +815,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/setup/$token': {
+      id: '/setup/$token'
+      path: '/setup/$token'
+      fullPath: '/setup/$token'
+      preLoaderRoute: typeof SetupTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/runners/tasks': {
       id: '/runners/tasks'
       path: '/runners/tasks'
@@ -954,6 +974,7 @@ const rootRouteChildren: RootRouteChildren = {
   RentPaidRoute: RentPaidRoute,
   RunnersNewTaskRoute: RunnersNewTaskRoute,
   RunnersTasksRoute: RunnersTasksRoute,
+  SetupTokenRoute: SetupTokenRoute,
   SignTokenRoute: SignTokenRoute,
   InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,

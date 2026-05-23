@@ -1032,6 +1032,45 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_setup_tokens: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          created_by: string | null
+          email: string
+          expires_at: string
+          first_name: string | null
+          last_name: string | null
+          phone: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          token: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          email: string
+          expires_at?: string
+          first_name?: string | null
+          last_name?: string | null
+          phone?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          token: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          expires_at?: string
+          first_name?: string | null
+          last_name?: string | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          token?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           amount_cents: number | null
@@ -1416,7 +1455,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "runner" | "driver"
+      app_role: "admin" | "runner" | "driver" | "va"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1544,7 +1583,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "runner", "driver"],
+      app_role: ["admin", "runner", "driver", "va"],
     },
   },
 } as const

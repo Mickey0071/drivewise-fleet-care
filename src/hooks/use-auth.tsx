@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import type { Session, User } from "@supabase/supabase-js";
 
-export type AppRole = "admin" | "runner" | "driver";
+export type AppRole = "admin" | "runner" | "driver" | "va";
 
 type AuthCtx = {
   session: Session | null;
@@ -81,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const roles = data.map(r => r.role as AppRole);
     if (roles.includes("admin")) setRole("admin");
     else if (roles.includes("runner")) setRole("runner");
+    else if (roles.includes("va")) setRole("va");
     else if (roles.includes("driver")) setRole("driver");
     else setRole(null);
     setRoleLoading(false);

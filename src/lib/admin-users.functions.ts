@@ -10,7 +10,7 @@ const createUserSchema = z.object({
   last_name: z.string().trim().min(1).max(80),
   phone: z.string().trim().max(40).optional().nullable(),
   real_email: z.string().trim().email().max(255).optional().nullable().or(z.literal("")),
-  role: z.enum(["admin", "runner", "driver"]),
+  role: z.enum(["admin", "runner", "driver", "va"]),
   must_reset_password: z.boolean(),
 });
 
