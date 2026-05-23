@@ -477,6 +477,52 @@ function MyRentalDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Refund dialog */}
+      <Dialog open={refundOpen} onOpenChange={(o) => !refunding && setRefundOpen(o)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isAdmin ? "Issue refund" : "Request refund"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              {isAdmin
+                ? "Refunds the amount to the renter's last successful card payment."
+                : "This request will be sent to management for approval before the refund is processed."}
+            </p>
+            <div>
+              <Label htmlFor="refund-amt" className="text-xs">Amount (USD)</Label>
+              <Input
+                id="refund-amt"
+                type="number" min="0.01" step="0.01"
+                placeholder="0.00"
+                value={refundAmount}
+                onChange={(e) => setRefundAmount(e.target.value)}
+                disabled={refunding}
+              />
+            </div>
+            <div>
+              <Label htmlFor="refund-reason" className="text-xs">Reason</Label>
+              <Textarea
+                id="refund-reason"
+                rows={3}
+                placeholder="Why is this refund being issued?"
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                disabled={refunding}
+                maxLength={500}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefundOpen(false)} disabled={refunding}>Cancel</Button>
+            <Button onClick={handleRefund} disabled={refunding || !refundAmount}>
+              {refunding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Undo2 className="mr-2 h-4 w-4" />}
+              {isAdmin ? "Issue refund" : "Submit for approval"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
