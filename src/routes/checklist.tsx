@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { useServerFn } from "@tanstack/react-start";
 import { completeTaskFromInspection } from "@/lib/tasks.functions";
 import { closeoutRental } from "@/lib/return.functions";
+import { syncLocalReturn } from "@/lib/mock/store";
 import { z } from "zod";
 
 export const Route = createFileRoute("/checklist")({
