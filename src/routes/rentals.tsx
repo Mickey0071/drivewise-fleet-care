@@ -299,6 +299,32 @@ function RentalsPage() {
     const sched = payments.filter(p => p.rentalId === r.id);
     const next = sched.find(p => p.status !== "paid");
     const isPending = r.reservationStatus === "pending";
+    // ---- Amount-paid summary ----
+    const paidPayments = sched.filter(p => p.status === "paid");
+    const extensionsTotal = (r.extensions ?? []).reduce(
+      (s, e) => s + Number(e.additionalAmount || 0), 0,
+    );
+    const extensionPaymentIds = new Set(
+      (r.extensions ?? []).map(e => e.paymentId).filter(Boolean) as string[],
+    );
+    const rentalEnd = r.endDate ?? new Date().toISOString().slice(0, 10);
+    const rentalViolations = violations.filter(
+      x =>
+        x.vehicleId === r.vehicleId &&
+        x.driverId === r.driverId &&
+        x.dateIssued >= r.startDate &&
+        x.dateIssued <= rentalEnd,
+    );
+    const violationsPaid = rentalViolations
+      .filter(x => x.status === "paid")
+      .reduce((s, x) => s + Number(x.amount || 0), 0);
+    // Base = paid payments that aren't tagged as extension payments
+    const basePaid = paidPayments
+      .filter(p => !extensionPaymentIds.has(p.id))
+      .reduce((s, p) => s + Number(p.amount || 0), 0)
+      - (extensionPaymentIds.size === 0 ? extensionsTotal : 0);
+    const baseRental = Math.max(0, basePaid) + Number(r.depositPaid || 0);
+    const totalPaid = baseRental + extensionsTotal + violationsPaid;
     return (
       <Card key={r.id} className="overflow-hidden">
         <div className="flex flex-col md:flex-row">
@@ -333,6 +359,32 @@ function RentalsPage() {
                 value={fmtMoney(r.rate ?? r.weeklyRate)}
               />
               <Stat label="Deposit" value={fmtMoney(r.depositPaid)} />
+            </div>
+            <div className="rounded-md border border-border bg-muted/30 p-3">
+              <div className="flex items-center justify-between">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Amount paid so far
+                </div>
+                <div className="text-base font-semibold">{fmtMoney(totalPaid)}</div>
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <div className="text-muted-foreground">Base rental</div>
+                  <div className="font-medium text-sm">{fmtMoney(baseRental)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">
+                    Extensions{(r.extensions?.length ?? 0) > 0 ? ` (${r.extensions!.length})` : ""}
+                  </div>
+                  <div className="font-medium text-sm">{fmtMoney(extensionsTotal)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">
+                    Violations{rentalViolations.length > 0 ? ` (${rentalViolations.length})` : ""}
+                  </div>
+                  <div className="font-medium text-sm">{fmtMoney(violationsPaid)}</div>
+                </div>
+              </div>
             </div>
             {!isPending && (
               <div className="rounded-md border border-border bg-muted/30 p-3">
