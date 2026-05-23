@@ -2,6 +2,7 @@
  * Server-rendered comprehensive Rental Report PDF using jsPDF.
  * Works in the Cloudflare Workers SSR runtime (no DOM, no WASM).
  */
+import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
 
 export interface RentalReportData {
   rental: {
@@ -158,6 +159,9 @@ export async function renderRentalReportPdf(data: RentalReportData): Promise<Uin
   }
 
   // ---- Header ----
+  const logoW = 90, logoH = 89;
+  doc.addImage(CAMAUTO_LOGO_BASE64, "JPEG", (pageW - logoW) / 2, y, logoW, logoH);
+  y += logoH + 6;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.setTextColor(...RGB_GREEN);

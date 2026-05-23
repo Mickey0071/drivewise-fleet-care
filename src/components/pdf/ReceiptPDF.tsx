@@ -1,4 +1,5 @@
 import type { AgreementSettings } from "@/lib/agreementSettings";
+import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
 
 /**
  * Server-rendered Payment Receipt PDF using jsPDF (no WASM, no DOM).
@@ -86,6 +87,12 @@ export async function renderReceiptPdf(data: ReceiptPDFData): Promise<Uint8Array
   const left = 40;
   const right = pageW - 40;
   let y = 40;
+
+  // ---- Logo (centered, ~1.25in wide) ----
+  const logoW = 90;
+  const logoH = 89;
+  doc.addImage(CAMAUTO_LOGO_BASE64, "JPEG", (pageW - logoW) / 2, y, logoW, logoH);
+  y += logoH + 6;
 
   // ---- Header ----
   doc.setFont("helvetica", "bold");
