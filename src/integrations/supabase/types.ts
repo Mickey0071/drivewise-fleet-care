@@ -169,6 +169,84 @@ export type Database = {
           },
         ]
       }
+      extension_requests: {
+        Row: {
+          additional_amount: number
+          agreement_version: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          new_end_date: string
+          paid_at: string | null
+          payment_id: string | null
+          payment_link_url: string | null
+          period_label: string
+          periods: number
+          previous_end_date: string | null
+          rental_extension_id: string | null
+          rental_id: string
+          signature_data_url: string | null
+          signed_at: string | null
+          signed_by: string | null
+          status: string
+          stripe_payment_link_id: string | null
+          stripe_session_id: string | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          additional_amount?: number
+          agreement_version?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          new_end_date: string
+          paid_at?: string | null
+          payment_id?: string | null
+          payment_link_url?: string | null
+          period_label?: string
+          periods: number
+          previous_end_date?: string | null
+          rental_extension_id?: string | null
+          rental_id: string
+          signature_data_url?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          status?: string
+          stripe_payment_link_id?: string | null
+          stripe_session_id?: string | null
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          additional_amount?: number
+          agreement_version?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          new_end_date?: string
+          paid_at?: string | null
+          payment_id?: string | null
+          payment_link_url?: string | null
+          period_label?: string
+          periods?: number
+          previous_end_date?: string | null
+          rental_extension_id?: string | null
+          rental_id?: string
+          signature_data_url?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          status?: string
+          stripe_payment_link_id?: string | null
+          stripe_session_id?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inspections: {
         Row: {
           checklist_items: Json | null
@@ -1430,6 +1508,30 @@ export type Database = {
     }
     Functions: {
       current_driver_id: { Args: never; Returns: string }
+      get_extension_request_public: {
+        Args: { _token: string }
+        Returns: {
+          additional_amount: number
+          billing_period: string
+          driver_full_name: string
+          expires_at: string
+          new_end_date: string
+          paid_at: string
+          period_label: string
+          periods: number
+          previous_end_date: string
+          rate: number
+          rental_id: string
+          signed_at: string
+          status: string
+          token: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_year: number
+          weekly_rate: number
+        }[]
+      }
       get_share_link_public: {
         Args: { _token: string }
         Returns: {
