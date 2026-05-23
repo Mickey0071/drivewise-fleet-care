@@ -128,24 +128,45 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
   }
 
   // Renter-initiated extension purchase: apply the extension after payment.
-  if (kind === "renter_extension" && rentalId) {
+  // Admin-initiated extension link uses the same flow but pulls the
+  // pre-computed end date, signature, and amount from extension_requests.
+  if ((kind === "renter_extension" || kind === "admin_extension") && rentalId) {
     const sb = getSupabase();
-    const periods = Math.max(1, Math.min(12, parseInt(session.metadata?.periods || "1", 10) || 1));
+    const periods = Math.max(1, Math.min(60, parseInt(session.metadata?.periods || "1", 10) || 1));
     const amountCents = session.amount_total ?? 0;
     const amountDollars = Number((amountCents / 100).toFixed(2));
     const today = new Date().toISOString().slice(0, 10);
+
+    // For admin links, look up the request row (carries signature + new_end).
+    const extToken = session.metadata?.extension_token as string | undefined;
+    let extReqRow: any = null;
+    if (kind === "admin_extension" && extToken) {
+      const { data: er } = await sb.from("extension_requests")
+        .select("token, periods, period_label, new_end_date, previous_end_date, additional_amount, signature_data_url, signed_by, signed_at, agreement_version")
+        .eq("token", extToken).maybeSingle();
+      extReqRow = er;
+    }
 
     const { data: rentalRow } = await sb.from("rentals")
       .select("id, driver_id, vehicle_id, end_date, billing_period, rate, weekly_rate")
       .eq("id", rentalId).maybeSingle();
     if (rentalRow) {
-      const periodLabel = (rentalRow.billing_period as string) || "weekly";
-      const baseEnd = rentalRow.end_date ? new Date(rentalRow.end_date as string) : new Date();
-      const newEnd = new Date(baseEnd);
-      if (periodLabel === "daily") newEnd.setDate(newEnd.getDate() + periods);
-      else if (periodLabel === "monthly") newEnd.setMonth(newEnd.getMonth() + periods);
-      else newEnd.setDate(newEnd.getDate() + periods * 7);
-      const newEndIso = newEnd.toISOString().slice(0, 10);
+      const periodLabel = (extReqRow?.period_label as string)
+        || (session.metadata?.period_label as string)
+        || (rentalRow.billing_period as string)
+        || "weekly";
+      let newEndIso: string;
+      if (extReqRow?.new_end_date) {
+        newEndIso = String(extReqRow.new_end_date).slice(0, 10);
+      } else {
+        const baseEnd = rentalRow.end_date ? new Date(rentalRow.end_date as string) : new Date();
+        const newEnd = new Date(baseEnd);
+        const lbl = periodLabel.toLowerCase();
+        if (lbl.startsWith("day")) newEnd.setDate(newEnd.getDate() + periods);
+        else if (lbl.startsWith("month")) newEnd.setMonth(newEnd.getMonth() + periods);
+        else newEnd.setDate(newEnd.getDate() + periods * 7);
+        newEndIso = newEnd.toISOString().slice(0, 10);
+      }
 
       // Record payment row
       const paidId = `PM-${session.id.slice(-10)}`;
@@ -161,17 +182,32 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         note: `Extension: +${periods} ${periodLabel.replace(/ly$/, "")}${periods === 1 ? "" : "s"}`,
       } as any, { onConflict: "id" });
 
-      // Record extension row
-      await sb.from("rental_extensions").insert({
-        id: `EXT-${session.id.slice(-10)}`,
+      // Record extension row (copy signature when admin link).
+      const extRowId = `EXT-${session.id.slice(-10)}`;
+      await sb.from("rental_extensions").upsert({
+        id: extRowId,
         rental_id: rentalRow.id,
-        previous_end_date: rentalRow.end_date,
+        previous_end_date: extReqRow?.previous_end_date ?? rentalRow.end_date,
         new_end_date: newEndIso,
         periods,
         period_label: periodLabel,
         additional_amount: amountDollars,
         payment_id: paidId,
-      } as any);
+        signature_data_url: extReqRow?.signature_data_url ?? null,
+        signed_by: extReqRow?.signed_by ?? null,
+        agreement_version: extReqRow?.agreement_version ?? null,
+      } as any, { onConflict: "id" });
+
+      // Mark extension_request as paid.
+      if (extToken) {
+        await sb.from("extension_requests").update({
+          status: "paid",
+          paid_at: new Date().toISOString(),
+          stripe_session_id: session.id,
+          payment_id: paidId,
+          rental_extension_id: extRowId,
+        }).eq("token", extToken);
+      }
 
       // Update rental end_date
       await sb.from("rentals").update({
@@ -183,7 +219,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       const { data: drv } = await sb.from("drivers")
         .select("full_name, phone").eq("id", rentalRow.driver_id).maybeSingle();
       if (drv?.phone) {
-        await sendSms(drv.phone, `Camauto Rentals: Rental extended ${periods} ${periodLabel.replace(/ly$/, "")}${periods === 1 ? "" : "s"} through ${newEndIso}. Thank you.`, drv.full_name);
+        await sendSms(drv.phone, `Camauto Rentals: Extension signed and processed. Rental extended to ${newEndIso}. Charged: ${fmtAmount(amountCents)}. Thank you!`, drv.full_name);
       }
       try {
         await sendSms("+12672213977", `${drv?.full_name || "Renter"} extended rental ${rentalRow.id} by ${periods} ${periodLabel} (${fmtAmount(amountCents)}).`, null);
@@ -194,7 +230,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         rental_id: rentalRow.id,
         stripe_customer_id: session.customer,
         stripe_session_id: session.id,
-        kind: "renter_extension",
+        kind,
         amount_cents: amountCents,
         status: "paid",
         environment: env,
