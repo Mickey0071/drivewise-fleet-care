@@ -1235,7 +1235,7 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
     }
     try { localStorage.removeItem(`return-checklist:${rental.id}`); } catch { /* ignore */ }
     const drove = checkout ? mileage - checkout.mileage : 0;
-    toast.success("Vehicle returned — awaiting runner inspection", {
+    toast.success("Vehicle returned — vehicle is available in fleet", {
       description: `${v.year} ${v.make} ${v.model}${drove > 0 ? ` · ${drove.toLocaleString()} mi driven` : ""}`,
     });
     onClose();
