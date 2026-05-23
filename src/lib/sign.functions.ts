@@ -422,15 +422,20 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
     try {
       const { data: driver } = await supabaseAdmin
         .from("drivers")
-        .select("phone, full_name")
+        .select("phone, full_name, email")
         .eq("id", rental.driver_id)
         .single();
       if (driver?.phone) {
-        await sendSms(
-          driver.phone,
-          "Thank you for choosing Camauto. Your signed agreement and ID have been received. A payment link will arrive by text shortly.",
-          driver.full_name ?? null,
-        );
+        await notifyRenter({
+          phone: driver.phone,
+          email: driver.email ?? null,
+          name: driver.full_name ?? null,
+          sms: "Thank you for choosing Camauto. Your signed agreement and ID have been received. A payment link will arrive by text shortly.",
+          emailSubject: "Agreement Received — Camauto Rentals",
+          emailHeading: "Thank You for Choosing Camauto",
+          emailIntro:
+            "Your signed agreement and ID have been received. A payment link will arrive by text and email shortly so you can complete your reservation.",
+        });
       }
     } catch (e) {
       console.error("post-sign notify failed", e);
@@ -454,18 +459,25 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
         try {
           const { data: driver } = await supabaseAdmin
             .from("drivers")
-            .select("phone, full_name, first_name, last_name")
+            .select("phone, full_name, first_name, last_name, email")
             .eq("id", rental.driver_id)
             .single();
           if (driver?.phone) {
             const name = driver.full_name
               ?? [driver.first_name, driver.last_name].filter(Boolean).join(" ")
               ?? null;
-            await sendSms(
-              driver.phone,
-              `Camauto Rentals: Your signed rental agreement is ready: ${res.url}`,
+            await notifyRenter({
+              phone: driver.phone,
+              email: driver.email ?? null,
               name,
-            );
+              sms: `Camauto Rentals: Your signed rental agreement is ready: ${res.url}`,
+              emailSubject: "Your Signed Rental Agreement",
+              emailHeading: "Your Signed Agreement is Ready",
+              emailIntro:
+                "Your fully-signed rental agreement is attached and available at the link below for your records.",
+              emailCta: { label: "View / Download Agreement (PDF)", url: res.url },
+              emailAttachments: [res.url],
+            });
           }
         } catch (e) {
           console.error(`[agreement-pdf-sms] rental=${rental.id} FAILED:`, e);
