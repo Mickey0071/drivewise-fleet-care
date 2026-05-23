@@ -576,7 +576,7 @@ function RentalsPage() {
                   <Button variant="outline" size="sm" onClick={() => setReturnChoiceRental(r)}>
                     <Undo2 className="mr-1 h-4 w-4" /> Return Vehicle
                   </Button>
-                  {!r.endDate && (
+                  {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (
                     <Button variant="outline" size="sm" onClick={() => setExtending(r)}>
                       <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
                     </Button>
@@ -1476,6 +1476,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
   const d = rental ? driverById(rental.driverId) : null;
   const sendSmsFn = useServerFn(sendRentalSms);
   const [newEndDate, setNewEndDate] = useState("");
+  const [duration, setDuration] = useState<"7" | "14" | "21" | "custom">("7");
   const [sig, setSig] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
   useEffect(() => {
@@ -1483,10 +1484,19 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
       const base = rental.endDate ? new Date(rental.endDate) : new Date();
       base.setDate(base.getDate() + 7);
       setNewEndDate(base.toISOString().slice(0, 10));
+      setDuration("7");
       setSig(null);
       setAccepted(false);
     }
   }, [rental]);
+  function applyDuration(value: "7" | "14" | "21" | "custom") {
+    setDuration(value);
+    if (value === "custom" || !rental) return;
+    const days = Number(value);
+    const base = rental.endDate ? new Date(rental.endDate) : new Date();
+    base.setDate(base.getDate() + days);
+    setNewEndDate(base.toISOString().slice(0, 10));
+  }
   const charge = rental && newEndDate ? computeExtensionCharge(rental, newEndDate) : null;
   function confirm() {
     if (!rental || !newEndDate || !d) return;
@@ -1525,9 +1535,30 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
                 Current end date: {rental.endDate ? fmtDate(rental.endDate) : "open-ended"}
               </div>
             </div>
-            <div>
-              <Label htmlFor="ext-end">New end date</Label>
-              <Input id="ext-end" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="ext-duration">Duration</Label>
+                <select
+                  id="ext-duration"
+                  className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm"
+                  value={duration}
+                  onChange={(e) => applyDuration(e.target.value as "7" | "14" | "21" | "custom")}
+                >
+                  <option value="7">7 days</option>
+                  <option value="14">14 days</option>
+                  <option value="21">21 days</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="ext-end">New end date</Label>
+                <Input
+                  id="ext-end"
+                  type="date"
+                  value={newEndDate}
+                  onChange={(e) => { setNewEndDate(e.target.value); setDuration("custom"); }}
+                />
+              </div>
             </div>
             {charge && charge.additionalAmount > 0 && (
               <div className="rounded-md border bg-card p-3 text-sm">
