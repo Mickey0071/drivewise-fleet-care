@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { vehicleById, driverById, type Rental } from "@/lib/mock/data";
 import { useAuth } from "@/hooks/use-auth";
 import { adminOverrideReturn } from "@/lib/admin-override-return.functions";
-import { syncLocalReturn } from "@/lib/mock/store";
+import { refreshStoreFromCloud, syncLocalReturn } from "@/lib/mock/store";
 import { toast } from "sonner";
 import { ShieldAlert } from "lucide-react";
 
@@ -70,6 +70,7 @@ export function ReturnVehicleDialog({ rental, onClose, onDispatchRunner }: Props
       }
       setConfirmOverride(false);
       onClose();
+      await refreshStoreFromCloud();
       await router.invalidate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to override return");
