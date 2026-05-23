@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { vehicleById, driverById, type Rental } from "@/lib/mock/data";
 import { useAuth } from "@/hooks/use-auth";
 import { adminOverrideReturn } from "@/lib/admin-override-return.functions";
+import { syncLocalReturn } from "@/lib/mock/store";
 import { toast } from "sonner";
 import { ShieldAlert } from "lucide-react";
 
@@ -58,6 +59,7 @@ export function ReturnVehicleDialog({ rental, onClose, onDispatchRunner }: Props
       if (res.alreadyReturned) {
         toast.info("Rental was already returned.");
       } else {
+        syncLocalReturn(rental.id);
         const smsNote =
           res.sms_status === "sent"
             ? " Renter notified by SMS."
