@@ -1535,9 +1535,30 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
                 Current end date: {rental.endDate ? fmtDate(rental.endDate) : "open-ended"}
               </div>
             </div>
-            <div>
-              <Label htmlFor="ext-end">New end date</Label>
-              <Input id="ext-end" type="date" value={newEndDate} onChange={e => setNewEndDate(e.target.value)} />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="ext-duration">Duration</Label>
+                <select
+                  id="ext-duration"
+                  className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm"
+                  value={duration}
+                  onChange={(e) => applyDuration(e.target.value as "7" | "14" | "21" | "custom")}
+                >
+                  <option value="7">7 days</option>
+                  <option value="14">14 days</option>
+                  <option value="21">21 days</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="ext-end">New end date</Label>
+                <Input
+                  id="ext-end"
+                  type="date"
+                  value={newEndDate}
+                  onChange={(e) => { setNewEndDate(e.target.value); setDuration("custom"); }}
+                />
+              </div>
             </div>
             {charge && charge.additionalAmount > 0 && (
               <div className="rounded-md border bg-card p-3 text-sm">
