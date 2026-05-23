@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createStripeClient } from "@/lib/stripe.server";
 import { sendSms } from "@/lib/ghl.server";
+import { notifyRenter } from "@/lib/renter-notify.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 
 const ADMIN_PHONE = "+12672213977";
@@ -134,15 +135,28 @@ export const createExtensionLink = createServerFn({ method: "POST" })
 
     // SMS the renter — single link.
     const { data: drv } = await supabaseAdmin
-      .from("drivers").select("full_name, phone").eq("id", rental.driver_id).maybeSingle();
+      .from("drivers").select("full_name, phone, email").eq("id", rental.driver_id).maybeSingle();
     let smsSent = false;
     if (drv?.phone) {
       try {
-        await sendSms(
-          drv.phone,
-          `Camauto Rentals: Complete your rental extension (${data.periods} ${periodLabel}${data.periods === 1 ? "" : "s"} · $${additionalAmount.toFixed(2)}): ${signUrl}`,
-          drv.full_name,
-        );
+        const periodsLbl = `${data.periods} ${periodLabel}${data.periods === 1 ? "" : "s"}`;
+        const amt = `$${additionalAmount.toFixed(2)}`;
+        await notifyRenter({
+          phone: drv.phone,
+          email: drv.email ?? null,
+          name: drv.full_name,
+          sms: `Camauto Rentals: Complete your rental extension (${periodsLbl} · ${amt}): ${signUrl}`,
+          emailSubject: "Rental Extension Agreement — Camauto Rentals",
+          emailHeading: "Sign Your Rental Extension",
+          emailIntro:
+            "Review and sign your rental extension below. Signing and payment are completed in one secure step.",
+          emailCta: { label: "Sign & Pay Extension", url: signUrl },
+          emailDetails: [
+            { label: "Extension Length", value: periodsLbl },
+            { label: "New End Date", value: newEndIso },
+            { label: "Additional Cost", value: amt },
+          ],
+        });
         smsSent = true;
       } catch (e) {
         console.error("[createExtensionLink] renter SMS failed", e);

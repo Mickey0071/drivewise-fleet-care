@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sendSms } from "@/lib/ghl.server";
 import { sendPaymentLinkInternal } from "@/lib/payment-link.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import type { StripeEnv } from "@/lib/stripe.server";
 import { extractNameFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
+import { notifyRenter } from "@/lib/renter-notify.server";
 
 /**
  * Auto-send the first payment link right after a renter signs.
@@ -43,7 +43,7 @@ async function autoSendFirstPaymentLink(rentalId: string): Promise<void> {
     }
 
     const [{ data: driver }, { data: vehicle }] = await Promise.all([
-      supabaseAdmin.from("drivers").select("full_name, phone").eq("id", rental.driver_id).maybeSingle(),
+      supabaseAdmin.from("drivers").select("full_name, phone, email").eq("id", rental.driver_id).maybeSingle(),
       supabaseAdmin.from("vehicles").select("year, make, model").eq("id", rental.vehicle_id).maybeSingle(),
     ]);
     if (!driver?.phone) {
@@ -81,6 +81,7 @@ async function autoSendFirstPaymentLink(rentalId: string): Promise<void> {
     await sendPaymentLinkInternal({
       phone: driver.phone,
       name: driver.full_name ?? undefined,
+      email: driver.email ?? null,
       amountCents,
       description: description.slice(0, 200),
       environment,
@@ -162,14 +163,25 @@ export const sendSigningLink = createServerFn({ method: "POST" })
 
     const { data: driver } = await supabaseAdmin
       .from("drivers")
-      .select("full_name, phone")
+      .select("full_name, phone, email")
       .eq("id", rental.driver_id)
       .single();
     if (!driver?.phone) throw new Error("Renter has no phone on file");
 
     const link = `${data.origin.replace(/\/$/, "")}/sign/${token}`;
     const message = `Camauto Rentals: Please complete your rental agreement online and upload your driver's license + selfie here: ${link}. You do not need to come in to sign.`;
-    await sendSms(driver.phone, message, driver.full_name ?? null);
+    await notifyRenter({
+      phone: driver.phone,
+      email: driver.email ?? null,
+      name: driver.full_name ?? null,
+      sms: message,
+      emailSubject: "Your Camauto Rental Agreement",
+      emailHeading: "Sign Your Rental Agreement",
+      emailIntro:
+        "Please complete your rental agreement online and upload your driver's license + selfie. You do not need to come in to sign.",
+      emailCta: { label: "Sign Agreement Now", url: link },
+      emailFootnote: "After signing, we'll text you a secure payment link.",
+    });
     return { ok: true, link };
   });
 
@@ -410,15 +422,20 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
     try {
       const { data: driver } = await supabaseAdmin
         .from("drivers")
-        .select("phone, full_name")
+        .select("phone, full_name, email")
         .eq("id", rental.driver_id)
         .single();
       if (driver?.phone) {
-        await sendSms(
-          driver.phone,
-          "Thank you for choosing Camauto. Your signed agreement and ID have been received. A payment link will arrive by text shortly.",
-          driver.full_name ?? null,
-        );
+        await notifyRenter({
+          phone: driver.phone,
+          email: driver.email ?? null,
+          name: driver.full_name ?? null,
+          sms: "Thank you for choosing Camauto. Your signed agreement and ID have been received. A payment link will arrive by text shortly.",
+          emailSubject: "Agreement Received — Camauto Rentals",
+          emailHeading: "Thank You for Choosing Camauto",
+          emailIntro:
+            "Your signed agreement and ID have been received. A payment link will arrive by text and email shortly so you can complete your reservation.",
+        });
       }
     } catch (e) {
       console.error("post-sign notify failed", e);
@@ -442,18 +459,25 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
         try {
           const { data: driver } = await supabaseAdmin
             .from("drivers")
-            .select("phone, full_name, first_name, last_name")
+            .select("phone, full_name, first_name, last_name, email")
             .eq("id", rental.driver_id)
             .single();
           if (driver?.phone) {
             const name = driver.full_name
               ?? [driver.first_name, driver.last_name].filter(Boolean).join(" ")
               ?? null;
-            await sendSms(
-              driver.phone,
-              `Camauto Rentals: Your signed rental agreement is ready: ${res.url}`,
+            await notifyRenter({
+              phone: driver.phone,
+              email: driver.email ?? null,
               name,
-            );
+              sms: `Camauto Rentals: Your signed rental agreement is ready: ${res.url}`,
+              emailSubject: "Your Signed Rental Agreement",
+              emailHeading: "Your Signed Agreement is Ready",
+              emailIntro:
+                "Your fully-signed rental agreement is attached and available at the link below for your records.",
+              emailCta: { label: "View / Download Agreement (PDF)", url: res.url },
+              emailAttachments: [res.url],
+            });
           }
         } catch (e) {
           console.error(`[agreement-pdf-sms] rental=${rental.id} FAILED:`, e);
