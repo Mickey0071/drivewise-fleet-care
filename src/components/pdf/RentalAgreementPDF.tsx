@@ -292,9 +292,8 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   sectionBar("Rental Terms");
   drawFieldsRow([
     { label: `Rate ($/${periodLabel})`, value: fmtMoney(rate), widthPct: 25 },
-    { label: "Daily Late Fee", value: settings.fees.dailyLateFee, widthPct: 25 },
-    { label: "Rental Start", value: fmtDate(rental.startDate), widthPct: 25 },
-    { label: "Mileage Cap/Wk", value: settings.fees.mileageCapPerWeek, widthPct: 25 },
+    { label: "Daily Late Fee", value: settings.fees.dailyLateFee, widthPct: 37 },
+    { label: "Rental Start", value: fmtDate(rental.startDate), widthPct: 38 },
   ]);
   drawFieldsRow([
     { label: "Security Deposit", value: fmtMoney(Number(rental.depositPaid ?? 0)), widthPct: 33 },
@@ -376,7 +375,6 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     `Late return fees: ${settings.fees.dailyLateFee} per day`,
     "Damage to vehicle: repair cost",
     `Cleaning fees: ${settings.fees.cleaningFeeRange} if excessively soiled`,
-    `Mileage overage: ${settings.fees.excessMileageRate} per mile (if applicable)`,
     "Other violations or damages: actual cost",
   ];
   bullets.forEach((b) => {
