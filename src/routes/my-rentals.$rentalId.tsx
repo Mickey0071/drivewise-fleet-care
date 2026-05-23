@@ -5,6 +5,7 @@ import { getMyRentalDetail } from "@/lib/my-rentals.functions";
 import { downloadClientPacket } from "@/lib/client-packet.functions";
 import { createCustomRenterPayment } from "@/lib/custom-renter-payment.functions";
 import { requestRentalExtension, cancelRentalByAdmin } from "@/lib/renter-actions.functions";
+import { createRefundRequest } from "@/lib/refunds.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -19,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   ArrowLeft, Loader2, FileText, IdCard, Receipt, Download,
-  AlertTriangle, Image as ImageIcon, CreditCard, CalendarPlus, MessageSquare, Ban,
+  AlertTriangle, Image as ImageIcon, CreditCard, CalendarPlus, MessageSquare, Ban, Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -53,8 +54,11 @@ function MyRentalDetailPage() {
   const createPayment = useServerFn(createCustomRenterPayment);
   const extendRentalFn = useServerFn(requestRentalExtension);
   const cancelRentalFn = useServerFn(cancelRentalByAdmin);
+  const refundFn = useServerFn(createRefundRequest);
   const { role } = useAuth();
   const isStaff = role === "admin" || role === "runner" || role === "va";
+  const isAdmin = role === "admin";
+  const canRefund = role === "admin" || role === "va";
   const [d, setD] = useState<Detail | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -68,6 +72,10 @@ function MyRentalDetailPage() {
   const [supportMsg, setSupportMsg] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refunding, setRefunding] = useState(false);
 
   useEffect(() => {
     fetchDetail({ data: { rentalId } })

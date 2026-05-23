@@ -17,6 +17,7 @@ import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RentalsRouteImport } from './routes/rentals'
 import { Route as RentalAgreementRouteImport } from './routes/rental-agreement'
+import { Route as RefundApprovalsRouteImport } from './routes/refund-approvals'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PnlRouteImport } from './routes/pnl'
 import { Route as PayrollReturnRouteImport } from './routes/payroll-return'
@@ -93,6 +94,11 @@ const RentalsRoute = RentalsRouteImport.update({
 const RentalAgreementRoute = RentalAgreementRouteImport.update({
   id: '/rental-agreement',
   path: '/rental-agreement',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundApprovalsRoute = RefundApprovalsRouteImport.update({
+  id: '/refund-approvals',
+  path: '/refund-approvals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -306,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
   '/profile': typeof ProfileRoute
+  '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -353,6 +360,7 @@ export interface FileRoutesByTo {
   '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
   '/profile': typeof ProfileRoute
+  '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -401,6 +409,7 @@ export interface FileRoutesById {
   '/payroll-return': typeof PayrollReturnRoute
   '/pnl': typeof PnlRoute
   '/profile': typeof ProfileRoute
+  '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -450,6 +459,7 @@ export interface FileRouteTypes {
     | '/payroll-return'
     | '/pnl'
     | '/profile'
+    | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
     | '/reset-password'
@@ -497,6 +507,7 @@ export interface FileRouteTypes {
     | '/payroll-return'
     | '/pnl'
     | '/profile'
+    | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
     | '/reset-password'
@@ -544,6 +555,7 @@ export interface FileRouteTypes {
     | '/payroll-return'
     | '/pnl'
     | '/profile'
+    | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
     | '/reset-password'
@@ -592,6 +604,7 @@ export interface RootRouteChildren {
   PayrollReturnRoute: typeof PayrollReturnRoute
   PnlRoute: typeof PnlRoute
   ProfileRoute: typeof ProfileRoute
+  RefundApprovalsRoute: typeof RefundApprovalsRoute
   RentalAgreementRoute: typeof RentalAgreementRoute
   RentalsRoute: typeof RentalsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -672,6 +685,13 @@ declare module '@tanstack/react-router' {
       path: '/rental-agreement'
       fullPath: '/rental-agreement'
       preLoaderRoute: typeof RentalAgreementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-approvals': {
+      id: '/refund-approvals'
+      path: '/refund-approvals'
+      fullPath: '/refund-approvals'
+      preLoaderRoute: typeof RefundApprovalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -980,6 +1000,7 @@ const rootRouteChildren: RootRouteChildren = {
   PayrollReturnRoute: PayrollReturnRoute,
   PnlRoute: PnlRoute,
   ProfileRoute: ProfileRoute,
+  RefundApprovalsRoute: RefundApprovalsRoute,
   RentalAgreementRoute: RentalAgreementRoute,
   RentalsRoute: RentalsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
