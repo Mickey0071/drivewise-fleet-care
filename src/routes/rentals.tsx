@@ -1173,7 +1173,7 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
       toast.error("Complete the return checklist", { description: `${missing.length} item(s) remaining` });
       return;
     }
-    addInspection({
+    const inspection = addInspection({
       vehicleId: v.id,
       rentalId: rental.id,
       type: "check-in",
