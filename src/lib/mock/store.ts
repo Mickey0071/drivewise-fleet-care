@@ -879,7 +879,6 @@ export function markReservationPaid(id: string) {
       paidDate: today,
       method: "cash",
       status: "paid",
-      note: "Cash payment recorded",
     };
     payments.push(cashPayment);
     cloudWrite("payment:insert", supabase.from("payments").insert(toPayment(cashPayment)));
