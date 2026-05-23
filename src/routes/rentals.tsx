@@ -39,6 +39,7 @@ import { exportRentalReportPdf, exportRentalReportZip, exportRentalEvidencePacke
 import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { closeoutRental } from "@/lib/return.functions";
+import { createExtensionLink } from "@/lib/extension-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
