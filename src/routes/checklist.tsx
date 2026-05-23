@@ -404,10 +404,10 @@ function ChecklistPage() {
               mileage_in: Number(returnMileage),
             },
           });
+          syncLocalReturn(returnRental.id);
+          await refreshStoreFromCloud();
+          await router.invalidate();
           if (!res.alreadyReturned) {
-            syncLocalReturn(returnRental.id);
-            await refreshStoreFromCloud();
-            await router.invalidate();
             returnResult = {
               final_charge: res.final_charge ?? null,
               days_used: res.days_used,
