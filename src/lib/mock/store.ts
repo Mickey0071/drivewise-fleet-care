@@ -865,6 +865,26 @@ export function markReservationPaid(id: string) {
   r.paymentReceived = true;
   const activated = tryActivate(r);
   cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
+
+  // Record the cash receipt so it flows into Payments + P&L immediately.
+  const today = new Date().toISOString().slice(0, 10);
+  const amount = Number(r.rateAmount ?? r.rate ?? r.weeklyRate ?? 0);
+  if (amount > 0) {
+    const cashPayment: Payment = {
+      id: nextPaymentId(),
+      rentalId: r.id,
+      driverId: r.driverId,
+      amount,
+      dueDate: today,
+      paidDate: today,
+      method: "cash",
+      status: "paid",
+      note: "Cash payment recorded",
+    };
+    payments.push(cashPayment);
+    cloudWrite("payment:insert", supabase.from("payments").insert(toPayment(cashPayment)));
+  }
+
   emit();
   return activated;
 }
