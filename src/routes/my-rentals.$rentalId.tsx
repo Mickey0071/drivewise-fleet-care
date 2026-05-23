@@ -51,12 +51,23 @@ function MyRentalDetailPage() {
   const fetchDetail = useServerFn(getMyRentalDetail);
   const downloadPacket = useServerFn(downloadClientPacket);
   const createPayment = useServerFn(createCustomRenterPayment);
+  const extendRentalFn = useServerFn(requestRentalExtension);
+  const cancelRentalFn = useServerFn(cancelRentalByAdmin);
+  const { role } = useAuth();
+  const isStaff = role === "admin" || role === "runner" || role === "va";
   const [d, setD] = useState<Detail | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payNote, setPayNote] = useState("");
   const [paying, setPaying] = useState(false);
+  const [extendOpen, setExtendOpen] = useState(false);
+  const [extendWeeks, setExtendWeeks] = useState("1");
+  const [extending, setExtending] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportMsg, setSupportMsg] = useState("");
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     fetchDetail({ data: { rentalId } })
