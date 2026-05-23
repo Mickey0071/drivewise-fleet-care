@@ -1,100 +1,25 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sendPaymentLinkInternal } from "@/lib/payment-link.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
-import type { StripeEnv } from "@/lib/stripe.server";
 import { extractNameFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
+import { sendSms } from "@/lib/ghl.server";
 
 /**
- * Auto-send the first payment link right after a renter signs.
- * Guards: skip silently (with logged warning) if the rental isn't billing-
- * ready, is already paid, was already auto-sent, or has no driver phone.
- * Caller should fire-and-forget — failures are logged, never thrown.
+ * Notify management that a renter has submitted their signed agreement
+ * and ID, so staff can review before manually sending the payment link.
  */
-async function autoSendFirstPaymentLink(rentalId: string): Promise<void> {
+async function notifyManagementForReview(rentalId: string, renterName: string | null): Promise<void> {
   try {
-    const { data: rental, error } = await supabaseAdmin
-      .from("rentals")
-      .select("id, driver_id, vehicle_id, billing_cadence, rate_amount, payment_received, payment_link_auto_sent_at, skip_daily_minimum")
-      .eq("id", rentalId)
-      .maybeSingle();
-    if (error || !rental) {
-      console.warn(`[auto-pay-link] skip ${rentalId}: rental lookup failed`, error);
-      return;
-    }
-    if (rental.payment_link_auto_sent_at) {
-      console.warn(`[auto-pay-link] skip ${rentalId}: already auto-sent at ${rental.payment_link_auto_sent_at}`);
-      return;
-    }
-    if (rental.payment_received) {
-      console.warn(`[auto-pay-link] skip ${rentalId}: payment already received`);
-      return;
-    }
-    if (!rental.billing_cadence || !rental.rate_amount) {
-      console.warn(`[auto-pay-link] skip ${rentalId}: missing billing_cadence/rate_amount`);
-      return;
-    }
-    const rate = Number(rental.rate_amount);
-    if (!Number.isFinite(rate) || rate <= 0) {
-      console.warn(`[auto-pay-link] skip ${rentalId}: invalid rate_amount=${rental.rate_amount}`);
-      return;
-    }
-
-    const [{ data: driver }, { data: vehicle }] = await Promise.all([
-      supabaseAdmin.from("drivers").select("full_name, phone, email").eq("id", rental.driver_id).maybeSingle(),
-      supabaseAdmin.from("vehicles").select("year, make, model").eq("id", rental.vehicle_id).maybeSingle(),
-    ]);
-    if (!driver?.phone) {
-      console.warn(`[auto-pay-link] skip ${rentalId}: no driver phone on file`);
-      return;
-    }
-
-    // Upfront periods: weekly = 1 week; daily = 2 days by default,
-    // 1 day when the per-rental "skip_daily_minimum" override is on
-    // (trusted family/friends).
-    const cadence = rental.billing_cadence;
-    const skipDailyMin = !!rental.skip_daily_minimum;
-    const periodsUpfront = cadence === "daily" ? (skipDailyMin ? 1 : 2) : 1;
-    const amountCents = Math.round(rate * periodsUpfront * 100);
-    if (amountCents < 50) {
-      console.warn(`[auto-pay-link] skip ${rentalId}: amount below Stripe minimum (${amountCents}¢)`);
-      return;
-    }
-
-    const periodLbl =
-      cadence === "daily" ? (skipDailyMin ? "1 day" : "2 days") : "1 week";
-    const description =
-      `First payment — ${periodLbl} up front — ${vehicle?.year ?? ""} ${vehicle?.make ?? ""} ${vehicle?.model ?? ""}`.trim();
-    // Default to live in production. STRIPE_ENV override is honored if set.
-    const envOverride = process.env.STRIPE_ENV as StripeEnv | undefined;
-    const environment: StripeEnv = envOverride === "sandbox" || envOverride === "live" ? envOverride : "live";
-
-    console.log(`[auto-pay-link] sending ${rentalId}`, {
-      amountCents,
-      cadence,
-      periodsUpfront,
-      skip_daily_minimum: skipDailyMin,
-      environment,
-    });
-    await sendPaymentLinkInternal({
-      phone: driver.phone,
-      name: driver.full_name ?? undefined,
-      email: driver.email ?? null,
-      amountCents,
-      description: description.slice(0, 200),
-      environment,
-      rentalId: rental.id,
-    });
-
-    await supabaseAdmin
-      .from("rentals")
-      .update({ payment_link_auto_sent_at: new Date().toISOString() })
-      .eq("id", rental.id);
-    console.log(`[auto-pay-link] sent OK ${rentalId}`);
+    const who = renterName?.trim() || "Renter";
+    await sendSms(
+      "+12672213977",
+      `Review agreement for ${who} ${rentalId}`,
+    );
+    console.log(`[mgmt-review] notified for ${rentalId}`);
   } catch (e) {
-    console.error(`[auto-pay-link] failed ${rentalId}:`, e);
+    console.error(`[mgmt-review] failed ${rentalId}:`, e);
   }
 }
 
