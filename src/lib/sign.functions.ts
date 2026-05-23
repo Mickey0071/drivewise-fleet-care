@@ -252,8 +252,6 @@ export const getRentalForSigning = createServerFn({ method: "POST" })
     } catch (e) {
       console.error("[getRentalForSigning] vehicle/driver query threw:", e);
     }
-    const out = {
-
     return {
       rentalId: rental.id,
       startDate: rental.start_date,
