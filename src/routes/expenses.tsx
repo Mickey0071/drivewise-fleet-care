@@ -8,10 +8,9 @@ import { expenses, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/d
 import { addExpense, deleteExpense, uploadExpenseReceipt, useStoreVersion } from "@/lib/mock/store";
 import { Paperclip, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
-const cats = ["fuel", "repair", "maintenance", "insurance", "registration", "lien_payment", "payroll", "cleaning", "towing", "impound", "other"] as const;
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/expenses")({
   head: () => ({ meta: [{ title: "Expenses — Camauto Rentals" }] }),
@@ -20,7 +19,8 @@ export const Route = createFileRoute("/expenses")({
 
 function ExpensesPage() {
   useStoreVersion();
-  const [category, setCategory] = useState<string>("fuel");
+  const [categories, setCategories] = useState<string[]>([]);
+  const [category, setCategory] = useState<string>("");
   const [amount, setAmount] = useState("");
   const [vendor, setVendor] = useState("");
   const [notes, setNotes] = useState("");
@@ -28,6 +28,20 @@ function ExpensesPage() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+
+  async function loadCategories() {
+    const { data, error } = await supabase
+      .from("expense_categories")
+      .select("name")
+      .order("name");
+    if (!error && data) {
+      const names = data.map((r) => r.name);
+      setCategories(names);
+      setCategory((c) => c || names[0] || "");
+    }
+  }
+
+  useEffect(() => { loadCategories(); }, []);
 
   function reset() {
     setAmount(""); setVendor(""); setNotes(""); setVehicleId(""); setReceiptFile(null);
@@ -37,15 +51,26 @@ function ExpensesPage() {
   async function handleSave() {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+    const cat = category.trim();
+    if (!cat) return toast.error("Pick or enter a category");
     setSaving(true);
     try {
+      // Save new category if it's not already in the list
+      if (!categories.some((c) => c.toLowerCase() === cat.toLowerCase())) {
+        const { error: catErr } = await supabase
+          .from("expense_categories")
+          .insert({ name: cat });
+        if (!catErr) {
+          setCategories((prev) => [...prev, cat].sort((a, b) => a.localeCompare(b)));
+        }
+      }
       let receiptUrl: string | undefined;
       if (receiptFile) {
         const { url } = await uploadExpenseReceipt(receiptFile);
         receiptUrl = url;
       }
       const exp = addExpense({
-        category, amount: amt, date,
+        category: cat, amount: amt, date,
         vendor: vendor || undefined,
         notes: notes || undefined,
         vehicleId: vehicleId || undefined,
@@ -82,13 +107,18 @@ function ExpensesPage() {
           <CardContent className="space-y-3">
             <div>
               <Label className="mb-1.5 block text-xs">Category</Label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm capitalize"
+              <Input
+                list="expense-category-options"
+                placeholder="Select or type a new category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-              >
-                {cats.map(c => <option key={c} value={c}>{c.replace("_", " ")}</option>)}
-              </select>
+              />
+              <datalist id="expense-category-options">
+                {categories.map((c) => <option key={c} value={c} />)}
+              </datalist>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Pick from the list or type a new one — new categories are saved automatically.
+              </p>
             </div>
             <div>
               <Label className="mb-1.5 block text-xs">Amount</Label>
