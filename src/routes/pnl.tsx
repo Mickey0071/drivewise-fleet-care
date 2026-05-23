@@ -2,32 +2,144 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { payments, expenses, payrollRuns, staffById, vehicles, vehicleById, driverById, rentals, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { payments, expenses, payrollRuns, staffById, vehicles, vehicleById, driverById, rentals, violations, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
-import { Users } from "lucide-react";
+import { Users, CreditCard, Banknote, TrendingUp, TrendingDown } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 import { downloadPnLExcel } from "@/lib/pnl-excel";
 import { FileSpreadsheet } from "lucide-react";
+import { useMemo, useState } from "react";
 
 export const Route = createFileRoute("/pnl")({
   head: () => ({ meta: [{ title: "P&L — Camauto Rentals" }] }),
   component: PnLPage,
 });
 
+type PayChannel = "all" | "stripe" | "cash";
+
+function channelOf(method?: string): "stripe" | "cash" {
+  const m = (method ?? "").toLowerCase();
+  if (m === "stripe" || m === "card") return "stripe";
+  return "cash"; // cash, zelle, unspecified
+}
+
+function ymKey(d: string) { return d.slice(0, 7); }
+function ymLabel(ym: string) {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(Date.UTC(y, (m ?? 1) - 1, 1)).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+}
+function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+function startOfYear() { return `${new Date().getFullYear()}-01-01`; }
+
 function PnLPage() {
   useStoreVersion();
+  const [channel, setChannel] = useState<PayChannel>("all");
+  const [rangeFrom, setRangeFrom] = useState<string>("");
+  const [rangeTo, setRangeTo] = useState<string>("");
 
-  // Real revenue from paid payments (rental + extension charges flow through here)
-  const rentalRevenue = payments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
-  const totalRevenue = rentalRevenue;
+  const data = useMemo(() => {
+    const paid = payments.filter(p => p.status === "paid");
+    const inRange = (d?: string) => {
+      if (!d) return false;
+      if (rangeFrom && d < rangeFrom) return false;
+      if (rangeTo && d > rangeTo) return false;
+      return true;
+    };
+    const matchesChannel = (m?: string) => channel === "all" || channelOf(m) === channel;
+
+    // Extension payment ids (so we don't double-count with rental income)
+    const extensionPaymentIds = new Set<string>();
+    rentals.forEach(r => r.extensions?.forEach(e => { if (e.paymentId) extensionPaymentIds.add(e.paymentId); }));
+
+    const filteredPaid = paid.filter(p => matchesChannel(p.method) && inRange(p.paidDate ?? p.dueDate));
+
+    const stripeTotal = paid.filter(p => channelOf(p.method) === "stripe" && inRange(p.paidDate ?? p.dueDate)).reduce((s, p) => s + p.amount, 0);
+    const cashTotal = paid.filter(p => channelOf(p.method) === "cash" && inRange(p.paidDate ?? p.dueDate)).reduce((s, p) => s + p.amount, 0);
+
+    // Income monthly buckets
+    const incomeByMonth: Record<string, { rental: number; extensions: number; violations: number }> = {};
+    const ensureI = (k: string) => (incomeByMonth[k] ??= { rental: 0, extensions: 0, violations: 0 });
+
+    filteredPaid.forEach(p => {
+      const k = ymKey(p.paidDate ?? p.dueDate);
+      const bucket = ensureI(k);
+      if (extensionPaymentIds.has(p.id)) bucket.extensions += p.amount;
+      else bucket.rental += p.amount;
+    });
+    // Extensions without an explicit payment record
+    rentals.forEach(r => r.extensions?.forEach(e => {
+      if (e.paymentId) return;
+      if (!inRange(e.extendedAt?.slice(0, 10))) return;
+      ensureI(ymKey(e.extendedAt)).extensions += e.additionalAmount;
+    }));
+    // Violations (paid)
+    const paidViolations = violations.filter(v => v.status === "paid" && inRange(v.dateIssued));
+    paidViolations.forEach(v => { ensureI(ymKey(v.dateIssued)).violations += v.amount; });
+
+    // Expenses monthly buckets
+    const expByMonth: Record<string, { maintenance: number; payroll: number; other: number }> = {};
+    const ensureE = (k: string) => (expByMonth[k] ??= { maintenance: 0, payroll: 0, other: 0 });
+    expenses.forEach(e => {
+      if (!inRange(e.date)) return;
+      const b = ensureE(ymKey(e.date));
+      const c = e.category.toLowerCase();
+      if (c.includes("maint")) b.maintenance += e.amount;
+      else if (c.includes("payroll")) b.payroll += e.amount;
+      else b.other += e.amount;
+    });
+    // Maintenance table (separate source for service records)
+    // Avoid double-counting: only add maintenance records that aren't already in expenses
+    // (kept off by default — expenses is the canonical ledger)
+
+    const incomeRows = Object.entries(incomeByMonth)
+      .map(([k, v]) => ({ ym: k, ...v, total: v.rental + v.extensions + v.violations }))
+      .sort((a, b) => b.ym.localeCompare(a.ym));
+    const expenseRows = Object.entries(expByMonth)
+      .map(([k, v]) => ({ ym: k, ...v, total: v.maintenance + v.payroll + v.other }))
+      .sort((a, b) => b.ym.localeCompare(a.ym));
+
+    const totalRevenue = incomeRows.reduce((s, r) => s + r.total, 0);
+    const totalExpenses = expenseRows.reduce((s, r) => s + r.total, 0);
+
+    // Weekly averages (income)
+    const sumPaidSince = (sinceISO: string) =>
+      paid.filter(p => matchesChannel(p.method) && (p.paidDate ?? p.dueDate) >= sinceISO).reduce((s, p) => s + p.amount, 0);
+    const sumExpensesSince = (sinceISO: string) =>
+      expenses.filter(e => e.date >= sinceISO).reduce((s, e) => s + e.amount, 0);
+
+    const last7Income = sumPaidSince(daysAgo(7));
+    const last28Income = sumPaidSince(daysAgo(28));
+    const ytdIncome = sumPaidSince(startOfYear());
+    const last7Expense = sumExpensesSince(daysAgo(7));
+    const last28Expense = sumExpensesSince(daysAgo(28));
+
+    // Combined trend by month (for the chart)
+    const allMonths = Array.from(new Set([...incomeRows.map(r => r.ym), ...expenseRows.map(r => r.ym)])).sort();
+    const trend = allMonths.map(ym => ({
+      ym,
+      income: incomeByMonth[ym] ? incomeByMonth[ym].rental + incomeByMonth[ym].extensions + incomeByMonth[ym].violations : 0,
+      expense: expByMonth[ym] ? expByMonth[ym].maintenance + expByMonth[ym].payroll + expByMonth[ym].other : 0,
+    })).map(r => ({ ...r, net: r.income - r.expense }));
+
+    return {
+      stripeTotal, cashTotal, totalRevenue, totalExpenses,
+      incomeRows, expenseRows, trend,
+      last7Income, last28Income, ytdIncome,
+      last7Expense, last28Expense,
+    };
+  }, [channel, rangeFrom, rangeTo]);
+
+  const rentalRevenue = data.incomeRows.reduce((s, r) => s + r.rental, 0);
+  const totalRevenue = data.totalRevenue;
 
   const byCat = expenses.reduce<Record<string, number>>((acc, e) => {
     acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc;
   }, {});
-  const totalExpenses = Object.values(byCat).reduce((a, b) => a + b, 0);
+  const totalExpenses = data.totalExpenses || Object.values(byCat).reduce((a, b) => a + b, 0);
   const payroll = byCat.payroll ?? 0;
   const net = totalRevenue - totalExpenses;
   const margin = totalRevenue > 0 ? (net / totalRevenue) * 100 : 0;
+  const trendMax = Math.max(1, ...data.trend.map(t => Math.max(t.income, t.expense)));
 
   // Per-vehicle P&L (revenue mapped via rental → driver_id → paid payments)
   const perVehicle = vehicles.map(v => {
@@ -46,12 +158,32 @@ function PnLPage() {
     <div>
       <PageHeader
         title="P&L Dashboard"
-        subtitle="Live revenue from paid invoices · live expenses from your logger"
+        subtitle="Income, expenses, and net — across Stripe and cash channels"
         action={
           <div className="flex gap-2">
-            <select className="h-9 rounded-md border border-input bg-background px-3 text-sm">
-              <option>This month</option><option>This week</option><option>This quarter</option>
+            <select
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              value={channel}
+              onChange={(e) => setChannel(e.target.value as PayChannel)}
+            >
+              <option value="all">All payment types</option>
+              <option value="stripe">Stripe only</option>
+              <option value="cash">Cash / Zelle only</option>
             </select>
+            <input
+              type="date"
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={rangeFrom}
+              onChange={(e) => setRangeFrom(e.target.value)}
+              aria-label="From date"
+            />
+            <input
+              type="date"
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              value={rangeTo}
+              onChange={(e) => setRangeTo(e.target.value)}
+              aria-label="To date"
+            />
             <Button
               variant="default"
               size="sm"
