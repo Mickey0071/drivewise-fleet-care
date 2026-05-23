@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { RentalAgreementPDF, type RentalAgreementPDFData } from "@/components/pdf/RentalAgreementPDF";
+import { renderRentalAgreementPdf, type RentalAgreementPDFData } from "@/components/pdf/RentalAgreementPDF";
 import { DEFAULT_SETTINGS } from "@/lib/agreementSettings";
 import { z } from "zod";
 
@@ -131,11 +131,8 @@ export const generateAgreementPdf = createServerFn({ method: "POST" })
         signaturePng,
       };
 
-      // 3) Render PDF to Buffer (server-side).
-      // Dynamic import keeps @react-pdf/renderer out of the route's static
-      // graph until first generation.
-      const { renderToBuffer } = await import("@react-pdf/renderer");
-      const pdfBuffer = await renderToBuffer(RentalAgreementPDF(pdfData));
+      // 3) Render PDF via jsPDF (no WASM — safe in the Workers SSR runtime).
+      const pdfBuffer = await renderRentalAgreementPdf(pdfData);
 
       // 4) Upload to rental-signing
       const timestamp = Date.now();
