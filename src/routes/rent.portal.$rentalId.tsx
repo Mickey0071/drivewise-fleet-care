@@ -2,11 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getRenterPortal, createRenterPaymentLink } from "@/lib/renter-portal.functions";
+import { getRenterHistoryByRentalId } from "@/lib/my-rentals.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CreditCard, CheckCircle2, Clock } from "lucide-react";
+import { Loader2, CreditCard, CheckCircle2, Clock, History, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/camauto-logo-full.jpeg";
+import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/rent/portal/$rentalId")({
   head: () => ({ meta: [{ title: "Your reservation — Camauto Rentals" }] }),
@@ -29,15 +31,20 @@ function PortalPage() {
   const { rentalId } = Route.useParams();
   const fetchInfo = useServerFn(getRenterPortal);
   const createLink = useServerFn(createRenterPaymentLink);
+  const fetchHistory = useServerFn(getRenterHistoryByRentalId);
   const [info, setInfo] = useState<Info | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [history, setHistory] = useState<Array<any>>([]);
 
   useEffect(() => {
     fetchInfo({ data: { rentalId } })
       .then(setInfo)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, [rentalId, fetchInfo]);
+    fetchHistory({ data: { rentalId } })
+      .then((res) => setHistory(res.rentals ?? []))
+      .catch(() => { /* non-fatal */ });
+  }, [rentalId, fetchInfo, fetchHistory]);
 
   async function handlePay(paymentId: string) {
     setPayingId(paymentId);
@@ -173,6 +180,40 @@ function PortalPage() {
       <p className="pt-2 text-center text-xs text-muted-foreground">
         Questions? Reply to your text from Camauto Rentals.
       </p>
+
+      {history.filter((h) => h.id !== rentalId).length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <History className="h-4 w-4" /> Your rental history
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y divide-border p-0">
+            {history.filter((h) => h.id !== rentalId).map((h) => (
+              <Link
+                key={h.id}
+                to="/my-rentals/$rentalId"
+                params={{ rentalId: h.id }}
+                className="flex items-center justify-between p-3 text-sm hover:bg-muted/40"
+              >
+                <div>
+                  <div className="font-medium">
+                    {h.vehicle ? `${h.vehicle.year} ${h.vehicle.make} ${h.vehicle.model}` : "Vehicle"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {fmtDate(h.start_date)} → {h.end_date ? fmtDate(h.end_date) : "—"}
+                    {h.vehicle?.plate ? ` · Plate ${h.vehicle.plate}` : ""}
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+            ))}
+          </CardContent>
+          <div className="border-t px-3 py-2 text-center text-xs text-muted-foreground">
+            Sign in to view full documents and receipts.
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

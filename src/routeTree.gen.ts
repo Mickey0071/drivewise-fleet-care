@@ -23,6 +23,7 @@ import { Route as PayrollReturnRouteImport } from './routes/payroll-return'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as MyTasksRouteImport } from './routes/my-tasks'
+import { Route as MyRentalsRouteImport } from './routes/my-rentals'
 import { Route as MechanicTaskRouteImport } from './routes/mechanic-task'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
@@ -43,6 +44,7 @@ import { Route as RunnersNewTaskRouteImport } from './routes/runners.new-task'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as MyTasksTaskIdRouteImport } from './routes/my-tasks_.$taskId'
+import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rentalId'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
@@ -119,6 +121,11 @@ const PaymentsRoute = PaymentsRouteImport.update({
 const MyTasksRoute = MyTasksRouteImport.update({
   id: '/my-tasks',
   path: '/my-tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyRentalsRoute = MyRentalsRouteImport.update({
+  id: '/my-rentals',
+  path: '/my-rentals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MechanicTaskRoute = MechanicTaskRouteImport.update({
@@ -221,6 +228,11 @@ const MyTasksTaskIdRoute = MyTasksTaskIdRouteImport.update({
   path: '/my-tasks/$taskId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MyRentalsRentalIdRoute = MyRentalsRentalIdRouteImport.update({
+  id: '/$rentalId',
+  path: '/$rentalId',
+  getParentRoute: () => MyRentalsRoute,
+} as any)
 const FleetVehicleIdRoute = FleetVehicleIdRouteImport.update({
   id: '/$vehicleId',
   path: '/$vehicleId',
@@ -275,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/mechanic-task': typeof MechanicTaskRoute
+  '/my-rentals': typeof MyRentalsRouteWithChildren
   '/my-tasks': typeof MyTasksRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
@@ -291,6 +304,7 @@ export interface FileRoutesByFullPath {
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
+  '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/my-tasks/$taskId': typeof MyTasksTaskIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -318,6 +332,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/mechanic-task': typeof MechanicTaskRoute
+  '/my-rentals': typeof MyRentalsRouteWithChildren
   '/my-tasks': typeof MyTasksRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
@@ -334,6 +349,7 @@ export interface FileRoutesByTo {
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
+  '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/my-tasks/$taskId': typeof MyTasksTaskIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -362,6 +378,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/mechanic-task': typeof MechanicTaskRoute
+  '/my-rentals': typeof MyRentalsRouteWithChildren
   '/my-tasks': typeof MyTasksRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
@@ -378,6 +395,7 @@ export interface FileRoutesById {
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
+  '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/my-tasks_/$taskId': typeof MyTasksTaskIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -407,6 +425,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/maintenance'
     | '/mechanic-task'
+    | '/my-rentals'
     | '/my-tasks'
     | '/payments'
     | '/payroll'
@@ -423,6 +442,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/admin/users'
     | '/fleet/$vehicleId'
+    | '/my-rentals/$rentalId'
     | '/my-tasks/$taskId'
     | '/rent/$token'
     | '/rent/paid'
@@ -450,6 +470,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/maintenance'
     | '/mechanic-task'
+    | '/my-rentals'
     | '/my-tasks'
     | '/payments'
     | '/payroll'
@@ -466,6 +487,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/admin/users'
     | '/fleet/$vehicleId'
+    | '/my-rentals/$rentalId'
     | '/my-tasks/$taskId'
     | '/rent/$token'
     | '/rent/paid'
@@ -493,6 +515,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/maintenance'
     | '/mechanic-task'
+    | '/my-rentals'
     | '/my-tasks'
     | '/payments'
     | '/payroll'
@@ -509,6 +532,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/admin/users'
     | '/fleet/$vehicleId'
+    | '/my-rentals/$rentalId'
     | '/my-tasks_/$taskId'
     | '/rent/$token'
     | '/rent/paid'
@@ -537,6 +561,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MaintenanceRoute: typeof MaintenanceRoute
   MechanicTaskRoute: typeof MechanicTaskRoute
+  MyRentalsRoute: typeof MyRentalsRouteWithChildren
   MyTasksRoute: typeof MyTasksRoute
   PaymentsRoute: typeof PaymentsRoute
   PayrollRoute: typeof PayrollRoute
@@ -663,6 +688,13 @@ declare module '@tanstack/react-router' {
       path: '/my-tasks'
       fullPath: '/my-tasks'
       preLoaderRoute: typeof MyTasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-rentals': {
+      id: '/my-rentals'
+      path: '/my-rentals'
+      fullPath: '/my-rentals'
+      preLoaderRoute: typeof MyRentalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mechanic-task': {
@@ -805,6 +837,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyTasksTaskIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/my-rentals/$rentalId': {
+      id: '/my-rentals/$rentalId'
+      path: '/$rentalId'
+      fullPath: '/my-rentals/$rentalId'
+      preLoaderRoute: typeof MyRentalsRentalIdRouteImport
+      parentRoute: typeof MyRentalsRoute
+    }
     '/fleet/$vehicleId': {
       id: '/fleet/$vehicleId'
       path: '/$vehicleId'
@@ -867,6 +906,18 @@ const FleetRouteChildren: FleetRouteChildren = {
 
 const FleetRouteWithChildren = FleetRoute._addFileChildren(FleetRouteChildren)
 
+interface MyRentalsRouteChildren {
+  MyRentalsRentalIdRoute: typeof MyRentalsRentalIdRoute
+}
+
+const MyRentalsRouteChildren: MyRentalsRouteChildren = {
+  MyRentalsRentalIdRoute: MyRentalsRentalIdRoute,
+}
+
+const MyRentalsRouteWithChildren = MyRentalsRoute._addFileChildren(
+  MyRentalsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
@@ -882,6 +933,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MaintenanceRoute: MaintenanceRoute,
   MechanicTaskRoute: MechanicTaskRoute,
+  MyRentalsRoute: MyRentalsRouteWithChildren,
   MyTasksRoute: MyTasksRoute,
   PaymentsRoute: PaymentsRoute,
   PayrollRoute: PayrollRoute,
@@ -912,13 +964,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
