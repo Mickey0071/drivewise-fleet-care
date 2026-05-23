@@ -119,7 +119,7 @@ export default function VendorsPage() {
   }, []);
 
   const allTypes = useMemo(
-    () => Array.from(new Set(vendors.map((v) => v.service_type).filter(Boolean))),
+    () => Array.from(new Set(vendors.map((v) => v.service_type).filter((t): t is string => !!t))),
     [vendors]
   );
 
