@@ -47,6 +47,7 @@ import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as MyTasksTaskIdRouteImport } from './routes/my-tasks_.$taskId'
 import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rentalId'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
+import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
@@ -244,6 +245,11 @@ const FleetVehicleIdRoute = FleetVehicleIdRouteImport.update({
   path: '/$vehicleId',
   getParentRoute: () => FleetRoute,
 } as any)
+const ExtendTokenRoute = ExtendTokenRouteImport.update({
+  id: '/extend/$token',
+  path: '/extend/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
@@ -309,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/my-tasks/$taskId': typeof MyTasksTaskIdRoute
@@ -355,6 +362,7 @@ export interface FileRoutesByTo {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/my-tasks/$taskId': typeof MyTasksTaskIdRoute
@@ -402,6 +410,7 @@ export interface FileRoutesById {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/my-tasks_/$taskId': typeof MyTasksTaskIdRoute
@@ -450,6 +459,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/admin/users'
+    | '/extend/$token'
     | '/fleet/$vehicleId'
     | '/my-rentals/$rentalId'
     | '/my-tasks/$taskId'
@@ -496,6 +506,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/admin/users'
+    | '/extend/$token'
     | '/fleet/$vehicleId'
     | '/my-rentals/$rentalId'
     | '/my-tasks/$taskId'
@@ -542,6 +553,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/admin/users'
+    | '/extend/$token'
     | '/fleet/$vehicleId'
     | '/my-rentals/$rentalId'
     | '/my-tasks_/$taskId'
@@ -589,6 +601,7 @@ export interface RootRouteChildren {
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  ExtendTokenRoute: typeof ExtendTokenRoute
   MyTasksTaskIdRoute: typeof MyTasksTaskIdRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
@@ -871,6 +884,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FleetVehicleIdRouteImport
       parentRoute: typeof FleetRoute
     }
+    '/extend/$token': {
+      id: '/extend/$token'
+      path: '/extend/$token'
+      fullPath: '/extend/$token'
+      preLoaderRoute: typeof ExtendTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/admin/users'
@@ -969,6 +989,7 @@ const rootRouteChildren: RootRouteChildren = {
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
   AdminUsersRoute: AdminUsersRoute,
+  ExtendTokenRoute: ExtendTokenRoute,
   MyTasksTaskIdRoute: MyTasksTaskIdRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
