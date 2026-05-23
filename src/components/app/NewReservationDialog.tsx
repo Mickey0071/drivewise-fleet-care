@@ -670,8 +670,13 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
           <Button
             variant="ghost"
             size="sm"
-            disabled={step === 0}
-            onClick={() => setStep(((step - 1) as Step))}
+            onClick={() => {
+              if (step === 0) {
+                close(false);
+              } else {
+                setStep(((step - 1) as Step));
+              }
+            }}
           >
             <ArrowLeft className="mr-1 h-4 w-4" /> Back
           </Button>
