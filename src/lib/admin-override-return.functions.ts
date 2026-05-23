@@ -68,7 +68,7 @@ export const adminOverrideReturn = createServerFn({ method: "POST" })
       actual_return: nowIso,
     };
 
-    const { error: upErr } = await supabaseAdmin
+    const { data: updatedRental, error: upErr } = await supabaseAdmin
       .from("rentals")
       .update({
         returned_at: nowIso,
@@ -76,15 +76,25 @@ export const adminOverrideReturn = createServerFn({ method: "POST" })
         notes: newNotes,
         final_charge_breakdown: breakdown,
       })
-      .eq("id", rental.id);
+      .eq("id", rental.id)
+      .select("id, reservation_status, returned_at")
+      .maybeSingle();
     if (upErr) throw new Error(`Failed to close out rental: ${upErr.message}`);
+    if (!updatedRental || updatedRental.reservation_status !== "returned") {
+      throw new Error("Failed to close out rental: returned status did not persist");
+    }
 
-    // Flip vehicle back to available if it was rented.
-    await supabaseAdmin
+    // Flip vehicle back to available immediately after the rental is returned.
+    const { data: updatedVehicle, error: vehicleErr } = await supabaseAdmin
       .from("vehicles")
       .update({ status: "available" })
       .eq("id", rental.vehicle_id)
-      .eq("status", "rented");
+      .select("id, status")
+      .maybeSingle();
+    if (vehicleErr) throw new Error(`Failed to mark vehicle available: ${vehicleErr.message}`);
+    if (!updatedVehicle || updatedVehicle.status !== "available") {
+      throw new Error("Failed to mark vehicle available after return");
+    }
 
     // Notify renter via SMS (best-effort).
     let smsStatus: "sent" | "skipped_no_phone" | "failed" = "skipped_no_phone";
