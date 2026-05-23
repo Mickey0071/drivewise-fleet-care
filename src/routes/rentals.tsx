@@ -1141,10 +1141,12 @@ function DeliveryDialog({ rental, onClose }: { rental: Rental | null; onClose: (
 }
 
 function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  const router = useRouter();
   const v = rental ? vehicleById(rental.vehicleId) : null;
   const d = rental ? driverById(rental.driverId) : null;
   const checkout = rental ? getInspectionsForRental(rental.id).find(i => i.type === "check-out") : undefined;
   const sendSmsFn = useServerFn(sendRentalSms);
+  const closeout = useServerFn(closeoutRental);
   const settings = useAgreementSettings();
   const [mileage, setMileage] = useState(0);
   const [fuelLevel, setFuelLevel] = useState(100);
@@ -1162,7 +1164,7 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
       setCheck({});
     }
   }, [rental, v]);
-  function confirm() {
+  async function confirm() {
     if (!rental || !v) return;
     if (!completedBy.trim()) { toast.error("Who received the vehicle?"); return; }
     if (mileage < (checkout?.mileage ?? 0)) { toast.error("Return mileage can't be less than delivery mileage"); return; }
@@ -1213,11 +1215,25 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
       sendSmsFn({ data: { phone: d.phone, message: confirmMsg, name: d.fullName } })
         .catch(e => console.error("Renter return SMS failed", e));
     }
-    const checklistSummary = `Return checklist: ${RETURN_CHECKLIST.length}/${RETURN_CHECKLIST.length} verified by ${completedBy.trim()}`;
-    const noteParts = [rental.notes, checklistSummary, notes.trim() ? `Return: ${notes.trim()}` : ""].filter(Boolean);
-    updateRental(rental.id, { notes: noteParts.join(" · ") });
+    try {
+      const res = await closeout({
+        data: {
+          rental_id: rental.id,
+          inspection_id: inspection.id,
+          mileage_in: Number(mileage) || v.mileage,
+        },
+      });
+      if (!res.alreadyReturned) syncLocalReturn(rental.id);
+      const checklistSummary = `Return checklist: ${RETURN_CHECKLIST.length}/${RETURN_CHECKLIST.length} verified by ${completedBy.trim()}`;
+      const noteParts = [rental.notes, checklistSummary, notes.trim() ? `Return: ${notes.trim()}` : ""].filter(Boolean);
+      updateRental(rental.id, { notes: noteParts.join(" · ") });
+      await refreshStoreFromCloud();
+      await router.invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to return rental");
+      return;
+    }
     try { localStorage.removeItem(`return-checklist:${rental.id}`); } catch { /* ignore */ }
-    markReturnedAwaitingInspection(rental.id);
     const drove = checkout ? mileage - checkout.mileage : 0;
     toast.success("Vehicle returned — awaiting runner inspection", {
       description: `${v.year} ${v.make} ${v.model}${drove > 0 ? ` · ${drove.toLocaleString()} mi driven` : ""}`,
