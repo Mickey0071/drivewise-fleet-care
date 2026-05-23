@@ -357,6 +357,23 @@ export function RentalAgreementPDF({ rental, driver, vehicle, extensions, settin
           ))}
         </View>
 
+        {/* VIOLATIONS & INCIDENTALS */}
+        <Text style={styles.sectionBar}>Violations &amp; Incidentals</Text>
+        <Text style={{ fontSize: 8.5, lineHeight: 1.4, marginBottom: 4 }}>
+          Your card on file will be charged for any of the following:
+        </Text>
+        <View style={{ marginLeft: 12, marginBottom: 6 }}>
+          <Text style={{ fontSize: 8.5, lineHeight: 1.5 }}>• Parking tickets or traffic violations: actual fine amount</Text>
+          <Text style={{ fontSize: 8.5, lineHeight: 1.5 }}>• Late return fees: {settings.fees.dailyLateFee} per day</Text>
+          <Text style={{ fontSize: 8.5, lineHeight: 1.5 }}>• Damage to vehicle: repair cost</Text>
+          <Text style={{ fontSize: 8.5, lineHeight: 1.5 }}>• Cleaning fees: {settings.fees.cleaningFeeRange} if excessively soiled</Text>
+          <Text style={{ fontSize: 8.5, lineHeight: 1.5 }}>• Mileage overage: {settings.fees.excessMileageRate} per mile (if applicable)</Text>
+          <Text style={{ fontSize: 8.5, lineHeight: 1.5 }}>• Other violations or damages: actual cost</Text>
+        </View>
+        <Text style={{ fontSize: 8.5, lineHeight: 1.4, marginBottom: 6 }}>
+          You authorize {settings.company.dba} to charge your card without further notice for any of these charges.
+        </Text>
+
         {/* SIGNATURES */}
         <Text style={styles.sectionBar}>Signatures</Text>
         <Text style={{ fontSize: 8.5, marginBottom: 6 }}>
