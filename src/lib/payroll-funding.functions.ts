@@ -1,6 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+async function assertAdmin(userId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  if (error) throw new Error("Authorization check failed");
+  if (!data) throw new Error("Forbidden: admin role required");
+}
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/stripe/v1";
 
@@ -14,7 +26,8 @@ const Input = z.object({
 export const createPayrollFundingSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => Input.parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
     const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
     const STRIPE_KEY = process.env.STRIPE_SANDBOX_API_KEY ?? process.env.STRIPE_API_KEY;
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
@@ -60,7 +73,8 @@ const StatusInput = z.object({ sessionId: z.string().min(1).max(200) });
 export const getPayrollFundingStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => StatusInput.parse(d))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
     const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
     const STRIPE_KEY = process.env.STRIPE_SANDBOX_API_KEY ?? process.env.STRIPE_API_KEY;
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
