@@ -360,47 +360,91 @@ function MyRentalDetailPage() {
         </Card>
       )}
 
-      {/* Inspection history */}
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base">Inspection history</CardTitle></CardHeader>
-        <CardContent className="space-y-3 p-4">
-          {inspections.length === 0 && (
-            <div className="text-sm text-muted-foreground">No inspections logged.</div>
-          )}
-          {inspections.map((i: any) => (
-            <div key={i.id} className="rounded-md border p-3 text-sm">
-              <div className="flex items-center justify-between">
-                <div className="font-medium capitalize">
-                  {i.is_return_inspection ? "Return inspection" : i.type.replace(/-/g, " ")}
-                </div>
-                <div className="text-xs text-muted-foreground">{fmtDate(i.date)}</div>
-              </div>
-              <div className="mt-1 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                <span>Mileage: <span className="font-medium text-foreground">{i.mileage?.toLocaleString() ?? "—"}</span></span>
-                <span>Fuel: <span className="font-medium text-foreground">{i.fuel_level ?? "—"}</span></span>
-              </div>
-              {i.damage_noted && (
-                <div className="mt-2 flex items-center gap-1 text-xs text-amber-700">
-                  <AlertTriangle className="h-3 w-3" /> Damage noted
-                </div>
-              )}
-              {i.notes && (
-                <div className="mt-2 text-xs text-muted-foreground">{i.notes}</div>
-              )}
-              {i.ready_to_rent === true && (
-                <div className="mt-2 flex items-center gap-1 text-xs text-emerald-700">
-                  <CheckCircle2 className="h-3 w-3" /> Ready to rent
-                </div>
-              )}
+      {/* Extend Rental dialog */}
+      <Dialog open={extendOpen} onOpenChange={(o) => !extending && setExtendOpen(o)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Extend rental</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              Extend your weekly rental of the {vehicle?.year} {vehicle?.make} {vehicle?.model}.
+            </p>
+            <div>
+              <Label className="text-xs">Extend for how long?</Label>
+              <Select value={extendWeeks} onValueChange={setExtendWeeks} disabled={extending}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 week (+7 days)</SelectItem>
+                  <SelectItem value="2">2 weeks (+14 days)</SelectItem>
+                  <SelectItem value="3">3 weeks (+21 days)</SelectItem>
+                  <SelectItem value="4">4 weeks (+28 days)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          ))}
-          {returnInspection && Array.isArray((returnInspection as any).photos) && (returnInspection as any).photos.length > 0 && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Camera className="h-3.5 w-3.5" /> Photos attached to return inspection.
+            <div className="rounded-md border bg-muted/30 p-3 text-sm">
+              <div className="flex justify-between">
+                <span>{extendWeeks} week{extendWeeks === "1" ? "" : "s"} × {fmtMoney(weeklyRate)}</span>
+                <span className="font-semibold">{fmtMoney(extensionCharge)}</span>
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExtendOpen(false)} disabled={extending}>Cancel</Button>
+            <Button onClick={handleExtend} disabled={extending}>
+              {extending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+              Confirm Extension
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contact Support dialog */}
+      <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Contact Support</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-xs">Send to</Label>
+              <Input value="1-866-625-5550" readOnly />
+            </div>
+            <div>
+              <Label htmlFor="support-msg" className="text-xs">Your message</Label>
+              <Textarea
+                id="support-msg"
+                rows={4}
+                placeholder="How can we help?"
+                value={supportMsg}
+                onChange={(e) => setSupportMsg(e.target.value)}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Opens your phone's messaging app with the number and message pre-filled.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSupportOpen(false)}>Cancel</Button>
+            <Button onClick={handleOpenSupportSms}>
+              <MessageSquare className="mr-2 h-4 w-4" /> Send SMS
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin Cancel confirmation */}
+      <AlertDialog open={cancelOpen} onOpenChange={(o) => !cancelling && setCancelOpen(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel this rental?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will immediately cancel the reservation, free the vehicle, and SMS the renter. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelling}>Keep rental</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancel} disabled={cancelling}>
+              {cancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Cancel rental
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
