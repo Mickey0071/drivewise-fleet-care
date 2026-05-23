@@ -101,8 +101,7 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
         <Field label="License Plate #" value={vehicle.plate} />
         <Field label="VIN" value={vehicle.vin} />
       </div>
-      <div className="mt-2 grid grid-cols-4 gap-2">
-        <Field label="Mileage Out" value={Number(vehicle.mileage ?? 0).toLocaleString()} />
+      <div className="mt-2 grid grid-cols-3 gap-2">
         <Field label="Fuel Level Out" value={vehicle.fuelLevelPickup ?? ""} />
         <Field label="EZ-Pass Tag #" value={vehicle.ezPassTag ?? ""} />
         <Field label="Pickup Date & Time" value={fmtDate(rental.startDate)} />
