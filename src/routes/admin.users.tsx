@@ -645,6 +645,7 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
                 <SelectContent>
                   <SelectItem value="driver">Driver</SelectItem>
                   <SelectItem value="runner">Runner</SelectItem>
+                  <SelectItem value="va">Virtual Assistant</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
@@ -657,6 +658,90 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
               <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
               <Button type="submit" disabled={busy || !!usernameError || checkingUsername || !username.trim()}>
                 {busy ? "Creating…" : "Create User"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function SendSetupLinkButton({ profile }: { profile: Profile }) {
+  const sendLink = useServerFn(sendStaffSetupLink);
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [role, setRole] = useState<AppRole>("runner");
+  const [busy, setBusy] = useState(false);
+
+  function openDialog() {
+    setEmail(profile.real_email ?? "");
+    setPhone(profile.phone ?? "");
+    setRole("runner");
+    setOpen(true);
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || !phone.trim()) {
+      toast.error("Email and phone are required");
+      return;
+    }
+    setBusy(true);
+    try {
+      await sendLink({ data: {
+        email: email.trim(),
+        phone: phone.trim(),
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        role,
+      }});
+      toast.success("Setup link sent");
+      setOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send setup link");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={openDialog}>
+        <Send className="mr-1 h-4 w-4" /> Send Setup Link
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Send Setup Link</DialogTitle></DialogHeader>
+          <form onSubmit={submit} className="space-y-3">
+            <div>
+              <Label htmlFor="ssl-email">Email</Label>
+              <Input id="ssl-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+            <div>
+              <Label htmlFor="ssl-phone">Phone (SMS)</Label>
+              <Input id="ssl-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+            </div>
+            <div>
+              <Label>Role</Label>
+              <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="va">Virtual Assistant</SelectItem>
+                  <SelectItem value="runner">Runner</SelectItem>
+                  <SelectItem value="driver">Driver</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The link expires in 24 hours and can only be used once.
+            </p>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
+              <Button type="submit" disabled={busy}>
+                {busy ? "Sending…" : "Send Setup Link via SMS"}
               </Button>
             </DialogFooter>
           </form>
