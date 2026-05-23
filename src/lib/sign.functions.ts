@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sendSms } from "@/lib/ghl.server";
 import { sendPaymentLinkInternal } from "@/lib/payment-link.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import type { StripeEnv } from "@/lib/stripe.server";
 import { extractNameFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
+import { notifyRenter } from "@/lib/renter-notify.server";
 
 /**
  * Auto-send the first payment link right after a renter signs.
@@ -43,7 +43,7 @@ async function autoSendFirstPaymentLink(rentalId: string): Promise<void> {
     }
 
     const [{ data: driver }, { data: vehicle }] = await Promise.all([
-      supabaseAdmin.from("drivers").select("full_name, phone").eq("id", rental.driver_id).maybeSingle(),
+      supabaseAdmin.from("drivers").select("full_name, phone, email").eq("id", rental.driver_id).maybeSingle(),
       supabaseAdmin.from("vehicles").select("year, make, model").eq("id", rental.vehicle_id).maybeSingle(),
     ]);
     if (!driver?.phone) {
@@ -81,6 +81,7 @@ async function autoSendFirstPaymentLink(rentalId: string): Promise<void> {
     await sendPaymentLinkInternal({
       phone: driver.phone,
       name: driver.full_name ?? undefined,
+      email: driver.email ?? null,
       amountCents,
       description: description.slice(0, 200),
       environment,
