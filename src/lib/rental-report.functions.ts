@@ -98,7 +98,7 @@ async function gatherReport(rentalId: string) {
       .order("extended_at", { ascending: true }),
     supabaseAdmin
       .from("rental_charges")
-      .select("amount, charge_date, status, period_label")
+      .select("amount, charge_date, status, period_label, stripe_payment_intent_id")
       .eq("rental_id", rental.id)
       .order("charge_date", { ascending: true }),
   ]);
