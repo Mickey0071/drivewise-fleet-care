@@ -49,13 +49,12 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
   return (
     <div className="mx-auto max-w-[8.5in] bg-white p-10 font-sans text-[13px] text-zinc-900 print:p-8">
       {/* HEADER */}
-      <div className="mb-5 flex items-center justify-between border-b-[3px] border-[#2db84b] pb-4">
-        <img src={logo} alt="Camauto Rentals" className="h-14" />
-        <div className="text-right text-[11px] leading-relaxed text-zinc-600">
-          {settings.company.legalName} d/b/a {settings.company.dba}<br />
-          {settings.company.address}<br />
-          Phone: {settings.company.phone}<br />
-          {settings.company.website}
+      <div className="mb-5 border-b-[3px] border-[#2db84b] pb-4">
+        <div className="flex justify-center">
+          <img src={logo} alt="Camauto Rentals" className="h-24 w-auto" />
+        </div>
+        <div className="mt-3 text-center text-[11px] leading-relaxed text-zinc-600">
+          {settings.company.legalName} d/b/a {settings.company.dba} &nbsp;|&nbsp; {settings.company.address} &nbsp;|&nbsp; Phone: {settings.company.phone} &nbsp;|&nbsp; {settings.company.website}
         </div>
       </div>
 
