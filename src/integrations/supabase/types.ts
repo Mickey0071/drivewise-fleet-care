@@ -896,6 +896,9 @@ export type Database = {
           name_match_score: number | null
           name_match_status: string | null
           notes: string | null
+          payer_id_image_url: string | null
+          payer_name_extracted: string | null
+          payer_phone: string | null
           payment_link_auto_sent_at: string | null
           payment_received: boolean
           payment_status: string
@@ -916,6 +919,7 @@ export type Database = {
           start_date: string
           stripe_customer_id: string | null
           stripe_payment_method_id: string | null
+          third_party_payer: boolean
           updated_at: string
           vehicle_id: string
           weekly_rate: number
@@ -945,6 +949,9 @@ export type Database = {
           name_match_score?: number | null
           name_match_status?: string | null
           notes?: string | null
+          payer_id_image_url?: string | null
+          payer_name_extracted?: string | null
+          payer_phone?: string | null
           payment_link_auto_sent_at?: string | null
           payment_received?: boolean
           payment_status?: string
@@ -965,6 +972,7 @@ export type Database = {
           start_date: string
           stripe_customer_id?: string | null
           stripe_payment_method_id?: string | null
+          third_party_payer?: boolean
           updated_at?: string
           vehicle_id: string
           weekly_rate?: number
@@ -994,6 +1002,9 @@ export type Database = {
           name_match_score?: number | null
           name_match_status?: string | null
           notes?: string | null
+          payer_id_image_url?: string | null
+          payer_name_extracted?: string | null
+          payer_phone?: string | null
           payment_link_auto_sent_at?: string | null
           payment_received?: boolean
           payment_status?: string
@@ -1014,6 +1025,7 @@ export type Database = {
           start_date?: string
           stripe_customer_id?: string | null
           stripe_payment_method_id?: string | null
+          third_party_payer?: boolean
           updated_at?: string
           vehicle_id?: string
           weekly_rate?: number
