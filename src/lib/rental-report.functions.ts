@@ -98,7 +98,7 @@ async function gatherReport(rentalId: string) {
       .order("extended_at", { ascending: true }),
     supabaseAdmin
       .from("rental_charges")
-      .select("amount, charge_date, status, period_label")
+      .select("amount, charge_date, status, period_label, stripe_payment_intent_id")
       .eq("rental_id", rental.id)
       .order("charge_date", { ascending: true }),
   ]);
@@ -266,6 +266,170 @@ function buildCsv(rows: Array<Record<string, unknown>>): string {
   return lines.join("\n");
 }
 
+type BreakdownRow = {
+  date: string;
+  category: string;
+  description: string;
+  reference: string;
+  quantity: number | string;
+  unit_rate: number | string;
+  amount: number;
+  status: string;
+  running_total: number;
+};
+
+function buildBillingBreakdown(gathered: Awaited<ReturnType<typeof gatherReport>>): BreakdownRow[] {
+  const rental = gathered.rental;
+  const cadence = rental.billing_cadence ?? rental.billing_period ?? "weekly";
+  const baseRate = Number(rental.rate_amount ?? rental.rate ?? rental.weekly_rate ?? 0);
+  const rows: Omit<BreakdownRow, "running_total">[] = [];
+
+  // Base rental period
+  if (baseRate > 0) {
+    rows.push({
+      date: rental.start_date,
+      category: "Base rental",
+      description: `Initial ${cadence} rental rate`,
+      reference: rental.id,
+      quantity: 1,
+      unit_rate: baseRate,
+      amount: baseRate,
+      status: "billed",
+    });
+  }
+
+  // Deposit
+  const deposit = Number(rental.deposit_paid ?? 0);
+  if (deposit > 0) {
+    rows.push({
+      date: rental.start_date,
+      category: "Deposit",
+      description: "Security deposit",
+      reference: rental.id,
+      quantity: 1,
+      unit_rate: deposit,
+      amount: deposit,
+      status: "paid",
+    });
+  }
+
+  // Extensions
+  for (const e of gathered.raw.extensions) {
+    const periods = Number(e.periods ?? 1);
+    const amt = Number(e.additional_amount ?? 0);
+    rows.push({
+      date: (e.extended_at ?? e.new_end_date ?? rental.start_date).toString().slice(0, 10),
+      category: "Extension",
+      description: `Extended ${periods} ${e.period_label ?? cadence} → ${e.new_end_date ?? ""}`,
+      reference: e.id ?? "",
+      quantity: periods,
+      unit_rate: periods > 0 ? amt / periods : amt,
+      amount: amt,
+      status: "billed",
+    });
+  }
+
+  // Recurring Stripe charges (daily/weekly auto-charges)
+  for (const c of gathered.raw.charges) {
+    rows.push({
+      date: (c.charge_date ?? rental.start_date).toString().slice(0, 10),
+      category: "Recurring charge",
+      description: c.period_label ?? `${cadence} charge`,
+      reference: c.stripe_payment_intent_id ?? "",
+      quantity: 1,
+      unit_rate: Number(c.amount ?? 0),
+      amount: Number(c.amount ?? 0),
+      status: c.status ?? "",
+    });
+  }
+
+  // Violations / fees / incidentals
+  for (const v of gathered.raw.violations) {
+    rows.push({
+      date: v.date_issued,
+      category: v.type === "ticket" ? "Violation" : "Fee/Incidental",
+      description: v.notes ? `${v.type} — ${v.notes}` : v.type,
+      reference: v.id ?? "",
+      quantity: 1,
+      unit_rate: Number(v.amount ?? 0),
+      amount: Number(v.amount ?? 0),
+      status: v.status ?? "",
+    });
+  }
+
+  // Final return charge (if any)
+  const finalCharge = Number(rental.final_charge_amount ?? 0);
+  if (finalCharge > 0) {
+    rows.push({
+      date: (rental.returned_at ?? rental.end_date ?? rental.start_date).toString().slice(0, 10),
+      category: "Final charge",
+      description: "Return inspection / final reconciliation",
+      reference: rental.id,
+      quantity: 1,
+      unit_rate: finalCharge,
+      amount: finalCharge,
+      status: "billed",
+    });
+  }
+
+  // Payments received (negative amounts toward running total)
+  for (const p of gathered.raw.payments) {
+    if (p.status !== "paid" && !p.paid_date) continue;
+    const amt = Number(p.amount ?? 0);
+    rows.push({
+      date: (p.paid_date ?? p.due_date ?? rental.start_date).toString().slice(0, 10),
+      category: "Payment received",
+      description: `Payment via ${p.method ?? "unknown"}`,
+      reference: p.id ?? "",
+      quantity: 1,
+      unit_rate: amt,
+      amount: -amt,
+      status: p.status ?? "paid",
+    });
+  }
+
+  // Sort chronologically, then category for stability
+  rows.sort((a, b) => {
+    const d = (a.date ?? "").localeCompare(b.date ?? "");
+    return d !== 0 ? d : a.category.localeCompare(b.category);
+  });
+
+  let running = 0;
+  const out: BreakdownRow[] = rows.map((r) => {
+    running += Number(r.amount) || 0;
+    return { ...r, running_total: Number(running.toFixed(2)) };
+  });
+
+  // Totals footer row
+  const totalCharges = out
+    .filter((r) => r.amount > 0 && r.category !== "Deposit")
+    .reduce((s, r) => s + r.amount, 0);
+  const totalPaid = out
+    .filter((r) => r.category === "Payment received" || r.category === "Deposit")
+    .reduce((s, r) => s + Math.abs(r.amount), 0);
+  const balance = totalCharges - totalPaid;
+
+  out.push(
+    {
+      date: "", category: "TOTAL CHARGES", description: "", reference: "",
+      quantity: "", unit_rate: "", amount: Number(totalCharges.toFixed(2)),
+      status: "", running_total: 0,
+    },
+    {
+      date: "", category: "TOTAL PAID", description: "", reference: "",
+      quantity: "", unit_rate: "", amount: Number(totalPaid.toFixed(2)),
+      status: "", running_total: 0,
+    },
+    {
+      date: "", category: "BALANCE DUE", description: "", reference: "",
+      quantity: "", unit_rate: "", amount: Number(balance.toFixed(2)),
+      status: balance > 0 ? "owed" : "settled", running_total: 0,
+    },
+  );
+
+  return out;
+}
+
 export const exportRentalReportZip = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -314,6 +478,10 @@ export const exportRentalReportZip = createServerFn({ method: "POST" })
     if (gathered.raw.inspections.length) zip.file("inspections.csv", buildCsv(gathered.raw.inspections));
     if (gathered.raw.extensions.length) zip.file("extensions.csv", buildCsv(gathered.raw.extensions));
     if (gathered.raw.charges.length) zip.file("stripe-charges.csv", buildCsv(gathered.raw.charges));
+
+    // Fully itemized billing breakdown — date-sorted line items + running total + totals footer
+    const breakdown = buildBillingBreakdown(gathered);
+    if (breakdown.length) zip.file("billing-breakdown.csv", buildCsv(breakdown));
 
     const buf = await zip.generateAsync({ type: "uint8array" });
     return {
