@@ -163,14 +163,25 @@ export const sendSigningLink = createServerFn({ method: "POST" })
 
     const { data: driver } = await supabaseAdmin
       .from("drivers")
-      .select("full_name, phone")
+      .select("full_name, phone, email")
       .eq("id", rental.driver_id)
       .single();
     if (!driver?.phone) throw new Error("Renter has no phone on file");
 
     const link = `${data.origin.replace(/\/$/, "")}/sign/${token}`;
     const message = `Camauto Rentals: Please complete your rental agreement online and upload your driver's license + selfie here: ${link}. You do not need to come in to sign.`;
-    await sendSms(driver.phone, message, driver.full_name ?? null);
+    await notifyRenter({
+      phone: driver.phone,
+      email: driver.email ?? null,
+      name: driver.full_name ?? null,
+      sms: message,
+      emailSubject: "Your Camauto Rental Agreement",
+      emailHeading: "Sign Your Rental Agreement",
+      emailIntro:
+        "Please complete your rental agreement online and upload your driver's license + selfie. You do not need to come in to sign.",
+      emailCta: { label: "Sign Agreement Now", url: link },
+      emailFootnote: "After signing, we'll text you a secure payment link.",
+    });
     return { ok: true, link };
   });
 
