@@ -424,10 +424,11 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       console.error("post-sign notify failed", e);
     }
 
-    // Fire-and-forget: auto-text the first payment link so the renter can
-    // pay immediately. Guarded helper logs/swallows all failures so the
-    // signing UI never hangs or surfaces errors.
-    void autoSendFirstPaymentLink(rental.id);
+    // Auto-text the first payment link so the renter can pay immediately.
+    // Awaited (not fire-and-forget) because the Worker terminates background
+    // work once the handler returns — `void` here meant the SMS never sent.
+    // The helper swallows all errors so the signing UI never fails.
+    await autoSendFirstPaymentLink(rental.id);
 
     // Fire-and-forget: generate the signed agreement PDF and text it to the
     // renter. Worker may terminate background work — acceptable for v1.
