@@ -1,5 +1,6 @@
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import type { AgreementSettings } from "@/lib/agreementSettings";
+import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
 
 /**
  * Server-rendered PDF version of the rental agreement.
@@ -84,13 +85,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 36,
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     borderBottomWidth: 2,
     borderBottomColor: COLOR_GREEN,
     paddingBottom: 8,
     marginBottom: 10,
+  },
+  logo: { width: 96, height: 95, marginBottom: 4 },
+  companyRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    width: "100%",
+    marginTop: 2,
   },
   brand: { fontSize: 16, fontFamily: "Helvetica-Bold", color: COLOR_GREEN },
   companyMeta: { fontSize: 8, color: COLOR_MUTED, textAlign: "right", lineHeight: 1.35 },
@@ -258,14 +265,17 @@ export function RentalAgreementPDF({ rental, driver, vehicle, extensions, settin
       <Page size="LETTER" style={styles.page}>
         {/* HEADER */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.brand}>{settings.company.dba}</Text>
-            <Text style={{ fontSize: 8, color: COLOR_MUTED, marginTop: 2 }}>{settings.company.legalName}</Text>
-          </View>
-          <View>
-            <Text style={styles.companyMeta}>{settings.company.address}</Text>
-            <Text style={styles.companyMeta}>Phone: {settings.company.phone}</Text>
-            <Text style={styles.companyMeta}>{settings.company.website}</Text>
+          <Image src={CAMAUTO_LOGO_BASE64} style={styles.logo} />
+          <View style={styles.companyRow}>
+            <View>
+              <Text style={styles.brand}>{settings.company.dba}</Text>
+              <Text style={{ fontSize: 8, color: COLOR_MUTED, marginTop: 2 }}>{settings.company.legalName}</Text>
+            </View>
+            <View>
+              <Text style={styles.companyMeta}>{settings.company.address}</Text>
+              <Text style={styles.companyMeta}>Phone: {settings.company.phone}</Text>
+              <Text style={styles.companyMeta}>{settings.company.website}</Text>
+            </View>
           </View>
         </View>
 
