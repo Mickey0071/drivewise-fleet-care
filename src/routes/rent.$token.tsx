@@ -53,7 +53,8 @@ function RentPage() {
     fetchInfo({ data: { token } })
       .then(setInfo)
       .catch((e) => setLoadError(e instanceof Error ? e.message : String(e)));
-  }, [token, fetchInfo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   async function handleSubmit() {
     if (!firstName.trim() || !lastName.trim()) return toast.error("Enter your first and last name");
@@ -354,13 +355,17 @@ function PhotoCapture({ label, onChange, value, useCamera }: {
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    // Reset so selecting the same file again still fires onChange
+    if (inputRef.current) inputRef.current.value = "";
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) {
       toast.error("Image too large (max 8MB)");
       return;
     }
     const reader = new FileReader();
+    reader.onerror = () => toast.error("Could not read photo — try again");
     reader.onload = () => {
+      const rawDataUrl = reader.result as string;
       const img = new Image();
       img.onload = () => {
         const max = 1600;
@@ -370,11 +375,21 @@ function PhotoCapture({ label, onChange, value, useCamera }: {
         const canvas = document.createElement("canvas");
         canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext("2d");
-        if (!ctx) { onChange(reader.result as string); return; }
+        if (!ctx) { onChange(rawDataUrl); return; }
         ctx.drawImage(img, 0, 0, w, h);
-        onChange(canvas.toDataURL("image/jpeg", 0.85));
+        try {
+          onChange(canvas.toDataURL("image/jpeg", 0.85));
+        } catch {
+          // Cross-origin / tainted canvas — fall back to raw
+          onChange(rawDataUrl);
+        }
       };
-      img.src = reader.result as string;
+      img.onerror = () => {
+        // Browser can't decode (e.g. iPhone HEIC) — keep the original so it still saves
+        onChange(rawDataUrl);
+        toast.message("Photo saved (preview may not render in this browser)");
+      };
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
   }
