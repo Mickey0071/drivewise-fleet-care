@@ -185,7 +185,7 @@ function InspectPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="mi">Odometer (mi)</Label>
-              <Input id="mi" inputMode="numeric" type="number" value={mileage} onChange={(e) => setMileage(Number(e.target.value))} />
+              <Input id="mi" inputMode="numeric" type="number" placeholder="Enter mileage" value={mileage || ""} onChange={(e) => setMileage(Number(e.target.value))} />
             </div>
             <div>
               <Label htmlFor="fuel">Fuel level (%)</Label>

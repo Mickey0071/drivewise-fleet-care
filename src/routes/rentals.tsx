@@ -1111,7 +1111,7 @@ function DeliveryDialog({ rental, onClose }: { rental: Rental | null; onClose: (
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="dl-mi">Odometer (mi)</Label>
-                <Input id="dl-mi" type="number" value={mileage} onChange={e => setMileage(Number(e.target.value))} />
+                <Input id="dl-mi" type="number" inputMode="numeric" placeholder="Enter mileage" value={mileage || ""} onChange={e => setMileage(Number(e.target.value))} />
               </div>
               <div>
                 <Label htmlFor="dl-fuel">Fuel level (%)</Label>
@@ -1261,7 +1261,7 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="rt-mi">Return odometer (mi)</Label>
-                <Input id="rt-mi" type="number" value={mileage} onChange={e => setMileage(Number(e.target.value))} />
+                <Input id="rt-mi" type="number" inputMode="numeric" placeholder="Enter mileage" value={mileage || ""} onChange={e => setMileage(Number(e.target.value))} />
               </div>
               <div>
                 <Label htmlFor="rt-fuel">Fuel level (%)</Label>
@@ -1423,8 +1423,8 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
       <DialogContent>
         <DialogHeader><DialogTitle>Edit reservation</DialogTitle></DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div><Label>Weekly rate</Label><Input type="number" value={weeklyRate} onChange={e => setWeeklyRate(Number(e.target.value))} /></div>
-          <div><Label>Deposit</Label><Input type="number" value={depositPaid} onChange={e => setDepositPaid(Number(e.target.value))} /></div>
+          <div><Label>Weekly rate</Label><Input type="number" inputMode="decimal" placeholder="Enter amount" value={weeklyRate || ""} onChange={e => setWeeklyRate(Number(e.target.value))} /></div>
+          <div><Label>Deposit</Label><Input type="number" inputMode="decimal" placeholder="Enter amount" value={depositPaid || ""} onChange={e => setDepositPaid(Number(e.target.value))} /></div>
           <div>
             <Label>Billing cadence</Label>
             <Select value={billingCadence} onValueChange={(v) => setBillingCadence(v as "daily" | "weekly")}>
@@ -1437,7 +1437,7 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
           </div>
           <div>
             <Label>Rate amount ($/period)</Label>
-            <Input type="number" min={0} value={rateAmount} onChange={e => setRateAmount(Number(e.target.value))} />
+            <Input type="number" min={0} inputMode="decimal" placeholder="Enter amount" value={rateAmount || ""} onChange={e => setRateAmount(Number(e.target.value))} />
           </div>
           <div className="sm:col-span-2 flex items-center justify-between rounded-md border p-3">
             <div>
