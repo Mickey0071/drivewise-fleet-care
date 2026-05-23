@@ -393,6 +393,63 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   );
   y += 16;
 
+  // ---- SERVICE COVERAGE AREA ----
+  sectionBar("Service Coverage Area");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(...RGB_TEXT);
+  ensureSpace(14);
+  doc.text(
+    doc.splitTextToSize(
+      `${c.dba} provides mechanical failure and vehicle replacement coverage within a 30-mile radius of our main location (416 Sicklerville Road, Sicklerville, NJ 08081).`,
+      contentW,
+    ),
+    left,
+    y + 9,
+  );
+  y += 18;
+
+  ensureSpace(14);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...RGB_TEXT);
+  doc.text("WITHIN 30-MILE RADIUS:", left, y + 9);
+  y += 14;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  const withinBullets = [
+    "In the event of mechanical failure, Camauto will provide roadside assistance and arrange a replacement vehicle at no charge to you",
+    "You are not responsible for towing or repair costs",
+  ];
+  withinBullets.forEach((b) => {
+    ensureSpace(12);
+    doc.text(`• ${b}`, left + 10, y + 9);
+    y += 12;
+  });
+
+  ensureSpace(14);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...RGB_TEXT);
+  doc.text("OUTSIDE 30-MILE RADIUS:", left, y + 9);
+  y += 14;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  const outsideBullets = [
+    "If you experience mechanical failure beyond the 30-mile radius, you are responsible for arranging and paying for towing to the nearest service facility",
+    "Contact Camauto immediately at 1-866-625-5550 for guidance on authorized repair shops",
+    "You may be reimbursed for towing costs if the failure is determined to be a manufacturing defect (review required)",
+  ];
+  outsideBullets.forEach((b) => {
+    ensureSpace(12);
+    doc.text(`• ${b}`, left + 10, y + 9);
+    y += 12;
+  });
+  ensureSpace(8);
+  y += 4;
+
   // ---- SIGNATURES ----
   sectionBar("Signatures");
   ensureSpace(20);
