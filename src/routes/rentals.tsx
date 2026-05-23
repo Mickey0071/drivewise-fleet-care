@@ -1476,6 +1476,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
   const d = rental ? driverById(rental.driverId) : null;
   const sendSmsFn = useServerFn(sendRentalSms);
   const [newEndDate, setNewEndDate] = useState("");
+  const [duration, setDuration] = useState<"7" | "14" | "21" | "custom">("7");
   const [sig, setSig] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
   useEffect(() => {
@@ -1483,10 +1484,19 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
       const base = rental.endDate ? new Date(rental.endDate) : new Date();
       base.setDate(base.getDate() + 7);
       setNewEndDate(base.toISOString().slice(0, 10));
+      setDuration("7");
       setSig(null);
       setAccepted(false);
     }
   }, [rental]);
+  function applyDuration(value: "7" | "14" | "21" | "custom") {
+    setDuration(value);
+    if (value === "custom" || !rental) return;
+    const days = Number(value);
+    const base = rental.endDate ? new Date(rental.endDate) : new Date();
+    base.setDate(base.getDate() + days);
+    setNewEndDate(base.toISOString().slice(0, 10));
+  }
   const charge = rental && newEndDate ? computeExtensionCharge(rental, newEndDate) : null;
   function confirm() {
     if (!rental || !newEndDate || !d) return;
