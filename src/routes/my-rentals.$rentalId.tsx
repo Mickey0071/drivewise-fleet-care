@@ -275,6 +275,12 @@ function MyRentalDetailPage() {
               <Ban className="mr-2 h-4 w-4" /> Cancel Rental
             </Button>
           )}
+          {canRefund && (
+            <Button variant="outline" onClick={() => setRefundOpen(true)}>
+              <Undo2 className="mr-2 h-4 w-4" />
+              {isAdmin ? "Refund" : "Request Refund"}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
