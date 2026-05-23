@@ -108,7 +108,7 @@ function MyRentalDetailPage() {
     return <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   }
 
-  const { rental, vehicle, payments, violations, inspections, extensions } = d;
+  const { rental, vehicle, payments, violations, extensions } = d;
   const r: any = rental;
   const duration = daysBetween(r.start_date, r.end_date ?? r.returned_at?.slice(0, 10));
   const rate = Number(r.rate ?? r.weekly_rate ?? 0);
@@ -119,9 +119,45 @@ function MyRentalDetailPage() {
   const extensionsTotal = extensions.reduce((s: number, e: any) => s + Number(e.additional_amount ?? 0), 0);
   const baseRental = Math.max(0, totalPaid - violationsTotal);
   const lastPaidWithCard = [...paid].reverse().find((p: any) => p.method && /card|stripe/i.test(p.method));
-  const returnInspection = inspections.find((i: any) => i.is_return_inspection || i.type === "check-in");
 
   const canPay = r.reservation_status === "active" || r.reservation_status === "returned";
+  const isActive = r.reservation_status === "active";
+  const isWeekly = (r.billing_period || "weekly") === "weekly";
+  const canExtend = isActive && isWeekly;
+  const weeklyRate = Number(r.rate ?? r.weekly_rate ?? 0);
+  const extensionCharge = weeklyRate * (Number(extendWeeks) || 0);
+
+  async function handleExtend() {
+    setExtending(true);
+    try {
+      const { url } = await extendRentalFn({ data: { rentalId, periods: Number(extendWeeks) } });
+      window.location.href = url;
+    } catch (e) {
+      toast.error("Couldn't start extension", { description: e instanceof Error ? e.message : String(e) });
+      setExtending(false);
+    }
+  }
+
+  function handleOpenSupportSms() {
+    const body = encodeURIComponent(supportMsg || "");
+    window.location.href = `sms:+18666255550?&body=${body}`;
+    setSupportOpen(false);
+  }
+
+  async function handleCancel() {
+    setCancelling(true);
+    try {
+      await cancelRentalFn({ data: { rentalId } });
+      toast.success("Rental canceled");
+      setCancelOpen(false);
+      const updated = await fetchDetail({ data: { rentalId } });
+      setD(updated);
+    } catch (e) {
+      toast.error("Cancel failed", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   async function handlePay() {
     const amt = Number(payAmount);
