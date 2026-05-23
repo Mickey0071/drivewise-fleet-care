@@ -229,6 +229,7 @@ export const approveRefundRequest = createServerFn({ method: "POST" })
 
     // Notify the VA requester.
     try {
+      if (!req.requested_by) throw new Error("missing requester");
       const { data: requesterProfile } = await supabaseAdmin
         .from("profiles").select("phone").eq("id", req.requested_by).maybeSingle();
       if (requesterProfile?.phone) {
@@ -266,6 +267,7 @@ export const denyRefundRequest = createServerFn({ method: "POST" })
     }).eq("id", req.id);
 
     try {
+      if (!req.requested_by) throw new Error("missing requester");
       const { data: requesterProfile } = await supabaseAdmin
         .from("profiles").select("phone").eq("id", req.requested_by).maybeSingle();
       if (requesterProfile?.phone) {
