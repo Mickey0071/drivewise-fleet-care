@@ -161,6 +161,21 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
         ))}
       </div>
 
+      {/* VIOLATIONS & INCIDENTALS */}
+      <SectionLabel>Violations &amp; Incidentals</SectionLabel>
+      <div className="mb-3 text-[11.5px] leading-relaxed text-zinc-800">
+        <p className="mb-2">Your card on file will be charged for any of the following:</p>
+        <ul className="ml-4 list-disc space-y-0.5">
+          <li>Parking tickets or traffic violations: actual fine amount</li>
+          <li>Late return fees: {settings.fees.dailyLateFee} per day</li>
+          <li>Damage to vehicle: repair cost</li>
+          <li>Cleaning fees: {settings.fees.cleaningFeeRange} if excessively soiled</li>
+          <li>Mileage overage: {settings.fees.excessMileageRate} per mile (if applicable)</li>
+          <li>Other violations or damages: actual cost</li>
+        </ul>
+        <p className="mt-2">You authorize {settings.company.dba} to charge your card without further notice for any of these charges.</p>
+      </div>
+
       {/* SIGNATURES */}
       <SectionLabel>Signatures</SectionLabel>
       <p className="mb-3 text-[11.5px]">
