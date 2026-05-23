@@ -301,10 +301,9 @@ export function RentalAgreementPDF({ rental, driver, vehicle, extensions, settin
           <Field label="Color" value={vehicle.color ?? ""} width="16.66%" />
           <Field label="License Plate" value={vehicle.plate} width="16.66%" />
           <Field label="VIN" value={vehicle.vin} width="16.66%" />
-          <Field label="Mileage Out" value={Number(vehicle.mileage ?? 0).toLocaleString()} width="25%" />
-          <Field label="Fuel Level Out" value={vehicle.fuelLevelPickup ?? ""} width="25%" />
-          <Field label="EZ-Pass Tag #" value={vehicle.ezPassTag ?? ""} width="25%" />
-          <Field label="Pickup Date" value={fmtDate(rental.startDate)} width="25%" />
+          <Field label="Fuel Level Out" value={vehicle.fuelLevelPickup ?? ""} width="33%" />
+          <Field label="EZ-Pass Tag #" value={vehicle.ezPassTag ?? ""} width="33%" />
+          <Field label="Pickup Date" value={fmtDate(rental.startDate)} width="34%" />
         </View>
 
         {/* TERMS */}
