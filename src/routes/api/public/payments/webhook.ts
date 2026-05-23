@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { type StripeEnv, verifyWebhook, createStripeClient } from "@/lib/stripe.server";
 import { sendSms } from "@/lib/ghl.server";
 import { sendReceiptToCustomer } from "@/lib/receipt.functions";
+import { notifyRenter } from "@/lib/renter-notify.server";
 
 let _supabase: any = null;
 function getSupabase(): any {
@@ -16,7 +17,7 @@ async function getProfile(userId: string | null): Promise<{ phone: string | null
   if (!userId) return null;
   const { data } = await getSupabase()
     .from("profiles")
-    .select("phone, full_name")
+    .select("phone, full_name, email")
     .eq("id", userId)
     .maybeSingle();
   return data || null;
@@ -100,11 +101,23 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
 
       // Renter SMS
       const { data: drv } = await sb.from("drivers")
-        .select("full_name, phone")
+        .select("full_name, phone, email")
         .eq("id", rentalRow.driver_id)
         .maybeSingle();
       if (drv?.phone) {
-        await sendSms(drv.phone, `Camauto Rentals: Payment of ${fmtAmount(amountCents)} received. Thank you.`, drv.full_name);
+        await notifyRenter({
+          phone: drv.phone,
+          email: drv.email ?? null,
+          name: drv.full_name,
+          sms: `Camauto Rentals: Payment of ${fmtAmount(amountCents)} received. Thank you.`,
+          emailSubject: "Payment Received — Camauto Rentals",
+          emailHeading: "Payment Received",
+          emailIntro: `We have received your payment of <strong>${fmtAmount(amountCents)}</strong>. Thank you!`,
+          emailDetails: [
+            { label: "Amount", value: fmtAmount(amountCents) },
+            ...(note ? [{ label: "Note", value: note }] : []),
+          ],
+        });
       }
       // Admin SMS
       try {
@@ -217,9 +230,23 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
 
       // Renter SMS
       const { data: drv } = await sb.from("drivers")
-        .select("full_name, phone").eq("id", rentalRow.driver_id).maybeSingle();
+        .select("full_name, phone, email").eq("id", rentalRow.driver_id).maybeSingle();
       if (drv?.phone) {
-        await sendSms(drv.phone, `Camauto Rentals: Extension signed and processed. Rental extended to ${newEndIso}. Charged: ${fmtAmount(amountCents)}. Thank you!`, drv.full_name);
+        await notifyRenter({
+          phone: drv.phone,
+          email: drv.email ?? null,
+          name: drv.full_name,
+          sms: `Camauto Rentals: Extension signed and processed. Rental extended to ${newEndIso}. Charged: ${fmtAmount(amountCents)}. Thank you!`,
+          emailSubject: "Extension Confirmed — Camauto Rentals",
+          emailHeading: "Your Rental Extension is Confirmed",
+          emailIntro:
+            "Your extension has been signed and processed. Your rental has been extended successfully.",
+          emailDetails: [
+            { label: "Extended To", value: newEndIso },
+            { label: "Length", value: `${periods} ${periodLabel}${periods === 1 ? "" : "s"}` },
+            { label: "Charged", value: fmtAmount(amountCents) },
+          ],
+        });
       }
       try {
         await sendSms("+12672213977", `${drv?.full_name || "Renter"} extended rental ${rentalRow.id} by ${periods} ${periodLabel} (${fmtAmount(amountCents)}).`, null);
@@ -410,11 +437,18 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     const profile = await getProfile(userId);
     if (profile?.phone) {
       const amt = fmtAmount(session.amount_total);
-      await sendSms(
-        profile.phone,
-        `Rentalprise Auto: Payment received${amt ? " (" + amt + ")" : ""}. Your rental is now active — see you at pickup!`,
-        profile.full_name
-      );
+      await notifyRenter({
+        phone: profile.phone,
+        email: (profile as any).email ?? null,
+        name: profile.full_name,
+        sms: `Camauto Rentals: Payment received${amt ? " (" + amt + ")" : ""}. Your rental is now active — see you at pickup!`,
+        emailSubject: "Reservation Confirmed — Camauto Rentals",
+        emailHeading: "You're All Set!",
+        emailIntro:
+          "Your payment has been received and your reservation is now active. We can't wait to see you at pickup!",
+        emailDetails: amt ? [{ label: "Amount Paid", value: amt }] : [],
+        emailFootnote: "A receipt will arrive in your inbox shortly.",
+      });
     }
 
     // Notify the third-party payer when their card was used.
