@@ -404,6 +404,7 @@ function ChecklistPage() {
             },
           });
           if (!res.alreadyReturned) {
+            syncLocalReturn(returnRental.id);
             returnResult = {
               final_charge: res.final_charge ?? null,
               days_used: res.days_used,
