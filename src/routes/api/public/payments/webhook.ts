@@ -70,6 +70,63 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
   const rentalId = session.metadata?.rental_id || null;
   const kind = session.metadata?.kind || (session.mode === "subscription" ? "subscription" : "deposit");
 
+  // Custom renter-initiated payment (extensions, violations, etc.).
+  // Just log a payment row and notify; do NOT touch reservation/vehicle state.
+  if (kind === "custom_renter_payment" && rentalId) {
+    const sb = getSupabase();
+    const note = (session.metadata?.note as string | undefined)?.slice(0, 200) || "Additional payment";
+    const amountCents = session.amount_total ?? 0;
+    const amountDollars = Number((amountCents / 100).toFixed(2));
+    const today = new Date().toISOString().slice(0, 10);
+
+    const { data: rentalRow } = await sb
+      .from("rentals")
+      .select("id, driver_id")
+      .eq("id", rentalId)
+      .maybeSingle();
+    if (rentalRow) {
+      const paidId = `PM-${session.id.slice(-10)}`;
+      await sb.from("payments").upsert({
+        id: paidId,
+        rental_id: rentalRow.id,
+        driver_id: rentalRow.driver_id,
+        amount: amountDollars,
+        due_date: today,
+        paid_date: today,
+        method: "Stripe",
+        status: "paid",
+        note,
+      } as any, { onConflict: "id" });
+
+      // Renter SMS
+      const { data: drv } = await sb.from("drivers")
+        .select("full_name, phone")
+        .eq("id", rentalRow.driver_id)
+        .maybeSingle();
+      if (drv?.phone) {
+        await sendSms(drv.phone, `Camauto Rentals: Payment of ${fmtAmount(amountCents)} received. Thank you.`, drv.full_name);
+      }
+      // Admin SMS
+      try {
+        await sendSms("+12672213977", `${drv?.full_name || "Renter"} made additional payment of ${fmtAmount(amountCents)}${note ? ` — ${note}` : ""}.`, null);
+      } catch (e) {
+        console.error("[webhook] admin SMS failed", e);
+      }
+
+      await sb.from("subscriptions").insert({
+        user_id: userId,
+        rental_id: rentalRow.id,
+        stripe_customer_id: session.customer,
+        stripe_session_id: session.id,
+        kind: "custom_renter_payment",
+        amount_cents: amountCents,
+        status: "paid",
+        environment: env,
+      } as any);
+    }
+    return;
+  }
+
   // Any one-time checkout linked to a rental activates that reservation.
   // (kind may be "deposit", "payment_link", or "first_payment" — all are
   // treated as the first weekly payment when rental_id is present.)
