@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { renderRentalReportPdf, type RentalReportData } from "@/components/pdf/RentalReportPDF";
+import { renderEvidencePacketPdf } from "@/components/pdf/RentalEvidencePacketPDF";
 import JSZip from "jszip";
 import { z } from "zod";
 
@@ -245,6 +246,38 @@ export const exportRentalReportPdf = createServerFn({ method: "POST" })
     const pdf = await renderRentalReportPdf(gathered.reportData);
     return {
       filename: `${gathered.rental.id}_${gathered.safeName}_report.pdf`,
+      mime: "application/pdf",
+      base64: toBase64(pdf),
+    };
+  });
+
+export const exportRentalEvidencePacketPdf = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ rentalId: z.string().min(1).max(64) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const gathered = await gatherReport(data.rentalId);
+    const r = gathered.reportData;
+    const pdf = await renderEvidencePacketPdf({
+      rental: {
+        id: r.rental.id,
+        startDate: r.rental.startDate,
+        endDate: r.rental.endDate,
+        returnedAt: r.rental.returnedAt,
+      },
+      driver: r.driver,
+      vehicle: r.vehicle,
+      violations: r.violations,
+      images: {
+        license: r.images.license,
+        selfie: r.images.selfie,
+      },
+      location: null,
+    });
+    return {
+      filename: `${gathered.rental.id}_${gathered.safeName}_evidence.pdf`,
       mime: "application/pdf",
       base64: toBase64(pdf),
     };
