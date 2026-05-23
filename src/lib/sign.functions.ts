@@ -341,9 +341,8 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       .update({ insurance_on_file: true })
       .eq("id", rental.driver_id);
 
-    // After signing: send a thank-you note letting the renter know the
-    // payment link is on its way. The actual payment link is sent
-    // automatically by `autoSendFirstPaymentLink` below (fire-and-forget).
+    // After signing: thank the renter and let them know staff will review
+    // the submitted agreement + ID before sending a payment link manually.
     try {
       const { data: driver } = await supabaseAdmin
         .from("drivers")
@@ -355,22 +354,19 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
           phone: driver.phone,
           email: driver.email ?? null,
           name: driver.full_name ?? null,
-          sms: "Thank you for choosing Camauto. Your signed agreement and ID have been received. A payment link will arrive by text shortly.",
+          sms: "Thank you for choosing Camauto. Your signed agreement and ID have been received and are under review by our team. We'll text you a payment link once your reservation is approved.",
           emailSubject: "Agreement Received — Camauto Rentals",
           emailHeading: "Thank You for Choosing Camauto",
           emailIntro:
-            "Your signed agreement and ID have been received. A payment link will arrive by text and email shortly so you can complete your reservation.",
+            "Your signed agreement and ID have been received and are now under review by our team. Once approved, we'll send you a payment link by text and email so you can complete your reservation.",
         });
       }
+      // Alert management to review the submission and manually issue the
+      // payment link from the Reservations admin screen.
+      await notifyManagementForReview(rental.id, driver?.full_name ?? null);
     } catch (e) {
       console.error("post-sign notify failed", e);
     }
-
-    // Auto-text the first payment link so the renter can pay immediately.
-    // Awaited (not fire-and-forget) because the Worker terminates background
-    // work once the handler returns — `void` here meant the SMS never sent.
-    // The helper swallows all errors so the signing UI never fails.
-    await autoSendFirstPaymentLink(rental.id);
 
     // Fire-and-forget: generate the signed agreement PDF and text it to the
     // renter. Worker may terminate background work — acceptable for v1.
