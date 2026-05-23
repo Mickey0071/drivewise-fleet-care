@@ -510,6 +510,17 @@ function RentalsPage() {
                       <FileSignature className="mr-1 h-4 w-4" /> View agreement
                     </Button>
                   )}
+                  {r.signatureDataUrl && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadPacket(r)}
+                      disabled={packetId === r.id}
+                    >
+                      <Download className="mr-1 h-4 w-4" />
+                      {packetId === r.id ? "Preparing…" : "Download packet"}
+                    </Button>
+                  )}
                   {r.agreementPdfUrl ? (
                     <Button
                       variant="outline"
