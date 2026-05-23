@@ -368,8 +368,9 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       .update({ insurance_on_file: true })
       .eq("id", rental.driver_id);
 
-    // After signing: send a plain thank-you. No automatic payment link —
-    // staff handles payment manually.
+    // After signing: send a thank-you note letting the renter know the
+    // payment link is on its way. The actual payment link is sent
+    // automatically by `autoSendFirstPaymentLink` below (fire-and-forget).
     try {
       const { data: driver } = await supabaseAdmin
         .from("drivers")
