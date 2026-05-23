@@ -35,7 +35,7 @@ import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { downloadClientPacket } from "@/lib/client-packet.functions";
-import { exportRentalReportPdf, exportRentalReportZip } from "@/lib/rental-report.functions";
+import { exportRentalReportPdf, exportRentalReportZip, exportRentalEvidencePacketPdf } from "@/lib/rental-report.functions";
 import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
@@ -91,14 +91,18 @@ function RentalsPage() {
   const [packetId, setPacketId] = useState<string | null>(null);
   const exportPdfFn = useServerFn(exportRentalReportPdf);
   const exportZipFn = useServerFn(exportRentalReportZip);
+  const exportEvidenceFn = useServerFn(exportRentalEvidencePacketPdf);
   const [reportId, setReportId] = useState<string | null>(null);
 
-  async function handleExportReport(r: Rental, kind: "pdf" | "zip") {
+  async function handleExportReport(r: Rental, kind: "pdf" | "zip" | "evidence") {
     setReportId(r.id);
     try {
-      const res = kind === "pdf"
-        ? await exportPdfFn({ data: { rentalId: r.id } })
-        : await exportZipFn({ data: { rentalId: r.id } });
+      const res =
+        kind === "pdf"
+          ? await exportPdfFn({ data: { rentalId: r.id } })
+          : kind === "evidence"
+            ? await exportEvidenceFn({ data: { rentalId: r.id } })
+            : await exportZipFn({ data: { rentalId: r.id } });
       const bin = atob(res.base64);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -111,7 +115,9 @@ function RentalsPage() {
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success(`Report ${kind.toUpperCase()} downloaded`);
+      const label =
+        kind === "pdf" ? "Full report PDF" : kind === "evidence" ? "Evidence packet PDF" : "Report ZIP";
+      toast.success(`${label} downloaded`);
     } catch (e) {
       toast.error("Export failed", {
         description: e instanceof Error ? e.message : String(e),
@@ -615,7 +621,10 @@ function RentalsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => handleExportReport(r, "pdf")}>
-                        📄 Download as PDF
+                        📄 Download Full Report (PDF)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleExportReport(r, "evidence")}>
+                        📎 Download Evidence Packet (PDF)
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleExportReport(r, "zip")}>
                         🗂️ Download as ZIP (PDF + images + CSV)
