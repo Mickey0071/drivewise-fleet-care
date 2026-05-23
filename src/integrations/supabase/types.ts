@@ -697,6 +697,69 @@ export type Database = {
         }
         Relationships: []
       }
+      refund_requests: {
+        Row: {
+          amount: number
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          denial_reason: string | null
+          error: string | null
+          id: string
+          payment_id: string | null
+          reason: string | null
+          rental_id: string
+          requested_by: string | null
+          requester_name: string | null
+          requester_role: string
+          status: string
+          stripe_charge_id: string | null
+          stripe_payment_intent_id: string | null
+          stripe_refund_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          denial_reason?: string | null
+          error?: string | null
+          id?: string
+          payment_id?: string | null
+          reason?: string | null
+          rental_id: string
+          requested_by?: string | null
+          requester_name?: string | null
+          requester_role: string
+          status?: string
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          denial_reason?: string | null
+          error?: string | null
+          id?: string
+          payment_id?: string | null
+          reason?: string | null
+          rental_id?: string
+          requested_by?: string | null
+          requester_name?: string | null
+          requester_role?: string
+          status?: string
+          stripe_charge_id?: string | null
+          stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reminder_log: {
         Row: {
           id: string
