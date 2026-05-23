@@ -3,8 +3,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { getMyRentalDetail } from "@/lib/my-rentals.functions";
 import { downloadClientPacket } from "@/lib/client-packet.functions";
+import { createCustomRenterPayment } from "@/lib/custom-renter-payment.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   ArrowLeft, Loader2, FileText, IdCard, Receipt, Download,
   Camera, AlertTriangle, CheckCircle2, Image as ImageIcon, CreditCard,
@@ -38,9 +41,13 @@ function MyRentalDetailPage() {
   const { rentalId } = Route.useParams();
   const fetchDetail = useServerFn(getMyRentalDetail);
   const downloadPacket = useServerFn(downloadClientPacket);
+  const createPayment = useServerFn(createCustomRenterPayment);
   const [d, setD] = useState<Detail | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [payAmount, setPayAmount] = useState("");
+  const [payNote, setPayNote] = useState("");
+  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     fetchDetail({ data: { rentalId } })
@@ -93,6 +100,28 @@ function MyRentalDetailPage() {
   const baseRental = Math.max(0, totalPaid - violationsTotal);
   const lastPaidWithCard = [...paid].reverse().find((p: any) => p.method && /card|stripe/i.test(p.method));
   const returnInspection = inspections.find((i: any) => i.is_return_inspection || i.type === "check-in");
+
+  const canPay = r.reservation_status === "active" || r.reservation_status === "returned";
+
+  async function handlePay() {
+    const amt = Number(payAmount);
+    if (!Number.isFinite(amt) || amt < 1) {
+      toast.error("Enter an amount of at least $1");
+      return;
+    }
+    if (amt > 10000) {
+      toast.error("Maximum is $10,000");
+      return;
+    }
+    setPaying(true);
+    try {
+      const { url } = await createPayment({ data: { rentalId, amount: amt, note: payNote.trim() || undefined } });
+      window.location.href = url;
+    } catch (e) {
+      toast.error("Couldn't start payment", { description: e instanceof Error ? e.message : String(e) });
+      setPaying(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -189,6 +218,7 @@ function MyRentalDetailPage() {
                   Due {fmtDate(p.due_date)}
                   {p.paid_date && ` · paid ${fmtDate(p.paid_date)}${p.method ? ` via ${p.method}` : ""}`}
                 </div>
+                {p.note && <div className="text-xs italic text-muted-foreground">{p.note}</div>}
               </div>
               <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                 p.status === "paid" ? "bg-emerald-100 text-emerald-700" :
@@ -197,8 +227,58 @@ function MyRentalDetailPage() {
               }`}>{p.status}</span>
             </div>
           ))}
+          <div className="bg-muted/30 p-3 text-xs text-muted-foreground">
+            Total paid on this rental: <span className="font-semibold text-foreground">{fmtMoney(totalPaid)}</span>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Make a custom payment */}
+      {canPay && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Make a payment</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 p-4">
+            <p className="text-xs text-muted-foreground">
+              Pay any amount toward an extension, violation, or balance owed. $1–$10,000.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-[140px_1fr]">
+              <div>
+                <Label htmlFor="pay-amount" className="text-xs">Amount (USD)</Label>
+                <Input
+                  id="pay-amount"
+                  type="number"
+                  inputMode="decimal"
+                  min="1"
+                  max="10000"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={payAmount}
+                  onChange={(e) => setPayAmount(e.target.value)}
+                  disabled={paying}
+                />
+              </div>
+              <div>
+                <Label htmlFor="pay-note" className="text-xs">What's this payment for? (optional)</Label>
+                <Input
+                  id="pay-note"
+                  type="text"
+                  placeholder="Extension, Violation, Early payment…"
+                  maxLength={200}
+                  value={payNote}
+                  onChange={(e) => setPayNote(e.target.value)}
+                  disabled={paying}
+                />
+              </div>
+            </div>
+            <Button onClick={handlePay} disabled={paying || !payAmount} className="w-full sm:w-auto">
+              {paying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+              Pay Now
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Inspection history */}
       <Card>
