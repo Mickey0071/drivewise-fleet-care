@@ -35,13 +35,33 @@ function SignPage() {
   const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
+    console.log("[sign] mount, token:", token);
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        console.error("[sign] fetchInfo timeout after 8s");
+        setLoadError(
+          "Page took too long to load. Please try again or contact support: 1-866-625-5550",
+        );
+      }
+    }, 8000);
+    console.log("[sign] calling fetchInfo...");
     fetchInfo({ data: { token } })
       .then((r) => {
+        settled = true;
+        clearTimeout(timeout);
+        console.log("[sign] fetchInfo success:", r);
         setInfo(r);
         if (r.driverName) setSignedBy(r.driverName);
         if (r.alreadySigned) setDone(true);
       })
-      .catch((e) => setLoadError(e instanceof Error ? e.message : String(e)));
+      .catch((e) => {
+        settled = true;
+        clearTimeout(timeout);
+        console.error("[sign] fetchInfo error:", e);
+        setLoadError(e instanceof Error ? e.message : String(e));
+      });
+    return () => clearTimeout(timeout);
   }, [token, fetchInfo]);
 
   // Auto-advance to agreement step once both ID and selfie are uploaded.
@@ -87,8 +107,19 @@ function SignPage() {
         <Card className="p-6 text-center">
           <p className="text-destructive font-medium">{loadError}</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Please contact Camauto Rentals if you believe this is a mistake.
+            Please try again, or contact Camauto Rentals support at{" "}
+            <a href="tel:18666255550" className="underline font-medium">
+              1-866-625-5550
+            </a>
+            .
           </p>
+          <Button
+            className="mt-4"
+            variant="outline"
+            onClick={() => window.location.reload()}
+          >
+            Try again
+          </Button>
         </Card>
       </div>
     );
