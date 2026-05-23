@@ -5,6 +5,7 @@ import { sendSms } from "@/lib/ghl.server";
 import { sendPaymentLinkInternal } from "@/lib/payment-link.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import type { StripeEnv } from "@/lib/stripe.server";
+import { extractNameFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
 
 /**
  * Auto-send the first payment link right after a renter signs.
@@ -302,12 +303,19 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
     licenseDataUrl: string;
     selfieDataUrl: string;
     signedBy: string;
+    thirdPartyPayer?: boolean;
+    payerIdDataUrl?: string;
+    payerPhone?: string;
   }) => {
     if (!input.token || input.token.length < 8) throw new Error("Invalid token");
     if (!input.signatureDataUrl?.startsWith("data:image/")) throw new Error("Signature required");
     if (!input.licenseDataUrl?.startsWith("data:image/")) throw new Error("License photo required");
     if (!input.selfieDataUrl?.startsWith("data:image/")) throw new Error("Selfie required");
     if (!input.signedBy || input.signedBy.length > 200) throw new Error("Name required");
+    if (input.thirdPartyPayer) {
+      if (!input.payerIdDataUrl?.startsWith("data:image/")) throw new Error("Payer's ID photo required");
+      if (input.payerPhone && input.payerPhone.length > 30) throw new Error("Invalid payer phone");
+    }
     return input;
   })
   .handler(async ({ data }) => {
@@ -329,6 +337,22 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       uploadDataUrl(rental.id, "selfie", data.selfieDataUrl),
     ]);
 
+    // Third-party payer: upload the payer's ID and OCR the name so the
+    // webhook can compare it to the Stripe cardholder_name later.
+    let payerIdUrl: string | null = null;
+    let payerName: string | null = null;
+    if (data.thirdPartyPayer && data.payerIdDataUrl) {
+      try {
+        payerIdUrl = await uploadPayerIdImage(rental.id, data.payerIdDataUrl);
+        payerName = await extractNameFromIdImage(data.payerIdDataUrl);
+        console.log(`[sign] third-party payer for ${rental.id}: name="${payerName ?? "?"}"`);
+      } catch (e) {
+        console.error(`[sign] payer ID handling failed for ${rental.id}:`, e);
+        throw new Error("Could not process payer's ID — please retry");
+      }
+      if (!payerName) throw new Error("Could not read the name on the payer's ID — please retake the photo");
+    }
+
     const nowIso = new Date().toISOString();
     const update: {
       client_signature_url: string;
@@ -341,6 +365,10 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       agreement_version: string;
       reservation_status?: string;
       activated_at?: string;
+      third_party_payer?: boolean;
+      payer_id_image_url?: string | null;
+      payer_name_extracted?: string | null;
+      payer_phone?: string | null;
     } = {
       client_signature_url: signatureUrl,
       license_image_url: licenseUrl,
@@ -351,6 +379,14 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       signed_by: data.signedBy,
       agreement_version: "v1.0",
     };
+    if (data.thirdPartyPayer) {
+      update.third_party_payer = true;
+      update.payer_id_image_url = payerIdUrl;
+      update.payer_name_extracted = payerName;
+      update.payer_phone = data.payerPhone?.trim() || null;
+    } else {
+      update.third_party_payer = false;
+    }
     if (rental.reservation_status === "pending" && rental.payment_received) {
       update.reservation_status = "active";
       update.activated_at = nowIso;
