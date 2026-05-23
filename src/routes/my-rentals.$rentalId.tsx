@@ -187,6 +187,24 @@ function MyRentalDetailPage() {
     }
   }
 
+  async function handleRefund() {
+    const amt = Number(refundAmount);
+    if (!Number.isFinite(amt) || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    setRefunding(true);
+    try {
+      const res = await refundFn({ data: { rentalId, amount: amt, reason: refundReason.trim() } });
+      if (res.status === "approved") {
+        toast.success("Refund processed");
+      } else {
+        toast.success("Refund request sent for admin approval");
+      }
+      setRefundOpen(false);
+      setRefundAmount(""); setRefundReason("");
+    } catch (e) {
+      toast.error("Refund failed", { description: e instanceof Error ? e.message : String(e) });
+    } finally { setRefunding(false); }
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex items-center justify-between gap-2">
