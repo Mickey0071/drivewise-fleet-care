@@ -1,12 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
-import { sendSms } from "@/lib/ghl.server";
+import { notifyRenter } from "@/lib/renter-notify.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 
 export interface PaymentLinkInput {
   phone: string;
   name?: string;
+  email?: string | null;
   amountCents: number;
   description: string;
   environment: StripeEnv;
@@ -69,8 +70,24 @@ export async function sendPaymentLinkInternal(data: PaymentLinkInput): Promise<{
   if (!link.url) throw new Error("Stripe did not return a payment link URL");
 
   const amt = `$${(data.amountCents / 100).toFixed(2)}`;
-  const msg = `Rentalprise Auto: ${amt} due. Pay: ${link.url}`;
-  await sendSms(data.phone, msg, data.name ?? null);
+  const msg = `Camauto Rentals: ${amt} due. Pay: ${link.url}`;
+  await notifyRenter({
+    phone: data.phone,
+    email: data.email ?? null,
+    name: data.name ?? null,
+    sms: msg,
+    emailSubject: "Complete Your Payment — Camauto Rentals",
+    emailHeading: "Complete Your Payment",
+    emailIntro:
+      `Your payment of <strong>${amt}</strong> is ready. Tap the button below to pay securely via Stripe.`,
+    emailCta: { label: `Pay ${amt} Now`, url: link.url },
+    emailDetails: [
+      { label: "Amount Due", value: amt },
+      { label: "Description", value: data.description },
+    ],
+    emailFootnote:
+      "This link is single-use. If you have any trouble, reply to this email or call us.",
+  });
 
   return { ok: true, url: link.url };
 }
