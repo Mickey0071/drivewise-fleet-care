@@ -314,6 +314,200 @@ function PnLPage() {
         </Card>
       </div>
 
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-xs uppercase text-muted-foreground">Stripe income</div>
+              <CreditCard className="h-4 w-4 text-primary" />
+            </div>
+            <div className="mt-1 text-2xl font-bold">{fmtMoney(data.stripeTotal)}</div>
+            <div className="text-xs text-muted-foreground">Card &amp; Stripe-charged payments</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-xs uppercase text-muted-foreground">Cash / Zelle income</div>
+              <Banknote className="h-4 w-4 text-success" />
+            </div>
+            <div className="mt-1 text-2xl font-bold">{fmtMoney(data.cashTotal)}</div>
+            <div className="text-xs text-muted-foreground">Recorded cash &amp; Zelle</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-xs uppercase text-muted-foreground">Channel split</div>
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full bg-primary"
+                style={{ width: `${(data.stripeTotal + data.cashTotal) > 0 ? (data.stripeTotal / (data.stripeTotal + data.cashTotal)) * 100 : 0}%` }}
+              />
+            </div>
+            <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+              <span>Stripe {data.stripeTotal + data.cashTotal > 0 ? Math.round((data.stripeTotal / (data.stripeTotal + data.cashTotal)) * 100) : 0}%</span>
+              <span>Cash {data.stripeTotal + data.cashTotal > 0 ? Math.round((data.cashTotal / (data.stripeTotal + data.cashTotal)) * 100) : 0}%</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <Avg label="Income · last 7d" value={data.last7Income} weeks={1} tone="text-success" />
+        <Avg label="Income · last 28d" value={data.last28Income} weeks={4} tone="text-success" />
+        <Avg label="Income · YTD" value={data.ytdIncome} weeks={Math.max(1, Math.ceil((Date.now() - new Date(startOfYear()).getTime()) / (7 * 86400000)))} tone="text-success" />
+        <Avg label="Expenses · last 7d" value={data.last7Expense} weeks={1} tone="text-destructive" />
+        <Avg label="Expenses · last 28d" value={data.last28Expense} weeks={4} tone="text-destructive" />
+      </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <TrendingUp className="h-4 w-4 text-primary" /> Income vs expenses trend
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {data.trend.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No activity in the selected range.</p>
+          ) : (
+            <div className="space-y-3">
+              {data.trend.map(row => (
+                <div key={row.ym}>
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium">{ymLabel(row.ym)}</span>
+                    <span className="text-muted-foreground">
+                      <span className="text-success">{fmtMoney(row.income)}</span>
+                      {" · "}
+                      <span className="text-destructive">{fmtMoney(row.expense)}</span>
+                      {" · "}
+                      <span className={row.net >= 0 ? "text-success" : "text-destructive"}>
+                        {row.net >= 0 ? "+" : ""}{fmtMoney(row.net)}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="mt-1 flex h-3 w-full gap-px overflow-hidden rounded">
+                    <div className="h-full bg-success/70" style={{ width: `${(row.income / trendMax) * 50}%` }} />
+                    <div className="h-full bg-destructive/70" style={{ width: `${(row.expense / trendMax) * 50}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-4 w-4 text-success" /> Monthly income
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {data.incomeRows.length === 0 ? (
+              <p className="p-6 text-sm text-muted-foreground">No income in range.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-2">Month</th>
+                      <th className="px-4 py-2 text-right">Rental</th>
+                      <th className="px-4 py-2 text-right">Extensions</th>
+                      <th className="px-4 py-2 text-right">Violations</th>
+                      <th className="px-4 py-2 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {data.incomeRows.map(r => (
+                      <tr key={r.ym}>
+                        <td className="px-4 py-2 font-medium">{ymLabel(r.ym)}</td>
+                        <td className="px-4 py-2 text-right">{fmtMoney(r.rental)}</td>
+                        <td className="px-4 py-2 text-right">{fmtMoney(r.extensions)}</td>
+                        <td className="px-4 py-2 text-right">{fmtMoney(r.violations)}</td>
+                        <td className="px-4 py-2 text-right font-semibold text-success">{fmtMoney(r.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingDown className="h-4 w-4 text-destructive" /> Monthly expenses
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {data.expenseRows.length === 0 ? (
+              <p className="p-6 text-sm text-muted-foreground">No expenses in range.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-2">Month</th>
+                      <th className="px-4 py-2 text-right">Maintenance</th>
+                      <th className="px-4 py-2 text-right">Payroll</th>
+                      <th className="px-4 py-2 text-right">Other</th>
+                      <th className="px-4 py-2 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {data.expenseRows.map(r => (
+                      <tr key={r.ym}>
+                        <td className="px-4 py-2 font-medium">{ymLabel(r.ym)}</td>
+                        <td className="px-4 py-2 text-right">{fmtMoney(r.maintenance)}</td>
+                        <td className="px-4 py-2 text-right">{fmtMoney(r.payroll)}</td>
+                        <td className="px-4 py-2 text-right">{fmtMoney(r.other)}</td>
+                        <td className="px-4 py-2 text-right font-semibold text-destructive">{fmtMoney(r.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">Monthly net P&amp;L</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2">Month</th>
+                  <th className="px-4 py-2 text-right">Income</th>
+                  <th className="px-4 py-2 text-right">Expenses</th>
+                  <th className="px-4 py-2 text-right">Net</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {data.trend.length === 0 ? (
+                  <tr><td colSpan={4} className="p-4 text-center text-muted-foreground">No data in range.</td></tr>
+                ) : [...data.trend].reverse().map(row => (
+                  <tr key={row.ym}>
+                    <td className="px-4 py-2 font-medium">{ymLabel(row.ym)}</td>
+                    <td className="px-4 py-2 text-right text-success">{fmtMoney(row.income)}</td>
+                    <td className="px-4 py-2 text-right text-destructive">{fmtMoney(row.expense)}</td>
+                    <td className={`px-4 py-2 text-right font-semibold ${row.net >= 0 ? "text-success" : "text-destructive"}`}>
+                      {row.net >= 0 ? "+" : ""}{fmtMoney(row.net)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader><CardTitle className="text-base">Revenue</CardTitle></CardHeader>
