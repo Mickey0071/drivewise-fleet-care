@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicles, vehicleById, driverById, payments, violations, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, markReturnedAwaitingInspection, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,6 +38,7 @@ import { downloadClientPacket } from "@/lib/client-packet.functions";
 import { exportRentalReportPdf, exportRentalReportZip, exportRentalEvidencePacketPdf } from "@/lib/rental-report.functions";
 import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
+import { closeoutRental } from "@/lib/return.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
@@ -1140,10 +1141,12 @@ function DeliveryDialog({ rental, onClose }: { rental: Rental | null; onClose: (
 }
 
 function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
+  const router = useRouter();
   const v = rental ? vehicleById(rental.vehicleId) : null;
   const d = rental ? driverById(rental.driverId) : null;
   const checkout = rental ? getInspectionsForRental(rental.id).find(i => i.type === "check-out") : undefined;
   const sendSmsFn = useServerFn(sendRentalSms);
+  const closeout = useServerFn(closeoutRental);
   const settings = useAgreementSettings();
   const [mileage, setMileage] = useState(0);
   const [fuelLevel, setFuelLevel] = useState(100);
@@ -1161,7 +1164,7 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
       setCheck({});
     }
   }, [rental, v]);
-  function confirm() {
+  async function confirm() {
     if (!rental || !v) return;
     if (!completedBy.trim()) { toast.error("Who received the vehicle?"); return; }
     if (mileage < (checkout?.mileage ?? 0)) { toast.error("Return mileage can't be less than delivery mileage"); return; }
@@ -1170,7 +1173,7 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
       toast.error("Complete the return checklist", { description: `${missing.length} item(s) remaining` });
       return;
     }
-    addInspection({
+    const inspection = addInspection({
       vehicleId: v.id,
       rentalId: rental.id,
       type: "check-in",
@@ -1212,13 +1215,27 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
       sendSmsFn({ data: { phone: d.phone, message: confirmMsg, name: d.fullName } })
         .catch(e => console.error("Renter return SMS failed", e));
     }
-    const checklistSummary = `Return checklist: ${RETURN_CHECKLIST.length}/${RETURN_CHECKLIST.length} verified by ${completedBy.trim()}`;
-    const noteParts = [rental.notes, checklistSummary, notes.trim() ? `Return: ${notes.trim()}` : ""].filter(Boolean);
-    updateRental(rental.id, { notes: noteParts.join(" · ") });
+    try {
+      const res = await closeout({
+        data: {
+          rental_id: rental.id,
+          inspection_id: inspection.id,
+          mileage_in: Number(mileage) || v.mileage,
+        },
+      });
+      if (!res.alreadyReturned) syncLocalReturn(rental.id);
+      const checklistSummary = `Return checklist: ${RETURN_CHECKLIST.length}/${RETURN_CHECKLIST.length} verified by ${completedBy.trim()}`;
+      const noteParts = [rental.notes, checklistSummary, notes.trim() ? `Return: ${notes.trim()}` : ""].filter(Boolean);
+      updateRental(rental.id, { notes: noteParts.join(" · ") });
+      await refreshStoreFromCloud();
+      await router.invalidate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to return rental");
+      return;
+    }
     try { localStorage.removeItem(`return-checklist:${rental.id}`); } catch { /* ignore */ }
-    markReturnedAwaitingInspection(rental.id);
     const drove = checkout ? mileage - checkout.mileage : 0;
-    toast.success("Vehicle returned — awaiting runner inspection", {
+    toast.success("Vehicle returned — vehicle is available in fleet", {
       description: `${v.year} ${v.make} ${v.model}${drove > 0 ? ` · ${drove.toLocaleString()} mi driven` : ""}`,
     });
     onClose();

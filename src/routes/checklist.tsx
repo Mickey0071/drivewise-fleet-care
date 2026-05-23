@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Camera, X, CheckCircle2, Wrench, AlertTriangle, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { useServerFn } from "@tanstack/react-start";
 import { completeTaskFromInspection } from "@/lib/tasks.functions";
 import { closeoutRental } from "@/lib/return.functions";
-import { syncLocalReturn } from "@/lib/mock/store";
+import { refreshStoreFromCloud, syncLocalReturn } from "@/lib/mock/store";
 import { z } from "zod";
 
 export const Route = createFileRoute("/checklist")({
@@ -63,6 +63,7 @@ const ITEM_LABELS: Record<string, string> = (() => {
 
 function ChecklistPage() {
   const navigate = useNavigate();
+  const router = useRouter();
   const { task_id, rental_id, mode } = Route.useSearch();
   const isReturnMode = mode === "return" && !!rental_id;
   const completeTask = useServerFn(completeTaskFromInspection);
@@ -405,6 +406,8 @@ function ChecklistPage() {
           });
           if (!res.alreadyReturned) {
             syncLocalReturn(returnRental.id);
+            await refreshStoreFromCloud();
+            await router.invalidate();
             returnResult = {
               final_charge: res.final_charge ?? null,
               days_used: res.days_used,

@@ -49,6 +49,22 @@ export const closeoutRental = createServerFn({ method: "POST" })
         rental.reservation_status === "completed" ||
         rental.final_charge_amount != null);
     if (trulyClosed) {
+      if (rental.reservation_status !== "returned") {
+        const { data: repairedRental, error: repairErr } = await supabaseAdmin
+          .from("rentals")
+          .update({ reservation_status: "returned" })
+          .eq("id", rental.id)
+          .select("id, reservation_status")
+          .maybeSingle();
+        if (repairErr) throw new Error(`Failed to repair returned status: ${repairErr.message}`);
+        if (!repairedRental || repairedRental.reservation_status !== "returned") {
+          throw new Error("Failed to repair returned status: update did not persist");
+        }
+      }
+      await supabaseAdmin
+        .from("vehicles")
+        .update({ status: "available" })
+        .eq("id", rental.vehicle_id);
       return { ok: true, alreadyReturned: true as const };
     }
 
@@ -117,7 +133,7 @@ export const closeoutRental = createServerFn({ method: "POST" })
       extension_count: extensionCount,
     };
 
-    const { error: upErr } = await supabaseAdmin
+    const { data: updatedRental, error: upErr } = await supabaseAdmin
       .from("rentals")
       .update({
         returned_at: nowIso,
@@ -127,15 +143,25 @@ export const closeoutRental = createServerFn({ method: "POST" })
         final_charge_breakdown: breakdown,
         reservation_status: "returned",
       })
-      .eq("id", rental.id);
+      .eq("id", rental.id)
+      .select("id, reservation_status, returned_at")
+      .maybeSingle();
     if (upErr) throw new Error(`Failed to close out rental: ${upErr.message}`);
+    if (!updatedRental || updatedRental.reservation_status !== "returned") {
+      throw new Error("Failed to close out rental: returned status did not persist");
+    }
 
-    // Flip vehicle back to available if it was rented.
-    await supabaseAdmin
+    // Flip vehicle back to available immediately after the rental is returned.
+    const { data: updatedVehicle, error: vehicleErr } = await supabaseAdmin
       .from("vehicles")
       .update({ status: "available" })
       .eq("id", rental.vehicle_id)
-      .eq("status", "rented");
+      .select("id, status")
+      .maybeSingle();
+    if (vehicleErr) throw new Error(`Failed to mark vehicle available: ${vehicleErr.message}`);
+    if (!updatedVehicle || updatedVehicle.status !== "available") {
+      throw new Error("Failed to mark vehicle available after return");
+    }
 
     // Fire-and-forget SMS receipt to the customer.
     let smsStatus: "sent" | "skipped_no_phone" | "skipped_no_charge" = "skipped_no_phone";
