@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ import { startReturnInspection } from "@/lib/inspection.functions";
 import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
+import { downloadClientPacket } from "@/lib/client-packet.functions";
 import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
@@ -85,6 +86,41 @@ function RentalsPage() {
   const [pdfRegenId, setPdfRegenId] = useState<string | null>(null);
   const genReceiptFn = useServerFn(generateReceiptPdf);
   const [receiptRegenId, setReceiptRegenId] = useState<string | null>(null);
+  const downloadPacketFn = useServerFn(downloadClientPacket);
+  const [packetId, setPacketId] = useState<string | null>(null);
+
+  async function handleDownloadPacket(r: Rental) {
+    setPacketId(r.id);
+    try {
+      const res = await downloadPacketFn({ data: { rentalId: r.id } });
+      const bin = atob(res.base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      if (res.missing.length > 0) {
+        toast.warning("Packet downloaded — some items missing", {
+          description: res.missing.join(", "),
+          duration: 8000,
+        });
+      } else {
+        toast.success("Client packet downloaded");
+      }
+    } catch (e) {
+      toast.error("Download failed", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setPacketId(null);
+    }
+  }
   useStoreVersion();
   // Notify staff when a remote signature arrives (via realtime) and the
   // reservation flips from pending → active.
@@ -472,6 +508,17 @@ function RentalsPage() {
                   {r.signatureDataUrl && (
                     <Button variant="ghost" size="sm" onClick={() => setViewingAgreement(r)}>
                       <FileSignature className="mr-1 h-4 w-4" /> View agreement
+                    </Button>
+                  )}
+                  {r.signatureDataUrl && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadPacket(r)}
+                      disabled={packetId === r.id}
+                    >
+                      <Download className="mr-1 h-4 w-4" />
+                      {packetId === r.id ? "Preparing…" : "Download packet"}
                     </Button>
                   )}
                   {r.agreementPdfUrl ? (
