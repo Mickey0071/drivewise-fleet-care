@@ -86,6 +86,41 @@ function RentalsPage() {
   const [pdfRegenId, setPdfRegenId] = useState<string | null>(null);
   const genReceiptFn = useServerFn(generateReceiptPdf);
   const [receiptRegenId, setReceiptRegenId] = useState<string | null>(null);
+  const downloadPacketFn = useServerFn(downloadClientPacket);
+  const [packetId, setPacketId] = useState<string | null>(null);
+
+  async function handleDownloadPacket(r: Rental) {
+    setPacketId(r.id);
+    try {
+      const res = await downloadPacketFn({ data: { rentalId: r.id } });
+      const bin = atob(res.base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      if (res.missing.length > 0) {
+        toast.warning("Packet downloaded — some items missing", {
+          description: res.missing.join(", "),
+          duration: 8000,
+        });
+      } else {
+        toast.success("Client packet downloaded");
+      }
+    } catch (e) {
+      toast.error("Download failed", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setPacketId(null);
+    }
+  }
   useStoreVersion();
   // Notify staff when a remote signature arrives (via realtime) and the
   // reservation flips from pending → active.
