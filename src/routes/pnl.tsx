@@ -626,6 +626,18 @@ function Big({ label, value, tone }: { label: string; value: number; tone: strin
     <div className={`mt-1 text-2xl font-bold ${tone}`}>{fmtMoney(value)}</div>
   </CardContent></Card>;
 }
+function Avg({ label, value, weeks, tone }: { label: string; value: number; weeks: number; tone: string }) {
+  const perWeek = weeks > 0 ? value / weeks : 0;
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-xs uppercase text-muted-foreground">{label}</div>
+        <div className={`mt-1 text-xl font-bold ${tone}`}>{fmtMoney(value)}</div>
+        <div className="text-xs text-muted-foreground">~{fmtMoney(perWeek)} / week</div>
+      </CardContent>
+    </Card>
+  );
+}
 function Bar({ label, value, total, tone }: { label: string; value: number; total: number; tone: string }) {
   const pct = total > 0 ? (value / total) * 100 : 0;
   return (
