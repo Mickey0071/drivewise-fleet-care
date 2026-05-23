@@ -401,7 +401,9 @@ function PhotoCapture({ label, onChange, value, useCamera }: {
         type="file"
         accept="image/*"
         capture={useCamera ? "user" : undefined}
-        className="hidden"
+        // iOS Safari ignores .click() on display:none inputs.
+        // Use visually-hidden positioning instead so the camera/file picker opens reliably.
+        style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none", overflow: "hidden" }}
         onChange={onFile}
       />
       {value ? (
