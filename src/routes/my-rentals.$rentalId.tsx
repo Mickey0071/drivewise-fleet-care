@@ -5,6 +5,7 @@ import { getMyRentalDetail } from "@/lib/my-rentals.functions";
 import { downloadClientPacket } from "@/lib/client-packet.functions";
 import { createCustomRenterPayment } from "@/lib/custom-renter-payment.functions";
 import { requestRentalExtension, cancelRentalByAdmin } from "@/lib/renter-actions.functions";
+import { createRefundRequest } from "@/lib/refunds.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -19,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   ArrowLeft, Loader2, FileText, IdCard, Receipt, Download,
-  AlertTriangle, Image as ImageIcon, CreditCard, CalendarPlus, MessageSquare, Ban,
+  AlertTriangle, Image as ImageIcon, CreditCard, CalendarPlus, MessageSquare, Ban, Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -53,8 +54,11 @@ function MyRentalDetailPage() {
   const createPayment = useServerFn(createCustomRenterPayment);
   const extendRentalFn = useServerFn(requestRentalExtension);
   const cancelRentalFn = useServerFn(cancelRentalByAdmin);
+  const refundFn = useServerFn(createRefundRequest);
   const { role } = useAuth();
   const isStaff = role === "admin" || role === "runner" || role === "va";
+  const isAdmin = role === "admin";
+  const canRefund = role === "admin" || role === "va";
   const [d, setD] = useState<Detail | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -68,6 +72,10 @@ function MyRentalDetailPage() {
   const [supportMsg, setSupportMsg] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refunding, setRefunding] = useState(false);
 
   useEffect(() => {
     fetchDetail({ data: { rentalId } })
@@ -179,6 +187,24 @@ function MyRentalDetailPage() {
     }
   }
 
+  async function handleRefund() {
+    const amt = Number(refundAmount);
+    if (!Number.isFinite(amt) || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    setRefunding(true);
+    try {
+      const res = await refundFn({ data: { rentalId, amount: amt, reason: refundReason.trim() } });
+      if (res.status === "approved") {
+        toast.success("Refund processed");
+      } else {
+        toast.success("Refund request sent for admin approval");
+      }
+      setRefundOpen(false);
+      setRefundAmount(""); setRefundReason("");
+    } catch (e) {
+      toast.error("Refund failed", { description: e instanceof Error ? e.message : String(e) });
+    } finally { setRefunding(false); }
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex items-center justify-between gap-2">
@@ -247,6 +273,12 @@ function MyRentalDetailPage() {
           {isStaff && isActive && (
             <Button variant="destructive" onClick={() => setCancelOpen(true)}>
               <Ban className="mr-2 h-4 w-4" /> Cancel Rental
+            </Button>
+          )}
+          {canRefund && (
+            <Button variant="outline" onClick={() => setRefundOpen(true)}>
+              <Undo2 className="mr-2 h-4 w-4" />
+              {isAdmin ? "Refund" : "Request Refund"}
             </Button>
           )}
         </CardContent>
@@ -445,6 +477,52 @@ function MyRentalDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Refund dialog */}
+      <Dialog open={refundOpen} onOpenChange={(o) => !refunding && setRefundOpen(o)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isAdmin ? "Issue refund" : "Request refund"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              {isAdmin
+                ? "Refunds the amount to the renter's last successful card payment."
+                : "This request will be sent to management for approval before the refund is processed."}
+            </p>
+            <div>
+              <Label htmlFor="refund-amt" className="text-xs">Amount (USD)</Label>
+              <Input
+                id="refund-amt"
+                type="number" min="0.01" step="0.01"
+                placeholder="0.00"
+                value={refundAmount}
+                onChange={(e) => setRefundAmount(e.target.value)}
+                disabled={refunding}
+              />
+            </div>
+            <div>
+              <Label htmlFor="refund-reason" className="text-xs">Reason</Label>
+              <Textarea
+                id="refund-reason"
+                rows={3}
+                placeholder="Why is this refund being issued?"
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                disabled={refunding}
+                maxLength={500}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefundOpen(false)} disabled={refunding}>Cancel</Button>
+            <Button onClick={handleRefund} disabled={refunding || !refundAmount}>
+              {refunding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Undo2 className="mr-2 h-4 w-4" />}
+              {isAdmin ? "Issue refund" : "Submit for approval"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
