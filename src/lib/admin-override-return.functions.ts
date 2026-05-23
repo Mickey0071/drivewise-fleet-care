@@ -50,6 +50,22 @@ export const adminOverrideReturn = createServerFn({ method: "POST" })
       (rental.reservation_status === "returned" ||
         rental.reservation_status === "completed")
     ) {
+      if (rental.reservation_status !== "returned") {
+        const { data: repairedRental, error: repairErr } = await supabaseAdmin
+          .from("rentals")
+          .update({ reservation_status: "returned" })
+          .eq("id", rental.id)
+          .select("id, reservation_status")
+          .maybeSingle();
+        if (repairErr) throw new Error(`Failed to repair returned status: ${repairErr.message}`);
+        if (!repairedRental || repairedRental.reservation_status !== "returned") {
+          throw new Error("Failed to repair returned status: update did not persist");
+        }
+      }
+      await supabaseAdmin
+        .from("vehicles")
+        .update({ status: "available" })
+        .eq("id", rental.vehicle_id);
       return { ok: true, alreadyReturned: true as const };
     }
 
