@@ -1,0 +1,2 @@
+ALTER TABLE public.vendors ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE public.vendors ADD COLUMN IF NOT EXISTS notes TEXT;
