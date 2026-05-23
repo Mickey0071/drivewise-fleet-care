@@ -235,7 +235,7 @@ export const approveRefundRequest = createServerFn({ method: "POST" })
         await sendSms(
           requesterProfile.phone,
           `Camauto: Your refund of ${fmtMoney(Number(req.amount))} for rental ${req.rental_id} was APPROVED by ${adminName} and processed.`,
-          req.requester_name,
+          req.requester_name ?? null,
         );
       }
     } catch (e) { console.error("[approveRefundRequest] VA SMS failed", e); }
@@ -272,7 +272,7 @@ export const denyRefundRequest = createServerFn({ method: "POST" })
         await sendSms(
           requesterProfile.phone,
           `Camauto: Your refund request of ${fmtMoney(Number(req.amount))} for rental ${req.rental_id} was DENIED by ${adminName}${data.reason ? ` — "${data.reason}"` : ""}.`,
-          req.requester_name,
+          req.requester_name ?? null,
         );
       }
     } catch (e) { console.error("[denyRefundRequest] VA SMS failed", e); }
