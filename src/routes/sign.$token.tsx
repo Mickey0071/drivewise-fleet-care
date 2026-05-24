@@ -2,7 +2,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { getRentalForSigning, submitSigningPackage } from "@/lib/sign.functions";
+import { getRentalForSigning, submitSigningPackage, verifyLicenseName } from "@/lib/sign.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { toast } from "sonner";
-import { CheckCircle2, Loader2, ArrowLeft, ArrowRight, CreditCard } from "lucide-react";
+import { CheckCircle2, Loader2, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/sign/$token")({
   head: () => ({ meta: [{ title: "Complete your reservation — Camauto Rentals" }] }),
@@ -23,19 +23,19 @@ function SignPage() {
   const { token } = Route.useParams();
   const fetchInfo = useServerFn(getRentalForSigning);
   const submit = useServerFn(submitSigningPackage);
+  const verifyLicense = useServerFn(verifyLicenseName);
   const [info, setInfo] = useState<RentalInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [signedBy, setSignedBy] = useState("");
   const [sig, setSig] = useState<string | null>(null);
   const [licenseUrl, setLicenseUrl] = useState<string | null>(null);
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
-  const [thirdPartyPayer, setThirdPartyPayer] = useState<null | boolean>(null);
-  const [payerIdUrl, setPayerIdUrl] = useState<string | null>(null);
-  const [payerPhone, setPayerPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
-  const [step, setStep] = useState<"identity" | "payer" | "agreement">("identity");
+  const [step, setStep] = useState<"identity" | "agreement">("identity");
   const [verifying, setVerifying] = useState(false);
+  const [licenseError, setLicenseError] = useState<string | null>(null);
+  const [checkingLicense, setCheckingLicense] = useState(false);
 
   useEffect(() => {
     console.log("[sign] mount, token:", token);
@@ -67,25 +67,39 @@ function SignPage() {
     return () => clearTimeout(timeout);
   }, [token, fetchInfo]);
 
-  // Auto-advance to agreement step once both ID and selfie are uploaded.
-  useEffect(() => {
-    if (step !== "identity") return;
-    if (!licenseUrl || !selfieUrl) return;
-    setVerifying(true);
-    const t = setTimeout(() => {
-      setVerifying(false);
-      setStep("agreement");
-    }, 900);
-    return () => clearTimeout(t);
-  }, [licenseUrl, selfieUrl, step]);
+  // Verify the uploaded license name matches the renter on file. If it
+  // doesn't match, reject the upload and ask them to re-upload the correct ID.
+  async function onLicenseChange(dataUrl: string | null) {
+    setLicenseError(null);
+    if (!dataUrl) { setLicenseUrl(null); return; }
+    setCheckingLicense(true);
+    try {
+      const result = await verifyLicense({ data: { token, licenseDataUrl: dataUrl } });
+      if (!result.match) {
+        const msg = result.reason === "unreadable"
+          ? "We couldn't read the name on that ID. Please upload a clearer photo of your driver's license."
+          : `The name on this ID (${result.extractedName ?? "unknown"}) does not match the renter on file (${result.expectedName}). Please upload your correct driver's license.`;
+        setLicenseError(msg);
+        setLicenseUrl(null);
+        toast.error("ID does not match", { description: msg });
+        return;
+      }
+      setLicenseUrl(dataUrl);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not verify ID";
+      setLicenseError(msg);
+      setLicenseUrl(null);
+      toast.error(msg);
+    } finally {
+      setCheckingLicense(false);
+    }
+  }
 
   async function handleSubmit() {
     if (!sig) return toast.error("Please sign the agreement");
     if (!licenseUrl) return toast.error("Please upload your driver's license");
     if (!selfieUrl) return toast.error("Please take a selfie");
     if (!signedBy.trim()) return toast.error("Please type your full name");
-    if (thirdPartyPayer === null) return toast.error("Please answer the payment question");
-    if (thirdPartyPayer && !payerIdUrl) return toast.error("Please upload the payer's ID");
     setSubmitting(true);
     try {
       await submit({
@@ -95,9 +109,6 @@ function SignPage() {
           licenseDataUrl: licenseUrl,
           selfieDataUrl: selfieUrl,
           signedBy: signedBy.trim(),
-          thirdPartyPayer: !!thirdPartyPayer,
-          payerIdDataUrl: thirdPartyPayer && payerIdUrl ? payerIdUrl : undefined,
-          payerPhone: thirdPartyPayer ? payerPhone.trim() || undefined : undefined,
         },
       });
       setDone(true);
