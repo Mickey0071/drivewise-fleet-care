@@ -20,6 +20,7 @@ import { Route as RentalAgreementRouteImport } from './routes/rental-agreement'
 import { Route as RefundApprovalsRouteImport } from './routes/refund-approvals'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PnlRouteImport } from './routes/pnl'
+import { Route as PendingAgreementsRouteImport } from './routes/pending-agreements'
 import { Route as PayrollReturnRouteImport } from './routes/payroll-return'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as PaymentsRouteImport } from './routes/payments'
@@ -109,6 +110,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const PnlRoute = PnlRouteImport.update({
   id: '/pnl',
   path: '/pnl',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PendingAgreementsRoute = PendingAgreementsRouteImport.update({
+  id: '/pending-agreements',
+  path: '/pending-agreements',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PayrollReturnRoute = PayrollReturnRouteImport.update({
@@ -310,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
+  '/pending-agreements': typeof PendingAgreementsRoute
   '/pnl': typeof PnlRoute
   '/profile': typeof ProfileRoute
   '/refund-approvals': typeof RefundApprovalsRoute
@@ -358,6 +365,7 @@ export interface FileRoutesByTo {
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
+  '/pending-agreements': typeof PendingAgreementsRoute
   '/pnl': typeof PnlRoute
   '/profile': typeof ProfileRoute
   '/refund-approvals': typeof RefundApprovalsRoute
@@ -407,6 +415,7 @@ export interface FileRoutesById {
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
+  '/pending-agreements': typeof PendingAgreementsRoute
   '/pnl': typeof PnlRoute
   '/profile': typeof ProfileRoute
   '/refund-approvals': typeof RefundApprovalsRoute
@@ -457,6 +466,7 @@ export interface FileRouteTypes {
     | '/payments'
     | '/payroll'
     | '/payroll-return'
+    | '/pending-agreements'
     | '/pnl'
     | '/profile'
     | '/refund-approvals'
@@ -505,6 +515,7 @@ export interface FileRouteTypes {
     | '/payments'
     | '/payroll'
     | '/payroll-return'
+    | '/pending-agreements'
     | '/pnl'
     | '/profile'
     | '/refund-approvals'
@@ -553,6 +564,7 @@ export interface FileRouteTypes {
     | '/payments'
     | '/payroll'
     | '/payroll-return'
+    | '/pending-agreements'
     | '/pnl'
     | '/profile'
     | '/refund-approvals'
@@ -602,6 +614,7 @@ export interface RootRouteChildren {
   PaymentsRoute: typeof PaymentsRoute
   PayrollRoute: typeof PayrollRoute
   PayrollReturnRoute: typeof PayrollReturnRoute
+  PendingAgreementsRoute: typeof PendingAgreementsRoute
   PnlRoute: typeof PnlRoute
   ProfileRoute: typeof ProfileRoute
   RefundApprovalsRoute: typeof RefundApprovalsRoute
@@ -706,6 +719,13 @@ declare module '@tanstack/react-router' {
       path: '/pnl'
       fullPath: '/pnl'
       preLoaderRoute: typeof PnlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pending-agreements': {
+      id: '/pending-agreements'
+      path: '/pending-agreements'
+      fullPath: '/pending-agreements'
+      preLoaderRoute: typeof PendingAgreementsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/payroll-return': {
@@ -998,6 +1018,7 @@ const rootRouteChildren: RootRouteChildren = {
   PaymentsRoute: PaymentsRoute,
   PayrollRoute: PayrollRoute,
   PayrollReturnRoute: PayrollReturnRoute,
+  PendingAgreementsRoute: PendingAgreementsRoute,
   PnlRoute: PnlRoute,
   ProfileRoute: ProfileRoute,
   RefundApprovalsRoute: RefundApprovalsRoute,
