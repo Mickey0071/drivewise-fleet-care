@@ -59,6 +59,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const [rentals, setRentals] = useState<Rental[]>([]);
 
   const [assignedTo, setAssignedTo] = useState<string>("");
+  const [runnerSearch, setRunnerSearch] = useState("");
   const [taskType, setTaskType] = useState<TaskTypeKey>(prefill?.task_type ?? "other");
   const [vehicleId, setVehicleId] = useState<string>(prefill?.linked_vehicle_id ?? "");
   const [rentalId, setRentalId] = useState<string>(prefill?.linked_rental_id ?? "");
@@ -109,6 +110,15 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   }, [open, loadRunners]);
 
   const selectedRunner = useMemo(() => runners.find((r) => r.id === assignedTo), [runners, assignedTo]);
+  const filteredRunners = useMemo(() => {
+    const q = runnerSearch.trim().toLowerCase();
+    if (!q) return runners;
+    return runners.filter((r) => {
+      const hay = [r.first_name, r.last_name, r.username, r.phone].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }, [runners, runnerSearch]);
+  const selectedIsStaffOnly = assignedTo.startsWith("staff:");
   const selectedVehicle = useMemo(() => vehicles.find((v) => v.id === vehicleId), [vehicles, vehicleId]);
 
   const suggestedDescription = useMemo(() => {
@@ -128,6 +138,10 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     try {
       if (!assignedTo) {
         toast.error("Pick a runner");
+        return;
+      }
+      if (selectedIsStaffOnly) {
+        toast.error("This runner has no login yet. Go to Admin → Users to create their account first.");
         return;
       }
       setBusy(true);
@@ -171,20 +185,36 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         <div className="space-y-3">
           <div>
             <Label>Assigned Runner</Label>
+            <Input
+              value={runnerSearch}
+              onChange={(e) => setRunnerSearch(e.target.value)}
+              placeholder="Search runners by name or phone…"
+              className="mb-2"
+            />
             <Select value={assignedTo} onValueChange={setAssignedTo}>
               <SelectTrigger><SelectValue placeholder="Pick a runner…" /></SelectTrigger>
               <SelectContent>
                 {runnersLoading && <div className="px-3 py-2 text-xs text-muted-foreground">Loading runners…</div>}
-                {!runnersLoading && runners.length === 0 && (
+                {!runnersLoading && filteredRunners.length === 0 && runners.length === 0 && (
                   <div className="px-3 py-2 text-xs text-muted-foreground">
                     {runnersError ? `Couldn't load runners: ${runnersError}` : "No users with the Runner role yet. Add one in Admin → Users."}
                   </div>
                 )}
-                {runners.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>{runnerLabel(r)}{r.phone ? "" : " — no phone"}</SelectItem>
+                {!runnersLoading && filteredRunners.length === 0 && runners.length > 0 && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">No matches for "{runnerSearch}".</div>
+                )}
+                {filteredRunners.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {runnerLabel(r)}{r.phone ? "" : " — no phone"}{r.id.startsWith("staff:") ? " · needs login" : ""}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {selectedIsStaffOnly && (
+              <p className="mt-1 text-xs text-amber-600">
+                ⚠️ This staff runner has no login account. Create one in <a href="/admin/users" className="underline">Admin → Users</a> before assigning tasks.
+              </p>
+            )}
             {!runnersLoading && runners.length === 0 && (
               <p className="mt-1 text-xs text-amber-600">
                 {runnersError
