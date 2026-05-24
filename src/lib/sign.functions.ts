@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
-import { extractNameFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
+import { extractNameFromIdImage, extractAddressFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
 
 function genToken() {
