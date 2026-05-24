@@ -1,18 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { Car, Users, DollarSign, Wrench, AlertTriangle, TrendingUp, Clock } from "lucide-react";
+import { Car, Users, DollarSign, Wrench, AlertTriangle, TrendingUp, Clock, FileSignature } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { vehicles, payments, maintenance, drivers, rentals, fmtMoney, fmtDate, vehicleById, driverById } from "@/lib/mock/data";
-import { isVehicleBookable } from "@/lib/mock/store";
+import { isVehicleBookable, useStoreVersion } from "@/lib/mock/store";
 
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
 function Index() {
+  useStoreVersion();
   const counts = {
     available: vehicles.filter(v => isVehicleBookable(v.id)).length,
     rented: vehicles.filter(v => !isVehicleBookable(v.id) && v.status === "rented").length,
@@ -26,6 +27,7 @@ function Index() {
   const overdue = payments.filter(p => p.status === "missed" || p.status === "late");
   const overdueAmount = overdue.reduce((s, p) => s + p.amount, 0);
   const serviceAlerts = maintenance.filter(m => m.nextServiceDue && new Date(m.nextServiceDue) <= weekEnd);
+  const pendingReview = rentals.filter(r => r.staffReviewStatus === "pending");
 
   return (
     <div>
@@ -38,6 +40,33 @@ function Index() {
           </Button>
         }
       />
+
+      {pendingReview.length > 0 && (
+        <Link
+          to="/rentals"
+          search={{ review: "pending" } as any}
+          className="mb-4 flex items-center justify-between rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 transition-colors hover:bg-amber-500/15"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-400">
+              <FileSignature className="h-4 w-4" />
+            </span>
+            <div>
+              <div className="text-sm font-semibold">
+                {pendingReview.length} {pendingReview.length === 1 ? "Agreement" : "Agreements"} Pending Review
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {pendingReview.slice(0, 3).map(r => {
+                  const d = driverById(r.driverId); const v = vehicleById(r.vehicleId);
+                  return `${d?.fullName ?? r.driverId} · ${v ? `${v.year} ${v.make} ${v.model}` : r.vehicleId}${r.clientSignedAt ? ` · signed ${fmtDate(r.clientSignedAt)}` : ""}`;
+                }).join(" — ")}
+                {pendingReview.length > 3 && ` — +${pendingReview.length - 3} more`}
+              </div>
+            </div>
+          </div>
+          <span className="inline-flex items-center rounded-md bg-amber-500 px-3 py-1 text-xs font-semibold text-white">Review</span>
+        </Link>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard label="Available" value={counts.available} tone="success" icon={Car} to="/fleet" search={{ status: "available" }} />
