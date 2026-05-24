@@ -720,7 +720,6 @@ function RentalsPage() {
         rental={violationFor}
         onClose={() => setViolationFor(null)}
       />
-      <ReceiptDialog rental={receipt} onClose={() => setReceipt(null)} />
       <NotifyRenterDialog
         open={!!chatting}
         onOpenChange={(o) => !o && setChatting(null)}
