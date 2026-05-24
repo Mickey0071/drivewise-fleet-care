@@ -2,7 +2,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { getRentalForSigning, submitSigningPackage } from "@/lib/sign.functions";
+import { getRentalForSigning, submitSigningPackage, verifyLicenseName } from "@/lib/sign.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { toast } from "sonner";
-import { CheckCircle2, Loader2, ArrowLeft, ArrowRight, CreditCard } from "lucide-react";
+import { CheckCircle2, Loader2, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/sign/$token")({
   head: () => ({ meta: [{ title: "Complete your reservation — Camauto Rentals" }] }),
@@ -23,19 +23,19 @@ function SignPage() {
   const { token } = Route.useParams();
   const fetchInfo = useServerFn(getRentalForSigning);
   const submit = useServerFn(submitSigningPackage);
+  const verifyLicense = useServerFn(verifyLicenseName);
   const [info, setInfo] = useState<RentalInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [signedBy, setSignedBy] = useState("");
   const [sig, setSig] = useState<string | null>(null);
   const [licenseUrl, setLicenseUrl] = useState<string | null>(null);
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
-  const [thirdPartyPayer, setThirdPartyPayer] = useState<null | boolean>(null);
-  const [payerIdUrl, setPayerIdUrl] = useState<string | null>(null);
-  const [payerPhone, setPayerPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
-  const [step, setStep] = useState<"identity" | "payer" | "agreement">("identity");
+  const [step, setStep] = useState<"identity" | "agreement">("identity");
   const [verifying, setVerifying] = useState(false);
+  const [licenseError, setLicenseError] = useState<string | null>(null);
+  const [checkingLicense, setCheckingLicense] = useState(false);
 
   useEffect(() => {
     console.log("[sign] mount, token:", token);
@@ -67,25 +67,39 @@ function SignPage() {
     return () => clearTimeout(timeout);
   }, [token, fetchInfo]);
 
-  // Auto-advance to agreement step once both ID and selfie are uploaded.
-  useEffect(() => {
-    if (step !== "identity") return;
-    if (!licenseUrl || !selfieUrl) return;
-    setVerifying(true);
-    const t = setTimeout(() => {
-      setVerifying(false);
-      setStep("agreement");
-    }, 900);
-    return () => clearTimeout(t);
-  }, [licenseUrl, selfieUrl, step]);
+  // Verify the uploaded license name matches the renter on file. If it
+  // doesn't match, reject the upload and ask them to re-upload the correct ID.
+  async function onLicenseChange(dataUrl: string | null) {
+    setLicenseError(null);
+    if (!dataUrl) { setLicenseUrl(null); return; }
+    setCheckingLicense(true);
+    try {
+      const result = await verifyLicense({ data: { token, licenseDataUrl: dataUrl } });
+      if (!result.match) {
+        const msg = result.reason === "unreadable"
+          ? "We couldn't read the name on that ID. Please upload a clearer photo of your driver's license."
+          : `The name on this ID (${result.extractedName ?? "unknown"}) does not match the renter on file (${result.expectedName}). Please upload your correct driver's license.`;
+        setLicenseError(msg);
+        setLicenseUrl(null);
+        toast.error("ID does not match", { description: msg });
+        return;
+      }
+      setLicenseUrl(dataUrl);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not verify ID";
+      setLicenseError(msg);
+      setLicenseUrl(null);
+      toast.error(msg);
+    } finally {
+      setCheckingLicense(false);
+    }
+  }
 
   async function handleSubmit() {
     if (!sig) return toast.error("Please sign the agreement");
     if (!licenseUrl) return toast.error("Please upload your driver's license");
     if (!selfieUrl) return toast.error("Please take a selfie");
     if (!signedBy.trim()) return toast.error("Please type your full name");
-    if (thirdPartyPayer === null) return toast.error("Please answer the payment question");
-    if (thirdPartyPayer && !payerIdUrl) return toast.error("Please upload the payer's ID");
     setSubmitting(true);
     try {
       await submit({
@@ -95,9 +109,6 @@ function SignPage() {
           licenseDataUrl: licenseUrl,
           selfieDataUrl: selfieUrl,
           signedBy: signedBy.trim(),
-          thirdPartyPayer: !!thirdPartyPayer,
-          payerIdDataUrl: thirdPartyPayer && payerIdUrl ? payerIdUrl : undefined,
-          payerPhone: thirdPartyPayer ? payerPhone.trim() || undefined : undefined,
         },
       });
       setDone(true);
@@ -200,7 +211,7 @@ function SignPage() {
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6 space-y-6">
       <div className="text-center text-xs text-muted-foreground">
-        Step {step === "identity" ? "1" : step === "payer" ? "2" : "3"} of 3
+        Step {step === "identity" ? "1" : "2"} of 2
       </div>
 
       {step === "identity" ? (
@@ -212,7 +223,22 @@ function SignPage() {
               {licenseUrl && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
             </div>
             <Card className="p-4">
-              <PhotoCapture label="Upload license" onChange={setLicenseUrl} value={licenseUrl} />
+              <PhotoCapture
+                label={checkingLicense ? "Verifying ID…" : "Upload license"}
+                onChange={onLicenseChange}
+                value={licenseUrl}
+              />
+              {checkingLicense && (
+                <p className="mt-2 text-xs text-muted-foreground inline-flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Verifying name on ID…
+                </p>
+              )}
+              {licenseError && (
+                <div className="mt-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive flex gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>{licenseError}</span>
+                </div>
+              )}
             </Card>
           </div>
 
@@ -230,8 +256,8 @@ function SignPage() {
           <Button
             className="w-full bg-[#2db84b] hover:bg-[#27a341] text-white"
             size="lg"
-            disabled={!licenseUrl || !selfieUrl || verifying}
-            onClick={() => setStep("payer")}
+            disabled={!licenseUrl || !selfieUrl || verifying || checkingLicense}
+            onClick={() => setStep("agreement")}
           >
             {verifying ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying…</>
@@ -240,84 +266,11 @@ function SignPage() {
             )}
           </Button>
         </>
-      ) : step === "payer" ? (
-        <>
-          <div>
-            <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">3</span>
-              <h2 className="font-semibold text-sm">Payment method</h2>
-            </div>
-            <Card className="p-4 space-y-4">
-              <div className="flex items-start gap-3">
-                <CreditCard className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-medium text-sm">Is the payment card in your name?</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    For your protection, the cardholder name must be verified.
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant={thirdPartyPayer === false ? "default" : "outline"}
-                  className={thirdPartyPayer === false ? "bg-[#2db84b] hover:bg-[#27a341] text-white" : ""}
-                  onClick={() => { setThirdPartyPayer(false); setPayerIdUrl(null); setPayerPhone(""); }}
-                >
-                  Yes, it's my card
-                </Button>
-                <Button
-                  variant={thirdPartyPayer === true ? "default" : "outline"}
-                  className={thirdPartyPayer === true ? "bg-[#2db84b] hover:bg-[#27a341] text-white" : ""}
-                  onClick={() => setThirdPartyPayer(true)}
-                >
-                  No, someone else is paying
-                </Button>
-              </div>
-
-              {thirdPartyPayer === true && (
-                <div className="space-y-3 pt-2 border-t">
-                  <p className="text-sm font-medium">Upload the cardholder's driver's license</p>
-                  <p className="text-xs text-muted-foreground">
-                    We'll automatically verify that the name on this ID matches the
-                    name on the payment card.
-                  </p>
-                  <PhotoCapture label="Upload payer's ID" onChange={setPayerIdUrl} value={payerIdUrl} />
-                  <div>
-                    <Label htmlFor="payerPhone">Payer's phone (optional)</Label>
-                    <Input
-                      id="payerPhone"
-                      type="tel"
-                      inputMode="tel"
-                      placeholder="So we can text them the receipt"
-                      value={payerPhone}
-                      onChange={(e) => setPayerPhone(e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-              )}
-            </Card>
-          </div>
-
-          <div className="flex gap-2">
-            <Button variant="outline" size="lg" onClick={() => setStep("identity")}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
-            <Button
-              className="flex-1 bg-[#2db84b] hover:bg-[#27a341] text-white"
-              size="lg"
-              disabled={thirdPartyPayer === null || (thirdPartyPayer === true && !payerIdUrl)}
-              onClick={() => setStep("agreement")}
-            >
-              Continue <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        </>
       ) : (
         <>
           <div>
             <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">4</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">3</span>
               <h2 className="font-semibold text-sm">Read your rental agreement</h2>
             </div>
             <div className="rounded-lg border shadow-sm overflow-hidden">
@@ -331,7 +284,7 @@ function SignPage() {
 
           <div>
             <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">5</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">4</span>
               <h2 className="font-semibold text-sm">Sign the agreement</h2>
               {sig && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
             </div>
@@ -351,7 +304,7 @@ function SignPage() {
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" size="lg" onClick={() => setStep("payer")} disabled={submitting}>
+            <Button variant="outline" size="lg" onClick={() => setStep("identity")} disabled={submitting}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back
             </Button>
             <Button

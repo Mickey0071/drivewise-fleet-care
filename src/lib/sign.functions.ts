@@ -408,3 +408,40 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+/** Public: OCR the uploaded renter's license and check it matches the
+ *  driver name we have on file. Returns { match, extractedName }. */
+export const verifyLicenseName = createServerFn({ method: "POST" })
+  .inputValidator((input: { token: string; licenseDataUrl: string }) => {
+    if (!input.token || input.token.length < 8) throw new Error("Invalid token");
+    if (!input.licenseDataUrl?.startsWith("data:image/")) throw new Error("License image required");
+    return input;
+  })
+  .handler(async ({ data }) => {
+    const { data: rental } = await supabaseAdmin
+      .from("rentals")
+      .select("driver_id")
+      .eq("sign_token", data.token)
+      .maybeSingle();
+    if (!rental) throw new Error("Invalid signing link");
+    const { data: driver } = await supabaseAdmin
+      .from("drivers")
+      .select("full_name, first_name, last_name")
+      .eq("id", rental.driver_id)
+      .single();
+    const expected = (driver?.full_name
+      || [driver?.first_name, driver?.last_name].filter(Boolean).join(" ")
+      || "").trim();
+    const extracted = await extractNameFromIdImage(data.licenseDataUrl);
+    if (!extracted) {
+      return { match: false, extractedName: null as string | null, expectedName: expected, reason: "unreadable" as const };
+    }
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, "").split(/\s+/).filter((t) => t.length > 1);
+    const e = new Set(norm(extracted));
+    const x = norm(expected);
+    if (x.length === 0) return { match: true, extractedName: extracted, expectedName: expected, reason: "no_baseline" as const };
+    // Require first + last token to be present in extracted name.
+    const first = x[0];
+    const last = x[x.length - 1];
+    const match = e.has(first) && e.has(last);
+    return { match, extractedName: extracted, expectedName: expected, reason: match ? ("ok" as const) : ("mismatch" as const) };
+  });
