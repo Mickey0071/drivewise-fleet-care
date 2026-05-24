@@ -211,7 +211,7 @@ function SignPage() {
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6 space-y-6">
       <div className="text-center text-xs text-muted-foreground">
-        Step {step === "identity" ? "1" : step === "payer" ? "2" : "3"} of 3
+        Step {step === "identity" ? "1" : "2"} of 2
       </div>
 
       {step === "identity" ? (
@@ -223,7 +223,22 @@ function SignPage() {
               {licenseUrl && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
             </div>
             <Card className="p-4">
-              <PhotoCapture label="Upload license" onChange={setLicenseUrl} value={licenseUrl} />
+              <PhotoCapture
+                label={checkingLicense ? "Verifying ID…" : "Upload license"}
+                onChange={onLicenseChange}
+                value={licenseUrl}
+              />
+              {checkingLicense && (
+                <p className="mt-2 text-xs text-muted-foreground inline-flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Verifying name on ID…
+                </p>
+              )}
+              {licenseError && (
+                <div className="mt-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive flex gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>{licenseError}</span>
+                </div>
+              )}
             </Card>
           </div>
 
@@ -241,8 +256,8 @@ function SignPage() {
           <Button
             className="w-full bg-[#2db84b] hover:bg-[#27a341] text-white"
             size="lg"
-            disabled={!licenseUrl || !selfieUrl || verifying}
-            onClick={() => setStep("payer")}
+            disabled={!licenseUrl || !selfieUrl || verifying || checkingLicense}
+            onClick={() => setStep("agreement")}
           >
             {verifying ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying…</>
@@ -251,84 +266,11 @@ function SignPage() {
             )}
           </Button>
         </>
-      ) : step === "payer" ? (
-        <>
-          <div>
-            <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">3</span>
-              <h2 className="font-semibold text-sm">Payment method</h2>
-            </div>
-            <Card className="p-4 space-y-4">
-              <div className="flex items-start gap-3">
-                <CreditCard className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div className="flex-1">
-                  <p className="font-medium text-sm">Is the payment card in your name?</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    For your protection, the cardholder name must be verified.
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant={thirdPartyPayer === false ? "default" : "outline"}
-                  className={thirdPartyPayer === false ? "bg-[#2db84b] hover:bg-[#27a341] text-white" : ""}
-                  onClick={() => { setThirdPartyPayer(false); setPayerIdUrl(null); setPayerPhone(""); }}
-                >
-                  Yes, it's my card
-                </Button>
-                <Button
-                  variant={thirdPartyPayer === true ? "default" : "outline"}
-                  className={thirdPartyPayer === true ? "bg-[#2db84b] hover:bg-[#27a341] text-white" : ""}
-                  onClick={() => setThirdPartyPayer(true)}
-                >
-                  No, someone else is paying
-                </Button>
-              </div>
-
-              {thirdPartyPayer === true && (
-                <div className="space-y-3 pt-2 border-t">
-                  <p className="text-sm font-medium">Upload the cardholder's driver's license</p>
-                  <p className="text-xs text-muted-foreground">
-                    We'll automatically verify that the name on this ID matches the
-                    name on the payment card.
-                  </p>
-                  <PhotoCapture label="Upload payer's ID" onChange={setPayerIdUrl} value={payerIdUrl} />
-                  <div>
-                    <Label htmlFor="payerPhone">Payer's phone (optional)</Label>
-                    <Input
-                      id="payerPhone"
-                      type="tel"
-                      inputMode="tel"
-                      placeholder="So we can text them the receipt"
-                      value={payerPhone}
-                      onChange={(e) => setPayerPhone(e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-              )}
-            </Card>
-          </div>
-
-          <div className="flex gap-2">
-            <Button variant="outline" size="lg" onClick={() => setStep("identity")}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
-            <Button
-              className="flex-1 bg-[#2db84b] hover:bg-[#27a341] text-white"
-              size="lg"
-              disabled={thirdPartyPayer === null || (thirdPartyPayer === true && !payerIdUrl)}
-              onClick={() => setStep("agreement")}
-            >
-              Continue <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        </>
       ) : (
         <>
           <div>
             <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">4</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">3</span>
               <h2 className="font-semibold text-sm">Read your rental agreement</h2>
             </div>
             <div className="rounded-lg border shadow-sm overflow-hidden">
@@ -342,7 +284,7 @@ function SignPage() {
 
           <div>
             <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">5</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">4</span>
               <h2 className="font-semibold text-sm">Sign the agreement</h2>
               {sig && <CheckCircle2 className="h-4 w-4 text-emerald-600 ml-auto" />}
             </div>
@@ -362,7 +304,7 @@ function SignPage() {
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" size="lg" onClick={() => setStep("payer")} disabled={submitting}>
+            <Button variant="outline" size="lg" onClick={() => setStep("identity")} disabled={submitting}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back
             </Button>
             <Button
