@@ -88,9 +88,9 @@ export async function renderReceiptPdf(data: ReceiptPDFData): Promise<Uint8Array
   const right = pageW - 40;
   let y = 40;
 
-  // ---- Logo (centered, ~1.25in wide) ----
-  const logoW = 90;
-  const logoH = 89;
+  // ---- Logo (centered, longer/wider look) ----
+  const logoW = 140;
+  const logoH = 90;
   doc.addImage(CAMAUTO_LOGO_BASE64, "JPEG", (pageW - logoW) / 2, y, logoW, logoH);
   y += logoH + 6;
 

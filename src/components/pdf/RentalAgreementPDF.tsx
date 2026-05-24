@@ -174,8 +174,8 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   };
 
   // ---- HEADER (first page) ----
-  const logoW = 90;
-  const logoH = 89;
+  const logoW = 140;
+  const logoH = 90;
   doc.addImage(CAMAUTO_LOGO_BASE64, "JPEG", (pageW - logoW) / 2, y, logoW, logoH);
   y += logoH + 4;
 

@@ -88,7 +88,7 @@ export async function downloadPnLExcel(data: PnLExportData, filename = "pnl-summ
   ];
 
   if (logoId !== null) {
-    ws.addImage(logoId, { tl: { col: 1, row: 0 }, ext: { width: 110, height: 110 }, editAs: "oneCell" });
+    ws.addImage(logoId, { tl: { col: 1, row: 0 }, ext: { width: 160, height: 100 }, editAs: "oneCell" });
   }
   ws.getRow(1).height = 24;
   ws.getRow(2).height = 24;

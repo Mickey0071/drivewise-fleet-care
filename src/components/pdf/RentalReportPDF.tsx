@@ -159,7 +159,7 @@ export async function renderRentalReportPdf(data: RentalReportData): Promise<Uin
   }
 
   // ---- Header ----
-  const logoW = 90, logoH = 89;
+  const logoW = 140, logoH = 90;
   doc.addImage(CAMAUTO_LOGO_BASE64, "JPEG", (pageW - logoW) / 2, y, logoW, logoH);
   y += logoH + 6;
   doc.setFont("helvetica", "bold");
