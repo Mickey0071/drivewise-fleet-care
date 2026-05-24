@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Car, Users, DollarSign, Wrench, AlertTriangle, TrendingUp, Clock, FileSignature } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
@@ -32,31 +32,46 @@ function Index() {
   const overdue = payments.filter(p => p.status === "missed" || p.status === "late");
   const overdueAmount = overdue.reduce((s, p) => s + p.amount, 0);
   const serviceAlerts = maintenance.filter(m => m.nextServiceDue && new Date(m.nextServiceDue) <= weekEnd);
-  const pendingReview = rentals.filter(r => r.staffReviewStatus === "pending");
+  const pendingReview = useMemo(
+    () => rentals.filter(r => r.staffReviewStatus === "pending"),
+    // re-derive whenever the store version changes (useStoreVersion above triggers re-render)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rentals.length, rentals.map(r => r.staffReviewStatus ?? "").join("|")],
+  );
 
   // Auto-open review modal for first un-dismissed pending agreement this session.
   const [reviewingId, setReviewingId] = useState<string | null>(null);
-  const nextToReview = useMemo(() => {
+  const pendingIdsKey = pendingReview.map(r => r.id).join(",");
+  const nextToReviewId = useMemo(() => {
     if (!canReview) return null;
     if (typeof window === "undefined") return null;
-    return pendingReview.find(r => {
+    const next = pendingReview.find(r => {
       try { return !sessionStorage.getItem(`agreement-review-dismissed:${r.id}`); }
       catch { return true; }
-    }) ?? null;
-  }, [pendingReview, canReview]);
+    });
+    return next?.id ?? null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingIdsKey, canReview]);
 
   useEffect(() => {
-    if (nextToReview && !reviewingId) setReviewingId(nextToReview.id);
-  }, [nextToReview, reviewingId]);
+    if (nextToReviewId && !reviewingId) setReviewingId(nextToReviewId);
+  }, [nextToReviewId, reviewingId]);
 
-  const reviewingRental = reviewingId ? rentals.find(r => r.id === reviewingId) ?? null : null;
+  const reviewingRental = useMemo(
+    () => (reviewingId ? rentals.find(r => r.id === reviewingId) ?? null : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reviewingId],
+  );
 
-  function handleReviewClose(open: boolean) {
-    if (!open && reviewingId) {
-      try { sessionStorage.setItem(`agreement-review-dismissed:${reviewingId}`, "1"); } catch {}
-      setReviewingId(null);
-    }
-  }
+  const handleReviewClose = useCallback((open: boolean) => {
+    if (open) return;
+    setReviewingId(prev => {
+      if (prev) {
+        try { sessionStorage.setItem(`agreement-review-dismissed:${prev}`, "1"); } catch {}
+      }
+      return null;
+    });
+  }, []);
 
   return (
     <div>
