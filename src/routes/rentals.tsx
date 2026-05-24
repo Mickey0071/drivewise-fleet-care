@@ -762,8 +762,8 @@ function RentalsPage() {
             {completed.length === 0 ? <EmptyState label="No returned rentals yet." /> : completed.map(renderRow)}
           </CollapsibleContent>
         </Collapsible>
-      </div>
         </>)}
+      </div>
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
