@@ -1600,28 +1600,6 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
   );
 }
 
-function AgreementDialogInner({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
-  const v = rental ? vehicleById(rental.vehicleId) : null;
-  const d = rental ? driverById(rental.driverId) : null;
-  return (
-    <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-4xl p-0">
-        <DialogHeader>
-          <DialogTitle className="px-4 pt-4">Signed rental agreement</DialogTitle>
-        </DialogHeader>
-        {rental && v && d && (
-          <div className="max-h-[80vh] overflow-y-auto bg-zinc-100 p-4">
-            <RentalAgreement rental={rental} driver={d} vehicle={v} />
-          </div>
-        )}
-        <DialogFooter className="px-4 pb-4">
-          <Button variant="outline" onClick={() => window.print()}>Print</Button>
-          <Button variant="outline" onClick={onClose}>Close</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function ReceiptDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
   const v = rental ? vehicleById(rental.vehicleId) : null;
