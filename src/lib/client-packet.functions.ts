@@ -18,7 +18,7 @@ export const downloadClientPacket = createServerFn({ method: "POST" })
     const { data: rental, error } = await supabaseAdmin
       .from("rentals")
       .select(
-        "id, driver_id, agreement_pdf_url, license_image_url, selfie_image_url, client_signature_url",
+        "id, driver_id, agreement_pdf_url, receipt_pdf_url, license_image_url, selfie_image_url, client_signature_url",
       )
       .eq("id", data.rentalId)
       .maybeSingle();
@@ -58,10 +58,11 @@ export const downloadClientPacket = createServerFn({ method: "POST" })
     }
 
     await Promise.all([
-      add(rental.agreement_pdf_url, "rental-agreement"),
-      add(rental.license_image_url, "drivers-license"),
-      add(rental.selfie_image_url, "selfie"),
-      add(rental.client_signature_url, "signature"),
+      add(rental.agreement_pdf_url, "SIGNED_RENTAL_AGREEMENT"),
+      add(rental.receipt_pdf_url, "RECEIPT"),
+      add(rental.license_image_url, "DRIVER_LICENSE"),
+      add(rental.selfie_image_url, "SELFIE"),
+      add(rental.client_signature_url, "SIGNATURE"),
     ]);
 
     if (missing.length > 0) {
