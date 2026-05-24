@@ -481,110 +481,6 @@ function RentalsPage() {
                       <DollarSign className="mr-1 h-4 w-4" /> Charge for Violation
                     </Button>
                   )}
-                  {r.signatureDataUrl && (
-                    <Button variant="ghost" size="sm" onClick={() => setViewingAgreement(r)}>
-                      <FileSignature className="mr-1 h-4 w-4" /> View agreement
-                    </Button>
-                  )}
-                  {r.signatureDataUrl && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownloadPacket(r)}
-                      disabled={packetId === r.id}
-                    >
-                      <Download className="mr-1 h-4 w-4" />
-                      {packetId === r.id ? "Preparing…" : "Download packet"}
-                    </Button>
-                  )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" disabled={reportId === r.id}>
-                        <Download className="mr-1 h-4 w-4" />
-                        {reportId === r.id ? "Preparing…" : "Export Report"}
-                        <ChevronDown className="ml-1 h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleExportReport(r, "pdf")}>
-                        📄 Download Full Report (PDF)
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleExportReport(r, "evidence")}>
-                        📎 Download Evidence Packet (PDF)
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleExportReport(r, "zip")}>
-                        🗂️ Download as ZIP (PDF + images + CSV)
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  {r.agreementPdfUrl ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      title={r.agreementPdfGeneratedAt ? `Generated ${new Date(r.agreementPdfGeneratedAt).toLocaleString()}` : undefined}
-                      onClick={() => window.open(r.agreementPdfUrl!, "_blank", "noopener")}
-                    >
-                      📄 Agreement PDF
-                    </Button>
-                  ) : (r.clientSignedAt || r.signedAt) ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={pdfRegenId === r.id}
-                      onClick={async () => {
-                        setPdfRegenId(r.id);
-                        try {
-                          const res = await genPdfFn({ data: { rentalId: r.id } });
-                          if (res?.url) {
-                            toast.success("Agreement PDF generated");
-                            await ensureRentalSynced(r.id);
-                          } else {
-                            toast.error("Could not generate agreement PDF", { description: res?.error ?? "Unknown error" });
-                          }
-                        } catch (e) {
-                          toast.error("Could not generate agreement PDF", { description: e instanceof Error ? e.message : String(e) });
-                        } finally {
-                          setPdfRegenId(null);
-                        }
-                      }}
-                    >
-                      📄 {pdfRegenId === r.id ? "Generating…" : "Regenerate PDF"}
-                    </Button>
-                  ) : null}
-                  {r.receiptPdfUrl ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      title={r.receiptPdfGeneratedAt ? `Generated ${new Date(r.receiptPdfGeneratedAt).toLocaleString()}` : undefined}
-                      onClick={() => window.open(r.receiptPdfUrl!, "_blank", "noopener")}
-                    >
-                      📄 Receipt
-                    </Button>
-                  ) : r.paymentReceived ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={receiptRegenId === r.id}
-                      onClick={async () => {
-                        setReceiptRegenId(r.id);
-                        try {
-                          const res = await genReceiptFn({ data: { rentalId: r.id } });
-                          if (res?.url) {
-                            toast.success("Receipt PDF generated");
-                            await ensureRentalSynced(r.id);
-                          } else {
-                            toast.error("Could not generate receipt", { description: res?.error ?? "Unknown error" });
-                          }
-                        } catch (e) {
-                          toast.error("Could not generate receipt", { description: e instanceof Error ? e.message : String(e) });
-                        } finally {
-                          setReceiptRegenId(null);
-                        }
-                      }}
-                    >
-                      📄 {receiptRegenId === r.id ? "Generating…" : "Generate Receipt"}
-                    </Button>
-                  ) : null}
                   {r.paymentLinkAutoSentAt && !r.paymentReceived && (
                     <span
                       title={`Auto-sent ${new Date(r.paymentLinkAutoSentAt).toLocaleString()}`}
@@ -601,14 +497,125 @@ function RentalsPage() {
                       1-day upfront (override)
                     </span>
                   )}
-                  <Button variant="ghost" size="sm" onClick={() => setReceipt(r)}>
-                    <Receipt className="mr-1 h-4 w-4" /> Receipt
-                  </Button>
                   {role === "admin" && (
                     <Button variant="ghost" size="sm" onClick={() => setTaskRental(r)}>
                       <Send className="mr-1 h-4 w-4" /> Send Task
                     </Button>
                   )}
+                </>
+              )}
+            </div>
+            {!isPending && (
+              <div className="rounded-md border border-border bg-muted/30 p-3">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Documents</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {r.agreementPdfUrl ? (
+                    <button
+                      onClick={() => window.open(r.agreementPdfUrl!, "_blank", "noopener")}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                    >
+                      <span className="text-lg">📄</span>
+                      <div className="min-w-1 flex-1">
+                        <div className="font-medium text-sm truncate">SIGNED RENTAL AGREEMENT</div>
+                        <div className="text-[10px] text-muted-foreground">PDF</div>
+                      </div>
+                    </button>
+                  ) : (r.clientSignedAt || r.signedAt) ? (
+                    <button
+                      onClick={async () => {
+                        setPdfRegenId(r.id);
+                        try {
+                          const res = await genPdfFn({ data: { rentalId: r.id } });
+                          if (res?.url) {
+                            toast.success("Agreement PDF generated");
+                            window.open(res.url, "_blank", "noopener");
+                            await ensureRentalSynced(r.id);
+                          } else {
+                            toast.error("Could not generate agreement PDF", { description: res?.error ?? "Unknown error" });
+                          }
+                        } catch (e) {
+                          toast.error("Could not generate agreement PDF", { description: e instanceof Error ? e.message : String(e) });
+                        } finally {
+                          setPdfRegenId(null);
+                        }
+                      }}
+                      disabled={pdfRegenId === r.id}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors text-left disabled:opacity-50"
+                    >
+                      <span className="text-lg">📄</span>
+                      <div className="min-w-1 flex-1">
+                        <div className="font-medium text-sm truncate">{pdfRegenId === r.id ? "Generating agreement…" : "GENERATE AGREEMENT"}</div>
+                        <div className="text-[10px] text-muted-foreground">PDF</div>
+                      </div>
+                    </button>
+                  ) : null}
+                  {r.licenseImageUrl && (
+                    <button
+                      onClick={() => window.open(r.licenseImageUrl!, "_blank", "noopener")}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                    >
+                      <span className="text-lg">📷</span>
+                      <div className="min-w-1 flex-1">
+                        <div className="font-medium text-sm truncate">DRIVER'S LICENSE</div>
+                        <div className="text-[10px] text-muted-foreground">JPG</div>
+                      </div>
+                    </button>
+                  )}
+                  {r.selfieImageUrl && (
+                    <button
+                      onClick={() => window.open(r.selfieImageUrl!, "_blank", "noopener")}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                    >
+                      <span className="text-lg">📷</span>
+                      <div className="min-w-1 flex-1">
+                        <div className="font-medium text-sm truncate">SELFIE</div>
+                        <div className="text-[10px] text-muted-foreground">JPG</div>
+                      </div>
+                    </button>
+                  )}
+                  {r.receiptPdfUrl ? (
+                    <button
+                      onClick={() => window.open(r.receiptPdfUrl!, "_blank", "noopener")}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                    >
+                      <span className="text-lg">📄</span>
+                      <div className="min-w-1 flex-1">
+                        <div className="font-medium text-sm truncate">RENTAL RECEIPT</div>
+                        <div className="text-[10px] text-muted-foreground">PDF</div>
+                      </div>
+                    </button>
+                  ) : r.paymentReceived ? (
+                    <button
+                      onClick={async () => {
+                        setReceiptRegenId(r.id);
+                        try {
+                          const res = await genReceiptFn({ data: { rentalId: r.id } });
+                          if (res?.url) {
+                            toast.success("Receipt PDF generated");
+                            window.open(res.url, "_blank", "noopener");
+                            await ensureRentalSynced(r.id);
+                          } else {
+                            toast.error("Could not generate receipt", { description: res?.error ?? "Unknown error" });
+                          }
+                        } catch (e) {
+                          toast.error("Could not generate receipt", { description: e instanceof Error ? e.message : String(e) });
+                        } finally {
+                          setReceiptRegenId(null);
+                        }
+                      }}
+                      disabled={receiptRegenId === r.id}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors text-left disabled:opacity-50"
+                    >
+                      <span className="text-lg">📄</span>
+                      <div className="min-w-1 flex-1">
+                        <div className="font-medium text-sm truncate">{receiptRegenId === r.id ? "Generating receipt…" : "GENERATE RECEIPT"}</div>
+                        <div className="text-[10px] text-muted-foreground">PDF</div>
+                      </div>
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            )}
                 </>
               )}
             </div>
