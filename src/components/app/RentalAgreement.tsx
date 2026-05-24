@@ -175,27 +175,19 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
       </div>
 
       {/* SIGNATURES */}
-      <SectionLabel>Signatures</SectionLabel>
+      <SectionLabel>Signature</SectionLabel>
       <p className="mb-3 text-[11.5px]">
         By signing below, Renter acknowledges having read, understood, and agreed to all terms of this Vehicle Rental Agreement.
       </p>
-      <div className="grid grid-cols-2 gap-8">
-        <div>
-          <div className="mb-1 flex h-12 items-end justify-center border-b-2 border-zinc-800">
-            {rental.signatureDataUrl ? (
-              <img src={rental.signatureDataUrl} alt="Renter signature" className="max-h-12 object-contain" />
-            ) : null}
-          </div>
-          <div className="text-[10px] uppercase tracking-wide text-zinc-600">Renter Signature</div>
-          <div className="mt-2"><Field label="Print Name" value={rental.signedBy ?? composedName} /></div>
-          <div className="mt-2"><Field label="Date" value={rental.signedAt ? fmtDate(rental.signedAt.slice(0, 10)) : ""} /></div>
+      <div className="max-w-[50%]">
+        <div className="mb-1 flex h-12 items-end justify-center border-b-2 border-zinc-800">
+          {rental.signatureDataUrl ? (
+            <img src={rental.signatureDataUrl} alt="Renter signature" className="max-h-12 object-contain" />
+          ) : null}
         </div>
-        <div>
-          <div className="mb-1 h-12 border-b-2 border-zinc-800" />
-          <div className="text-[10px] uppercase tracking-wide text-zinc-600">{settings.company.dba} Representative</div>
-          <div className="mt-2"><Field label="Print Name" value="" /></div>
-          <div className="mt-2"><Field label="Date" value="" /></div>
-        </div>
+        <div className="text-[10px] uppercase tracking-wide text-zinc-600">Renter Signature</div>
+        <div className="mt-2"><Field label="Print Name" value={rental.signedBy ?? composedName} /></div>
+        <div className="mt-2"><Field label="Date" value={rental.signedAt ? fmtDate(rental.signedAt.slice(0, 10)) : ""} /></div>
       </div>
 
       <div className="mt-6 border-t-2 border-[#2db84b] pt-2 text-center text-[10px] text-zinc-500">
