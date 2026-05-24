@@ -51,6 +51,7 @@ export const Route = createFileRoute("/rentals")({
   validateSearch: (search: Record<string, unknown>) => ({
     paid: typeof search.paid === "string" ? search.paid : undefined,
     session_id: typeof search.session_id === "string" ? search.session_id : undefined,
+    review: typeof search.review === "string" ? search.review : undefined,
   }),
   component: RentalsPage,
 });
@@ -59,7 +60,7 @@ const AGREEMENT_VERSION = "v1.0";
 
 function RentalsPage() {
   const navigate = Route.useNavigate();
-  const { paid } = Route.useSearch();
+  const { paid, review } = Route.useSearch();
   const { user, role } = useAuth();
   const [newOpen, setNewOpen] = useState(false);
   const [editing, setEditing] = useState<Rental | null>(null);
