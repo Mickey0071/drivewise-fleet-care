@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { Car, Users, DollarSign, Wrench, AlertTriangle, TrendingUp, Clock, FileSignature } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
@@ -7,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { vehicles, payments, maintenance, drivers, rentals, fmtMoney, fmtDate, vehicleById, driverById } from "@/lib/mock/data";
 import { isVehicleBookable, useStoreVersion } from "@/lib/mock/store";
+import { AgreementReviewModal } from "@/components/app/AgreementReviewModal";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -14,6 +17,8 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   useStoreVersion();
+  const { role } = useAuth();
+  const canReview = role === "admin" || role === "va";
   const counts = {
     available: vehicles.filter(v => isVehicleBookable(v.id)).length,
     rented: vehicles.filter(v => !isVehicleBookable(v.id) && v.status === "rented").length,
@@ -29,6 +34,30 @@ function Index() {
   const serviceAlerts = maintenance.filter(m => m.nextServiceDue && new Date(m.nextServiceDue) <= weekEnd);
   const pendingReview = rentals.filter(r => r.staffReviewStatus === "pending");
 
+  // Auto-open review modal for first un-dismissed pending agreement this session.
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const nextToReview = useMemo(() => {
+    if (!canReview) return null;
+    if (typeof window === "undefined") return null;
+    return pendingReview.find(r => {
+      try { return !sessionStorage.getItem(`agreement-review-dismissed:${r.id}`); }
+      catch { return true; }
+    }) ?? null;
+  }, [pendingReview, canReview]);
+
+  useEffect(() => {
+    if (nextToReview && !reviewingId) setReviewingId(nextToReview.id);
+  }, [nextToReview, reviewingId]);
+
+  const reviewingRental = reviewingId ? rentals.find(r => r.id === reviewingId) ?? null : null;
+
+  function handleReviewClose(open: boolean) {
+    if (!open && reviewingId) {
+      try { sessionStorage.setItem(`agreement-review-dismissed:${reviewingId}`, "1"); } catch {}
+      setReviewingId(null);
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -39,6 +68,12 @@ function Index() {
             <Link to="/rentals">+ New Rental</Link>
           </Button>
         }
+      />
+
+      <AgreementReviewModal
+        rental={reviewingRental}
+        open={!!reviewingRental}
+        onOpenChange={handleReviewClose}
       />
 
       {pendingReview.length > 0 && (

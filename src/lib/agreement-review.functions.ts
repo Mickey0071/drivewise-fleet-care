@@ -66,3 +66,23 @@ export const requestAgreementResubmission = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+
+/**
+ * Flags a signed rental agreement for manual owner review. Keeps signature
+ * + identity artifacts intact, but moves it out of the auto-popup queue.
+ */
+export const holdAgreementForReview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { rentalId: string; note?: string }) => {
+    if (!input.rentalId || typeof input.rentalId !== "string") throw new Error("rentalId required");
+    if (input.note && input.note.length > 500) throw new Error("note too long (max 500 chars)");
+    return input;
+  })
+  .handler(async ({ data }) => {
+    const { error } = await supabaseAdmin
+      .from("rentals")
+      .update({ staff_review_status: "hold" })
+      .eq("id", data.rentalId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
