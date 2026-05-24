@@ -425,11 +425,30 @@ export const listAssignableRunners = createServerFn({ method: "GET" })
       .in("role", ["runner", "driver"]);
     if (rErr) throw new Error(rErr.message);
     const ids = Array.from(new Set((roleRows ?? []).map((r) => r.user_id)));
-    if (ids.length === 0) return { runners: [] as Array<{ id: string; first_name: string | null; last_name: string | null; username: string | null; phone: string | null }> };
-    const { data: profiles, error: pErr } = await supabaseAdmin
-      .from("profiles")
-      .select("id, first_name, last_name, username, phone")
-      .in("id", ids);
-    if (pErr) throw new Error(pErr.message);
-    return { runners: profiles ?? [] };
+    let profiles: Array<{ id: string; first_name: string | null; last_name: string | null; username: string | null; phone: string | null }> = [];
+    if (ids.length > 0) {
+      const { data, error: pErr } = await supabaseAdmin
+        .from("profiles")
+        .select("id, first_name, last_name, username, phone")
+        .in("id", ids);
+      if (pErr) throw new Error(pErr.message);
+      profiles = data ?? [];
+    }
+    // Also surface staff entries with role='runner' that don't have an auth account yet.
+    const { data: staffRows } = await supabaseAdmin
+      .from("staff")
+      .select("id, full_name, phone, role, status")
+      .eq("status", "active");
+    const havePhones = new Set(profiles.map((p) => (p.phone ?? "").replace(/\D/g, "")).filter(Boolean));
+    const extraFromStaff = (staffRows ?? [])
+      .filter((s) => (s.role ?? "").toLowerCase().includes("runner"))
+      .filter((s) => !havePhones.has((s.phone ?? "").replace(/\D/g, "")))
+      .map((s) => ({
+        id: `staff:${s.id}`,
+        first_name: s.full_name,
+        last_name: null,
+        username: null,
+        phone: s.phone ?? null,
+      }));
+    return { runners: [...profiles, ...extraFromStaff] };
   });
