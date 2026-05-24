@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createStripeClient } from "@/lib/stripe.server";
 import { sendSms } from "@/lib/ghl.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
+import { extractNameFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 
 const ADMIN_PHONE = "+12672213977";
@@ -222,7 +223,14 @@ export const getExtensionLinkPublic = createServerFn({ method: "POST" })
  * renter to complete payment. The webhook applies the extension on payment.
  */
 export const signAndPayExtension = createServerFn({ method: "POST" })
-  .inputValidator((d: { token: string; signatureDataUrl: string; signedBy: string }) => {
+  .inputValidator((d: {
+    token: string;
+    signatureDataUrl: string;
+    signedBy: string;
+    thirdPartyPayer?: boolean;
+    payerIdDataUrl?: string;
+    payerPhone?: string;
+  }) => {
     if (!d?.token || typeof d.token !== "string") throw new Error("Invalid token");
     if (!d?.signatureDataUrl || !d.signatureDataUrl.startsWith("data:image/")) {
       throw new Error("Signature required");
@@ -231,12 +239,23 @@ export const signAndPayExtension = createServerFn({ method: "POST" })
     const name = (d.signedBy || "").trim();
     if (!name) throw new Error("Name required");
     if (name.length > 200) throw new Error("Name too long");
-    return { token: d.token, signatureDataUrl: d.signatureDataUrl, signedBy: name };
+    if (d.thirdPartyPayer) {
+      if (!d.payerIdDataUrl?.startsWith("data:image/")) throw new Error("Payer's ID photo required");
+      if (d.payerPhone && d.payerPhone.length > 30) throw new Error("Invalid payer phone");
+    }
+    return {
+      token: d.token,
+      signatureDataUrl: d.signatureDataUrl,
+      signedBy: name,
+      thirdPartyPayer: !!d.thirdPartyPayer,
+      payerIdDataUrl: d.payerIdDataUrl,
+      payerPhone: d.payerPhone?.trim() || undefined,
+    };
   })
   .handler(async ({ data }) => {
     const { data: row, error } = await supabaseAdmin
       .from("extension_requests")
-      .select("token, status, expires_at, payment_link_url, paid_at")
+      .select("token, status, expires_at, payment_link_url, paid_at, rental_id")
       .eq("token", data.token)
       .maybeSingle();
     if (error || !row) throw new Error("Extension request not found");
@@ -247,6 +266,29 @@ export const signAndPayExtension = createServerFn({ method: "POST" })
       throw new Error("This extension has already been paid.");
     }
     if (!row.payment_link_url) throw new Error("Payment link unavailable. Please contact us.");
+
+    // Third-party payer: upload their ID and OCR the name so the webhook
+    // can compare it to the Stripe cardholder name during extension payment.
+    if (data.thirdPartyPayer && data.payerIdDataUrl && row.rental_id) {
+      try {
+        const payerIdUrl = await uploadPayerIdImage(String(row.rental_id), data.payerIdDataUrl);
+        const payerName = await extractNameFromIdImage(data.payerIdDataUrl);
+        if (!payerName) {
+          throw new Error("Could not read the name on the payer's ID — please retake the photo");
+        }
+        await supabaseAdmin.from("rentals").update({
+          third_party_payer: true,
+          payer_id_image_url: payerIdUrl,
+          payer_name_extracted: payerName,
+          payer_phone: data.payerPhone || null,
+          updated_at: new Date().toISOString(),
+        }).eq("id", row.rental_id);
+        console.log(`[ext-sign] third-party payer for ${row.rental_id}: name="${payerName}"`);
+      } catch (e) {
+        console.error(`[ext-sign] payer ID handling failed for ${row.rental_id}:`, e);
+        throw e instanceof Error ? e : new Error("Could not process payer's ID — please retry");
+      }
+    }
 
     await supabaseAdmin.from("extension_requests").update({
       signature_data_url: data.signatureDataUrl,

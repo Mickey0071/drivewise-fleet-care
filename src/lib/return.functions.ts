@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sendSms } from "@/lib/ghl.server";
+import { notifyRenter } from "@/lib/renter-notify.server";
+import { sendReceiptToCustomer } from "@/lib/receipt.functions";
 
 /**
  * Day count, inclusive of both endpoints, computed in UTC days.
@@ -38,7 +39,7 @@ export const closeoutRental = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { data: rental, error: rErr } = await supabaseAdmin
       .from("rentals")
-      .select("id, vehicle_id, driver_id, start_date, end_date, signed_at, created_at, billing_cadence, rate_amount, skip_daily_minimum, mileage_out, returned_at, reservation_status, final_charge_amount")
+      .select("id, vehicle_id, driver_id, start_date, end_date, signed_at, created_at, activated_at, billing_cadence, billing_period, rate_amount, rate, weekly_rate, skip_daily_minimum, mileage_out, returned_at, reservation_status, final_charge_amount")
       .eq("id", data.rental_id)
       .maybeSingle();
     if (rErr) throw new Error(rErr.message);
@@ -92,8 +93,17 @@ export const closeoutRental = createServerFn({ method: "POST" })
     const nowIso = new Date().toISOString();
     const daysUsed = startIso ? inclusiveDaysBetween(startIso, nowIso) : 1;
 
-    const cadence = (rental.billing_cadence as "daily" | "weekly" | null) ?? null;
-    const rate = rental.rate_amount != null ? Number(rental.rate_amount) : null;
+    // Read from the fields the rest of the app actually writes
+    // (billing_period / rate / weekly_rate). Fall back to the legacy
+    // billing_cadence / rate_amount columns when present.
+    const rawCadence = (rental.billing_cadence as string | null)
+      ?? (rental.billing_period as string | null)
+      ?? "weekly";
+    const c = rawCadence.toLowerCase();
+    const cadence: "daily" | "weekly" = c.startsWith("day") ? "daily" : "weekly";
+    const rawRate = rental.rate_amount ?? rental.rate
+      ?? (cadence === "weekly" ? rental.weekly_rate : null);
+    const rate = rawRate != null ? Number(rawRate) : null;
     const skipDailyMin = !!rental.skip_daily_minimum;
 
     let minimumPeriods = 0;
@@ -163,15 +173,28 @@ export const closeoutRental = createServerFn({ method: "POST" })
       throw new Error("Failed to mark vehicle available after return");
     }
 
-    // Fire-and-forget SMS receipt to the customer.
+    // Log the final charge to rental_charges (audit trail) and deliver a
+    // branded SMS + email receipt to the renter.
     let smsStatus: "sent" | "skipped_no_phone" | "skipped_no_charge" = "skipped_no_phone";
     if (finalCharge == null) {
       smsStatus = "skipped_no_charge";
     } else {
       try {
+        await supabaseAdmin.from("rental_charges").insert({
+          rental_id: rental.id,
+          amount: finalCharge,
+          charge_date: nowIso,
+          period_label: cadence === "daily" ? "day" : "week",
+          status: "recorded",
+          environment: process.env.STRIPE_LIVE_API_KEY ? "live" : "sandbox",
+        } as any);
+      } catch (e) {
+        console.error(`[return] rental_charges insert failed for ${rental.id}:`, e);
+      }
+      try {
         const { data: driver } = await supabaseAdmin
           .from("drivers")
-          .select("phone, full_name")
+          .select("phone, full_name, email")
           .eq("id", rental.driver_id)
           .maybeSingle();
         if (driver?.phone) {
@@ -187,10 +210,24 @@ export const closeoutRental = createServerFn({ method: "POST" })
             wasExtended ? "Includes extension." : null,
             "Thanks for renting with us.",
           ].filter(Boolean) as string[];
-          // Awaited: in the Worker runtime, unawaited promises are cancelled
-          // when the handler returns, which silently dropped the receipt SMS.
           try {
-            await sendSms(driver.phone, lines.join("\n"), driver.full_name ?? null);
+            await notifyRenter({
+              phone: driver.phone,
+              email: driver.email ?? null,
+              name: driver.full_name ?? null,
+              sms: lines.join("\n"),
+              emailSubject: "Your Camauto Rental Receipt",
+              emailHeading: "Rental Returned — Receipt",
+              emailIntro: "Thank you for renting with Camauto. Your rental has been returned and the final charges are summarized below.",
+              emailDetails: [
+                { label: "Final Charge", value: fmtMoney(finalCharge) },
+                { label: "Billing", value: `${daysUsed} ${dayWord} @ ${fmtMoney(rate ?? 0)}/${unit}` },
+                { label: "Periods Billed", value: `${periodsBilled} ${unit}${periodsBilled === 1 ? "" : "s"}` },
+                ...(milesDriven != null ? [{ label: "Miles Driven", value: milesDriven.toLocaleString() }] : []),
+                ...(wasExtended ? [{ label: "Extensions", value: `${extensionCount} applied` }] : []),
+              ],
+              emailFootnote: "A detailed receipt PDF will arrive in a separate message.",
+            });
             console.log(`[return-receipt] rental=${rental.id} sent ok`);
             smsStatus = "sent";
           } catch (e) {
@@ -201,6 +238,19 @@ export const closeoutRental = createServerFn({ method: "POST" })
         }
       } catch (e) {
         console.error(`[return-receipt] rental=${rental.id} lookup failed:`, e);
+      }
+      // Generate and deliver the receipt PDF (SMS + email with attachment).
+      try {
+        await sendReceiptToCustomer({
+          data: {
+            rentalId: rental.id,
+            paymentAmountCents: Math.round(finalCharge * 100),
+            paymentMethod: "Final Charge",
+            paymentReference: `return-${Date.now()}`,
+          },
+        });
+      } catch (e) {
+        console.error(`[return-receipt-pdf] rental=${rental.id} FAILED:`, e);
       }
     }
 
