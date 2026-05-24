@@ -4,8 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { startTask } from "@/lib/tasks.functions";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, ClipboardList, Wrench, Car, AlertOctagon, Phone, MoreHorizontal } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/my-tasks_/$taskId")({
@@ -22,15 +21,6 @@ type TaskRow = {
 };
 
 type WorkflowKey = "dmv" | "return" | "mechanic_run" | "repo" | "vendor" | "other";
-
-const WORKFLOWS: Record<WorkflowKey, { label: string; icon: typeof ClipboardList }> = {
-  dmv:          { label: "DMV",           icon: ClipboardList },
-  return:       { label: "Vehicle Return", icon: Car },
-  mechanic_run: { label: "Mechanic Run",  icon: Wrench },
-  repo:         { label: "Repossession",  icon: AlertOctagon },
-  vendor:       { label: "Vendor Contact", icon: Phone },
-  other:        { label: "Other",         icon: MoreHorizontal },
-};
 
 function inferWorkflow(t: TaskRow): WorkflowKey {
   if (t.task_mode === "return") return "return";
@@ -54,6 +44,7 @@ export default function TaskDetailPage() {
   const [task, setTask] = useState<TaskRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [routed, setRouted] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,6 +99,15 @@ export default function TaskDetailPage() {
     openWorkflow(key, t);
   }
 
+  // Auto-route directly to the task-specific workflow as soon as the task loads.
+  useEffect(() => {
+    if (!task || routed) return;
+    if (task.status === "completed") return;
+    setRouted(true);
+    void startAndOpen(inferWorkflow(task), task);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task, routed]);
+
   if (loading) {
     return <div className="mx-auto max-w-2xl pb-24"><p className="text-sm text-muted-foreground">Loading…</p></div>;
   }
@@ -122,44 +122,16 @@ export default function TaskDetailPage() {
     );
   }
 
-  const matched = inferWorkflow(task);
-  const allKeys = Object.keys(WORKFLOWS) as WorkflowKey[];
-
   return (
     <div className="mx-auto max-w-2xl space-y-6 pb-24">
       <Link to="/my-tasks" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> Back to tasks
       </Link>
-
-      <div>
-        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Choose a workflow
-        </p>
-        {task.year && (
-          <p className="text-sm text-muted-foreground">
-            {task.year} {task.make} {task.model}{task.plate ? ` — ${task.plate}` : ""}
-          </p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {allKeys.map((k) => {
-          const Icon = WORKFLOWS[k].icon;
-          const isMatched = k === matched;
-          return (
-            <Button
-              key={k}
-              variant={isMatched ? "default" : "outline"}
-              className="h-24 flex-col gap-2 text-sm"
-              onClick={() => startAndOpen(k, task)}
-              disabled={task.status === "completed"}
-            >
-              <Icon className="h-6 w-6" />
-              {WORKFLOWS[k].label}
-            </Button>
-          );
-        })}
-      </div>
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          {task.status === "completed" ? "This task is already completed." : "Opening task…"}
+        </CardContent>
+      </Card>
     </div>
   );
 }
