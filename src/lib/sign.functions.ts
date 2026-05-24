@@ -319,7 +319,14 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
 
     // Update driver's insurance/license on file
     {
-      const driverUpdate: Record<string, unknown> = { insurance_on_file: true };
+      const driverUpdate: {
+        insurance_on_file: boolean;
+        address?: string;
+        street_address?: string;
+        city?: string;
+        state?: string;
+        zip_code?: string;
+      } = { insurance_on_file: true };
       // OCR address from the renter's license and backfill any missing
       // address fields on the driver record so the agreement (and the
       // generated PDF) display the renter's real address.
