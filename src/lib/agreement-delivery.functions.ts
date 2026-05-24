@@ -71,13 +71,17 @@ export const sendAgreementToCustomer = createServerFn({ method: "POST" })
 
     // 3) SMS — link to the PDF (and sign link if available)
     if (driver.phone) {
-      const smsBody = [
-        `Camauto Rentals — your Rental Agreement for ${vehLabel} is ready.`,
-        `View / download: ${pdfUrl}`,
-        signLink ? `Sign here: ${signLink}` : null,
-      ]
-        .filter(Boolean)
-        .join("\n");
+      // Single link — the sign page shows the agreement, collects ID +
+      // selfie, and captures the signature in one flow.
+      const smsBody = signLink
+        ? [
+            `Camauto Rentals — complete your reservation for ${vehLabel}.`,
+            `Review & sign here: ${signLink}`,
+          ].join("\n")
+        : [
+            `Camauto Rentals — your Rental Agreement for ${vehLabel} is ready.`,
+            `View / download: ${pdfUrl}`,
+          ].join("\n");
       try {
         await sendSms(driver.phone, smsBody, driver.full_name);
         smsSent = true;
@@ -93,24 +97,22 @@ export const sendAgreementToCustomer = createServerFn({ method: "POST" })
       driver.email && driver.email.includes("@") && !driver.email.endsWith("@camauto.local");
     if (validEmail) {
       const subject = "Your Camauto Rentals Vehicle Rental Agreement";
+      const primaryUrl = signLink ?? pdfUrl;
+      const primaryLabel = signLink ? "Review & Sign Agreement" : "View / Download Agreement (PDF)";
       const html = `
         <div style="font-family: Arial, sans-serif; color: #111; line-height: 1.5;">
-          <h2 style="margin: 0 0 12px;">Your Rental Agreement is ready</h2>
+          <h2 style="margin: 0 0 12px;">Complete your reservation</h2>
           <p>Hi ${driver.full_name ?? "there"},</p>
-          <p>Attached is your Vehicle Rental Agreement for <strong>${vehLabel}</strong>.
-          Please review it and complete the signature step to confirm your reservation.</p>
+          <p>Your Vehicle Rental Agreement for <strong>${vehLabel}</strong> is ready.
+          Tap the button below to review the agreement, upload your driver's license
+          and selfie, and sign — all in one place.</p>
           <p style="margin: 24px 0;">
-            <a href="${pdfUrl}"
+            <a href="${primaryUrl}"
                style="background:#111;color:#fff;padding:10px 18px;border-radius:6px;
                       text-decoration:none;font-weight:600;">
-              View / Download Agreement (PDF)
+              ${primaryLabel}
             </a>
           </p>
-          ${
-            signLink
-              ? `<p>Or sign now: <a href="${signLink}">${signLink}</a></p>`
-              : ""
-          }
           <p style="color:#666;font-size:12px;margin-top:32px;">
             Camauto Rentals — Reservation #${rental.id}
           </p>
@@ -120,7 +122,7 @@ export const sendAgreementToCustomer = createServerFn({ method: "POST" })
         await sendEmail(driver.email!, subject, html, {
           name: driver.full_name,
           phone: driver.phone,
-          attachments: [pdfUrl],
+          attachments: signLink ? [] : [pdfUrl],
         });
         emailSent = true;
       } catch (e) {
