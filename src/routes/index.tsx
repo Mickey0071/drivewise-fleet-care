@@ -43,8 +43,7 @@ function Index() {
 
       {pendingReview.length > 0 && (
         <Link
-          to="/rentals"
-          search={{ review: "pending" } as any}
+          to="/pending-agreements"
           className="mb-4 flex items-center justify-between rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 transition-colors hover:bg-amber-500/15"
         >
           <div className="flex items-center gap-3">
