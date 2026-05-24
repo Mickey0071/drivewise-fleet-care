@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
-  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, ListChecks, Truck, ChevronDown, UsersRound, ClipboardPlus, Building2, Undo2,
+  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, ListChecks, Truck, ChevronDown, UsersRound, ClipboardPlus, Building2, Undo2, FileSignature,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { unreadReportCount, useStoreVersion } from "@/lib/mock/store";
+import { rentals } from "@/lib/mock/data";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/camauto-logo.jpeg";
@@ -21,6 +22,7 @@ const adminItems: Item[] = [
   { title: "Fleet", url: "/fleet", icon: Car, roles: ["admin", "runner"] },
   { title: "Customers", url: "/drivers", icon: Users, roles: ["admin", "runner"] },
   { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin", "runner"] },
+  { title: "Pending Agreements", url: "/pending-agreements", icon: FileSignature, roles: ["admin", "runner", "va"] },
   { title: "Calendar", url: "/calendar", icon: Calendar, roles: ["admin", "runner"] },
   { title: "Payments", url: "/payments", icon: DollarSign, roles: ["admin"] },
   { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["admin", "runner"] },
@@ -58,6 +60,7 @@ export function AppSidebar() {
   const isActive = (url: string) => url === "/" ? path === "/" : path.startsWith(url);
   useStoreVersion();
   const unread = unreadReportCount();
+  const pendingReviewCount = rentals.filter(r => r.staffReviewStatus === "pending").length;
   const { role, user, signOut } = useAuth();
   const filter = (items: Item[]) => role ? items.filter(i => i.roles.includes(role)) : [];
   const visibleRunners = filter(runnersItems);
@@ -77,6 +80,9 @@ export function AppSidebar() {
                   {!collapsed && <span className="flex-1">{item.title}</span>}
                   {!collapsed && item.url === "/runner-reports" && unread > 0 && (
                     <Badge variant="default" className="h-5 px-1.5 text-[10px]">{unread}</Badge>
+                  )}
+                  {!collapsed && item.url === "/pending-agreements" && pendingReviewCount > 0 && (
+                    <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">{pendingReviewCount}</Badge>
                   )}
                 </Link>
               </SidebarMenuButton>
