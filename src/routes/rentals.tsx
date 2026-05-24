@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
