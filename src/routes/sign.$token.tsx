@@ -464,7 +464,6 @@ function PhotoCapture({
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture={useCamera ? "user" : undefined}
         className="hidden"
         onChange={onFile}
       />
