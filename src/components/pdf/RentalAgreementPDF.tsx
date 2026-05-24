@@ -450,8 +450,8 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   ensureSpace(8);
   y += 4;
 
-  // ---- SIGNATURES ----
-  sectionBar("Signatures");
+  // ---- SIGNATURE ----
+  sectionBar("Signature");
   ensureSpace(20);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
@@ -467,7 +467,6 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   y += 18;
 
   ensureSpace(110);
-  const colW2 = (contentW - 24) / 2;
   const sigTop = y;
   const sigBoxH = 50;
 
@@ -476,23 +475,18 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     try {
       const bytes = signaturePng instanceof Uint8Array ? signaturePng : new Uint8Array(signaturePng);
       const dataUrl = `data:image/png;base64,${bytesToBase64(bytes)}`;
-      doc.addImage(dataUrl, "PNG", left + 4, sigTop, colW2 - 8, sigBoxH - 4);
+      doc.addImage(dataUrl, "PNG", left + 4, sigTop, contentW - 8, sigBoxH - 4);
     } catch (e) {
       console.warn("[agreement-pdf] signature image embed failed", e);
     }
   }
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(1.2);
-  doc.line(left, sigTop + sigBoxH, left + colW2, sigTop + sigBoxH);
+  doc.line(left, sigTop + sigBoxH, left + contentW, sigTop + sigBoxH);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
   doc.setTextColor(...RGB_MUTED);
   doc.text("RENTER SIGNATURE", left, sigTop + sigBoxH + 10);
-
-  // Company rep signature line
-  const rcolX = left + colW2 + 24;
-  doc.line(rcolX, sigTop + sigBoxH, rcolX + colW2, sigTop + sigBoxH);
-  doc.text(`${c.dba.toUpperCase()} REPRESENTATIVE`, rcolX, sigTop + sigBoxH + 10);
 
   y = sigTop + sigBoxH + 18;
 
