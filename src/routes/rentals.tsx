@@ -715,6 +715,22 @@ function RentalsPage() {
         }
       />
       <div className="space-y-4">
+        {reviewFilter ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+              <div>
+                <div className="font-semibold">Pending Staff Review ({pendingReview.length})</div>
+                <div className="text-xs text-muted-foreground">Signed agreements awaiting staff review and payment link.</div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/rentals", search: {}, replace: true })}>
+                Show all
+              </Button>
+            </div>
+            {pendingReview.length === 0
+              ? <EmptyState label="No agreements awaiting review." />
+              : pendingReview.map(renderRow)}
+          </div>
+        ) : (<>
         <Collapsible defaultOpen>
           <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/40 px-4 py-3 text-sm font-semibold hover:bg-muted/60 transition-colors">
             <span>On Rent <span className="ml-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">{active.length}</span></span>
@@ -747,6 +763,7 @@ function RentalsPage() {
           </CollapsibleContent>
         </Collapsible>
       </div>
+        </>)}
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
