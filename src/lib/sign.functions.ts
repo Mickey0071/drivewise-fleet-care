@@ -313,7 +313,7 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
 
     const { error: upErr } = await supabaseAdmin
       .from("rentals")
-      .update(update)
+      .update({ ...update, staff_review_status: "pending" })
       .eq("id", rental.id);
     if (upErr) throw new Error(`Failed to save: ${upErr.message}`);
 
@@ -343,9 +343,8 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
             "Your signed agreement and ID have been received and are now under review by our team. Once approved, we'll send you a payment link by text and email so you can complete your reservation.",
         });
       }
-      // Alert management to review the submission and manually issue the
-      // payment link from the Reservations admin screen.
-      await notifyManagementForReview(rental.id, driver?.full_name ?? null);
+      // Management is alerted via the in-app dashboard badge
+      // (staff_review_status = 'pending'); no SMS is sent.
     } catch (e) {
       console.error("post-sign notify failed", e);
     }
