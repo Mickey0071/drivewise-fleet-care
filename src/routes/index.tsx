@@ -17,8 +17,8 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   useStoreVersion();
-  const { roles } = useAuth();
-  const canReview = !!roles && (roles.includes("admin") || roles.includes("va"));
+  const { role } = useAuth();
+  const canReview = role === "admin" || role === "va";
   const counts = {
     available: vehicles.filter(v => isVehicleBookable(v.id)).length,
     rented: vehicles.filter(v => !isVehicleBookable(v.id) && v.status === "rented").length,
