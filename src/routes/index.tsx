@@ -70,6 +70,12 @@ function Index() {
         }
       />
 
+      <AgreementReviewModal
+        rental={reviewingRental}
+        open={!!reviewingRental}
+        onOpenChange={handleReviewClose}
+      />
+
       {pendingReview.length > 0 && (
         <Link
           to="/pending-agreements"
