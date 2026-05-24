@@ -54,6 +54,16 @@ function SignPage() {
   const [verifying, setVerifying] = useState(false);
   const [licenseError, setLicenseError] = useState<string | null>(null);
   const [checkingLicense, setCheckingLicense] = useState(false);
+  // Fields extracted from the uploaded license — overlaid on top of the
+  // driver fields from the DB so the agreement preview pre-fills instantly.
+  const [licenseFields, setLicenseFields] = useState<{
+    fullName?: string | null;
+    licenseNumber?: string | null;
+    dlState?: string | null;
+    licenseExpiry?: string | null;
+    dateOfBirth?: string | null;
+    address?: string | null;
+  } | null>(null);
 
   // Save progress on every change so the page can be restored after a reload.
   useEffect(() => {
@@ -102,7 +112,7 @@ function SignPage() {
   // doesn't match, reject the upload and ask them to re-upload the correct ID.
   async function onLicenseChange(dataUrl: string | null) {
     setLicenseError(null);
-    if (!dataUrl) { setLicenseUrl(null); return; }
+    if (!dataUrl) { setLicenseUrl(null); setLicenseFields(null); return; }
     setCheckingLicense(true);
     try {
       const result = await verifyLicense({ data: { token, licenseDataUrl: dataUrl } });
@@ -116,6 +126,19 @@ function SignPage() {
         return;
       }
       setLicenseUrl(dataUrl);
+      // Use the extracted fields immediately so the agreement pre-fills.
+      const ex = (result as any).extracted ?? null;
+      if (ex) {
+        setLicenseFields({
+          fullName: ex.fullName ?? null,
+          licenseNumber: ex.licenseNumber ?? null,
+          dlState: ex.dlState ?? null,
+          licenseExpiry: ex.licenseExpiry ?? null,
+          dateOfBirth: ex.dateOfBirth ?? null,
+          address: ex.address ?? null,
+        });
+        if (ex.fullName && !signedBy.trim()) setSignedBy(ex.fullName);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not verify ID";
       setLicenseError(msg);
@@ -204,14 +227,22 @@ function SignPage() {
   }
 
   // Build props for RentalAgreement from what the server returns
+  // Prefer OCR-extracted values when the DB fields are still blank so the
+  // renter sees a pre-filled agreement the moment their license uploads.
+  const pick = <T,>(db: T | null | undefined, ocr: T | null | undefined): T | "" => {
+    const dbStr = typeof db === "string" ? db.trim() : db;
+    if (dbStr) return dbStr as T;
+    return (ocr ?? "") as T | "";
+  };
   const agreementDriver = {
-    fullName: info.driverName ?? "",
-    dateOfBirth: (info as any).dateOfBirth ?? null,
-    licenseNumber: (info as any).licenseNumber ?? "",
-    licenseExpiry: (info as any).licenseExpiry ?? "",
+    fullName: pick(info.driverName, licenseFields?.fullName) || "",
+    dateOfBirth: pick((info as any).dateOfBirth, licenseFields?.dateOfBirth) || null,
+    licenseNumber: pick((info as any).licenseNumber, licenseFields?.licenseNumber) || "",
+    licenseExpiry: pick((info as any).licenseExpiry, licenseFields?.licenseExpiry) || "",
+    dlState: pick((info as any).dlState, licenseFields?.dlState) || "",
     phone: (info as any).phone ?? "",
     email: (info as any).email ?? "",
-    address: (info as any).address ?? "",
+    address: pick((info as any).address, licenseFields?.address) || "",
   };
 
   const agreementVehicle = {
