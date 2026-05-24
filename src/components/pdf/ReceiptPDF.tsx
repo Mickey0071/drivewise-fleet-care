@@ -76,6 +76,8 @@ export async function renderReceiptPdf(data: ReceiptPDFData): Promise<Uint8Array
   // Lazy-load jsPDF so it isn't pulled into the SSR/Worker bundle at module init.
   const { jsPDF } = await import("jspdf");
   const { rental, driver, vehicle, payment, settings } = data;
+  const lineItems = data.lineItems ?? [];
+  const durationLabel = data.durationLabel ?? "";
   const c = settings.company;
   const rateLabel = (() => {
     const cadence = (rental.billingCadence || "weekly").toLowerCase();
