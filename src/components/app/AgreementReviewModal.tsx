@@ -243,3 +243,9 @@ function DocViewer({ icon, label, url, kind }: { icon: React.ReactNode; label: s
     </div>
   );
 }
+
+export const AgreementReviewModal = memo(AgreementReviewModalImpl, (prev, next) =>
+  prev.open === next.open &&
+  prev.rental?.id === next.rental?.id &&
+  prev.onOpenChange === next.onOpenChange,
+);
