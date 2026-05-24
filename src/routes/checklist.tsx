@@ -149,7 +149,7 @@ function ChecklistPage() {
     (async () => {
       const { data } = await supabase
         .from("tasks")
-        .select("description, linked_vehicle_id")
+        .select("description, linked_vehicle_id, task_type, task_mode")
         .eq("id", task_id)
         .maybeSingle();
       if (cancelled || !data) return;
@@ -158,6 +158,19 @@ function ChecklistPage() {
         setTaskLockedVehicle(data.linked_vehicle_id);
         setVehicleId(data.linked_vehicle_id);
       }
+      // Auto-pick job type from the task so the runner doesn't see the picker.
+      const map: Record<string, JobType> = {
+        repo: "repossession",
+        dropoff: "vehicle_return",
+        pickup: "new_acquisition",
+        inspection: "inspection",
+        parts: "inspection",
+        other: "inspection",
+        mechanic_run: "mechanic_run",
+        dmv: "dmv_reg",
+      };
+      const preset = data.task_mode === "return" ? "vehicle_return" : map[data.task_type];
+      if (preset) setJobType(preset);
     })();
     return () => { cancelled = true; };
   }, [task_id]);
@@ -719,6 +732,7 @@ function ChecklistPage() {
       </Card>
 
       {/* SECTION 2 — Job Type */}
+      {!inGuidedFlow && (
       <Card>
         <CardContent className="space-y-3 pt-6">
           <Label>Job type *</Label>
@@ -743,6 +757,7 @@ function ChecklistPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* SECTION 3 — Checklist */}
       <Card>
