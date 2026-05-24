@@ -4,24 +4,6 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { extractNameFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
-import { sendSms } from "@/lib/ghl.server";
-
-/**
- * Notify management that a renter has submitted their signed agreement
- * and ID, so staff can review before manually sending the payment link.
- */
-async function notifyManagementForReview(rentalId: string, renterName: string | null): Promise<void> {
-  try {
-    const who = renterName?.trim() || "Renter";
-    await sendSms(
-      "+12672213977",
-      `Review agreement for ${who} ${rentalId}`,
-    );
-    console.log(`[mgmt-review] notified for ${rentalId}`);
-  } catch (e) {
-    console.error(`[mgmt-review] failed ${rentalId}:`, e);
-  }
-}
 
 function genToken() {
   const bytes = new Uint8Array(16);
@@ -331,7 +313,7 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
 
     const { error: upErr } = await supabaseAdmin
       .from("rentals")
-      .update(update)
+      .update({ ...update, staff_review_status: "pending" })
       .eq("id", rental.id);
     if (upErr) throw new Error(`Failed to save: ${upErr.message}`);
 
@@ -361,9 +343,8 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
             "Your signed agreement and ID have been received and are now under review by our team. Once approved, we'll send you a payment link by text and email so you can complete your reservation.",
         });
       }
-      // Alert management to review the submission and manually issue the
-      // payment link from the Reservations admin screen.
-      await notifyManagementForReview(rental.id, driver?.full_name ?? null);
+      // Management is alerted via the in-app dashboard badge
+      // (staff_review_status = 'pending'); no SMS is sent.
     } catch (e) {
       console.error("post-sign notify failed", e);
     }

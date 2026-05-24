@@ -119,6 +119,7 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   agreementPdfGeneratedAt: r.agreement_pdf_generated_at ?? undefined,
   receiptPdfUrl: r.receipt_pdf_url ?? undefined,
   receiptPdfGeneratedAt: r.receipt_pdf_generated_at ?? undefined,
+  staffReviewStatus: r.staff_review_status ?? undefined,
   extensions: exts.filter(e => e.rental_id === r.id).map(fromExt),
 });
 const toRental = (r: any) => ({

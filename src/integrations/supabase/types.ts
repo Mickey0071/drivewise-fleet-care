@@ -979,6 +979,7 @@ export type Database = {
           signed_at: string | null
           signed_by: string | null
           skip_daily_minimum: boolean
+          staff_review_status: string | null
           start_date: string
           stripe_customer_id: string | null
           stripe_payment_method_id: string | null
@@ -1032,6 +1033,7 @@ export type Database = {
           signed_at?: string | null
           signed_by?: string | null
           skip_daily_minimum?: boolean
+          staff_review_status?: string | null
           start_date: string
           stripe_customer_id?: string | null
           stripe_payment_method_id?: string | null
@@ -1085,6 +1087,7 @@ export type Database = {
           signed_at?: string | null
           signed_by?: string | null
           skip_daily_minimum?: boolean
+          staff_review_status?: string | null
           start_date?: string
           stripe_customer_id?: string | null
           stripe_payment_method_id?: string | null

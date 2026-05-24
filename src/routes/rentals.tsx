@@ -51,6 +51,7 @@ export const Route = createFileRoute("/rentals")({
   validateSearch: (search: Record<string, unknown>) => ({
     paid: typeof search.paid === "string" ? search.paid : undefined,
     session_id: typeof search.session_id === "string" ? search.session_id : undefined,
+    review: typeof search.review === "string" ? search.review : undefined,
   }),
   component: RentalsPage,
 });
@@ -59,7 +60,7 @@ const AGREEMENT_VERSION = "v1.0";
 
 function RentalsPage() {
   const navigate = Route.useNavigate();
-  const { paid } = Route.useSearch();
+  const { paid, review } = Route.useSearch();
   const { user, role } = useAuth();
   const [newOpen, setNewOpen] = useState(false);
   const [editing, setEditing] = useState<Rental | null>(null);
@@ -228,6 +229,8 @@ function RentalsPage() {
   const pending = rentals.filter(r => r.reservationStatus === "pending");
   const active = rentals.filter(r => (r.reservationStatus ?? "active") === "active");
   const completed = rentals.filter(r => r.reservationStatus === "returned" || r.reservationStatus === "completed");
+  const pendingReview = rentals.filter(r => r.staffReviewStatus === "pending");
+  const reviewFilter = review === "pending";
 
   function renderRow(r: Rental) {
     const v = vehicleById(r.vehicleId);
@@ -712,6 +715,22 @@ function RentalsPage() {
         }
       />
       <div className="space-y-4">
+        {reviewFilter ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+              <div>
+                <div className="font-semibold">Pending Staff Review ({pendingReview.length})</div>
+                <div className="text-xs text-muted-foreground">Signed agreements awaiting staff review and payment link.</div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/rentals", search: {}, replace: true })}>
+                Show all
+              </Button>
+            </div>
+            {pendingReview.length === 0
+              ? <EmptyState label="No agreements awaiting review." />
+              : pendingReview.map(renderRow)}
+          </div>
+        ) : (<>
         <Collapsible defaultOpen>
           <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/40 px-4 py-3 text-sm font-semibold hover:bg-muted/60 transition-colors">
             <span>On Rent <span className="ml-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">{active.length}</span></span>
@@ -743,6 +762,7 @@ function RentalsPage() {
             {completed.length === 0 ? <EmptyState label="No returned rentals yet." /> : completed.map(renderRow)}
           </CollapsibleContent>
         </Collapsible>
+        </>)}
       </div>
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>

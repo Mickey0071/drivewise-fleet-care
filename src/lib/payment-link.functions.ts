@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export interface PaymentLinkInput {
   phone: string;
@@ -115,6 +116,17 @@ export const sendPaymentLink = createServerFn({ method: "POST" })
     try {
       const result = await sendPaymentLinkInternal({ ...data, origin });
       console.log("[sendPaymentLink] payment link sent", { url: result.url });
+      // Mark the rental as reviewed by staff — clears the dashboard badge.
+      if (data.rentalId) {
+        try {
+          await supabaseAdmin
+            .from("rentals")
+            .update({ staff_review_status: "reviewed" })
+            .eq("id", data.rentalId);
+        } catch (e) {
+          console.error("[sendPaymentLink] failed to mark reviewed:", e);
+        }
+      }
       return result;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
