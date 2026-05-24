@@ -376,7 +376,9 @@ function PhotoCapture({
     value ? "uploaded" : "idle",
   );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const MAX_BYTES = 5 * 1024 * 1024;
+  // Raise cap — modern phone photos (especially iPhone selfies) routinely
+  // exceed 5MB. We re-encode/compress below, so the original size is fine.
+  const MAX_BYTES = 25 * 1024 * 1024;
 
   // Keep status in sync with the parent value so the "Uploaded" state is preserved
   // even if this component re-renders or remounts after the parent updates state.
@@ -388,10 +390,13 @@ function PhotoCapture({
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.warn(`[${label}] no file selected`);
+      return;
+    }
     console.log(`${label} file selected: ${file.name}, size: ${file.size} bytes`);
     if (file.size > MAX_BYTES) {
-      const msg = "File too large, max 5MB";
+      const msg = "File too large, max 25MB";
       console.error(`${label} upload failed: ${msg}`);
       setErrorMsg(msg);
       setStatus("error");
