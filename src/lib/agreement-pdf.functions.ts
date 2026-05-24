@@ -61,7 +61,35 @@ export const generateAgreementPdf = createServerFn({ method: "POST" })
           const res = await fetch(rental.client_signature_url);
           if (res.ok) {
             const ab = await res.arrayBuffer();
-            signaturePng = Buffer.from(ab);
+            // jsPDF in the Cloudflare Worker SSR runtime cannot reliably
+            // decode RGBA PNGs produced by <canvas>.toDataURL("image/png").
+            // Pre-decode the PNG, composite onto a solid white background,
+            // and re-encode as JPEG so jsPDF can embed it the same way it
+            // embeds the logo (which has always worked).
+            try {
+              // @ts-expect-error — upng-js has no types
+              const UPNG = (await import("upng-js")).default;
+              const jpeg = (await import("jpeg-js")).default;
+              const decoded = UPNG.decode(ab);
+              const rgba = new Uint8Array(UPNG.toRGBA8(decoded)[0]);
+              const w = decoded.width;
+              const h = decoded.height;
+              // Composite onto white background (signatures are dark strokes
+              // on transparent canvas).
+              const rgb = new Uint8Array(w * h * 4);
+              for (let i = 0; i < w * h; i++) {
+                const a = rgba[i * 4 + 3] / 255;
+                rgb[i * 4]     = Math.round(rgba[i * 4]     * a + 255 * (1 - a));
+                rgb[i * 4 + 1] = Math.round(rgba[i * 4 + 1] * a + 255 * (1 - a));
+                rgb[i * 4 + 2] = Math.round(rgba[i * 4 + 2] * a + 255 * (1 - a));
+                rgb[i * 4 + 3] = 255;
+              }
+              const encoded = jpeg.encode({ data: rgb, width: w, height: h }, 90);
+              signaturePng = Buffer.from(encoded.data);
+            } catch (decodeErr) {
+              console.warn(`[agreement-pdf] rental=${rentalId}: PNG→JPEG convert failed, falling back to raw PNG`, decodeErr);
+              signaturePng = Buffer.from(ab);
+            }
           } else {
             console.warn(`[agreement-pdf] rental=${rentalId}: signature fetch ${res.status}`);
           }
