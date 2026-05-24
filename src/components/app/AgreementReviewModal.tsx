@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -22,7 +22,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
-export function AgreementReviewModal({ rental, open, onOpenChange }: Props) {
+function AgreementReviewModalImpl({ rental, open, onOpenChange }: Props) {
   const sendPayLinkFn = useServerFn(sendPaymentLink);
   const requestResubmitFn = useServerFn(requestAgreementResubmission);
   const holdFn = useServerFn(holdAgreementForReview);
