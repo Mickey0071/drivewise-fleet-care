@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
-import { extractNameFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
+import { extractNameFromIdImage, extractAddressFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
 
 function genToken() {
@@ -318,10 +318,48 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
     if (upErr) throw new Error(`Failed to save: ${upErr.message}`);
 
     // Update driver's insurance/license on file
-    await supabaseAdmin
-      .from("drivers")
-      .update({ insurance_on_file: true })
-      .eq("id", rental.driver_id);
+    {
+      const driverUpdate: {
+        insurance_on_file: boolean;
+        address?: string;
+        street_address?: string;
+        city?: string;
+        state?: string;
+        zip_code?: string;
+      } = { insurance_on_file: true };
+      // OCR address from the renter's license and backfill any missing
+      // address fields on the driver record so the agreement (and the
+      // generated PDF) display the renter's real address.
+      try {
+        const { data: existing } = await supabaseAdmin
+          .from("drivers")
+          .select("address, street_address, city, state, zip_code")
+          .eq("id", rental.driver_id)
+          .maybeSingle();
+        const hasAny =
+          (existing?.address && existing.address.trim()) ||
+          (existing?.street_address && existing.street_address.trim()) ||
+          (existing?.city && existing.city.trim()) ||
+          (existing?.state && existing.state.trim()) ||
+          (existing?.zip_code && existing.zip_code.trim());
+        if (!hasAny) {
+          const addr = await extractAddressFromIdImage(data.licenseDataUrl);
+          if (addr) {
+            console.log(`[sign] OCR address for ${rental.id}: ${addr.formatted}`);
+            if (addr.formatted) driverUpdate.address = addr.formatted;
+            if (addr.streetAddress) driverUpdate.street_address = addr.streetAddress;
+            if (addr.city) driverUpdate.city = addr.city;
+            if (addr.state) driverUpdate.state = addr.state;
+            if (addr.zipCode) driverUpdate.zip_code = addr.zipCode;
+          } else {
+            console.warn(`[sign] OCR address: nothing readable for ${rental.id}`);
+          }
+        }
+      } catch (e) {
+        console.error(`[sign] OCR address failed for ${rental.id}:`, e);
+      }
+      await supabaseAdmin.from("drivers").update(driverUpdate).eq("id", rental.driver_id);
+    }
 
     // After signing: thank the renter and let them know staff will review
     // the submitted agreement + ID before sending a payment link manually.

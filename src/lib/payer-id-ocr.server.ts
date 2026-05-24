@@ -55,6 +55,75 @@ export async function extractNameFromIdImage(imageDataUrl: string): Promise<stri
 }
 
 /**
+ * Extract the residential address printed on a US driver's license / ID
+ * photo. Returns a structured object with parts, plus a single-line
+ * formatted string. Returns null if no address can be read confidently.
+ */
+export async function extractAddressFromIdImage(imageDataUrl: string): Promise<{
+  formatted: string;
+  streetAddress: string | null;
+  city: string | null;
+  state: string | null;
+  zipCode: string | null;
+} | null> {
+  const apiKey = process.env.LOVABLE_API_KEY;
+  if (!apiKey) {
+    console.error("[payer-id-ocr] LOVABLE_API_KEY is not configured");
+    return null;
+  }
+  if (!imageDataUrl.startsWith("data:image/")) return null;
+
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You read US driver's licenses and government IDs. Return ONLY a compact JSON object with the holder's residential address in this exact shape: {\"streetAddress\":string,\"city\":string,\"state\":string,\"zipCode\":string}. Use the 2-letter state abbreviation. If a field can't be read, use an empty string. If no address is visible at all, return {\"streetAddress\":\"\",\"city\":\"\",\"state\":\"\",\"zipCode\":\"\"}. No prose, no code fences.",
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Extract the address from this ID." },
+            { type: "image_url", image_url: { url: imageDataUrl } },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    console.error(`[payer-id-ocr address] gateway ${res.status}: ${t.slice(0, 200)}`);
+    return null;
+  }
+  const json = await res.json().catch(() => null) as any;
+  let raw = json?.choices?.[0]?.message?.content;
+  if (typeof raw !== "string") return null;
+  raw = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+  let parsed: any = null;
+  try { parsed = JSON.parse(raw); } catch { return null; }
+  const clean = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const streetAddress = clean(parsed.streetAddress);
+  const city = clean(parsed.city);
+  const state = clean(parsed.state).toUpperCase().slice(0, 2);
+  const zipCode = clean(parsed.zipCode);
+  if (!streetAddress && !city && !state && !zipCode) return null;
+  const cityStateZip = [city, [state, zipCode].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  const formatted = [streetAddress, cityStateZip].filter(Boolean).join(", ");
+  return {
+    formatted,
+    streetAddress: streetAddress || null,
+    city: city || null,
+    state: state || null,
+    zipCode: zipCode || null,
+  };
+}
+
+/**
  * Upload a payer-ID data URL to the rental-signing bucket and return a
  * long-lived signed URL.
  */
