@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SignaturePad } from "@/components/app/SignaturePad";
-import { CheckCircle2, CalendarPlus, FileSignature, Loader2 } from "lucide-react";
+import { CheckCircle2, CalendarPlus, FileSignature, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import logoUrl from "@/assets/camauto-logo-full.jpeg";
 
@@ -49,6 +49,10 @@ function ExtendPage() {
   const [sig, setSig] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [cardInName, setCardInName] = useState<null | "yes" | "no">(null);
+  const [payerIdDataUrl, setPayerIdDataUrl] = useState<string | null>(null);
+  const [payerPhone, setPayerPhone] = useState("");
+  const [uploadingId, setUploadingId] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,13 +76,47 @@ function ExtendPage() {
     if (!accepted) { toast.error("Please confirm you agree to the extension"); return; }
     if (!sig) { toast.error("Signature is required"); return; }
     if (!name.trim()) { toast.error("Please enter your full name"); return; }
+    if (cardInName === null) { toast.error("Please answer the payment card question"); return; }
+    if (cardInName === "no" && !payerIdDataUrl) {
+      toast.error("Please upload the cardholder's driver's license");
+      return;
+    }
     setSubmitting(true);
     try {
-      const { paymentUrl } = await signFn({ data: { token, signatureDataUrl: sig, signedBy: name.trim() } });
+      const { paymentUrl } = await signFn({
+        data: {
+          token,
+          signatureDataUrl: sig,
+          signedBy: name.trim(),
+          thirdPartyPayer: cardInName === "no",
+          payerIdDataUrl: cardInName === "no" ? payerIdDataUrl ?? undefined : undefined,
+          payerPhone: cardInName === "no" ? payerPhone.trim() || undefined : undefined,
+        },
+      });
       window.location.href = paymentUrl;
     } catch (e: any) {
       toast.error(e?.message || "Could not submit extension");
       setSubmitting(false);
+    }
+  }
+
+  async function onPickPayerId(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please upload an image"); return; }
+    if (file.size > 8 * 1024 * 1024) { toast.error("File must be under 8MB"); return; }
+    setUploadingId(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Could not read file"));
+        reader.readAsDataURL(file);
+      });
+      setPayerIdDataUrl(dataUrl);
+    } catch (e: any) {
+      toast.error(e?.message || "Could not load image");
+    } finally {
+      setUploadingId(false);
     }
   }
 
@@ -203,11 +241,64 @@ function ExtendPage() {
                   <SignaturePad value={sig ?? undefined} onChange={setSig} />
                 </div>
 
+                <div className="rounded-md border p-4 space-y-3">
+                  <Label className="text-sm font-semibold">
+                    Is the payment card in your name?
+                  </Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={cardInName === "yes" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => { setCardInName("yes"); setPayerIdDataUrl(null); }}
+                    >Yes</Button>
+                    <Button
+                      type="button"
+                      variant={cardInName === "no" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCardInName("no")}
+                    >No</Button>
+                  </div>
+                  {cardInName === "no" && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <Label htmlFor="payer-id" className="text-xs">
+                        Upload cardholder's driver's license
+                      </Label>
+                      <Input
+                        id="payer-id"
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        disabled={uploadingId}
+                        onChange={(e) => onPickPayerId(e.target.files?.[0] ?? null)}
+                      />
+                      {payerIdDataUrl && (
+                        <div className="flex items-center gap-2 text-xs text-green-700">
+                          <CheckCircle2 className="h-4 w-4" /> ID uploaded
+                        </div>
+                      )}
+                      <Label htmlFor="payer-phone" className="text-xs">
+                        Cardholder's phone (optional)
+                      </Label>
+                      <Input
+                        id="payer-phone"
+                        type="tel"
+                        placeholder="(555) 555-5555"
+                        value={payerPhone}
+                        onChange={(e) => setPayerPhone(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+
                 <Button
                   className="w-full"
                   size="lg"
                   onClick={onSubmit}
-                  disabled={submitting || !accepted || !sig || !name.trim()}
+                  disabled={
+                    submitting || !accepted || !sig || !name.trim() || cardInName === null ||
+                    (cardInName === "no" && !payerIdDataUrl)
+                  }
                 >
                   {submitting ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecting to payment…</>
