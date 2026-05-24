@@ -475,7 +475,14 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     try {
       const bytes = signaturePng instanceof Uint8Array ? signaturePng : new Uint8Array(signaturePng);
       const dataUrl = `data:image/png;base64,${bytesToBase64(bytes)}`;
-      doc.addImage(dataUrl, "PNG", left + 4, sigTop, contentW - 8, sigBoxH - 4);
+      // Detect format from magic bytes — signatures are pre-converted to
+      // JPEG by the server (jsPDF in Worker SSR can't decode RGBA PNGs
+      // reliably), but fall back to PNG if conversion was skipped.
+      const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8;
+      const fmt = isJpeg ? "JPEG" : "PNG";
+      const mime = isJpeg ? "image/jpeg" : "image/png";
+      const dataUrl = `data:${mime};base64,${bytesToBase64(bytes)}`;
+      doc.addImage(dataUrl, fmt, left + 4, sigTop, contentW - 8, sigBoxH - 4);
     } catch (e) {
       console.warn("[agreement-pdf] signature image embed failed", e);
     }
