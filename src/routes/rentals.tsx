@@ -1516,9 +1516,6 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
   );
 }
 
-function AgreementDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
-  return <AgreementDialogInner rental={rental} onClose={onClose} />;
-}
 
 function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
   const sendSmsFn = useServerFn(sendRentalSms);
