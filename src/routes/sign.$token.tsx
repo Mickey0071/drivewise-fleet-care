@@ -26,16 +26,47 @@ function SignPage() {
   const verifyLicense = useServerFn(verifyLicenseName);
   const [info, setInfo] = useState<RentalInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [signedBy, setSignedBy] = useState("");
-  const [sig, setSig] = useState<string | null>(null);
-  const [licenseUrl, setLicenseUrl] = useState<string | null>(null);
-  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
+  // Persist progress to sessionStorage so an iOS Safari memory-pressure
+  // reload after the camera intent doesn't blank out captured photos.
+  const storageKey = `sign:${token}`;
+  const initial = (() => {
+    if (typeof window === "undefined") return { signedBy: "", sig: null, licenseUrl: null, selfieUrl: null, step: "identity" as const };
+    try {
+      const raw = window.sessionStorage.getItem(storageKey);
+      if (!raw) return { signedBy: "", sig: null, licenseUrl: null, selfieUrl: null, step: "identity" as const };
+      const v = JSON.parse(raw);
+      return {
+        signedBy: typeof v.signedBy === "string" ? v.signedBy : "",
+        sig: typeof v.sig === "string" ? v.sig : null,
+        licenseUrl: typeof v.licenseUrl === "string" ? v.licenseUrl : null,
+        selfieUrl: typeof v.selfieUrl === "string" ? v.selfieUrl : null,
+        step: v.step === "agreement" ? "agreement" as const : "identity" as const,
+      };
+    } catch { return { signedBy: "", sig: null, licenseUrl: null, selfieUrl: null, step: "identity" as const }; }
+  })();
+  const [signedBy, setSignedBy] = useState<string>(initial.signedBy);
+  const [sig, setSig] = useState<string | null>(initial.sig);
+  const [licenseUrl, setLicenseUrl] = useState<string | null>(initial.licenseUrl);
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(initial.selfieUrl);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
-  const [step, setStep] = useState<"identity" | "agreement">("identity");
+  const [step, setStep] = useState<"identity" | "agreement">(initial.step);
   const [verifying, setVerifying] = useState(false);
   const [licenseError, setLicenseError] = useState<string | null>(null);
   const [checkingLicense, setCheckingLicense] = useState(false);
+
+  // Save progress on every change so the page can be restored after a reload.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage.setItem(
+        storageKey,
+        JSON.stringify({ signedBy, sig, licenseUrl, selfieUrl, step }),
+      );
+    } catch (e) {
+      console.warn("[sign] sessionStorage save failed", e);
+    }
+  }, [storageKey, signedBy, sig, licenseUrl, selfieUrl, step]);
 
   useEffect(() => {
     console.log("[sign] mount, token:", token);
@@ -111,6 +142,7 @@ function SignPage() {
           signedBy: signedBy.trim(),
         },
       });
+      try { window.sessionStorage.removeItem(storageKey); } catch {}
       setDone(true);
       toast.success("All set — thank you!");
     } catch (e) {
