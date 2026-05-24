@@ -616,7 +616,6 @@ function RentalsPage() {
                 </div>
               </div>
             )}
-            </div>
             {!isPending && !r.endDate && (
               <RentalCardTabs rental={r} />
             )}
