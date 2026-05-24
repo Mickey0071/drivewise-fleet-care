@@ -55,12 +55,73 @@ export const generateReceiptPdf = createServerFn({ method: "POST" })
         return { url: null, generatedAt: null, error: "missing driver or vehicle" };
       }
 
+      // ---- Compute itemized totals from actual rental duration + extensions ----
+      const [{ data: extensions }, { data: charges }] = await Promise.all([
+        supabaseAdmin
+          .from("rental_extensions")
+          .select("periods, period_label, previous_end_date, new_end_date, additional_amount, extended_at")
+          .eq("rental_id", rentalId)
+          .order("extended_at", { ascending: true }),
+        supabaseAdmin
+          .from("rental_charges")
+          .select("amount, status")
+          .eq("rental_id", rentalId),
+      ]);
+
+      const rate = Number(rental.rate_amount ?? rental.rate ?? rental.weekly_rate ?? 0);
+      const cadence = (rental.billing_cadence || "weekly").toLowerCase();
+      const periodDays = cadence === "daily" ? 1 : cadence === "monthly" ? 30 : 7;
+      const periodWord = cadence === "daily" ? "day" : cadence === "monthly" ? "month" : "week";
+
+      // Original period = start_date → (first extension's previous_end_date OR rental.end_date)
+      const startMs = new Date(`${rental.start_date}T00:00:00`).getTime();
+      const firstExt = (extensions ?? [])[0];
+      const originalEndStr =
+        firstExt?.previous_end_date ?? rental.end_date ?? rental.start_date;
+      const originalEndMs = new Date(`${originalEndStr}T00:00:00`).getTime();
+      const originalPeriods = Math.max(
+        1,
+        Math.round((originalEndMs - startMs) / (periodDays * 86400000)),
+      );
+      const originalAmount = originalPeriods * rate;
+
+      const lineItems: { label: string; amount: number }[] = [
+        {
+          label: `Original rental — ${originalPeriods} ${periodWord}${originalPeriods === 1 ? "" : "s"} × ${fmtMoney(rate)}`,
+          amount: originalAmount,
+        },
+      ];
+
+      let extensionsTotal = 0;
+      (extensions ?? []).forEach((ext, i) => {
+        const amt = Number(ext.additional_amount ?? 0);
+        extensionsTotal += amt;
+        const p = ext.periods ?? 1;
+        const label = ext.period_label || periodWord;
+        lineItems.push({
+          label: `Extension ${i + 1} — ${p} ${label}${p === 1 ? "" : "s"}`,
+          amount: amt,
+        });
+      });
+
+      const computedTotal = originalAmount + extensionsTotal;
+      const chargesSum = (charges ?? [])
+        .filter((c) => ["succeeded", "recorded", "paid"].includes((c.status || "").toLowerCase()))
+        .reduce((s, c) => s + Number(c.amount ?? 0), 0);
+
+      const totalCost = computedTotal > 0 ? computedTotal : chargesSum;
       const paidAmount =
         data.paymentAmountCents != null
           ? data.paymentAmountCents / 100
-          : Number(rental.rate_amount ?? rental.rate ?? rental.weekly_rate ?? 0);
-      const totalCost = paidAmount; // first-period charge
+          : chargesSum > 0
+            ? chargesSum
+            : totalCost;
       const balanceDue = Math.max(0, totalCost - paidAmount);
+
+      const endStr = rental.end_date ?? rental.start_date;
+      const totalPeriods =
+        originalPeriods + (extensions ?? []).reduce((s, e) => s + (e.periods ?? 0), 0);
+      const durationLabel = `${totalPeriods} ${periodWord}${totalPeriods === 1 ? "" : "s"} (${rental.start_date} → ${endStr})`;
 
       const pdfData: ReceiptPDFData = {
         rental: {
@@ -92,6 +153,8 @@ export const generateReceiptPdf = createServerFn({ method: "POST" })
           totalCost,
           balanceDue,
         },
+        lineItems,
+        durationLabel,
         settings: DEFAULT_SETTINGS,
       };
 
