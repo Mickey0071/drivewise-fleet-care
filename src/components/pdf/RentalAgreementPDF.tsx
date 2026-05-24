@@ -474,7 +474,6 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   if (signaturePng) {
     try {
       const bytes = signaturePng instanceof Uint8Array ? signaturePng : new Uint8Array(signaturePng);
-      const dataUrl = `data:image/png;base64,${bytesToBase64(bytes)}`;
       // Detect format from magic bytes — signatures are pre-converted to
       // JPEG by the server (jsPDF in Worker SSR can't decode RGBA PNGs
       // reliably), but fall back to PNG if conversion was skipped.
