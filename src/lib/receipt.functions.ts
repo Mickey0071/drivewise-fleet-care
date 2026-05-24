@@ -5,6 +5,8 @@ import { renderReceiptPdf, type ReceiptPDFData } from "@/components/pdf/ReceiptP
 import { DEFAULT_SETTINGS } from "@/lib/agreementSettings";
 import { sendSms, sendEmail } from "@/lib/ghl.server";
 
+const fmtMoney = (n: number) => `$${(Math.round(n * 100) / 100).toFixed(2)}`;
+
 /**
  * Generate a payment-receipt PDF for an active rental, upload to the
  * `rental-signing` bucket, and persist a signed URL on the rental row.
