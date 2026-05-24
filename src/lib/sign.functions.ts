@@ -502,7 +502,7 @@ export const verifyLicenseName = createServerFn({ method: "POST" })
       if (Object.keys(upd).length > 0) {
         const { error: dErr } = await supabaseAdmin
           .from("drivers")
-          .update(upd)
+          .update(upd as any)
           .eq("id", rental.driver_id);
         if (dErr) console.error(`[verifyLicense] driver backfill failed:`, dErr);
         else console.log(`[verifyLicense] backfilled driver ${rental.driver_id}:`, Object.keys(upd).join(","));
