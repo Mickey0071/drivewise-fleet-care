@@ -421,7 +421,10 @@ function PhotoCapture({
       };
       img.onload = () => {
         try {
-          const max = 1600;
+          // Shrink selfies more aggressively — iOS HEIC selfies can be huge
+          // and the camera-intent return is prone to memory-pressure reloads.
+          const max = useCamera ? 1024 : 1600;
+          const quality = useCamera ? 0.75 : 0.85;
           const scale = Math.min(1, max / Math.max(img.width, img.height));
           const w = Math.round(img.width * scale);
           const h = Math.round(img.height * scale);
@@ -433,7 +436,7 @@ function PhotoCapture({
             onChange(reader.result as string);
           } else {
             ctx.drawImage(img, 0, 0, w, h);
-            onChange(canvas.toDataURL("image/jpeg", 0.85));
+            onChange(canvas.toDataURL("image/jpeg", quality));
           }
           console.log(`${label} uploaded successfully`);
           setStatus("uploaded");
