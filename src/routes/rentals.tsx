@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, Receipt, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -33,8 +33,6 @@ import { chargeViolation } from "@/lib/violation-charge.functions";
 import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
-import { downloadClientPacket } from "@/lib/client-packet.functions";
-import { exportRentalReportPdf, exportRentalReportZip, exportRentalEvidencePacketPdf } from "@/lib/rental-report.functions";
 import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { closeoutRental } from "@/lib/return.functions";
@@ -69,14 +67,14 @@ function RentalsPage() {
   const [extending, setExtending] = useState<Rental | null>(null);
   const [swapping, setSwapping] = useState<Rental | null>(null);
   const [stoppingAutoBill, setStoppingAutoBill] = useState<Rental | null>(null);
-  const [viewingAgreement, setViewingAgreement] = useState<Rental | null>(null);
+  
   const [signing, setSigning] = useState<Rental | null>(null);
   const [taskRental, setTaskRental] = useState<Rental | null>(null);
   const [returnChoiceRental, setReturnChoiceRental] = useState<Rental | null>(null);
   const [returnDispatchRental, setReturnDispatchRental] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
   const [violationFor, setViolationFor] = useState<Rental | null>(null);
-  const [receipt, setReceipt] = useState<Rental | null>(null);
+  
   const [chatting, setChatting] = useState<Rental | null>(null);
   const [detail, setDetail] = useState<Rental | null>(null);
   // (Mark as Returned now opens the full Return Inspection dialog directly.)
@@ -89,78 +87,6 @@ function RentalsPage() {
   const [pdfRegenId, setPdfRegenId] = useState<string | null>(null);
   const genReceiptFn = useServerFn(generateReceiptPdf);
   const [receiptRegenId, setReceiptRegenId] = useState<string | null>(null);
-  const downloadPacketFn = useServerFn(downloadClientPacket);
-  const [packetId, setPacketId] = useState<string | null>(null);
-  const exportPdfFn = useServerFn(exportRentalReportPdf);
-  const exportZipFn = useServerFn(exportRentalReportZip);
-  const exportEvidenceFn = useServerFn(exportRentalEvidencePacketPdf);
-  const [reportId, setReportId] = useState<string | null>(null);
-
-  async function handleExportReport(r: Rental, kind: "pdf" | "zip" | "evidence") {
-    setReportId(r.id);
-    try {
-      const res =
-        kind === "pdf"
-          ? await exportPdfFn({ data: { rentalId: r.id } })
-          : kind === "evidence"
-            ? await exportEvidenceFn({ data: { rentalId: r.id } })
-            : await exportZipFn({ data: { rentalId: r.id } });
-      const bin = atob(res.base64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const blob = new Blob([bytes], { type: res.mime });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = res.filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      const label =
-        kind === "pdf" ? "Full report PDF" : kind === "evidence" ? "Evidence packet PDF" : "Report ZIP";
-      toast.success(`${label} downloaded`);
-    } catch (e) {
-      toast.error("Export failed", {
-        description: e instanceof Error ? e.message : String(e),
-      });
-    } finally {
-      setReportId(null);
-    }
-  }
-
-  async function handleDownloadPacket(r: Rental) {
-    setPacketId(r.id);
-    try {
-      const res = await downloadPacketFn({ data: { rentalId: r.id } });
-      const bin = atob(res.base64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const blob = new Blob([bytes], { type: "application/zip" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = res.filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      if (res.missing.length > 0) {
-        toast.warning("Packet downloaded — some items missing", {
-          description: res.missing.join(", "),
-          duration: 8000,
-        });
-      } else {
-        toast.success("Client packet downloaded");
-      }
-    } catch (e) {
-      toast.error("Download failed", {
-        description: e instanceof Error ? e.message : String(e),
-      });
-    } finally {
-      setPacketId(null);
-    }
-  }
   useStoreVersion();
   // Notify staff when a remote signature arrives (via realtime) and the
   // reservation flips from pending → active.
@@ -555,110 +481,6 @@ function RentalsPage() {
                       <DollarSign className="mr-1 h-4 w-4" /> Charge for Violation
                     </Button>
                   )}
-                  {r.signatureDataUrl && (
-                    <Button variant="ghost" size="sm" onClick={() => setViewingAgreement(r)}>
-                      <FileSignature className="mr-1 h-4 w-4" /> View agreement
-                    </Button>
-                  )}
-                  {r.signatureDataUrl && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownloadPacket(r)}
-                      disabled={packetId === r.id}
-                    >
-                      <Download className="mr-1 h-4 w-4" />
-                      {packetId === r.id ? "Preparing…" : "Download packet"}
-                    </Button>
-                  )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" disabled={reportId === r.id}>
-                        <Download className="mr-1 h-4 w-4" />
-                        {reportId === r.id ? "Preparing…" : "Export Report"}
-                        <ChevronDown className="ml-1 h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleExportReport(r, "pdf")}>
-                        📄 Download Full Report (PDF)
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleExportReport(r, "evidence")}>
-                        📎 Download Evidence Packet (PDF)
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleExportReport(r, "zip")}>
-                        🗂️ Download as ZIP (PDF + images + CSV)
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  {r.agreementPdfUrl ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      title={r.agreementPdfGeneratedAt ? `Generated ${new Date(r.agreementPdfGeneratedAt).toLocaleString()}` : undefined}
-                      onClick={() => window.open(r.agreementPdfUrl!, "_blank", "noopener")}
-                    >
-                      📄 Agreement PDF
-                    </Button>
-                  ) : (r.clientSignedAt || r.signedAt) ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={pdfRegenId === r.id}
-                      onClick={async () => {
-                        setPdfRegenId(r.id);
-                        try {
-                          const res = await genPdfFn({ data: { rentalId: r.id } });
-                          if (res?.url) {
-                            toast.success("Agreement PDF generated");
-                            await ensureRentalSynced(r.id);
-                          } else {
-                            toast.error("Could not generate agreement PDF", { description: res?.error ?? "Unknown error" });
-                          }
-                        } catch (e) {
-                          toast.error("Could not generate agreement PDF", { description: e instanceof Error ? e.message : String(e) });
-                        } finally {
-                          setPdfRegenId(null);
-                        }
-                      }}
-                    >
-                      📄 {pdfRegenId === r.id ? "Generating…" : "Regenerate PDF"}
-                    </Button>
-                  ) : null}
-                  {r.receiptPdfUrl ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      title={r.receiptPdfGeneratedAt ? `Generated ${new Date(r.receiptPdfGeneratedAt).toLocaleString()}` : undefined}
-                      onClick={() => window.open(r.receiptPdfUrl!, "_blank", "noopener")}
-                    >
-                      📄 Receipt
-                    </Button>
-                  ) : r.paymentReceived ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={receiptRegenId === r.id}
-                      onClick={async () => {
-                        setReceiptRegenId(r.id);
-                        try {
-                          const res = await genReceiptFn({ data: { rentalId: r.id } });
-                          if (res?.url) {
-                            toast.success("Receipt PDF generated");
-                            await ensureRentalSynced(r.id);
-                          } else {
-                            toast.error("Could not generate receipt", { description: res?.error ?? "Unknown error" });
-                          }
-                        } catch (e) {
-                          toast.error("Could not generate receipt", { description: e instanceof Error ? e.message : String(e) });
-                        } finally {
-                          setReceiptRegenId(null);
-                        }
-                      }}
-                    >
-                      📄 {receiptRegenId === r.id ? "Generating…" : "Generate Receipt"}
-                    </Button>
-                  ) : null}
                   {r.paymentLinkAutoSentAt && !r.paymentReceived && (
                     <span
                       title={`Auto-sent ${new Date(r.paymentLinkAutoSentAt).toLocaleString()}`}
@@ -675,9 +497,6 @@ function RentalsPage() {
                       1-day upfront (override)
                     </span>
                   )}
-                  <Button variant="ghost" size="sm" onClick={() => setReceipt(r)}>
-                    <Receipt className="mr-1 h-4 w-4" /> Receipt
-                  </Button>
                   {role === "admin" && (
                     <Button variant="ghost" size="sm" onClick={() => setTaskRental(r)}>
                       <Send className="mr-1 h-4 w-4" /> Send Task
@@ -686,6 +505,117 @@ function RentalsPage() {
                 </>
               )}
             </div>
+            {!isPending && (
+              <div className="rounded-md border border-border bg-muted/30 p-3">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Documents</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {r.agreementPdfUrl ? (
+                    <button
+                      onClick={() => window.open(r.agreementPdfUrl!, "_blank", "noopener")}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                    >
+                      <span className="text-lg">📄</span>
+                      <div className="min-w-1 flex-1">
+                        <div className="font-medium text-sm truncate">SIGNED RENTAL AGREEMENT</div>
+                        <div className="text-[10px] text-muted-foreground">PDF</div>
+                      </div>
+                    </button>
+                  ) : (r.clientSignedAt || r.signedAt) ? (
+                    <button
+                      onClick={async () => {
+                        setPdfRegenId(r.id);
+                        try {
+                          const res = await genPdfFn({ data: { rentalId: r.id } });
+                          if (res?.url) {
+                            toast.success("Agreement PDF generated");
+                            window.open(res.url, "_blank", "noopener");
+                            await ensureRentalSynced(r.id);
+                          } else {
+                            toast.error("Could not generate agreement PDF", { description: res?.error ?? "Unknown error" });
+                          }
+                        } catch (e) {
+                          toast.error("Could not generate agreement PDF", { description: e instanceof Error ? e.message : String(e) });
+                        } finally {
+                          setPdfRegenId(null);
+                        }
+                      }}
+                      disabled={pdfRegenId === r.id}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors text-left disabled:opacity-50"
+                    >
+                      <span className="text-lg">📄</span>
+                      <div className="min-w-1 flex-1">
+                        <div className="font-medium text-sm truncate">{pdfRegenId === r.id ? "Generating agreement…" : "GENERATE AGREEMENT"}</div>
+                        <div className="text-[10px] text-muted-foreground">PDF</div>
+                      </div>
+                    </button>
+                  ) : null}
+                  {r.licenseImageUrl && (
+                    <button
+                      onClick={() => window.open(r.licenseImageUrl!, "_blank", "noopener")}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                    >
+                      <span className="text-lg">📷</span>
+                      <div className="min-w-1 flex-1">
+                        <div className="font-medium text-sm truncate">DRIVER'S LICENSE</div>
+                        <div className="text-[10px] text-muted-foreground">JPG</div>
+                      </div>
+                    </button>
+                  )}
+                  {r.selfieImageUrl && (
+                    <button
+                      onClick={() => window.open(r.selfieImageUrl!, "_blank", "noopener")}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                    >
+                      <span className="text-lg">📷</span>
+                      <div className="min-w-1 flex-1">
+                        <div className="font-medium text-sm truncate">SELFIE</div>
+                        <div className="text-[10px] text-muted-foreground">JPG</div>
+                      </div>
+                    </button>
+                  )}
+                  {r.receiptPdfUrl ? (
+                    <button
+                      onClick={() => window.open(r.receiptPdfUrl!, "_blank", "noopener")}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
+                    >
+                      <span className="text-lg">📄</span>
+                      <div className="min-w-1 flex-1">
+                        <div className="font-medium text-sm truncate">RENTAL RECEIPT</div>
+                        <div className="text-[10px] text-muted-foreground">PDF</div>
+                      </div>
+                    </button>
+                  ) : r.paymentReceived ? (
+                    <button
+                      onClick={async () => {
+                        setReceiptRegenId(r.id);
+                        try {
+                          const res = await genReceiptFn({ data: { rentalId: r.id } });
+                          if (res?.url) {
+                            toast.success("Receipt PDF generated");
+                            window.open(res.url, "_blank", "noopener");
+                            await ensureRentalSynced(r.id);
+                          } else {
+                            toast.error("Could not generate receipt", { description: res?.error ?? "Unknown error" });
+                          }
+                        } catch (e) {
+                          toast.error("Could not generate receipt", { description: e instanceof Error ? e.message : String(e) });
+                        } finally {
+                          setReceiptRegenId(null);
+                        }
+                      }}
+                      disabled={receiptRegenId === r.id}
+                      className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors text-left disabled:opacity-50"
+                    >
+                      <span className="text-lg">📄</span>
+                      <div className="min-w-1 flex-1">
+                        <div className="font-medium text-sm truncate">{receiptRegenId === r.id ? "Generating receipt…" : "GENERATE RECEIPT"}</div>
+                        <div className="text-[10px] text-muted-foreground">PDF</div>
+                      </div>
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            )}
             {!isPending && !r.endDate && (
               <RentalCardTabs rental={r} />
             )}
@@ -779,7 +709,6 @@ function RentalsPage() {
       <ExtendRentalDialog rental={extending} onClose={() => setExtending(null)} />
       <SwapVehicleDialog rental={swapping} onClose={() => setSwapping(null)} />
       <StopAutoBillDialog rental={stoppingAutoBill} onClose={() => setStoppingAutoBill(null)} />
-      <AgreementDialog rental={viewingAgreement} onClose={() => setViewingAgreement(null)} />
       <CaptureSignatureDialog rental={signing} onClose={() => setSigning(null)} />
       <ChargeRentalDialog
         rental={charging}
@@ -791,7 +720,6 @@ function RentalsPage() {
         rental={violationFor}
         onClose={() => setViolationFor(null)}
       />
-      <ReceiptDialog rental={receipt} onClose={() => setReceipt(null)} />
       <NotifyRenterDialog
         open={!!chatting}
         onOpenChange={(o) => !o && setChatting(null)}
@@ -1588,9 +1516,6 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
   );
 }
 
-function AgreementDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
-  return <AgreementDialogInner rental={rental} onClose={onClose} />;
-}
 
 function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
   const sendSmsFn = useServerFn(sendRentalSms);
@@ -1675,150 +1600,7 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
   );
 }
 
-function AgreementDialogInner({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
-  const v = rental ? vehicleById(rental.vehicleId) : null;
-  const d = rental ? driverById(rental.driverId) : null;
-  return (
-    <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-4xl p-0">
-        <DialogHeader>
-          <DialogTitle className="px-4 pt-4">Signed rental agreement</DialogTitle>
-        </DialogHeader>
-        {rental && v && d && (
-          <div className="max-h-[80vh] overflow-y-auto bg-zinc-100 p-4">
-            <RentalAgreement rental={rental} driver={d} vehicle={v} />
-          </div>
-        )}
-        <DialogFooter className="px-4 pb-4">
-          <Button variant="outline" onClick={() => window.print()}>Print</Button>
-          <Button variant="outline" onClick={onClose}>Close</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
-function ReceiptDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
-  const v = rental ? vehicleById(rental.vehicleId) : null;
-  const d = rental ? driverById(rental.driverId) : null;
-  const sched = rental ? payments.filter(p => p.rentalId === rental.id) : [];
-  const baseTotal = rental ? (rental.depositPaid ?? 0) + sched.reduce((s, p) => s + p.amount, 0) : 0;
-  const extTotal = rental?.extensions?.reduce((s, e) => s + e.additionalAmount, 0) ?? 0;
-  const grandTotal = baseTotal + extTotal;
-  const paidTotal = sched.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0) + (rental?.paymentReceived ? 0 : 0);
-  const balance = grandTotal - paidTotal - (rental?.depositPaid ?? 0);
-
-  function printReceipt() {
-    const win = window.open("", "_blank", "width=720,height=900");
-    if (!win || !rental || !v || !d) return;
-    const fmt = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const esc = (s: unknown) =>
-      String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-    const lines: string[] = [];
-    lines.push(`<tr><td>${esc(fmtDate(rental.startDate))}</td><td>Security deposit</td><td style="text-align:right">${fmt(rental.depositPaid)}</td><td>—</td></tr>`);
-    sched.forEach(p => {
-      lines.push(`<tr><td>${esc(fmtDate(p.dueDate))}</td><td>Rental payment (${esc(p.status)})</td><td style="text-align:right">${fmt(p.amount)}</td><td>${esc(p.method ?? "—")}</td></tr>`);
-    });
-    rental.extensions?.forEach((e, i) => {
-      lines.push(`<tr><td>${esc(new Date(e.extendedAt).toLocaleDateString())}</td><td>Extension addendum #${i + 1} (+${esc(e.periods)} ${esc(e.periodLabel)}${e.periods === 1 ? "" : "s"})</td><td style="text-align:right">${fmt(e.additionalAmount)}</td><td>—</td></tr>`);
-    });
-    win.document.write(`<!doctype html><html><head><title>Receipt ${esc(rental.id)}</title>
-      <style>
-        body{font-family:system-ui,sans-serif;max-width:680px;margin:24px auto;padding:0 16px;color:#111}
-        h1{margin:0 0 4px;font-size:22px}
-        .brand{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-        .brand img{height:56px;width:auto;object-fit:contain}
-        .meta{color:#666;font-size:12px;margin-bottom:24px}
-        .box{border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:16px;font-size:13px}
-        table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
-        th,td{padding:8px 6px;border-bottom:1px solid #eee;text-align:left}
-        th{background:#f7f7f7;font-size:11px;text-transform:uppercase;color:#555}
-        tfoot td{font-weight:600;border-top:2px solid #333;border-bottom:none;padding-top:10px}
-        .totals{margin-top:16px;text-align:right;font-size:14px}
-        .totals .grand{font-size:18px;font-weight:700;margin-top:6px}
-        @media print { button{display:none} }
-      </style></head><body>
-      <div class="brand"><img src="${esc(new URL(logoUrl, window.location.origin).href)}" alt="Camauto"/><h1>Camauto — Receipt</h1></div>
-      <div class="meta">Reservation ${esc(rental.id)} · Issued ${esc(new Date().toLocaleString())}</div>
-      <div class="box">
-        <strong>${esc(v.year)} ${esc(v.make)} ${esc(v.model)}</strong> · Plate ${esc(v.plate)} · VIN ${esc(v.vin)}<br/>
-        Renter: ${esc(d.fullName)} · ${esc(d.phone)} · ${esc(d.email)}<br/>
-        Period: ${esc(fmtDate(rental.startDate))}${rental.endDate ? ` → ${esc(fmtDate(rental.endDate))}` : " (open)"}<br/>
-        Rate: ${fmt(rental.rate ?? rental.weeklyRate)} / ${esc((rental.billingPeriod ?? "weekly").replace("ly", ""))}
-      </div>
-      <table>
-        <thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th><th>Method</th></tr></thead>
-        <tbody>${lines.join("")}</tbody>
-      </table>
-      <div class="totals">
-        Subtotal (rental + deposit): ${fmt(baseTotal)}<br/>
-        Extensions: ${fmt(extTotal)}<br/>
-        <div class="grand">Total: ${fmt(grandTotal)}</div>
-      </div>
-      ${rental.signatureDataUrl ? `<div style="margin-top:32px"><div style="font-size:11px;color:#666;text-transform:uppercase">Signed by ${esc(rental.signedBy ?? d.fullName)}</div><img src="${esc(rental.signatureDataUrl)}" style="max-width:240px;border:1px solid #ddd;padding:4px;margin-top:4px"/></div>` : ""}
-      <button onclick="window.print()" style="margin-top:24px;padding:8px 16px;background:#111;color:#fff;border:0;border-radius:4px;cursor:pointer">Print / Save as PDF</button>
-      </body></html>`);
-    win.document.close();
-  }
-
-  return (
-    <Dialog open={!!rental} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <img src={logoUrl} alt="Camauto" className="h-10 w-auto object-contain" />
-            <DialogTitle>Camauto Receipt — {rental?.id}</DialogTitle>
-          </div>
-        </DialogHeader>
-        {rental && v && d && (
-          <div className="space-y-3 text-sm">
-            <div className="rounded-lg border bg-muted/30 p-3">
-              <div className="font-medium">{v.year} {v.make} {v.model} · {v.plate}</div>
-              <div className="text-xs text-muted-foreground">Renter: {d.fullName}</div>
-              <div className="text-xs text-muted-foreground">
-                {fmtDate(rental.startDate)}{rental.endDate ? ` → ${fmtDate(rental.endDate)}` : " · open"}
-              </div>
-            </div>
-            <table className="w-full text-xs">
-              <thead className="text-muted-foreground">
-                <tr><th className="text-left py-1">Date</th><th className="text-left">Description</th><th className="text-right">Amount</th><th className="text-left pl-2">Method</th></tr>
-              </thead>
-              <tbody>
-                <tr className="border-t"><td className="py-1.5">{fmtDate(rental.startDate)}</td><td>Security deposit</td><td className="text-right">{fmtMoney(rental.depositPaid)}</td><td className="pl-2">—</td></tr>
-                {sched.map(p => (
-                  <tr key={p.id} className="border-t">
-                    <td className="py-1.5">{fmtDate(p.dueDate)}</td>
-                    <td>Rental payment <span className="text-muted-foreground">({p.status})</span></td>
-                    <td className="text-right">{fmtMoney(p.amount)}</td>
-                    <td className="pl-2">{p.method ?? "—"}</td>
-                  </tr>
-                ))}
-                {rental.extensions?.map((e, i) => (
-                  <tr key={e.id} className="border-t">
-                    <td className="py-1.5">{new Date(e.extendedAt).toLocaleDateString()}</td>
-                    <td>Extension #{i + 1} (+{e.periods} {e.periodLabel}{e.periods === 1 ? "" : "s"})</td>
-                    <td className="text-right">{fmtMoney(e.additionalAmount)}</td>
-                    <td className="pl-2">—</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="rounded-md border bg-muted/30 p-3 text-right text-sm space-y-0.5">
-              <div>Subtotal: <span className="font-medium">{fmtMoney(baseTotal)}</span></div>
-              <div>Extensions: <span className="font-medium">{fmtMoney(extTotal)}</span></div>
-              <div className="text-base font-bold pt-1 border-t mt-1">Total: {fmtMoney(grandTotal)}</div>
-              {balance !== 0 && <div className="text-xs text-muted-foreground">Outstanding balance: {fmtMoney(Math.max(0, balance))}</div>}
-            </div>
-          </div>
-        )}
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
-          <Button onClick={printReceipt}><Printer className="mr-1 h-4 w-4" /> Print / Save PDF</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function ViolationChargeDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
   const [amount, setAmount] = useState("");
