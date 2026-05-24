@@ -36,6 +36,8 @@ export interface ReceiptPDFData {
     totalCost: number;
     balanceDue: number;
   };
+  lineItems?: { label: string; amount: number }[];
+  durationLabel?: string;
   settings: AgreementSettings;
 }
 
