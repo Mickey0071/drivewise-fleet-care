@@ -229,6 +229,8 @@ function RentalsPage() {
   const pending = rentals.filter(r => r.reservationStatus === "pending");
   const active = rentals.filter(r => (r.reservationStatus ?? "active") === "active");
   const completed = rentals.filter(r => r.reservationStatus === "returned" || r.reservationStatus === "completed");
+  const pendingReview = rentals.filter(r => r.staffReviewStatus === "pending");
+  const reviewFilter = review === "pending";
 
   function renderRow(r: Rental) {
     const v = vehicleById(r.vehicleId);
