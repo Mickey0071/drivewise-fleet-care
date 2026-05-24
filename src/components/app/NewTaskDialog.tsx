@@ -53,6 +53,8 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const loadRunners = useServerFn(listAssignableRunners);
 
   const [runners, setRunners] = useState<Runner[]>([]);
+  const [runnersError, setRunnersError] = useState<string | null>(null);
+  const [runnersLoading, setRunnersLoading] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
 
@@ -85,14 +87,21 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
+    setRunnersError(null);
+    setRunnersLoading(true);
     (async () => {
       const [{ runners: r }, vRes, rRes] = await Promise.all([
-        loadRunners({}).catch((e) => { console.error(e); return { runners: [] as Runner[] }; }),
+        loadRunners({}).catch((e) => {
+          console.error("[NewTaskDialog] loadRunners failed:", e);
+          if (!cancelled) setRunnersError(e instanceof Error ? e.message : String(e));
+          return { runners: [] as Runner[] };
+        }),
         supabase.from("vehicles").select("id, year, make, model, plate").order("make"),
         supabase.from("rentals").select("id, vehicle_id, driver_id, start_date").order("start_date", { ascending: false }).limit(200),
       ]);
       if (cancelled) return;
       setRunners(r);
+      setRunnersLoading(false);
       setVehicles((vRes.data ?? []) as Vehicle[]);
       setRentals((rRes.data ?? []) as Rental[]);
     })();
@@ -165,12 +174,24 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
             <Select value={assignedTo} onValueChange={setAssignedTo}>
               <SelectTrigger><SelectValue placeholder="Pick a runner…" /></SelectTrigger>
               <SelectContent>
-                {runners.length === 0 && <div className="px-3 py-2 text-xs text-muted-foreground">No runners assigned roles yet.</div>}
+                {runnersLoading && <div className="px-3 py-2 text-xs text-muted-foreground">Loading runners…</div>}
+                {!runnersLoading && runners.length === 0 && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">
+                    {runnersError ? `Couldn't load runners: ${runnersError}` : "No users with the Runner role yet. Add one in Admin → Users."}
+                  </div>
+                )}
                 {runners.map((r) => (
                   <SelectItem key={r.id} value={r.id}>{runnerLabel(r)}{r.phone ? "" : " — no phone"}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {!runnersLoading && runners.length === 0 && (
+              <p className="mt-1 text-xs text-amber-600">
+                {runnersError
+                  ? "If you're not an admin, ask an admin to assign tasks — or sign in with an admin account."
+                  : <>Go to <a href="/admin/users" className="underline">Admin → Users</a> and give a user the <strong>Runner</strong> role.</>}
+              </p>
+            )}
             {selectedRunner && !selectedRunner.phone && (
               <p className="mt-1 text-xs text-amber-600">No phone on file — SMS will be skipped.</p>
             )}
