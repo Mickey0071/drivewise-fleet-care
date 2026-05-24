@@ -732,6 +732,7 @@ function ChecklistPage() {
       </Card>
 
       {/* SECTION 2 — Job Type */}
+      {!inGuidedFlow && (
       <Card>
         <CardContent className="space-y-3 pt-6">
           <Label>Job type *</Label>
@@ -756,6 +757,7 @@ function ChecklistPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* SECTION 3 — Checklist */}
       <Card>
