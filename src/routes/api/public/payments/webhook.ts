@@ -150,6 +150,94 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     const amountDollars = Number((amountCents / 100).toFixed(2));
     const today = new Date().toISOString().slice(0, 10);
 
+    // -------- Cardholder-name validation (extensions) --------
+    // Same posture as the initial-payment flow above: compare Stripe
+    // billing_details.name to either the third-party payer's ID name
+    // (when present on the rental) or the renter's license name. On
+    // mismatch, refund and abort — do NOT apply the extension.
+    const extStripe = createStripeClient(env);
+    let extCardName = "";
+    let extChargeId: string | null = null;
+    try {
+      const piId = typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id;
+      if (piId) {
+        const pi = await extStripe.paymentIntents.retrieve(piId, {
+          expand: ["latest_charge", "payment_method"],
+        });
+        const ch: any = pi.latest_charge && typeof pi.latest_charge !== "string" ? pi.latest_charge : null;
+        extCardName = ch?.billing_details?.name
+          || (pi as any).payment_method?.billing_details?.name
+          || "";
+        extChargeId = ch?.id ?? null;
+      }
+    } catch (e) {
+      console.error("[webhook:ext] failed to load PaymentIntent for name check", e);
+    }
+    const { data: extRentalPre } = await sb.from("rentals")
+      .select("id, driver_id, third_party_payer, payer_name_extracted, payer_phone")
+      .eq("id", rentalId)
+      .maybeSingle();
+    let extLicenseName = "";
+    let extNameSource: "license" | "payer_id" = "license";
+    if (extRentalPre?.third_party_payer && extRentalPre?.payer_name_extracted) {
+      extLicenseName = String(extRentalPre.payer_name_extracted);
+      extNameSource = "payer_id";
+    } else if (extRentalPre?.driver_id) {
+      const { data: drv } = await sb.from("drivers")
+        .select("full_name, first_name, last_name")
+        .eq("id", extRentalPre.driver_id)
+        .maybeSingle();
+      extLicenseName = drv?.full_name
+        || [drv?.first_name, drv?.last_name].filter(Boolean).join(" ")
+        || "";
+    }
+    const extScore = extCardName && extLicenseName ? nameMatchScore(extCardName, extLicenseName) : 0;
+    const extMatched = !!(extCardName && extLicenseName && namesMatch(extCardName, extLicenseName));
+    if (extCardName && extLicenseName && !extMatched) {
+      console.warn(`[webhook:ext] name mismatch rental=${rentalId} card="${extCardName}" ${extNameSource}="${extLicenseName}" score=${extScore}`);
+      try {
+        if (extChargeId) await extStripe.refunds.create({ charge: extChargeId });
+      } catch (e) {
+        console.error("[webhook:ext] refund failed", e);
+      }
+      // Mark extension request as refunded.
+      const extToken2 = session.metadata?.extension_token as string | undefined;
+      if (extToken2) {
+        await sb.from("extension_requests").update({
+          status: "refunded_name_mismatch",
+          stripe_session_id: session.id,
+        }).eq("token", extToken2);
+      }
+      const mismatchMsg = extNameSource === "payer_id"
+        ? `Camauto Rentals: Extension payment refunded — the card name (${extCardName}) doesn't match the payer's ID (${extLicenseName}). Please retry with a matching card.`
+        : `Camauto Rentals: Extension payment refunded — the card name (${extCardName}) doesn't match your driver's license (${extLicenseName}). Please retry with a card in your name.`;
+      if (extRentalPre?.driver_id) {
+        const { data: drv } = await sb.from("drivers")
+          .select("full_name, phone, email").eq("id", extRentalPre.driver_id).maybeSingle();
+        if (drv?.phone) {
+          await notifyRenter({
+            phone: drv.phone,
+            email: drv.email ?? null,
+            name: drv.full_name,
+            sms: mismatchMsg,
+            emailSubject: "Extension Payment Refunded — Camauto Rentals",
+            emailHeading: "Extension Payment Refunded",
+            emailIntro: mismatchMsg,
+          });
+        }
+      }
+      if (extRentalPre?.third_party_payer && extRentalPre?.payer_phone) {
+        try { await sendSms(String(extRentalPre.payer_phone), mismatchMsg, null); } catch {}
+      }
+      try {
+        await sendSms("+12672213977", `Extension refunded (name mismatch) rental=${rentalId}: card="${extCardName}" expected="${extLicenseName}"`, null);
+      } catch {}
+      return;
+    }
+    // -------- end extension name validation --------
+
     // For admin links, look up the request row (carries signature + new_end).
     const extToken = session.metadata?.extension_token as string | undefined;
     let extReqRow: any = null;
