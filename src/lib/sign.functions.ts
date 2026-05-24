@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
-import { extractNameFromIdImage, extractAddressFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
+import { extractNameFromIdImage, extractAddressFromIdImage, extractLicenseFieldsFromImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
 
 function genToken() {
@@ -444,23 +444,70 @@ export const verifyLicenseName = createServerFn({ method: "POST" })
     if (!rental) throw new Error("Invalid signing link");
     const { data: driver } = await supabaseAdmin
       .from("drivers")
-      .select("full_name, first_name, last_name")
+      .select("full_name, first_name, last_name, license_number, license_expiry, dl_state, date_of_birth, address, street_address, city, state, zip_code")
       .eq("id", rental.driver_id)
       .single();
     const expected = (driver?.full_name
       || [driver?.first_name, driver?.last_name].filter(Boolean).join(" ")
       || "").trim();
-    const extracted = await extractNameFromIdImage(data.licenseDataUrl);
+    // Single OCR pass — pulls name, DL#, state, expiration, DOB, address.
+    const fields = await extractLicenseFieldsFromImage(data.licenseDataUrl);
+    const extracted = fields?.fullName ?? null;
     if (!extracted) {
       return { match: false, extractedName: null as string | null, expectedName: expected, reason: "unreadable" as const };
     }
     const norm = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, "").split(/\s+/).filter((t) => t.length > 1);
     const e = new Set(norm(extracted));
     const x = norm(expected);
-    if (x.length === 0) return { match: true, extractedName: extracted, expectedName: expected, reason: "no_baseline" as const };
-    // Require first + last token to be present in extracted name.
-    const first = x[0];
-    const last = x[x.length - 1];
-    const match = e.has(first) && e.has(last);
-    return { match, extractedName: extracted, expectedName: expected, reason: match ? ("ok" as const) : ("mismatch" as const) };
+    const match =
+      x.length === 0
+        ? true
+        : e.has(x[0]) && e.has(x[x.length - 1]);
+    const reason = (x.length === 0
+      ? "no_baseline"
+      : match
+        ? "ok"
+        : "mismatch") as "ok" | "mismatch" | "no_baseline";
+
+    // On match: backfill ANY blank driver fields from OCR so the on-screen
+    // rental agreement (and the generated PDF) populate immediately. We
+    // never overwrite values the renter or staff already provided.
+    const extractedDriver = {
+      fullName: extracted,
+      licenseNumber: fields?.licenseNumber ?? null,
+      dlState: fields?.dlState ?? null,
+      licenseExpiry: fields?.licenseExpiry ?? null,
+      dateOfBirth: fields?.dateOfBirth ?? null,
+      address: fields?.address?.formatted ?? null,
+      streetAddress: fields?.address?.streetAddress ?? null,
+      city: fields?.address?.city ?? null,
+      state: fields?.address?.state ?? null,
+      zipCode: fields?.address?.zipCode ?? null,
+    };
+
+    if (match && fields) {
+      const upd: Record<string, string> = {};
+      const isBlank = (v: unknown) => !v || (typeof v === "string" && v.trim() === "");
+      if (isBlank(driver?.license_number) && fields.licenseNumber) upd.license_number = fields.licenseNumber;
+      if (isBlank((driver as any)?.dl_state) && fields.dlState) upd.dl_state = fields.dlState;
+      if (isBlank(driver?.license_expiry) && fields.licenseExpiry) upd.license_expiry = fields.licenseExpiry;
+      if (isBlank((driver as any)?.date_of_birth) && fields.dateOfBirth) upd.date_of_birth = fields.dateOfBirth;
+      if (fields.address) {
+        if (isBlank((driver as any)?.address) && fields.address.formatted) upd.address = fields.address.formatted;
+        if (isBlank((driver as any)?.street_address) && fields.address.streetAddress) upd.street_address = fields.address.streetAddress;
+        if (isBlank((driver as any)?.city) && fields.address.city) upd.city = fields.address.city;
+        if (isBlank((driver as any)?.state) && fields.address.state) upd.state = fields.address.state;
+        if (isBlank((driver as any)?.zip_code) && fields.address.zipCode) upd.zip_code = fields.address.zipCode;
+      }
+      if (Object.keys(upd).length > 0) {
+        const { error: dErr } = await supabaseAdmin
+          .from("drivers")
+          .update(upd as any)
+          .eq("id", rental.driver_id);
+        if (dErr) console.error(`[verifyLicense] driver backfill failed:`, dErr);
+        else console.log(`[verifyLicense] backfilled driver ${rental.driver_id}:`, Object.keys(upd).join(","));
+      }
+    }
+
+    return { match, extractedName: extracted, expectedName: expected, reason, extracted: extractedDriver };
   });
