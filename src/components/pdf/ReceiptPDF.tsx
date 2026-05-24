@@ -36,6 +36,8 @@ export interface ReceiptPDFData {
     totalCost: number;
     balanceDue: number;
   };
+  lineItems?: { label: string; amount: number }[];
+  durationLabel?: string;
   settings: AgreementSettings;
 }
 
@@ -74,6 +76,8 @@ export async function renderReceiptPdf(data: ReceiptPDFData): Promise<Uint8Array
   // Lazy-load jsPDF so it isn't pulled into the SSR/Worker bundle at module init.
   const { jsPDF } = await import("jspdf");
   const { rental, driver, vehicle, payment, settings } = data;
+  const lineItems = data.lineItems ?? [];
+  const durationLabel = data.durationLabel ?? "";
   const c = settings.company;
   const rateLabel = (() => {
     const cadence = (rental.billingCadence || "weekly").toLowerCase();
@@ -170,6 +174,7 @@ export async function renderReceiptPdf(data: ReceiptPDFData): Promise<Uint8Array
   sectionBar("Rental Period");
   field("Start", fmtDate(rental.startDate));
   field("End", rental.endDate ? fmtDate(rental.endDate) : "Open-ended");
+  if (durationLabel) field("Duration", durationLabel);
   field("Rate", rateLabel);
 
   sectionBar("Payment");
@@ -179,36 +184,47 @@ export async function renderReceiptPdf(data: ReceiptPDFData): Promise<Uint8Array
 
   // ---- Totals box ----
   y += 8;
+  const itemRows = lineItems.length;
   const boxTop = y;
-  const boxH = 64;
+  const rowH = 14;
+  const boxH = (itemRows + 3) * rowH + 12;
   doc.setDrawColor(...COLOR_BORDER);
   doc.setLineWidth(1);
   doc.rect(left, boxTop, right - left, boxH);
 
-  const rowY = (i: number) => boxTop + 14 + i * 14;
+  let rowIdx = 0;
+  const rowY = (i: number) => boxTop + 14 + i * rowH;
+
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(...COLOR_TEXT);
-  doc.text("Total Charge", left + 10, rowY(0));
+  for (const li of lineItems) {
+    doc.text(li.label, left + 10, rowY(rowIdx));
+    doc.text(fmtMoney(li.amount), right - 10, rowY(rowIdx), { align: "right" });
+    rowIdx += 1;
+  }
+
   doc.setFont("helvetica", "bold");
-  doc.text(fmtMoney(payment.totalCost), right - 10, rowY(0), { align: "right" });
+  doc.text("Total Charge", left + 10, rowY(rowIdx));
+  doc.text(fmtMoney(payment.totalCost), right - 10, rowY(rowIdx), { align: "right" });
+  rowIdx += 1;
 
   doc.setFont("helvetica", "normal");
-  doc.text("Amount Paid", left + 10, rowY(1));
+  doc.text("Amount Paid", left + 10, rowY(rowIdx));
   doc.setFont("helvetica", "bold");
-  doc.text(fmtMoney(payment.amount), right - 10, rowY(1), { align: "right" });
+  doc.text(fmtMoney(payment.amount), right - 10, rowY(rowIdx), { align: "right" });
+  rowIdx += 1;
 
-  // separator
   doc.setDrawColor(...COLOR_BORDER);
-  doc.line(left + 6, rowY(2) - 4, right - 6, rowY(2) - 4);
+  doc.line(left + 6, rowY(rowIdx) - 4, right - 6, rowY(rowIdx) - 4);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(...COLOR_TEXT);
-  doc.text("Balance Due", left + 10, rowY(2) + 4);
+  doc.text("Balance Due", left + 10, rowY(rowIdx) + 4);
   doc.setFontSize(12);
   doc.setTextColor(...RGB_GREEN);
-  doc.text(fmtMoney(payment.balanceDue), right - 10, rowY(2) + 4, { align: "right" });
+  doc.text(fmtMoney(payment.balanceDue), right - 10, rowY(rowIdx) + 4, { align: "right" });
 
   y = boxTop + boxH + 18;
 
