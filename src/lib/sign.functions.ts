@@ -4,9 +4,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { extractNameFromIdImage, extractAddressFromIdImage, extractLicenseFieldsFromImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
-import { sendSms, sendEmail } from "@/lib/ghl.server";
+import { sendEmail } from "@/lib/ghl.server";
 
-const MANAGEMENT_PHONE = "+12672213977";
 const MANAGEMENT_EMAIL = "info@camautorentals.com";
 
 function genToken() {
@@ -411,8 +410,6 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
         const origin = process.env.PUBLIC_APP_ORIGIN || "";
         const reviewLink = origin ? `${origin}/pending-agreements` : null;
         const renterLabel = driver?.full_name || rental.driver_id;
-        const smsBody = `Camauto: New signed agreement from ${renterLabel} (rental ${rental.id}) is awaiting your review.${reviewLink ? ` ${reviewLink}` : ""}`;
-        await sendSms(MANAGEMENT_PHONE, smsBody, "Camauto Management");
         await sendEmail(
           MANAGEMENT_EMAIL,
           `New Agreement Awaiting Review — ${renterLabel}`,
