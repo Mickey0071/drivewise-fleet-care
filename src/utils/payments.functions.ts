@@ -116,6 +116,9 @@ export const createDepositCheckout = createServerFn({ method: "POST" })
         },
         quantity: 1,
       }],
+      payment_intent_data: {
+        setup_future_usage: "off_session",
+      },
       metadata: {
         userId: data.userId ?? "",
         rental_id: data.rentalId,
