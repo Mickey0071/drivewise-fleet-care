@@ -71,6 +71,18 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
   const rentalId = session.metadata?.rental_id || null;
   const kind = session.metadata?.kind || (session.mode === "subscription" ? "subscription" : "deposit");
 
+  async function resolveSessionPaymentMethodId(): Promise<string | null> {
+    const stripe = createStripeClient(env);
+    const piId = typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id;
+    if (piId) {
+      const pi = await stripe.paymentIntents.retrieve(piId, { expand: ["payment_method"] });
+      return typeof pi.payment_method === "string" ? pi.payment_method : (pi.payment_method?.id ?? null);
+    }
+    return null;
+  }
+
   // Custom renter-initiated payment (extensions, violations, etc.).
   // Just log a payment row and notify; do NOT touch reservation/vehicle state.
   if (kind === "custom_renter_payment" && rentalId) {
@@ -79,6 +91,12 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     const amountCents = session.amount_total ?? 0;
     const amountDollars = Number((amountCents / 100).toFixed(2));
     const today = new Date().toISOString().slice(0, 10);
+    let paymentMethodId: string | null = null;
+    try {
+      paymentMethodId = await resolveSessionPaymentMethodId();
+    } catch (e) {
+      console.error("[webhook:custom] failed to load PaymentIntent payment method", e);
+    }
 
     const { data: rentalRow } = await sb
       .from("rentals")
@@ -129,6 +147,14 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         status: "paid",
         environment: env,
       } as any);
+
+      if (session.customer || paymentMethodId) {
+        await sb.from("rentals").update({
+          ...(session.customer ? { stripe_customer_id: session.customer } : {}),
+          ...(paymentMethodId ? { stripe_payment_method_id: paymentMethodId } : {}),
+          updated_at: new Date().toISOString(),
+        } as any).eq("id", rentalRow.id);
+      }
     }
     return;
   }
