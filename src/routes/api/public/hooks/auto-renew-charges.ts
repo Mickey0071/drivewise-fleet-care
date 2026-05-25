@@ -3,7 +3,6 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
 import { sendSms } from "@/lib/ghl.server";
 
-const ADMIN_PHONE = "+12672213977";
 const PORTAL_BASE = process.env.PUBLIC_APP_ORIGIN || "https://camautorentals.lovable.app";
 
 function addInterval(from: Date, cadence: "daily" | "weekly"): Date {
@@ -201,11 +200,6 @@ export const Route = createFileRoute("/api/public/hooks/auto-renew-charges")({
                   driver.full_name
                 );
               }
-              await sendSms(
-                ADMIN_PHONE,
-                `Rentalprise: ${driver?.full_name ?? r.driver_id} payment declined ${fmtDateShort(now)} ($${amount.toFixed(2)}, rental ${r.id}).`,
-                "Admin"
-              );
               results.push({ rentalId: r.id, status: "failed", error: msg });
             }
           } catch (e: any) {
