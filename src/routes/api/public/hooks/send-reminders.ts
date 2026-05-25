@@ -18,8 +18,6 @@ function daysAgoISO(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-const ADMIN_PHONE = "+12672213977";
-
 function fmtDate(iso: string): string {
   const [y, m, d] = iso.split("-");
   return `${m}/${d}/${y.slice(2)}`;
@@ -191,28 +189,6 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           const drv = driversById.get(r.driver_id);
           const msg = `Reminder from Rentalprise: your rental of vehicle ${r.vehicle_id} is scheduled to be returned tomorrow (${fmtDate(r.end_date as string)}). Reply to this message to renew/extend or to confirm return.`;
           await logAndSend(r.id, "rental_return", drv?.phone ?? null, drv?.full_name ?? null, msg);
-        }
-
-        // Admin past-due alerts — one SMS per past-due payment per day to the owner number
-        for (const p of pastDuePayments ?? []) {
-          const drv = driversById.get(p.driver_id);
-          const name = drv?.full_name ?? p.driver_id;
-          const driverPhone = drv?.phone ?? "unknown";
-          const msg = `Rentalprise PAST DUE alert: ${name} (${driverPhone}) is past due on $${Number(p.amount).toFixed(2)} that was due ${fmtDate(p.due_date)}.`;
-          await logAndSend(p.rental_id, "admin_past_due", ADMIN_PHONE, "Admin", msg, today);
-        }
-
-        // Admin daily digest — one SMS listing every payment due TODAY
-        if ((dueTodayPayments ?? []).length > 0) {
-          const lines = (dueTodayPayments ?? []).map((p) => {
-            const drv = driversById.get(p.driver_id);
-            const name = drv?.full_name ?? p.driver_id;
-            const driverPhone = drv?.phone ?? "unknown";
-            return `• ${name} (${driverPhone}) — $${Number(p.amount).toFixed(2)}`;
-          });
-          const total = (dueTodayPayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
-          const msg = `Rentalprise payments due today (${fmtDate(today)}):\n${lines.join("\n")}\nTotal: $${total.toFixed(2)}`;
-          await logAndSend("DIGEST", "admin_due_today", ADMIN_PHONE, "Admin", msg, today);
         }
 
         // Check-in SMS — once per rental, ~2 hours after activation
