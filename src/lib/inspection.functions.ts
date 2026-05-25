@@ -156,21 +156,6 @@ export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
       .delete()
       .eq("vehicle_id", data.vehicleId);
 
-    // Build checklist summary
-    const checklistLines = Object.entries(data.checklist)
-      .map(([k, ok]) => `${ok ? "✓" : "✗"} ${k}`)
-      .join(" · ");
-    const label = `${v.year} ${v.make} ${v.model} (${v.plate})`;
-    const msg = [
-      `Camauto Inspection complete: ${label}`,
-      `By: ${data.completedBy.trim()}`,
-      `Odo: ${data.mileage.toLocaleString()} mi · Fuel: ${data.fuelLevel}%`,
-      data.damageNoted ? "DAMAGE NOTED" : "No damage",
-      checklistLines,
-      data.notes?.trim() ? `Notes: ${data.notes.trim()}` : "",
-    ].filter(Boolean).join(" | ").slice(0, 1000);
-
-
     const failedItems = Object.entries(it)
       .filter(([, v]) => v?.status === "fail")
       .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
