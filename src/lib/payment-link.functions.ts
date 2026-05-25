@@ -52,7 +52,8 @@ export async function sendPaymentLinkInternal(data: PaymentLinkInput): Promise<{
   const link = await stripe.paymentLinks.create({
     line_items: [{ price: price.id, quantity: 1 }],
     metadata,
-    payment_intent_data: { metadata },
+    customer_creation: "always",
+    payment_intent_data: { metadata, setup_future_usage: "off_session" },
     ...(origin
       ? {
           after_completion: {
