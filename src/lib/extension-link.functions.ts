@@ -162,9 +162,6 @@ export const createExtensionLink = createServerFn({ method: "POST" })
         console.error("[createExtensionLink] renter SMS failed", e);
       }
     }
-    try {
-      await sendSms(ADMIN_PHONE, `Extension link sent to ${drv?.full_name || "renter"} for ${rental.id}: +${data.periods} ${periodLabel}${data.periods === 1 ? "" : "s"} ($${additionalAmount.toFixed(2)})`, null);
-    } catch {}
 
     return {
       token,
