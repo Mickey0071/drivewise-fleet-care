@@ -326,37 +326,56 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
         city?: string;
         state?: string;
         zip_code?: string;
+        license_number?: string;
+        dl_state?: string;
+        license_expiry?: string;
+        date_of_birth?: string;
       } = { insurance_on_file: true };
-      // OCR address from the renter's license and backfill any missing
-      // address fields on the driver record so the agreement (and the
-      // generated PDF) display the renter's real address.
+      // Full OCR pass on the renter's license — backfill any blank
+      // driver fields (license #, state, expiration, DOB, address) so
+      // the generated agreement PDF is fully populated even if the
+      // renter skipped (or failed) the in-page name verification step.
       try {
         const { data: existing } = await supabaseAdmin
           .from("drivers")
-          .select("address, street_address, city, state, zip_code")
+          .select("address, street_address, city, state, zip_code, license_number, dl_state, license_expiry, date_of_birth")
           .eq("id", rental.driver_id)
           .maybeSingle();
-        const hasAny =
-          (existing?.address && existing.address.trim()) ||
-          (existing?.street_address && existing.street_address.trim()) ||
-          (existing?.city && existing.city.trim()) ||
-          (existing?.state && existing.state.trim()) ||
-          (existing?.zip_code && existing.zip_code.trim());
-        if (!hasAny) {
-          const addr = await extractAddressFromIdImage(data.licenseDataUrl);
-          if (addr) {
-            console.log(`[sign] OCR address for ${rental.id}: ${addr.formatted}`);
-            if (addr.formatted) driverUpdate.address = addr.formatted;
-            if (addr.streetAddress) driverUpdate.street_address = addr.streetAddress;
-            if (addr.city) driverUpdate.city = addr.city;
-            if (addr.state) driverUpdate.state = addr.state;
-            if (addr.zipCode) driverUpdate.zip_code = addr.zipCode;
+        const isBlank = (v: unknown) => !v || (typeof v === "string" && v.trim() === "");
+        const hasAddr =
+          !isBlank(existing?.address) ||
+          !isBlank(existing?.street_address) ||
+          !isBlank(existing?.city) ||
+          !isBlank(existing?.state) ||
+          !isBlank(existing?.zip_code);
+        const hasLicenseFields =
+          !isBlank(existing?.license_number) &&
+          !isBlank((existing as any)?.dl_state) &&
+          !isBlank(existing?.license_expiry) &&
+          !isBlank((existing as any)?.date_of_birth);
+        if (!hasAddr || !hasLicenseFields) {
+          const fields = await extractLicenseFieldsFromImage(data.licenseDataUrl);
+          if (fields) {
+            console.log(
+              `[sign] OCR license for ${rental.id}: dl=${fields.licenseNumber ?? "?"} state=${fields.dlState ?? "?"} exp=${fields.licenseExpiry ?? "?"} dob=${fields.dateOfBirth ?? "?"} addr=${fields.address?.formatted ?? "?"}`,
+            );
+            if (isBlank(existing?.license_number) && fields.licenseNumber) driverUpdate.license_number = fields.licenseNumber;
+            if (isBlank((existing as any)?.dl_state) && fields.dlState) driverUpdate.dl_state = fields.dlState;
+            if (isBlank(existing?.license_expiry) && fields.licenseExpiry) driverUpdate.license_expiry = fields.licenseExpiry;
+            if (isBlank((existing as any)?.date_of_birth) && fields.dateOfBirth) driverUpdate.date_of_birth = fields.dateOfBirth;
+            if (!hasAddr && fields.address) {
+              if (fields.address.formatted) driverUpdate.address = fields.address.formatted;
+              if (fields.address.streetAddress) driverUpdate.street_address = fields.address.streetAddress;
+              if (fields.address.city) driverUpdate.city = fields.address.city;
+              if (fields.address.state) driverUpdate.state = fields.address.state;
+              if (fields.address.zipCode) driverUpdate.zip_code = fields.address.zipCode;
+            }
           } else {
-            console.warn(`[sign] OCR address: nothing readable for ${rental.id}`);
+            console.warn(`[sign] OCR license: nothing readable for ${rental.id}`);
           }
         }
       } catch (e) {
-        console.error(`[sign] OCR address failed for ${rental.id}:`, e);
+        console.error(`[sign] OCR license failed for ${rental.id}:`, e);
       }
       await supabaseAdmin.from("drivers").update(driverUpdate).eq("id", rental.driver_id);
     }
