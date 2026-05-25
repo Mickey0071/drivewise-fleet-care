@@ -22,7 +22,9 @@ export interface PaymentLinkInput {
  * renter. Has NO auth — only call from trusted server contexts (e.g. the
  * public signing endpoint after we've verified a valid sign_token).
  */
-export async function sendPaymentLinkInternal(data: PaymentLinkInput): Promise<{ ok: true; url: string }> {
+export async function sendPaymentLinkInternal(
+  data: PaymentLinkInput,
+): Promise<{ ok: true; url: string }> {
   if (!process.env.ghlPitToken) {
     throw new Error("SMS provider not configured: ghlPitToken secret is missing");
   }
@@ -80,8 +82,7 @@ export async function sendPaymentLinkInternal(data: PaymentLinkInput): Promise<{
     sms: msg,
     emailSubject: "Complete Your Payment — Camauto Rentals",
     emailHeading: "Complete Your Payment",
-    emailIntro:
-      `Your payment of <strong>${amt}</strong> is ready. Tap the button below to pay securely via Stripe.`,
+    emailIntro: `Your payment of <strong>${amt}</strong> is ready. Tap the button below to pay securely via Stripe.`,
     emailCta: { label: `Pay ${amt} Now`, url: link.url },
     emailDetails: [
       { label: "Amount Due", value: amt },
@@ -98,16 +99,23 @@ export const sendPaymentLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: PaymentLinkInput) => {
     if (!d.phone || typeof d.phone !== "string") throw new Error("phone required");
-    if (!Number.isFinite(d.amountCents) || d.amountCents < 50) throw new Error("amount must be at least $0.50");
-    if (!d.description || d.description.length > 200) throw new Error("description required (<=200 chars)");
-    if (d.environment !== "sandbox" && d.environment !== "live") throw new Error("invalid environment");
+    if (!Number.isFinite(d.amountCents) || d.amountCents < 50)
+      throw new Error("amount must be at least $0.50");
+    if (!d.description || d.description.length > 200)
+      throw new Error("description required (<=200 chars)");
+    if (d.environment !== "sandbox" && d.environment !== "live")
+      throw new Error("invalid environment");
     return d;
   })
   .handler(async ({ data }) => {
     const originHeader = getRequestHeader("origin") || getRequestHeader("referer");
     let origin = process.env.PUBLIC_APP_ORIGIN ?? "";
     if (originHeader) {
-      try { origin = new URL(originHeader).origin; } catch { /* keep default */ }
+      try {
+        origin = new URL(originHeader).origin;
+      } catch {
+        /* keep default */
+      }
     }
     console.log("[sendPaymentLink] creating Stripe payment link", {
       environment: data.environment,

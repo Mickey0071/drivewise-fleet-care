@@ -13,7 +13,9 @@ function getSupabase(): any {
   return _supabase;
 }
 
-async function getProfile(userId: string | null): Promise<{ phone: string | null; full_name: string | null } | null> {
+async function getProfile(
+  userId: string | null,
+): Promise<{ phone: string | null; full_name: string | null } | null> {
   if (!userId) return null;
   const { data } = await getSupabase()
     .from("profiles")
@@ -40,7 +42,9 @@ function normalizeName(s: string | null | undefined): string {
     .trim();
 }
 function nameTokens(s: string): string[] {
-  return normalizeName(s).split(" ").filter((t) => t.length > 1);
+  return normalizeName(s)
+    .split(" ")
+    .filter((t) => t.length > 1);
 }
 /**
  * Returns 1.0 if every license token (>=2 chars) appears in the cardholder
@@ -69,16 +73,20 @@ function namesMatch(cardName: string, licenseName: string): boolean {
 async function handleCheckoutCompleted(session: any, env: StripeEnv) {
   const userId = session.metadata?.userId || null;
   const rentalId = session.metadata?.rental_id || null;
-  const kind = session.metadata?.kind || (session.mode === "subscription" ? "subscription" : "deposit");
+  const kind =
+    session.metadata?.kind || (session.mode === "subscription" ? "subscription" : "deposit");
 
   async function resolveSessionPaymentMethodId(): Promise<string | null> {
     const stripe = createStripeClient(env);
-    const piId = typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : session.payment_intent?.id;
+    const piId =
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id;
     if (piId) {
       const pi = await stripe.paymentIntents.retrieve(piId, { expand: ["payment_method"] });
-      return typeof pi.payment_method === "string" ? pi.payment_method : (pi.payment_method?.id ?? null);
+      return typeof pi.payment_method === "string"
+        ? pi.payment_method
+        : (pi.payment_method?.id ?? null);
     }
     return null;
   }
@@ -87,7 +95,8 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
   // Just log a payment row and notify; do NOT touch reservation/vehicle state.
   if (kind === "custom_renter_payment" && rentalId) {
     const sb = getSupabase();
-    const note = (session.metadata?.note as string | undefined)?.slice(0, 200) || "Additional payment";
+    const note =
+      (session.metadata?.note as string | undefined)?.slice(0, 200) || "Additional payment";
     const amountCents = session.amount_total ?? 0;
     const amountDollars = Number((amountCents / 100).toFixed(2));
     const today = new Date().toISOString().slice(0, 10);
@@ -105,20 +114,24 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       .maybeSingle();
     if (rentalRow) {
       const paidId = `PM-${session.id.slice(-10)}`;
-      await sb.from("payments").upsert({
-        id: paidId,
-        rental_id: rentalRow.id,
-        driver_id: rentalRow.driver_id,
-        amount: amountDollars,
-        due_date: today,
-        paid_date: today,
-        method: "Stripe",
-        status: "paid",
-        note,
-      } as any, { onConflict: "id" });
+      await sb.from("payments").upsert(
+        {
+          id: paidId,
+          rental_id: rentalRow.id,
+          driver_id: rentalRow.driver_id,
+          amount: amountDollars,
+          due_date: today,
+          paid_date: today,
+          method: "Stripe",
+          status: "paid",
+          note,
+        } as any,
+        { onConflict: "id" },
+      );
 
       // Renter SMS
-      const { data: drv } = await sb.from("drivers")
+      const { data: drv } = await sb
+        .from("drivers")
         .select("full_name, phone, email")
         .eq("id", rentalRow.driver_id)
         .maybeSingle();
@@ -149,11 +162,14 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       } as any);
 
       if (session.customer || paymentMethodId) {
-        await sb.from("rentals").update({
-          ...(session.customer ? { stripe_customer_id: session.customer } : {}),
-          ...(paymentMethodId ? { stripe_payment_method_id: paymentMethodId } : {}),
-          updated_at: new Date().toISOString(),
-        } as any).eq("id", rentalRow.id);
+        await sb
+          .from("rentals")
+          .update({
+            ...(session.customer ? { stripe_customer_id: session.customer } : {}),
+            ...(paymentMethodId ? { stripe_payment_method_id: paymentMethodId } : {}),
+            updated_at: new Date().toISOString(),
+          } as any)
+          .eq("id", rentalRow.id);
       }
     }
     return;
@@ -178,23 +194,25 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     let extCardName = "";
     let extChargeId: string | null = null;
     try {
-      const piId = typeof session.payment_intent === "string"
-        ? session.payment_intent
-        : session.payment_intent?.id;
+      const piId =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent?.id;
       if (piId) {
         const pi = await extStripe.paymentIntents.retrieve(piId, {
           expand: ["latest_charge", "payment_method"],
         });
-        const ch: any = pi.latest_charge && typeof pi.latest_charge !== "string" ? pi.latest_charge : null;
-        extCardName = ch?.billing_details?.name
-          || (pi as any).payment_method?.billing_details?.name
-          || "";
+        const ch: any =
+          pi.latest_charge && typeof pi.latest_charge !== "string" ? pi.latest_charge : null;
+        extCardName =
+          ch?.billing_details?.name || (pi as any).payment_method?.billing_details?.name || "";
         extChargeId = ch?.id ?? null;
       }
     } catch (e) {
       console.error("[webhook:ext] failed to load PaymentIntent for name check", e);
     }
-    const { data: extRentalPre } = await sb.from("rentals")
+    const { data: extRentalPre } = await sb
+      .from("rentals")
       .select("id, driver_id, third_party_payer, payer_name_extracted, payer_phone")
       .eq("id", rentalId)
       .maybeSingle();
@@ -204,18 +222,21 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       extLicenseName = String(extRentalPre.payer_name_extracted);
       extNameSource = "payer_id";
     } else if (extRentalPre?.driver_id) {
-      const { data: drv } = await sb.from("drivers")
+      const { data: drv } = await sb
+        .from("drivers")
         .select("full_name, first_name, last_name")
         .eq("id", extRentalPre.driver_id)
         .maybeSingle();
-      extLicenseName = drv?.full_name
-        || [drv?.first_name, drv?.last_name].filter(Boolean).join(" ")
-        || "";
+      extLicenseName =
+        drv?.full_name || [drv?.first_name, drv?.last_name].filter(Boolean).join(" ") || "";
     }
-    const extScore = extCardName && extLicenseName ? nameMatchScore(extCardName, extLicenseName) : 0;
+    const extScore =
+      extCardName && extLicenseName ? nameMatchScore(extCardName, extLicenseName) : 0;
     const extMatched = !!(extCardName && extLicenseName && namesMatch(extCardName, extLicenseName));
     if (extCardName && extLicenseName && !extMatched) {
-      console.warn(`[webhook:ext] name mismatch rental=${rentalId} card="${extCardName}" ${extNameSource}="${extLicenseName}" score=${extScore}`);
+      console.warn(
+        `[webhook:ext] name mismatch rental=${rentalId} card="${extCardName}" ${extNameSource}="${extLicenseName}" score=${extScore}`,
+      );
       try {
         if (extChargeId) await extStripe.refunds.create({ charge: extChargeId });
       } catch (e) {
@@ -224,17 +245,24 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       // Mark extension request as refunded.
       const extToken2 = session.metadata?.extension_token as string | undefined;
       if (extToken2) {
-        await sb.from("extension_requests").update({
-          status: "refunded_name_mismatch",
-          stripe_session_id: session.id,
-        }).eq("token", extToken2);
+        await sb
+          .from("extension_requests")
+          .update({
+            status: "refunded_name_mismatch",
+            stripe_session_id: session.id,
+          })
+          .eq("token", extToken2);
       }
-      const mismatchMsg = extNameSource === "payer_id"
-        ? `Camauto Rentals: Extension payment refunded — the card name (${extCardName}) doesn't match the payer's ID (${extLicenseName}). Please retry with a matching card.`
-        : `Camauto Rentals: Extension payment refunded — the card name (${extCardName}) doesn't match your driver's license (${extLicenseName}). Please retry with a card in your name.`;
+      const mismatchMsg =
+        extNameSource === "payer_id"
+          ? `Camauto Rentals: Extension payment refunded — the card name (${extCardName}) doesn't match the payer's ID (${extLicenseName}). Please retry with a matching card.`
+          : `Camauto Rentals: Extension payment refunded — the card name (${extCardName}) doesn't match your driver's license (${extLicenseName}). Please retry with a card in your name.`;
       if (extRentalPre?.driver_id) {
-        const { data: drv } = await sb.from("drivers")
-          .select("full_name, phone, email").eq("id", extRentalPre.driver_id).maybeSingle();
+        const { data: drv } = await sb
+          .from("drivers")
+          .select("full_name, phone, email")
+          .eq("id", extRentalPre.driver_id)
+          .maybeSingle();
         if (drv?.phone) {
           await notifyRenter({
             phone: drv.phone,
@@ -248,7 +276,9 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         }
       }
       if (extRentalPre?.third_party_payer && extRentalPre?.payer_phone) {
-        try { await sendSms(String(extRentalPre.payer_phone), mismatchMsg, null); } catch {}
+        try {
+          await sendSms(String(extRentalPre.payer_phone), mismatchMsg, null);
+        } catch {}
       }
       return;
     }
@@ -258,20 +288,27 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     const extToken = session.metadata?.extension_token as string | undefined;
     let extReqRow: any = null;
     if (kind === "admin_extension" && extToken) {
-      const { data: er } = await sb.from("extension_requests")
-        .select("token, periods, period_label, new_end_date, previous_end_date, additional_amount, signature_data_url, signed_by, signed_at, agreement_version")
-        .eq("token", extToken).maybeSingle();
+      const { data: er } = await sb
+        .from("extension_requests")
+        .select(
+          "token, periods, period_label, new_end_date, previous_end_date, additional_amount, signature_data_url, signed_by, signed_at, agreement_version",
+        )
+        .eq("token", extToken)
+        .maybeSingle();
       extReqRow = er;
     }
 
-    const { data: rentalRow } = await sb.from("rentals")
+    const { data: rentalRow } = await sb
+      .from("rentals")
       .select("id, driver_id, vehicle_id, end_date, billing_period, rate, weekly_rate")
-      .eq("id", rentalId).maybeSingle();
+      .eq("id", rentalId)
+      .maybeSingle();
     if (rentalRow) {
-      const periodLabel = (extReqRow?.period_label as string)
-        || (session.metadata?.period_label as string)
-        || (rentalRow.billing_period as string)
-        || "weekly";
+      const periodLabel =
+        (extReqRow?.period_label as string) ||
+        (session.metadata?.period_label as string) ||
+        (rentalRow.billing_period as string) ||
+        "weekly";
       let newEndIso: string;
       if (extReqRow?.new_end_date) {
         newEndIso = String(extReqRow.new_end_date).slice(0, 10);
@@ -287,54 +324,69 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
 
       // Record payment row
       const paidId = `PM-${session.id.slice(-10)}`;
-      await sb.from("payments").upsert({
-        id: paidId,
-        rental_id: rentalRow.id,
-        driver_id: rentalRow.driver_id,
-        amount: amountDollars,
-        due_date: today,
-        paid_date: today,
-        method: "Stripe",
-        status: "paid",
-        note: `Extension: +${periods} ${periodLabel.replace(/ly$/, "")}${periods === 1 ? "" : "s"}`,
-      } as any, { onConflict: "id" });
+      await sb.from("payments").upsert(
+        {
+          id: paidId,
+          rental_id: rentalRow.id,
+          driver_id: rentalRow.driver_id,
+          amount: amountDollars,
+          due_date: today,
+          paid_date: today,
+          method: "Stripe",
+          status: "paid",
+          note: `Extension: +${periods} ${periodLabel.replace(/ly$/, "")}${periods === 1 ? "" : "s"}`,
+        } as any,
+        { onConflict: "id" },
+      );
 
       // Record extension row (copy signature when admin link).
       const extRowId = `EXT-${session.id.slice(-10)}`;
-      await sb.from("rental_extensions").upsert({
-        id: extRowId,
-        rental_id: rentalRow.id,
-        previous_end_date: extReqRow?.previous_end_date ?? rentalRow.end_date,
-        new_end_date: newEndIso,
-        periods,
-        period_label: periodLabel,
-        additional_amount: amountDollars,
-        payment_id: paidId,
-        signature_data_url: extReqRow?.signature_data_url ?? null,
-        signed_by: extReqRow?.signed_by ?? null,
-        agreement_version: extReqRow?.agreement_version ?? null,
-      } as any, { onConflict: "id" });
+      await sb.from("rental_extensions").upsert(
+        {
+          id: extRowId,
+          rental_id: rentalRow.id,
+          previous_end_date: extReqRow?.previous_end_date ?? rentalRow.end_date,
+          new_end_date: newEndIso,
+          periods,
+          period_label: periodLabel,
+          additional_amount: amountDollars,
+          payment_id: paidId,
+          signature_data_url: extReqRow?.signature_data_url ?? null,
+          signed_by: extReqRow?.signed_by ?? null,
+          agreement_version: extReqRow?.agreement_version ?? null,
+        } as any,
+        { onConflict: "id" },
+      );
 
       // Mark extension_request as paid.
       if (extToken) {
-        await sb.from("extension_requests").update({
-          status: "paid",
-          paid_at: new Date().toISOString(),
-          stripe_session_id: session.id,
-          payment_id: paidId,
-          rental_extension_id: extRowId,
-        }).eq("token", extToken);
+        await sb
+          .from("extension_requests")
+          .update({
+            status: "paid",
+            paid_at: new Date().toISOString(),
+            stripe_session_id: session.id,
+            payment_id: paidId,
+            rental_extension_id: extRowId,
+          })
+          .eq("token", extToken);
       }
 
       // Update rental end_date
-      await sb.from("rentals").update({
-        end_date: newEndIso,
-        updated_at: new Date().toISOString(),
-      }).eq("id", rentalRow.id);
+      await sb
+        .from("rentals")
+        .update({
+          end_date: newEndIso,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", rentalRow.id);
 
       // Renter SMS
-      const { data: drv } = await sb.from("drivers")
-        .select("full_name, phone, email").eq("id", rentalRow.driver_id).maybeSingle();
+      const { data: drv } = await sb
+        .from("drivers")
+        .select("full_name, phone, email")
+        .eq("id", rentalRow.driver_id)
+        .maybeSingle();
       if (drv?.phone) {
         await notifyRenter({
           phone: drv.phone,
@@ -380,16 +432,22 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     let paymentMethodId: string | null = null;
     let chargeId: string | null = null;
     try {
-      const piId = typeof session.payment_intent === "string"
-        ? session.payment_intent
-        : session.payment_intent?.id;
+      const piId =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent?.id;
       if (piId) {
         const pi = await stripe.paymentIntents.retrieve(piId, {
           expand: ["latest_charge", "payment_method"],
         });
-        const charge: any = pi.latest_charge && typeof pi.latest_charge !== "string" ? pi.latest_charge : null;
-        cardholderName = charge?.billing_details?.name || (pi as any).payment_method?.billing_details?.name || "";
-        paymentMethodId = typeof pi.payment_method === "string" ? pi.payment_method : (pi.payment_method?.id ?? null);
+        const charge: any =
+          pi.latest_charge && typeof pi.latest_charge !== "string" ? pi.latest_charge : null;
+        cardholderName =
+          charge?.billing_details?.name || (pi as any).payment_method?.billing_details?.name || "";
+        paymentMethodId =
+          typeof pi.payment_method === "string"
+            ? pi.payment_method
+            : (pi.payment_method?.id ?? null);
         chargeId = charge?.id ?? null;
       }
     } catch (e) {
@@ -397,7 +455,8 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     }
 
     // Look up the renter's license name.
-    const { data: rentalPre } = await sb.from("rentals")
+    const { data: rentalPre } = await sb
+      .from("rentals")
       .select("id, driver_id, third_party_payer, payer_name_extracted, payer_phone")
       .eq("id", rentalId)
       .maybeSingle();
@@ -407,13 +466,13 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       licenseName = String(rentalPre.payer_name_extracted);
       nameSource = "payer_id";
     } else if (rentalPre?.driver_id) {
-      const { data: drv } = await sb.from("drivers")
+      const { data: drv } = await sb
+        .from("drivers")
         .select("full_name, first_name, last_name")
         .eq("id", rentalPre.driver_id)
         .maybeSingle();
-      licenseName = drv?.full_name
-        || [drv?.first_name, drv?.last_name].filter(Boolean).join(" ")
-        || "";
+      licenseName =
+        drv?.full_name || [drv?.first_name, drv?.last_name].filter(Boolean).join(" ") || "";
     }
 
     const score = cardholderName && licenseName ? nameMatchScore(cardholderName, licenseName) : 0;
@@ -421,18 +480,23 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
 
     if (cardholderName && licenseName && !matched) {
       // Mismatch — refund the charge, do NOT activate the rental.
-      console.warn(`[webhook] name mismatch rental=${rentalId} card="${cardholderName}" ${nameSource}="${licenseName}" score=${score}`);
+      console.warn(
+        `[webhook] name mismatch rental=${rentalId} card="${cardholderName}" ${nameSource}="${licenseName}" score=${score}`,
+      );
       try {
         if (chargeId) await stripe.refunds.create({ charge: chargeId });
       } catch (e) {
         console.error("[webhook] refund failed", e);
       }
-      await sb.from("rentals").update({
-        cardholder_name: cardholderName,
-        name_match_status: "mismatched",
-        name_match_score: score,
-        updated_at: new Date().toISOString(),
-      }).eq("id", rentalId);
+      await sb
+        .from("rentals")
+        .update({
+          cardholder_name: cardholderName,
+          name_match_status: "mismatched",
+          name_match_score: score,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", rentalId);
       await sb.from("subscriptions").insert({
         user_id: userId,
         rental_id: rentalId,
@@ -445,59 +509,73 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       } as any);
 
       const profile = await getProfile(userId);
-      const mismatchMsg = nameSource === "payer_id"
-        ? `Rentalprise Auto: Payment refunded — the card name (${cardholderName}) doesn't match the payer's ID (${licenseName}). Please retry with a matching card.`
-        : `Rentalprise Auto: Your payment was refunded — the card name (${cardholderName}) doesn't match your driver's license (${licenseName}). Please retry with a card in your name.`;
+      const mismatchMsg =
+        nameSource === "payer_id"
+          ? `Rentalprise Auto: Payment refunded — the card name (${cardholderName}) doesn't match the payer's ID (${licenseName}). Please retry with a matching card.`
+          : `Rentalprise Auto: Your payment was refunded — the card name (${cardholderName}) doesn't match your driver's license (${licenseName}). Please retry with a card in your name.`;
       if (profile?.phone) {
         await sendSms(profile.phone, mismatchMsg, profile.full_name);
       }
       // Also notify the third-party payer when their card was used.
       if (rentalPre?.third_party_payer && rentalPre?.payer_phone) {
-        try { await sendSms(String(rentalPre.payer_phone), mismatchMsg, null); } catch {}
+        try {
+          await sendSms(String(rentalPre.payer_phone), mismatchMsg, null);
+        } catch {}
       }
       return;
     }
     // -------- end name validation --------
 
     // Record the payment in the subscriptions ledger for accounting.
-    await getSupabase().from("subscriptions").insert({
-      user_id: userId,
-      rental_id: rentalId,
-      stripe_customer_id: session.customer,
-      stripe_session_id: session.id,
-      kind: kind || "first_payment",
-      amount_cents: session.amount_total ?? null,
-      status: "paid",
-      environment: env,
-    } as any);
+    await getSupabase()
+      .from("subscriptions")
+      .insert({
+        user_id: userId,
+        rental_id: rentalId,
+        stripe_customer_id: session.customer,
+        stripe_session_id: session.id,
+        kind: kind || "first_payment",
+        amount_cents: session.amount_total ?? null,
+        status: "paid",
+        environment: env,
+      } as any);
 
     if (session.customer || paymentMethodId) {
-      await sb.from("rentals").update({
-        ...(session.customer ? { stripe_customer_id: session.customer } : {}),
-        ...(paymentMethodId ? { stripe_payment_method_id: paymentMethodId } : {}),
-        updated_at: new Date().toISOString(),
-      } as any).eq("id", rentalId);
+      await sb
+        .from("rentals")
+        .update({
+          ...(session.customer ? { stripe_customer_id: session.customer } : {}),
+          ...(paymentMethodId ? { stripe_payment_method_id: paymentMethodId } : {}),
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq("id", rentalId);
     }
 
     // Flip the reservation to active and mark vehicle rented.
-    const { data: rental } = await sb.from("rentals")
-      .select("id, vehicle_id, driver_id, start_date, billing_period, rate, weekly_rate, reservation_status, payment_received")
+    const { data: rental } = await sb
+      .from("rentals")
+      .select(
+        "id, vehicle_id, driver_id, start_date, billing_period, rate, weekly_rate, reservation_status, payment_received",
+      )
       .eq("id", rentalId)
       .maybeSingle();
 
     if (rental) {
-      await sb.from("rentals").update({
-        payment_received: true,
-        reservation_status: "active",
-        activated_at: new Date().toISOString(),
-        pending_created_at: null,
-        stripe_customer_id: session.customer ?? null,
-        stripe_payment_method_id: paymentMethodId,
-        cardholder_name: cardholderName || null,
-        name_match_status: matched ? "matched" : (cardholderName ? "unverified" : "unverified"),
-        name_match_score: score || null,
-        updated_at: new Date().toISOString(),
-      }).eq("id", rental.id);
+      await sb
+        .from("rentals")
+        .update({
+          payment_received: true,
+          reservation_status: "active",
+          activated_at: new Date().toISOString(),
+          pending_created_at: null,
+          stripe_customer_id: session.customer ?? null,
+          stripe_payment_method_id: paymentMethodId,
+          cardholder_name: cardholderName || null,
+          name_match_status: matched ? "matched" : cardholderName ? "unverified" : "unverified",
+          name_match_score: score || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", rental.id);
 
       if (rental.vehicle_id) {
         await sb.from("vehicles").update({ status: "rented" }).eq("id", rental.vehicle_id);
@@ -505,7 +583,9 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
 
       // Record the first weekly payment as paid; schedule next due one period out.
       const period = (rental.billing_period as string) || "weekly";
-      const start = new Date((rental.start_date as string) || new Date().toISOString().slice(0, 10));
+      const start = new Date(
+        (rental.start_date as string) || new Date().toISOString().slice(0, 10),
+      );
       const next = new Date(start);
       if (period === "daily") next.setDate(next.getDate() + 1);
       else if (period === "monthly") next.setMonth(next.getMonth() + 1);
@@ -514,18 +594,22 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       const today = new Date().toISOString().slice(0, 10);
       const paidId = `PM-${session.id.slice(-10)}`;
       // First payment row (already paid via Stripe).
-      await sb.from("payments").upsert({
-        id: paidId,
-        rental_id: rental.id,
-        driver_id: rental.driver_id,
-        amount,
-        due_date: today,
-        paid_date: today,
-        method: "Stripe",
-        status: "paid",
-      } as any, { onConflict: "id" });
+      await sb.from("payments").upsert(
+        {
+          id: paidId,
+          rental_id: rental.id,
+          driver_id: rental.driver_id,
+          amount,
+          due_date: today,
+          paid_date: today,
+          method: "Stripe",
+          status: "paid",
+        } as any,
+        { onConflict: "id" },
+      );
       // Next scheduled payment (only if none already exists past today).
-      const { data: upcoming } = await sb.from("payments")
+      const { data: upcoming } = await sb
+        .from("payments")
         .select("id")
         .eq("rental_id", rental.id)
         .gt("due_date", today)
@@ -594,30 +678,34 @@ async function handleSubscriptionCreated(subscription: any, env: StripeEnv) {
   const userId = subscription.metadata?.userId || null;
   const rentalId = subscription.metadata?.rental_id || null;
   const item = subscription.items?.data?.[0];
-  const priceId = item?.price?.lookup_key || item?.price?.metadata?.lovable_external_id || item?.price?.id;
-  const productId = typeof item?.price?.product === "string" ? item.price.product : item?.price?.product?.id;
+  const priceId =
+    item?.price?.lookup_key || item?.price?.metadata?.lovable_external_id || item?.price?.id;
+  const productId =
+    typeof item?.price?.product === "string" ? item.price.product : item?.price?.product?.id;
   const periodStart = item?.current_period_start ?? subscription.current_period_start;
   const periodEnd = item?.current_period_end ?? subscription.current_period_end;
 
-  await getSupabase().from("subscriptions").upsert(
-    {
-      user_id: userId,
-      rental_id: rentalId,
-      stripe_subscription_id: subscription.id,
-      stripe_customer_id: subscription.customer,
-      product_id: productId,
-      price_id: priceId,
-      kind: "subscription",
-      amount_cents: item?.price?.unit_amount ?? null,
-      status: subscription.status,
-      current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
-      current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
-      cancel_at_period_end: subscription.cancel_at_period_end || false,
-      environment: env,
-      updated_at: new Date().toISOString(),
-    } as any,
-    { onConflict: "stripe_subscription_id" }
-  );
+  await getSupabase()
+    .from("subscriptions")
+    .upsert(
+      {
+        user_id: userId,
+        rental_id: rentalId,
+        stripe_subscription_id: subscription.id,
+        stripe_customer_id: subscription.customer,
+        product_id: productId,
+        price_id: priceId,
+        kind: "subscription",
+        amount_cents: item?.price?.unit_amount ?? null,
+        status: subscription.status,
+        current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
+        current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+        cancel_at_period_end: subscription.cancel_at_period_end || false,
+        environment: env,
+        updated_at: new Date().toISOString(),
+      } as any,
+      { onConflict: "stripe_subscription_id" },
+    );
 
   const profile = await getProfile(userId);
   if (profile?.phone) {
@@ -625,15 +713,17 @@ async function handleSubscriptionCreated(subscription: any, env: StripeEnv) {
     await sendSms(
       profile.phone,
       `Rentalprise Auto: Your rental subscription is active${amt ? " (" + amt + ")" : ""}. Welcome aboard!`,
-      profile.full_name
+      profile.full_name,
     );
   }
 }
 
 async function handleSubscriptionUpdated(subscription: any, env: StripeEnv) {
   const item = subscription.items?.data?.[0];
-  const priceId = item?.price?.lookup_key || item?.price?.metadata?.lovable_external_id || item?.price?.id;
-  const productId = typeof item?.price?.product === "string" ? item.price.product : item?.price?.product?.id;
+  const priceId =
+    item?.price?.lookup_key || item?.price?.metadata?.lovable_external_id || item?.price?.id;
+  const productId =
+    typeof item?.price?.product === "string" ? item.price.product : item?.price?.product?.id;
   const periodStart = item?.current_period_start ?? subscription.current_period_start;
   const periodEnd = item?.current_period_end ?? subscription.current_period_end;
 
@@ -645,26 +735,32 @@ async function handleSubscriptionUpdated(subscription: any, env: StripeEnv) {
     .eq("environment", env)
     .maybeSingle();
 
-  await getSupabase().from("subscriptions").update({
-    status: subscription.status,
-    product_id: productId,
-    price_id: priceId,
-    amount_cents: item?.price?.unit_amount ?? null,
-    current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
-    current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
-    cancel_at_period_end: subscription.cancel_at_period_end || false,
-    updated_at: new Date().toISOString(),
-  } as any).eq("stripe_subscription_id", subscription.id).eq("environment", env);
+  await getSupabase()
+    .from("subscriptions")
+    .update({
+      status: subscription.status,
+      product_id: productId,
+      price_id: priceId,
+      amount_cents: item?.price?.unit_amount ?? null,
+      current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
+      current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+      cancel_at_period_end: subscription.cancel_at_period_end || false,
+      updated_at: new Date().toISOString(),
+    } as any)
+    .eq("stripe_subscription_id", subscription.id)
+    .eq("environment", env);
 
   const justCanceled = !existing?.cancel_at_period_end && subscription.cancel_at_period_end;
   if (justCanceled) {
     const profile = await getProfile(existing?.user_id || null);
     if (profile?.phone) {
-      const endsAt = periodEnd ? new Date(periodEnd * 1000).toLocaleDateString("en-US") : "the end of your current period";
+      const endsAt = periodEnd
+        ? new Date(periodEnd * 1000).toLocaleDateString("en-US")
+        : "the end of your current period";
       await sendSms(
         profile.phone,
         `Rentalprise Auto: Your subscription has been canceled. You'll retain access until ${endsAt}.`,
-        profile.full_name
+        profile.full_name,
       );
     }
   }
@@ -672,10 +768,14 @@ async function handleSubscriptionUpdated(subscription: any, env: StripeEnv) {
 
 async function handleSubscriptionDeleted(subscription: any, env: StripeEnv) {
   // Cancel = end at period end. Stripe fires this when the period actually ends.
-  await getSupabase().from("subscriptions").update({
-    status: "canceled",
-    updated_at: new Date().toISOString(),
-  } as any).eq("stripe_subscription_id", subscription.id).eq("environment", env);
+  await getSupabase()
+    .from("subscriptions")
+    .update({
+      status: "canceled",
+      updated_at: new Date().toISOString(),
+    } as any)
+    .eq("stripe_subscription_id", subscription.id)
+    .eq("environment", env);
 }
 
 async function handleWebhook(req: Request, env: StripeEnv) {

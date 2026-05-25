@@ -7,18 +7,16 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 
 export const chargeViolation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (input: { rentalId: string; amount: number; description: string }) => {
-      if (!input.rentalId) throw new Error("rentalId required");
-      const amt = Number(input.amount);
-      if (!Number.isFinite(amt) || amt <= 0) throw new Error("Amount must be greater than zero");
-      if (amt > 10000) throw new Error("Amount too large");
-      const desc = (input.description || "").trim();
-      if (!desc) throw new Error("Description required");
-      if (desc.length > 200) throw new Error("Description too long");
-      return { rentalId: input.rentalId, amount: amt, description: desc };
-    }
-  )
+  .inputValidator((input: { rentalId: string; amount: number; description: string }) => {
+    if (!input.rentalId) throw new Error("rentalId required");
+    const amt = Number(input.amount);
+    if (!Number.isFinite(amt) || amt <= 0) throw new Error("Amount must be greater than zero");
+    if (amt > 10000) throw new Error("Amount too large");
+    const desc = (input.description || "").trim();
+    if (!desc) throw new Error("Description required");
+    if (desc.length > 200) throw new Error("Description too long");
+    return { rentalId: input.rentalId, amount: amt, description: desc };
+  })
   .handler(async ({ data }) => {
     const { rentalId, amount, description } = data;
 
@@ -58,7 +56,10 @@ export const chargeViolation = createServerFn({ method: "POST" })
           stripeCustomerId = pmCustomer;
           await supabaseAdmin
             .from("rentals")
-            .update({ stripe_customer_id: pmCustomer, updated_at: new Date().toISOString() } as never)
+            .update({
+              stripe_customer_id: pmCustomer,
+              updated_at: new Date().toISOString(),
+            } as never)
             .eq("id", rentalId);
         }
       } catch (e) {
@@ -74,7 +75,11 @@ export const chargeViolation = createServerFn({ method: "POST" })
       const originHeader = getRequestHeader("origin") || getRequestHeader("referer");
       let origin = process.env.PUBLIC_APP_ORIGIN ?? "";
       if (originHeader) {
-        try { origin = new URL(originHeader).origin; } catch { /* keep default */ }
+        try {
+          origin = new URL(originHeader).origin;
+        } catch {
+          /* keep default */
+        }
       }
       const note = `Violation: ${description}`.slice(0, 200);
       const metadata = {
@@ -188,9 +193,7 @@ export const chargeViolation = createServerFn({ method: "POST" })
         const amt = `$${amount.toFixed(2)}`;
         let last4: string | null = null;
         try {
-          const pm = await stripe.paymentMethods.retrieve(
-            stripePaymentMethodId,
-          );
+          const pm = await stripe.paymentMethods.retrieve(stripePaymentMethodId);
           last4 = pm.card?.last4 ?? null;
         } catch {
           /* non-fatal */
@@ -214,7 +217,10 @@ export const chargeViolation = createServerFn({ method: "POST" })
 
       return { ok: true as const, mode: "charged" as const, paymentIntentId: pi.id, amount };
     } catch (e: unknown) {
-      const err = e as { raw?: { message?: string; payment_intent?: { id?: string } }; message?: string };
+      const err = e as {
+        raw?: { message?: string; payment_intent?: { id?: string } };
+        message?: string;
+      };
       const msg = err?.raw?.message || err?.message || String(e);
       await supabaseAdmin.from("rental_charges").insert({
         rental_id: rentalId,
