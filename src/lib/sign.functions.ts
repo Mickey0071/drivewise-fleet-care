@@ -4,6 +4,10 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { extractNameFromIdImage, extractAddressFromIdImage, extractLicenseFieldsFromImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
+import { sendSms, sendEmail } from "@/lib/ghl.server";
+
+const MANAGEMENT_PHONE = "+12672213977";
+const MANAGEMENT_EMAIL = "info@camautorentals.com";
 
 function genToken() {
   const bytes = new Uint8Array(16);
@@ -400,8 +404,30 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
             "Your signed agreement and ID have been received and are now under review by our team. Once approved, we'll send you a payment link by text and email so you can complete your reservation.",
         });
       }
-      // Management is alerted via the in-app dashboard badge
-      // (staff_review_status = 'pending'); no SMS is sent.
+      // Notify management (SMS + email) that a new signed agreement is
+      // awaiting review, in addition to the in-app dashboard badge /
+      // auto-open modal driven by staff_review_status = 'pending'.
+      try {
+        const origin = process.env.PUBLIC_APP_ORIGIN || "";
+        const reviewLink = origin ? `${origin}/pending-agreements` : null;
+        const renterLabel = driver?.full_name || rental.driver_id;
+        const smsBody = `Camauto: New signed agreement from ${renterLabel} (rental ${rental.id}) is awaiting your review.${reviewLink ? ` ${reviewLink}` : ""}`;
+        await sendSms(MANAGEMENT_PHONE, smsBody, "Camauto Management");
+        await sendEmail(
+          MANAGEMENT_EMAIL,
+          `New Agreement Awaiting Review — ${renterLabel}`,
+          `<div style="font-family:Arial,Helvetica,sans-serif;color:#111;line-height:1.5;max-width:600px;">
+            <h2 style="margin:0 0 12px;">New signed agreement awaiting review</h2>
+            <p><strong>Renter:</strong> ${renterLabel}</p>
+            <p><strong>Rental:</strong> ${rental.id}</p>
+            <p>Open the Pending Agreements queue to review the signed PDF, license, and selfie, then approve and send the payment link.</p>
+            ${reviewLink ? `<p><a href="${reviewLink}" style="background:#2db84b;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block;">Review Now</a></p>` : ""}
+          </div>`,
+          { name: "Camauto Management" },
+        );
+      } catch (mgmtErr) {
+        console.error("[sign] management notify failed", mgmtErr);
+      }
     } catch (e) {
       console.error("post-sign notify failed", e);
     }
