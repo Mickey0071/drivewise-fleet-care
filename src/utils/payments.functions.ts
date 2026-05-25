@@ -8,7 +8,10 @@ async function resolveOrCreateCustomer(
 ): Promise<string> {
   if (options.userId && !/^[a-zA-Z0-9_-]+$/.test(options.userId)) throw new Error("Invalid userId");
   if (options.userId) {
-    const found = await stripe.customers.search({ query: `metadata['userId']:'${options.userId}'`, limit: 1 });
+    const found = await stripe.customers.search({
+      query: `metadata['userId']:'${options.userId}'`,
+      limit: 1,
+    });
     if (found.data.length) return found.data[0].id;
   }
   if (options.email) {
@@ -16,7 +19,9 @@ async function resolveOrCreateCustomer(
     if (existing.data.length) {
       const c = existing.data[0];
       if (options.userId && c.metadata?.userId !== options.userId) {
-        await stripe.customers.update(c.id, { metadata: { ...c.metadata, userId: options.userId } });
+        await stripe.customers.update(c.id, {
+          metadata: { ...c.metadata, userId: options.userId },
+        });
       }
       return c.id;
     }
@@ -32,23 +37,27 @@ async function resolveOrCreateCustomer(
 // Weekly rental subscription with dynamic per-driver amount.
 export const createWeeklyRentalCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: {
-    amountInCents: number;
-    rentalId: string;
-    customerEmail?: string;
-    customerName?: string;
-    userId?: string;
-    returnUrl: string;
-    environment: StripeEnv;
-  }) => {
-    if (!data.amountInCents || data.amountInCents < 100) throw new Error("Amount too small");
-    if (!data.rentalId) throw new Error("rentalId required");
-    return data;
-  })
+  .inputValidator(
+    (data: {
+      amountInCents: number;
+      rentalId: string;
+      customerEmail?: string;
+      customerName?: string;
+      userId?: string;
+      returnUrl: string;
+      environment: StripeEnv;
+    }) => {
+      if (!data.amountInCents || data.amountInCents < 100) throw new Error("Amount too small");
+      if (!data.rentalId) throw new Error("rentalId required");
+      return data;
+    },
+  )
   .handler(async ({ data }) => {
     const stripe = createStripeClient(data.environment);
     const customerId = await resolveOrCreateCustomer(stripe, {
-      email: data.customerEmail, userId: data.userId, name: data.customerName,
+      email: data.customerEmail,
+      userId: data.userId,
+      name: data.customerName,
     });
 
     const session = await stripe.checkout.sessions.create({
@@ -56,15 +65,17 @@ export const createWeeklyRentalCheckout = createServerFn({ method: "POST" })
       ui_mode: "embedded_page",
       return_url: data.returnUrl,
       customer: customerId,
-      line_items: [{
-        price_data: {
-          currency: "usd",
-          product_data: { name: "Weekly vehicle rental" },
-          recurring: { interval: "week" },
-          unit_amount: data.amountInCents,
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: { name: "Weekly vehicle rental" },
+            recurring: { interval: "week" },
+            unit_amount: data.amountInCents,
+          },
+          quantity: 1,
         },
-        quantity: 1,
-      }],
+      ],
       automatic_tax: { enabled: false },
       metadata: {
         userId: data.userId ?? "",
@@ -84,23 +95,27 @@ export const createWeeklyRentalCheckout = createServerFn({ method: "POST" })
 // One-time deposit (2 days advance) at handoff.
 export const createDepositCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: {
-    amountInCents: number;
-    rentalId: string;
-    customerEmail?: string;
-    customerName?: string;
-    userId?: string;
-    returnUrl: string;
-    environment: StripeEnv;
-  }) => {
-    if (!data.amountInCents || data.amountInCents < 100) throw new Error("Amount too small");
-    if (!data.rentalId) throw new Error("rentalId required");
-    return data;
-  })
+  .inputValidator(
+    (data: {
+      amountInCents: number;
+      rentalId: string;
+      customerEmail?: string;
+      customerName?: string;
+      userId?: string;
+      returnUrl: string;
+      environment: StripeEnv;
+    }) => {
+      if (!data.amountInCents || data.amountInCents < 100) throw new Error("Amount too small");
+      if (!data.rentalId) throw new Error("rentalId required");
+      return data;
+    },
+  )
   .handler(async ({ data }) => {
     const stripe = createStripeClient(data.environment);
     const customerId = await resolveOrCreateCustomer(stripe, {
-      email: data.customerEmail, userId: data.userId, name: data.customerName,
+      email: data.customerEmail,
+      userId: data.userId,
+      name: data.customerName,
     });
 
     const session = await stripe.checkout.sessions.create({
@@ -108,14 +123,16 @@ export const createDepositCheckout = createServerFn({ method: "POST" })
       ui_mode: "embedded_page",
       return_url: data.returnUrl,
       customer: customerId,
-      line_items: [{
-        price_data: {
-          currency: "usd",
-          product_data: { name: "Rental advance deposit" },
-          unit_amount: data.amountInCents,
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: { name: "Rental advance deposit" },
+            unit_amount: data.amountInCents,
+          },
+          quantity: 1,
         },
-        quantity: 1,
-      }],
+      ],
       payment_intent_data: {
         setup_future_usage: "off_session",
       },
