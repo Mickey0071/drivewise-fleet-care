@@ -4,8 +4,6 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createStripeClient } from "@/lib/stripe.server";
 import { sendSms } from "@/lib/ghl.server";
 
-const ADMIN_PHONE = "+12672213977";
-
 type RoleRow = { role: "admin" | "runner" | "driver" | "va" };
 
 async function getRolesAndProfile(userId: string) {
@@ -142,16 +140,6 @@ export const createRefundRequest = createServerFn({ method: "POST" })
     }
 
     // VA path: notify management for approval.
-    const renterLabel = driver?.full_name || rental.driver_id;
-    try {
-      await sendSms(
-        ADMIN_PHONE,
-        `Camauto: ${name} (VA) requested refund of ${fmtMoney(data.amount)} for ${renterLabel} (rental ${rental.id})${data.reason ? ` — "${data.reason}"` : ""}. Approve or deny in the Refund Approvals page.`,
-        null,
-      );
-    } catch (e) {
-      console.error("[createRefundRequest] admin SMS failed", e);
-    }
     return { ok: true, status: "pending" as const, id: created.id };
   });
 

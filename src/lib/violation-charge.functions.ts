@@ -4,8 +4,6 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
 import { sendSms } from "@/lib/ghl.server";
 
-const ADMIN_PHONE = "+12672213977";
-
 export const chargeViolation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -103,11 +101,6 @@ export const chargeViolation = createServerFn({ method: "POST" })
           driver.full_name ?? undefined
         );
       }
-      await sendSms(
-        ADMIN_PHONE,
-        `Rentalprise: ${driver?.full_name ?? rental.driver_id} charged $${amount.toFixed(2)} for ${description}.`,
-        "Admin"
-      );
 
       return { ok: true as const, paymentIntentId: pi.id, amount };
     } catch (e: unknown) {

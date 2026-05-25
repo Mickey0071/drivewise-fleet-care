@@ -79,8 +79,6 @@ export const getPendingInspectionPublic = createServerFn({ method: "POST" })
     };
   });
 
-const SUMMARY_PHONE = "+12672213977";
-
 /** Public: runner submits the post-return inspection. Creates inspection row,
  *  flips vehicle to "available", clears pending row, sends SMS summary. */
 export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
@@ -157,26 +155,6 @@ export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
       .from("pending_inspections")
       .delete()
       .eq("vehicle_id", data.vehicleId);
-
-    // Build checklist summary
-    const checklistLines = Object.entries(data.checklist)
-      .map(([k, ok]) => `${ok ? "✓" : "✗"} ${k}`)
-      .join(" · ");
-    const label = `${v.year} ${v.make} ${v.model} (${v.plate})`;
-    const msg = [
-      `Camauto Inspection complete: ${label}`,
-      `By: ${data.completedBy.trim()}`,
-      `Odo: ${data.mileage.toLocaleString()} mi · Fuel: ${data.fuelLevel}%`,
-      data.damageNoted ? "DAMAGE NOTED" : "No damage",
-      checklistLines,
-      data.notes?.trim() ? `Notes: ${data.notes.trim()}` : "",
-    ].filter(Boolean).join(" | ").slice(0, 1000);
-
-    try {
-      await sendSms(SUMMARY_PHONE, msg, "Inspection Summary");
-    } catch (e) {
-      console.error("inspection summary sms failed", e);
-    }
 
     const failedItems = Object.entries(it)
       .filter(([, v]) => v?.status === "fail")
