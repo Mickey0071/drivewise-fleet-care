@@ -119,13 +119,6 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
           ],
         });
       }
-      // Admin SMS
-      try {
-        await sendSms("+12672213977", `${drv?.full_name || "Renter"} made additional payment of ${fmtAmount(amountCents)}${note ? ` — ${note}` : ""}.`, null);
-      } catch (e) {
-        console.error("[webhook] admin SMS failed", e);
-      }
-
       await sb.from("subscriptions").insert({
         user_id: userId,
         rental_id: rentalRow.id,
@@ -231,9 +224,6 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       if (extRentalPre?.third_party_payer && extRentalPre?.payer_phone) {
         try { await sendSms(String(extRentalPre.payer_phone), mismatchMsg, null); } catch {}
       }
-      try {
-        await sendSms("+12672213977", `Extension refunded (name mismatch) rental=${rentalId}: card="${extCardName}" expected="${extLicenseName}"`, null);
-      } catch {}
       return;
     }
     // -------- end extension name validation --------
@@ -336,10 +326,6 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
           ],
         });
       }
-      try {
-        await sendSms("+12672213977", `${drv?.full_name || "Renter"} extended rental ${rentalRow.id} by ${periods} ${periodLabel} (${fmtAmount(amountCents)}).`, null);
-      } catch {}
-
       await sb.from("subscriptions").insert({
         user_id: userId,
         rental_id: rentalRow.id,
