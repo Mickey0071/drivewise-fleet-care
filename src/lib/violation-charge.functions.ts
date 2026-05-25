@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
-import { sendSms } from "@/lib/ghl.server";
+import { notifyRenter } from "@/lib/renter-notify.server";
+import { getRequestHeader } from "@tanstack/react-start/server";
 
 export const chargeViolation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -27,9 +28,6 @@ export const chargeViolation = createServerFn({ method: "POST" })
       .eq("id", rentalId)
       .maybeSingle();
     if (rErr || !rental) throw new Error("Rental not found");
-    if (!rental.stripe_customer_id || !rental.stripe_payment_method_id) {
-      throw new Error("No card on file for this rental");
-    }
 
     const { data: subRow } = await supabaseAdmin
       .from("subscriptions")
@@ -43,12 +41,84 @@ export const chargeViolation = createServerFn({ method: "POST" })
 
     const { data: driver } = await supabaseAdmin
       .from("drivers")
-      .select("full_name, phone")
+      .select("full_name, phone, email")
       .eq("id", rental.driver_id)
       .maybeSingle();
 
     const amountCents = Math.round(amount * 100);
 
+    // ---- No card on file: send a one-off Stripe Payment Link ----
+    if (!rental.stripe_customer_id || !rental.stripe_payment_method_id) {
+      if (!driver?.phone && !driver?.email) {
+        throw new Error("Renter has no phone or email on file — cannot send payment link");
+      }
+      const originHeader = getRequestHeader("origin") || getRequestHeader("referer");
+      let origin = process.env.PUBLIC_APP_ORIGIN ?? "";
+      if (originHeader) {
+        try { origin = new URL(originHeader).origin; } catch { /* keep default */ }
+      }
+      const note = `Violation: ${description}`.slice(0, 200);
+      const metadata = {
+        kind: "custom_renter_payment",
+        rental_id: rentalId,
+        note,
+      };
+      const product = await stripe.products.create({
+        name: `Camauto Rentals — ${note}`.slice(0, 250),
+        metadata: { rental_id: rentalId },
+      });
+      const price = await stripe.prices.create({
+        product: product.id,
+        currency: "usd",
+        unit_amount: amountCents,
+      });
+      const link = await stripe.paymentLinks.create({
+        line_items: [{ price: price.id, quantity: 1 }],
+        metadata,
+        payment_intent_data: { metadata },
+        ...(origin
+          ? {
+              after_completion: {
+                type: "redirect" as const,
+                redirect: {
+                  url: `${origin}/my-rentals/${encodeURIComponent(rentalId)}?paid=1`,
+                },
+              },
+            }
+          : {}),
+        restrictions: { completed_sessions: { limit: 1 } },
+      });
+      if (!link.url) throw new Error("Stripe did not return a payment link URL");
+
+      const amt = `$${amount.toFixed(2)}`;
+      await notifyRenter({
+        phone: driver?.phone ?? null,
+        email: driver?.email ?? null,
+        name: driver?.full_name ?? null,
+        sms: `Camauto Rentals: Violation charge of ${amt} — ${description}. Pay: ${link.url}`,
+        emailSubject: "Violation Charge — Camauto Rentals",
+        emailHeading: "Violation Charge",
+        emailIntro: `A violation charge of <strong>${amt}</strong> has been issued: ${description}. Tap below to pay securely.`,
+        emailCta: { label: `Pay ${amt} Now`, url: link.url },
+        emailDetails: [
+          { label: "Amount", value: amt },
+          { label: "Description", value: description },
+        ],
+      });
+
+      await supabaseAdmin.from("rental_charges").insert({
+        rental_id: rentalId,
+        amount,
+        period_label: `violation: ${description}`,
+        status: "pending",
+        error_msg: "Awaiting renter payment via link",
+        environment: env,
+      } as never);
+
+      return { ok: true as const, mode: "link" as const, url: link.url, amount };
+    }
+
+    // ---- Card on file: charge it now ----
     try {
       const pi = await stripe.paymentIntents.create({
         amount: amountCents,
@@ -94,15 +164,24 @@ export const chargeViolation = createServerFn({ method: "POST" })
         status: "paid",
       } as never);
 
-      if (driver?.phone) {
-        await sendSms(
-          driver.phone,
-          `Rentalprise: Violation charge of $${amount.toFixed(2)} has been charged to your card: ${description}`,
-          driver.full_name ?? undefined
-        );
+      if (driver?.phone || driver?.email) {
+        const amt = `$${amount.toFixed(2)}`;
+        await notifyRenter({
+          phone: driver?.phone ?? null,
+          email: driver?.email ?? null,
+          name: driver?.full_name ?? null,
+          sms: `Camauto Rentals: Violation charge of ${amt} has been charged to your card: ${description}`,
+          emailSubject: "Violation Charged — Camauto Rentals",
+          emailHeading: "Violation Charged",
+          emailIntro: `A violation charge of <strong>${amt}</strong> has been charged to your card on file: ${description}.`,
+          emailDetails: [
+            { label: "Amount", value: amt },
+            { label: "Description", value: description },
+          ],
+        });
       }
 
-      return { ok: true as const, paymentIntentId: pi.id, amount };
+      return { ok: true as const, mode: "charged" as const, paymentIntentId: pi.id, amount };
     } catch (e: unknown) {
       const err = e as { raw?: { message?: string; payment_intent?: { id?: string } }; message?: string };
       const msg = err?.raw?.message || err?.message || String(e);
