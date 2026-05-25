@@ -108,6 +108,7 @@ export const createDepositCheckout = createServerFn({ method: "POST" })
       ui_mode: "embedded_page",
       return_url: data.returnUrl,
       customer: customerId,
+      customer_creation: "always",
       line_items: [{
         price_data: {
           currency: "usd",
