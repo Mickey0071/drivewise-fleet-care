@@ -46,7 +46,7 @@ export const chargeViolation = createServerFn({ method: "POST" })
     const amountCents = Math.round(amount * 100);
 
     let stripeCustomerId = (rental.stripe_customer_id as string | null) || null;
-    let stripePaymentMethodId = (rental.stripe_payment_method_id as string | null) || null;
+    const stripePaymentMethodId = (rental.stripe_payment_method_id as string | null) || null;
 
     if (stripePaymentMethodId && !stripeCustomerId) {
       try {
