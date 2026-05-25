@@ -34,6 +34,7 @@ import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { generateReceiptPdf } from "@/lib/receipt.functions";
+import { downloadClientPacket } from "@/lib/client-packet.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { closeoutRental } from "@/lib/return.functions";
 import { createExtensionLink } from "@/lib/extension-link.functions";
@@ -87,6 +88,8 @@ function RentalsPage() {
   const [pdfRegenId, setPdfRegenId] = useState<string | null>(null);
   const genReceiptFn = useServerFn(generateReceiptPdf);
   const [receiptRegenId, setReceiptRegenId] = useState<string | null>(null);
+  const downloadPacketFn = useServerFn(downloadClientPacket);
+  const [packetDownloadingId, setPacketDownloadingId] = useState<string | null>(null);
   useStoreVersion();
   // Notify staff when a remote signature arrives (via realtime) and the
   // reservation flips from pending → active.
@@ -507,7 +510,44 @@ function RentalsPage() {
             </div>
             {!isPending && (
               <div className="rounded-md border border-border bg-muted/30 p-3">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Documents</div>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Documents</div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={packetDownloadingId === r.id}
+                    onClick={async () => {
+                      setPacketDownloadingId(r.id);
+                      try {
+                        const res = await downloadPacketFn({ data: { rentalId: r.id } });
+                        const bin = atob(res.base64);
+                        const bytes = new Uint8Array(bin.length);
+                        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+                        const blob = new Blob([bytes], { type: "application/zip" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = res.filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        setTimeout(() => URL.revokeObjectURL(url), 1000);
+                        if (res.missing && res.missing.length > 0) {
+                          toast.warning("Downloaded — some items were missing", { description: res.missing.join(", ") });
+                        } else {
+                          toast.success("Evidence pack downloaded");
+                        }
+                      } catch (e) {
+                        toast.error("Download failed", { description: e instanceof Error ? e.message : String(e) });
+                      } finally {
+                        setPacketDownloadingId(null);
+                      }
+                    }}
+                  >
+                    <Download className="mr-1 h-4 w-4" />
+                    {packetDownloadingId === r.id ? "Preparing…" : "Download Evidence Pack"}
+                  </Button>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {r.agreementPdfUrl ? (
                     <button

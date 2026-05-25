@@ -257,10 +257,6 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     { label: "Date of Birth", value: driver.dateOfBirth ? fmtDate(driver.dateOfBirth) : "", widthPct: 50 },
   ]);
   drawFieldsRow([
-    { label: "Driver License #", value: driver.licenseNumber, widthPct: 50 },
-    { label: "DL State / Expiration", value: dlStateExp, widthPct: 50 },
-  ]);
-  drawFieldsRow([
     { label: "Phone", value: driver.phone, widthPct: 50 },
     { label: "Email", value: driver.email, widthPct: 50 },
   ]);

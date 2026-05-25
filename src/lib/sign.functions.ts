@@ -406,43 +406,52 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       console.error("post-sign notify failed", e);
     }
 
-    // Fire-and-forget: generate the signed agreement PDF and text it to the
-    // renter. Worker may terminate background work — acceptable for v1.
-    void generateAgreementPdf({ data: { rentalId: rental.id } })
-      .then(async (res) => {
-        if (!res.url) {
-          console.warn(`[agreement-pdf] rental=${rental.id} generation returned no url`);
-          return;
+    // CRITICAL: generate + persist the signed agreement PDF BEFORE returning
+    // so `agreement_pdf_url` is reliably saved on the rental row. The Worker
+    // can terminate background work, which previously lost the PDF on refresh.
+    let agreementUrl: string | null = null;
+    try {
+      const res = await generateAgreementPdf({ data: { rentalId: rental.id } });
+      agreementUrl = res.url ?? null;
+      if (!agreementUrl) {
+        console.warn(`[agreement-pdf] rental=${rental.id} generation returned no url: ${res.error ?? ""}`);
+      } else {
+        console.log(`[agreement-pdf] rental=${rental.id} generated ok, url=${agreementUrl}`);
+      }
+    } catch (e) {
+      console.error(`[agreement-pdf] rental=${rental.id} FAILED:`, e);
+    }
+
+    // SMS/email notification of the signed PDF is non-critical — keep it
+    // best-effort so a notify failure never loses the PDF URL.
+    if (agreementUrl) {
+      try {
+        const { data: driver } = await supabaseAdmin
+          .from("drivers")
+          .select("phone, full_name, first_name, last_name, email")
+          .eq("id", rental.driver_id)
+          .single();
+        if (driver?.phone) {
+          const name = driver.full_name
+            ?? [driver.first_name, driver.last_name].filter(Boolean).join(" ")
+            ?? null;
+          await notifyRenter({
+            phone: driver.phone,
+            email: driver.email ?? null,
+            name,
+            sms: `Camauto Rentals: Your signed rental agreement is ready: ${agreementUrl}`,
+            emailSubject: "Your Signed Rental Agreement",
+            emailHeading: "Your Signed Agreement is Ready",
+            emailIntro:
+              "Your fully-signed rental agreement is attached and available at the link below for your records.",
+            emailCta: { label: "View / Download Agreement (PDF)", url: agreementUrl },
+            emailAttachments: [agreementUrl],
+          });
         }
-        console.log(`[agreement-pdf] rental=${rental.id} generated ok, url=${res.url}`);
-        try {
-          const { data: driver } = await supabaseAdmin
-            .from("drivers")
-            .select("phone, full_name, first_name, last_name, email")
-            .eq("id", rental.driver_id)
-            .single();
-          if (driver?.phone) {
-            const name = driver.full_name
-              ?? [driver.first_name, driver.last_name].filter(Boolean).join(" ")
-              ?? null;
-            await notifyRenter({
-              phone: driver.phone,
-              email: driver.email ?? null,
-              name,
-              sms: `Camauto Rentals: Your signed rental agreement is ready: ${res.url}`,
-              emailSubject: "Your Signed Rental Agreement",
-              emailHeading: "Your Signed Agreement is Ready",
-              emailIntro:
-                "Your fully-signed rental agreement is attached and available at the link below for your records.",
-              emailCta: { label: "View / Download Agreement (PDF)", url: res.url },
-              emailAttachments: [res.url],
-            });
-          }
-        } catch (e) {
-          console.error(`[agreement-pdf-sms] rental=${rental.id} FAILED:`, e);
-        }
-      })
-      .catch((e) => console.error(`[agreement-pdf] rental=${rental.id} FAILED:`, e));
+      } catch (e) {
+        console.error(`[agreement-pdf-sms] rental=${rental.id} FAILED:`, e);
+      }
+    }
 
     return { ok: true };
   });
