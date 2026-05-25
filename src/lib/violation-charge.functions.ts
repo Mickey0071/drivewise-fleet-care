@@ -166,17 +166,28 @@ export const chargeViolation = createServerFn({ method: "POST" })
 
       if (driver?.phone || driver?.email) {
         const amt = `$${amount.toFixed(2)}`;
+        let last4: string | null = null;
+        try {
+          const pm = await stripe.paymentMethods.retrieve(
+            rental.stripe_payment_method_id as string,
+          );
+          last4 = pm.card?.last4 ?? null;
+        } catch {
+          /* non-fatal */
+        }
+        const cardLabel = last4 ? ` ending in ${last4}` : "";
         await notifyRenter({
           phone: driver?.phone ?? null,
           email: driver?.email ?? null,
           name: driver?.full_name ?? null,
-          sms: `Camauto Rentals: Violation charge of ${amt} has been charged to your card: ${description}`,
+          sms: `Camauto Rentals charged your card${cardLabel} ${amt} for ${description}. Questions? Contact 866-625-5550`,
           emailSubject: "Violation Charged — Camauto Rentals",
           emailHeading: "Violation Charged",
-          emailIntro: `A violation charge of <strong>${amt}</strong> has been charged to your card on file: ${description}.`,
+          emailIntro: `A violation charge of <strong>${amt}</strong> has been charged to your card${cardLabel ? ` <strong>${cardLabel.trim()}</strong>` : " on file"}: ${description}.`,
           emailDetails: [
             { label: "Amount", value: amt },
             { label: "Description", value: description },
+            ...(last4 ? [{ label: "Card", value: `•••• ${last4}` }] : []),
           ],
         });
       }
