@@ -5,8 +5,6 @@ import { createStripeClient } from "@/lib/stripe.server";
 import { sendSms } from "@/lib/ghl.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 
-const ADMIN_PHONE = "+12672213977";
-
 /**
  * Renter-initiated extension. Only available for weekly active rentals owned
  * by the authenticated renter. Creates a Stripe Payment Link for
@@ -123,9 +121,6 @@ export const cancelRentalByAdmin = createServerFn({ method: "POST" })
         await sendSms(drv.phone, "Camauto Rentals: Your rental has been canceled. Contact us at 1-866-625-5550 with any questions.", drv.full_name);
       } catch (e) { console.error("[cancelRentalByAdmin] renter SMS failed", e); }
     }
-    try {
-      await sendSms(ADMIN_PHONE, `Rental ${rental.id} canceled by admin/VA.`, null);
-    } catch {}
 
     return { ok: true };
   });
