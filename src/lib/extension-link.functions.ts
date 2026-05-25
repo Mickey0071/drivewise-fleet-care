@@ -7,7 +7,6 @@ import { notifyRenter } from "@/lib/renter-notify.server";
 import { extractNameFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 
-const ADMIN_PHONE = "+12672213977";
 const AGREEMENT_VERSION = "v1.0";
 
 function genToken(): string {
