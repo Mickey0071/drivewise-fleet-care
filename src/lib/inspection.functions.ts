@@ -79,8 +79,6 @@ export const getPendingInspectionPublic = createServerFn({ method: "POST" })
     };
   });
 
-const SUMMARY_PHONE = "+12672213977";
-
 /** Public: runner submits the post-return inspection. Creates inspection row,
  *  flips vehicle to "available", clears pending row, sends SMS summary. */
 export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
@@ -172,11 +170,6 @@ export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
       data.notes?.trim() ? `Notes: ${data.notes.trim()}` : "",
     ].filter(Boolean).join(" | ").slice(0, 1000);
 
-    try {
-      await sendSms(SUMMARY_PHONE, msg, "Inspection Summary");
-    } catch (e) {
-      console.error("inspection summary sms failed", e);
-    }
 
     const failedItems = Object.entries(it)
       .filter(([, v]) => v?.status === "fail")
