@@ -20,6 +20,7 @@ import { GlobalSearch } from "@/components/app/GlobalSearch";
 import { AuthProvider, useAuth, type AppRole } from "@/hooks/use-auth";
 import { hydrateFromCloud, isStoreHydrated, useStoreVersion } from "@/lib/mock/store";
 import { RunnerLayout } from "@/components/app/RunnerLayout";
+import { PendingAgreementsWatcher } from "@/components/app/PendingAgreementsWatcher";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -285,6 +286,7 @@ function AuthGate() {
           </main>
         </div>
       </div>
+      <PendingAgreementsWatcher />
       <Toaster />
     </SidebarProvider>
   );
