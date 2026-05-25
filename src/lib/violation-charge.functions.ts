@@ -47,8 +47,27 @@ export const chargeViolation = createServerFn({ method: "POST" })
 
     const amountCents = Math.round(amount * 100);
 
-    // ---- No card on file: send a one-off Stripe Payment Link ----
-    if (!rental.stripe_customer_id || !rental.stripe_payment_method_id) {
+    let stripeCustomerId = (rental.stripe_customer_id as string | null) || null;
+    let stripePaymentMethodId = (rental.stripe_payment_method_id as string | null) || null;
+
+    if (stripePaymentMethodId && !stripeCustomerId) {
+      try {
+        const pm = await stripe.paymentMethods.retrieve(stripePaymentMethodId);
+        const pmCustomer = typeof pm.customer === "string" ? pm.customer : pm.customer?.id;
+        if (pmCustomer) {
+          stripeCustomerId = pmCustomer;
+          await supabaseAdmin
+            .from("rentals")
+            .update({ stripe_customer_id: pmCustomer, updated_at: new Date().toISOString() } as never)
+            .eq("id", rentalId);
+        }
+      } catch (e) {
+        console.warn("[chargeViolation] could not recover customer from saved payment method", e);
+      }
+    }
+
+    // ---- No reusable saved card on file: send a one-off Stripe Payment Link ----
+    if (!stripeCustomerId || !stripePaymentMethodId) {
       if (!driver?.phone && !driver?.email) {
         throw new Error("Renter has no phone or email on file — cannot send payment link");
       }
@@ -75,7 +94,8 @@ export const chargeViolation = createServerFn({ method: "POST" })
       const link = await stripe.paymentLinks.create({
         line_items: [{ price: price.id, quantity: 1 }],
         metadata,
-        payment_intent_data: { metadata },
+        customer_creation: "always",
+        payment_intent_data: { metadata, setup_future_usage: "off_session" },
         ...(origin
           ? {
               after_completion: {
@@ -123,8 +143,8 @@ export const chargeViolation = createServerFn({ method: "POST" })
       const pi = await stripe.paymentIntents.create({
         amount: amountCents,
         currency: "usd",
-        customer: rental.stripe_customer_id as string,
-        payment_method: rental.stripe_payment_method_id as string,
+        customer: stripeCustomerId,
+        payment_method: stripePaymentMethodId,
         off_session: true,
         confirm: true,
         description: `Violation: ${description} (rental ${rentalId})`,
@@ -169,7 +189,7 @@ export const chargeViolation = createServerFn({ method: "POST" })
         let last4: string | null = null;
         try {
           const pm = await stripe.paymentMethods.retrieve(
-            rental.stripe_payment_method_id as string,
+            stripePaymentMethodId,
           );
           last4 = pm.card?.last4 ?? null;
         } catch {
