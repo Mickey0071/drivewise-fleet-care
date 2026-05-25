@@ -31,8 +31,8 @@ export const DEFAULT_SETTINGS: AgreementSettings = {
     address: "416 Sicklerville Rd, Sicklerville, NJ 08081",
     phone: "(866) 625-5550",
     website: "camautorentals.com",
-    damageAlertPhone: "+12672213977",
-    runnerInspectionPhone: "+12672213977",
+    damageAlertPhone: "",
+    runnerInspectionPhone: "",
   },
   fees: {
     dailyLateFee: "$25",
