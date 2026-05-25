@@ -1677,9 +1677,15 @@ function ViolationChargeDialog({ rental, onClose }: { rental: Rental | null; onC
       const res = await chargeFn({
         data: { rentalId: rental!.id, amount: amt, description: description.trim() },
       });
-      toast.success("Charged successfully", {
-        description: `$${Number(res.amount).toFixed(2)} — ${description.trim()}`,
-      });
+      if (res.mode === "link") {
+        toast.success("Payment link sent to renter", {
+          description: `$${Number(res.amount).toFixed(2)} — ${description.trim()}. SMS + email sent.`,
+        });
+      } else {
+        toast.success("Charged successfully", {
+          description: `$${Number(res.amount).toFixed(2)} — ${description.trim()}`,
+        });
+      }
       onClose();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
