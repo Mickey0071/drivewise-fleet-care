@@ -471,6 +471,14 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       environment: env,
     } as any);
 
+    if (session.customer || paymentMethodId) {
+      await sb.from("rentals").update({
+        ...(session.customer ? { stripe_customer_id: session.customer } : {}),
+        ...(paymentMethodId ? { stripe_payment_method_id: paymentMethodId } : {}),
+        updated_at: new Date().toISOString(),
+      } as any).eq("id", rentalId);
+    }
+
     // Flip the reservation to active and mark vehicle rented.
     const { data: rental } = await sb.from("rentals")
       .select("id, vehicle_id, driver_id, start_date, billing_period, rate, weekly_rate, reservation_status, payment_received")
