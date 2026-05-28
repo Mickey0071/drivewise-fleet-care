@@ -376,6 +376,7 @@ function NewViolationDialog({
           rentalId: lookupResult?.found ? lookupResult.rental.id : null,
           vehicleId: lookupResult?.found ? lookupResult.vehicle.id : null,
           driverId: lookupResult?.found ? lookupResult.rental.driver_id : null,
+          extractedConfidence: confidence,
         },
       });
       toast.success(`Created ${r.violation.id}`);
