@@ -121,6 +121,7 @@ export const createViolation = createServerFn({ method: "POST" })
       fee?: number;
       description?: string;
       photoUrl?: string | null;
+      extractedConfidence?: number | null;
     }) => {
       const type = (input.type || "").toLowerCase();
       if (!["toll", "parking", "damage", "traffic", "other"].includes(type)) {
@@ -143,6 +144,10 @@ export const createViolation = createServerFn({ method: "POST" })
         fee,
         description: (input.description || "").slice(0, 500),
         photoUrl: input.photoUrl || null,
+        extractedConfidence:
+          input.extractedConfidence != null && Number.isFinite(Number(input.extractedConfidence))
+            ? Math.max(0, Math.min(100, Math.round(Number(input.extractedConfidence))))
+            : null,
       };
     },
   )
@@ -170,6 +175,7 @@ export const createViolation = createServerFn({ method: "POST" })
         photo_url: data.photoUrl,
         status: "pending",
         created_by: context.userId,
+        extracted_confidence: data.extractedConfidence,
       } as never)
       .select("*")
       .single();
