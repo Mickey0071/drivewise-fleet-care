@@ -399,24 +399,39 @@ function NewViolationDialog({
         </DialogHeader>
         <div className="space-y-3">
           <div className="rounded-md border bg-muted/30 p-3">
-            <label className="flex cursor-pointer items-center gap-3">
-              <span className="inline-flex h-9 items-center rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent">
-                📷 Upload Photo
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Screenshot of toll bill, parking ticket, or violation notice
-              </span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void handlePhoto(f);
-                  e.target.value = "";
-                }}
-              />
-            </label>
+            <p className="mb-2 text-xs text-muted-foreground">
+              Photo of toll bill, parking ticket, or violation notice
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                size="lg"
+                className="flex-1"
+                onClick={() => setCameraOpen(true)}
+              >
+                📱 Take Photo with Camera
+              </Button>
+              <label className="flex-1">
+                <span className="inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent">
+                  📤 Upload from Files
+                </span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handlePhoto(f);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+            <CameraCaptureDialog
+              open={cameraOpen}
+              onOpenChange={setCameraOpen}
+              onCapture={(f) => void handlePhoto(f)}
+            />
             {thumbnail && (
               <div className="mt-3 flex items-start gap-3">
                 <img src={thumbnail} alt="Violation" className="h-20 w-20 rounded border object-cover" />
