@@ -1549,6 +1549,7 @@ export type Database = {
           date_issued: string
           description: string | null
           driver_id: string | null
+          extracted_confidence: number | null
           fee: number
           id: string
           license_plate: string | null
@@ -1573,6 +1574,7 @@ export type Database = {
           date_issued?: string
           description?: string | null
           driver_id?: string | null
+          extracted_confidence?: number | null
           fee?: number
           id: string
           license_plate?: string | null
@@ -1597,6 +1599,7 @@ export type Database = {
           date_issued?: string
           description?: string | null
           driver_id?: string | null
+          extracted_confidence?: number | null
           fee?: number
           id?: string
           license_plate?: string | null
