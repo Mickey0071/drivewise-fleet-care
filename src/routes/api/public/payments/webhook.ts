@@ -100,6 +100,17 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     const amountCents = session.amount_total ?? 0;
     const amountDollars = Number((amountCents / 100).toFixed(2));
     const today = new Date().toISOString().slice(0, 10);
+    const violationId = (session.metadata?.violation_id as string | undefined) || null;
+    if (violationId) {
+      await sb
+        .from("violations")
+        .update({
+          status: "paid",
+          payment_method: "payment_link",
+          paid_at: new Date().toISOString(),
+        })
+        .eq("id", violationId);
+    }
     let paymentMethodId: string | null = null;
     try {
       paymentMethodId = await resolveSessionPaymentMethodId();

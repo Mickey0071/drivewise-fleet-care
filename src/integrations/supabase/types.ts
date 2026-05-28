@@ -1545,11 +1545,23 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          created_by: string | null
           date_issued: string
+          description: string | null
           driver_id: string | null
+          fee: number
           id: string
+          license_plate: string | null
           notes: string | null
+          paid_at: string | null
+          payment_link_url: string | null
+          payment_method: string | null
+          photo_url: string | null
+          rental_id: string | null
           status: string
+          stripe_payment_intent_id: string | null
+          stripe_payment_link_id: string | null
+          total_amount: number
           type: string
           updated_at: string
           vehicle_id: string
@@ -1557,11 +1569,23 @@ export type Database = {
         Insert: {
           amount?: number
           created_at?: string
+          created_by?: string | null
           date_issued?: string
+          description?: string | null
           driver_id?: string | null
+          fee?: number
           id: string
+          license_plate?: string | null
           notes?: string | null
+          paid_at?: string | null
+          payment_link_url?: string | null
+          payment_method?: string | null
+          photo_url?: string | null
+          rental_id?: string | null
           status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_payment_link_id?: string | null
+          total_amount?: number
           type?: string
           updated_at?: string
           vehicle_id: string
@@ -1569,11 +1593,23 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          created_by?: string | null
           date_issued?: string
+          description?: string | null
           driver_id?: string | null
+          fee?: number
           id?: string
+          license_plate?: string | null
           notes?: string | null
+          paid_at?: string | null
+          payment_link_url?: string | null
+          payment_method?: string | null
+          photo_url?: string | null
+          rental_id?: string | null
           status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_payment_link_id?: string | null
+          total_amount?: number
           type?: string
           updated_at?: string
           vehicle_id?: string
