@@ -443,7 +443,7 @@ function NewViolationDialog({
         <div className="space-y-3">
           <div className="rounded-md border bg-muted/30 p-3">
             <p className="mb-2 text-xs text-muted-foreground">
-              Photo of toll bill, parking ticket, or violation notice
+              Photo, scan, or PDF of a toll bill, parking ticket, or violation notice
             </p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button
@@ -460,7 +460,7 @@ function NewViolationDialog({
                 </span>
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,application/pdf,.pdf"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
@@ -475,6 +475,27 @@ function NewViolationDialog({
               onOpenChange={setCameraOpen}
               onCapture={(f) => void handlePhoto(f)}
             />
+            {pdfPages && (
+              <div className="mt-3 rounded-md border bg-background p-3 text-xs">
+                <div className="mb-2 font-medium">
+                  This is a multi-page document ({pdfPages.pageCount} pages). Use the first page?
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" size="sm" disabled={analyzing} onClick={() => void usePdfPage(1)}>
+                    Use First Page
+                  </Button>
+                  <span className="text-muted-foreground">or choose a page:</span>
+                  <Select onValueChange={(v) => void usePdfPage(Number(v))}>
+                    <SelectTrigger className="h-8 w-28"><SelectValue placeholder="Page…" /></SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: pdfPages.pageCount }, (_, i) => i + 1).map((n) => (
+                        <SelectItem key={n} value={String(n)}>Page {n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
             {thumbnail && (
               <div className="mt-3 flex items-start gap-3">
                 <img src={thumbnail} alt="Violation" className="h-20 w-20 rounded border object-cover" />
@@ -490,6 +511,22 @@ function NewViolationDialog({
                       ⚠️ Could not read clearly ({confidence}%). Please enter manually or try a different photo.
                     </div>
                   )}
+                  {!analyzing && confidence === null && (
+                    <div className="text-emerald-700 dark:text-emerald-400">✓ File ready.</div>
+                  )}
+                  <label className="mt-1 inline-block">
+                    <span className="cursor-pointer text-primary underline-offset-2 hover:underline">Change file</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,application/pdf,.pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) void handlePhoto(f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
             )}
