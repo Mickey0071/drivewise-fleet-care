@@ -25,6 +25,7 @@ import {
   type ViolationRow,
 } from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
+import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 
 function DownloadPacketButton({ violationId }: { violationId: string }) {
   const dl = useServerFn(downloadViolationPacket);
@@ -259,6 +260,7 @@ function NewViolationDialog({
 }) {
   const lookup = useServerFn(lookupRentalByPlate);
   const create = useServerFn(createViolation);
+  const analyze = useServerFn(analyzeViolationPhoto);
 
   const [type, setType] = useState<"toll" | "parking" | "damage" | "traffic" | "other">("toll");
   const [plate, setPlate] = useState("");
@@ -270,6 +272,9 @@ function NewViolationDialog({
   const [lookupResult, setLookupResult] = useState<Awaited<ReturnType<typeof lookup>> | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [thumbnail, setThumbnail] = useState<string>("");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [confidence, setConfidence] = useState<number | null>(null);
 
   const reset = () => {
     setType("toll");
@@ -280,6 +285,60 @@ function NewViolationDialog({
     setDescription("");
     setPhotoUrl("");
     setLookupResult(null);
+    setThumbnail("");
+    setConfidence(null);
+  };
+
+  const handlePhoto = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload a JPG or PNG image");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image must be under 10MB");
+      return;
+    }
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(new Error("Read failed"));
+      r.readAsDataURL(file);
+    });
+    setThumbnail(dataUrl);
+    setAnalyzing(true);
+    setConfidence(null);
+    try {
+      const res = await analyze({ data: { dataUrl } });
+      setPhotoUrl(res.photoUrl);
+      const ex = res.extraction;
+      setConfidence(ex.confidence);
+      if (ex.confidence >= 70) {
+        if (ex.license_plate) {
+          // strip leading state abbrev like "NJ "
+          const cleaned = ex.license_plate.replace(/^[A-Z]{2}\s+/, "").toUpperCase();
+          setPlate(cleaned);
+        }
+        if (ex.violation_date) {
+          const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(ex.violation_date);
+          if (m) {
+            const [, mo, d, y] = m;
+            setDate(`${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`);
+          }
+        }
+        if (ex.toll_amount != null) setTollAmount(String(ex.toll_amount));
+        if (ex.fee_amount != null) setTollFee(String(ex.fee_amount));
+        if (ex.violation_type) setType(ex.violation_type);
+        toast.success(`Extracted with ${ex.confidence}% confidence`);
+      } else {
+        toast.message("Couldn't read clearly — please enter manually", {
+          description: `Confidence ${ex.confidence}%`,
+        });
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Photo analysis failed");
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const doLookup = async () => {
@@ -336,6 +395,45 @@ function NewViolationDialog({
           <DialogTitle>New Violation</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <div className="rounded-md border bg-muted/30 p-3">
+            <label className="flex cursor-pointer items-center gap-3">
+              <span className="inline-flex h-9 items-center rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent">
+                📷 Upload Photo
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Screenshot of toll bill, parking ticket, or violation notice
+              </span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void handlePhoto(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {thumbnail && (
+              <div className="mt-3 flex items-start gap-3">
+                <img src={thumbnail} alt="Violation" className="h-20 w-20 rounded border object-cover" />
+                <div className="flex-1 text-xs">
+                  {analyzing && <div className="text-muted-foreground">Analyzing photo…</div>}
+                  {!analyzing && confidence !== null && confidence >= 70 && (
+                    <div className="text-emerald-700 dark:text-emerald-400">
+                      ✓ Extracted with {confidence}% confidence
+                    </div>
+                  )}
+                  {!analyzing && confidence !== null && confidence < 70 && (
+                    <div className="text-amber-600">
+                      ⚠️ Could not read clearly ({confidence}%). Please enter manually or try a different photo.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           <div>
             <Label>Type</Label>
             <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
