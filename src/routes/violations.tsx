@@ -277,6 +277,10 @@ function NewViolationDialog({
   const [analyzing, setAnalyzing] = useState(false);
   const [confidence, setConfidence] = useState<number | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [pdfPages, setPdfPages] = useState<{
+    renderPage: (n: number) => Promise<string>;
+    pageCount: number;
+  } | null>(null);
 
   const reset = () => {
     setType("toll");
@@ -289,23 +293,10 @@ function NewViolationDialog({
     setLookupResult(null);
     setThumbnail("");
     setConfidence(null);
+    setPdfPages(null);
   };
 
-  const handlePhoto = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload a JPG or PNG image");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Image must be under 10MB");
-      return;
-    }
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result));
-      r.onerror = () => reject(new Error("Read failed"));
-      r.readAsDataURL(file);
-    });
+  const analyzeDataUrl = async (dataUrl: string) => {
     setThumbnail(dataUrl);
     setAnalyzing(true);
     setConfidence(null);
@@ -341,6 +332,58 @@ function NewViolationDialog({
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const usePdfPage = async (pageNumber: number) => {
+    if (!pdfPages) return;
+    setAnalyzing(true);
+    try {
+      const dataUrl = await pdfPages.renderPage(pageNumber);
+      setPdfPages(null);
+      await analyzeDataUrl(dataUrl);
+    } catch (e) {
+      setAnalyzing(false);
+      toast.error(e instanceof Error ? e.message : "Could not read PDF page");
+    }
+  };
+
+  const handlePhoto = async (file: File) => {
+    const isImage = file.type.startsWith("image/");
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!isImage && !isPdf) {
+      toast.error("Please upload a JPG, PNG, or PDF file");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File must be under 10MB");
+      return;
+    }
+    setPdfPages(null);
+    if (isPdf) {
+      try {
+        const { loadPdf } = await import("@/lib/pdf-to-image");
+        const pdf = await loadPdf(file);
+        if (pdf.pageCount > 1) {
+          setPdfPages(pdf);
+          toast.message("Multi-page document", {
+            description: `${pdf.pageCount} pages found. Using the first page unless you choose another.`,
+          });
+          return;
+        }
+        const dataUrl = await pdf.renderPage(1);
+        await analyzeDataUrl(dataUrl);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Could not read PDF");
+      }
+      return;
+    }
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(new Error("Read failed"));
+      r.readAsDataURL(file);
+    });
+    await analyzeDataUrl(dataUrl);
   };
 
   const doLookup = async () => {
@@ -400,7 +443,7 @@ function NewViolationDialog({
         <div className="space-y-3">
           <div className="rounded-md border bg-muted/30 p-3">
             <p className="mb-2 text-xs text-muted-foreground">
-              Photo of toll bill, parking ticket, or violation notice
+              Photo, scan, or PDF of a toll bill, parking ticket, or violation notice
             </p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button
@@ -417,7 +460,7 @@ function NewViolationDialog({
                 </span>
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,application/pdf,.pdf"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
@@ -432,6 +475,27 @@ function NewViolationDialog({
               onOpenChange={setCameraOpen}
               onCapture={(f) => void handlePhoto(f)}
             />
+            {pdfPages && (
+              <div className="mt-3 rounded-md border bg-background p-3 text-xs">
+                <div className="mb-2 font-medium">
+                  This is a multi-page document ({pdfPages.pageCount} pages). Use the first page?
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" size="sm" disabled={analyzing} onClick={() => void usePdfPage(1)}>
+                    Use First Page
+                  </Button>
+                  <span className="text-muted-foreground">or choose a page:</span>
+                  <Select onValueChange={(v) => void usePdfPage(Number(v))}>
+                    <SelectTrigger className="h-8 w-28"><SelectValue placeholder="Page…" /></SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: pdfPages.pageCount }, (_, i) => i + 1).map((n) => (
+                        <SelectItem key={n} value={String(n)}>Page {n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
             {thumbnail && (
               <div className="mt-3 flex items-start gap-3">
                 <img src={thumbnail} alt="Violation" className="h-20 w-20 rounded border object-cover" />
@@ -447,6 +511,22 @@ function NewViolationDialog({
                       ⚠️ Could not read clearly ({confidence}%). Please enter manually or try a different photo.
                     </div>
                   )}
+                  {!analyzing && confidence === null && (
+                    <div className="text-emerald-700 dark:text-emerald-400">✓ File ready.</div>
+                  )}
+                  <label className="mt-1 inline-block">
+                    <span className="cursor-pointer text-primary underline-offset-2 hover:underline">Change file</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,application/pdf,.pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) void handlePhoto(f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
                 </div>
               </div>
             )}
