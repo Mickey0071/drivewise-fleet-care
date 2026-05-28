@@ -181,6 +181,7 @@ function ViolationsPage() {
                             Link
                           </a>
                         )}
+                        <DownloadPacketButton violationId={v.id} />
                       </td>
                     </tr>
                   ))}
