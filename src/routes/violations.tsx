@@ -26,6 +26,7 @@ import {
 } from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
+import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
 
 function DownloadPacketButton({ violationId }: { violationId: string }) {
   const dl = useServerFn(downloadViolationPacket);
