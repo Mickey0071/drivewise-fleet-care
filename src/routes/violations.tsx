@@ -276,6 +276,7 @@ function NewViolationDialog({
   const [thumbnail, setThumbnail] = useState<string>("");
   const [analyzing, setAnalyzing] = useState(false);
   const [confidence, setConfidence] = useState<number | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   const reset = () => {
     setType("toll");
