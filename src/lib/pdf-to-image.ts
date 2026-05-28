@@ -26,7 +26,7 @@ export async function loadPdf(file: File): Promise<PdfRenderResult> {
     if (!ctx) throw new Error("Canvas not supported");
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvasContext: ctx, viewport }).promise;
+    await page.render({ canvas, canvasContext: ctx, viewport }).promise;
     return canvas.toDataURL("image/jpeg", 0.85);
   };
   return { pageCount: doc.numPages, renderPage };
