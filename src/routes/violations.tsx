@@ -277,6 +277,10 @@ function NewViolationDialog({
   const [analyzing, setAnalyzing] = useState(false);
   const [confidence, setConfidence] = useState<number | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [pdfPages, setPdfPages] = useState<{
+    renderPage: (n: number) => Promise<string>;
+    pageCount: number;
+  } | null>(null);
 
   const reset = () => {
     setType("toll");
@@ -289,23 +293,10 @@ function NewViolationDialog({
     setLookupResult(null);
     setThumbnail("");
     setConfidence(null);
+    setPdfPages(null);
   };
 
-  const handlePhoto = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload a JPG or PNG image");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("Image must be under 10MB");
-      return;
-    }
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result));
-      r.onerror = () => reject(new Error("Read failed"));
-      r.readAsDataURL(file);
-    });
+  const analyzeDataUrl = async (dataUrl: string) => {
     setThumbnail(dataUrl);
     setAnalyzing(true);
     setConfidence(null);
@@ -341,6 +332,58 @@ function NewViolationDialog({
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const usePdfPage = async (pageNumber: number) => {
+    if (!pdfPages) return;
+    setAnalyzing(true);
+    try {
+      const dataUrl = await pdfPages.renderPage(pageNumber);
+      setPdfPages(null);
+      await analyzeDataUrl(dataUrl);
+    } catch (e) {
+      setAnalyzing(false);
+      toast.error(e instanceof Error ? e.message : "Could not read PDF page");
+    }
+  };
+
+  const handlePhoto = async (file: File) => {
+    const isImage = file.type.startsWith("image/");
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!isImage && !isPdf) {
+      toast.error("Please upload a JPG, PNG, or PDF file");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File must be under 10MB");
+      return;
+    }
+    setPdfPages(null);
+    if (isPdf) {
+      try {
+        const { loadPdf } = await import("@/lib/pdf-to-image");
+        const pdf = await loadPdf(file);
+        if (pdf.pageCount > 1) {
+          setPdfPages(pdf);
+          toast.message("Multi-page document", {
+            description: `${pdf.pageCount} pages found. Using the first page unless you choose another.`,
+          });
+          return;
+        }
+        const dataUrl = await pdf.renderPage(1);
+        await analyzeDataUrl(dataUrl);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Could not read PDF");
+      }
+      return;
+    }
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(new Error("Read failed"));
+      r.readAsDataURL(file);
+    });
+    await analyzeDataUrl(dataUrl);
   };
 
   const doLookup = async () => {
