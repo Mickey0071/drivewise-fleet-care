@@ -148,11 +148,16 @@ export const createViolation = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const total = Number((data.amount + data.fee).toFixed(2));
+    const newId =
+      "VIO-" +
+      Math.random().toString(36).slice(2, 8).toUpperCase() +
+      Date.now().toString(36).slice(-3).toUpperCase();
     const { data: row, error } = await supabaseAdmin
       .from("violations")
       .insert({
+        id: newId,
         rental_id: data.rentalId,
-        vehicle_id: data.vehicleId ?? "",
+        vehicle_id: data.vehicleId ?? "UNKNOWN",
         driver_id: data.driverId,
         type: data.type,
         date_issued: data.date,
