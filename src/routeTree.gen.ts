@@ -47,6 +47,7 @@ import { Route as RunnersTasksRouteImport } from './routes/runners.tasks'
 import { Route as RunnersNewTaskRouteImport } from './routes/runners.new-task'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
+import { Route as PortalSignupRentalIdRouteImport } from './routes/portal-signup.$rentalId'
 import { Route as MyTasksTaskIdRouteImport } from './routes/my-tasks_.$taskId'
 import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rentalId'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
@@ -248,6 +249,11 @@ const RentTokenRoute = RentTokenRouteImport.update({
   path: '/rent/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalSignupRentalIdRoute = PortalSignupRentalIdRouteImport.update({
+  id: '/portal-signup/$rentalId',
+  path: '/portal-signup/$rentalId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MyTasksTaskIdRoute = MyTasksTaskIdRouteImport.update({
   id: '/my-tasks_/$taskId',
   path: '/my-tasks/$taskId',
@@ -339,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/my-tasks/$taskId': typeof MyTasksTaskIdRoute
+  '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/runners/new-task': typeof RunnersNewTaskRoute
@@ -389,6 +396,7 @@ export interface FileRoutesByTo {
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/my-tasks/$taskId': typeof MyTasksTaskIdRoute
+  '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/runners/new-task': typeof RunnersNewTaskRoute
@@ -440,6 +448,7 @@ export interface FileRoutesById {
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/my-tasks_/$taskId': typeof MyTasksTaskIdRoute
+  '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/runners/new-task': typeof RunnersNewTaskRoute
@@ -492,6 +501,7 @@ export interface FileRouteTypes {
     | '/fleet/$vehicleId'
     | '/my-rentals/$rentalId'
     | '/my-tasks/$taskId'
+    | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
     | '/runners/new-task'
@@ -542,6 +552,7 @@ export interface FileRouteTypes {
     | '/fleet/$vehicleId'
     | '/my-rentals/$rentalId'
     | '/my-tasks/$taskId'
+    | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
     | '/runners/new-task'
@@ -592,6 +603,7 @@ export interface FileRouteTypes {
     | '/fleet/$vehicleId'
     | '/my-rentals/$rentalId'
     | '/my-tasks_/$taskId'
+    | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
     | '/runners/new-task'
@@ -641,6 +653,7 @@ export interface RootRouteChildren {
   AdminUsersRoute: typeof AdminUsersRoute
   ExtendTokenRoute: typeof ExtendTokenRoute
   MyTasksTaskIdRoute: typeof MyTasksTaskIdRoute
+  PortalSignupRentalIdRoute: typeof PortalSignupRentalIdRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
   RunnersNewTaskRoute: typeof RunnersNewTaskRoute
@@ -923,6 +936,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RentTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal-signup/$rentalId': {
+      id: '/portal-signup/$rentalId'
+      path: '/portal-signup/$rentalId'
+      fullPath: '/portal-signup/$rentalId'
+      preLoaderRoute: typeof PortalSignupRentalIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/my-tasks_/$taskId': {
       id: '/my-tasks_/$taskId'
       path: '/my-tasks/$taskId'
@@ -1053,6 +1073,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminUsersRoute: AdminUsersRoute,
   ExtendTokenRoute: ExtendTokenRoute,
   MyTasksTaskIdRoute: MyTasksTaskIdRoute,
+  PortalSignupRentalIdRoute: PortalSignupRentalIdRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
   RunnersNewTaskRoute: RunnersNewTaskRoute,
@@ -1069,3 +1090,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
