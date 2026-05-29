@@ -297,14 +297,14 @@ function PortalPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Card verification</DialogTitle>
-            <DialogDescription>Is the payment card in your name?</DialogDescription>
+            <DialogDescription>Is the card being used to pay in the renter's name?</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
                 variant={cardInName === "yes" ? "default" : "outline"}
-                onClick={() => { setCardInName("yes"); setPayerIdDataUrl(null); }}
+                onClick={() => { setCardInName("yes"); setIdDataUrl(null); setSelfieDataUrl(null); setVerifyResult(null); }}
               >
                 Yes, it's mine
               </Button>
@@ -319,24 +319,39 @@ function PortalPage() {
 
             {cardInName === "no" && (
               <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Upload the card owner's ID and a selfie of them holding that ID. We'll verify the names match.
+                </p>
                 <div>
-                  <Label htmlFor="payer-id" className="text-xs">Upload ID of card owner</Label>
+                  <Label htmlFor="payer-id" className="text-xs">1. Card owner's ID photo</Label>
                   <Input
                     id="payer-id"
                     type="file"
                     accept="image/*"
                     className="mt-1"
-                    disabled={uploadingId}
-                    onChange={(e) => onPickPayerId(e.target.files?.[0] ?? null)}
+                    disabled={loadingImg || verifying}
+                    onChange={(e) => onPickImage(e.target.files?.[0] ?? null, "id")}
                   />
-                  {uploadingId && (
-                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+                  {idDataUrl && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-emerald-600">
+                      <CheckCircle2 className="h-3 w-3" /> ID added
                     </p>
                   )}
-                  {payerIdDataUrl && (
+                </div>
+                <div>
+                  <Label htmlFor="payer-selfie" className="text-xs">2. Selfie of card owner (holding ID)</Label>
+                  <Input
+                    id="payer-selfie"
+                    type="file"
+                    accept="image/*"
+                    capture="user"
+                    className="mt-1"
+                    disabled={loadingImg || verifying}
+                    onChange={(e) => onPickImage(e.target.files?.[0] ?? null, "selfie")}
+                  />
+                  {selfieDataUrl && (
                     <p className="mt-1 flex items-center gap-1 text-xs text-emerald-600">
-                      <CheckCircle2 className="h-3 w-3" /> ID uploaded
+                      <CheckCircle2 className="h-3 w-3" /> Selfie added
                     </p>
                   )}
                 </div>
@@ -351,6 +366,35 @@ function PortalPage() {
                     onChange={(e) => setPayerPhone(e.target.value)}
                   />
                 </div>
+
+                {!verifyResult?.verified && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    disabled={!idDataUrl || !selfieDataUrl || loadingImg || verifying}
+                    onClick={runVerification}
+                  >
+                    {verifying ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying…</>
+                    ) : (
+                      "Verify names"
+                    )}
+                  </Button>
+                )}
+
+                {verifyResult && (
+                  verifyResult.verified ? (
+                    <p className="flex items-center gap-1 text-sm font-medium text-emerald-600">
+                      <CheckCircle2 className="h-4 w-4" /> Names verified
+                      {verifyResult.cardOwnerName ? ` (${verifyResult.cardOwnerName})` : ""}. Ready to pay.
+                    </p>
+                  ) : (
+                    <p className="flex items-center gap-1 text-sm font-medium text-destructive">
+                      <XCircle className="h-4 w-4" /> ID name doesn't match. Please re-upload.
+                    </p>
+                  )
+                )}
               </div>
             )}
 
@@ -359,14 +403,14 @@ function PortalPage() {
               size="lg"
               disabled={
                 !!payingId || cardInName === null ||
-                (cardInName === "no" && (!payerIdDataUrl || uploadingId))
+                (cardInName === "no" && !verifyResult?.verified)
               }
               onClick={proceedToPayment}
             >
               {payingId ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening…</>
               ) : (
-                <><CreditCard className="mr-2 h-4 w-4" /> Continue to payment</>
+                <><CreditCard className="mr-2 h-4 w-4" /> Pay Now</>
               )}
             </Button>
           </div>
