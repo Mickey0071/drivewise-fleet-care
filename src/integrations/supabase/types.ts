@@ -954,6 +954,9 @@ export type Database = {
           auto_renew: boolean
           billing_cadence: string | null
           billing_period: string | null
+          card_owner_id_url: string | null
+          card_owner_name: string | null
+          card_owner_selfie_url: string | null
           cardholder_name: string | null
           client_signature_url: string | null
           client_signed_at: string | null
@@ -998,6 +1001,8 @@ export type Database = {
           third_party_payer: boolean
           updated_at: string
           vehicle_id: string
+          verification_status: string | null
+          verification_timestamp: string | null
           weekly_rate: number
         }
         Insert: {
@@ -1008,6 +1013,9 @@ export type Database = {
           auto_renew?: boolean
           billing_cadence?: string | null
           billing_period?: string | null
+          card_owner_id_url?: string | null
+          card_owner_name?: string | null
+          card_owner_selfie_url?: string | null
           cardholder_name?: string | null
           client_signature_url?: string | null
           client_signed_at?: string | null
@@ -1052,6 +1060,8 @@ export type Database = {
           third_party_payer?: boolean
           updated_at?: string
           vehicle_id: string
+          verification_status?: string | null
+          verification_timestamp?: string | null
           weekly_rate?: number
         }
         Update: {
@@ -1062,6 +1072,9 @@ export type Database = {
           auto_renew?: boolean
           billing_cadence?: string | null
           billing_period?: string | null
+          card_owner_id_url?: string | null
+          card_owner_name?: string | null
+          card_owner_selfie_url?: string | null
           cardholder_name?: string | null
           client_signature_url?: string | null
           client_signed_at?: string | null
@@ -1106,6 +1119,8 @@ export type Database = {
           third_party_payer?: boolean
           updated_at?: string
           vehicle_id?: string
+          verification_status?: string | null
+          verification_timestamp?: string | null
           weekly_rate?: number
         }
         Relationships: [
