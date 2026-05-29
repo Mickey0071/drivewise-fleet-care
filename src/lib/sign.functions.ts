@@ -429,6 +429,35 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       console.error("post-sign notify failed", e);
     }
 
+    // If signing flipped the reservation to ON RENT (payment already received),
+    // send the renter their self-service portal link.
+    if (update.reservation_status === "active") {
+      try {
+        const { data: driver } = await supabaseAdmin
+          .from("drivers")
+          .select("phone, full_name, email")
+          .eq("id", rental.driver_id)
+          .single();
+        if (driver?.phone) {
+          const appOrigin = process.env.PUBLIC_APP_ORIGIN || "https://camautorentals.lovable.app";
+          const portalUrl = `${appOrigin}/my-rentals/${encodeURIComponent(rental.id)}`;
+          const rentalLabel = `R-${rental.id.slice(-3).toUpperCase()}`;
+          await notifyRenter({
+            phone: driver.phone,
+            email: driver.email ?? null,
+            name: driver.full_name ?? null,
+            sms: `Your rental is active! View your documents and extend anytime: ${portalUrl}`,
+            emailSubject: "Your Rental Details - View Anytime",
+            emailHeading: "Your Rental Is Active!",
+            emailIntro: `Your rental ${rentalLabel} is now active. Click below to view your agreement, receipt, and extend if needed.`,
+            emailCta: { label: "View My Rental", url: portalUrl },
+          });
+        }
+      } catch (e) {
+        console.error("[sign] portal link notify failed", e);
+      }
+    }
+
     // CRITICAL: generate + persist the signed agreement PDF BEFORE returning
     // so `agreement_pdf_url` is reliably saved on the rental row. The Worker
     // can terminate background work, which previously lost the PDF on refresh.
