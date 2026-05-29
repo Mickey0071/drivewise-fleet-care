@@ -424,6 +424,25 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         })
         .eq("id", rentalRow.id);
 
+      // Persist the reusable card on the rental + driver for future charges.
+      let extPaymentMethodId: string | null = null;
+      try {
+        extPaymentMethodId = await resolveSessionPaymentMethodId();
+      } catch (e) {
+        console.error("[webhook:ext] failed to resolve payment method", e);
+      }
+      if (session.customer || extPaymentMethodId) {
+        await sb
+          .from("rentals")
+          .update({
+            ...(session.customer ? { stripe_customer_id: session.customer } : {}),
+            ...(extPaymentMethodId ? { stripe_payment_method_id: extPaymentMethodId } : {}),
+            updated_at: new Date().toISOString(),
+          } as any)
+          .eq("id", rentalRow.id);
+        await saveCardToDriver(rentalRow.driver_id, env, session.customer, extPaymentMethodId);
+      }
+
       // Renter SMS
       const { data: drv } = await sb
         .from("drivers")
