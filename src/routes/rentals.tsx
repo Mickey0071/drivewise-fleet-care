@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download, Smartphone } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { downloadClientPacket } from "@/lib/client-packet.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
+import { sendPortalLink } from "@/lib/portal-link.functions";
 import { closeoutRental } from "@/lib/return.functions";
 import { createExtensionLink } from "@/lib/extension-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
@@ -86,6 +87,8 @@ function RentalsPage() {
   const getSignLinkFn = useServerFn(getSigningLink);
   const sendPayLinkFn = useServerFn(sendPaymentLink);
   const [payLinkSendingId, setPayLinkSendingId] = useState<string | null>(null);
+  const sendPortalLinkFn = useServerFn(sendPortalLink);
+  const [portalLinkSendingId, setPortalLinkSendingId] = useState<string | null>(null);
   const genPdfFn = useServerFn(generateAgreementPdf);
   const [pdfRegenId, setPdfRegenId] = useState<string | null>(null);
   const genReceiptFn = useServerFn(generateReceiptPdf);
@@ -296,6 +299,29 @@ function RentalsPage() {
             )}
             {!isPending && <ReservationPaymentHistory rental={r} />}
             {!isPending && <ReservationDocuments rental={r} />}
+            {!isPending && (r.portalLinkSends?.length ?? 0) > 0 && (
+              <div className="rounded-md border border-border bg-muted/30 p-3">
+                <div className="mb-1 flex items-center gap-1.5 text-xs uppercase text-muted-foreground">
+                  <Smartphone className="h-3.5 w-3.5" /> Portal link history
+                </div>
+                <ul className="space-y-0.5">
+                  {r.portalLinkSends!.map((s, i) => (
+                    <li key={i} className="text-sm">
+                      {i === 0 ? "Portal link sent" : "Portal link sent again"}:{" "}
+                      {new Date(s.at).toLocaleString(undefined, {
+                        month: "2-digit", day: "2-digit", year: "2-digit",
+                        hour: "numeric", minute: "2-digit",
+                      })}
+                      <span className="text-muted-foreground">
+                        {[s.phone, s.email].filter(Boolean).length
+                          ? ` · ${[s.phone, s.email].filter(Boolean).join(", ")}`
+                          : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
               {isPending ? (
                 <>
@@ -487,6 +513,40 @@ function RentalsPage() {
                   {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (r.autoRenew ?? true) && (
                     <Button variant="outline" size="sm" onClick={() => setStoppingAutoBill(r)}>
                       <Ban className="mr-1 h-4 w-4" /> Stop Auto-Renewal
+                    </Button>
+                  )}
+                  {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={portalLinkSendingId === r.id}
+                      onClick={async () => {
+                        setPortalLinkSendingId(r.id);
+                        try {
+                          await ensureRentalSynced(r.id);
+                          const res = await sendPortalLinkFn({
+                            data: { rentalId: r.id, origin: getPublicAppOrigin() },
+                          });
+                          const channels = [res.smsSent && "SMS", res.emailSent && "email"]
+                            .filter(Boolean)
+                            .join(" + ");
+                          toast.success(`Portal link sent${channels ? ` via ${channels}` : ""}`);
+                          await refreshStoreFromCloud();
+                        } catch (e) {
+                          toast.error("Could not send portal link", {
+                            description: e instanceof Error ? e.message : String(e),
+                          });
+                        } finally {
+                          setPortalLinkSendingId(null);
+                        }
+                      }}
+                    >
+                      <Smartphone className="mr-1 h-4 w-4" />
+                      {portalLinkSendingId === r.id
+                        ? "Sending…"
+                        : (r.portalLinkSends?.length ?? 0) > 0
+                          ? "Resend Portal Link"
+                          : "Send Portal Link"}
                     </Button>
                   )}
                   {role === "admin" && (

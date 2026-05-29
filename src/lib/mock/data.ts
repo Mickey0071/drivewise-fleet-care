@@ -74,6 +74,7 @@ export interface Rental {
   receiptPdfGeneratedAt?: string;
   staffReviewStatus?: "pending" | "reviewed" | "approved";
   returnedAt?: string;
+  portalLinkSends?: { at: string; phone: string | null; email: string | null }[];
 }
 export interface RentalExtension {
   id: string;
