@@ -30,6 +30,37 @@ function fmtAmount(cents: number | null | undefined): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+// Persist the reusable Stripe customer + card on the driver record so the
+// card can be charged later (violations, extensions, etc.).
+async function saveCardToDriver(
+  driverId: string | null | undefined,
+  env: StripeEnv,
+  customerId: string | null | undefined,
+  paymentMethodId: string | null | undefined,
+): Promise<void> {
+  if (!driverId) return;
+  if (!customerId && !paymentMethodId) return;
+  let last4: string | null = null;
+  if (paymentMethodId) {
+    try {
+      const pm = await createStripeClient(env).paymentMethods.retrieve(paymentMethodId);
+      last4 = pm.card?.last4 ?? null;
+    } catch (e) {
+      console.warn("[webhook] could not load card last4 for driver", e);
+    }
+  }
+  await getSupabase()
+    .from("drivers")
+    .update({
+      ...(customerId ? { stripe_customer_id: customerId } : {}),
+      ...(paymentMethodId ? { stripe_payment_method_id: paymentMethodId } : {}),
+      ...(last4 ? { card_last4: last4 } : {}),
+      card_saved_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as any)
+    .eq("id", driverId);
+}
+
 // --- Name match helpers --------------------------------------------------
 function normalizeName(s: string | null | undefined): string {
   return (s || "")
