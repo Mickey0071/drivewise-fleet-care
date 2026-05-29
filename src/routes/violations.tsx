@@ -24,10 +24,7 @@ import {
   markViolationPaidManually,
   type ViolationRow,
 } from "@/lib/violations.functions";
-import {
-  listRentalsForViolation,
-  type RentalOption,
-} from "@/lib/violations.functions";
+import { listRentalsForViolation } from "@/lib/violations.functions";
 import {
   changeViolationStatus,
   listViolationHistory,
