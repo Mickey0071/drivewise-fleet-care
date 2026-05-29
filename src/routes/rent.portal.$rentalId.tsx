@@ -2,11 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getRenterPortal, createRenterPaymentLink } from "@/lib/renter-portal.functions";
-import { uploadCardOwnerId } from "@/lib/renter-portal.functions";
+import { verifyCardOwner } from "@/lib/renter-portal.functions";
 import { getRenterHistoryByRentalId } from "@/lib/my-rentals.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CreditCard, CheckCircle2, Clock, History, ChevronRight } from "lucide-react";
+import { Loader2, CreditCard, CheckCircle2, XCircle, Clock, History, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ function PortalPage() {
   const { rentalId } = Route.useParams();
   const fetchInfo = useServerFn(getRenterPortal);
   const createLink = useServerFn(createRenterPaymentLink);
-  const uploadOwnerId = useServerFn(uploadCardOwnerId);
+  const verifyOwner = useServerFn(verifyCardOwner);
   const fetchHistory = useServerFn(getRenterHistoryByRentalId);
   const [info, setInfo] = useState<Info | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +45,14 @@ function PortalPage() {
   // Card verification flow (shown before redirecting to Stripe)
   const [verifyFor, setVerifyFor] = useState<string | null>(null);
   const [cardInName, setCardInName] = useState<"yes" | "no" | null>(null);
-  const [payerIdDataUrl, setPayerIdDataUrl] = useState<string | null>(null);
+  const [idDataUrl, setIdDataUrl] = useState<string | null>(null);
+  const [selfieDataUrl, setSelfieDataUrl] = useState<string | null>(null);
   const [payerPhone, setPayerPhone] = useState("");
-  const [uploadingId, setUploadingId] = useState(false);
+  const [loadingImg, setLoadingImg] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<
+    { verified: boolean; cardOwnerName: string | null } | null
+  >(null);
 
   useEffect(() => {
     fetchInfo({ data: { rentalId } })
@@ -62,40 +67,65 @@ function PortalPage() {
     // Ask for card verification before starting payment.
     setVerifyFor(paymentId);
     setCardInName(null);
-    setPayerIdDataUrl(null);
+    setIdDataUrl(null);
+    setSelfieDataUrl(null);
+    setVerifyResult(null);
     setPayerPhone("");
   }
 
-  async function onPickPayerId(file: File | null) {
+  async function readImage(file: File): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Could not read file"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function onPickImage(file: File | null, which: "id" | "selfie") {
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("Please upload an image"); return; }
     if (file.size > 8 * 1024 * 1024) { toast.error("File must be under 8MB"); return; }
-    setUploadingId(true);
+    setLoadingImg(true);
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("Could not read file"));
-        reader.readAsDataURL(file);
-      });
-      setPayerIdDataUrl(dataUrl);
-      toast.success(`Card owner ID uploaded: ${file.name}`);
+      const dataUrl = await readImage(file);
+      if (which === "id") setIdDataUrl(dataUrl);
+      else setSelfieDataUrl(dataUrl);
+      setVerifyResult(null);
+      toast.success(`${which === "id" ? "ID" : "Selfie"} added`);
     } catch (e: any) {
       toast.error(e?.message || "Could not load image");
     } finally {
-      setUploadingId(false);
+      setLoadingImg(false);
+    }
+  }
+
+  async function runVerification() {
+    if (!idDataUrl || !selfieDataUrl) { toast.error("Upload both the ID and a selfie"); return; }
+    setVerifying(true);
+    setVerifyResult(null);
+    try {
+      const res = await verifyOwner({
+        data: { rentalId, idDataUrl, selfieDataUrl, payerPhone: payerPhone.trim() || undefined },
+      });
+      setVerifyResult({ verified: res.verified, cardOwnerName: res.cardOwnerName });
+      if (!res.verified) toast.error("ID name doesn't match. Please re-upload.");
+    } catch (e) {
+      toast.error("Could not verify", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setVerifying(false);
     }
   }
 
   async function proceedToPayment() {
     const paymentId = verifyFor;
     if (!paymentId) return;
+    if (cardInName === "no" && !verifyResult?.verified) {
+      toast.error("Please verify the card owner's ID first");
+      return;
+    }
     setPayingId(paymentId);
     try {
-      if (cardInName === "no") {
-        if (!payerIdDataUrl) { toast.error("Upload the card owner's ID to continue"); setPayingId(null); return; }
-        await uploadOwnerId({ data: { rentalId, payerIdDataUrl, payerPhone: payerPhone.trim() || undefined } });
-      }
       const { url } = await createLink({ data: { rentalId, paymentId } });
       window.location.href = url;
     } catch (e) {
@@ -267,14 +297,14 @@ function PortalPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Card verification</DialogTitle>
-            <DialogDescription>Is the payment card in your name?</DialogDescription>
+            <DialogDescription>Is the card being used to pay in the renter's name?</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
                 variant={cardInName === "yes" ? "default" : "outline"}
-                onClick={() => { setCardInName("yes"); setPayerIdDataUrl(null); }}
+                onClick={() => { setCardInName("yes"); setIdDataUrl(null); setSelfieDataUrl(null); setVerifyResult(null); }}
               >
                 Yes, it's mine
               </Button>
@@ -289,24 +319,39 @@ function PortalPage() {
 
             {cardInName === "no" && (
               <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground">
+                  Upload the card owner's ID and a selfie of them holding that ID. We'll verify the names match.
+                </p>
                 <div>
-                  <Label htmlFor="payer-id" className="text-xs">Upload ID of card owner</Label>
+                  <Label htmlFor="payer-id" className="text-xs">1. Card owner's ID photo</Label>
                   <Input
                     id="payer-id"
                     type="file"
                     accept="image/*"
                     className="mt-1"
-                    disabled={uploadingId}
-                    onChange={(e) => onPickPayerId(e.target.files?.[0] ?? null)}
+                    disabled={loadingImg || verifying}
+                    onChange={(e) => onPickImage(e.target.files?.[0] ?? null, "id")}
                   />
-                  {uploadingId && (
-                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+                  {idDataUrl && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-emerald-600">
+                      <CheckCircle2 className="h-3 w-3" /> ID added
                     </p>
                   )}
-                  {payerIdDataUrl && (
+                </div>
+                <div>
+                  <Label htmlFor="payer-selfie" className="text-xs">2. Selfie of card owner (holding ID)</Label>
+                  <Input
+                    id="payer-selfie"
+                    type="file"
+                    accept="image/*"
+                    capture="user"
+                    className="mt-1"
+                    disabled={loadingImg || verifying}
+                    onChange={(e) => onPickImage(e.target.files?.[0] ?? null, "selfie")}
+                  />
+                  {selfieDataUrl && (
                     <p className="mt-1 flex items-center gap-1 text-xs text-emerald-600">
-                      <CheckCircle2 className="h-3 w-3" /> ID uploaded
+                      <CheckCircle2 className="h-3 w-3" /> Selfie added
                     </p>
                   )}
                 </div>
@@ -321,6 +366,35 @@ function PortalPage() {
                     onChange={(e) => setPayerPhone(e.target.value)}
                   />
                 </div>
+
+                {!verifyResult?.verified && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    disabled={!idDataUrl || !selfieDataUrl || loadingImg || verifying}
+                    onClick={runVerification}
+                  >
+                    {verifying ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying…</>
+                    ) : (
+                      "Verify names"
+                    )}
+                  </Button>
+                )}
+
+                {verifyResult && (
+                  verifyResult.verified ? (
+                    <p className="flex items-center gap-1 text-sm font-medium text-emerald-600">
+                      <CheckCircle2 className="h-4 w-4" /> Names verified
+                      {verifyResult.cardOwnerName ? ` (${verifyResult.cardOwnerName})` : ""}. Ready to pay.
+                    </p>
+                  ) : (
+                    <p className="flex items-center gap-1 text-sm font-medium text-destructive">
+                      <XCircle className="h-4 w-4" /> ID name doesn't match. Please re-upload.
+                    </p>
+                  )
+                )}
               </div>
             )}
 
@@ -329,14 +403,14 @@ function PortalPage() {
               size="lg"
               disabled={
                 !!payingId || cardInName === null ||
-                (cardInName === "no" && (!payerIdDataUrl || uploadingId))
+                (cardInName === "no" && !verifyResult?.verified)
               }
               onClick={proceedToPayment}
             >
               {payingId ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening…</>
               ) : (
-                <><CreditCard className="mr-2 h-4 w-4" /> Continue to payment</>
+                <><CreditCard className="mr-2 h-4 w-4" /> Pay Now</>
               )}
             </Button>
           </div>
