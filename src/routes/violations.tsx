@@ -293,6 +293,14 @@ function NewViolationDialog({
   const lookup = useServerFn(lookupRentalByPlate);
   const create = useServerFn(createViolation);
   const analyze = useServerFn(analyzeViolationPhoto);
+  const listRentals = useServerFn(listRentalsForViolation);
+
+  const { data: rentalOptions = [] } = useQuery({
+    queryKey: ["rentals-for-violation"],
+    queryFn: () => listRentals(),
+    enabled: open,
+  });
+  const [selectedRentalId, setSelectedRentalId] = useState<string>("");
 
   const [type, setType] = useState<"toll" | "parking" | "damage" | "traffic" | "other">("toll");
   const [plate, setPlate] = useState("");
