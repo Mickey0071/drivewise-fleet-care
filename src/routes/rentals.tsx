@@ -26,6 +26,7 @@ import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
 import { NewTaskDialog } from "@/components/app/NewTaskDialog";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
+import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
