@@ -4,6 +4,91 @@ import { createStripeClient } from "@/lib/stripe.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { extractNameFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
 
+// Normalize a person name for fuzzy comparison: lowercase, strip punctuation,
+// collapse whitespace, and sort the word tokens so order/middle-name
+// differences don't cause false mismatches.
+function normalizeName(n: string): string {
+  return n
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .sort()
+    .join(" ");
+}
+
+// Two names "match" when their normalized token sets share the first and last
+// significant tokens (handles middle names / initials being present on one).
+function namesMatch(a: string, b: string): boolean {
+  const ta = normalizeName(a).split(" ").filter(Boolean);
+  const tb = normalizeName(b).split(" ").filter(Boolean);
+  if (ta.length === 0 || tb.length === 0) return false;
+  const setA = new Set(ta);
+  const shared = tb.filter((t) => t.length > 1 && setA.has(t));
+  // Require at least two shared tokens (e.g. first + last name).
+  return shared.length >= 2 || (ta.join(" ") === tb.join(" "));
+}
+
+// Custom payment verification: when the card is NOT in the renter's name, the
+// renter uploads the card owner's ID photo AND a selfie of the card owner
+// holding that ID. We OCR the name from both images and compare them. A match
+// marks the rental verified and unlocks payment; a mismatch is recorded so the
+// renter must re-upload.
+export const verifyCardOwner = createServerFn({ method: "POST" })
+  .inputValidator((d: { rentalId: string; idDataUrl: string; selfieDataUrl: string; payerPhone?: string }) => {
+    if (!d?.rentalId || typeof d.rentalId !== "string") throw new Error("rentalId required");
+    if (!d?.idDataUrl?.startsWith("data:image/")) throw new Error("Card owner's ID photo required");
+    if (!d?.selfieDataUrl?.startsWith("data:image/")) throw new Error("Card owner's selfie required");
+    if (d.payerPhone && d.payerPhone.length > 30) throw new Error("Invalid payer phone");
+    return d;
+  })
+  .handler(async ({ data }) => {
+    const { data: rental, error: rErr } = await supabaseAdmin
+      .from("rentals")
+      .select("id")
+      .eq("id", data.rentalId)
+      .maybeSingle();
+    if (rErr) throw new Error(rErr.message);
+    if (!rental) throw new Error("Reservation not found");
+
+    // Upload both images and OCR names in parallel.
+    const [idUrl, selfieUrl, idName, selfieName] = await Promise.all([
+      uploadPayerIdImage(data.rentalId, data.idDataUrl),
+      uploadPayerIdImage(data.rentalId, data.selfieDataUrl),
+      extractNameFromIdImage(data.idDataUrl).catch(() => null),
+      extractNameFromIdImage(data.selfieDataUrl).catch(() => null),
+    ]);
+
+    // The ID name is authoritative for the card owner's name. Verification
+    // passes when we can read a name on the ID AND it matches the name read
+    // from the selfie-with-ID photo.
+    const verified = !!idName && !!selfieName && namesMatch(idName, selfieName);
+    const status = verified ? "verified" : "failed";
+    const now = new Date().toISOString();
+
+    const { error: uErr } = await supabaseAdmin
+      .from("rentals")
+      .update({
+        third_party_payer: true,
+        card_owner_id_url: idUrl,
+        card_owner_selfie_url: selfieUrl,
+        card_owner_name: idName,
+        verification_status: status,
+        verification_timestamp: now,
+        // keep legacy columns in sync for existing staff-review screens
+        payer_id_image_url: idUrl,
+        payer_name_extracted: idName,
+        payer_phone: data.payerPhone?.trim() || null,
+      })
+      .eq("id", data.rentalId);
+    if (uErr) throw new Error(uErr.message);
+
+    console.log(
+      `[card-verification] rental=${data.rentalId} status=${status} idName=${idName ?? "?"} selfieName=${selfieName ?? "?"}`,
+    );
+    return { ok: true as const, verified, status, cardOwnerName: idName, idUrl, selfieUrl };
+  });
+
 // Card verification: when the renter says the payment card is NOT in their
 // name, they must upload the card owner's ID before paying. We store the ID
 // photo on the rental, flag it as a third-party payer, and try to OCR the
