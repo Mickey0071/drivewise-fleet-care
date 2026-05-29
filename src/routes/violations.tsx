@@ -737,3 +737,131 @@ function ChargeDialog({
     </Dialog>
   );
 }
+
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "pending", label: "Unpaid (Pending)" },
+  { value: "paid", label: "Paid" },
+  { value: "disputed", label: "Disputed" },
+  { value: "failed", label: "Failed" },
+];
+
+const statusLabel = (s: string | null) =>
+  STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s ?? "—";
+
+function ChangeStatusDialog({
+  violation,
+  onClose,
+  onDone,
+}: {
+  violation: ViolationRow | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const change = useServerFn(changeViolationStatus);
+  const history = useServerFn(listViolationHistory);
+  const qc = useQueryClient();
+  const [status, setStatus] = useState<string>("");
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const { data: timeline = [], isLoading: loadingTimeline } = useQuery({
+    queryKey: ["violation-history", violation?.id],
+    queryFn: () => history({ data: { id: violation!.id } }),
+    enabled: !!violation,
+  });
+
+  if (!violation) return null;
+
+  const submit = async () => {
+    if (!status) {
+      toast.error("Pick a new status");
+      return;
+    }
+    setSaving(true);
+    try {
+      await change({ data: { id: violation.id, status, reason } });
+      toast.success(`Status changed to ${statusLabel(status)}`);
+      setReason("");
+      setStatus("");
+      qc.invalidateQueries({ queryKey: ["violation-history", violation.id] });
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to change status");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!violation} onOpenChange={(b) => { if (!b) { setReason(""); setStatus(""); onClose(); } }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Change Status — {violation.id}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">Current:</span>
+            <StatusBadge status={violation.status} />
+          </div>
+
+          <div>
+            <Label>New status</Label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select new status…" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.filter((o) => o.value !== violation.status).map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Reason</Label>
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={2}
+              placeholder="Why is the status changing?"
+            />
+          </div>
+
+          <div>
+            <Label className="mb-2 block">Timeline</Label>
+            {loadingTimeline ? (
+              <div className="text-xs text-muted-foreground">Loading…</div>
+            ) : timeline.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No status changes yet.</div>
+            ) : (
+              <ol className="space-y-2 border-l pl-4">
+                {timeline.map((h: ViolationHistoryRow) => (
+                  <li key={h.id} className="relative">
+                    <span className="absolute -left-[21px] top-1 h-2 w-2 rounded-full bg-primary" />
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-muted-foreground">{statusLabel(h.from_status)}</span>
+                      <span>→</span>
+                      <StatusBadge status={h.to_status} />
+                    </div>
+                    {h.reason && <div className="mt-0.5 text-xs">{h.reason}</div>}
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(h.created_at).toLocaleString()}
+                      {h.changed_by_name ? ` · ${h.changed_by_name}` : ""}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => { setReason(""); setStatus(""); onClose(); }}>Cancel</Button>
+          <Button onClick={submit} disabled={saving || !status}>
+            {saving ? "Saving…" : "Save Change"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
