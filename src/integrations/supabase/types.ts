@@ -1553,6 +1553,39 @@ export type Database = {
         }
         Relationships: []
       }
+      violation_status_history: {
+        Row: {
+          changed_by: string | null
+          changed_by_name: string | null
+          created_at: string
+          from_status: string | null
+          id: string
+          reason: string | null
+          to_status: string
+          violation_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          reason?: string | null
+          to_status: string
+          violation_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          reason?: string | null
+          to_status?: string
+          violation_id?: string
+        }
+        Relationships: []
+      }
       violations: {
         Row: {
           amount: number
