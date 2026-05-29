@@ -292,37 +292,7 @@ function RentalsPage() {
                 ) : <div className="mt-1 text-sm text-muted-foreground">All paid</div>}
               </div>
             )}
-            {!isPending && (
-              <div className="rounded-md border border-border bg-muted/30 p-3">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
-                  Payment history
-                </div>
-                {sched.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">No payments recorded yet.</div>
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {[...sched]
-                      .sort((a, b) =>
-                        (b.paidDate ?? b.dueDate).localeCompare(a.paidDate ?? a.dueDate),
-                      )
-                      .map((p) => (
-                        <li key={p.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-                          <div className="min-w-0">
-                            <div className="font-medium">{fmtMoney(p.amount)}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {p.status === "paid" && p.paidDate
-                                ? `Paid ${fmtDate(p.paidDate)}`
-                                : `Due ${fmtDate(p.dueDate)}`}
-                              {p.method ? ` · ${p.method}` : ""}
-                            </div>
-                          </div>
-                          <StatusBadge status={p.status} />
-                        </li>
-                      ))}
-                  </ul>
-                )}
-              </div>
-            )}
+            {!isPending && <ReservationPaymentHistory rental={r} />}
             <div className="flex flex-wrap gap-2">
               {isPending ? (
                 <>
