@@ -492,6 +492,40 @@ function RentalsPage() {
                       <Ban className="mr-1 h-4 w-4" /> Stop Auto-Renewal
                     </Button>
                   )}
+                  {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={portalLinkSendingId === r.id}
+                      onClick={async () => {
+                        setPortalLinkSendingId(r.id);
+                        try {
+                          await ensureRentalSynced(r.id);
+                          const res = await sendPortalLinkFn({
+                            data: { rentalId: r.id, origin: getPublicAppOrigin() },
+                          });
+                          const channels = [res.smsSent && "SMS", res.emailSent && "email"]
+                            .filter(Boolean)
+                            .join(" + ");
+                          toast.success(`Portal link sent${channels ? ` via ${channels}` : ""}`);
+                          await refreshStoreFromCloud();
+                        } catch (e) {
+                          toast.error("Could not send portal link", {
+                            description: e instanceof Error ? e.message : String(e),
+                          });
+                        } finally {
+                          setPortalLinkSendingId(null);
+                        }
+                      }}
+                    >
+                      <Smartphone className="mr-1 h-4 w-4" />
+                      {portalLinkSendingId === r.id
+                        ? "Sending…"
+                        : (r.portalLinkSends?.length ?? 0) > 0
+                          ? "Resend Portal Link"
+                          : "Send Portal Link"}
+                    </Button>
+                  )}
                   {role === "admin" && (
                     <Button variant="outline" size="sm" onClick={() => setViolationFor(r)}>
                       <DollarSign className="mr-1 h-4 w-4" /> Charge for Violation
