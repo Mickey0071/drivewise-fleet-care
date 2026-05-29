@@ -6,7 +6,7 @@ import { uploadCardOwnerId } from "@/lib/renter-portal.functions";
 import { getRenterHistoryByRentalId } from "@/lib/my-rentals.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CreditCard, CheckCircle2, Clock, History, ChevronRight, Upload } from "lucide-react";
+import { Loader2, CreditCard, CheckCircle2, Clock, History, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
