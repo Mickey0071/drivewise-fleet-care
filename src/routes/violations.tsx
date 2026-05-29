@@ -93,6 +93,7 @@ function ViolationsPage() {
   const [search, setSearch] = useState("");
   const [newOpen, setNewOpen] = useState(false);
   const [chargeFor, setChargeFor] = useState<ViolationRow | null>(null);
+  const [statusFor, setStatusFor] = useState<ViolationRow | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
