@@ -265,6 +265,14 @@ function ViolationsPage() {
           setChargeFor(null);
         }}
       />
+
+      <ChangeStatusDialog
+        violation={statusFor}
+        onClose={() => setStatusFor(null)}
+        onDone={() => {
+          refresh();
+        }}
+      />
     </div>
   );
 }
