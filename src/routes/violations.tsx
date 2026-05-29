@@ -210,6 +210,11 @@ function ViolationsPage() {
                       </td>
                       <td className="p-3">
                         <StatusBadge status={v.status} />
+                        {v.status === "paid" && v.paid_at && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            ✓ {new Date(v.paid_at).toLocaleString()}
+                          </div>
+                        )}
                       </td>
                       <td className="p-3 text-right">
                         {(v.status === "pending" || v.status === "failed") && v.rental_id && (
@@ -227,6 +232,14 @@ function ViolationsPage() {
                             Link
                           </a>
                         )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="ml-2"
+                          onClick={() => setStatusFor(v)}
+                        >
+                          Change Status
+                        </Button>
                         <DownloadPacketButton violationId={v.id} />
                       </td>
                     </tr>
