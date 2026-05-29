@@ -83,9 +83,13 @@ function CalendarPage() {
                     ))}
                   </div>
                   {vRentals.map(r => {
+                    // Returned rentals free up the vehicle — don't block the calendar.
+                    if (r.reservationStatus === "returned" || r.returnedAt) return null;
                     const rs = new Date(r.startDate).getTime();
                     const isPending = r.reservationStatus === "pending";
                     const exp = pendingExpiresAt(r);
+                    // Open-ended (no end date): unavailable indefinitely until returned.
+                    const openEnded = !r.endDate && !isPending;
                     const re = r.endDate
                       ? new Date(r.endDate).getTime() + DAY_MS
                       : isPending && exp
@@ -103,16 +107,19 @@ function CalendarPage() {
                         className={`absolute top-1 bottom-1 rounded px-2 text-xs flex items-center overflow-hidden hover:opacity-80 ${
                           isPending
                             ? "bg-amber-500/25 text-amber-900 dark:text-amber-200 border border-amber-500/40"
-                            : "bg-primary/80 text-primary-foreground"
+                            : openEnded
+                              ? "bg-destructive/80 text-destructive-foreground border border-destructive"
+                              : "bg-primary/80 text-primary-foreground"
                         }`}
                         style={{
                           left: `calc(${(startIdx / DAYS) * 100}% + 2px)`,
                           width: `calc(${(span / DAYS) * 100}% - 4px)`,
                         }}
-                        title={`${d?.fullName ?? r.driverId} · ${fmtDate(r.startDate)}${r.endDate ? ` → ${fmtDate(r.endDate)}` : ""}${isPending ? " · PENDING HOLD" : ""}`}
+                        title={`${d?.fullName ?? r.driverId} · ${fmtDate(r.startDate)}${r.endDate ? ` → ${fmtDate(r.endDate)}` : ""}${isPending ? " · PENDING HOLD" : ""}${openEnded ? " · UNAVAILABLE — No return date set" : ""}`}
                       >
                         <span className="truncate">
-                          {isPending ? "⏳ " : ""}{d?.fullName ?? r.driverId}
+                          {isPending ? "⏳ " : ""}{openEnded ? "⚠️ " : ""}{d?.fullName ?? r.driverId}
+                          {openEnded ? " · UNAVAILABLE — No return date set" : ""}
                         </span>
                       </Link>
                     );
