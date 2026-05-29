@@ -38,6 +38,7 @@ import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { downloadClientPacket } from "@/lib/client-packet.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
+import { sendPortalLink } from "@/lib/portal-link.functions";
 import { closeoutRental } from "@/lib/return.functions";
 import { createExtensionLink } from "@/lib/extension-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
