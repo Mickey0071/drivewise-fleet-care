@@ -2,11 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getRenterPortal, createRenterPaymentLink } from "@/lib/renter-portal.functions";
-import { uploadCardOwnerId } from "@/lib/renter-portal.functions";
+import { verifyCardOwner } from "@/lib/renter-portal.functions";
 import { getRenterHistoryByRentalId } from "@/lib/my-rentals.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CreditCard, CheckCircle2, Clock, History, ChevronRight } from "lucide-react";
+import { Loader2, CreditCard, CheckCircle2, XCircle, Clock, History, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ function PortalPage() {
   const { rentalId } = Route.useParams();
   const fetchInfo = useServerFn(getRenterPortal);
   const createLink = useServerFn(createRenterPaymentLink);
-  const uploadOwnerId = useServerFn(uploadCardOwnerId);
+  const verifyOwner = useServerFn(verifyCardOwner);
   const fetchHistory = useServerFn(getRenterHistoryByRentalId);
   const [info, setInfo] = useState<Info | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +45,14 @@ function PortalPage() {
   // Card verification flow (shown before redirecting to Stripe)
   const [verifyFor, setVerifyFor] = useState<string | null>(null);
   const [cardInName, setCardInName] = useState<"yes" | "no" | null>(null);
-  const [payerIdDataUrl, setPayerIdDataUrl] = useState<string | null>(null);
+  const [idDataUrl, setIdDataUrl] = useState<string | null>(null);
+  const [selfieDataUrl, setSelfieDataUrl] = useState<string | null>(null);
   const [payerPhone, setPayerPhone] = useState("");
-  const [uploadingId, setUploadingId] = useState(false);
+  const [loadingImg, setLoadingImg] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<
+    { verified: boolean; cardOwnerName: string | null } | null
+  >(null);
 
   useEffect(() => {
     fetchInfo({ data: { rentalId } })
@@ -62,40 +67,65 @@ function PortalPage() {
     // Ask for card verification before starting payment.
     setVerifyFor(paymentId);
     setCardInName(null);
-    setPayerIdDataUrl(null);
+    setIdDataUrl(null);
+    setSelfieDataUrl(null);
+    setVerifyResult(null);
     setPayerPhone("");
   }
 
-  async function onPickPayerId(file: File | null) {
+  async function readImage(file: File): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("Could not read file"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function onPickImage(file: File | null, which: "id" | "selfie") {
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("Please upload an image"); return; }
     if (file.size > 8 * 1024 * 1024) { toast.error("File must be under 8MB"); return; }
-    setUploadingId(true);
+    setLoadingImg(true);
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("Could not read file"));
-        reader.readAsDataURL(file);
-      });
-      setPayerIdDataUrl(dataUrl);
-      toast.success(`Card owner ID uploaded: ${file.name}`);
+      const dataUrl = await readImage(file);
+      if (which === "id") setIdDataUrl(dataUrl);
+      else setSelfieDataUrl(dataUrl);
+      setVerifyResult(null);
+      toast.success(`${which === "id" ? "ID" : "Selfie"} added`);
     } catch (e: any) {
       toast.error(e?.message || "Could not load image");
     } finally {
-      setUploadingId(false);
+      setLoadingImg(false);
+    }
+  }
+
+  async function runVerification() {
+    if (!idDataUrl || !selfieDataUrl) { toast.error("Upload both the ID and a selfie"); return; }
+    setVerifying(true);
+    setVerifyResult(null);
+    try {
+      const res = await verifyOwner({
+        data: { rentalId, idDataUrl, selfieDataUrl, payerPhone: payerPhone.trim() || undefined },
+      });
+      setVerifyResult({ verified: res.verified, cardOwnerName: res.cardOwnerName });
+      if (!res.verified) toast.error("ID name doesn't match. Please re-upload.");
+    } catch (e) {
+      toast.error("Could not verify", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setVerifying(false);
     }
   }
 
   async function proceedToPayment() {
     const paymentId = verifyFor;
     if (!paymentId) return;
+    if (cardInName === "no" && !verifyResult?.verified) {
+      toast.error("Please verify the card owner's ID first");
+      return;
+    }
     setPayingId(paymentId);
     try {
-      if (cardInName === "no") {
-        if (!payerIdDataUrl) { toast.error("Upload the card owner's ID to continue"); setPayingId(null); return; }
-        await uploadOwnerId({ data: { rentalId, payerIdDataUrl, payerPhone: payerPhone.trim() || undefined } });
-      }
       const { url } = await createLink({ data: { rentalId, paymentId } });
       window.location.href = url;
     } catch (e) {
