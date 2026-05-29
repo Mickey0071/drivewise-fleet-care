@@ -295,6 +295,7 @@ function RentalsPage() {
               </div>
             )}
             {!isPending && <ReservationPaymentHistory rental={r} />}
+            {!isPending && <ReservationDocuments rental={r} />}
             <div className="flex flex-wrap gap-2">
               {isPending ? (
                 <>
