@@ -243,7 +243,7 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { data: rental, error } = await supabaseAdmin
       .from("rentals")
-      .select("id, driver_id, sign_token, payment_received, reservation_status, client_signature_url")
+      .select("id, driver_id, vehicle_id, sign_token, payment_received, reservation_status, client_signature_url")
       .eq("sign_token", data.token)
       .maybeSingle();
     if (error || !rental) throw new Error("Invalid signing link");
