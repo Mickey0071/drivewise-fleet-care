@@ -432,6 +432,7 @@ function NewViolationDialog({
     try {
       const r = await lookup({ data: { plate, date } });
       setLookupResult(r);
+      if (r.found) setSelectedRentalId("");
       if (!r.found) toast.message(r.reason || "No matching rental");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Lookup failed");
