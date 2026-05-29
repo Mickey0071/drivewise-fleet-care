@@ -451,19 +451,25 @@ function RentalsPage() {
               ) : (
                 <>
                   <Button variant="outline" size="sm" onClick={() => setEditing(r)}>Edit</Button>
-                  {!r.endDate && getInspectionsForRental(r.id).every(i => i.type !== "check-out") && (
+                  {r.reservationStatus !== "returned" && r.reservationStatus !== "completed" && !r.endDate && getInspectionsForRental(r.id).every(i => i.type !== "check-out") && (
                     <Button size="sm" onClick={() => setDelivering(r)}>
                       <Truck className="mr-1 h-4 w-4" /> Deliver vehicle
                     </Button>
                   )}
-                  {!r.endDate && (
+                  {r.reservationStatus !== "returned" && r.reservationStatus !== "completed" && !r.endDate && (
                     <Button size="sm" onClick={() => setReturning(r)}>
                       <PackageCheck className="mr-1 h-4 w-4" /> Mark as Returned
                     </Button>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => setReturnChoiceRental(r)}>
-                    <Undo2 className="mr-1 h-4 w-4" /> Return Vehicle
-                  </Button>
+                  {r.reservationStatus === "returned" || r.reservationStatus === "completed" ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Returned{r.returnedAt ? ` ${fmtDate(r.returnedAt)}` : ""}
+                    </span>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={() => setReturnChoiceRental(r)}>
+                      <Undo2 className="mr-1 h-4 w-4" /> Return Vehicle
+                    </Button>
+                  )}
                   {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (
                     <Button variant="outline" size="sm" onClick={() => setExtending(r)}>
                       <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
