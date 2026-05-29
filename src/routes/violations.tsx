@@ -24,6 +24,7 @@ import {
   markViolationPaidManually,
   type ViolationRow,
 } from "@/lib/violations.functions";
+import { listRentalsForViolation } from "@/lib/violations.functions";
 import {
   changeViolationStatus,
   listViolationHistory,
@@ -289,6 +290,14 @@ function NewViolationDialog({
   const lookup = useServerFn(lookupRentalByPlate);
   const create = useServerFn(createViolation);
   const analyze = useServerFn(analyzeViolationPhoto);
+  const listRentals = useServerFn(listRentalsForViolation);
+
+  const { data: rentalOptions = [] } = useQuery({
+    queryKey: ["rentals-for-violation"],
+    queryFn: () => listRentals(),
+    enabled: open,
+  });
+  const [selectedRentalId, setSelectedRentalId] = useState<string>("");
 
   const [type, setType] = useState<"toll" | "parking" | "damage" | "traffic" | "other">("toll");
   const [plate, setPlate] = useState("");
@@ -321,6 +330,7 @@ function NewViolationDialog({
     setThumbnail("");
     setConfidence(null);
     setPdfPages(null);
+    setSelectedRentalId("");
   };
 
   const analyzeDataUrl = async (dataUrl: string) => {
@@ -419,6 +429,7 @@ function NewViolationDialog({
     try {
       const r = await lookup({ data: { plate, date } });
       setLookupResult(r);
+      if (r.found) setSelectedRentalId("");
       if (!r.found) toast.message(r.reason || "No matching rental");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Lookup failed");
@@ -434,6 +445,9 @@ function NewViolationDialog({
       toast.error("Enter a valid amount");
       return;
     }
+    const picked = selectedRentalId
+      ? rentalOptions.find((r) => r.id === selectedRentalId) ?? null
+      : null;
     setSaving(true);
     try {
       const r = await create({
@@ -445,9 +459,9 @@ function NewViolationDialog({
           fee,
           description: description || `${type} violation${plate ? ` on ${plate.toUpperCase()}` : ""}`,
           photoUrl: photoUrl || null,
-          rentalId: lookupResult?.found ? lookupResult.rental.id : null,
-          vehicleId: lookupResult?.found ? lookupResult.vehicle.id : null,
-          driverId: lookupResult?.found ? lookupResult.rental.driver_id : null,
+          rentalId: picked ? picked.id : lookupResult?.found ? lookupResult.rental.id : null,
+          vehicleId: picked ? picked.vehicle_id : lookupResult?.found ? lookupResult.vehicle.id : null,
+          driverId: picked ? picked.driver_id : lookupResult?.found ? lookupResult.rental.driver_id : null,
           extractedConfidence: confidence,
         },
       });
@@ -606,11 +620,47 @@ function NewViolationDialog({
           </div>
 
           <div className="rounded-md border bg-muted/30 p-3">
+            <Label>Select Rental</Label>
+            <Select
+              value={selectedRentalId}
+              onValueChange={(v) => {
+                setSelectedRentalId(v);
+                setLookupResult(null);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a rental…" />
+              </SelectTrigger>
+              <SelectContent>
+                {rentalOptions.length === 0 && (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">No rentals found</div>
+                )}
+                {rentalOptions.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.id}: {r.driver_name ?? "Unknown"}
+                    {r.plate ? ` — ${r.plate}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedRentalId && (() => {
+              const picked = rentalOptions.find((r) => r.id === selectedRentalId);
+              if (!picked) return null;
+              return (
+                <div className="mt-2 text-sm text-emerald-700 dark:text-emerald-400">
+                  Selected <strong>{picked.id}</strong> — {picked.driver_name ?? "Unknown driver"}
+                  <div className="text-xs text-muted-foreground">
+                    {picked.vehicle_label ?? picked.plate ?? ""} · {picked.start_date} → {picked.end_date || "ongoing"}
+                  </div>
+                </div>
+              );
+            })()}
+            <div className="my-3 border-t" />
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" onClick={doLookup} disabled={!plate || !date || lookingUp}>
                 {lookingUp ? "Looking up…" : "Lookup Rental"}
               </Button>
-              <span className="text-xs text-muted-foreground">Match plate + date to a rental</span>
+              <span className="text-xs text-muted-foreground">Or match plate + date automatically</span>
             </div>
             {lookupResult && lookupResult.found && (
               <div className="mt-2 text-sm text-emerald-700 dark:text-emerald-400">

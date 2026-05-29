@@ -183,6 +183,56 @@ export const createViolation = createServerFn({ method: "POST" })
     return { ok: true as const, violation: row as ViolationRow };
   });
 
+export interface RentalOption {
+  id: string;
+  driver_id: string | null;
+  vehicle_id: string | null;
+  driver_name: string | null;
+  vehicle_label: string | null;
+  plate: string | null;
+  start_date: string;
+  end_date: string | null;
+  reservation_status: string | null;
+}
+
+export const listRentalsForViolation = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async (): Promise<RentalOption[]> => {
+    const { data: rentals, error } = await supabaseAdmin
+      .from("rentals")
+      .select("id, driver_id, vehicle_id, start_date, end_date, reservation_status")
+      .order("start_date", { ascending: false })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    const rows = rentals ?? [];
+    const driverIds = Array.from(new Set(rows.map((r) => r.driver_id).filter(Boolean))) as string[];
+    const vehicleIds = Array.from(new Set(rows.map((r) => r.vehicle_id).filter(Boolean))) as string[];
+    const [{ data: drivers }, { data: vehicles }] = await Promise.all([
+      driverIds.length
+        ? supabaseAdmin.from("drivers").select("id, full_name").in("id", driverIds)
+        : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
+      vehicleIds.length
+        ? supabaseAdmin.from("vehicles").select("id, plate, make, model, year").in("id", vehicleIds)
+        : Promise.resolve({ data: [] as { id: string; plate: string; make: string; model: string; year: number }[] }),
+    ]);
+    const dMap = new Map((drivers ?? []).map((d) => [d.id, d.full_name]));
+    const vMap = new Map((vehicles ?? []).map((v) => [v.id, v]));
+    return rows.map((r) => {
+      const v = r.vehicle_id ? vMap.get(r.vehicle_id) : undefined;
+      return {
+        id: r.id,
+        driver_id: r.driver_id ?? null,
+        vehicle_id: r.vehicle_id ?? null,
+        driver_name: r.driver_id ? dMap.get(r.driver_id) ?? null : null,
+        vehicle_label: v ? `${v.year} ${v.make} ${v.model} (${v.plate})` : null,
+        plate: v?.plate ?? null,
+        start_date: r.start_date,
+        end_date: r.end_date ?? null,
+        reservation_status: r.reservation_status ?? null,
+      };
+    });
+  });
+
 export const markViolationDisputed = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string }) => {
