@@ -39,7 +39,7 @@ function CalendarPage() {
     <div>
       <PageHeader
         title="Calendar"
-        subtitle="Vehicle availability — pending holds in amber, active in primary"
+        subtitle="Vehicle availability — pending holds in amber, active in primary, open-ended (no return date) in red"
         action={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => shift(-7)}><ChevronLeft className="h-4 w-4" /></Button>
