@@ -981,6 +981,7 @@ export type Database = {
           payment_received: boolean
           payment_status: string
           pending_created_at: string | null
+          portal_link_sends: Json
           rate: number | null
           rate_amount: number | null
           receipt_pdf_generated_at: string | null
@@ -1040,6 +1041,7 @@ export type Database = {
           payment_received?: boolean
           payment_status?: string
           pending_created_at?: string | null
+          portal_link_sends?: Json
           rate?: number | null
           rate_amount?: number | null
           receipt_pdf_generated_at?: string | null
@@ -1099,6 +1101,7 @@ export type Database = {
           payment_received?: boolean
           payment_status?: string
           pending_created_at?: string | null
+          portal_link_sends?: Json
           rate?: number | null
           rate_amount?: number | null
           receipt_pdf_generated_at?: string | null
