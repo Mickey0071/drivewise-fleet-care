@@ -25,6 +25,10 @@ import {
   type ViolationRow,
 } from "@/lib/violations.functions";
 import {
+  listRentalsForViolation,
+  type RentalOption,
+} from "@/lib/violations.functions";
+import {
   changeViolationStatus,
   listViolationHistory,
   type ViolationHistoryRow,
