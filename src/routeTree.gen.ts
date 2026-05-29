@@ -40,6 +40,7 @@ import { Route as DmvTaskRouteImport } from './routes/dmv-task'
 import { Route as ChecklistRouteImport } from './routes/checklist'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as VerifyPaymentRentalIdRouteImport } from './routes/verify-payment.$rentalId'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as SetupTokenRouteImport } from './routes/setup.$token'
 import { Route as RunnersTasksRouteImport } from './routes/runners.tasks'
@@ -212,6 +213,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VerifyPaymentRentalIdRoute = VerifyPaymentRentalIdRouteImport.update({
+  id: '/verify-payment/$rentalId',
+  path: '/verify-payment/$rentalId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignTokenRoute = SignTokenRouteImport.update({
   id: '/sign/$token',
   path: '/sign/$token',
@@ -339,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/runners/tasks': typeof RunnersTasksRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
+  '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
@@ -388,6 +395,7 @@ export interface FileRoutesByTo {
   '/runners/tasks': typeof RunnersTasksRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
+  '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
@@ -438,6 +446,7 @@ export interface FileRoutesById {
   '/runners/tasks': typeof RunnersTasksRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
+  '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
@@ -489,6 +498,7 @@ export interface FileRouteTypes {
     | '/runners/tasks'
     | '/setup/$token'
     | '/sign/$token'
+    | '/verify-payment/$rentalId'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/api/public/hooks/auto-renew-charges'
@@ -538,6 +548,7 @@ export interface FileRouteTypes {
     | '/runners/tasks'
     | '/setup/$token'
     | '/sign/$token'
+    | '/verify-payment/$rentalId'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/api/public/hooks/auto-renew-charges'
@@ -587,6 +598,7 @@ export interface FileRouteTypes {
     | '/runners/tasks'
     | '/setup/$token'
     | '/sign/$token'
+    | '/verify-payment/$rentalId'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/api/public/hooks/auto-renew-charges'
@@ -635,6 +647,7 @@ export interface RootRouteChildren {
   RunnersTasksRoute: typeof RunnersTasksRoute
   SetupTokenRoute: typeof SetupTokenRoute
   SignTokenRoute: typeof SignTokenRoute
+  VerifyPaymentRentalIdRoute: typeof VerifyPaymentRentalIdRoute
   InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
   ApiPublicHooksAutoRenewChargesRoute: typeof ApiPublicHooksAutoRenewChargesRoute
@@ -861,6 +874,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/verify-payment/$rentalId': {
+      id: '/verify-payment/$rentalId'
+      path: '/verify-payment/$rentalId'
+      fullPath: '/verify-payment/$rentalId'
+      preLoaderRoute: typeof VerifyPaymentRentalIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sign/$token': {
       id: '/sign/$token'
       path: '/sign/$token'
@@ -1039,6 +1059,7 @@ const rootRouteChildren: RootRouteChildren = {
   RunnersTasksRoute: RunnersTasksRoute,
   SetupTokenRoute: SetupTokenRoute,
   SignTokenRoute: SignTokenRoute,
+  VerifyPaymentRentalIdRoute: VerifyPaymentRentalIdRoute,
   InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
   ApiPublicHooksAutoRenewChargesRoute: ApiPublicHooksAutoRenewChargesRoute,

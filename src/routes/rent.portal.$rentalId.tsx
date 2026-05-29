@@ -16,8 +16,13 @@ import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/rent/portal/$rentalId")({
   head: () => ({ meta: [{ title: "Your reservation — Camauto Rentals" }] }),
-  component: PortalPage,
+  component: PortalRouteComponent,
 });
+
+function PortalRouteComponent() {
+  const { rentalId } = Route.useParams();
+  return <PortalPage rentalId={rentalId} />;
+}
 
 type Info = Awaited<ReturnType<typeof getRenterPortal>>;
 
@@ -31,8 +36,7 @@ function fmtDate(d: string | null | undefined) {
   } catch { return d; }
 }
 
-function PortalPage() {
-  const { rentalId } = Route.useParams();
+export function PortalPage({ rentalId }: { rentalId: string }) {
   const fetchInfo = useServerFn(getRenterPortal);
   const createLink = useServerFn(createRenterPaymentLink);
   const verifyOwner = useServerFn(verifyCardOwner);
