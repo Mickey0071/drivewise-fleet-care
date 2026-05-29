@@ -263,7 +263,7 @@ function AuthGate() {
     );
   }
 
-  if (isRunner) {
+  if (isRunner || isDriver) {
     return (
       <>
         <RunnerLayout />
