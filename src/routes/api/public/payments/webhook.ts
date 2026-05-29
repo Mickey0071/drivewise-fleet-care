@@ -693,15 +693,18 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     const profile = await getProfile(userId);
     if (profile?.phone) {
       const amt = fmtAmount(session.amount_total);
+      const appOrigin = process.env.PUBLIC_APP_ORIGIN ?? "https://camautorentals.lovable.app";
+      const portalUrl = `${appOrigin}/my-rentals/${encodeURIComponent(rentalId)}`;
+      const rentalLabel = `R-${rentalId.slice(-3).toUpperCase()}`;
       await notifyRenter({
         phone: profile.phone,
         email: (profile as any).email ?? null,
         name: profile.full_name,
-        sms: `Camauto Rentals: Payment received${amt ? " (" + amt + ")" : ""}. Your rental is now active — see you at pickup!`,
-        emailSubject: "Reservation Confirmed — Camauto Rentals",
-        emailHeading: "You're All Set!",
-        emailIntro:
-          "Your payment has been received and your reservation is now active. We can't wait to see you at pickup!",
+        sms: `Your rental is active! View your documents and extend anytime: ${portalUrl}`,
+        emailSubject: "Your Rental Details - View Anytime",
+        emailHeading: "Your Rental Is Active!",
+        emailIntro: `Your rental ${rentalLabel} is now active. Click below to view your agreement, receipt, and extend if needed.`,
+        emailCta: { label: "View My Rental", url: portalUrl },
         emailDetails: amt ? [{ label: "Amount Paid", value: amt }] : [],
         emailFootnote: "A receipt will arrive in your inbox shortly.",
       });
