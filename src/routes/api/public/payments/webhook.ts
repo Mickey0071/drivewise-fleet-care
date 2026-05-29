@@ -30,6 +30,37 @@ function fmtAmount(cents: number | null | undefined): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+// Persist the reusable Stripe customer + card on the driver record so the
+// card can be charged later (violations, extensions, etc.).
+async function saveCardToDriver(
+  driverId: string | null | undefined,
+  env: StripeEnv,
+  customerId: string | null | undefined,
+  paymentMethodId: string | null | undefined,
+): Promise<void> {
+  if (!driverId) return;
+  if (!customerId && !paymentMethodId) return;
+  let last4: string | null = null;
+  if (paymentMethodId) {
+    try {
+      const pm = await createStripeClient(env).paymentMethods.retrieve(paymentMethodId);
+      last4 = pm.card?.last4 ?? null;
+    } catch (e) {
+      console.warn("[webhook] could not load card last4 for driver", e);
+    }
+  }
+  await getSupabase()
+    .from("drivers")
+    .update({
+      ...(customerId ? { stripe_customer_id: customerId } : {}),
+      ...(paymentMethodId ? { stripe_payment_method_id: paymentMethodId } : {}),
+      ...(last4 ? { card_last4: last4 } : {}),
+      card_saved_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as any)
+    .eq("id", driverId);
+}
+
 // --- Name match helpers --------------------------------------------------
 function normalizeName(s: string | null | undefined): string {
   return (s || "")
@@ -181,6 +212,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
             updated_at: new Date().toISOString(),
           } as any)
           .eq("id", rentalRow.id);
+        await saveCardToDriver(rentalRow.driver_id, env, session.customer, paymentMethodId);
       }
     }
     return;
@@ -392,6 +424,25 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         })
         .eq("id", rentalRow.id);
 
+      // Persist the reusable card on the rental + driver for future charges.
+      let extPaymentMethodId: string | null = null;
+      try {
+        extPaymentMethodId = await resolveSessionPaymentMethodId();
+      } catch (e) {
+        console.error("[webhook:ext] failed to resolve payment method", e);
+      }
+      if (session.customer || extPaymentMethodId) {
+        await sb
+          .from("rentals")
+          .update({
+            ...(session.customer ? { stripe_customer_id: session.customer } : {}),
+            ...(extPaymentMethodId ? { stripe_payment_method_id: extPaymentMethodId } : {}),
+            updated_at: new Date().toISOString(),
+          } as any)
+          .eq("id", rentalRow.id);
+        await saveCardToDriver(rentalRow.driver_id, env, session.customer, extPaymentMethodId);
+      }
+
       // Renter SMS
       const { data: drv } = await sb
         .from("drivers")
@@ -587,6 +638,8 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", rental.id);
+
+      await saveCardToDriver(rental.driver_id, env, session.customer ?? null, paymentMethodId);
 
       if (rental.vehicle_id) {
         await sb.from("vehicles").update({ status: "rented" }).eq("id", rental.vehicle_id);
