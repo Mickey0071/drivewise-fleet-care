@@ -243,7 +243,7 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { data: rental, error } = await supabaseAdmin
       .from("rentals")
-      .select("id, driver_id, sign_token, payment_received, reservation_status, client_signature_url")
+      .select("id, driver_id, vehicle_id, sign_token, payment_received, reservation_status, client_signature_url")
       .eq("sign_token", data.token)
       .maybeSingle();
     if (error || !rental) throw new Error("Invalid signing link");
@@ -430,31 +430,40 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
     }
 
     // If signing flipped the reservation to ON RENT (payment already received),
-    // send the renter their self-service portal link.
+    // send the renter a clean activation confirmation (no portal link yet).
     if (update.reservation_status === "active") {
       try {
-        const { data: driver } = await supabaseAdmin
-          .from("drivers")
-          .select("phone, full_name, email")
-          .eq("id", rental.driver_id)
-          .single();
+        const [{ data: driver }, { data: vehicle }] = await Promise.all([
+          supabaseAdmin
+            .from("drivers")
+            .select("phone, full_name, email")
+            .eq("id", rental.driver_id)
+            .single(),
+          supabaseAdmin
+            .from("vehicles")
+            .select("year, make, model")
+            .eq("id", rental.vehicle_id ?? "")
+            .maybeSingle(),
+        ]);
         if (driver?.phone) {
-          const appOrigin = process.env.PUBLIC_APP_ORIGIN || "https://camautorentals.lovable.app";
-          const portalUrl = `${appOrigin}/my-rentals/${encodeURIComponent(rental.id)}`;
           const rentalLabel = `R-${rental.id.slice(-3).toUpperCase()}`;
+          const vehicleInfo = vehicle
+            ? `${vehicle.year ?? ""} ${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim()
+            : "";
+          const vehicleLine = vehicleInfo ? ` Vehicle: ${vehicleInfo}.` : "";
           await notifyRenter({
             phone: driver.phone,
             email: driver.email ?? null,
             name: driver.full_name ?? null,
-            sms: `Your rental is active! View your documents and extend anytime: ${portalUrl}`,
-            emailSubject: "Your Rental Details - View Anytime",
+            sms: `Your rental ${rentalLabel} is active!${vehicleLine} Questions? 866-625-5550`,
+            emailSubject: "Your Rental Is Active",
             emailHeading: "Your Rental Is Active!",
-            emailIntro: `Your rental ${rentalLabel} is now active. Click below to view your agreement, receipt, and extend if needed.`,
-            emailCta: { label: "View My Rental", url: portalUrl },
+            emailIntro: `Your rental <strong>${rentalLabel}</strong> is now active.${vehicleLine ? ` Your vehicle is the ${vehicleInfo}.` : ""}`,
+            emailFootnote: "Questions? Call us at 866-625-5550.",
           });
         }
       } catch (e) {
-        console.error("[sign] portal link notify failed", e);
+        console.error("[sign] activation notify failed", e);
       }
     }
 
