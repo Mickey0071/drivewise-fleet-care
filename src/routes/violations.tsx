@@ -24,6 +24,11 @@ import {
   markViolationPaidManually,
   type ViolationRow,
 } from "@/lib/violations.functions";
+import {
+  changeViolationStatus,
+  listViolationHistory,
+  type ViolationHistoryRow,
+} from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
