@@ -2,6 +2,45 @@ import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createStripeClient } from "@/lib/stripe.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
+import { extractNameFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
+
+// Card verification: when the renter says the payment card is NOT in their
+// name, they must upload the card owner's ID before paying. We store the ID
+// photo on the rental, flag it as a third-party payer, and try to OCR the
+// cardholder name for staff review.
+export const uploadCardOwnerId = createServerFn({ method: "POST" })
+  .inputValidator((d: { rentalId: string; payerIdDataUrl: string; payerPhone?: string }) => {
+    if (!d?.rentalId || typeof d.rentalId !== "string") throw new Error("rentalId required");
+    if (!d?.payerIdDataUrl?.startsWith("data:image/")) throw new Error("Card owner's ID photo required");
+    if (d.payerPhone && d.payerPhone.length > 30) throw new Error("Invalid payer phone");
+    return d;
+  })
+  .handler(async ({ data }) => {
+    const { data: rental, error: rErr } = await supabaseAdmin
+      .from("rentals")
+      .select("id")
+      .eq("id", data.rentalId)
+      .maybeSingle();
+    if (rErr) throw new Error(rErr.message);
+    if (!rental) throw new Error("Reservation not found");
+
+    const imageUrl = await uploadPayerIdImage(data.rentalId, data.payerIdDataUrl);
+    const extractedName = await extractNameFromIdImage(data.payerIdDataUrl).catch(() => null);
+
+    const { error: uErr } = await supabaseAdmin
+      .from("rentals")
+      .update({
+        third_party_payer: true,
+        payer_id_image_url: imageUrl,
+        payer_name_extracted: extractedName,
+        payer_phone: data.payerPhone?.trim() || null,
+      })
+      .eq("id", data.rentalId);
+    if (uErr) throw new Error(uErr.message);
+
+    console.log(`[card-verification] Card owner ID uploaded: ${imageUrl}${extractedName ? ` (name: ${extractedName})` : ""}`);
+    return { ok: true as const, imageUrl, extractedName };
+  });
 
 // Public portal — keyed by the rental UUID, which the renter receives in the
 // post-payment redirect URL. Returns just the data needed to show the

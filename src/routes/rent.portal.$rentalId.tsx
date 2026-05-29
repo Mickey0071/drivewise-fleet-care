@@ -2,10 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getRenterPortal, createRenterPaymentLink } from "@/lib/renter-portal.functions";
+import { uploadCardOwnerId } from "@/lib/renter-portal.functions";
 import { getRenterHistoryByRentalId } from "@/lib/my-rentals.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, CreditCard, CheckCircle2, Clock, History, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import logo from "@/assets/camauto-logo-full.jpeg";
 import { Link } from "@tanstack/react-router";
@@ -31,11 +35,19 @@ function PortalPage() {
   const { rentalId } = Route.useParams();
   const fetchInfo = useServerFn(getRenterPortal);
   const createLink = useServerFn(createRenterPaymentLink);
+  const uploadOwnerId = useServerFn(uploadCardOwnerId);
   const fetchHistory = useServerFn(getRenterHistoryByRentalId);
   const [info, setInfo] = useState<Info | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
   const [history, setHistory] = useState<Array<any>>([]);
+
+  // Card verification flow (shown before redirecting to Stripe)
+  const [verifyFor, setVerifyFor] = useState<string | null>(null);
+  const [cardInName, setCardInName] = useState<"yes" | "no" | null>(null);
+  const [payerIdDataUrl, setPayerIdDataUrl] = useState<string | null>(null);
+  const [payerPhone, setPayerPhone] = useState("");
+  const [uploadingId, setUploadingId] = useState(false);
 
   useEffect(() => {
     fetchInfo({ data: { rentalId } })
@@ -47,13 +59,49 @@ function PortalPage() {
   }, [rentalId, fetchInfo, fetchHistory]);
 
   async function handlePay(paymentId: string) {
+    // Ask for card verification before starting payment.
+    setVerifyFor(paymentId);
+    setCardInName(null);
+    setPayerIdDataUrl(null);
+    setPayerPhone("");
+  }
+
+  async function onPickPayerId(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please upload an image"); return; }
+    if (file.size > 8 * 1024 * 1024) { toast.error("File must be under 8MB"); return; }
+    setUploadingId(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Could not read file"));
+        reader.readAsDataURL(file);
+      });
+      setPayerIdDataUrl(dataUrl);
+      toast.success(`Card owner ID uploaded: ${file.name}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Could not load image");
+    } finally {
+      setUploadingId(false);
+    }
+  }
+
+  async function proceedToPayment() {
+    const paymentId = verifyFor;
+    if (!paymentId) return;
     setPayingId(paymentId);
     try {
+      if (cardInName === "no") {
+        if (!payerIdDataUrl) { toast.error("Upload the card owner's ID to continue"); setPayingId(null); return; }
+        await uploadOwnerId({ data: { rentalId, payerIdDataUrl, payerPhone: payerPhone.trim() || undefined } });
+      }
       const { url } = await createLink({ data: { rentalId, paymentId } });
       window.location.href = url;
     } catch (e) {
       toast.error("Could not start payment", { description: e instanceof Error ? e.message : String(e) });
       setPayingId(null);
+      setVerifyFor(null);
     }
   }
 
@@ -214,6 +262,86 @@ function PortalPage() {
           </div>
         </Card>
       )}
+
+      <Dialog open={!!verifyFor} onOpenChange={(o) => { if (!o && !payingId) setVerifyFor(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Card verification</DialogTitle>
+            <DialogDescription>Is the payment card in your name?</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={cardInName === "yes" ? "default" : "outline"}
+                onClick={() => { setCardInName("yes"); setPayerIdDataUrl(null); }}
+              >
+                Yes, it's mine
+              </Button>
+              <Button
+                type="button"
+                variant={cardInName === "no" ? "default" : "outline"}
+                onClick={() => setCardInName("no")}
+              >
+                No
+              </Button>
+            </div>
+
+            {cardInName === "no" && (
+              <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+                <div>
+                  <Label htmlFor="payer-id" className="text-xs">Upload ID of card owner</Label>
+                  <Input
+                    id="payer-id"
+                    type="file"
+                    accept="image/*"
+                    className="mt-1"
+                    disabled={uploadingId}
+                    onChange={(e) => onPickPayerId(e.target.files?.[0] ?? null)}
+                  />
+                  {uploadingId && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+                    </p>
+                  )}
+                  {payerIdDataUrl && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-emerald-600">
+                      <CheckCircle2 className="h-3 w-3" /> ID uploaded
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="payer-phone" className="text-xs">Card owner's phone (optional)</Label>
+                  <Input
+                    id="payer-phone"
+                    type="tel"
+                    inputMode="tel"
+                    className="mt-1"
+                    value={payerPhone}
+                    onChange={(e) => setPayerPhone(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            <Button
+              className="w-full"
+              size="lg"
+              disabled={
+                !!payingId || cardInName === null ||
+                (cardInName === "no" && (!payerIdDataUrl || uploadingId))
+              }
+              onClick={proceedToPayment}
+            >
+              {payingId ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening…</>
+              ) : (
+                <><CreditCard className="mr-2 h-4 w-4" /> Continue to payment</>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
