@@ -447,6 +447,9 @@ function NewViolationDialog({
       toast.error("Enter a valid amount");
       return;
     }
+    const picked = selectedRentalId
+      ? rentalOptions.find((r) => r.id === selectedRentalId) ?? null
+      : null;
     setSaving(true);
     try {
       const r = await create({
@@ -458,9 +461,9 @@ function NewViolationDialog({
           fee,
           description: description || `${type} violation${plate ? ` on ${plate.toUpperCase()}` : ""}`,
           photoUrl: photoUrl || null,
-          rentalId: lookupResult?.found ? lookupResult.rental.id : null,
-          vehicleId: lookupResult?.found ? lookupResult.vehicle.id : null,
-          driverId: lookupResult?.found ? lookupResult.rental.driver_id : null,
+          rentalId: picked ? picked.id : lookupResult?.found ? lookupResult.rental.id : null,
+          vehicleId: picked ? picked.vehicle_id : lookupResult?.found ? lookupResult.vehicle.id : null,
+          driverId: picked ? picked.driver_id : lookupResult?.found ? lookupResult.rental.driver_id : null,
           extractedConfidence: confidence,
         },
       });
