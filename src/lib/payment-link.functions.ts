@@ -34,36 +34,6 @@ export async function sendPaymentLinkInternal(
 
   const origin = data.origin || process.env.PUBLIC_APP_ORIGIN || "";
 
-  // For rental (first / deposit) payments, route the renter to our own
-  // verification page first instead of straight to Stripe. The verification
-  // page asks "Is the card in your name?" and mints the Stripe link itself
-  // (via createRenterPaymentLink) once the renter is ready to pay.
-  if (data.rentalId) {
-    if (!origin) {
-      throw new Error("App origin not configured: cannot build verification link");
-    }
-    const verifyUrl = `${origin}/verify-payment/${encodeURIComponent(data.rentalId)}`;
-    const amt = `$${(data.amountCents / 100).toFixed(2)}`;
-    const msg = `Camauto Rentals: ${amt} due. Complete your payment: ${verifyUrl}`;
-    await notifyRenter({
-      phone: data.phone,
-      email: data.email ?? null,
-      name: data.name ?? null,
-      sms: msg,
-      emailSubject: "Complete Your Payment — Camauto Rentals",
-      emailHeading: "Complete Your Payment",
-      emailIntro: `Your payment of <strong>${amt}</strong> is ready. Tap the button below to verify and pay securely.`,
-      emailCta: { label: `Verify & Pay ${amt}`, url: verifyUrl },
-      emailDetails: [
-        { label: "Amount Due", value: amt },
-        { label: "Description", value: data.description },
-      ],
-      emailFootnote:
-        "You'll confirm a quick card-ownership question before paying. If you have any trouble, reply to this email or call us.",
-    });
-    return { ok: true, url: verifyUrl };
-  }
-
   const stripe = createStripeClient(data.environment);
   const metadata: Record<string, string> = {
     kind: data.rentalId ? "first_payment" : "payment_link",
