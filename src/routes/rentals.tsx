@@ -299,6 +299,29 @@ function RentalsPage() {
             )}
             {!isPending && <ReservationPaymentHistory rental={r} />}
             {!isPending && <ReservationDocuments rental={r} />}
+            {!isPending && (r.portalLinkSends?.length ?? 0) > 0 && (
+              <div className="rounded-md border border-border bg-muted/30 p-3">
+                <div className="mb-1 flex items-center gap-1.5 text-xs uppercase text-muted-foreground">
+                  <Smartphone className="h-3.5 w-3.5" /> Portal link history
+                </div>
+                <ul className="space-y-0.5">
+                  {r.portalLinkSends!.map((s, i) => (
+                    <li key={i} className="text-sm">
+                      {i === 0 ? "Portal link sent" : "Portal link sent again"}:{" "}
+                      {new Date(s.at).toLocaleString(undefined, {
+                        month: "2-digit", day: "2-digit", year: "2-digit",
+                        hour: "numeric", minute: "2-digit",
+                      })}
+                      <span className="text-muted-foreground">
+                        {[s.phone, s.email].filter(Boolean).length
+                          ? ` · ${[s.phone, s.email].filter(Boolean).join(", ")}`
+                          : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
               {isPending ? (
                 <>
