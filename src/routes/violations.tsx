@@ -622,11 +622,47 @@ function NewViolationDialog({
           </div>
 
           <div className="rounded-md border bg-muted/30 p-3">
+            <Label>Select Rental</Label>
+            <Select
+              value={selectedRentalId}
+              onValueChange={(v) => {
+                setSelectedRentalId(v);
+                setLookupResult(null);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a rental…" />
+              </SelectTrigger>
+              <SelectContent>
+                {rentalOptions.length === 0 && (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">No rentals found</div>
+                )}
+                {rentalOptions.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.id}: {r.driver_name ?? "Unknown"}
+                    {r.plate ? ` — ${r.plate}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedRentalId && (() => {
+              const picked = rentalOptions.find((r) => r.id === selectedRentalId);
+              if (!picked) return null;
+              return (
+                <div className="mt-2 text-sm text-emerald-700 dark:text-emerald-400">
+                  Selected <strong>{picked.id}</strong> — {picked.driver_name ?? "Unknown driver"}
+                  <div className="text-xs text-muted-foreground">
+                    {picked.vehicle_label ?? picked.plate ?? ""} · {picked.start_date} → {picked.end_date || "ongoing"}
+                  </div>
+                </div>
+              );
+            })()}
+            <div className="my-3 border-t" />
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" onClick={doLookup} disabled={!plate || !date || lookingUp}>
                 {lookingUp ? "Looking up…" : "Lookup Rental"}
               </Button>
-              <span className="text-xs text-muted-foreground">Match plate + date to a rental</span>
+              <span className="text-xs text-muted-foreground">Or match plate + date automatically</span>
             </div>
             {lookupResult && lookupResult.found && (
               <div className="mt-2 text-sm text-emerald-700 dark:text-emerald-400">
