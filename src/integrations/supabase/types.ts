@@ -20,6 +20,8 @@ export type Database = {
           alt_contact_name: string | null
           alt_contact_phone: string | null
           apt_unit: string | null
+          card_last4: string | null
+          card_saved_at: string | null
           city: string | null
           created_at: string
           date_added: string
@@ -39,6 +41,8 @@ export type Database = {
           state: string | null
           status: string
           street_address: string | null
+          stripe_customer_id: string | null
+          stripe_payment_method_id: string | null
           updated_at: string
           zip_code: string | null
         }
@@ -47,6 +51,8 @@ export type Database = {
           alt_contact_name?: string | null
           alt_contact_phone?: string | null
           apt_unit?: string | null
+          card_last4?: string | null
+          card_saved_at?: string | null
           city?: string | null
           created_at?: string
           date_added?: string
@@ -66,6 +72,8 @@ export type Database = {
           state?: string | null
           status?: string
           street_address?: string | null
+          stripe_customer_id?: string | null
+          stripe_payment_method_id?: string | null
           updated_at?: string
           zip_code?: string | null
         }
@@ -74,6 +82,8 @@ export type Database = {
           alt_contact_name?: string | null
           alt_contact_phone?: string | null
           apt_unit?: string | null
+          card_last4?: string | null
+          card_saved_at?: string | null
           city?: string | null
           created_at?: string
           date_added?: string
@@ -93,6 +103,8 @@ export type Database = {
           state?: string | null
           status?: string
           street_address?: string | null
+          stripe_customer_id?: string | null
+          stripe_payment_method_id?: string | null
           updated_at?: string
           zip_code?: string | null
         }
