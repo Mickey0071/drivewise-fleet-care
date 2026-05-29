@@ -333,6 +333,7 @@ function NewViolationDialog({
     setThumbnail("");
     setConfidence(null);
     setPdfPages(null);
+    setSelectedRentalId("");
   };
 
   const analyzeDataUrl = async (dataUrl: string) => {
