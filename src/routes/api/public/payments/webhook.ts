@@ -620,6 +620,8 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         })
         .eq("id", rental.id);
 
+      await saveCardToDriver(rental.driver_id, env, session.customer ?? null, paymentMethodId);
+
       if (rental.vehicle_id) {
         await sb.from("vehicles").update({ status: "rented" }).eq("id", rental.vehicle_id);
       }
