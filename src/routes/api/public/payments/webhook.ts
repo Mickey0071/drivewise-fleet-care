@@ -212,6 +212,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
             updated_at: new Date().toISOString(),
           } as any)
           .eq("id", rentalRow.id);
+        await saveCardToDriver(rentalRow.driver_id, env, session.customer, paymentMethodId);
       }
     }
     return;
