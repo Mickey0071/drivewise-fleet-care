@@ -690,23 +690,33 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       }
     }
 
+    let vehicleInfo = "";
+    if (rental?.vehicle_id) {
+      const { data: v } = await sb
+        .from("vehicles")
+        .select("year, make, model")
+        .eq("id", rental.vehicle_id)
+        .maybeSingle();
+      if (v) {
+        vehicleInfo = `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}`.trim();
+      }
+    }
+
     const profile = await getProfile(userId);
     if (profile?.phone) {
       const amt = fmtAmount(session.amount_total);
-      const appOrigin = process.env.PUBLIC_APP_ORIGIN ?? "https://camautorentals.lovable.app";
-      const portalUrl = `${appOrigin}/my-rentals/${encodeURIComponent(rentalId)}`;
       const rentalLabel = `R-${rentalId.slice(-3).toUpperCase()}`;
+      const vehicleLine = vehicleInfo ? ` Vehicle: ${vehicleInfo}.` : "";
       await notifyRenter({
         phone: profile.phone,
         email: (profile as any).email ?? null,
         name: profile.full_name,
-        sms: `Your rental is active! View your documents and extend anytime: ${portalUrl}`,
-        emailSubject: "Your Rental Details - View Anytime",
+        sms: `Payment received! Your rental ${rentalLabel} is active.${vehicleLine} Questions? 866-625-5550`,
+        emailSubject: "Payment Received — Your Rental Is Active",
         emailHeading: "Your Rental Is Active!",
-        emailIntro: `Your rental ${rentalLabel} is now active. Click below to view your agreement, receipt, and extend if needed.`,
-        emailCta: { label: "View My Rental", url: portalUrl },
+        emailIntro: `Your payment of <strong>${amt || "$0.00"}</strong> has been received and your rental <strong>${rentalLabel}</strong> is now active.${vehicleLine ? ` Your vehicle is the ${vehicleInfo}.` : ""}`,
         emailDetails: amt ? [{ label: "Amount Paid", value: amt }] : [],
-        emailFootnote: "A receipt will arrive in your inbox shortly.",
+        emailFootnote: "A receipt will arrive in your inbox shortly. Questions? Call us at 866-625-5550.",
       });
     }
 
