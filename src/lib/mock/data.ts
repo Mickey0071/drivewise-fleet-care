@@ -73,6 +73,7 @@ export interface Rental {
   receiptPdfUrl?: string;
   receiptPdfGeneratedAt?: string;
   staffReviewStatus?: "pending" | "reviewed" | "approved";
+  returnedAt?: string;
 }
 export interface RentalExtension {
   id: string;
