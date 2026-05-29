@@ -262,6 +262,86 @@ function PortalPage() {
           </div>
         </Card>
       )}
+
+      <Dialog open={!!verifyFor} onOpenChange={(o) => { if (!o && !payingId) setVerifyFor(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Card verification</DialogTitle>
+            <DialogDescription>Is the payment card in your name?</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={cardInName === "yes" ? "default" : "outline"}
+                onClick={() => { setCardInName("yes"); setPayerIdDataUrl(null); }}
+              >
+                Yes, it's mine
+              </Button>
+              <Button
+                type="button"
+                variant={cardInName === "no" ? "default" : "outline"}
+                onClick={() => setCardInName("no")}
+              >
+                No
+              </Button>
+            </div>
+
+            {cardInName === "no" && (
+              <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+                <div>
+                  <Label htmlFor="payer-id" className="text-xs">Upload ID of card owner</Label>
+                  <Input
+                    id="payer-id"
+                    type="file"
+                    accept="image/*"
+                    className="mt-1"
+                    disabled={uploadingId}
+                    onChange={(e) => onPickPayerId(e.target.files?.[0] ?? null)}
+                  />
+                  {uploadingId && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+                    </p>
+                  )}
+                  {payerIdDataUrl && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-emerald-600">
+                      <CheckCircle2 className="h-3 w-3" /> ID uploaded
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="payer-phone" className="text-xs">Card owner's phone (optional)</Label>
+                  <Input
+                    id="payer-phone"
+                    type="tel"
+                    inputMode="tel"
+                    className="mt-1"
+                    value={payerPhone}
+                    onChange={(e) => setPayerPhone(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            <Button
+              className="w-full"
+              size="lg"
+              disabled={
+                !!payingId || cardInName === null ||
+                (cardInName === "no" && (!payerIdDataUrl || uploadingId))
+              }
+              onClick={proceedToPayment}
+            >
+              {payingId ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening…</>
+              ) : (
+                <><CreditCard className="mr-2 h-4 w-4" /> Continue to payment</>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
