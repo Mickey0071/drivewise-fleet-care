@@ -198,6 +198,95 @@ export const markViolationDisputed = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export interface ViolationHistoryRow {
+  id: string;
+  violation_id: string;
+  from_status: string | null;
+  to_status: string;
+  reason: string | null;
+  changed_by_name: string | null;
+  created_at: string;
+}
+
+const VALID_STATUSES = ["pending", "paid", "disputed", "failed"] as const;
+type ViolationStatus = (typeof VALID_STATUSES)[number];
+
+export const listViolationHistory = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input.id) throw new Error("id required");
+    return { id: input.id };
+  })
+  .handler(async ({ data }): Promise<ViolationHistoryRow[]> => {
+    const { data: rows, error } = await supabaseAdmin
+      .from("violation_status_history")
+      .select("id, violation_id, from_status, to_status, reason, changed_by_name, created_at")
+      .eq("violation_id", data.id)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (rows ?? []) as ViolationHistoryRow[];
+  });
+
+export const changeViolationStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; status: string; reason?: string; method?: string }) => {
+    if (!input.id) throw new Error("id required");
+    const status = (input.status || "").toLowerCase();
+    if (!VALID_STATUSES.includes(status as ViolationStatus)) {
+      throw new Error("Invalid status");
+    }
+    return {
+      id: input.id,
+      status: status as ViolationStatus,
+      reason: (input.reason || "").slice(0, 500) || null,
+      method: (input.method || "").slice(0, 40) || null,
+    };
+  })
+  .handler(async ({ data, context }) => {
+    const { data: current, error: cErr } = await supabaseAdmin
+      .from("violations")
+      .select("status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (cErr || !current) throw new Error("Violation not found");
+    const fromStatus = (current.status as string) || null;
+
+    const patch: Record<string, unknown> = {
+      status: data.status,
+      updated_at: new Date().toISOString(),
+    };
+    if (data.status === "paid") {
+      patch.paid_at = new Date().toISOString();
+      patch.payment_method = data.method || "manual";
+    }
+    const { error } = await supabaseAdmin
+      .from("violations")
+      .update(patch as never)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+
+    let changedByName: string | null = null;
+    if (context.userId) {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", context.userId)
+        .maybeSingle();
+      changedByName = profile?.full_name || profile?.email || null;
+    }
+
+    await supabaseAdmin.from("violation_status_history").insert({
+      violation_id: data.id,
+      from_status: fromStatus,
+      to_status: data.status,
+      reason: data.reason,
+      changed_by: context.userId ?? null,
+      changed_by_name: changedByName,
+    } as never);
+
+    return { ok: true as const };
+  });
+
 export const markViolationPaidManually = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { id: string; method?: string }) => {
