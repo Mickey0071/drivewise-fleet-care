@@ -223,7 +223,7 @@ function AuthGate() {
     }
   }, [loading, roleLoading, session, role, path, navigate]);
 
-  if (loading || roleLoading || (!!session && !isPublic && !isRunner && !storeLoadError && !isStoreHydrated())) {
+  if (loading || roleLoading || (!!session && !isPublic && !isRunner && !isDriver && !storeLoadError && !isStoreHydrated())) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
   if (!!session && !isPublic && storeLoadError) {
