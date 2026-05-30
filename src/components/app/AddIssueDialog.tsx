@@ -37,7 +37,6 @@ const PART_OPTIONS = [
 interface PartRow {
   key: string;
   selection: string; // dropdown value (a PART_OPTIONS entry)
-  description: string; // editable label
   partPrice: string;
   laborPrice: string;
 }
@@ -45,7 +44,7 @@ interface PartRow {
 const today = () => new Date().toISOString().slice(0, 10);
 
 function emptyRow(): PartRow {
-  return { key: Math.random().toString(36).slice(2), selection: "", description: "", partPrice: "", laborPrice: "" };
+  return { key: Math.random().toString(36).slice(2), selection: "", partPrice: "", laborPrice: "" };
 }
 
 function defaultReturn() {
@@ -79,28 +78,25 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
   const updateRow = (key: string, patch: Partial<PartRow>) =>
     setRows(rs => rs.map(r => (r.key === key ? { ...r, ...patch } : r)));
 
-  const onSelectPart = (key: string, value: string) =>
-    updateRow(key, { selection: value, description: value === "Other" ? "" : value });
-
   const submit = () => {
     if (!vehicleId) return toast.error("Select a vehicle");
-    const valid = rows.filter(r => r.description.trim());
+    const valid = rows.filter(r => r.selection.trim());
     if (valid.length === 0) return toast.error("Add at least one part");
     for (const r of valid) {
-      if (!(Number(r.partPrice) >= 0) || r.partPrice === "") return toast.error(`Part price required for ${r.description}`);
-      if (!(Number(r.laborPrice) >= 0) || r.laborPrice === "") return toast.error(`Labor price required for ${r.description}`);
+      if (!(Number(r.partPrice) >= 0) || r.partPrice === "") return toast.error(`Part price required for ${r.selection}`);
+      if (!(Number(r.laborPrice) >= 0) || r.laborPrice === "") return toast.error(`Labor price required for ${r.selection}`);
     }
     const down = Number(downPayment) || 0;
     if (down < 0) return toast.error("Down payment cannot be negative");
 
-    const partsSummary = valid.map(r => r.description.trim()).join(", ");
+    const partsSummary = valid.map(r => r.selection.trim()).join(", ");
     const v = vehicles.find(x => x.id === vehicleId);
     const estReturnLabel = estReturn ? new Date(estReturn).toLocaleString() : "—";
 
     const detailLines = [
       `Issue opened ${startedAt.toLocaleString()}`,
       "Parts / labor:",
-      ...valid.map(r => `  • ${r.description.trim()} — part ${fmtMoney(Number(r.partPrice) || 0)} + labor ${fmtMoney(Number(r.laborPrice) || 0)} = ${fmtMoney(subtotalOf(r))}`),
+      ...valid.map(r => `  • ${r.selection.trim()} — part ${fmtMoney(Number(r.partPrice) || 0)} + labor ${fmtMoney(Number(r.laborPrice) || 0)} = ${fmtMoney(subtotalOf(r))}`),
       `Total cost: ${fmtMoney(total)}`,
       `Down payment: ${fmtMoney(down)}`,
       `Balance: ${fmtMoney(balance)}`,
@@ -175,17 +171,12 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
                   )}
                 </div>
                 <div className="grid gap-2">
-                  <Select value={r.selection} onValueChange={(v) => onSelectPart(r.key, v)}>
+                  <Select value={r.selection} onValueChange={(v) => updateRow(r.key, { selection: v })}>
                     <SelectTrigger><SelectValue placeholder="Select part" /></SelectTrigger>
                     <SelectContent>
                       {PART_OPTIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <Input
-                    placeholder="Part description"
-                    value={r.description}
-                    onChange={e => updateRow(r.key, { description: e.target.value })}
-                  />
                   <div className="grid grid-cols-3 gap-2">
                     <div className="grid gap-1">
                       <Label className="text-xs">Part price ($)</Label>
