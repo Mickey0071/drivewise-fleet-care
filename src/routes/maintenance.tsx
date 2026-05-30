@@ -7,6 +7,7 @@ import { Wrench, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ReportActions } from "@/components/app/ReportActions";
 import { LogServiceDialog } from "@/components/app/LogServiceDialog";
+import { AddIssueDialog } from "@/components/app/AddIssueDialog";
 import { ResolveMaintenanceDialog } from "@/components/app/ResolveMaintenanceDialog";
 import { useState } from "react";
 import { useStoreVersion } from "@/lib/mock/store";
@@ -20,6 +21,7 @@ export const Route = createFileRoute("/maintenance")({
 function MaintenancePage() {
   useStoreVersion();
   const [logOpen, setLogOpen] = useState(false);
+  const [issueOpen, setIssueOpen] = useState(false);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const today = new Date();
   const open = maintenance.filter(m => !m.dateCompleted)
@@ -46,11 +48,13 @@ function MaintenancePage() {
                 return [m.id, v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId, v?.plate ?? "", m.serviceType, m.vendor, m.dateCompleted, m.mileageAtService, m.cost, m.nextServiceDue];
               }),
             }} />
+            <Button variant="outline" onClick={() => setIssueOpen(true)}>+ Add Issue</Button>
             <Button onClick={() => setLogOpen(true)}>+ Log Service</Button>
           </div>
         }
       />
       <LogServiceDialog open={logOpen} onOpenChange={setLogOpen} />
+      <AddIssueDialog open={issueOpen} onOpenChange={setIssueOpen} />
 
       <div className="mb-6 grid grid-cols-3 gap-3">
         <KPI label="Open issues" value={String(open.length)} icon={AlertTriangle} tone={open.length ? "text-destructive" : "text-foreground"} />
