@@ -644,6 +644,18 @@ function subscribeRealtime() {
       }
       emit();
     })
+    .on("postgres_changes", { event: "*", schema: "public", table: "service_types" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = serviceTypes.findIndex(x => x.id === id);
+        if (idx >= 0) serviceTypes.splice(idx, 1);
+      } else {
+        const next = fromServiceType(payload.new);
+        const idx = serviceTypes.findIndex(x => x.id === next.id);
+        if (idx >= 0) serviceTypes[idx] = next; else serviceTypes.push(next);
+      }
+      emit();
+    })
     .subscribe();
 }
 
