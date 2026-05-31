@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { vehicles, fmtMoney } from "@/lib/mock/data";
 import { maintenance as maintenanceList } from "@/lib/mock/data";
-import { fmtDate } from "@/lib/mock/data";
+import { fmtDate, rentals } from "@/lib/mock/data";
 import { lastServiceFor } from "@/lib/maintenance-utils";
 import { computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { carImage } from "@/lib/mock/carImages";
@@ -65,6 +65,10 @@ function FleetPage() {
           const openIssueCount = maintenanceList.filter(m => m.vehicleId === v.id && !m.dateCompleted).length;
           const lastSvc = lastServiceFor(maintenanceList, v.id);
           const alerts = computeVehicleAlerts(v);
+          const onRent = rentals.find(
+            r => r.vehicleId === v.id && (r.reservationStatus ?? "active") === "active" && !r.returnedAt,
+          );
+          const openEnded = !!onRent && !onRent.endDate;
           return (
           <Card
             key={v.id}
@@ -111,6 +115,18 @@ function FleetPage() {
                           Unavailable · Open maintenance issue
                           {openIssueCount > 1 ? ` (${openIssueCount})` : ""}
                         </Badge>
+                      )}
+                      {onRent && (
+                        openEnded ? (
+                          <Badge variant="destructive">
+                            <AlertTriangle className="mr-1 h-3 w-3" />
+                            On rent · No return date set
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                            On rent · until {fmtDate(onRent.endDate)}
+                          </Badge>
+                        )
                       )}
                     </div>
                   </div>
