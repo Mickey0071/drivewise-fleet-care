@@ -69,6 +69,19 @@ type TaskRow = {
   rp_pickup_at: string | null;
   rp_location_after: string | null;
   rp_notes: string | null;
+  dr_service: string | null;
+  dr_location: string | null;
+  dr_expected_cost: number | null;
+  dr_documents_packed: Record<string, boolean> | null;
+  dr_arrival_at: string | null;
+  dr_service_completed: Record<string, boolean> | null;
+  dr_actual_cost: number | null;
+  dr_documents_received: Record<string, boolean> | null;
+  dr_photos: string[] | null;
+  dr_completion_at: string | null;
+  dr_new_reg_expiry: string | null;
+  dr_new_sticker_expiry: string | null;
+  dr_notes: string | null;
 };
 
 function RunnerTasksPage() {
