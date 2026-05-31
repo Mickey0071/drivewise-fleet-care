@@ -7,10 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import { useAgreementSettings } from "@/lib/agreementSettings";
-import { updateWorkOrder, uploadWorkOrderDoc, useStoreVersion } from "@/lib/mock/store";
+import { updateWorkOrder, uploadWorkOrderDoc, ensureWorkOrderFieldToken, useStoreVersion } from "@/lib/mock/store";
 import { fmtDate, fmtMoney, type Vehicle, type WorkOrder } from "@/lib/mock/data";
 import { renderWorkOrderPdf, type WorkOrderPdfData } from "@/lib/work-order-pdf";
-import { Printer, Download, PenLine, Mail, Upload, CheckCircle2 } from "lucide-react";
+import { Printer, Download, PenLine, Mail, Upload, CheckCircle2, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -146,6 +146,16 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, vehicle }: Prop
     }
   }
 
+  function copyFieldLink() {
+    const token = workOrder.fieldToken ?? ensureWorkOrderFieldToken(workOrder.id);
+    if (!token) { toast.error("Could not create field link"); return; }
+    const url = `${window.location.origin}/work-order/${token}`;
+    navigator.clipboard.writeText(url).then(
+      () => toast.success("Field link copied", { description: "Send to the mechanic's phone." }),
+      () => toast.error("Could not copy link", { description: url }),
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto">
@@ -158,6 +168,11 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, vehicle }: Prop
                 <CheckCircle2 className="mr-1 h-3 w-3" /> Completed
               </Badge>
             )}
+            {workOrder.fieldSubmittedAt && (
+              <Badge variant="outline" className="border-primary/60 bg-primary/10 text-primary">
+                <Smartphone className="mr-1 h-3 w-3" /> Field submission received
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>
             {vehicle.year} {vehicle.make} {vehicle.model} · Tag #{vehicle.plate} · Scheduled {fmtDate(workOrder.scheduledDate)}
@@ -168,6 +183,7 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, vehicle }: Prop
           <Button size="sm" variant="outline" onClick={printOrder} disabled={busy}><Printer className="mr-1.5 h-4 w-4" /> Print</Button>
           <Button size="sm" onClick={downloadPdf} disabled={busy}><Download className="mr-1.5 h-4 w-4" /> Download PDF</Button>
           <Button size="sm" variant="outline" onClick={emailMechanic} disabled={busy}><Mail className="mr-1.5 h-4 w-4" /> Email to Mechanic</Button>
+          <Button size="sm" variant="outline" onClick={copyFieldLink} disabled={busy}><Smartphone className="mr-1.5 h-4 w-4" /> Copy Field Link</Button>
           <input ref={fileRef} type="file" className="hidden" onChange={uploadSigned} accept="image/*,application/pdf" />
           <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={busy}><Upload className="mr-1.5 h-4 w-4" /> Upload Signed Copy</Button>
         </div>

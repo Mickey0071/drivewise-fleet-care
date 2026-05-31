@@ -395,6 +395,8 @@ const fromWorkOrder = (r: any): WorkOrder => ({
   adminSignedAt: r.admin_signed_at ?? undefined,
   signedDocUrl: r.signed_doc_url ?? undefined,
   createdAt: r.created_at ?? undefined,
+  fieldToken: r.field_token ?? undefined,
+  fieldSubmittedAt: r.field_submitted_at ?? undefined,
 });
 const toWorkOrder = (w: WorkOrder) => ({
   id: w.id, vehicle_id: w.vehicleId, service_type: w.serviceType,
@@ -411,6 +413,8 @@ const toWorkOrder = (w: WorkOrder) => ({
   admin_signature: w.adminSignature ?? null,
   admin_signed_at: w.adminSignedAt ?? null,
   signed_doc_url: w.signedDocUrl ?? null,
+  field_token: w.fieldToken ?? null,
+  field_submitted_at: w.fieldSubmittedAt ?? null,
 });
 
 let hydrationPromise: Promise<void> | null = null;
@@ -1498,12 +1502,28 @@ export function addWorkOrder(input: Omit<WorkOrder, "id" | "status" | "createdAt
     id: nextWorkOrderId(),
     status: input.status ?? "pending",
     createdAt: new Date().toISOString(),
+    fieldToken: genFieldToken(),
     ...input,
   };
   workOrders.push(rec);
   cloudWrite("work_orders:insert", supabase.from("work_orders").insert(toWorkOrder(rec)));
   emit();
   return rec;
+}
+
+function genFieldToken(): string {
+  const a = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Ensure a work order has a field-access token (for older records), returns it. */
+export function ensureWorkOrderFieldToken(id: string): string | undefined {
+  const w = workOrders.find(x => x.id === id);
+  if (!w) return undefined;
+  if (w.fieldToken) return w.fieldToken;
+  const token = genFieldToken();
+  updateWorkOrder(id, { fieldToken: token });
+  return token;
 }
 
 export function updateWorkOrder(id: string, patch: Partial<WorkOrder>) {

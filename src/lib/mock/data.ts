@@ -181,6 +181,8 @@ export interface WorkOrder {
   adminSignedAt?: string;
   signedDocUrl?: string;
   createdAt?: string;
+  fieldToken?: string;
+  fieldSubmittedAt?: string;
 }
 export interface Expense {
   id: string; category: string; amount: number; date: string;
