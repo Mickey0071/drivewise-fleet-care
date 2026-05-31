@@ -22,6 +22,43 @@ export function lastServiceFor(list: Maintenance[], vehicleId: string): Maintena
 }
 
 // ---------------------------------------------------------------------------
+// Open maintenance issue (repair ticket) helpers — used to block rentals.
+// ---------------------------------------------------------------------------
+
+/** The most recent OPEN (incomplete) maintenance issue for a vehicle, if any. */
+export function openIssueFor(list: Maintenance[], vehicleId: string): Maintenance | undefined {
+  return list
+    .filter((m) => m.vehicleId === vehicleId && !m.dateCompleted)
+    .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id))[0];
+}
+
+export interface OpenIssueSummary {
+  issue: string;
+  vendor: string;
+  downPayment?: string;
+  balance?: string;
+  estimatedReturn?: string;
+}
+
+function matchLine(notes: string, label: string): string | undefined {
+  const re = new RegExp(`${label}\\s*:\\s*(.+)`, "i");
+  const m = notes.match(re);
+  return m ? m[1].trim() : undefined;
+}
+
+/** Parse the human-readable issue details out of a maintenance ticket. */
+export function summarizeOpenIssue(m: Maintenance): OpenIssueSummary {
+  const notes = m.notes ?? "";
+  return {
+    issue: m.serviceType || "Maintenance issue",
+    vendor: (m.vendor && m.vendor.trim()) || "—",
+    downPayment: matchLine(notes, "Down payment"),
+    balance: matchLine(notes, "Balance"),
+    estimatedReturn: matchLine(notes, "Estimated return"),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Red-alert system for overdue / upcoming maintenance.
 // ---------------------------------------------------------------------------
 
