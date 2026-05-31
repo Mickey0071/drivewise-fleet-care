@@ -221,7 +221,9 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       });
       return;
     }
-    if (vehicle.hasOpenIssues && !openIssueAcknowledged) {
+    // Open maintenance issue is a HARD block — the vehicle cannot be rented
+    // until the repair ticket is marked completed.
+    if (vehicle.hasOpenIssues) {
       setOpenIssueWarning(true);
       return;
     }
