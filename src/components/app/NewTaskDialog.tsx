@@ -197,8 +197,15 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     setAddress((prev) => prev || driver.address || "");
   }, [isRepo, rentalId, rentals, drivers]);
 
+  // Build the documents-needed checklist for DMV runs (includes custom "Other" entry).
+  const dmvDocsNeeded = useMemo(() => {
+    const out: Record<string, boolean> = {};
+    for (const [k, v] of Object.entries(drDocs)) if (v) out[k] = true;
+    if (drOtherDoc.trim()) out[drOtherDoc.trim()] = true;
+    return out;
+  }, [drDocs, drOtherDoc]);
+
   function onVendorChange(id: string) {
-    setVendorId(id);
     setVendorId(id);
     if (id === "__custom" || id === "") {
       return;
