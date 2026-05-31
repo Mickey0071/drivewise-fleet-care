@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { vehicles } from "@/lib/mock/data";
 import { addMaintenance, useStoreVersion } from "@/lib/mock/store";
+import { ServiceTypeCombobox } from "@/components/app/ServiceTypeCombobox";
 import { toast } from "sonner";
 
 interface Props {
@@ -25,7 +26,6 @@ export function LogServiceDialog({ open, onOpenChange, initialVehicleId }: Props
   useStoreVersion();
   const [vehicleId, setVehicleId] = useState<string>(initialVehicleId ?? "");
   const [serviceType, setServiceType] = useState("");
-  const [serviceOther, setServiceOther] = useState("");
   const [vendor, setVendor] = useState("");
   const [dateCompleted, setDateCompleted] = useState(today());
   const [mileage, setMileage] = useState<string>("");
@@ -35,13 +35,13 @@ export function LogServiceDialog({ open, onOpenChange, initialVehicleId }: Props
 
   const reset = () => {
     setVehicleId(initialVehicleId ?? "");
-    setServiceType(""); setServiceOther(""); setVendor(""); setDateCompleted(today());
+    setServiceType(""); setVendor(""); setDateCompleted(today());
     setMileage(""); setCost(""); setNextServiceDue(plusDays(90)); setNotes("");
   };
 
   const submit = () => {
     if (!vehicleId) return toast.error("Select a vehicle");
-    const resolvedType = serviceType === "Other" ? serviceOther.trim() : serviceType.trim();
+    const resolvedType = serviceType.trim();
     if (!resolvedType) return toast.error("Service type is required");
     if (!vendor.trim()) return toast.error("Vendor is required");
     const costNum = Number(cost);
@@ -84,18 +84,7 @@ export function LogServiceDialog({ open, onOpenChange, initialVehicleId }: Props
           </div>
           <div className="grid gap-1.5">
             <Label>Service type</Label>
-            <Select value={serviceType} onValueChange={setServiceType}>
-              <SelectTrigger><SelectValue placeholder="Select service type" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Oil Change">Oil Change</SelectItem>
-                <SelectItem value="Inspection">Inspection</SelectItem>
-                <SelectItem value="Registration">Registration</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-            {serviceType === "Other" && (
-              <Input value={serviceOther} onChange={e => setServiceOther(e.target.value)} placeholder="Describe service" />
-            )}
+            <ServiceTypeCombobox value={serviceType} onChange={setServiceType} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
