@@ -37,6 +37,7 @@ const fromVehicle = (r: any) => ({
   registrationExpiry: r.registration_expiry ?? undefined,
   insuranceExpiry: r.insurance_expiry ?? undefined,
   hasOpenIssues: !!r.has_open_issues,
+  maintenanceSettings: r.maintenance_settings ?? undefined,
 });
 const toVehicle = (v: any) => ({
   id: v.id, make: v.make, model: v.model, year: v.year, vin: v.vin,
