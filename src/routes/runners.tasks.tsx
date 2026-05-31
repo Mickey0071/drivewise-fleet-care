@@ -390,6 +390,44 @@ function RunnerTasksPage() {
                   </Button>
                 )
               )}
+              {detail.task_type === "repo" && (
+                <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs">
+                  <p className="mb-1 font-semibold text-destructive">🚨 Repo</p>
+                  {detail.rp_reason && <p><span className="text-muted-foreground">Reason:</span> {detail.rp_reason}</p>}
+                  {detail.rp_customer_name && <p><span className="text-muted-foreground">Customer:</span> {detail.rp_customer_name}</p>}
+                  {detail.rp_customer_phone && <p><span className="text-muted-foreground">Phone:</span> {detail.rp_customer_phone}</p>}
+                  <p><span className="text-muted-foreground">Tow authorized:</span> {detail.rp_tow_authorized ? "Yes" : "No"}</p>
+                  {detail.rp_status_checklist && (
+                    <p><span className="text-muted-foreground">Status:</span> {Object.entries(detail.rp_status_checklist).filter(([, v]) => v).map(([k]) => k).join(", ") || "(none)"}</p>
+                  )}
+                  {detail.rp_odometer != null && <p><span className="text-muted-foreground">Mileage:</span> {detail.rp_odometer.toLocaleString()}</p>}
+                  {detail.rp_location_after && <p><span className="text-muted-foreground">Location after:</span> {detail.rp_location_after}</p>}
+                  {detail.rp_pickup_at && <p><span className="text-muted-foreground">Repo date:</span> {new Date(detail.rp_pickup_at).toLocaleString()}</p>}
+                  {detail.rp_notes && <p><span className="text-muted-foreground">Notes:</span> {detail.rp_notes}</p>}
+                  {detail.rp_photos && detail.rp_photos.length > 0 && (
+                    <div className="mt-2 grid grid-cols-4 gap-1">
+                      {detail.rp_photos.map((url, i) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer">
+                          <img src={url} alt={`Repo ${i + 1}`} className="h-14 w-full rounded object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {detail.task_type === "repo" && detail.status === "completed" && (
+                detail.approved_at ? (
+                  <p className="text-xs text-emerald-600">✓ Approved & fleet updated {new Date(detail.approved_at).toLocaleString()}</p>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={approving === detail.id}
+                    onClick={() => handleApproveRepo(detail)}
+                  >
+                    {approving === detail.id ? "Updating…" : "Approve & Update Fleet"}
+                  </Button>
+                )
+              )}
             </div>
           )}
         </DialogContent>
