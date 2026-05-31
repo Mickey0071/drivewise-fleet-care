@@ -56,7 +56,8 @@ export function ResolveMaintenanceDialog({ open, onOpenChange, record }: Props) 
     updateMaintenance(record.id, {
       dateCompleted,
       cost: costNum,
-      vendor: completedBy.trim(),
+      completedBy: completedBy.trim(),
+      vendor: record.vendor?.trim() ? record.vendor : completedBy.trim(),
       notes: nextNotes,
     });
     toast.success("Issue marked as resolved");
