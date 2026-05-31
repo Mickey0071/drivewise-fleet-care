@@ -219,6 +219,12 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   async function confirm() {
     if (!vehicle || !driver || !startDate) return;
     if (saving) return;
+    if (driver.blocked) {
+      toast.error(`${driver.fullName} is blocked from renting`, {
+        description: driver.blockReason ? `Reason: ${driver.blockReason}` : "Unblock the renter before booking.",
+      });
+      return;
+    }
     if (awaitingPostReturnInspection(vehicle.id) && !(isAdmin && inspectionOverride)) {
       toast.error("Vehicle needs a runner inspection first", {
         description: "Submit a passing post-return checklist before booking this vehicle.",
