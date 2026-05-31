@@ -168,6 +168,11 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, vehicle }: Prop
                 <CheckCircle2 className="mr-1 h-3 w-3" /> Completed
               </Badge>
             )}
+            {workOrder.fieldSubmittedAt && (
+              <Badge variant="outline" className="border-primary/60 bg-primary/10 text-primary">
+                <Smartphone className="mr-1 h-3 w-3" /> Field submission received
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>
             {vehicle.year} {vehicle.make} {vehicle.model} · Tag #{vehicle.plate} · Scheduled {fmtDate(workOrder.scheduledDate)}
