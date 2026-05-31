@@ -1163,6 +1163,7 @@ export function updateVehicle(id: string, fields: Partial<Omit<Vehicle, "id">>) 
   if (fields.ezPassTag !== undefined) patch.ez_pass_tag = fields.ezPassTag ?? null;
   if (fields.registrationExpiry !== undefined) patch.registration_expiry = fields.registrationExpiry ?? null;
   if (fields.insuranceExpiry !== undefined) patch.insurance_expiry = fields.insuranceExpiry ?? null;
+  if (fields.maintenanceSettings !== undefined) patch.maintenance_settings = fields.maintenanceSettings ?? {};
   const cloudReady = cloudWrite("vehicle:update", supabase.from("vehicles").update(patch as never).eq("id", id)).catch((error) => {
     Object.assign(v, prev);
     emit();
