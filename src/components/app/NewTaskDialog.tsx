@@ -199,6 +199,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
 
   function onVendorChange(id: string) {
     setVendorId(id);
+    setVendorId(id);
     if (id === "__custom" || id === "") {
       return;
     }
