@@ -13,7 +13,7 @@ import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { NewTaskDialog } from "@/components/app/NewTaskDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useRef, useState } from "react";
-import { ArrowLeft, Link2, Camera, Pencil, Send, FileText } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,10 @@ import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog"
 import { ResolveMaintenanceDialog } from "@/components/app/ResolveMaintenanceDialog";
 import { MaintenanceSettingsDialog } from "@/components/app/MaintenanceSettingsDialog";
 import { ServiceHistoryReportDialog } from "@/components/app/ServiceHistoryReportDialog";
-import type { Maintenance } from "@/lib/mock/data";
+import { CreateWorkOrderDialog } from "@/components/app/CreateWorkOrderDialog";
+import { WorkOrderDialog } from "@/components/app/WorkOrderDialog";
+import type { Maintenance, WorkOrder } from "@/lib/mock/data";
+import { workOrders } from "@/lib/mock/data";
 import { isServiceLogRecord, lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { toast } from "sonner";
 
