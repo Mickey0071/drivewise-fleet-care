@@ -33,6 +33,9 @@ function Index() {
   const overdue = payments.filter(p => p.status === "missed" || p.status === "late");
   const overdueAmount = overdue.reduce((s, p) => s + p.amount, 0);
   const serviceAlerts = maintenance.filter(m => m.nextServiceDue && new Date(m.nextServiceDue) <= weekEnd);
+  const overdueServices = vehicles.flatMap(v =>
+    computeVehicleAlerts(v).map(a => ({ vehicle: v, alert: a }))
+  );
   const pendingReview = useMemo(
     () => rentals.filter(r => r.staffReviewStatus === "pending"),
     // re-derive whenever the store version changes (useStoreVersion above triggers re-render)
