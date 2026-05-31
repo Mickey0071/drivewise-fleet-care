@@ -367,6 +367,9 @@ const fromRepairType = (r: any): RepairType => ({
 const toRepairType = (t: RepairType) => ({
   id: t.id, name: t.name, description: t.description, sort_order: t.sortOrder, created_at: t.createdAt,
 });
+const fromServiceType = (r: any): ServiceType => ({
+  id: r.id, name: r.name, description: r.description ?? "", sortOrder: r.sort_order ?? 0, createdAt: r.created_at,
+});
 
 let hydrationPromise: Promise<void> | null = null;
 let hydrated = false;
