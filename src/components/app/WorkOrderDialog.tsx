@@ -7,10 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import { useAgreementSettings } from "@/lib/agreementSettings";
-import { updateWorkOrder, uploadWorkOrderDoc, useStoreVersion } from "@/lib/mock/store";
+import { updateWorkOrder, uploadWorkOrderDoc, ensureWorkOrderFieldToken, useStoreVersion } from "@/lib/mock/store";
 import { fmtDate, fmtMoney, type Vehicle, type WorkOrder } from "@/lib/mock/data";
 import { renderWorkOrderPdf, type WorkOrderPdfData } from "@/lib/work-order-pdf";
-import { Printer, Download, PenLine, Mail, Upload, CheckCircle2 } from "lucide-react";
+import { Printer, Download, PenLine, Mail, Upload, CheckCircle2, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -144,6 +144,16 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, vehicle }: Prop
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
     }
+  }
+
+  function copyFieldLink() {
+    const token = workOrder.fieldToken ?? ensureWorkOrderFieldToken(workOrder.id);
+    if (!token) { toast.error("Could not create field link"); return; }
+    const url = `${window.location.origin}/work-order/${token}`;
+    navigator.clipboard.writeText(url).then(
+      () => toast.success("Field link copied", { description: "Send to the mechanic's phone." }),
+      () => toast.error("Could not copy link", { description: url }),
+    );
   }
 
   return (
