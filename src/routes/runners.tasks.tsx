@@ -15,6 +15,7 @@ import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog"
 import { Plus, Send } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { resendTaskSms, approveInspectionTask, approveMechanicRunTask, approvePartsRunTask } from "@/lib/tasks.functions";
+import { approveRepoTask } from "@/lib/tasks.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/runners/tasks")({
@@ -57,6 +58,16 @@ type TaskRow = {
   pr_pickup_at: string | null;
   pr_delivered_at: string | null;
   pr_delivery_notes: string | null;
+  rp_reason: string | null;
+  rp_customer_name: string | null;
+  rp_customer_phone: string | null;
+  rp_tow_authorized: boolean | null;
+  rp_status_checklist: Record<string, boolean> | null;
+  rp_odometer: number | null;
+  rp_photos: string[] | null;
+  rp_pickup_at: string | null;
+  rp_location_after: string | null;
+  rp_notes: string | null;
 };
 
 function RunnerTasksPage() {
@@ -71,6 +82,7 @@ function RunnerTasksPage() {
   const approveFn = useServerFn(approveInspectionTask);
   const approveMrFn = useServerFn(approveMechanicRunTask);
   const approvePrFn = useServerFn(approvePartsRunTask);
+  const approveRpFn = useServerFn(approveRepoTask);
   const [approving, setApproving] = useState<string | null>(null);
 
   async function handleResend(taskId: string) {
@@ -128,6 +140,20 @@ function RunnerTasksPage() {
           ? `Approved · $${Number(res.cost).toFixed(2)} logged to maintenance`
           : "Parts run approved",
       );
+      setDetail((d) => (d && d.id === task.id ? { ...d, approved_at: res.approved_at } : d));
+      load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Approve failed");
+    } finally {
+      setApproving(null);
+    }
+  }
+
+  async function handleApproveRepo(task: TaskRow) {
+    setApproving(task.id);
+    try {
+      const res = await approveRpFn({ data: { task_id: task.id } });
+      toast.success(`Fleet updated · vehicle marked REPO'D${res.location ? ` at ${res.location}` : ""}`);
       setDetail((d) => (d && d.id === task.id ? { ...d, approved_at: res.approved_at } : d));
       load();
     } catch (e) {
