@@ -178,6 +178,7 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, vehicle }: Prop
           <Button size="sm" variant="outline" onClick={printOrder} disabled={busy}><Printer className="mr-1.5 h-4 w-4" /> Print</Button>
           <Button size="sm" onClick={downloadPdf} disabled={busy}><Download className="mr-1.5 h-4 w-4" /> Download PDF</Button>
           <Button size="sm" variant="outline" onClick={emailMechanic} disabled={busy}><Mail className="mr-1.5 h-4 w-4" /> Email to Mechanic</Button>
+          <Button size="sm" variant="outline" onClick={copyFieldLink} disabled={busy}><Smartphone className="mr-1.5 h-4 w-4" /> Copy Field Link</Button>
           <input ref={fileRef} type="file" className="hidden" onChange={uploadSigned} accept="image/*,application/pdf" />
           <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={busy}><Upload className="mr-1.5 h-4 w-4" /> Upload Signed Copy</Button>
         </div>
