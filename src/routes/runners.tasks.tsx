@@ -14,7 +14,7 @@ import { NewTaskDialog, TASK_TYPE_OPTIONS } from "@/components/app/NewTaskDialog
 import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
 import { Plus, Send } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { resendTaskSms, approveInspectionTask, approveMechanicRunTask } from "@/lib/tasks.functions";
+import { resendTaskSms, approveInspectionTask, approveMechanicRunTask, approvePartsRunTask } from "@/lib/tasks.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/runners/tasks")({
@@ -47,6 +47,16 @@ type TaskRow = {
   mr_dropoff_at: string | null;
   mr_mechanic_notes: string | null;
   mr_photos: string[] | null;
+  pr_vendor_name: string | null;
+  pr_contact_phone: string | null;
+  pr_parts_needed: string | null;
+  pr_destination: string | null;
+  pr_parts_picked_up: { label: string; checked: boolean }[] | null;
+  pr_cost: number | null;
+  pr_photos: string[] | null;
+  pr_pickup_at: string | null;
+  pr_delivered_at: string | null;
+  pr_delivery_notes: string | null;
 };
 
 function RunnerTasksPage() {
@@ -60,6 +70,7 @@ function RunnerTasksPage() {
   const resendFn = useServerFn(resendTaskSms);
   const approveFn = useServerFn(approveInspectionTask);
   const approveMrFn = useServerFn(approveMechanicRunTask);
+  const approvePrFn = useServerFn(approvePartsRunTask);
   const [approving, setApproving] = useState<string | null>(null);
 
   async function handleResend(taskId: string) {
@@ -108,6 +119,24 @@ function RunnerTasksPage() {
     }
   }
 
+  async function handleApprovePartsRun(task: TaskRow) {
+    setApproving(task.id);
+    try {
+      const res = await approvePrFn({ data: { task_id: task.id } });
+      toast.success(
+        res.cost != null
+          ? `Approved · $${Number(res.cost).toFixed(2)} logged to maintenance`
+          : "Parts run approved",
+      );
+      setDetail((d) => (d && d.id === task.id ? { ...d, approved_at: res.approved_at } : d));
+      load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Approve failed");
+    } finally {
+      setApproving(null);
+    }
+  }
+
   const [fStatus, setFStatus] = useState("all");
   const [fType, setFType] = useState("all");
   const [fRunner, setFRunner] = useState("all");
@@ -118,7 +147,7 @@ function RunnerTasksPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .select("id, task_type, status, priority_level, description, address, due_date, runner_name, assigned_to_user_id, linked_vehicle_id, linked_rental_id, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at, approved_at, mr_vendor_name, mr_contact_phone, mr_work_order, mr_dropoff_mileage, mr_dropoff_at, mr_mechanic_notes, mr_photos")
+      .select("id, task_type, status, priority_level, description, address, due_date, runner_name, assigned_to_user_id, linked_vehicle_id, linked_rental_id, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at, approved_at, mr_vendor_name, mr_contact_phone, mr_work_order, mr_dropoff_mileage, mr_dropoff_at, mr_mechanic_notes, mr_photos, pr_vendor_name, pr_contact_phone, pr_parts_needed, pr_destination, pr_parts_picked_up, pr_cost, pr_photos, pr_pickup_at, pr_delivered_at, pr_delivery_notes")
       .order("created_at", { ascending: false })
       .limit(500);
     setLoading(false);
@@ -278,6 +307,44 @@ function RunnerTasksPage() {
                     size="sm"
                     disabled={approving === detail.id}
                     onClick={() => handleApproveMechanicRun(detail)}
+                  >
+                    {approving === detail.id ? "Updating…" : "Approve & Update Fleet"}
+                  </Button>
+                )
+              )}
+              {detail.task_type === "parts" && (
+                <div className="rounded-md border border-border bg-muted/30 p-2 text-xs">
+                  <p className="mb-1 font-semibold">📦 Parts Run</p>
+                  {detail.pr_vendor_name && <p><span className="text-muted-foreground">Vendor:</span> {detail.pr_vendor_name}</p>}
+                  {detail.pr_contact_phone && <p><span className="text-muted-foreground">Phone:</span> {detail.pr_contact_phone}</p>}
+                  {detail.pr_parts_needed && <p><span className="text-muted-foreground">Parts needed:</span> {detail.pr_parts_needed}</p>}
+                  {detail.pr_destination && <p><span className="text-muted-foreground">Destination:</span> {detail.pr_destination}</p>}
+                  {detail.pr_parts_picked_up && detail.pr_parts_picked_up.length > 0 && (
+                    <p><span className="text-muted-foreground">Picked up:</span> {detail.pr_parts_picked_up.filter((p) => p.checked).map((p) => p.label).join(", ") || "(none)"}</p>
+                  )}
+                  {detail.pr_cost != null && <p><span className="text-muted-foreground">Cost:</span> ${Number(detail.pr_cost).toFixed(2)}</p>}
+                  {detail.pr_pickup_at && <p><span className="text-muted-foreground">Pickup:</span> {new Date(detail.pr_pickup_at).toLocaleString()}</p>}
+                  {detail.pr_delivered_at && <p><span className="text-muted-foreground">Delivered:</span> {new Date(detail.pr_delivered_at).toLocaleString()}</p>}
+                  {detail.pr_delivery_notes && <p><span className="text-muted-foreground">Delivery notes:</span> {detail.pr_delivery_notes}</p>}
+                  {detail.pr_photos && detail.pr_photos.length > 0 && (
+                    <div className="mt-2 grid grid-cols-4 gap-1">
+                      {detail.pr_photos.map((url, i) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer">
+                          <img src={url} alt={`Parts ${i + 1}`} className="h-14 w-full rounded object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {detail.task_type === "parts" && detail.status === "completed" && (
+                detail.approved_at ? (
+                  <p className="text-xs text-emerald-600">✓ Approved & parts logged {new Date(detail.approved_at).toLocaleString()}</p>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={approving === detail.id}
+                    onClick={() => handleApprovePartsRun(detail)}
                   >
                     {approving === detail.id ? "Updating…" : "Approve & Update Fleet"}
                   </Button>

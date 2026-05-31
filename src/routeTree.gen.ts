@@ -24,6 +24,7 @@ import { Route as PendingAgreementsRouteImport } from './routes/pending-agreemen
 import { Route as PayrollReturnRouteImport } from './routes/payroll-return'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as PaymentsRouteImport } from './routes/payments'
+import { Route as PartsRunTaskRouteImport } from './routes/parts-run-task'
 import { Route as MyTasksRouteImport } from './routes/my-tasks'
 import { Route as MyRentalsRouteImport } from './routes/my-rentals'
 import { Route as MechanicTaskRouteImport } from './routes/mechanic-task'
@@ -135,6 +136,11 @@ const PayrollRoute = PayrollRouteImport.update({
 const PaymentsRoute = PaymentsRouteImport.update({
   id: '/payments',
   path: '/payments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PartsRunTaskRoute = PartsRunTaskRouteImport.update({
+  id: '/parts-run-task',
+  path: '/parts-run-task',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MyTasksRoute = MyTasksRouteImport.update({
@@ -345,6 +351,7 @@ export interface FileRoutesByFullPath {
   '/mechanic-task': typeof MechanicTaskRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/my-tasks': typeof MyTasksRoute
+  '/parts-run-task': typeof PartsRunTaskRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
@@ -399,6 +406,7 @@ export interface FileRoutesByTo {
   '/mechanic-task': typeof MechanicTaskRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/my-tasks': typeof MyTasksRoute
+  '/parts-run-task': typeof PartsRunTaskRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
@@ -454,6 +462,7 @@ export interface FileRoutesById {
   '/mechanic-task': typeof MechanicTaskRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/my-tasks': typeof MyTasksRoute
+  '/parts-run-task': typeof PartsRunTaskRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
@@ -510,6 +519,7 @@ export interface FileRouteTypes {
     | '/mechanic-task'
     | '/my-rentals'
     | '/my-tasks'
+    | '/parts-run-task'
     | '/payments'
     | '/payroll'
     | '/payroll-return'
@@ -564,6 +574,7 @@ export interface FileRouteTypes {
     | '/mechanic-task'
     | '/my-rentals'
     | '/my-tasks'
+    | '/parts-run-task'
     | '/payments'
     | '/payroll'
     | '/payroll-return'
@@ -618,6 +629,7 @@ export interface FileRouteTypes {
     | '/mechanic-task'
     | '/my-rentals'
     | '/my-tasks'
+    | '/parts-run-task'
     | '/payments'
     | '/payroll'
     | '/payroll-return'
@@ -673,6 +685,7 @@ export interface RootRouteChildren {
   MechanicTaskRoute: typeof MechanicTaskRoute
   MyRentalsRoute: typeof MyRentalsRouteWithChildren
   MyTasksRoute: typeof MyTasksRoute
+  PartsRunTaskRoute: typeof PartsRunTaskRoute
   PaymentsRoute: typeof PaymentsRoute
   PayrollRoute: typeof PayrollRoute
   PayrollReturnRoute: typeof PayrollReturnRoute
@@ -813,6 +826,13 @@ declare module '@tanstack/react-router' {
       path: '/payments'
       fullPath: '/payments'
       preLoaderRoute: typeof PaymentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parts-run-task': {
+      id: '/parts-run-task'
+      path: '/parts-run-task'
+      fullPath: '/parts-run-task'
+      preLoaderRoute: typeof PartsRunTaskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/my-tasks': {
@@ -1117,6 +1137,7 @@ const rootRouteChildren: RootRouteChildren = {
   MechanicTaskRoute: MechanicTaskRoute,
   MyRentalsRoute: MyRentalsRouteWithChildren,
   MyTasksRoute: MyTasksRoute,
+  PartsRunTaskRoute: PartsRunTaskRoute,
   PaymentsRoute: PaymentsRoute,
   PayrollRoute: PayrollRoute,
   PayrollReturnRoute: PayrollReturnRoute,
@@ -1154,13 +1175,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

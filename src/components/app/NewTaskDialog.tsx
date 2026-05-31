@@ -76,6 +76,9 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const [vendorName, setVendorName] = useState<string>("");
   const [contactPhone, setContactPhone] = useState<string>("");
   const [workOrder, setWorkOrder] = useState<string>("");
+  // Parts-run specific fields
+  const [prPartsNeeded, setPrPartsNeeded] = useState<string>("");
+  const [prDestination, setPrDestination] = useState<string>("");
 
   // Reset state when dialog opens (so prefill from a different context is honored)
   useEffect(() => {
@@ -93,6 +96,8 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     setVendorName("");
     setContactPhone("");
     setWorkOrder("");
+    setPrPartsNeeded("");
+    setPrDestination("");
   }, [open, prefill]);
 
   // Load data on open
@@ -134,6 +139,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const selectedIsStaffOnly = assignedTo.startsWith("staff:");
   const selectedVehicle = useMemo(() => vehicles.find((v) => v.id === vehicleId), [vehicles, vehicleId]);
   const isMechanicRun = taskType === "mechanic_run";
+  const isPartsRun = taskType === "parts";
 
   function onVendorChange(id: string) {
     setVendorId(id);
@@ -187,6 +193,10 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         mr_vendor_name: isMechanicRun ? (vendorName.trim() || null) : null,
         mr_contact_phone: isMechanicRun ? (contactPhone.trim() || null) : null,
         mr_work_order: isMechanicRun ? (workOrder.trim() || null) : null,
+        pr_vendor_name: isPartsRun ? (vendorName.trim() || null) : null,
+        pr_contact_phone: isPartsRun ? (contactPhone.trim() || null) : null,
+        pr_parts_needed: isPartsRun ? (prPartsNeeded.trim() || null) : null,
+        pr_destination: isPartsRun ? (prDestination.trim() || null) : null,
       }});
       console.log("Task created successfully");
       console.log(`[NewTaskDialog] Task created. notify_sms was: ${notifySms}, runner_phone: ${selectedRunner?.phone ?? "(none)"}, sms_status: ${res.sms_status}${res.sms_error ? ` (${res.sms_error})` : ""}`);
@@ -311,6 +321,45 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
               <div>
                 <Label htmlFor="mr-wo">Work Order #</Label>
                 <Input id="mr-wo" value={workOrder} onChange={(e) => setWorkOrder(e.target.value)} placeholder="e.g. WO-2026-0045" maxLength={120} />
+              </div>
+            </div>
+          )}
+
+          {isPartsRun && (
+            <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+              <p className="text-xs font-semibold text-muted-foreground">🏷️ Parts Run Details</p>
+              <div>
+                <Label>Vendor</Label>
+                <Select value={vendorId} onValueChange={onVendorChange}>
+                  <SelectTrigger><SelectValue placeholder="Pick a vendor or enter manually…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__custom">✏️ Enter manually</SelectItem>
+                    {vendors.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>{v.name}{v.service_type ? ` · ${v.service_type}` : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  className="mt-2"
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  placeholder="Vendor name"
+                  maxLength={200}
+                />
+              </div>
+              <div>
+                <Label htmlFor="pr-phone">Contact Phone</Label>
+                <Input id="pr-phone" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="e.g. 215-555-1234" maxLength={40} />
+              </div>
+              <div>
+                <Label htmlFor="pr-parts">Parts Needed</Label>
+                <Textarea id="pr-parts" value={prPartsNeeded} onChange={(e) => setPrPartsNeeded(e.target.value)} rows={2}
+                  maxLength={2000} placeholder='e.g. "Transmission fluid (2 quarts), oil filter, air filter"' />
+              </div>
+              <div>
+                <Label htmlFor="pr-dest">Destination</Label>
+                <Input id="pr-dest" value={prDestination} onChange={(e) => setPrDestination(e.target.value)}
+                  placeholder="e.g. Deliver to ABC Repairs (123 Main St)" maxLength={500} />
               </div>
             </div>
           )}
