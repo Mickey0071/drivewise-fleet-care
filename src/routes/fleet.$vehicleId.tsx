@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
 import { ResolveMaintenanceDialog } from "@/components/app/ResolveMaintenanceDialog";
 import type { Maintenance } from "@/lib/mock/data";
+import { isServiceLogRecord, lastServiceFor } from "@/lib/maintenance-utils";
 import { toast } from "sonner";
 
 const REPAIR_KEYWORDS = ["brake", "transmission", "repair", "pads", "engine", "battery", "tire", "body", "glass", "diagnostic"];
@@ -50,6 +51,9 @@ function VehicleDetail() {
   const vRentals = rentals.filter(r => r.vehicleId === v.id);
   const vMx = maintenance.filter(m => m.vehicleId === v.id);
   const openIssues = vMx.filter(m => !m.dateCompleted);
+  const serviceLog = vMx.filter(isServiceLogRecord)
+    .sort((a, b) => (b.dateCompleted ?? "").localeCompare(a.dateCompleted ?? ""));
+  const lastSvc = lastServiceFor(maintenance, v.id);
   const vRepairs = vMx.filter(m => REPAIR_KEYWORDS.some(keyword => m.serviceType.toLowerCase().includes(keyword)));
   const vViol = violations.filter(x => x.vehicleId === v.id);
   const vInsp = inspections.filter(i => i.vehicleId === v.id);
@@ -268,6 +272,15 @@ function VehicleDetail() {
         </TabsContent>
 
         <TabsContent value="maintenance" className="mt-4 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Stat label="Last service" value={lastSvc ? `${lastSvc.serviceType}` : "—"} />
+            <Stat label="Next service due" value={lastSvc ? fmtDate(lastSvc.nextServiceDue) : "—"} />
+          </div>
+          <Section title={`Service log (${serviceLog.length})`}>
+            {serviceLog.length === 0 ? <Empty/> : serviceLog.map(m => (
+              <Row key={m.id} title={m.serviceType} sub={`${fmtDate(m.dateCompleted)} · ${m.vendor || "—"} · ${m.mileageAtService.toLocaleString()} mi · next due ${fmtDate(m.nextServiceDue)}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
+            ))}
+          </Section>
           <Section title={`Maintenance records (${vMx.length})`}>
             {vMx.length === 0 ? <Empty/> : vMx.map(m => (
               <Row key={m.id} title={m.serviceType} sub={`${fmtDate(m.dateCompleted)} · ${m.vendor} · ${m.mileageAtService.toLocaleString()} mi · next due ${fmtDate(m.nextServiceDue)}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
