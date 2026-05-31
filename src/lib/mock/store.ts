@@ -53,6 +53,7 @@ const toVehicle = (v: any) => ({
   ez_pass_tag: v.ezPassTag ?? null,
   registration_expiry: v.registrationExpiry ?? null,
   insurance_expiry: v.insuranceExpiry ?? null,
+  maintenance_settings: v.maintenanceSettings ?? {},
 });
 const fromDriver = (r: any) => ({
   id: r.id, fullName: r.full_name, phone: r.phone, email: r.email,
