@@ -14,7 +14,7 @@ import { NewTaskDialog, TASK_TYPE_OPTIONS } from "@/components/app/NewTaskDialog
 import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
 import { Plus, Send } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { resendTaskSms } from "@/lib/tasks.functions";
+import { resendTaskSms, approveInspectionTask } from "@/lib/tasks.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/runners/tasks")({
@@ -39,6 +39,7 @@ type TaskRow = {
   completed_inspection_id: string | null;
   runner_notes: string | null;
   created_at: string;
+  approved_at: string | null;
 };
 
 function RunnerTasksPage() {
@@ -50,6 +51,8 @@ function RunnerTasksPage() {
   const [inspId, setInspId] = useState<string | null>(null);
   const [resending, setResending] = useState<string | null>(null);
   const resendFn = useServerFn(resendTaskSms);
+  const approveFn = useServerFn(approveInspectionTask);
+  const [approving, setApproving] = useState<string | null>(null);
 
   async function handleResend(taskId: string) {
     setResending(taskId);
@@ -65,6 +68,24 @@ function RunnerTasksPage() {
     }
   }
 
+  async function handleApprove(task: TaskRow) {
+    setApproving(task.id);
+    try {
+      const res = await approveFn({ data: { task_id: task.id } });
+      toast.success(
+        res.mileage != null
+          ? `Fleet updated · mileage ${res.mileage.toLocaleString()} mi recorded`
+          : "Inspection approved · fleet record updated",
+      );
+      setDetail((d) => (d && d.id === task.id ? { ...d, approved_at: res.last_inspection_at } : d));
+      load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Approve failed");
+    } finally {
+      setApproving(null);
+    }
+  }
+
   const [fStatus, setFStatus] = useState("all");
   const [fType, setFType] = useState("all");
   const [fRunner, setFRunner] = useState("all");
@@ -75,7 +96,7 @@ function RunnerTasksPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .select("id, task_type, status, priority_level, description, address, due_date, runner_name, assigned_to_user_id, linked_vehicle_id, linked_rental_id, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at")
+      .select("id, task_type, status, priority_level, description, address, due_date, runner_name, assigned_to_user_id, linked_vehicle_id, linked_rental_id, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at, approved_at")
       .order("created_at", { ascending: false })
       .limit(500);
     setLoading(false);
@@ -206,6 +227,20 @@ function RunnerTasksPage() {
               )}
               {detail.completed_inspection_id && (
                 <Button size="sm" variant="outline" onClick={() => setInspId(detail.completed_inspection_id)}>View Inspection</Button>
+              )}
+              {detail.task_type === "inspection" && detail.status === "completed" && (
+                detail.approved_at ? (
+                  <p className="text-xs text-emerald-600">✓ Approved & fleet updated {new Date(detail.approved_at).toLocaleString()}</p>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="ml-2"
+                    disabled={approving === detail.id}
+                    onClick={() => handleApprove(detail)}
+                  >
+                    {approving === detail.id ? "Updating…" : "Approve & Update Fleet"}
+                  </Button>
+                )
               )}
             </div>
           )}
