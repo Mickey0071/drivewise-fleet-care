@@ -17,20 +17,17 @@ interface Props {
 }
 
 const PART_OPTIONS = [
-  "Transmission fluid",
-  "Engine oil",
-  "Air filter",
-  "Cabin filter",
-  "Battery",
-  "Alternator",
-  "Brake pads",
-  "Brake fluid",
-  "Tires",
+  "Tie Rods",
+  "Control Arm",
+  "Engine",
+  "Transmission",
+  "Brakes",
   "Suspension",
-  "Belts",
-  "Hoses",
-  "Spark plugs",
-  "Coolant",
+  "Alternator",
+  "Starter",
+  "Compressor",
+  "Axle",
+  "Differential",
   "Other",
 ] as const;
 
@@ -158,11 +155,11 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
           </div>
 
           <div className="grid gap-2">
-            <Label>Parts needed</Label>
+            <Label>Parts / Repairs</Label>
             {rows.map((r, i) => (
               <div key={r.key} className="rounded-md border border-border p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Part {i + 1}</span>
+                  <span className="text-xs font-medium text-muted-foreground">Repair {i + 1}</span>
                   {rows.length > 1 && (
                     <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"
                       onClick={() => setRows(rs => rs.filter(x => x.key !== r.key))}>
@@ -172,7 +169,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
                 </div>
                 <div className="grid gap-2">
                   <Select value={r.selection} onValueChange={(v) => updateRow(r.key, { selection: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select part" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Select repair item" /></SelectTrigger>
                     <SelectContent>
                       {PART_OPTIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                     </SelectContent>
@@ -198,7 +195,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
             ))}
             <Button type="button" variant="outline" size="sm" className="w-fit"
               onClick={() => setRows(rs => [...rs, emptyRow()])}>
-              <Plus className="mr-1 h-4 w-4" /> Add another part
+              <Plus className="mr-1 h-4 w-4" /> Add another repair
             </Button>
           </div>
 
