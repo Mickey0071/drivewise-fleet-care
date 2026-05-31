@@ -374,6 +374,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                 {availableVehicles.map(v => {
                   const selected = v.id === vehicleId;
                   const needsInspection = awaitingPostReturnInspection(v.id);
+                  const blockedForIssue = v.hasOpenIssues;
                   return (
                     <button
                       key={v.id}
@@ -382,7 +383,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                       className={cn(
                         "flex items-start gap-3 rounded-lg border bg-card p-3 text-left transition hover:border-primary/50",
                         selected && "border-primary ring-2 ring-primary/20",
-                        needsInspection && "border-destructive/50 bg-destructive/5",
+                        (needsInspection || blockedForIssue) && "border-destructive/50 bg-destructive/5",
                       )}
                     >
                       <Car className="mt-0.5 h-5 w-5 text-muted-foreground" />
@@ -392,6 +393,11 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                           {needsInspection && (
                             <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
                               <AlertTriangle className="h-3 w-3" /> Needs inspection
+                            </span>
+                          )}
+                          {blockedForIssue && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+                              <AlertTriangle className="h-3 w-3" /> Open maintenance issue
                             </span>
                           )}
                         </div>
