@@ -361,6 +361,12 @@ const toPayrollRun = (r: PayrollRun) => ({
   id: r.id, period_start: r.periodStart, period_end: r.periodEnd,
   run_date: r.runDate, total_payout: r.totalPayout, status: r.status,
 });
+const fromRepairType = (r: any): RepairType => ({
+  id: r.id, name: r.name, sortOrder: r.sort_order ?? 0, createdAt: r.created_at,
+});
+const toRepairType = (t: RepairType) => ({
+  id: t.id, name: t.name, sort_order: t.sortOrder, created_at: t.createdAt,
+});
 
 let hydrationPromise: Promise<void> | null = null;
 let hydrated = false;
