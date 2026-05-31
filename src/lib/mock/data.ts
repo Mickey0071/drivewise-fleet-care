@@ -132,7 +132,7 @@ export interface ServiceType {
 export interface Maintenance {
   id: string; vehicleId: string; serviceType: string; cost: number;
   vendor: string; dateCompleted: string; mileageAtService: number;
-  nextServiceDue: string; notes?: string;
+  nextServiceDue: string; notes?: string; completedBy?: string;
   sourceInspectionId?: string;
   createdAt?: string;
 }
