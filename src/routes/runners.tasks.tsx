@@ -173,7 +173,7 @@ function RunnerTasksPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .select("id, task_type, status, priority_level, description, address, due_date, runner_name, assigned_to_user_id, linked_vehicle_id, linked_rental_id, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at, approved_at, mr_vendor_name, mr_contact_phone, mr_work_order, mr_dropoff_mileage, mr_dropoff_at, mr_mechanic_notes, mr_photos, pr_vendor_name, pr_contact_phone, pr_parts_needed, pr_destination, pr_parts_picked_up, pr_cost, pr_photos, pr_pickup_at, pr_delivered_at, pr_delivery_notes")
+      .select("id, task_type, status, priority_level, description, address, due_date, runner_name, assigned_to_user_id, linked_vehicle_id, linked_rental_id, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at, approved_at, mr_vendor_name, mr_contact_phone, mr_work_order, mr_dropoff_mileage, mr_dropoff_at, mr_mechanic_notes, mr_photos, pr_vendor_name, pr_contact_phone, pr_parts_needed, pr_destination, pr_parts_picked_up, pr_cost, pr_photos, pr_pickup_at, pr_delivered_at, pr_delivery_notes, rp_reason, rp_customer_name, rp_customer_phone, rp_tow_authorized, rp_status_checklist, rp_odometer, rp_photos, rp_pickup_at, rp_location_after, rp_notes")
       .order("created_at", { ascending: false })
       .limit(500);
     setLoading(false);
