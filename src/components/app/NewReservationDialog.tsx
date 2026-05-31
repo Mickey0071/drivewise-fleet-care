@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -83,7 +82,6 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [isSwap, setIsSwap] = useState(false);
   const [saving, setSaving] = useState(false);
   const [openIssueWarning, setOpenIssueWarning] = useState(false);
-  const [openIssueAcknowledged, setOpenIssueAcknowledged] = useState(false);
   const [inspectionOverride, setInspectionOverride] = useState(false);
 
   useEffect(() => {
