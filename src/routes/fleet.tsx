@@ -64,6 +64,7 @@ function FleetPage() {
         {filtered.map(v => {
           const openIssueCount = maintenanceList.filter(m => m.vehicleId === v.id && !m.dateCompleted).length;
           const lastSvc = lastServiceFor(maintenanceList, v.id);
+          const alerts = computeVehicleAlerts(v);
           return (
           <Card
             key={v.id}
