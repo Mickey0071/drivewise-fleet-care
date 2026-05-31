@@ -94,6 +94,75 @@ function DriversPage() {
 }
 
 function EditRenterDialog({ driver, onClose }: { driver: Driver | null; onClose: () => void }) {
+  return <EditRenterInner driver={driver} onClose={onClose} />;
+}
+
+function BlockRenterDialog({ driver, onClose }: { driver: Driver | null; onClose: () => void }) {
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const open = !!driver;
+  const isBlocked = !!driver?.blocked;
+
+  useEffect(() => {
+    if (driver) setReason(driver.blockReason ?? "");
+  }, [driver]);
+
+  async function submit() {
+    if (!driver) return;
+    if (!isBlocked && !reason.trim()) { toast.error("A reason is required to block a renter"); return; }
+    setSaving(true);
+    try {
+      if (isBlocked) {
+        await updateDriver(driver.id, { blocked: false, blockReason: undefined, blockedAt: undefined });
+        toast.success(`${driver.fullName} can rent again`);
+      } else {
+        await updateDriver(driver.id, { blocked: true, blockReason: reason.trim(), blockedAt: new Date().toISOString() });
+        toast.success(`${driver.fullName} blocked from renting`);
+      }
+      onClose();
+    } catch (e: any) {
+      toast.error("Update failed", { description: e?.message ?? "Try again" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{isBlocked ? `Unblock ${driver?.fullName}?` : `Block ${driver?.fullName} from renting`}</DialogTitle>
+        </DialogHeader>
+        {isBlocked ? (
+          <div className="space-y-2 text-sm">
+            <p>This renter is currently blocked from new rentals.</p>
+            {driver?.blockReason && <p className="text-muted-foreground">Reason: {driver.blockReason}</p>}
+            <p>Unblocking will allow them to be added to new reservations again.</p>
+          </div>
+        ) : (
+          <div className="grid gap-2">
+            <Label>Reason *</Label>
+            <Textarea
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="e.g. Unpaid balance"
+              rows={3}
+            />
+            <p className="text-xs text-muted-foreground">A blocked renter cannot be added to new reservations until unblocked.</p>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant={isBlocked ? "default" : "destructive"} onClick={submit} disabled={saving}>
+            {saving ? "Saving…" : isBlocked ? "Unblock renter" : "Block renter"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditRenterInner({ driver, onClose }: { driver: Driver | null; onClose: () => void }) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
