@@ -19,8 +19,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
 import { ResolveMaintenanceDialog } from "@/components/app/ResolveMaintenanceDialog";
+import { MaintenanceSettingsDialog } from "@/components/app/MaintenanceSettingsDialog";
 import type { Maintenance } from "@/lib/mock/data";
-import { isServiceLogRecord, lastServiceFor } from "@/lib/maintenance-utils";
+import { isServiceLogRecord, lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { toast } from "sonner";
 
 const REPAIR_KEYWORDS = ["brake", "transmission", "repair", "pads", "engine", "battery", "tire", "body", "glass", "diagnostic"];
@@ -42,6 +43,7 @@ function VehicleDetail() {
   const [shareOpen, setShareOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -70,6 +72,7 @@ function VehicleDetail() {
   const activeDriver = activeRental ? driverById(activeRental.driverId) : null;
   const isCurrentlyRented = v.status === "rented" && !!activeRental && !activeRental.endDate;
   const nextDue = vPayments.find(p => p.status !== "paid");
+  const alerts = computeVehicleAlerts(v);
 
   const uniqueRenters = Array.from(new Map(vRentals.map(r => [r.driverId, driverById(r.driverId)])).entries())
     .map(([driverId, driver]) => {
