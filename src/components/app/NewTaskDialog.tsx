@@ -282,6 +282,39 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
             </Select>
           </div>
 
+          {isMechanicRun && (
+            <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+              <p className="text-xs font-semibold text-muted-foreground">🔧 Mechanic Run Details</p>
+              <div>
+                <Label>Mechanic / Vendor</Label>
+                <Select value={vendorId} onValueChange={onVendorChange}>
+                  <SelectTrigger><SelectValue placeholder="Pick a vendor or enter manually…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__custom">✏️ Enter manually</SelectItem>
+                    {vendors.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>{v.name}{v.service_type ? ` · ${v.service_type}` : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  className="mt-2"
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  placeholder="Vendor name"
+                  maxLength={200}
+                />
+              </div>
+              <div>
+                <Label htmlFor="mr-phone">Contact Phone</Label>
+                <Input id="mr-phone" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="e.g. 215-555-0999" maxLength={40} />
+              </div>
+              <div>
+                <Label htmlFor="mr-wo">Work Order #</Label>
+                <Input id="mr-wo" value={workOrder} onChange={(e) => setWorkOrder(e.target.value)} placeholder="e.g. WO-2026-0045" maxLength={120} />
+              </div>
+            </div>
+          )}
+
           <div>
             <Label>Linked Rental (optional)</Label>
             <Select value={rentalId || "__none"} onValueChange={(v) => setRentalId(v === "__none" ? "" : v)}>
