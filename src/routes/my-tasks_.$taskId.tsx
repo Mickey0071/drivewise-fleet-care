@@ -83,6 +83,8 @@ export default function TaskDetailPage() {
         navigate({ to: "/parts-run-task", search: { task_id: t.id } });
         return;
       case "repo":
+        navigate({ to: "/repo-task", search: { task_id: t.id } });
+        return;
       case "vendor":
       case "other":
       default:
