@@ -118,7 +118,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     setRunnersError(null);
     setRunnersLoading(true);
     (async () => {
-      const [{ runners: r }, vRes, rRes, venRes] = await Promise.all([
+      const [{ runners: r }, vRes, rRes, venRes, drRes] = await Promise.all([
         loadRunners({}).catch((e) => {
           console.error("[NewTaskDialog] loadRunners failed:", e);
           if (!cancelled) setRunnersError(e instanceof Error ? e.message : String(e));
@@ -135,7 +135,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
       setVehicles((vRes.data ?? []) as Vehicle[]);
       setRentals((rRes.data ?? []) as Rental[]);
       setVendors((venRes.data ?? []) as Vendor[]);
-      setDrivers((arguments_drivers_res(venRes), (await Promise.resolve())) as never) as never;
+      setDrivers((drRes.data ?? []) as Driver[]);
     })();
     return () => { cancelled = true; };
   }, [open, loadRunners]);
