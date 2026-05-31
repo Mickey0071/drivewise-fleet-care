@@ -23,6 +23,10 @@ const CreateInput = z.object({
   mr_vendor_name: z.string().trim().max(200).nullable().optional(),
   mr_contact_phone: z.string().trim().max(40).nullable().optional(),
   mr_work_order: z.string().trim().max(120).nullable().optional(),
+  pr_vendor_name: z.string().trim().max(200).nullable().optional(),
+  pr_contact_phone: z.string().trim().max(40).nullable().optional(),
+  pr_parts_needed: z.string().trim().max(2000).nullable().optional(),
+  pr_destination: z.string().trim().max(500).nullable().optional(),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
