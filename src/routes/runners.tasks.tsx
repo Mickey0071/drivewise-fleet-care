@@ -250,6 +250,39 @@ function RunnerTasksPage() {
               {detail.completed_inspection_id && (
                 <Button size="sm" variant="outline" onClick={() => setInspId(detail.completed_inspection_id)}>View Inspection</Button>
               )}
+              {detail.task_type === "mechanic_run" && (
+                <div className="rounded-md border border-border bg-muted/30 p-2 text-xs">
+                  <p className="mb-1 font-semibold">🔧 Mechanic Run</p>
+                  {detail.mr_vendor_name && <p><span className="text-muted-foreground">Vendor:</span> {detail.mr_vendor_name}</p>}
+                  {detail.mr_contact_phone && <p><span className="text-muted-foreground">Phone:</span> {detail.mr_contact_phone}</p>}
+                  {detail.mr_work_order && <p><span className="text-muted-foreground">Work Order:</span> {detail.mr_work_order}</p>}
+                  {detail.mr_dropoff_mileage != null && <p><span className="text-muted-foreground">Mileage at drop-off:</span> {detail.mr_dropoff_mileage.toLocaleString()}</p>}
+                  {detail.mr_dropoff_at && <p><span className="text-muted-foreground">Drop-off:</span> {new Date(detail.mr_dropoff_at).toLocaleString()}</p>}
+                  {detail.mr_mechanic_notes && <p><span className="text-muted-foreground">Mechanic notes:</span> {detail.mr_mechanic_notes}</p>}
+                  {detail.mr_photos && detail.mr_photos.length > 0 && (
+                    <div className="mt-2 grid grid-cols-4 gap-1">
+                      {detail.mr_photos.map((url, i) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer">
+                          <img src={url} alt={`Drop-off ${i + 1}`} className="h-14 w-full rounded object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {detail.task_type === "mechanic_run" && detail.status === "completed" && (
+                detail.approved_at ? (
+                  <p className="text-xs text-emerald-600">✓ Approved & fleet updated {new Date(detail.approved_at).toLocaleString()}</p>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={approving === detail.id}
+                    onClick={() => handleApproveMechanicRun(detail)}
+                  >
+                    {approving === detail.id ? "Updating…" : "Approve & Update Fleet"}
+                  </Button>
+                )
+              )}
               {detail.task_type === "inspection" && detail.status === "completed" && (
                 detail.approved_at ? (
                   <p className="text-xs text-emerald-600">✓ Approved & fleet updated {new Date(detail.approved_at).toLocaleString()}</p>
