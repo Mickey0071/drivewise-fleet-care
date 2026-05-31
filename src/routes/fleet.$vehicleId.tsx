@@ -19,8 +19,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
 import { ResolveMaintenanceDialog } from "@/components/app/ResolveMaintenanceDialog";
+import { MaintenanceSettingsDialog } from "@/components/app/MaintenanceSettingsDialog";
 import type { Maintenance } from "@/lib/mock/data";
-import { isServiceLogRecord, lastServiceFor } from "@/lib/maintenance-utils";
+import { isServiceLogRecord, lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { toast } from "sonner";
 
 const REPAIR_KEYWORDS = ["brake", "transmission", "repair", "pads", "engine", "battery", "tire", "body", "glass", "diagnostic"];
@@ -42,6 +43,7 @@ function VehicleDetail() {
   const [shareOpen, setShareOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -70,6 +72,7 @@ function VehicleDetail() {
   const activeDriver = activeRental ? driverById(activeRental.driverId) : null;
   const isCurrentlyRented = v.status === "rented" && !!activeRental && !activeRental.endDate;
   const nextDue = vPayments.find(p => p.status !== "paid");
+  const alerts = computeVehicleAlerts(v);
 
   const uniqueRenters = Array.from(new Map(vRentals.map(r => [r.driverId, driverById(r.driverId)])).entries())
     .map(([driverId, driver]) => {
@@ -155,6 +158,9 @@ function VehicleDetail() {
             <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="mr-1 h-4 w-4" />Edit
             </Button>
+            <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>
+              Maintenance settings
+            </Button>
             {role === "admin" && (
               <Button size="sm" variant="outline" onClick={() => setTaskOpen(true)}>
                 <Send className="mr-1 h-4 w-4" />Send Task to Runner
@@ -197,6 +203,26 @@ function VehicleDetail() {
                     Mark Resolved
                   </Button>
                 </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {alerts.length > 0 && (
+        <Card className="mb-4 border-destructive/40 bg-destructive/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Maintenance Alerts ({alerts.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5">
+            {alerts.map(a => (
+              <div key={a.key} className="flex items-center gap-2 text-sm">
+                <span aria-hidden>🔴</span>
+                <span className="font-medium">{a.label}:</span>
+                <span className="text-muted-foreground">{a.detail}</span>
               </div>
             ))}
           </CardContent>
@@ -373,6 +399,11 @@ function VehicleDetail() {
         open={!!resolveRecord}
         onOpenChange={(o) => { if (!o) setResolveRecord(null); }}
         record={resolveRecord}
+      />
+      <MaintenanceSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        vehicle={v}
       />
       <div className="mt-6 flex justify-start">
         <Button variant="outline" asChild>

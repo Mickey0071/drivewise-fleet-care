@@ -37,6 +37,7 @@ const fromVehicle = (r: any) => ({
   registrationExpiry: r.registration_expiry ?? undefined,
   insuranceExpiry: r.insurance_expiry ?? undefined,
   hasOpenIssues: !!r.has_open_issues,
+  maintenanceSettings: r.maintenance_settings ?? undefined,
 });
 const toVehicle = (v: any) => ({
   id: v.id, make: v.make, model: v.model, year: v.year, vin: v.vin,
@@ -52,6 +53,7 @@ const toVehicle = (v: any) => ({
   ez_pass_tag: v.ezPassTag ?? null,
   registration_expiry: v.registrationExpiry ?? null,
   insurance_expiry: v.insuranceExpiry ?? null,
+  maintenance_settings: v.maintenanceSettings ?? {},
 });
 const fromDriver = (r: any) => ({
   id: r.id, fullName: r.full_name, phone: r.phone, email: r.email,
@@ -1161,6 +1163,7 @@ export function updateVehicle(id: string, fields: Partial<Omit<Vehicle, "id">>) 
   if (fields.ezPassTag !== undefined) patch.ez_pass_tag = fields.ezPassTag ?? null;
   if (fields.registrationExpiry !== undefined) patch.registration_expiry = fields.registrationExpiry ?? null;
   if (fields.insuranceExpiry !== undefined) patch.insurance_expiry = fields.insuranceExpiry ?? null;
+  if (fields.maintenanceSettings !== undefined) patch.maintenance_settings = fields.maintenanceSettings ?? {};
   const cloudReady = cloudWrite("vehicle:update", supabase.from("vehicles").update(patch as never).eq("id", id)).catch((error) => {
     Object.assign(v, prev);
     emit();

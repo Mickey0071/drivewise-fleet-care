@@ -8,6 +8,7 @@ import { vehicles, fmtMoney } from "@/lib/mock/data";
 import { maintenance as maintenanceList } from "@/lib/mock/data";
 import { fmtDate } from "@/lib/mock/data";
 import { lastServiceFor } from "@/lib/maintenance-utils";
+import { computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { carImage } from "@/lib/mock/carImages";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -63,6 +64,7 @@ function FleetPage() {
         {filtered.map(v => {
           const openIssueCount = maintenanceList.filter(m => m.vehicleId === v.id && !m.dateCompleted).length;
           const lastSvc = lastServiceFor(maintenanceList, v.id);
+          const alerts = computeVehicleAlerts(v);
           return (
           <Card
             key={v.id}
@@ -129,6 +131,15 @@ function FleetPage() {
                     <div>No service logged yet</div>
                   )}
                 </div>
+                {alerts.length > 0 && (
+                  <div className="mt-2 space-y-1 border-t border-destructive/30 pt-2">
+                    {alerts.map(a => (
+                      <div key={a.key} className="text-xs font-medium text-destructive">
+                        🔴 {a.label}: <span className="font-normal">{a.detail}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </div>
             <div className="flex flex-wrap gap-2 border-t border-border bg-muted/30 p-2" onClick={(e) => e.stopPropagation()}>

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { vehicles, payments, maintenance, drivers, rentals, fmtMoney, fmtDate, vehicleById, driverById } from "@/lib/mock/data";
 import { isVehicleBookable, useStoreVersion } from "@/lib/mock/store";
+import { computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { AgreementReviewModal } from "@/components/app/AgreementReviewModal";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -32,6 +33,9 @@ function Index() {
   const overdue = payments.filter(p => p.status === "missed" || p.status === "late");
   const overdueAmount = overdue.reduce((s, p) => s + p.amount, 0);
   const serviceAlerts = maintenance.filter(m => m.nextServiceDue && new Date(m.nextServiceDue) <= weekEnd);
+  const overdueServices = vehicles.flatMap(v =>
+    computeVehicleAlerts(v).map(a => ({ vehicle: v, alert: a }))
+  );
   const pendingReview = useMemo(
     () => rentals.filter(r => r.staffReviewStatus === "pending"),
     // re-derive whenever the store version changes (useStoreVersion above triggers re-render)
@@ -170,6 +174,38 @@ function Index() {
       <Card className="mt-6">
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">Maintenance alerts</CardTitle>
+          <Button variant="ghost" size="sm" asChild><Link to="/maintenance">View log</Link></Button>
+        </CardHeader>
+        <CardContent />
+      </Card>
+
+      <Card className="mt-6 border-destructive/30">
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="text-base">Overdue Services</CardTitle>
+          <Button variant="ghost" size="sm" asChild><Link to="/fleet">View all</Link></Button>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {overdueServices.length === 0 && <p className="text-sm text-muted-foreground">No overdue services.</p>}
+          {overdueServices.map(({ vehicle: v, alert: a }) => (
+            <Link
+              key={`${v.id}-${a.key}`}
+              to="/fleet/$vehicleId"
+              params={{ vehicleId: v.id }}
+              className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-destructive/50"
+            >
+              <div className="flex items-center gap-2 text-sm">
+                <span aria-hidden>🔴</span>
+                <span className="font-medium">{v.year} {v.make} {v.model}</span>
+                <span className="text-muted-foreground">— {a.label} ({a.detail})</span>
+              </div>
+            </Link>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="text-base">Maintenance alerts (service log)</CardTitle>
           <Button variant="ghost" size="sm" asChild><Link to="/maintenance">View log</Link></Button>
         </CardHeader>
         <CardContent className="space-y-2">

@@ -1511,6 +1511,7 @@ export type Database = {
           id: string
           image_url: string | null
           insurance_expiry: string | null
+          maintenance_settings: Json
           make: string
           mileage: number
           model: string
@@ -1538,6 +1539,7 @@ export type Database = {
           id: string
           image_url?: string | null
           insurance_expiry?: string | null
+          maintenance_settings?: Json
           make: string
           mileage?: number
           model: string
@@ -1565,6 +1567,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           insurance_expiry?: string | null
+          maintenance_settings?: Json
           make?: string
           mileage?: number
           model?: string
