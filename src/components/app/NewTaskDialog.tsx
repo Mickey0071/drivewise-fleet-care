@@ -165,6 +165,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const isMechanicRun = taskType === "mechanic_run";
   const isPartsRun = taskType === "parts";
   const isRepo = taskType === "repo";
+  const isDmv = taskType === "dmv";
 
   // Auto-fill customer name/phone/address from the linked rental's driver (repo).
   useEffect(() => {
