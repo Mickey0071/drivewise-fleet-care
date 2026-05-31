@@ -58,6 +58,7 @@ import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$re
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
+import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
 import { Route as ApiPublicHooksAutoRenewChargesRouteImport } from './routes/api/public/hooks/auto-renew-charges'
 
 const ViolationsRoute = ViolationsRouteImport.update({
@@ -307,6 +308,12 @@ const ApiPublicHooksSendRemindersRoute =
     path: '/api/public/hooks/send-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksDailyReportsRoute =
+  ApiPublicHooksDailyReportsRouteImport.update({
+    id: '/api/public/hooks/daily-reports',
+    path: '/api/public/hooks/daily-reports',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksAutoRenewChargesRoute =
   ApiPublicHooksAutoRenewChargesRouteImport.update({
     id: '/api/public/hooks/auto-renew-charges',
@@ -363,6 +370,7 @@ export interface FileRoutesByFullPath {
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
+  '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -415,6 +423,7 @@ export interface FileRoutesByTo {
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
+  '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -468,6 +477,7 @@ export interface FileRoutesById {
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
+  '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -522,6 +532,7 @@ export interface FileRouteTypes {
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/api/public/hooks/auto-renew-charges'
+    | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -574,6 +585,7 @@ export interface FileRouteTypes {
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/api/public/hooks/auto-renew-charges'
+    | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
   id:
@@ -626,6 +638,7 @@ export interface FileRouteTypes {
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/api/public/hooks/auto-renew-charges'
+    | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
@@ -677,6 +690,7 @@ export interface RootRouteChildren {
   InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
   ApiPublicHooksAutoRenewChargesRoute: typeof ApiPublicHooksAutoRenewChargesRoute
+  ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
@@ -1026,6 +1040,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSendRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/daily-reports': {
+      id: '/api/public/hooks/daily-reports'
+      path: '/api/public/hooks/daily-reports'
+      fullPath: '/api/public/hooks/daily-reports'
+      preLoaderRoute: typeof ApiPublicHooksDailyReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/auto-renew-charges': {
       id: '/api/public/hooks/auto-renew-charges'
       path: '/api/public/hooks/auto-renew-charges'
@@ -1105,9 +1126,20 @@ const rootRouteChildren: RootRouteChildren = {
   InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
   ApiPublicHooksAutoRenewChargesRoute: ApiPublicHooksAutoRenewChargesRoute,
+  ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
