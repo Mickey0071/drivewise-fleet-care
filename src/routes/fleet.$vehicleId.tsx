@@ -452,6 +452,19 @@ function VehicleDetail() {
         onOpenChange={setReportOpen}
         vehicle={v}
       />
+      <CreateWorkOrderDialog
+        open={createWoOpen}
+        onOpenChange={setCreateWoOpen}
+        vehicle={v}
+      />
+      {activeWo && (
+        <WorkOrderDialog
+          open={!!activeWo}
+          onOpenChange={(o) => { if (!o) setActiveWo(null); }}
+          workOrder={activeWo}
+          vehicle={v}
+        />
+      )}
       <div className="mt-6 flex justify-start">
         <Button variant="outline" asChild>
           <Link to="/fleet"><ArrowLeft className="mr-1 h-4 w-4" />Back to Fleet</Link>
