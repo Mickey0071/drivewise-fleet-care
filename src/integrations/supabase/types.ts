@@ -20,6 +20,9 @@ export type Database = {
           alt_contact_name: string | null
           alt_contact_phone: string | null
           apt_unit: string | null
+          block_reason: string | null
+          blocked: boolean
+          blocked_at: string | null
           card_last4: string | null
           card_saved_at: string | null
           city: string | null
@@ -51,6 +54,9 @@ export type Database = {
           alt_contact_name?: string | null
           alt_contact_phone?: string | null
           apt_unit?: string | null
+          block_reason?: string | null
+          blocked?: boolean
+          blocked_at?: string | null
           card_last4?: string | null
           card_saved_at?: string | null
           city?: string | null
@@ -82,6 +88,9 @@ export type Database = {
           alt_contact_name?: string | null
           alt_contact_phone?: string | null
           apt_unit?: string | null
+          block_reason?: string | null
+          blocked?: boolean
+          blocked_at?: string | null
           card_last4?: string | null
           card_saved_at?: string | null
           city?: string | null
