@@ -221,6 +221,9 @@ export function isVehicleBookable(
   const vehicle = vehicles.find(v => v.id === vehicleId);
   if (!vehicle) return false;
   if (vehicle.status === "maintenance" || vehicle.status === "impound") return false;
+  // An open maintenance issue (repair ticket) blocks the vehicle from rentals
+  // until the ticket is marked completed.
+  if (vehicle.hasOpenIssues) return false;
   if (vehicle.status === "inspection" && !allowOverride) return false;
   const s = newStart == null ? null : (newStart instanceof Date ? newStart : new Date(newStart));
   const e = newEnd == null ? null : (newEnd instanceof Date ? newEnd : new Date(newEnd));
@@ -1349,6 +1352,18 @@ function nextMaintenanceId() {
   return `M-${n + 1}`;
 }
 
+/** Recompute the local vehicle.hasOpenIssues flag from open maintenance
+ *  tickets. The DB keeps the persisted flag in sync via triggers; this
+ *  mirrors it in-memory so the UI reflects the change immediately. */
+function syncVehicleOpenIssues(vehicleId: string) {
+  const v = vehicles.find(x => x.id === vehicleId);
+  if (!v) return;
+  const open = maintenance.some(m => m.vehicleId === vehicleId && !m.dateCompleted);
+  if (v.hasOpenIssues !== open) {
+    v.hasOpenIssues = open;
+  }
+}
+
 export function addMaintenance(input: Omit<Maintenance, "id">) {
   const rec: Maintenance = { id: nextMaintenanceId(), ...input };
   maintenance.push(rec);
@@ -1363,6 +1378,9 @@ export function addMaintenance(input: Omit<Maintenance, "id">) {
       v.nextServiceDue = input.nextServiceDue;
       cloudWrite("vehicle:update", supabase.from("vehicles").update({ next_service_due: v.nextServiceDue }).eq("id", v.id));
     }
+    // Opening a repair ticket (no completion date) marks the vehicle
+    // unavailable for rentals until the ticket is completed.
+    if (!input.dateCompleted) syncVehicleOpenIssues(v.id);
   }
   emit();
   return rec;
@@ -1395,14 +1413,18 @@ export function updateMaintenance(id: string, patch: Partial<Maintenance>) {
   if (!m) return;
   Object.assign(m, patch);
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  // Completing (or reopening) a ticket flips the vehicle availability flag.
+  syncVehicleOpenIssues(m.vehicleId);
   emit();
 }
 
 export function deleteMaintenance(id: string) {
   const idx = maintenance.findIndex(x => x.id === id);
   if (idx < 0) return;
+  const vehicleId = maintenance[idx].vehicleId;
   maintenance.splice(idx, 1);
   cloudWrite("maintenance:delete", supabase.from("maintenance").delete().eq("id", id));
+  syncVehicleOpenIssues(vehicleId);
   emit();
 }
 

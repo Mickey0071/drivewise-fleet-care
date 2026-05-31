@@ -108,9 +108,8 @@ function FleetPage() {
                       {(openIssueCount > 0 || v.hasOpenIssues) && (
                         <Badge variant="destructive">
                           <AlertTriangle className="mr-1 h-3 w-3" />
-                          {openIssueCount > 0
-                            ? `${openIssueCount} issue${openIssueCount === 1 ? "" : "s"}`
-                            : "Open issue"}
+                          Unavailable · Open maintenance issue
+                          {openIssueCount > 1 ? ` (${openIssueCount})` : ""}
                         </Badge>
                       )}
                     </div>

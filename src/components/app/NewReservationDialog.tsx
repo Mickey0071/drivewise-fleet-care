@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -27,6 +26,7 @@ import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, 
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { US_STATES, formatAddressBlock, formatFullName } from "@/lib/us-states";
+import { openIssueFor, summarizeOpenIssue } from "@/lib/maintenance-utils";
 
 const STEPS = ["Dates", "Vehicle", "Client", "Review"] as const;
 type Step = 0 | 1 | 2 | 3;
@@ -82,7 +82,6 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [isSwap, setIsSwap] = useState(false);
   const [saving, setSaving] = useState(false);
   const [openIssueWarning, setOpenIssueWarning] = useState(false);
-  const [openIssueAcknowledged, setOpenIssueAcknowledged] = useState(false);
   const [inspectionOverride, setInspectionOverride] = useState(false);
 
   useEffect(() => {
@@ -103,7 +102,9 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       const bookable = startDate
         ? isVehicleBookable(v.id, startDate, endDate || null)
         : isVehicleBookable(v.id);
-      if (!bookable && !awaitingPostReturnInspection(v.id)) return false;
+      // Keep blocked-for-issue and awaiting-inspection vehicles in the list so
+      // the user gets an explanatory alert when they try to book them.
+      if (!bookable && !awaitingPostReturnInspection(v.id) && !v.hasOpenIssues) return false;
       return (
         vehQ === "" ||
         `${v.year} ${v.make} ${v.model} ${v.plate}`.toLowerCase().includes(vehQ.toLowerCase())
@@ -117,7 +118,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   useEffect(() => {
     if (!vehicleId || !startDate) return;
     const stillOk = isVehicleBookable(vehicleId, startDate, endDate || null)
-      || awaitingPostReturnInspection(vehicleId);
+      || awaitingPostReturnInspection(vehicleId)
+      || (vehicles.find(v => v.id === vehicleId)?.hasOpenIssues ?? false);
     if (!stillOk) {
       setVehicleId(null);
       setVehicleClearedNotice(true);
@@ -217,7 +219,9 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       });
       return;
     }
-    if (vehicle.hasOpenIssues && !openIssueAcknowledged) {
+    // Open maintenance issue is a HARD block — the vehicle cannot be rented
+    // until the repair ticket is marked completed.
+    if (vehicle.hasOpenIssues) {
       setOpenIssueWarning(true);
       return;
     }
@@ -370,6 +374,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                 {availableVehicles.map(v => {
                   const selected = v.id === vehicleId;
                   const needsInspection = awaitingPostReturnInspection(v.id);
+                  const blockedForIssue = v.hasOpenIssues;
                   return (
                     <button
                       key={v.id}
@@ -378,7 +383,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                       className={cn(
                         "flex items-start gap-3 rounded-lg border bg-card p-3 text-left transition hover:border-primary/50",
                         selected && "border-primary ring-2 ring-primary/20",
-                        needsInspection && "border-destructive/50 bg-destructive/5",
+                        (needsInspection || blockedForIssue) && "border-destructive/50 bg-destructive/5",
                       )}
                     >
                       <Car className="mt-0.5 h-5 w-5 text-muted-foreground" />
@@ -388,6 +393,11 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                           {needsInspection && (
                             <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
                               <AlertTriangle className="h-3 w-3" /> Needs inspection
+                            </span>
+                          )}
+                          {blockedForIssue && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+                              <AlertTriangle className="h-3 w-3" /> Open maintenance issue
                             </span>
                           )}
                         </div>
@@ -701,33 +711,36 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-600" />
-            Vehicle has open maintenance
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            Vehicle unavailable
           </AlertDialogTitle>
-          <AlertDialogDescription>
-            {vehicle ? (
-              <>
-                This vehicle has{" "}
-                <span className="font-semibold">
-                  {maintenance.filter(m => m.vehicleId === vehicle.id && !m.dateCompleted).length}
-                </span>{" "}
-                open maintenance issue(s). Rent anyway?
-              </>
-            ) : null}
+          <AlertDialogDescription asChild>
+            <div>
+              {vehicle ? (
+                <>
+                  This vehicle has an open maintenance issue and cannot be rented
+                  until the repair is completed.
+                  {(() => {
+                    const issue = openIssueFor(maintenance, vehicle.id);
+                    if (!issue) return null;
+                    const s = summarizeOpenIssue(issue);
+                    return (
+                      <ul className="mt-3 space-y-1 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-foreground">
+                        <li><span className="text-muted-foreground">Issue:</span> <span className="font-medium">{s.issue}</span></li>
+                        <li><span className="text-muted-foreground">Vendor:</span> <span className="font-medium">{s.vendor}</span></li>
+                        {s.downPayment && <li><span className="text-muted-foreground">Down payment:</span> <span className="font-medium">{s.downPayment}</span></li>}
+                        {s.balance && <li><span className="text-muted-foreground">Remaining balance:</span> <span className="font-medium">{s.balance}</span></li>}
+                        {s.estimatedReturn && <li><span className="text-muted-foreground">Estimated return:</span> <span className="font-medium">{s.estimatedReturn}</span></li>}
+                      </ul>
+                    );
+                  })()}
+                </>
+              ) : null}
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => {
-              setOpenIssueAcknowledged(true);
-              setOpenIssueWarning(false);
-              // Re-trigger confirm now that user has acknowledged
-              setTimeout(() => { void confirm(); }, 0);
-            }}
-          >
-            Proceed
-          </AlertDialogAction>
+          <AlertDialogCancel>Cancel rental</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
