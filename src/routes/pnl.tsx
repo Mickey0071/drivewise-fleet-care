@@ -537,6 +537,8 @@ function PnLPage() {
 
       <MaintenanceCostBreakdown />
 
+      <RepairTrends />
+
       <Card className="mt-6">
         <CardHeader><CardTitle className="text-base">Per-vehicle P&amp;L</CardTitle></CardHeader>
         <CardContent className="p-0">
