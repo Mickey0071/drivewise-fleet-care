@@ -325,6 +325,45 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
             </div>
           )}
 
+          {isPartsRun && (
+            <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+              <p className="text-xs font-semibold text-muted-foreground">🏷️ Parts Run Details</p>
+              <div>
+                <Label>Vendor</Label>
+                <Select value={vendorId} onValueChange={onVendorChange}>
+                  <SelectTrigger><SelectValue placeholder="Pick a vendor or enter manually…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__custom">✏️ Enter manually</SelectItem>
+                    {vendors.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>{v.name}{v.service_type ? ` · ${v.service_type}` : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  className="mt-2"
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  placeholder="Vendor name"
+                  maxLength={200}
+                />
+              </div>
+              <div>
+                <Label htmlFor="pr-phone">Contact Phone</Label>
+                <Input id="pr-phone" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="e.g. 215-555-1234" maxLength={40} />
+              </div>
+              <div>
+                <Label htmlFor="pr-parts">Parts Needed</Label>
+                <Textarea id="pr-parts" value={prPartsNeeded} onChange={(e) => setPrPartsNeeded(e.target.value)} rows={2}
+                  maxLength={2000} placeholder='e.g. "Transmission fluid (2 quarts), oil filter, air filter"' />
+              </div>
+              <div>
+                <Label htmlFor="pr-dest">Destination</Label>
+                <Input id="pr-dest" value={prDestination} onChange={(e) => setPrDestination(e.target.value)}
+                  placeholder="e.g. Deliver to ABC Repairs (123 Main St)" maxLength={500} />
+              </div>
+            </div>
+          )}
+
           <div>
             <Label>Linked Rental (optional)</Label>
             <Select value={rentalId || "__none"} onValueChange={(v) => setRentalId(v === "__none" ? "" : v)}>
