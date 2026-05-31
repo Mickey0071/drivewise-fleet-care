@@ -385,7 +385,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                     <button
                       key={v.id}
                       type="button"
-                      onClick={() => setVehicleId(v.id)}
+                      onClick={() => { setVehicleId(v.id); if (v.hasOpenIssues) setOpenIssueWarning(true); }}
                       className={cn(
                         "flex items-start gap-3 rounded-lg border bg-card p-3 text-left transition hover:border-primary/50",
                         selected && "border-primary ring-2 ring-primary/20",
