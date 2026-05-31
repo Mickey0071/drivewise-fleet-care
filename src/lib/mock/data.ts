@@ -101,6 +101,13 @@ export interface RepairType {
   sortOrder: number;
   createdAt: string;
 }
+export interface ServiceType {
+  id: string;
+  name: string;
+  description: string;
+  sortOrder: number;
+  createdAt: string;
+}
 export interface Maintenance {
   id: string; vehicleId: string; serviceType: string; cost: number;
   vendor: string; dateCompleted: string; mileageAtService: number;
