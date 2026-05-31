@@ -631,3 +631,136 @@ export const approveMechanicRunTask = createServerFn({ method: "POST" })
 
     return { ok: true, approved_at: nowIso, vendor, mileage: task.mr_dropoff_mileage, vehicle_id: task.linked_vehicle_id };
   });
+
+// Runner: complete a parts-run task (parts picked up + delivered in the field).
+export const completePartsRunTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      task_id: z.string().min(1).max(80),
+      parts_picked_up: z.array(z.object({
+        label: z.string().trim().min(1).max(300),
+        checked: z.boolean(),
+      })).max(50).default([]),
+      cost: z.number().min(0).max(1_000_000).nullable().default(null),
+      photos: z.array(z.string().url().max(1000)).max(20).default([]),
+      delivered: z.boolean(),
+      delivery_notes: z.string().max(4000).default(""),
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    if (!data.delivered) throw new Error("Delivery must be confirmed before completing");
+    const nowIso = new Date().toISOString();
+
+    const pickedLabels = data.parts_picked_up.filter((p) => p.checked).map((p) => p.label);
+    const summary = [
+      `Parts run completed at ${nowIso}.`,
+      `Parts picked up: ${pickedLabels.length ? pickedLabels.join(", ") : "(none marked)"}.`,
+      data.cost != null ? `Cost: $${data.cost.toFixed(2)}.` : null,
+      data.photos.length ? `Photos: ${data.photos.length} attached.` : null,
+      data.delivery_notes.trim() ? `Delivery notes: ${data.delivery_notes.trim()}` : null,
+    ].filter(Boolean).join("\n");
+
+    const { error: updErr } = await supabase
+      .from("tasks")
+      .update({
+        status: "completed",
+        completed_at: nowIso,
+        pr_parts_picked_up: data.parts_picked_up,
+        pr_cost: data.cost,
+        pr_photos: data.photos,
+        pr_pickup_at: nowIso,
+        pr_delivered_at: nowIso,
+        pr_delivery_notes: data.delivery_notes.trim() || null,
+        runner_notes: summary,
+      })
+      .eq("id", data.task_id);
+    if (updErr) throw new Error(updErr.message);
+
+    void notifyAdmins(`✅ Parts run completed`, data.task_id).catch((e) =>
+      console.error("[parts run complete notify] failed:", e instanceof Error ? e.message : e),
+    );
+
+    return { ok: true };
+  });
+
+// Admin: approve a completed parts-run task and log the cost to the vehicle's maintenance.
+export const approvePartsRunTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ task_id: z.string().min(1).max(80) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+
+    const { data: task, error: tErr } = await supabaseAdmin
+      .from("tasks")
+      .select("id, status, linked_vehicle_id, pr_vendor_name, pr_parts_needed, pr_destination, pr_cost, pr_parts_picked_up")
+      .eq("id", data.task_id)
+      .maybeSingle();
+    if (tErr) throw new Error(tErr.message);
+    if (!task) throw new Error("Task not found");
+    if (task.status !== "completed") throw new Error("Task is not completed yet");
+
+    const nowIso = new Date().toISOString();
+    let maintenance_id: string | null = null;
+
+    // Log the parts pickup to a maintenance entry for the linked vehicle.
+    if (task.linked_vehicle_id) {
+      const picked = Array.isArray(task.pr_parts_picked_up)
+        ? (task.pr_parts_picked_up as Array<{ label: string; checked: boolean }>)
+            .filter((p) => p?.checked).map((p) => p.label)
+        : [];
+      const partsText = picked.length ? picked.join(", ") : (task.pr_parts_needed ?? "Parts");
+
+      // Prefer appending to an existing open maintenance ticket for this vehicle.
+      const { data: openMaint } = await supabaseAdmin
+        .from("maintenance")
+        .select("id, cost, notes")
+        .eq("vehicle_id", task.linked_vehicle_id)
+        .is("date_completed", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (openMaint) {
+        const appended = [
+          openMaint.notes,
+          `--- Parts run ---\nParts: ${partsText}${task.pr_vendor_name ? `\nVendor: ${task.pr_vendor_name}` : ""}${task.pr_destination ? `\nDelivered to: ${task.pr_destination}` : ""}${task.pr_cost != null ? `\nCost: $${Number(task.pr_cost).toFixed(2)}` : ""}`,
+        ].filter(Boolean).join("\n\n");
+        const { error: mErr } = await supabaseAdmin
+          .from("maintenance")
+          .update({
+            cost: Number(openMaint.cost ?? 0) + Number(task.pr_cost ?? 0),
+            notes: appended,
+          })
+          .eq("id", openMaint.id);
+        if (mErr) throw new Error(mErr.message);
+        maintenance_id = openMaint.id;
+      } else {
+        const id = `MN-${crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase()}`;
+        const { error: mErr } = await supabaseAdmin
+          .from("maintenance")
+          .insert({
+            id,
+            vehicle_id: task.linked_vehicle_id,
+            service_type: `Parts: ${partsText}`,
+            vendor: task.pr_vendor_name ?? "Parts vendor",
+            date_completed: nowIso.slice(0, 10),
+            mileage_at_service: 0,
+            cost: Number(task.pr_cost ?? 0),
+            notes: `Parts run delivered${task.pr_destination ? ` to ${task.pr_destination}` : ""}.`,
+            next_service_due: nowIso.slice(0, 10),
+          });
+        if (mErr) throw new Error(mErr.message);
+        maintenance_id = id;
+      }
+    }
+
+    const { error: aErr } = await supabaseAdmin
+      .from("tasks")
+      .update({ approved_at: nowIso })
+      .eq("id", task.id);
+    if (aErr) throw new Error(aErr.message);
+
+    return { ok: true, approved_at: nowIso, maintenance_id, cost: task.pr_cost, vehicle_id: task.linked_vehicle_id };
+  });
