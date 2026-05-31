@@ -398,7 +398,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
       supabase.from("payroll_lines").select("*"),
       supabase.from("repair_types").select("*").order("sort_order", { ascending: true }),
     ]);
-    const failures = [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl].filter(result => result.error);
+    const failures = [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl, rt].filter(result => result.error);
     if (failures.length) {
       failures.forEach(result => console.error("[cloud:hydrate]", result.error));
       hydrationPromise = null;
@@ -417,6 +417,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
     replaceArray(maintenance, (mnt.data ?? []).map(fromMaintenance));
     replaceArray(staff, (stf.data ?? []).map(fromStaff));
     replaceArray(payrollRuns, (prr.data ?? []).map(row => fromPayrollRun(row, prl.data ?? [])));
+    replaceArray(repairTypes, (rt.data ?? []).map(fromRepairType));
     reconcileVehicleAvailability(true);
     hydrated = true;
     emit();
