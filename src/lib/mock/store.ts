@@ -74,6 +74,7 @@ const fromDriver = (r: any) => ({
   altContactName: r.alt_contact_name ?? undefined,
   altContactPhone: r.alt_contact_phone ?? undefined,
 });
+
 const toDriver = (d: any) => ({
   id: d.id, full_name: d.fullName, phone: d.phone, email: d.email,
   license_number: d.licenseNumber, license_expiry: d.licenseExpiry,
