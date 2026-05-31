@@ -28,6 +28,7 @@ export const TASK_TYPE_OPTIONS: { value: TaskTypeKey; label: string }[] = [
 
 type Vehicle = { id: string; year: number; make: string; model: string; plate: string };
 type Rental = { id: string; vehicle_id: string; driver_id: string; start_date: string };
+type Driver = { id: string; full_name: string | null; phone: string | null; address: string | null };
 type Runner = { id: string; first_name: string | null; last_name: string | null; username: string | null; phone: string | null };
 type Vendor = { id: string; name: string; phone: string | null; address: string | null; service_type: string | null };
 
@@ -59,6 +60,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
 
   const [assignedTo, setAssignedTo] = useState<string>("");
   const [runnerSearch, setRunnerSearch] = useState("");
@@ -79,6 +81,11 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   // Parts-run specific fields
   const [prPartsNeeded, setPrPartsNeeded] = useState<string>("");
   const [prDestination, setPrDestination] = useState<string>("");
+  // Repo specific fields
+  const [rpReason, setRpReason] = useState<string>("");
+  const [rpCustomerName, setRpCustomerName] = useState<string>("");
+  const [rpCustomerPhone, setRpCustomerPhone] = useState<string>("");
+  const [rpTowAuthorized, setRpTowAuthorized] = useState<boolean>(false);
 
   // Reset state when dialog opens (so prefill from a different context is honored)
   useEffect(() => {
@@ -98,6 +105,10 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     setWorkOrder("");
     setPrPartsNeeded("");
     setPrDestination("");
+    setRpReason("");
+    setRpCustomerName("");
+    setRpCustomerPhone("");
+    setRpTowAuthorized(false);
   }, [open, prefill]);
 
   // Load data on open
@@ -107,7 +118,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     setRunnersError(null);
     setRunnersLoading(true);
     (async () => {
-      const [{ runners: r }, vRes, rRes, venRes] = await Promise.all([
+      const [{ runners: r }, vRes, rRes, venRes, drRes] = await Promise.all([
         loadRunners({}).catch((e) => {
           console.error("[NewTaskDialog] loadRunners failed:", e);
           if (!cancelled) setRunnersError(e instanceof Error ? e.message : String(e));
@@ -116,6 +127,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         supabase.from("vehicles").select("id, year, make, model, plate").order("make"),
         supabase.from("rentals").select("id, vehicle_id, driver_id, start_date").order("start_date", { ascending: false }).limit(200),
         supabase.from("vendors").select("id, name, phone, address, service_type").order("name"),
+        supabase.from("drivers").select("id, full_name, phone, address").order("full_name"),
       ]);
       if (cancelled) return;
       setRunners(r);
@@ -123,6 +135,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
       setVehicles((vRes.data ?? []) as Vehicle[]);
       setRentals((rRes.data ?? []) as Rental[]);
       setVendors((venRes.data ?? []) as Vendor[]);
+      setDrivers((drRes.data ?? []) as Driver[]);
     })();
     return () => { cancelled = true; };
   }, [open, loadRunners]);
@@ -140,6 +153,19 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const selectedVehicle = useMemo(() => vehicles.find((v) => v.id === vehicleId), [vehicles, vehicleId]);
   const isMechanicRun = taskType === "mechanic_run";
   const isPartsRun = taskType === "parts";
+  const isRepo = taskType === "repo";
+
+  // Auto-fill customer name/phone/address from the linked rental's driver (repo).
+  useEffect(() => {
+    if (!isRepo || !rentalId) return;
+    const rental = rentals.find((r) => r.id === rentalId);
+    if (!rental) return;
+    const driver = drivers.find((d) => d.id === rental.driver_id);
+    if (!driver) return;
+    setRpCustomerName((prev) => prev || driver.full_name || "");
+    setRpCustomerPhone((prev) => prev || driver.phone || "");
+    setAddress((prev) => prev || driver.address || "");
+  }, [isRepo, rentalId, rentals, drivers]);
 
   function onVendorChange(id: string) {
     setVendorId(id);
@@ -197,6 +223,10 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         pr_contact_phone: isPartsRun ? (contactPhone.trim() || null) : null,
         pr_parts_needed: isPartsRun ? (prPartsNeeded.trim() || null) : null,
         pr_destination: isPartsRun ? (prDestination.trim() || null) : null,
+        rp_reason: isRepo ? (rpReason.trim() || null) : null,
+        rp_customer_name: isRepo ? (rpCustomerName.trim() || null) : null,
+        rp_customer_phone: isRepo ? (rpCustomerPhone.trim() || null) : null,
+        rp_tow_authorized: isRepo ? rpTowAuthorized : false,
       }});
       console.log("Task created successfully");
       console.log(`[NewTaskDialog] Task created. notify_sms was: ${notifySms}, runner_phone: ${selectedRunner?.phone ?? "(none)"}, sms_status: ${res.sms_status}${res.sms_error ? ` (${res.sms_error})` : ""}`);
@@ -364,8 +394,40 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
             </div>
           )}
 
+          {isRepo && (
+            <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+              <p className="text-xs font-semibold text-destructive">🚨 Repo Details</p>
+              <div>
+                <Label>Reason</Label>
+                <Select value={rpReason || "__none"} onValueChange={(v) => setRpReason(v === "__none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Select reason…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Non-payment">Non-payment</SelectItem>
+                    <SelectItem value="Abandonment">Abandonment</SelectItem>
+                    <SelectItem value="Safety Hold">Safety Hold</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="rp-name">Customer Name</Label>
+                <Input id="rp-name" value={rpCustomerName} onChange={(e) => setRpCustomerName(e.target.value)} placeholder="Auto-filled from rental" maxLength={200} />
+              </div>
+              <div>
+                <Label htmlFor="rp-phone">Customer Phone</Label>
+                <Input id="rp-phone" value={rpCustomerPhone} onChange={(e) => setRpCustomerPhone(e.target.value)} placeholder="Auto-filled from rental" maxLength={40} />
+              </div>
+              <p className="text-xs text-muted-foreground">Set the pickup location in the Address field below and instructions in Description.</p>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Checkbox checked={rpTowAuthorized} onCheckedChange={(v) => setRpTowAuthorized(v === true)} />
+                Tow authorized
+              </label>
+            </div>
+          )}
+
           <div>
             <Label>Linked Rental (optional)</Label>
+            {isRepo && <p className="mb-1 text-xs text-muted-foreground">Link the rental to auto-fill the customer.</p>}
             <Select value={rentalId || "__none"} onValueChange={(v) => setRentalId(v === "__none" ? "" : v)}>
               <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>

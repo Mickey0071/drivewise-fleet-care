@@ -1414,6 +1414,16 @@ export type Database = {
           pr_pickup_at: string | null
           pr_vendor_name: string | null
           priority_level: string | null
+          rp_customer_name: string | null
+          rp_customer_phone: string | null
+          rp_location_after: string | null
+          rp_notes: string | null
+          rp_odometer: number | null
+          rp_photos: Json
+          rp_pickup_at: string | null
+          rp_reason: string | null
+          rp_status_checklist: Json
+          rp_tow_authorized: boolean
           runner_name: string | null
           runner_notes: string | null
           status: string
@@ -1455,6 +1465,16 @@ export type Database = {
           pr_pickup_at?: string | null
           pr_vendor_name?: string | null
           priority_level?: string | null
+          rp_customer_name?: string | null
+          rp_customer_phone?: string | null
+          rp_location_after?: string | null
+          rp_notes?: string | null
+          rp_odometer?: number | null
+          rp_photos?: Json
+          rp_pickup_at?: string | null
+          rp_reason?: string | null
+          rp_status_checklist?: Json
+          rp_tow_authorized?: boolean
           runner_name?: string | null
           runner_notes?: string | null
           status?: string
@@ -1496,6 +1516,16 @@ export type Database = {
           pr_pickup_at?: string | null
           pr_vendor_name?: string | null
           priority_level?: string | null
+          rp_customer_name?: string | null
+          rp_customer_phone?: string | null
+          rp_location_after?: string | null
+          rp_notes?: string | null
+          rp_odometer?: number | null
+          rp_photos?: Json
+          rp_pickup_at?: string | null
+          rp_reason?: string | null
+          rp_status_checklist?: Json
+          rp_tow_authorized?: boolean
           runner_name?: string | null
           runner_notes?: string | null
           status?: string
@@ -1587,6 +1617,8 @@ export type Database = {
           notes: string | null
           plate: string
           registration_expiry: string | null
+          repo_date: string | null
+          repo_location: string | null
           risk_tier: string
           seats: number | null
           shop_dropoff_at: string | null
@@ -1620,6 +1652,8 @@ export type Database = {
           notes?: string | null
           plate: string
           registration_expiry?: string | null
+          repo_date?: string | null
+          repo_location?: string | null
           risk_tier?: string
           seats?: number | null
           shop_dropoff_at?: string | null
@@ -1653,6 +1687,8 @@ export type Database = {
           notes?: string | null
           plate?: string
           registration_expiry?: string | null
+          repo_date?: string | null
+          repo_location?: string | null
           risk_tier?: string
           seats?: number | null
           shop_dropoff_at?: string | null

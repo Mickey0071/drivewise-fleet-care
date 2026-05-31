@@ -27,6 +27,10 @@ const CreateInput = z.object({
   pr_contact_phone: z.string().trim().max(40).nullable().optional(),
   pr_parts_needed: z.string().trim().max(2000).nullable().optional(),
   pr_destination: z.string().trim().max(500).nullable().optional(),
+  rp_reason: z.string().trim().max(200).nullable().optional(),
+  rp_customer_name: z.string().trim().max(200).nullable().optional(),
+  rp_customer_phone: z.string().trim().max(40).nullable().optional(),
+  rp_tow_authorized: z.boolean().default(false),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,6 +119,10 @@ export const adminCreateTask = createServerFn({ method: "POST" })
         pr_contact_phone: data.pr_contact_phone ?? null,
         pr_parts_needed: data.pr_parts_needed ?? null,
         pr_destination: data.pr_destination ?? null,
+        rp_reason: data.rp_reason ?? null,
+        rp_customer_name: data.rp_customer_name ?? null,
+        rp_customer_phone: data.rp_customer_phone ?? null,
+        rp_tow_authorized: data.rp_tow_authorized ?? false,
       })
       .select("id")
       .single();
@@ -763,4 +771,122 @@ export const approvePartsRunTask = createServerFn({ method: "POST" })
     if (aErr) throw new Error(aErr.message);
 
     return { ok: true, approved_at: nowIso, maintenance_id, cost: task.pr_cost, vehicle_id: task.linked_vehicle_id };
+  });
+
+// Runner: complete a repo task (vehicle recovered in the field).
+export const completeRepoTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      task_id: z.string().min(1).max(80),
+      status_checklist: z.record(z.string().max(80), z.boolean()).default({}),
+      odometer: z.number().int().min(0).max(2_000_000).nullable().default(null),
+      photos: z.array(z.string().url().max(1000)).max(20).default([]),
+      location_after: z.string().trim().max(500).default(""),
+      notes: z.string().max(4000).default(""),
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const nowIso = new Date().toISOString();
+
+    const checkedLabels = Object.entries(data.status_checklist)
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+    const summary = [
+      `Repo completed at ${nowIso}.`,
+      `Vehicle status: ${checkedLabels.length ? checkedLabels.join(", ") : "(none marked)"}.`,
+      data.odometer != null ? `Odometer: ${data.odometer.toLocaleString()} mi.` : null,
+      data.location_after.trim() ? `Location after repo: ${data.location_after.trim()}` : null,
+      data.photos.length ? `Photos: ${data.photos.length} attached.` : null,
+      data.notes.trim() ? `Notes: ${data.notes.trim()}` : null,
+    ].filter(Boolean).join("\n");
+
+    const { error: updErr } = await supabase
+      .from("tasks")
+      .update({
+        status: "completed",
+        completed_at: nowIso,
+        rp_status_checklist: data.status_checklist,
+        rp_odometer: data.odometer,
+        rp_photos: data.photos,
+        rp_pickup_at: nowIso,
+        rp_location_after: data.location_after.trim() || null,
+        rp_notes: data.notes.trim() || null,
+        runner_notes: summary,
+      })
+      .eq("id", data.task_id);
+    if (updErr) throw new Error(updErr.message);
+
+    void notifyAdmins(`🚨 Repo completed`, data.task_id).catch((e) =>
+      console.error("[repo complete notify] failed:", e instanceof Error ? e.message : e),
+    );
+
+    return { ok: true };
+  });
+
+// Admin: approve a completed repo task and mark the vehicle as repossessed.
+export const approveRepoTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ task_id: z.string().min(1).max(80) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+
+    const { data: task, error: tErr } = await supabaseAdmin
+      .from("tasks")
+      .select("id, status, linked_vehicle_id, linked_rental_id, rp_odometer, rp_location_after, rp_pickup_at")
+      .eq("id", data.task_id)
+      .maybeSingle();
+    if (tErr) throw new Error(tErr.message);
+    if (!task) throw new Error("Task not found");
+    if (task.status !== "completed") throw new Error("Task is not completed yet");
+
+    const nowIso = new Date().toISOString();
+    const repoDate = (task.rp_pickup_at ?? nowIso).slice(0, 10);
+
+    // Update the vehicle: REPO'D status, location, repo date, odometer (forward only).
+    if (task.linked_vehicle_id) {
+      const update: {
+        status: string;
+        repo_location: string | null;
+        repo_date: string;
+        has_open_issues: boolean;
+        mileage?: number;
+      } = {
+        status: "REPO'D",
+        repo_location: task.rp_location_after ?? null,
+        repo_date: repoDate,
+        has_open_issues: true,
+      };
+      if (task.rp_odometer != null) {
+        const { data: veh } = await supabaseAdmin
+          .from("vehicles")
+          .select("mileage")
+          .eq("id", task.linked_vehicle_id)
+          .maybeSingle();
+        if (!veh || task.rp_odometer >= (veh.mileage ?? 0)) update.mileage = task.rp_odometer;
+      }
+      const { error: vErr } = await supabaseAdmin
+        .from("vehicles")
+        .update(update)
+        .eq("id", task.linked_vehicle_id);
+      if (vErr) throw new Error(vErr.message);
+    }
+
+    // Close the linked rental (repo'd, not returned).
+    if (task.linked_rental_id) {
+      const { error: rErr } = await supabaseAdmin
+        .from("rentals")
+        .update({ reservation_status: "closed", payment_status: "repossessed", returned_at: nowIso })
+        .eq("id", task.linked_rental_id);
+      if (rErr) throw new Error(rErr.message);
+    }
+
+    const { error: aErr } = await supabaseAdmin
+      .from("tasks")
+      .update({ approved_at: nowIso })
+      .eq("id", task.id);
+    if (aErr) throw new Error(aErr.message);
+
+    return { ok: true, approved_at: nowIso, repo_date: repoDate, location: task.rp_location_after, mileage: task.rp_odometer, vehicle_id: task.linked_vehicle_id };
   });
