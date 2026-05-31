@@ -40,6 +40,7 @@ import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as DriversRouteImport } from './routes/drivers'
 import { Route as DriverPortalRouteImport } from './routes/driver-portal'
 import { Route as DmvTaskRouteImport } from './routes/dmv-task'
+import { Route as DmvRunTaskRouteImport } from './routes/dmv-run-task'
 import { Route as ChecklistRouteImport } from './routes/checklist'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
@@ -219,6 +220,11 @@ const DmvTaskRoute = DmvTaskRouteImport.update({
   path: '/dmv-task',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DmvRunTaskRoute = DmvRunTaskRouteImport.update({
+  id: '/dmv-run-task',
+  path: '/dmv-run-task',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChecklistRoute = ChecklistRouteImport.update({
   id: '/checklist',
   path: '/checklist',
@@ -343,6 +349,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/checklist': typeof ChecklistRoute
+  '/dmv-run-task': typeof DmvRunTaskRoute
   '/dmv-task': typeof DmvTaskRoute
   '/driver-portal': typeof DriverPortalRoute
   '/drivers': typeof DriversRoute
@@ -399,6 +406,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/checklist': typeof ChecklistRoute
+  '/dmv-run-task': typeof DmvRunTaskRoute
   '/dmv-task': typeof DmvTaskRoute
   '/driver-portal': typeof DriverPortalRoute
   '/drivers': typeof DriversRoute
@@ -456,6 +464,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/checklist': typeof ChecklistRoute
+  '/dmv-run-task': typeof DmvRunTaskRoute
   '/dmv-task': typeof DmvTaskRoute
   '/driver-portal': typeof DriverPortalRoute
   '/drivers': typeof DriversRoute
@@ -514,6 +523,7 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/checklist'
+    | '/dmv-run-task'
     | '/dmv-task'
     | '/driver-portal'
     | '/drivers'
@@ -570,6 +580,7 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/checklist'
+    | '/dmv-run-task'
     | '/dmv-task'
     | '/driver-portal'
     | '/drivers'
@@ -626,6 +637,7 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/checklist'
+    | '/dmv-run-task'
     | '/dmv-task'
     | '/driver-portal'
     | '/drivers'
@@ -683,6 +695,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
   ChecklistRoute: typeof ChecklistRoute
+  DmvRunTaskRoute: typeof DmvRunTaskRoute
   DmvTaskRoute: typeof DmvTaskRoute
   DriverPortalRoute: typeof DriverPortalRoute
   DriversRoute: typeof DriversRoute
@@ -953,6 +966,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DmvTaskRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dmv-run-task': {
+      id: '/dmv-run-task'
+      path: '/dmv-run-task'
+      fullPath: '/dmv-run-task'
+      preLoaderRoute: typeof DmvRunTaskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/checklist': {
       id: '/checklist'
       path: '/checklist'
@@ -1143,6 +1163,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
   ChecklistRoute: ChecklistRoute,
+  DmvRunTaskRoute: DmvRunTaskRoute,
   DmvTaskRoute: DmvTaskRoute,
   DriverPortalRoute: DriverPortalRoute,
   DriversRoute: DriversRoute,
@@ -1196,3 +1217,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
