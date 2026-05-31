@@ -19,6 +19,27 @@ export interface Vehicle {
   registrationExpiry?: string;
   insuranceExpiry?: string;
   hasOpenIssues?: boolean;
+  maintenanceSettings?: MaintenanceSettings;
+}
+
+export interface OilChangeSetting {
+  mode: "miles" | "months";
+  interval: number;
+  lastMileage?: number;
+  lastDate?: string;
+}
+export interface CustomMaintenanceAlert {
+  id: string;
+  label: string;
+  lastDate?: string;
+  intervalDays: number;
+}
+export interface MaintenanceSettings {
+  oilChange?: OilChangeSetting;
+  inspectionExpiry?: string;
+  batteryLastDone?: string;
+  alternatorLastDone?: string;
+  customAlerts?: CustomMaintenanceAlert[];
 }
 export interface Driver {
   id: string; fullName: string; phone: string; email: string;
