@@ -5,9 +5,10 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { drivers, rentals, payments, vehicleById, fmtDate } from "@/lib/mock/data";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Ban, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addDriver, useStoreVersion } from "@/lib/mock/store";
@@ -25,6 +26,7 @@ function DriversPage() {
   useStoreVersion();
   const [open, setOpen] = useState(false);
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
+  const [blockDriver, setBlockDriver] = useState<Driver | null>(null);
   const today = new Date();
   const soon = new Date(today); soon.setDate(today.getDate() + 60);
 
@@ -43,12 +45,17 @@ function DriversPage() {
           const expSoon = new Date(d.licenseExpiry) < soon;
 
           return (
-            <Card key={d.id} className="transition-colors hover:border-primary/50">
+            <Card key={d.id} className={`transition-colors hover:border-primary/50 ${d.blocked ? "border-destructive/60" : ""}`}>
               <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <div className="font-semibold">{d.fullName}</div>
                     <StatusBadge status={d.status} />
+                    {d.blocked && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
+                        <Ban className="h-3 w-3" /> Blocked from renting
+                      </span>
+                    )}
                     {expSoon && (
                       <span className="inline-flex items-center gap-1 text-xs text-warning-foreground">
                         <AlertCircle className="h-3 w-3" /> License expires {fmtDate(d.licenseExpiry)}
@@ -59,9 +66,19 @@ function DriversPage() {
                     {d.id} · {d.phone} · {d.rideshare}
                     {veh && ` · Driving ${veh.year} ${veh.make} ${veh.model} (${veh.plate})`}
                   </div>
+                  {d.blocked && d.blockReason && (
+                    <div className="mt-1 text-xs font-medium text-destructive">Reason: {d.blockReason}</div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {lateCount > 0 && <StatusBadge status="late" />}
+                  <Button
+                    variant={d.blocked ? "outline" : "destructive"}
+                    size="sm"
+                    onClick={() => setBlockDriver(d)}
+                  >
+                    {d.blocked ? <><ShieldCheck className="h-4 w-4" /> Unblock</> : <><Ban className="h-4 w-4" /> Block</>}
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => setEditDriver(d)}>Edit</Button>
                 </div>
               </CardContent>
@@ -71,6 +88,7 @@ function DriversPage() {
       </div>
       <AddRenterDialog open={open} onClose={() => setOpen(false)} />
       <EditRenterDialog driver={editDriver} onClose={() => setEditDriver(null)} />
+      <BlockRenterDialog driver={blockDriver} onClose={() => setBlockDriver(null)} />
     </div>
   );
 }
