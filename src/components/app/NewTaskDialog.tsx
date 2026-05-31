@@ -76,6 +76,9 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const [vendorName, setVendorName] = useState<string>("");
   const [contactPhone, setContactPhone] = useState<string>("");
   const [workOrder, setWorkOrder] = useState<string>("");
+  // Parts-run specific fields
+  const [prPartsNeeded, setPrPartsNeeded] = useState<string>("");
+  const [prDestination, setPrDestination] = useState<string>("");
 
   // Reset state when dialog opens (so prefill from a different context is honored)
   useEffect(() => {
@@ -93,6 +96,8 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     setVendorName("");
     setContactPhone("");
     setWorkOrder("");
+    setPrPartsNeeded("");
+    setPrDestination("");
   }, [open, prefill]);
 
   // Load data on open
@@ -134,6 +139,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const selectedIsStaffOnly = assignedTo.startsWith("staff:");
   const selectedVehicle = useMemo(() => vehicles.find((v) => v.id === vehicleId), [vehicles, vehicleId]);
   const isMechanicRun = taskType === "mechanic_run";
+  const isPartsRun = taskType === "parts";
 
   function onVendorChange(id: string) {
     setVendorId(id);
@@ -187,6 +193,10 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         mr_vendor_name: isMechanicRun ? (vendorName.trim() || null) : null,
         mr_contact_phone: isMechanicRun ? (contactPhone.trim() || null) : null,
         mr_work_order: isMechanicRun ? (workOrder.trim() || null) : null,
+        pr_vendor_name: isPartsRun ? (vendorName.trim() || null) : null,
+        pr_contact_phone: isPartsRun ? (contactPhone.trim() || null) : null,
+        pr_parts_needed: isPartsRun ? (prPartsNeeded.trim() || null) : null,
+        pr_destination: isPartsRun ? (prDestination.trim() || null) : null,
       }});
       console.log("Task created successfully");
       console.log(`[NewTaskDialog] Task created. notify_sms was: ${notifySms}, runner_phone: ${selectedRunner?.phone ?? "(none)"}, sms_status: ${res.sms_status}${res.sms_error ? ` (${res.sms_error})` : ""}`);
