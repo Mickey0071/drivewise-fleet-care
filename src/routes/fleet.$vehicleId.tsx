@@ -410,6 +410,11 @@ function VehicleDetail() {
         onOpenChange={setSettingsOpen}
         vehicle={v}
       />
+      <ServiceHistoryReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        vehicle={v}
+      />
       <div className="mt-6 flex justify-start">
         <Button variant="outline" asChild>
           <Link to="/fleet"><ArrowLeft className="mr-1 h-4 w-4" />Back to Fleet</Link>
