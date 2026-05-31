@@ -457,6 +457,47 @@ function RunnerTasksPage() {
                   </Button>
                 )
               )}
+              {detail.task_type === "dmv" && (
+                <div className="rounded-md border border-border bg-muted/30 p-2 text-xs">
+                  <p className="mb-1 font-semibold">📋 DMV Run</p>
+                  {detail.dr_service && <p><span className="text-muted-foreground">Service:</span> {detail.dr_service}</p>}
+                  {detail.dr_location && <p><span className="text-muted-foreground">Location:</span> {detail.dr_location}</p>}
+                  {detail.dr_expected_cost != null && <p><span className="text-muted-foreground">Expected cost:</span> ${Number(detail.dr_expected_cost).toFixed(2)}</p>}
+                  {detail.dr_actual_cost != null && <p><span className="text-muted-foreground">Actual cost:</span> ${Number(detail.dr_actual_cost).toFixed(2)}</p>}
+                  {detail.dr_service_completed && (
+                    <p><span className="text-muted-foreground">Service completed:</span> {Object.entries(detail.dr_service_completed).filter(([, v]) => v).map(([k]) => k).join(", ") || "(none)"}</p>
+                  )}
+                  {detail.dr_documents_received && (
+                    <p><span className="text-muted-foreground">Documents received:</span> {Object.entries(detail.dr_documents_received).filter(([, v]) => v).map(([k]) => k).join(", ") || "(none)"}</p>
+                  )}
+                  {detail.dr_new_reg_expiry && <p><span className="text-muted-foreground">New registration expiry:</span> {detail.dr_new_reg_expiry}</p>}
+                  {detail.dr_new_sticker_expiry && <p><span className="text-muted-foreground">New sticker expiry:</span> {detail.dr_new_sticker_expiry}</p>}
+                  {detail.dr_completion_at && <p><span className="text-muted-foreground">Completed:</span> {new Date(detail.dr_completion_at).toLocaleString()}</p>}
+                  {detail.dr_notes && <p><span className="text-muted-foreground">Notes:</span> {detail.dr_notes}</p>}
+                  {detail.dr_photos && detail.dr_photos.length > 0 && (
+                    <div className="mt-2 grid grid-cols-4 gap-1">
+                      {detail.dr_photos.map((url, i) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer">
+                          <img src={url} alt={`DMV ${i + 1}`} className="h-14 w-full rounded object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {detail.task_type === "dmv" && detail.status === "completed" && (
+                detail.approved_at ? (
+                  <p className="text-xs text-emerald-600">✓ Approved & fleet updated {new Date(detail.approved_at).toLocaleString()}</p>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={approving === detail.id}
+                    onClick={() => handleApproveDmvRun(detail)}
+                  >
+                    {approving === detail.id ? "Updating…" : "Approve & Update Fleet"}
+                  </Button>
+                )
+              )}
             </div>
           )}
         </DialogContent>
