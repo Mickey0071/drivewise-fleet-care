@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { vehicles, payments, maintenance, drivers, rentals, fmtMoney, fmtDate, vehicleById, driverById } from "@/lib/mock/data";
 import { isVehicleBookable, useStoreVersion } from "@/lib/mock/store";
+import { computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { AgreementReviewModal } from "@/components/app/AgreementReviewModal";
 import { useAuth } from "@/hooks/use-auth";
 
