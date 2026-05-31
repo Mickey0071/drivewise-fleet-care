@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { vehicles, repairTypes } from "@/lib/mock/data";
-import { addMaintenance, addExpense, useStoreVersion, addRepairType } from "@/lib/mock/store";
+import { vehicles } from "@/lib/mock/data";
+import { addMaintenance, addExpense, useStoreVersion } from "@/lib/mock/store";
+import { RepairTypeCombobox } from "@/components/app/RepairTypeCombobox";
 import { fmtMoney } from "@/lib/mock/data";
 import { toast } from "sonner";
 import { Trash2, Plus } from "lucide-react";
@@ -15,21 +16,6 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   initialVehicleId?: string;
 }
-
-const DEFAULT_OPTIONS = [
-  "Tie Rods",
-  "Control Arm",
-  "Engine",
-  "Transmission",
-  "Brakes",
-  "Suspension",
-  "Alternator",
-  "Starter",
-  "Compressor",
-  "Axle",
-  "Differential",
-  "Other",
-];
 
 interface PartRow {
   key: string;
