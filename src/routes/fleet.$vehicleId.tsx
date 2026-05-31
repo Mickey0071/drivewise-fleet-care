@@ -339,7 +339,7 @@ function VehicleDetail() {
                       Scheduled {fmtDate(w.scheduledDate)}{w.assignedTo ? ` · ${w.assignedTo}` : ""} · {fmtMoney(w.estimatedCost)}
                     </div>
                   </div>
-                  <StatusBadge status={w.status === "completed" ? "paid" : w.status === "in_progress" ? "pending" : "late"} />
+                  <StatusBadge status={w.status} />
                 </button>
               ))}
             </CardContent>
