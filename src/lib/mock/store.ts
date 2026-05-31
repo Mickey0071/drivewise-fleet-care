@@ -422,6 +422,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
     replaceArray(staff, (stf.data ?? []).map(fromStaff));
     replaceArray(payrollRuns, (prr.data ?? []).map(row => fromPayrollRun(row, prl.data ?? [])));
     replaceArray(repairTypes, (rt.data ?? []).map(fromRepairType));
+    replaceArray(serviceTypes, (st.data ?? []).map(fromServiceType));
     reconcileVehicleAvailability(true);
     hydrated = true;
     emit();
