@@ -104,6 +104,9 @@ export const adminCreateTask = createServerFn({ method: "POST" })
         model: vehicleModel,
         year: vehicleYear,
         task_mode: data.task_mode ?? null,
+        mr_vendor_name: data.mr_vendor_name ?? null,
+        mr_contact_phone: data.mr_contact_phone ?? null,
+        mr_work_order: data.mr_work_order ?? null,
       })
       .select("id")
       .single();
