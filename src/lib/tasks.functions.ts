@@ -27,6 +27,10 @@ const CreateInput = z.object({
   pr_contact_phone: z.string().trim().max(40).nullable().optional(),
   pr_parts_needed: z.string().trim().max(2000).nullable().optional(),
   pr_destination: z.string().trim().max(500).nullable().optional(),
+  rp_reason: z.string().trim().max(200).nullable().optional(),
+  rp_customer_name: z.string().trim().max(200).nullable().optional(),
+  rp_customer_phone: z.string().trim().max(40).nullable().optional(),
+  rp_tow_authorized: z.boolean().default(false),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
