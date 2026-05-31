@@ -73,8 +73,10 @@ const fromDriver = (r: any) => ({
   zipCode: r.zip_code ?? undefined,
   altContactName: r.alt_contact_name ?? undefined,
   altContactPhone: r.alt_contact_phone ?? undefined,
+  blocked: r.blocked ?? false,
+  blockReason: r.block_reason ?? undefined,
+  blockedAt: r.blocked_at ?? undefined,
 });
-
 const toDriver = (d: any) => ({
   id: d.id, full_name: d.fullName, phone: d.phone, email: d.email,
   license_number: d.licenseNumber, license_expiry: d.licenseExpiry,
@@ -93,6 +95,9 @@ const toDriver = (d: any) => ({
   zip_code: d.zipCode ?? null,
   alt_contact_name: d.altContactName ?? null,
   alt_contact_phone: d.altContactPhone ?? null,
+  blocked: d.blocked ?? false,
+  block_reason: d.blockReason ?? null,
+  blocked_at: d.blockedAt ?? null,
 });
 const fromRental = (r: any, exts: any[] = []): Rental => ({
   id: r.id, vehicleId: r.vehicle_id, driverId: r.driver_id,
