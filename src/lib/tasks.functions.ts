@@ -485,7 +485,11 @@ export const approveInspectionTask = createServerFn({ method: "POST" })
 
     // Update the vehicle's fleet record: last inspection date + mileage.
     if (task.linked_vehicle_id) {
-      const update: Record<string, unknown> = {
+      const update: {
+        last_inspection_at: string;
+        last_inspection_mileage?: number;
+        mileage?: number;
+      } = {
         last_inspection_at: nowIso,
       };
       if (mileage != null) {
