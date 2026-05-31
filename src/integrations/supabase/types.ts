@@ -1143,6 +1143,27 @@ export type Database = {
           },
         ]
       }
+      repair_types: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       share_link_sms_log: {
         Row: {
           attempted_by: string | null

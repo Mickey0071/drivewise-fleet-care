@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { vehicles } from "@/lib/mock/data";
-import { addMaintenance, addExpense, useStoreVersion } from "@/lib/mock/store";
+import { vehicles, repairTypes } from "@/lib/mock/data";
+import { addMaintenance, addExpense, useStoreVersion, addRepairType } from "@/lib/mock/store";
 import { fmtMoney } from "@/lib/mock/data";
 import { toast } from "sonner";
 import { Trash2, Plus } from "lucide-react";
@@ -16,7 +16,7 @@ interface Props {
   initialVehicleId?: string;
 }
 
-const PART_OPTIONS = [
+const DEFAULT_OPTIONS = [
   "Tie Rods",
   "Control Arm",
   "Engine",
@@ -29,11 +29,11 @@ const PART_OPTIONS = [
   "Axle",
   "Differential",
   "Other",
-] as const;
+];
 
 interface PartRow {
   key: string;
-  selection: string; // dropdown value (a PART_OPTIONS entry)
+  selection: string;
   partPrice: string;
   laborPrice: string;
 }
@@ -48,7 +48,6 @@ function defaultReturn() {
   const d = new Date();
   d.setDate(d.getDate() + 3);
   d.setHours(17, 0, 0, 0);
-  // datetime-local format YYYY-MM-DDTHH:mm
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -61,11 +60,22 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
   const [downPayment, setDownPayment] = useState<string>("");
   const [estReturn, setEstReturn] = useState<string>(defaultReturn());
 
+  const [addingType, setAddingType] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [savingType, setSavingType] = useState(false);
+
+  const options = useMemo(() => {
+    const fromStore = repairTypes.map(t => t.name);
+    return fromStore.length > 0 ? fromStore : DEFAULT_OPTIONS;
+  }, [repairTypes.length]);
+
   const reset = () => {
     setVehicleId(initialVehicleId ?? "");
     setRows([emptyRow()]);
     setDownPayment("");
     setEstReturn(defaultReturn());
+    setAddingType(false);
+    setNewTypeName("");
   };
 
   const subtotalOf = (r: PartRow) => (Number(r.partPrice) || 0) + (Number(r.laborPrice) || 0);
@@ -74,6 +84,23 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
 
   const updateRow = (key: string, patch: Partial<PartRow>) =>
     setRows(rs => rs.map(r => (r.key === key ? { ...r, ...patch } : r)));
+
+  const handleSaveType = async () => {
+    const name = newTypeName.trim();
+    if (!name) return toast.error("Enter a repair type name");
+    if (options.includes(name)) return toast.error("That repair type already exists");
+    setSavingType(true);
+    try {
+      await addRepairType(name);
+      toast.success(`Added "${name}"`);
+      setNewTypeName("");
+      setAddingType(false);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save repair type");
+    } finally {
+      setSavingType(false);
+    }
+  };
 
   const submit = () => {
     if (!vehicleId) return toast.error("Select a vehicle");
@@ -104,14 +131,13 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
       vehicleId,
       serviceType: partsSummary,
       vendor: "",
-      dateCompleted: undefined as unknown as string, // open issue
+      dateCompleted: undefined as unknown as string,
       mileageAtService: v?.mileage ?? 0,
       cost: total,
       nextServiceDue: estReturn ? estReturn.slice(0, 10) : today(),
       notes: detailLines.join("\n"),
     });
 
-    // P&L integration: down payment shows immediately as a maintenance expense (partial payment)
     if (down > 0) {
       addExpense({
         category: "Maintenance",
@@ -171,7 +197,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
                   <Select value={r.selection} onValueChange={(v) => updateRow(r.key, { selection: v })}>
                     <SelectTrigger><SelectValue placeholder="Select repair item" /></SelectTrigger>
                     <SelectContent>
-                      {PART_OPTIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                      {options.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <div className="grid grid-cols-3 gap-2">
@@ -197,6 +223,28 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
               onClick={() => setRows(rs => [...rs, emptyRow()])}>
               <Plus className="mr-1 h-4 w-4" /> Add another repair
             </Button>
+
+            {!addingType && (
+              <Button type="button" variant="ghost" size="sm" className="w-fit text-primary"
+                onClick={() => setAddingType(true)}>
+                <Plus className="mr-1 h-4 w-4" /> Add New Repair Type
+              </Button>
+            )}
+            {addingType && (
+              <div className="flex items-end gap-2">
+                <div className="grid flex-1 gap-1.5">
+                  <Label className="text-xs">Enter new repair type</Label>
+                  <Input value={newTypeName} onChange={e => setNewTypeName(e.target.value)}
+                    placeholder="e.g. Water Pump" onKeyDown={e => { if (e.key === "Enter") handleSaveType(); }} />
+                </div>
+                <Button type="button" size="sm" onClick={handleSaveType} disabled={savingType}>
+                  {savingType ? "Saving..." : "Save"}
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => { setAddingType(false); setNewTypeName(""); }}>
+                  Cancel
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
