@@ -68,7 +68,7 @@ export default function TaskDetailPage() {
   function openWorkflow(key: WorkflowKey, t: TaskRow) {
     switch (key) {
       case "dmv":
-        navigate({ to: "/dmv-task", search: { task_id: t.id } });
+        navigate({ to: "/dmv-run-task", search: { task_id: t.id } });
         return;
       case "return":
         navigate({

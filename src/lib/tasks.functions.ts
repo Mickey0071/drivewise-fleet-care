@@ -31,6 +31,10 @@ const CreateInput = z.object({
   rp_customer_name: z.string().trim().max(200).nullable().optional(),
   rp_customer_phone: z.string().trim().max(40).nullable().optional(),
   rp_tow_authorized: z.boolean().default(false),
+  dr_service: z.string().trim().max(120).nullable().optional(),
+  dr_documents_needed: z.record(z.string().max(120), z.boolean()).default({}),
+  dr_location: z.string().trim().max(500).nullable().optional(),
+  dr_expected_cost: z.number().min(0).max(100000).nullable().optional(),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -123,6 +127,10 @@ export const adminCreateTask = createServerFn({ method: "POST" })
         rp_customer_name: data.rp_customer_name ?? null,
         rp_customer_phone: data.rp_customer_phone ?? null,
         rp_tow_authorized: data.rp_tow_authorized ?? false,
+        dr_service: data.dr_service ?? null,
+        dr_documents_needed: data.dr_documents_needed ?? {},
+        dr_location: data.dr_location ?? null,
+        dr_expected_cost: data.dr_expected_cost ?? null,
       })
       .select("id")
       .single();
@@ -889,4 +897,131 @@ export const approveRepoTask = createServerFn({ method: "POST" })
     if (aErr) throw new Error(aErr.message);
 
     return { ok: true, approved_at: nowIso, repo_date: repoDate, location: task.rp_location_after, mileage: task.rp_odometer, vehicle_id: task.linked_vehicle_id };
+  });
+
+// Runner: complete a DMV run (service done at the DMV office).
+export const completeDmvRunTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      task_id: z.string().min(1).max(80),
+      documents_packed: z.record(z.string().max(120), z.boolean()).default({}),
+      arrival_at: z.string().datetime().nullable().default(null),
+      service_completed: z.record(z.string().max(120), z.boolean()).default({}),
+      actual_cost: z.number().min(0).max(100000).nullable().default(null),
+      documents_received: z.record(z.string().max(120), z.boolean()).default({}),
+      photos: z.array(z.string().url().max(1000)).max(20).default([]),
+      new_reg_expiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
+      new_sticker_expiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
+      notes: z.string().max(4000).default(""),
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const nowIso = new Date().toISOString();
+
+    const packed = Object.entries(data.documents_packed).filter(([, v]) => v).map(([k]) => k);
+    const completed = Object.entries(data.service_completed).filter(([, v]) => v).map(([k]) => k);
+    const received = Object.entries(data.documents_received).filter(([, v]) => v).map(([k]) => k);
+    const summary = [
+      `DMV run completed at ${nowIso}.`,
+      packed.length ? `Documents packed: ${packed.join(", ")}.` : null,
+      completed.length ? `Service completed: ${completed.join(", ")}.` : null,
+      data.actual_cost != null ? `Actual cost: $${data.actual_cost.toFixed(2)}.` : null,
+      received.length ? `Documents received: ${received.join(", ")}.` : null,
+      data.new_reg_expiry ? `New registration expiry: ${data.new_reg_expiry}.` : null,
+      data.new_sticker_expiry ? `New sticker expiry: ${data.new_sticker_expiry}.` : null,
+      data.photos.length ? `Photos: ${data.photos.length} attached.` : null,
+      data.notes.trim() ? `Notes: ${data.notes.trim()}` : null,
+    ].filter(Boolean).join("\n");
+
+    const { error: updErr } = await supabase
+      .from("tasks")
+      .update({
+        status: "completed",
+        completed_at: nowIso,
+        dr_documents_packed: data.documents_packed,
+        dr_arrival_at: data.arrival_at,
+        dr_service_completed: data.service_completed,
+        dr_actual_cost: data.actual_cost,
+        dr_documents_received: data.documents_received,
+        dr_photos: data.photos,
+        dr_completion_at: nowIso,
+        dr_new_reg_expiry: data.new_reg_expiry,
+        dr_new_sticker_expiry: data.new_sticker_expiry,
+        dr_notes: data.notes.trim() || null,
+        runner_notes: summary,
+      })
+      .eq("id", data.task_id);
+    if (updErr) throw new Error(updErr.message);
+
+    void notifyAdmins(`📋 DMV run completed`, data.task_id).catch((e) =>
+      console.error("[dmv run complete notify] failed:", e instanceof Error ? e.message : e),
+    );
+
+    return { ok: true };
+  });
+
+// Admin: approve a completed DMV run and update the vehicle's registration / sticker dates.
+export const approveDmvRunTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ task_id: z.string().min(1).max(80) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+
+    const { data: task, error: tErr } = await supabaseAdmin
+      .from("tasks")
+      .select("id, status, linked_vehicle_id, dr_service, dr_actual_cost, dr_expected_cost, dr_new_reg_expiry, dr_new_sticker_expiry, dr_completion_at")
+      .eq("id", data.task_id)
+      .maybeSingle();
+    if (tErr) throw new Error(tErr.message);
+    if (!task) throw new Error("Task not found");
+    if (task.status !== "completed") throw new Error("Task is not completed yet");
+
+    const nowIso = new Date().toISOString();
+    const serviceDate = (task.dr_completion_at ?? nowIso).slice(0, 10);
+    const cost = Number(task.dr_actual_cost ?? task.dr_expected_cost ?? 0);
+
+    // Update the vehicle: registration/sticker expiry + last DMV service date.
+    if (task.linked_vehicle_id) {
+      const vUpdate: {
+        last_dmv_service_at: string;
+        registration_expiry?: string;
+        inspection_sticker_expiry?: string;
+      } = { last_dmv_service_at: serviceDate };
+      if (task.dr_new_reg_expiry) vUpdate.registration_expiry = task.dr_new_reg_expiry;
+      if (task.dr_new_sticker_expiry) vUpdate.inspection_sticker_expiry = task.dr_new_sticker_expiry;
+      const { error: vErr } = await supabaseAdmin
+        .from("vehicles")
+        .update(vUpdate)
+        .eq("id", task.linked_vehicle_id);
+      if (vErr) throw new Error(vErr.message);
+
+      // Log the DMV cost to a maintenance entry for the vehicle.
+      if (cost > 0) {
+        const id = `MN-${crypto.randomUUID().replace(/-/g, "").slice(0, 10).toUpperCase()}`;
+        const { error: mErr } = await supabaseAdmin
+          .from("maintenance")
+          .insert({
+            id,
+            vehicle_id: task.linked_vehicle_id,
+            service_type: `DMV: ${task.dr_service ?? "DMV service"}`,
+            vendor: "DMV",
+            date_completed: serviceDate,
+            mileage_at_service: 0,
+            cost,
+            notes: `DMV run${task.dr_new_reg_expiry ? ` · registration now expires ${task.dr_new_reg_expiry}` : ""}${task.dr_new_sticker_expiry ? ` · sticker now expires ${task.dr_new_sticker_expiry}` : ""}.`,
+            next_service_due: serviceDate,
+          });
+        if (mErr) throw new Error(mErr.message);
+      }
+    }
+
+    const { error: aErr } = await supabaseAdmin
+      .from("tasks")
+      .update({ approved_at: nowIso })
+      .eq("id", task.id);
+    if (aErr) throw new Error(aErr.message);
+
+    return { ok: true, approved_at: nowIso, vehicle_id: task.linked_vehicle_id, registration_expiry: task.dr_new_reg_expiry, sticker_expiry: task.dr_new_sticker_expiry, cost };
   });

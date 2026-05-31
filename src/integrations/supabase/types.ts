@@ -1389,6 +1389,20 @@ export type Database = {
           completed_inspection_id: string | null
           created_at: string
           description: string | null
+          dr_actual_cost: number | null
+          dr_arrival_at: string | null
+          dr_completion_at: string | null
+          dr_documents_needed: Json
+          dr_documents_packed: Json
+          dr_documents_received: Json
+          dr_expected_cost: number | null
+          dr_location: string | null
+          dr_new_reg_expiry: string | null
+          dr_new_sticker_expiry: string | null
+          dr_notes: string | null
+          dr_photos: Json
+          dr_service: string | null
+          dr_service_completed: Json
           due_date: string | null
           id: string
           linked_rental_id: string | null
@@ -1440,6 +1454,20 @@ export type Database = {
           completed_inspection_id?: string | null
           created_at?: string
           description?: string | null
+          dr_actual_cost?: number | null
+          dr_arrival_at?: string | null
+          dr_completion_at?: string | null
+          dr_documents_needed?: Json
+          dr_documents_packed?: Json
+          dr_documents_received?: Json
+          dr_expected_cost?: number | null
+          dr_location?: string | null
+          dr_new_reg_expiry?: string | null
+          dr_new_sticker_expiry?: string | null
+          dr_notes?: string | null
+          dr_photos?: Json
+          dr_service?: string | null
+          dr_service_completed?: Json
           due_date?: string | null
           id?: string
           linked_rental_id?: string | null
@@ -1491,6 +1519,20 @@ export type Database = {
           completed_inspection_id?: string | null
           created_at?: string
           description?: string | null
+          dr_actual_cost?: number | null
+          dr_arrival_at?: string | null
+          dr_completion_at?: string | null
+          dr_documents_needed?: Json
+          dr_documents_packed?: Json
+          dr_documents_received?: Json
+          dr_expected_cost?: number | null
+          dr_location?: string | null
+          dr_new_reg_expiry?: string | null
+          dr_new_sticker_expiry?: string | null
+          dr_notes?: string | null
+          dr_photos?: Json
+          dr_service?: string | null
+          dr_service_completed?: Json
           due_date?: string | null
           id?: string
           linked_rental_id?: string | null
@@ -1606,7 +1648,9 @@ export type Database = {
           has_open_issues: boolean
           id: string
           image_url: string | null
+          inspection_sticker_expiry: string | null
           insurance_expiry: string | null
+          last_dmv_service_at: string | null
           last_inspection_at: string | null
           last_inspection_mileage: number | null
           maintenance_settings: Json
@@ -1641,7 +1685,9 @@ export type Database = {
           has_open_issues?: boolean
           id: string
           image_url?: string | null
+          inspection_sticker_expiry?: string | null
           insurance_expiry?: string | null
+          last_dmv_service_at?: string | null
           last_inspection_at?: string | null
           last_inspection_mileage?: number | null
           maintenance_settings?: Json
@@ -1676,7 +1722,9 @@ export type Database = {
           has_open_issues?: boolean
           id?: string
           image_url?: string | null
+          inspection_sticker_expiry?: string | null
           insurance_expiry?: string | null
+          last_dmv_service_at?: string | null
           last_inspection_at?: string | null
           last_inspection_mileage?: number | null
           maintenance_settings?: Json

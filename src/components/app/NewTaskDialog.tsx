@@ -50,6 +50,24 @@ type Props = {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+export const DMV_SERVICES = [
+  "Registration renewal",
+  "Title transfer",
+  "Inspection sticker",
+  "Emissions test",
+  "License plate",
+  "Other",
+] as const;
+
+export const DMV_DOCS_NEEDED = [
+  "Title",
+  "Insurance proof",
+  "ID",
+  "Previous registration",
+  "Inspection sticker (if needed)",
+  "Emissions test (if needed)",
+] as const;
+
 export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props) {
   const createTask = useServerFn(adminCreateTask);
   const loadRunners = useServerFn(listAssignableRunners);
@@ -86,6 +104,12 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const [rpCustomerName, setRpCustomerName] = useState<string>("");
   const [rpCustomerPhone, setRpCustomerPhone] = useState<string>("");
   const [rpTowAuthorized, setRpTowAuthorized] = useState<boolean>(false);
+  // DMV-run specific fields
+  const [drService, setDrService] = useState<string>("");
+  const [drDocs, setDrDocs] = useState<Record<string, boolean>>({});
+  const [drOtherDoc, setDrOtherDoc] = useState<string>("");
+  const [drLocation, setDrLocation] = useState<string>("");
+  const [drExpectedCost, setDrExpectedCost] = useState<string>("");
 
   // Reset state when dialog opens (so prefill from a different context is honored)
   useEffect(() => {
@@ -109,6 +133,11 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     setRpCustomerName("");
     setRpCustomerPhone("");
     setRpTowAuthorized(false);
+    setDrService("");
+    setDrDocs({});
+    setDrOtherDoc("");
+    setDrLocation("");
+    setDrExpectedCost("");
   }, [open, prefill]);
 
   // Load data on open
@@ -154,6 +183,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const isMechanicRun = taskType === "mechanic_run";
   const isPartsRun = taskType === "parts";
   const isRepo = taskType === "repo";
+  const isDmv = taskType === "dmv";
 
   // Auto-fill customer name/phone/address from the linked rental's driver (repo).
   useEffect(() => {
@@ -166,6 +196,14 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     setRpCustomerPhone((prev) => prev || driver.phone || "");
     setAddress((prev) => prev || driver.address || "");
   }, [isRepo, rentalId, rentals, drivers]);
+
+  // Build the documents-needed checklist for DMV runs (includes custom "Other" entry).
+  const dmvDocsNeeded = useMemo(() => {
+    const out: Record<string, boolean> = {};
+    for (const [k, v] of Object.entries(drDocs)) if (v) out[k] = true;
+    if (drOtherDoc.trim()) out[drOtherDoc.trim()] = true;
+    return out;
+  }, [drDocs, drOtherDoc]);
 
   function onVendorChange(id: string) {
     setVendorId(id);
@@ -227,6 +265,10 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         rp_customer_name: isRepo ? (rpCustomerName.trim() || null) : null,
         rp_customer_phone: isRepo ? (rpCustomerPhone.trim() || null) : null,
         rp_tow_authorized: isRepo ? rpTowAuthorized : false,
+        dr_service: isDmv ? (drService.trim() || null) : null,
+        dr_documents_needed: isDmv ? dmvDocsNeeded : {},
+        dr_location: isDmv ? (drLocation.trim() || null) : null,
+        dr_expected_cost: isDmv && drExpectedCost.trim() ? Number(drExpectedCost) : null,
       }});
       console.log("Task created successfully");
       console.log(`[NewTaskDialog] Task created. notify_sms was: ${notifySms}, runner_phone: ${selectedRunner?.phone ?? "(none)"}, sms_status: ${res.sms_status}${res.sms_error ? ` (${res.sms_error})` : ""}`);
@@ -422,6 +464,46 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
                 <Checkbox checked={rpTowAuthorized} onCheckedChange={(v) => setRpTowAuthorized(v === true)} />
                 Tow authorized
               </label>
+            </div>
+          )}
+
+          {isDmv && (
+            <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+              <p className="text-xs font-semibold text-muted-foreground">📋 DMV Run Details</p>
+              <div>
+                <Label>DMV Service</Label>
+                <Select value={drService || "__none"} onValueChange={(v) => setDrService(v === "__none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Select service…" /></SelectTrigger>
+                  <SelectContent>
+                    {DMV_SERVICES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Documents Needed</Label>
+                <div className="mt-1 space-y-1.5">
+                  {DMV_DOCS_NEEDED.map((d) => (
+                    <label key={d} className="flex items-center gap-2 text-sm">
+                      <Checkbox checked={!!drDocs[d]} onCheckedChange={() => setDrDocs((p) => ({ ...p, [d]: !p[d] }))} />
+                      {d}
+                    </label>
+                  ))}
+                </div>
+                <Input className="mt-2" value={drOtherDoc} onChange={(e) => setDrOtherDoc(e.target.value)}
+                  placeholder="Other document (optional)" maxLength={120} />
+              </div>
+              <div>
+                <Label htmlFor="dr-loc">DMV Location</Label>
+                <Input id="dr-loc" value={drLocation} onChange={(e) => setDrLocation(e.target.value)}
+                  placeholder="e.g. PA DMV (Philly)" maxLength={500} />
+              </div>
+              <div>
+                <Label htmlFor="dr-cost">Expected Cost (optional)</Label>
+                <Input id="dr-cost" type="number" inputMode="decimal" min={0} value={drExpectedCost}
+                  onChange={(e) => setDrExpectedCost(e.target.value)} placeholder="e.g. 95" />
+              </div>
             </div>
           )}
 
