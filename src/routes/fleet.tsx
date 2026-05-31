@@ -123,7 +123,7 @@ function FleetPage() {
                 <div className="mt-2 border-t border-border pt-2 text-xs text-muted-foreground">
                   {lastSvc ? (
                     <>
-                      <div>Last service: {lastSvc.serviceType} · {fmtDate(lastSvc.dateCompleted)} · {lastSvc.mileageAtService.toLocaleString()} mi</div>
+                      <div>Last service: {lastSvc.serviceType} · {lastSvc.vendor || "—"} · {fmtDate(lastSvc.dateCompleted)} · {fmtMoney(lastSvc.cost)} · {lastSvc.dateCompleted ? "Completed" : "Open"}</div>
                       <div>Next due: {fmtDate(lastSvc.nextServiceDue)}</div>
                     </>
                   ) : (
