@@ -153,6 +153,19 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const selectedVehicle = useMemo(() => vehicles.find((v) => v.id === vehicleId), [vehicles, vehicleId]);
   const isMechanicRun = taskType === "mechanic_run";
   const isPartsRun = taskType === "parts";
+  const isRepo = taskType === "repo";
+
+  // Auto-fill customer name/phone/address from the linked rental's driver (repo).
+  useEffect(() => {
+    if (!isRepo || !rentalId) return;
+    const rental = rentals.find((r) => r.id === rentalId);
+    if (!rental) return;
+    const driver = drivers.find((d) => d.id === rental.driver_id);
+    if (!driver) return;
+    setRpCustomerName((prev) => prev || driver.full_name || "");
+    setRpCustomerPhone((prev) => prev || driver.phone || "");
+    setAddress((prev) => prev || driver.address || "");
+  }, [isRepo, rentalId, rentals, drivers]);
 
   function onVendorChange(id: string) {
     setVendorId(id);
