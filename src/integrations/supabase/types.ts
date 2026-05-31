@@ -1736,6 +1736,81 @@ export type Database = {
         }
         Relationships: []
       }
+      work_orders: {
+        Row: {
+          actual_cost: number | null
+          admin_signature: string | null
+          admin_signed_at: string | null
+          assigned_to: string | null
+          completed_date: string | null
+          completion_notes: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          estimated_cost: number
+          id: string
+          mechanic_signature: string | null
+          mechanic_signed_at: string | null
+          parts_used: string | null
+          priority: string
+          reviewed_by: string | null
+          scheduled_date: string
+          service_type: string
+          signed_doc_url: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          actual_cost?: number | null
+          admin_signature?: string | null
+          admin_signed_at?: string | null
+          assigned_to?: string | null
+          completed_date?: string | null
+          completion_notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          estimated_cost?: number
+          id: string
+          mechanic_signature?: string | null
+          mechanic_signed_at?: string | null
+          parts_used?: string | null
+          priority?: string
+          reviewed_by?: string | null
+          scheduled_date?: string
+          service_type: string
+          signed_doc_url?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          actual_cost?: number | null
+          admin_signature?: string | null
+          admin_signed_at?: string | null
+          assigned_to?: string | null
+          completed_date?: string | null
+          completion_notes?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          estimated_cost?: number
+          id?: string
+          mechanic_signature?: string | null
+          mechanic_signed_at?: string | null
+          parts_used?: string | null
+          priority?: string
+          reviewed_by?: string | null
+          scheduled_date?: string
+          service_type?: string
+          signed_doc_url?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
