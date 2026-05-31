@@ -200,11 +200,17 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
 
   const canNext =
     (step === 0 && !!startDate) ||
-    (step === 1 && !!vehicle) ||
+    (step === 1 && !!vehicle && !vehicle.hasOpenIssues) ||
     (step === 2 && !!driver && (!existingRental || isSwap)) ||
     step === 3;
 
   function next() {
+    // Open maintenance issue is a HARD block — cannot advance past the
+    // Vehicle step until the repair ticket is marked completed.
+    if (step === 1 && vehicle?.hasOpenIssues) {
+      setOpenIssueWarning(true);
+      return;
+    }
     // When leaving the Vehicle step (1), seed the default rate.
     if (step === 1 && vehicle) setRate(prev => prev || defaultRate(vehicle, billingPeriod));
     if (step < 3) setStep((step + 1) as Step);
@@ -379,7 +385,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                     <button
                       key={v.id}
                       type="button"
-                      onClick={() => setVehicleId(v.id)}
+                      onClick={() => { setVehicleId(v.id); if (v.hasOpenIssues) setOpenIssueWarning(true); }}
                       className={cn(
                         "flex items-start gap-3 rounded-lg border bg-card p-3 text-left transition hover:border-primary/50",
                         selected && "border-primary ring-2 ring-primary/20",
