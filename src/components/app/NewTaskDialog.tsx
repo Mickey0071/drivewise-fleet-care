@@ -50,6 +50,24 @@ type Props = {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+export const DMV_SERVICES = [
+  "Registration renewal",
+  "Title transfer",
+  "Inspection sticker",
+  "Emissions test",
+  "License plate",
+  "Other",
+] as const;
+
+export const DMV_DOCS_NEEDED = [
+  "Title",
+  "Insurance proof",
+  "ID",
+  "Previous registration",
+  "Inspection sticker (if needed)",
+  "Emissions test (if needed)",
+] as const;
+
 export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props) {
   const createTask = useServerFn(adminCreateTask);
   const loadRunners = useServerFn(listAssignableRunners);
