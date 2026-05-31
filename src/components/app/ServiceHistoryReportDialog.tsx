@@ -110,8 +110,7 @@ export function ServiceHistoryReportDialog({ open, onOpenChange, vehicle }: Prop
   async function downloadPdf() {
     setBusy(true);
     try {
-      const bytes = await renderServiceHistoryPdf(data);
-      const blob = new Blob([bytes], { type: "application/pdf" });
+      const blob = await renderServiceHistoryPdf(data);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -131,8 +130,7 @@ export function ServiceHistoryReportDialog({ open, onOpenChange, vehicle }: Prop
   async function printReport() {
     setBusy(true);
     try {
-      const bytes = await renderServiceHistoryPdf(data);
-      const blob = new Blob([bytes], { type: "application/pdf" });
+      const blob = await renderServiceHistoryPdf(data);
       const url = URL.createObjectURL(blob);
       const w = window.open(url, "_blank");
       if (w) {
