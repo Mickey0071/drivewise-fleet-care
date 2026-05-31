@@ -328,6 +328,7 @@ const fromMaintenance = (r: any): Maintenance => ({
   vendor: r.vendor, dateCompleted: r.date_completed,
   mileageAtService: r.mileage_at_service, cost: Number(r.cost),
   nextServiceDue: r.next_service_due, notes: r.notes ?? undefined,
+  completedBy: r.completed_by ?? undefined,
   sourceInspectionId: r.source_inspection_id ?? undefined,
   createdAt: r.created_at ?? undefined,
 });
@@ -336,6 +337,7 @@ const toMaintenance = (m: Maintenance) => ({
   vendor: m.vendor, date_completed: m.dateCompleted,
   mileage_at_service: m.mileageAtService, cost: m.cost,
   next_service_due: m.nextServiceDue, notes: m.notes ?? null,
+  completed_by: m.completedBy ?? null,
 });
 
 // ---- staff ----
