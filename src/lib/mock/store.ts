@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, insuranceEntries, insuranceChecklist, violations, staff, payrollRuns, repairTypes, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto, type InsuranceEntry, type InsuranceChecklistItem, type Violation, type Staff, type PayrollRun, type RepairType } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, insuranceEntries, insuranceChecklist, violations, staff, payrollRuns, repairTypes, serviceTypes, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto, type InsuranceEntry, type InsuranceChecklistItem, type Violation, type Staff, type PayrollRun, type RepairType, type ServiceType } from "./data";
 import { supabase } from "@/integrations/supabase/client";
 
 const listeners = new Set<() => void>();
@@ -367,6 +367,9 @@ const fromRepairType = (r: any): RepairType => ({
 const toRepairType = (t: RepairType) => ({
   id: t.id, name: t.name, description: t.description, sort_order: t.sortOrder, created_at: t.createdAt,
 });
+const fromServiceType = (r: any): ServiceType => ({
+  id: r.id, name: r.name, description: r.description ?? "", sortOrder: r.sort_order ?? 0, createdAt: r.created_at,
+});
 
 let hydrationPromise: Promise<void> | null = null;
 let hydrated = false;
@@ -380,7 +383,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
   }
   if (hydrationPromise) return hydrationPromise;
   hydrationPromise = (async () => {
-    const [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl, rt] = await Promise.all([
+    const [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl, rt, st] = await Promise.all([
       supabase.from("vehicles").select("*"),
       supabase.from("drivers").select("*"),
       supabase.from("rentals").select("*"),
@@ -397,8 +400,9 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
       supabase.from("payroll_runs").select("*").order("period_end", { ascending: false }),
       supabase.from("payroll_lines").select("*"),
       supabase.from("repair_types").select("*").order("sort_order", { ascending: true }),
+      supabase.from("service_types").select("*").order("sort_order", { ascending: true }),
     ]);
-    const failures = [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl, rt].filter(result => result.error);
+    const failures = [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl, rt, st].filter(result => result.error);
     if (failures.length) {
       failures.forEach(result => console.error("[cloud:hydrate]", result.error));
       hydrationPromise = null;
@@ -418,6 +422,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
     replaceArray(staff, (stf.data ?? []).map(fromStaff));
     replaceArray(payrollRuns, (prr.data ?? []).map(row => fromPayrollRun(row, prl.data ?? [])));
     replaceArray(repairTypes, (rt.data ?? []).map(fromRepairType));
+    replaceArray(serviceTypes, (st.data ?? []).map(fromServiceType));
     reconcileVehicleAvailability(true);
     hydrated = true;
     emit();
@@ -636,6 +641,18 @@ function subscribeRealtime() {
         const next = fromRepairType(payload.new);
         const idx = repairTypes.findIndex(x => x.id === next.id);
         if (idx >= 0) repairTypes[idx] = next; else repairTypes.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "service_types" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = serviceTypes.findIndex(x => x.id === id);
+        if (idx >= 0) serviceTypes.splice(idx, 1);
+      } else {
+        const next = fromServiceType(payload.new);
+        const idx = serviceTypes.findIndex(x => x.id === next.id);
+        if (idx >= 0) serviceTypes[idx] = next; else serviceTypes.push(next);
       }
       emit();
     })
@@ -1355,6 +1372,17 @@ export async function addRepairType(name: string, description = ""): Promise<Rep
   if (error) throw error;
   const t = fromRepairType(data);
   if (!repairTypes.some(x => x.id === t.id)) repairTypes.push(t);
+  emit();
+  return t;
+}
+
+export async function addServiceType(name: string, description = ""): Promise<ServiceType> {
+  const maxOrder = serviceTypes.reduce((m, t) => Math.max(m, t.sortOrder), -1);
+  const row = { name, description, sort_order: maxOrder + 1 };
+  const { data, error } = await supabase.from("service_types").insert(row).select().single();
+  if (error) throw error;
+  const t = fromServiceType(data);
+  if (!serviceTypes.some(x => x.id === t.id)) serviceTypes.push(t);
   emit();
   return t;
 }
