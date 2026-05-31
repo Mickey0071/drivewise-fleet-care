@@ -13,7 +13,7 @@ import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { NewTaskDialog } from "@/components/app/NewTaskDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useRef, useState } from "react";
-import { ArrowLeft, Link2, Camera, Pencil, Send, FileText } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,10 @@ import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog"
 import { ResolveMaintenanceDialog } from "@/components/app/ResolveMaintenanceDialog";
 import { MaintenanceSettingsDialog } from "@/components/app/MaintenanceSettingsDialog";
 import { ServiceHistoryReportDialog } from "@/components/app/ServiceHistoryReportDialog";
-import type { Maintenance } from "@/lib/mock/data";
+import { CreateWorkOrderDialog } from "@/components/app/CreateWorkOrderDialog";
+import { WorkOrderDialog } from "@/components/app/WorkOrderDialog";
+import type { Maintenance, WorkOrder } from "@/lib/mock/data";
+import { workOrders } from "@/lib/mock/data";
 import { isServiceLogRecord, lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { toast } from "sonner";
 
@@ -77,6 +80,9 @@ function VehicleDetail() {
   const isCurrentlyRented = v.status === "rented" && !!activeRental && !activeRental.endDate;
   const nextDue = vPayments.find(p => p.status !== "paid");
   const alerts = computeVehicleAlerts(v);
+  const vWorkOrders = workOrders
+    .filter(w => w.vehicleId === v.id)
+    .sort((a, b) => (b.scheduledDate ?? "").localeCompare(a.scheduledDate ?? ""));
 
   const uniqueRenters = Array.from(new Map(vRentals.map(r => [r.driverId, driverById(r.driverId)])).entries())
     .map(([driverId, driver]) => {
@@ -167,6 +173,9 @@ function VehicleDetail() {
             </Button>
             <Button size="sm" variant="outline" onClick={() => setReportOpen(true)}>
               <FileText className="mr-1 h-4 w-4" />Generate Service History Report
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>
+              <ClipboardList className="mr-1 h-4 w-4" />Create Maintenance Schedule
             </Button>
             {role === "admin" && (
               <Button size="sm" variant="outline" onClick={() => setTaskOpen(true)}>
@@ -309,6 +318,32 @@ function VehicleDetail() {
             <Stat label="Last service" value={lastSvc ? `${lastSvc.serviceType}` : "—"} />
             <Stat label="Next service due" value={lastSvc ? fmtDate(lastSvc.nextServiceDue) : "—"} />
           </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Work orders ({vWorkOrders.length})</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>
+                <ClipboardList className="mr-1 h-4 w-4" />New work order
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {vWorkOrders.length === 0 ? <Empty/> : vWorkOrders.map(w => (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => setActiveWo(w)}
+                  className="flex w-full items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-left hover:bg-accent"
+                >
+                  <div>
+                    <div className="text-sm font-medium">{w.serviceType}</div>
+                    <div className="text-xs text-muted-foreground">
+                      Scheduled {fmtDate(w.scheduledDate)}{w.assignedTo ? ` · ${w.assignedTo}` : ""} · {fmtMoney(w.estimatedCost)}
+                    </div>
+                  </div>
+                  <StatusBadge status={w.status} />
+                </button>
+              ))}
+            </CardContent>
+          </Card>
           <Section title={`Service log (${serviceLog.length})`}>
             {serviceLog.length === 0 ? <Empty/> : serviceLog.map(m => (
               <Row key={m.id} title={m.serviceType} sub={`${m.vendor || "—"} · ${fmtDate(m.dateCompleted)} · by ${m.completedBy || "—"} · ${m.mileageAtService.toLocaleString()} mi · next due ${fmtDate(m.nextServiceDue)}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
@@ -417,6 +452,19 @@ function VehicleDetail() {
         onOpenChange={setReportOpen}
         vehicle={v}
       />
+      <CreateWorkOrderDialog
+        open={createWoOpen}
+        onOpenChange={setCreateWoOpen}
+        vehicle={v}
+      />
+      {activeWo && (
+        <WorkOrderDialog
+          open={!!activeWo}
+          onOpenChange={(o) => { if (!o) setActiveWo(null); }}
+          workOrder={activeWo}
+          vehicle={v}
+        />
+      )}
       <div className="mt-6 flex justify-start">
         <Button variant="outline" asChild>
           <Link to="/fleet"><ArrowLeft className="mr-1 h-4 w-4" />Back to Fleet</Link>
