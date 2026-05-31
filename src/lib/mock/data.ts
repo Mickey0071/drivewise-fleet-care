@@ -182,6 +182,7 @@ export interface InsuranceChecklistItem {
 }
 
 export const repairTypes: RepairType[] = [];
+export const serviceTypes: ServiceType[] = [];
 
 export const vehicles: Vehicle[] = [];
 export const drivers: Driver[] = [];
