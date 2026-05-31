@@ -521,16 +521,28 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                     <button
                       key={d.id}
                       type="button"
+                      disabled={d.blocked}
                       onClick={() => setDriverId(d.id)}
                       className={cn(
                         "flex w-full items-center gap-3 p-3 text-left transition hover:bg-muted/50",
                         selected && "bg-primary/5",
+                        d.blocked && "cursor-not-allowed opacity-60 hover:bg-transparent",
                       )}
                     >
                       <User className="h-5 w-5 text-muted-foreground" />
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium">{d.fullName}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{d.fullName}</span>
+                          {d.blocked && (
+                            <span className="inline-flex items-center rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-destructive">
+                              Blocked
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-muted-foreground">{d.email} · {d.phone}</div>
+                        {d.blocked && d.blockReason && (
+                          <div className="text-xs text-destructive">{d.blockReason}</div>
+                        )}
                       </div>
                       <span className="text-xs text-muted-foreground">{d.rideshare}</span>
                       {selected && <Check className="h-4 w-4 text-primary" />}
