@@ -647,6 +647,134 @@ function Avg({ label, value, weeks, tone }: { label: string; value: number; week
   );
 }
 
+type TrendPeriod = "30" | "90" | "180" | "all";
+
+function RepairTrends() {
+  useStoreVersion();
+  const [period, setPeriod] = useState<TrendPeriod>("180");
+
+  const rows = useMemo(() => {
+    const days = period === "all" ? null : Number(period);
+    const now = new Date();
+    const since = days == null ? null : (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - days);
+      return d.toISOString().slice(0, 10);
+    })();
+    const inRange = (d?: string) => {
+      if (!since) return true;
+      if (!d) return false;
+      return d.slice(0, 10) >= since;
+    };
+
+    return vehicles.map(v => {
+      const repairs = maintenance.filter(
+        m => m.vehicleId === v.id && !!m.dateCompleted && isIssueRecord(m) && inRange(m.dateCompleted),
+      );
+      const total = repairs.reduce((s, m) => s + m.cost, 0);
+      const count = repairs.length;
+
+      // Span in months for averaging
+      let months: number;
+      if (days != null) {
+        months = days / 30;
+      } else {
+        const dates = repairs.map(m => new Date(m.dateCompleted!).getTime());
+        const earliest = dates.length ? Math.min(...dates) : now.getTime();
+        months = Math.max(1, (now.getTime() - earliest) / (1000 * 60 * 60 * 24 * 30));
+      }
+      const costPerMonth = total / months;
+      const repairsPerMonth = count / months;
+
+      // Trend: compare cost in the recent half vs older half of the window.
+      const windowDays = days ?? 180;
+      const midpoint = new Date();
+      midpoint.setDate(midpoint.getDate() - windowDays / 2);
+      const midStr = midpoint.toISOString().slice(0, 10);
+      let recentCost = 0;
+      let olderCost = 0;
+      repairs.forEach(m => {
+        if ((m.dateCompleted ?? "") >= midStr) recentCost += m.cost;
+        else olderCost += m.cost;
+      });
+      let trend: "up" | "down" | "stable";
+      if (recentCost > olderCost * 1.15) trend = "up";
+      else if (recentCost < olderCost * 0.85) trend = "down";
+      else trend = "stable";
+
+      return { vehicle: v, total, count, costPerMonth, repairsPerMonth, trend };
+    }).filter(r => r.count > 0).sort((a, b) => b.costPerMonth - a.costPerMonth);
+  }, [period]);
+
+  const pb = (key: TrendPeriod, label: string) => (
+    <Button key={key} variant={period === key ? "default" : "outline"} size="sm" onClick={() => setPeriod(key)}>{label}</Button>
+  );
+
+  const trendMeta = (t: "up" | "down" | "stable") => {
+    if (t === "up") return { arrow: "↑", text: "🔴 Deteriorating", cls: "text-destructive font-semibold", row: "bg-destructive/5" };
+    if (t === "down") return { arrow: "↓", text: "🟢 Improving", cls: "text-success font-semibold", row: "" };
+    return { arrow: "→", text: "🟡 Monitor", cls: "text-amber-500 font-semibold", row: "" };
+  };
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="text-base">Repair Trends</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap gap-1.5">
+          {pb("30", "Last 30 days")}{pb("90", "Last 90 days")}{pb("180", "Last 6 months")}{pb("all", "All Time")}
+        </div>
+
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No repairs recorded for this period.</p>
+        ) : (
+          <>
+            <div className="overflow-x-auto rounded-md border border-border">
+              <table className="w-full text-sm">
+                <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-2">Vehicle</th>
+                    <th className="px-4 py-2 text-right">Total Repairs</th>
+                    <th className="px-4 py-2 text-right">Avg Cost / Month</th>
+                    <th className="px-4 py-2 text-right">Repairs / Month</th>
+                    <th className="px-4 py-2">Trend</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {rows.map(r => {
+                    const tm = trendMeta(r.trend);
+                    return (
+                      <tr key={r.vehicle.id} className={tm.row}>
+                        <td className="px-4 py-2 font-medium">{r.vehicle.year} {r.vehicle.make} {r.vehicle.model}</td>
+                        <td className="px-4 py-2 text-right">{fmtMoney(r.total)}</td>
+                        <td className="px-4 py-2 text-right font-semibold">{fmtMoney(r.costPerMonth)}/mo</td>
+                        <td className="px-4 py-2 text-right">{r.repairsPerMonth.toFixed(2)}/mo <span className="text-xs text-muted-foreground">({r.count})</span></td>
+                        <td className={`px-4 py-2 text-xs ${tm.cls}`}>{tm.arrow} {tm.text}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {rows.filter(r => r.trend === "up").map(r => (
+              <div key={r.vehicle.id} className="rounded-md border border-destructive/40 bg-destructive/10 p-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-destructive">
+                  <AlertTriangle className="h-4 w-4" /> {r.vehicle.year} {r.vehicle.make} {r.vehicle.model} — repair costs increasing
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Averaging {fmtMoney(r.costPerMonth)}/month, trending ↑. This vehicle is deteriorating. Consider selling.
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function MaintenanceCostBreakdown() {
   useStoreVersion();
   const [filter, setFilter] = useState<MxFilter>("all");
