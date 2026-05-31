@@ -662,6 +662,15 @@ function Bar({ label, value, total, tone }: { label: string; value: number; tota
 type ProfitFilter = "all" | "profitable" | "losing";
 type PeriodFilter = "30" | "90" | "all";
 
+type MxFilter = "all" | "service" | "repairs";
+
+function categorizeService(serviceType: string): "oil" | "inspection" | "service" {
+  const s = (serviceType || "").toLowerCase();
+  if (s.includes("oil")) return "oil";
+  if (s.includes("inspect")) return "inspection";
+  return "service";
+}
+
 function VehicleProfitability() {
   useStoreVersion();
   const [filter, setFilter] = useState<ProfitFilter>("all");
