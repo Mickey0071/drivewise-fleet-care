@@ -61,7 +61,7 @@ export function VendorCombobox({ value, onChange }: Props) {
     setSaving(true);
     const { error } = await supabase.from("vendors").insert({
       name,
-      phone: newPhone.trim() || null,
+      phone: newPhone.trim(),
       address: newAddress.trim() || null,
     });
     setSaving(false);
