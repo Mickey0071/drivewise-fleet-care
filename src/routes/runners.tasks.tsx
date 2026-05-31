@@ -14,7 +14,7 @@ import { NewTaskDialog, TASK_TYPE_OPTIONS } from "@/components/app/NewTaskDialog
 import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
 import { Plus, Send } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { resendTaskSms, approveInspectionTask, approveMechanicRunTask } from "@/lib/tasks.functions";
+import { resendTaskSms, approveInspectionTask, approveMechanicRunTask, approvePartsRunTask } from "@/lib/tasks.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/runners/tasks")({
@@ -47,6 +47,16 @@ type TaskRow = {
   mr_dropoff_at: string | null;
   mr_mechanic_notes: string | null;
   mr_photos: string[] | null;
+  pr_vendor_name: string | null;
+  pr_contact_phone: string | null;
+  pr_parts_needed: string | null;
+  pr_destination: string | null;
+  pr_parts_picked_up: { label: string; checked: boolean }[] | null;
+  pr_cost: number | null;
+  pr_photos: string[] | null;
+  pr_pickup_at: string | null;
+  pr_delivered_at: string | null;
+  pr_delivery_notes: string | null;
 };
 
 function RunnerTasksPage() {
@@ -60,6 +70,7 @@ function RunnerTasksPage() {
   const resendFn = useServerFn(resendTaskSms);
   const approveFn = useServerFn(approveInspectionTask);
   const approveMrFn = useServerFn(approveMechanicRunTask);
+  const approvePrFn = useServerFn(approvePartsRunTask);
   const [approving, setApproving] = useState<string | null>(null);
 
   async function handleResend(taskId: string) {
@@ -108,6 +119,24 @@ function RunnerTasksPage() {
     }
   }
 
+  async function handleApprovePartsRun(task: TaskRow) {
+    setApproving(task.id);
+    try {
+      const res = await approvePrFn({ data: { task_id: task.id } });
+      toast.success(
+        res.cost != null
+          ? `Approved · $${Number(res.cost).toFixed(2)} logged to maintenance`
+          : "Parts run approved",
+      );
+      setDetail((d) => (d && d.id === task.id ? { ...d, approved_at: res.approved_at } : d));
+      load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Approve failed");
+    } finally {
+      setApproving(null);
+    }
+  }
+
   const [fStatus, setFStatus] = useState("all");
   const [fType, setFType] = useState("all");
   const [fRunner, setFRunner] = useState("all");
@@ -118,7 +147,7 @@ function RunnerTasksPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .select("id, task_type, status, priority_level, description, address, due_date, runner_name, assigned_to_user_id, linked_vehicle_id, linked_rental_id, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at, approved_at, mr_vendor_name, mr_contact_phone, mr_work_order, mr_dropoff_mileage, mr_dropoff_at, mr_mechanic_notes, mr_photos")
+      .select("id, task_type, status, priority_level, description, address, due_date, runner_name, assigned_to_user_id, linked_vehicle_id, linked_rental_id, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at, approved_at, mr_vendor_name, mr_contact_phone, mr_work_order, mr_dropoff_mileage, mr_dropoff_at, mr_mechanic_notes, mr_photos, pr_vendor_name, pr_contact_phone, pr_parts_needed, pr_destination, pr_parts_picked_up, pr_cost, pr_photos, pr_pickup_at, pr_delivered_at, pr_delivery_notes")
       .order("created_at", { ascending: false })
       .limit(500);
     setLoading(false);
