@@ -28,6 +28,7 @@ export const TASK_TYPE_OPTIONS: { value: TaskTypeKey; label: string }[] = [
 
 type Vehicle = { id: string; year: number; make: string; model: string; plate: string };
 type Rental = { id: string; vehicle_id: string; driver_id: string; start_date: string };
+type Driver = { id: string; full_name: string | null; phone: string | null; address: string | null };
 type Runner = { id: string; first_name: string | null; last_name: string | null; username: string | null; phone: string | null };
 type Vendor = { id: string; name: string; phone: string | null; address: string | null; service_type: string | null };
 
@@ -59,6 +60,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
 
   const [assignedTo, setAssignedTo] = useState<string>("");
   const [runnerSearch, setRunnerSearch] = useState("");
@@ -79,6 +81,11 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   // Parts-run specific fields
   const [prPartsNeeded, setPrPartsNeeded] = useState<string>("");
   const [prDestination, setPrDestination] = useState<string>("");
+  // Repo specific fields
+  const [rpReason, setRpReason] = useState<string>("");
+  const [rpCustomerName, setRpCustomerName] = useState<string>("");
+  const [rpCustomerPhone, setRpCustomerPhone] = useState<string>("");
+  const [rpTowAuthorized, setRpTowAuthorized] = useState<boolean>(false);
 
   // Reset state when dialog opens (so prefill from a different context is honored)
   useEffect(() => {
@@ -98,6 +105,10 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     setWorkOrder("");
     setPrPartsNeeded("");
     setPrDestination("");
+    setRpReason("");
+    setRpCustomerName("");
+    setRpCustomerPhone("");
+    setRpTowAuthorized(false);
   }, [open, prefill]);
 
   // Load data on open
@@ -116,6 +127,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         supabase.from("vehicles").select("id, year, make, model, plate").order("make"),
         supabase.from("rentals").select("id, vehicle_id, driver_id, start_date").order("start_date", { ascending: false }).limit(200),
         supabase.from("vendors").select("id, name, phone, address, service_type").order("name"),
+        supabase.from("drivers").select("id, full_name, phone, address").order("full_name"),
       ]);
       if (cancelled) return;
       setRunners(r);
@@ -123,6 +135,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
       setVehicles((vRes.data ?? []) as Vehicle[]);
       setRentals((rRes.data ?? []) as Rental[]);
       setVendors((venRes.data ?? []) as Vendor[]);
+      setDrivers((arguments_drivers_res(venRes), (await Promise.resolve())) as never) as never;
     })();
     return () => { cancelled = true; };
   }, [open, loadRunners]);
