@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, insuranceEntries, insuranceChecklist, violations, staff, payrollRuns, repairTypes, serviceTypes, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto, type InsuranceEntry, type InsuranceChecklistItem, type Violation, type Staff, type PayrollRun, type RepairType, type ServiceType } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, insuranceEntries, insuranceChecklist, violations, staff, payrollRuns, repairTypes, serviceTypes, workOrders, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto, type InsuranceEntry, type InsuranceChecklistItem, type Violation, type Staff, type PayrollRun, type RepairType, type ServiceType, type WorkOrder } from "./data";
 import { supabase } from "@/integrations/supabase/client";
 
 const listeners = new Set<() => void>();
@@ -376,6 +376,41 @@ const toRepairType = (t: RepairType) => ({
 });
 const fromServiceType = (r: any): ServiceType => ({
   id: r.id, name: r.name, description: r.description ?? "", sortOrder: r.sort_order ?? 0, createdAt: r.created_at,
+});
+
+// ---- work orders ----
+const fromWorkOrder = (r: any): WorkOrder => ({
+  id: r.id, vehicleId: r.vehicle_id, serviceType: r.service_type,
+  scheduledDate: r.scheduled_date, estimatedCost: Number(r.estimated_cost ?? 0),
+  description: r.description ?? "", assignedTo: r.assigned_to ?? undefined,
+  priority: r.priority, status: r.status,
+  completedDate: r.completed_date ?? undefined,
+  actualCost: r.actual_cost != null ? Number(r.actual_cost) : undefined,
+  partsUsed: r.parts_used ?? undefined,
+  completionNotes: r.completion_notes ?? undefined,
+  mechanicSignature: r.mechanic_signature ?? undefined,
+  mechanicSignedAt: r.mechanic_signed_at ?? undefined,
+  reviewedBy: r.reviewed_by ?? undefined,
+  adminSignature: r.admin_signature ?? undefined,
+  adminSignedAt: r.admin_signed_at ?? undefined,
+  signedDocUrl: r.signed_doc_url ?? undefined,
+  createdAt: r.created_at ?? undefined,
+});
+const toWorkOrder = (w: WorkOrder) => ({
+  id: w.id, vehicle_id: w.vehicleId, service_type: w.serviceType,
+  scheduled_date: w.scheduledDate, estimated_cost: w.estimatedCost,
+  description: w.description, assigned_to: w.assignedTo ?? null,
+  priority: w.priority, status: w.status,
+  completed_date: w.completedDate ?? null,
+  actual_cost: w.actualCost ?? null,
+  parts_used: w.partsUsed ?? null,
+  completion_notes: w.completionNotes ?? null,
+  mechanic_signature: w.mechanicSignature ?? null,
+  mechanic_signed_at: w.mechanicSignedAt ?? null,
+  reviewed_by: w.reviewedBy ?? null,
+  admin_signature: w.adminSignature ?? null,
+  admin_signed_at: w.adminSignedAt ?? null,
+  signed_doc_url: w.signedDocUrl ?? null,
 });
 
 let hydrationPromise: Promise<void> | null = null;
