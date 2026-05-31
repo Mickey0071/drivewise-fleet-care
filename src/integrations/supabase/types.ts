@@ -1146,18 +1146,21 @@ export type Database = {
       repair_types: {
         Row: {
           created_at: string
+          description: string
           id: string
           name: string
           sort_order: number
         }
         Insert: {
           created_at?: string
+          description?: string
           id?: string
           name: string
           sort_order?: number
         }
         Update: {
           created_at?: string
+          description?: string
           id?: string
           name?: string
           sort_order?: number

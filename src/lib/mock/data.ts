@@ -97,6 +97,7 @@ export interface Payment {
 export interface RepairType {
   id: string;
   name: string;
+  description: string;
   sortOrder: number;
   createdAt: string;
 }

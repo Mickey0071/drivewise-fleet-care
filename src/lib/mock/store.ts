@@ -362,10 +362,10 @@ const toPayrollRun = (r: PayrollRun) => ({
   run_date: r.runDate, total_payout: r.totalPayout, status: r.status,
 });
 const fromRepairType = (r: any): RepairType => ({
-  id: r.id, name: r.name, sortOrder: r.sort_order ?? 0, createdAt: r.created_at,
+  id: r.id, name: r.name, description: r.description ?? "", sortOrder: r.sort_order ?? 0, createdAt: r.created_at,
 });
 const toRepairType = (t: RepairType) => ({
-  id: t.id, name: t.name, sort_order: t.sortOrder, created_at: t.createdAt,
+  id: t.id, name: t.name, description: t.description, sort_order: t.sortOrder, created_at: t.createdAt,
 });
 
 let hydrationPromise: Promise<void> | null = null;
@@ -1348,9 +1348,9 @@ export function addMaintenance(input: Omit<Maintenance, "id">) {
   return rec;
 }
 
-export async function addRepairType(name: string): Promise<RepairType> {
+export async function addRepairType(name: string, description = ""): Promise<RepairType> {
   const maxOrder = repairTypes.reduce((m, t) => Math.max(m, t.sortOrder), -1);
-  const row = { name, sort_order: maxOrder + 1 };
+  const row = { name, description, sort_order: maxOrder + 1 };
   const { data, error } = await supabase.from("repair_types").insert(row).select().single();
   if (error) throw error;
   const t = fromRepairType(data);
