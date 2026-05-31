@@ -3,12 +3,14 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
-import { Wrench, AlertTriangle } from "lucide-react";
+import { Wrench, AlertTriangle, ClipboardList } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ReportActions } from "@/components/app/ReportActions";
 import { LogServiceDialog } from "@/components/app/LogServiceDialog";
 import { AddIssueDialog } from "@/components/app/AddIssueDialog";
 import { ResolveMaintenanceDialog } from "@/components/app/ResolveMaintenanceDialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { isServiceLogRecord } from "@/lib/maintenance-utils";
 import { useState } from "react";
 import { useStoreVersion } from "@/lib/mock/store";
 import type { Maintenance } from "@/lib/mock/data";
@@ -26,12 +28,12 @@ function MaintenancePage() {
   const today = new Date();
   const open = maintenance.filter(m => !m.dateCompleted)
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
-  const resolved = maintenance.filter(m => !!m.dateCompleted)
+  const resolved = maintenance.filter(m => !!m.dateCompleted && !isServiceLogRecord(m))
+    .sort((a, b) => (b.dateCompleted ?? "").localeCompare(a.dateCompleted ?? ""));
+  const serviceLog = maintenance.filter(isServiceLogRecord)
     .sort((a, b) => (b.dateCompleted ?? "").localeCompare(a.dateCompleted ?? ""));
   const totalCost = resolved.reduce((s, m) => s + m.cost, 0);
-  const daysSince = (d?: string) => d
-    ? Math.floor((today.getTime() - new Date(d).getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
+  const serviceCost = serviceLog.reduce((s, m) => s + m.cost, 0);
 
   return (
     <div>
@@ -56,13 +58,22 @@ function MaintenancePage() {
       <LogServiceDialog open={logOpen} onOpenChange={setLogOpen} />
       <AddIssueDialog open={issueOpen} onOpenChange={setIssueOpen} />
 
-      <div className="mb-6 grid grid-cols-3 gap-3">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <KPI label="Open issues" value={String(open.length)} icon={AlertTriangle} tone={open.length ? "text-destructive" : "text-foreground"} />
-        <KPI label="Resolved" value={String(resolved.length)} icon={Wrench} />
+        <KPI label="Closed issues" value={String(resolved.length)} icon={Wrench} />
+        <KPI label="Service log" value={String(serviceLog.length)} icon={ClipboardList} />
         <KPI label="Repair spend" value={fmtMoney(totalCost)} icon={Wrench} />
       </div>
 
-      <Card className="mb-6">
+      <Tabs defaultValue="open">
+        <TabsList>
+          <TabsTrigger value="open">Open Issues ({open.length})</TabsTrigger>
+          <TabsTrigger value="closed">Closed Issues ({resolved.length})</TabsTrigger>
+          <TabsTrigger value="service">Service Log ({serviceLog.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="open" className="mt-4">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -96,7 +107,9 @@ function MaintenancePage() {
           })}
         </CardContent>
       </Card>
+        </TabsContent>
 
+        <TabsContent value="closed" className="mt-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Completed issues ({resolved.length})</CardTitle>
@@ -153,6 +166,60 @@ function MaintenancePage() {
           })}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="service" className="mt-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                Service log ({serviceLog.length}) · {fmtMoney(serviceCost)}
+              </CardTitle>
+              <Button size="sm" onClick={() => setLogOpen(true)}>+ Log Service</Button>
+            </CardHeader>
+            <CardContent className="p-0">
+              {serviceLog.length === 0 ? (
+                <div className="p-6 text-center text-sm text-muted-foreground">
+                  No routine service logged yet. Click “+ Log Service” to add one.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                        <th className="px-4 py-2 font-medium">Vehicle</th>
+                        <th className="px-4 py-2 font-medium">Service type</th>
+                        <th className="px-4 py-2 font-medium">Date done</th>
+                        <th className="px-4 py-2 font-medium">Mileage</th>
+                        <th className="px-4 py-2 text-right font-medium">Cost</th>
+                        <th className="px-4 py-2 font-medium">Next due</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {serviceLog.map(m => {
+                        const v = vehicleById(m.vehicleId);
+                        return (
+                          <tr key={m.id} className="hover:bg-muted/40">
+                            <td className="px-4 py-2">
+                              <div className="font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
+                              <div className="text-xs text-muted-foreground">Tag #{v?.plate ?? "—"}</div>
+                            </td>
+                            <td className="px-4 py-2">{m.serviceType}</td>
+                            <td className="px-4 py-2">{fmtDate(m.dateCompleted)}</td>
+                            <td className="px-4 py-2">{m.mileageAtService.toLocaleString()} mi</td>
+                            <td className="px-4 py-2 text-right font-medium">{fmtMoney(m.cost)}</td>
+                            <td className="px-4 py-2">{fmtDate(m.nextServiceDue)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <ResolveMaintenanceDialog
         open={!!resolveRecord}

@@ -25,6 +25,7 @@ export function LogServiceDialog({ open, onOpenChange, initialVehicleId }: Props
   useStoreVersion();
   const [vehicleId, setVehicleId] = useState<string>(initialVehicleId ?? "");
   const [serviceType, setServiceType] = useState("");
+  const [serviceOther, setServiceOther] = useState("");
   const [vendor, setVendor] = useState("");
   const [dateCompleted, setDateCompleted] = useState(today());
   const [mileage, setMileage] = useState<string>("");
@@ -34,13 +35,14 @@ export function LogServiceDialog({ open, onOpenChange, initialVehicleId }: Props
 
   const reset = () => {
     setVehicleId(initialVehicleId ?? "");
-    setServiceType(""); setVendor(""); setDateCompleted(today());
+    setServiceType(""); setServiceOther(""); setVendor(""); setDateCompleted(today());
     setMileage(""); setCost(""); setNextServiceDue(plusDays(90)); setNotes("");
   };
 
   const submit = () => {
     if (!vehicleId) return toast.error("Select a vehicle");
-    if (!serviceType.trim()) return toast.error("Service type is required");
+    const resolvedType = serviceType === "Other" ? serviceOther.trim() : serviceType.trim();
+    if (!resolvedType) return toast.error("Service type is required");
     if (!vendor.trim()) return toast.error("Vendor is required");
     const costNum = Number(cost);
     const mileageNum = Number(mileage);
@@ -48,7 +50,7 @@ export function LogServiceDialog({ open, onOpenChange, initialVehicleId }: Props
     if (!Number.isFinite(mileageNum) || mileageNum < 0) return toast.error("Valid mileage required");
     const rec = addMaintenance({
       vehicleId,
-      serviceType: serviceType.trim(),
+      serviceType: resolvedType,
       vendor: vendor.trim(),
       dateCompleted,
       mileageAtService: mileageNum,
@@ -82,7 +84,18 @@ export function LogServiceDialog({ open, onOpenChange, initialVehicleId }: Props
           </div>
           <div className="grid gap-1.5">
             <Label>Service type</Label>
-            <Input value={serviceType} onChange={e => setServiceType(e.target.value)} placeholder="e.g. Oil change, Brake pads" />
+            <Select value={serviceType} onValueChange={setServiceType}>
+              <SelectTrigger><SelectValue placeholder="Select service type" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Oil Change">Oil Change</SelectItem>
+                <SelectItem value="Inspection">Inspection</SelectItem>
+                <SelectItem value="Registration">Registration</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {serviceType === "Other" && (
+              <Input value={serviceOther} onChange={e => setServiceOther(e.target.value)} placeholder="Describe service" />
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">

@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { vehicles, fmtMoney } from "@/lib/mock/data";
 import { maintenance as maintenanceList } from "@/lib/mock/data";
+import { fmtDate } from "@/lib/mock/data";
+import { lastServiceFor } from "@/lib/maintenance-utils";
 import { carImage } from "@/lib/mock/carImages";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -60,6 +62,7 @@ function FleetPage() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map(v => {
           const openIssueCount = maintenanceList.filter(m => m.vehicleId === v.id && !m.dateCompleted).length;
+          const lastSvc = lastServiceFor(maintenanceList, v.id);
           return (
           <Card
             key={v.id}
@@ -116,6 +119,16 @@ function FleetPage() {
                   <span className="font-medium">{fmtMoney(v.weeklyRate)}/wk</span>
                 </div>
                 <div className="mt-2 text-xs text-muted-foreground">Risk tier {v.riskTier}</div>
+                <div className="mt-2 border-t border-border pt-2 text-xs text-muted-foreground">
+                  {lastSvc ? (
+                    <>
+                      <div>Last service: {lastSvc.serviceType} · {fmtDate(lastSvc.dateCompleted)} · {lastSvc.mileageAtService.toLocaleString()} mi</div>
+                      <div>Next due: {fmtDate(lastSvc.nextServiceDue)}</div>
+                    </>
+                  ) : (
+                    <div>No service logged yet</div>
+                  )}
+                </div>
               </CardContent>
             </div>
             <div className="flex flex-wrap gap-2 border-t border-border bg-muted/30 p-2" onClick={(e) => e.stopPropagation()}>
