@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { vehicles } from "@/lib/mock/data";
 import { addMaintenance, addExpense, useStoreVersion } from "@/lib/mock/store";
 import { RepairTypeCombobox } from "@/components/app/RepairTypeCombobox";
+import { VendorCombobox } from "@/components/app/VendorCombobox";
 import { fmtMoney } from "@/lib/mock/data";
 import { toast } from "sonner";
 import { Trash2, Plus } from "lucide-react";
@@ -183,15 +184,10 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Vendor</Label>
-              <Input value={vendor} onChange={e => setVendor(e.target.value)} placeholder="e.g. ABC Repairs" />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Completed by</Label>
-              <Input value={completedBy} onChange={e => setCompletedBy(e.target.value)} placeholder="e.g. JR" />
-            </div>
+          <div className="grid gap-1.5">
+            <Label>Vendor</Label>
+            <VendorCombobox value={vendor} onChange={setVendor} />
+            <p className="text-xs text-muted-foreground">The vendor is recorded as who completes the work.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
