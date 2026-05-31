@@ -46,22 +46,11 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
   const [downPayment, setDownPayment] = useState<string>("");
   const [estReturn, setEstReturn] = useState<string>(defaultReturn());
 
-  const [addingType, setAddingType] = useState(false);
-  const [newTypeName, setNewTypeName] = useState("");
-  const [savingType, setSavingType] = useState(false);
-
-  const options = useMemo(() => {
-    const fromStore = repairTypes.map(t => t.name);
-    return fromStore.length > 0 ? fromStore : DEFAULT_OPTIONS;
-  }, [repairTypes.length]);
-
   const reset = () => {
     setVehicleId(initialVehicleId ?? "");
     setRows([emptyRow()]);
     setDownPayment("");
     setEstReturn(defaultReturn());
-    setAddingType(false);
-    setNewTypeName("");
   };
 
   const subtotalOf = (r: PartRow) => (Number(r.partPrice) || 0) + (Number(r.laborPrice) || 0);
@@ -70,23 +59,6 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
 
   const updateRow = (key: string, patch: Partial<PartRow>) =>
     setRows(rs => rs.map(r => (r.key === key ? { ...r, ...patch } : r)));
-
-  const handleSaveType = async () => {
-    const name = newTypeName.trim();
-    if (!name) return toast.error("Enter a repair type name");
-    if (options.includes(name)) return toast.error("That repair type already exists");
-    setSavingType(true);
-    try {
-      await addRepairType(name);
-      toast.success(`Added "${name}"`);
-      setNewTypeName("");
-      setAddingType(false);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to save repair type");
-    } finally {
-      setSavingType(false);
-    }
-  };
 
   const submit = () => {
     if (!vehicleId) return toast.error("Select a vehicle");
