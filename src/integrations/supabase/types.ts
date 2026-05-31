@@ -1403,6 +1403,16 @@ export type Database = {
           mr_vendor_name: string | null
           mr_work_order: string | null
           plate: string | null
+          pr_contact_phone: string | null
+          pr_cost: number | null
+          pr_delivered_at: string | null
+          pr_delivery_notes: string | null
+          pr_destination: string | null
+          pr_parts_needed: string | null
+          pr_parts_picked_up: Json
+          pr_photos: Json
+          pr_pickup_at: string | null
+          pr_vendor_name: string | null
           priority_level: string | null
           runner_name: string | null
           runner_notes: string | null
@@ -1434,6 +1444,16 @@ export type Database = {
           mr_vendor_name?: string | null
           mr_work_order?: string | null
           plate?: string | null
+          pr_contact_phone?: string | null
+          pr_cost?: number | null
+          pr_delivered_at?: string | null
+          pr_delivery_notes?: string | null
+          pr_destination?: string | null
+          pr_parts_needed?: string | null
+          pr_parts_picked_up?: Json
+          pr_photos?: Json
+          pr_pickup_at?: string | null
+          pr_vendor_name?: string | null
           priority_level?: string | null
           runner_name?: string | null
           runner_notes?: string | null
@@ -1465,6 +1485,16 @@ export type Database = {
           mr_vendor_name?: string | null
           mr_work_order?: string | null
           plate?: string | null
+          pr_contact_phone?: string | null
+          pr_cost?: number | null
+          pr_delivered_at?: string | null
+          pr_delivery_notes?: string | null
+          pr_destination?: string | null
+          pr_parts_needed?: string | null
+          pr_parts_picked_up?: Json
+          pr_photos?: Json
+          pr_pickup_at?: string | null
+          pr_vendor_name?: string | null
           priority_level?: string | null
           runner_name?: string | null
           runner_notes?: string | null
