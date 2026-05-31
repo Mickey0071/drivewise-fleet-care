@@ -16,6 +16,7 @@ import { Plus, Send } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { resendTaskSms, approveInspectionTask, approveMechanicRunTask, approvePartsRunTask } from "@/lib/tasks.functions";
 import { approveRepoTask } from "@/lib/tasks.functions";
+import { approveDmvRunTask } from "@/lib/tasks.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/runners/tasks")({
