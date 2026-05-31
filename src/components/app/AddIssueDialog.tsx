@@ -155,7 +155,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
           </div>
 
           <div className="grid gap-2">
-            <Label>Parts needed</Label>
+            <Label>Parts / Repairs</Label>
             {rows.map((r, i) => (
               <div key={r.key} className="rounded-md border border-border p-3">
                 <div className="mb-2 flex items-center justify-between">
