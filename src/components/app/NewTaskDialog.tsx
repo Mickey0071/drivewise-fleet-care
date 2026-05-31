@@ -396,6 +396,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
 
           <div>
             <Label>Linked Rental (optional)</Label>
+            {isRepo && <p className="mb-1 text-xs text-muted-foreground">Link the rental to auto-fill the customer.</p>}
             <Select value={rentalId || "__none"} onValueChange={(v) => setRentalId(v === "__none" ? "" : v)}>
               <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
               <SelectContent>
