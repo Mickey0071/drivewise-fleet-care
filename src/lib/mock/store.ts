@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, insuranceEntries, insuranceChecklist, violations, staff, payrollRuns, repairTypes, serviceTypes, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto, type InsuranceEntry, type InsuranceChecklistItem, type Violation, type Staff, type PayrollRun, type RepairType, type ServiceType } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, insuranceEntries, insuranceChecklist, violations, staff, payrollRuns, repairTypes, serviceTypes, workOrders, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto, type InsuranceEntry, type InsuranceChecklistItem, type Violation, type Staff, type PayrollRun, type RepairType, type ServiceType, type WorkOrder } from "./data";
 import { supabase } from "@/integrations/supabase/client";
 
 const listeners = new Set<() => void>();
@@ -378,6 +378,41 @@ const fromServiceType = (r: any): ServiceType => ({
   id: r.id, name: r.name, description: r.description ?? "", sortOrder: r.sort_order ?? 0, createdAt: r.created_at,
 });
 
+// ---- work orders ----
+const fromWorkOrder = (r: any): WorkOrder => ({
+  id: r.id, vehicleId: r.vehicle_id, serviceType: r.service_type,
+  scheduledDate: r.scheduled_date, estimatedCost: Number(r.estimated_cost ?? 0),
+  description: r.description ?? "", assignedTo: r.assigned_to ?? undefined,
+  priority: r.priority, status: r.status,
+  completedDate: r.completed_date ?? undefined,
+  actualCost: r.actual_cost != null ? Number(r.actual_cost) : undefined,
+  partsUsed: r.parts_used ?? undefined,
+  completionNotes: r.completion_notes ?? undefined,
+  mechanicSignature: r.mechanic_signature ?? undefined,
+  mechanicSignedAt: r.mechanic_signed_at ?? undefined,
+  reviewedBy: r.reviewed_by ?? undefined,
+  adminSignature: r.admin_signature ?? undefined,
+  adminSignedAt: r.admin_signed_at ?? undefined,
+  signedDocUrl: r.signed_doc_url ?? undefined,
+  createdAt: r.created_at ?? undefined,
+});
+const toWorkOrder = (w: WorkOrder) => ({
+  id: w.id, vehicle_id: w.vehicleId, service_type: w.serviceType,
+  scheduled_date: w.scheduledDate, estimated_cost: w.estimatedCost,
+  description: w.description, assigned_to: w.assignedTo ?? null,
+  priority: w.priority, status: w.status,
+  completed_date: w.completedDate ?? null,
+  actual_cost: w.actualCost ?? null,
+  parts_used: w.partsUsed ?? null,
+  completion_notes: w.completionNotes ?? null,
+  mechanic_signature: w.mechanicSignature ?? null,
+  mechanic_signed_at: w.mechanicSignedAt ?? null,
+  reviewed_by: w.reviewedBy ?? null,
+  admin_signature: w.adminSignature ?? null,
+  admin_signed_at: w.adminSignedAt ?? null,
+  signed_doc_url: w.signedDocUrl ?? null,
+});
+
 let hydrationPromise: Promise<void> | null = null;
 let hydrated = false;
 export function isStoreHydrated() { return hydrated; }
@@ -390,7 +425,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
   }
   if (hydrationPromise) return hydrationPromise;
   hydrationPromise = (async () => {
-    const [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl, rt, st] = await Promise.all([
+    const [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl, rt, st, wo] = await Promise.all([
       supabase.from("vehicles").select("*"),
       supabase.from("drivers").select("*"),
       supabase.from("rentals").select("*"),
@@ -408,8 +443,9 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
       supabase.from("payroll_lines").select("*"),
       supabase.from("repair_types").select("*").order("sort_order", { ascending: true }),
       supabase.from("service_types").select("*").order("sort_order", { ascending: true }),
+      supabase.from("work_orders").select("*").order("scheduled_date", { ascending: true }),
     ]);
-    const failures = [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl, rt, st].filter(result => result.error);
+    const failures = [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl, rt, st, wo].filter(result => result.error);
     if (failures.length) {
       failures.forEach(result => console.error("[cloud:hydrate]", result.error));
       hydrationPromise = null;
@@ -430,6 +466,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
     replaceArray(payrollRuns, (prr.data ?? []).map(row => fromPayrollRun(row, prl.data ?? [])));
     replaceArray(repairTypes, (rt.data ?? []).map(fromRepairType));
     replaceArray(serviceTypes, (st.data ?? []).map(fromServiceType));
+    replaceArray(workOrders, (wo.data ?? []).map(fromWorkOrder));
     reconcileVehicleAvailability(true);
     hydrated = true;
     emit();
@@ -660,6 +697,18 @@ function subscribeRealtime() {
         const next = fromServiceType(payload.new);
         const idx = serviceTypes.findIndex(x => x.id === next.id);
         if (idx >= 0) serviceTypes[idx] = next; else serviceTypes.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "work_orders" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = workOrders.findIndex(x => x.id === id);
+        if (idx >= 0) workOrders.splice(idx, 1);
+      } else {
+        const next = fromWorkOrder(payload.new);
+        const idx = workOrders.findIndex(x => x.id === next.id);
+        if (idx >= 0) workOrders[idx] = next; else workOrders.push(next);
       }
       emit();
     })
@@ -1428,6 +1477,72 @@ export function deleteMaintenance(id: string) {
   cloudWrite("maintenance:delete", supabase.from("maintenance").delete().eq("id", id));
   syncVehicleOpenIssues(vehicleId);
   emit();
+}
+
+// ---------------------------------------------------------------------------
+// Work orders (preventive maintenance scheduling)
+// ---------------------------------------------------------------------------
+function nextWorkOrderId() {
+  const year = new Date().getFullYear();
+  const prefix = `WO-${year}-`;
+  const maxSeq = workOrders.reduce((m, w) => {
+    if (!w.id.startsWith(prefix)) return m;
+    const n = parseInt(w.id.slice(prefix.length), 10);
+    return Number.isFinite(n) ? Math.max(m, n) : m;
+  }, 0);
+  return `${prefix}${String(maxSeq + 1).padStart(4, "0")}`;
+}
+
+export function addWorkOrder(input: Omit<WorkOrder, "id" | "status" | "createdAt"> & { status?: WorkOrder["status"] }) {
+  const rec: WorkOrder = {
+    id: nextWorkOrderId(),
+    status: input.status ?? "pending",
+    createdAt: new Date().toISOString(),
+    ...input,
+  };
+  workOrders.push(rec);
+  cloudWrite("work_orders:insert", supabase.from("work_orders").insert(toWorkOrder(rec)));
+  emit();
+  return rec;
+}
+
+export function updateWorkOrder(id: string, patch: Partial<WorkOrder>) {
+  const w = workOrders.find(x => x.id === id);
+  if (!w) return;
+  Object.assign(w, patch);
+  cloudWrite("work_orders:update", supabase.from("work_orders").update(toWorkOrder(w)).eq("id", id));
+  emit();
+}
+
+export function deleteWorkOrder(id: string) {
+  const idx = workOrders.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  workOrders.splice(idx, 1);
+  cloudWrite("work_orders:delete", supabase.from("work_orders").delete().eq("id", id));
+  emit();
+}
+
+/** Upload a signed work-order document and return a temporary signed URL. */
+export async function uploadWorkOrderDoc(workOrderId: string, file: File): Promise<string> {
+  const ext = (file.name.split(".").pop() || "pdf").toLowerCase();
+  const path = `${workOrderId}/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("work-order-docs").upload(path, file, {
+    cacheControl: "3600",
+    upsert: true,
+    contentType: file.type || "application/octet-stream",
+  });
+  if (error) throw error;
+  updateWorkOrder(workOrderId, { signedDocUrl: path });
+  const { data } = await supabase.storage.from("work-order-docs").createSignedUrl(path, 60 * 60);
+  return data?.signedUrl ?? path;
+}
+
+/** Resolve a stored work-order doc path into a viewable signed URL. */
+export async function getWorkOrderDocUrl(path: string): Promise<string | null> {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  const { data } = await supabase.storage.from("work-order-docs").createSignedUrl(path, 60 * 60);
+  return data?.signedUrl ?? null;
 }
 
 // ---------------------------------------------------------------------------

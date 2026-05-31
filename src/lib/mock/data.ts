@@ -158,6 +158,30 @@ export interface Staff {
   payType: "hourly" | "salary" | "per-vehicle"; payRate: number;
   stripeConnected: boolean; status: "active" | "inactive";
 }
+export type WorkOrderPriority = "high" | "medium" | "low";
+export type WorkOrderStatus = "pending" | "in_progress" | "completed";
+export interface WorkOrder {
+  id: string;
+  vehicleId: string;
+  serviceType: string;
+  scheduledDate: string;
+  estimatedCost: number;
+  description: string;
+  assignedTo?: string;
+  priority: WorkOrderPriority;
+  status: WorkOrderStatus;
+  completedDate?: string;
+  actualCost?: number;
+  partsUsed?: string;
+  completionNotes?: string;
+  mechanicSignature?: string;
+  mechanicSignedAt?: string;
+  reviewedBy?: string;
+  adminSignature?: string;
+  adminSignedAt?: string;
+  signedDocUrl?: string;
+  createdAt?: string;
+}
 export interface Expense {
   id: string; category: string; amount: number; date: string;
   vendor?: string; vehicleId?: string; staffId?: string; notes?: string;
@@ -217,6 +241,8 @@ export const insuranceEntries: InsuranceEntry[] = [];
 export const insuranceChecklist: InsuranceChecklistItem[] = [];
 
 export const staff: Staff[] = [];
+
+export const workOrders: WorkOrder[] = [];
 
 export const expenses: Expense[] = [];
 
