@@ -165,6 +165,20 @@ function RunnerTasksPage() {
     }
   }
 
+  async function handleApproveDmvRun(task: TaskRow) {
+    setApproving(task.id);
+    try {
+      const res = await approveDrFn({ data: { task_id: task.id } });
+      toast.success(`Fleet updated${res.registration_expiry ? ` · registration expires ${res.registration_expiry}` : ""}`);
+      setDetail((d) => (d && d.id === task.id ? { ...d, approved_at: res.approved_at } : d));
+      load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Approve failed");
+    } finally {
+      setApproving(null);
+    }
+  }
+
   const [fStatus, setFStatus] = useState("all");
   const [fType, setFType] = useState("all");
   const [fRunner, setFRunner] = useState("all");
