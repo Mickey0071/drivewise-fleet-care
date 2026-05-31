@@ -318,6 +318,32 @@ function VehicleDetail() {
             <Stat label="Last service" value={lastSvc ? `${lastSvc.serviceType}` : "—"} />
             <Stat label="Next service due" value={lastSvc ? fmtDate(lastSvc.nextServiceDue) : "—"} />
           </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Work orders ({vWorkOrders.length})</CardTitle>
+              <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>
+                <ClipboardList className="mr-1 h-4 w-4" />New work order
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {vWorkOrders.length === 0 ? <Empty/> : vWorkOrders.map(w => (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={() => setActiveWo(w)}
+                  className="flex w-full items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-left hover:bg-accent"
+                >
+                  <div>
+                    <div className="text-sm font-medium">{w.serviceType}</div>
+                    <div className="text-xs text-muted-foreground">
+                      Scheduled {fmtDate(w.scheduledDate)}{w.assignedTo ? ` · ${w.assignedTo}` : ""} · {fmtMoney(w.estimatedCost)}
+                    </div>
+                  </div>
+                  <StatusBadge status={w.status === "completed" ? "paid" : w.status === "in_progress" ? "pending" : "late"} />
+                </button>
+              ))}
+            </CardContent>
+          </Card>
           <Section title={`Service log (${serviceLog.length})`}>
             {serviceLog.length === 0 ? <Empty/> : serviceLog.map(m => (
               <Row key={m.id} title={m.serviceType} sub={`${m.vendor || "—"} · ${fmtDate(m.dateCompleted)} · by ${m.completedBy || "—"} · ${m.mileageAtService.toLocaleString()} mi · next due ${fmtDate(m.nextServiceDue)}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
