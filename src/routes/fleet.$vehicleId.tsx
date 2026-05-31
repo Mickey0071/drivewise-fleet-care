@@ -91,6 +91,10 @@ function VehicleDetail() {
       return { driverId, driver, count: rs.length, firstStart: rs.map(r => r.startDate).sort()[0], totalPaid };
     });
 
+  const lastInsp = [...vInsp].sort((a, b) =>
+    ((b.submittedAt ?? b.date ?? "") as string).localeCompare((a.submittedAt ?? a.date ?? "") as string),
+  )[0];
+
   return (
     <div>
       <Button variant="outline" size="sm" asChild className="mb-3">
