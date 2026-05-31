@@ -80,6 +80,9 @@ function VehicleDetail() {
   const isCurrentlyRented = v.status === "rented" && !!activeRental && !activeRental.endDate;
   const nextDue = vPayments.find(p => p.status !== "paid");
   const alerts = computeVehicleAlerts(v);
+  const vWorkOrders = workOrders
+    .filter(w => w.vehicleId === v.id)
+    .sort((a, b) => (b.scheduledDate ?? "").localeCompare(a.scheduledDate ?? ""));
 
   const uniqueRenters = Array.from(new Map(vRentals.map(r => [r.driverId, driverById(r.driverId)])).entries())
     .map(([driverId, driver]) => {
