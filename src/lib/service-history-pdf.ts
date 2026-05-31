@@ -51,7 +51,7 @@ const COLOR_BORDER: [number, number, number] = [204, 204, 204];
 
 const money = (n: number) => `$${(Math.round(n * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
-export async function renderServiceHistoryPdf(data: ServiceHistoryData): Promise<Uint8Array> {
+export async function renderServiceHistoryPdf(data: ServiceHistoryData): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
   const c = data.settings.company;
   const doc = new jsPDF({ unit: "pt", format: "letter" });
@@ -282,6 +282,5 @@ export async function renderServiceHistoryPdf(data: ServiceHistoryData): Promise
     doc.text(`Page ${p} of ${pageCount}`, right, pageH - 18, { align: "right" });
   }
 
-  const ab = doc.output("arraybuffer");
-  return new Uint8Array(ab);
+  return doc.output("blob");
 }
