@@ -10,7 +10,8 @@ import { useAgreementSettings } from "@/lib/agreementSettings";
 import { updateWorkOrder, uploadWorkOrderDoc, ensureWorkOrderFieldToken, useStoreVersion } from "@/lib/mock/store";
 import { fmtDate, fmtMoney, type Vehicle, type WorkOrder } from "@/lib/mock/data";
 import { renderWorkOrderPdf, type WorkOrderPdfData } from "@/lib/work-order-pdf";
-import { Printer, Download, PenLine, Mail, Upload, CheckCircle2, Smartphone } from "lucide-react";
+import { renderFieldFormPdf, type FieldFormData } from "@/lib/work-order-field-form";
+import { Printer, Download, PenLine, Mail, Upload, CheckCircle2, Smartphone, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -113,6 +114,30 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, vehicle }: Prop
     } finally { setBusy(false); }
   }
 
+  async function printFieldForm() {
+    setBusy(true);
+    try {
+      const fd: FieldFormData = {
+        workOrderNumber: workOrder.id,
+        vehicle: { year: vehicle.year, make: vehicle.make, model: vehicle.model, plate: vehicle.plate, vin: vehicle.vin },
+        serviceType: workOrder.serviceType,
+        description: workOrder.description,
+        scheduledDate: fmtDate(workOrder.scheduledDate),
+        assignedTo: workOrder.assignedTo ?? "",
+        estimatedCost: fmtMoney(workOrder.estimatedCost),
+        settings,
+      };
+      const blob = await renderFieldFormPdf(fd);
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, "_blank");
+      if (w) w.addEventListener("load", () => setTimeout(() => w.print(), 400));
+      else toast.error("Pop-up blocked", { description: "Allow pop-ups to print." });
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e: any) {
+      toast.error("Could not open print view", { description: e?.message ?? "Try again" });
+    } finally { setBusy(false); }
+  }
+
   function emailMechanic() {
     const to = window.prompt("Email work order to mechanic:", workOrder.assignedTo ? "" : "");
     if (!to) return;
@@ -180,6 +205,7 @@ export function WorkOrderDialog({ open, onOpenChange, workOrder, vehicle }: Prop
         </DialogHeader>
 
         <div className="flex flex-wrap gap-2 border-b pb-3">
+          <Button size="sm" variant="outline" onClick={printFieldForm} disabled={busy}><ClipboardList className="mr-1.5 h-4 w-4" /> Print Field Form</Button>
           <Button size="sm" variant="outline" onClick={printOrder} disabled={busy}><Printer className="mr-1.5 h-4 w-4" /> Print</Button>
           <Button size="sm" onClick={downloadPdf} disabled={busy}><Download className="mr-1.5 h-4 w-4" /> Download PDF</Button>
           <Button size="sm" variant="outline" onClick={emailMechanic} disabled={busy}><Mail className="mr-1.5 h-4 w-4" /> Email to Mechanic</Button>
