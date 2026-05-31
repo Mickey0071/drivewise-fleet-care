@@ -209,6 +209,26 @@ function VehicleDetail() {
         </Card>
       )}
 
+      {alerts.length > 0 && (
+        <Card className="mb-4 border-destructive/40 bg-destructive/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Maintenance Alerts ({alerts.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5">
+            {alerts.map(a => (
+              <div key={a.key} className="flex items-center gap-2 text-sm">
+                <span aria-hidden>🔴</span>
+                <span className="font-medium">{a.label}:</span>
+                <span className="text-muted-foreground">{a.detail}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {isCurrentlyRented && activeDriver && (
         <Card className="mb-4 border-primary/40 bg-primary/5">
           <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
