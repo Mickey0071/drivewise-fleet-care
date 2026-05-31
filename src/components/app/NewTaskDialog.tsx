@@ -86,6 +86,12 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const [rpCustomerName, setRpCustomerName] = useState<string>("");
   const [rpCustomerPhone, setRpCustomerPhone] = useState<string>("");
   const [rpTowAuthorized, setRpTowAuthorized] = useState<boolean>(false);
+  // DMV-run specific fields
+  const [drService, setDrService] = useState<string>("");
+  const [drDocs, setDrDocs] = useState<Record<string, boolean>>({});
+  const [drOtherDoc, setDrOtherDoc] = useState<string>("");
+  const [drLocation, setDrLocation] = useState<string>("");
+  const [drExpectedCost, setDrExpectedCost] = useState<string>("");
 
   // Reset state when dialog opens (so prefill from a different context is honored)
   useEffect(() => {
@@ -109,6 +115,11 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     setRpCustomerName("");
     setRpCustomerPhone("");
     setRpTowAuthorized(false);
+    setDrService("");
+    setDrDocs({});
+    setDrOtherDoc("");
+    setDrLocation("");
+    setDrExpectedCost("");
   }, [open, prefill]);
 
   // Load data on open
