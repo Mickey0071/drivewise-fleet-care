@@ -425,7 +425,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
   }
   if (hydrationPromise) return hydrationPromise;
   hydrationPromise = (async () => {
-    const [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl, rt, st] = await Promise.all([
+    const [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl, rt, st, wo] = await Promise.all([
       supabase.from("vehicles").select("*"),
       supabase.from("drivers").select("*"),
       supabase.from("rentals").select("*"),
@@ -443,8 +443,9 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
       supabase.from("payroll_lines").select("*"),
       supabase.from("repair_types").select("*").order("sort_order", { ascending: true }),
       supabase.from("service_types").select("*").order("sort_order", { ascending: true }),
+      supabase.from("work_orders").select("*").order("scheduled_date", { ascending: true }),
     ]);
-    const failures = [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl, rt, st].filter(result => result.error);
+    const failures = [v, d, r, p, i, e, ex, vp, ie, ic, vio, mnt, stf, prr, prl, rt, st, wo].filter(result => result.error);
     if (failures.length) {
       failures.forEach(result => console.error("[cloud:hydrate]", result.error));
       hydrationPromise = null;
@@ -465,6 +466,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
     replaceArray(payrollRuns, (prr.data ?? []).map(row => fromPayrollRun(row, prl.data ?? [])));
     replaceArray(repairTypes, (rt.data ?? []).map(fromRepairType));
     replaceArray(serviceTypes, (st.data ?? []).map(fromServiceType));
+    replaceArray(workOrders, (wo.data ?? []).map(fromWorkOrder));
     reconcileVehicleAvailability(true);
     hydrated = true;
     emit();
@@ -695,6 +697,18 @@ function subscribeRealtime() {
         const next = fromServiceType(payload.new);
         const idx = serviceTypes.findIndex(x => x.id === next.id);
         if (idx >= 0) serviceTypes[idx] = next; else serviceTypes.push(next);
+      }
+      emit();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "work_orders" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = workOrders.findIndex(x => x.id === id);
+        if (idx >= 0) workOrders.splice(idx, 1);
+      } else {
+        const next = fromWorkOrder(payload.new);
+        const idx = workOrders.findIndex(x => x.id === next.id);
+        if (idx >= 0) workOrders[idx] = next; else workOrders.push(next);
       }
       emit();
     })
