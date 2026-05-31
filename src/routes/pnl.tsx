@@ -644,6 +644,128 @@ function Avg({ label, value, weeks, tone }: { label: string; value: number; week
     </Card>
   );
 }
+
+function MaintenanceCostBreakdown() {
+  useStoreVersion();
+  const [filter, setFilter] = useState<MxFilter>("all");
+  const [period, setPeriod] = useState<PeriodFilter>("all");
+
+  const rows = useMemo(() => {
+    const since = period === "all" ? null : (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - Number(period));
+      return d.toISOString().slice(0, 10);
+    })();
+    const inRange = (d?: string) => {
+      if (!since) return true;
+      if (!d) return false;
+      return d.slice(0, 10) >= since;
+    };
+
+    return vehicles.map(v => {
+      const vMx = maintenance.filter(m => m.vehicleId === v.id && !!m.dateCompleted && inRange(m.dateCompleted));
+      const service = vMx.filter(isServiceLogRecord);
+      const repairsList = vMx.filter(m => isIssueRecord(m));
+
+      // Service log split into oil / inspection / other
+      const oil = { count: 0, cost: 0 };
+      const inspection = { count: 0, cost: 0 };
+      const otherService = { count: 0, cost: 0 };
+      service.forEach(m => {
+        const cat = categorizeService(m.serviceType);
+        const bucket = cat === "oil" ? oil : cat === "inspection" ? inspection : otherService;
+        bucket.count += 1;
+        bucket.cost += m.cost;
+      });
+
+      // Repairs grouped by serviceType (repair type)
+      const repairGroups: Record<string, { count: number; cost: number }> = {};
+      repairsList.forEach(m => {
+        const key = m.serviceType || "Repair";
+        (repairGroups[key] ??= { count: 0, cost: 0 });
+        repairGroups[key].count += 1;
+        repairGroups[key].cost += m.cost;
+      });
+      const repairs = Object.entries(repairGroups)
+        .map(([type, g]) => ({ type, ...g }))
+        .sort((a, b) => b.cost - a.cost);
+      const repairTotal = repairs.reduce((s, r) => s + r.cost, 0);
+
+      const serviceTotal = oil.cost + inspection.cost + otherService.cost;
+      const total = serviceTotal + repairTotal;
+      return { vehicle: v, oil, inspection, otherService, repairs, repairTotal, serviceTotal, total };
+    }).filter(r => r.total > 0).sort((a, b) => b.total - a.total);
+  }, [period]);
+
+  const fb = (key: MxFilter, label: string) => (
+    <Button key={key} variant={filter === key ? "default" : "outline"} size="sm" onClick={() => setFilter(key)}>{label}</Button>
+  );
+  const pb = (key: PeriodFilter, label: string) => (
+    <Button key={key} variant={period === key ? "default" : "outline"} size="sm" onClick={() => setPeriod(key)}>{label}</Button>
+  );
+
+  const showService = filter === "all" || filter === "service";
+  const showRepairs = filter === "all" || filter === "repairs";
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="text-base">Maintenance Cost Breakdown</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-1.5">{fb("all", "All")}{fb("service", "Service Log only")}{fb("repairs", "Repairs only")}</div>
+          <div className="flex flex-wrap gap-1.5">{pb("30", "Last 30 days")}{pb("90", "Last 90 days")}{pb("all", "All Time")}</div>
+        </div>
+
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No maintenance costs recorded for this period.</p>
+        ) : (
+          <div className="space-y-3">
+            {rows.map(r => {
+              const displayTotal = filter === "service" ? r.serviceTotal : filter === "repairs" ? r.repairTotal : r.total;
+              if (displayTotal <= 0) return null;
+              return (
+                <div key={r.vehicle.id} className="rounded-md border border-border p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">{r.vehicle.year} {r.vehicle.make} {r.vehicle.model}</div>
+                    <div className="text-sm font-semibold">Total: {fmtMoney(displayTotal)}</div>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {showService && (
+                      <>
+                        {r.oil.cost > 0 && (
+                          <Bar label={`Oil Changes (${r.oil.count}×)`} value={r.oil.cost} total={displayTotal} tone="bg-primary/70" />
+                        )}
+                        {r.inspection.cost > 0 && (
+                          <Bar label={`Inspections (${r.inspection.count}×)`} value={r.inspection.cost} total={displayTotal} tone="bg-accent" />
+                        )}
+                        {r.otherService.cost > 0 && (
+                          <Bar label={`Other Service (${r.otherService.count}×)`} value={r.otherService.cost} total={displayTotal} tone="bg-muted-foreground/50" />
+                        )}
+                      </>
+                    )}
+                    {showRepairs && r.repairs.map(rep => (
+                      <Bar key={rep.type} label={`Repairs — ${rep.type} (${rep.count} ticket${rep.count === 1 ? "" : "s"})`} value={rep.cost} total={displayTotal} tone="bg-destructive/70" />
+                    ))}
+                  </div>
+                  {filter === "all" && r.total > 0 && (
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      Service log {fmtMoney(r.serviceTotal)} · Repairs {fmtMoney(r.repairTotal)}
+                      {r.repairs[0] && r.total > 0 && (
+                        <> · {Math.round((r.repairs[0].cost / r.total) * 100)}% spent on {r.repairs[0].type}</>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 function Bar({ label, value, total, tone }: { label: string; value: number; total: number; tone: string }) {
   const pct = total > 0 ? (value / total) * 100 : 0;
   return (
