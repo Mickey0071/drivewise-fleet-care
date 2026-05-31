@@ -1376,6 +1376,17 @@ export async function addRepairType(name: string, description = ""): Promise<Rep
   return t;
 }
 
+export async function addServiceType(name: string, description = ""): Promise<ServiceType> {
+  const maxOrder = serviceTypes.reduce((m, t) => Math.max(m, t.sortOrder), -1);
+  const row = { name, description, sort_order: maxOrder + 1 };
+  const { data, error } = await supabase.from("service_types").insert(row).select().single();
+  if (error) throw error;
+  const t = fromServiceType(data);
+  if (!serviceTypes.some(x => x.id === t.id)) serviceTypes.push(t);
+  emit();
+  return t;
+}
+
 export function updateMaintenance(id: string, patch: Partial<Maintenance>) {
   const m = maintenance.find(x => x.id === id);
   if (!m) return;
