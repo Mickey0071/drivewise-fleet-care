@@ -17,20 +17,17 @@ interface Props {
 }
 
 const PART_OPTIONS = [
-  "Transmission fluid",
-  "Engine oil",
-  "Air filter",
-  "Cabin filter",
-  "Battery",
-  "Alternator",
-  "Brake pads",
-  "Brake fluid",
-  "Tires",
+  "Tie Rods",
+  "Control Arm",
+  "Engine",
+  "Transmission",
+  "Brakes",
   "Suspension",
-  "Belts",
-  "Hoses",
-  "Spark plugs",
-  "Coolant",
+  "Alternator",
+  "Starter",
+  "Compressor",
+  "Axle",
+  "Differential",
   "Other",
 ] as const;
 
