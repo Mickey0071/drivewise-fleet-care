@@ -449,6 +449,7 @@ export type Database = {
       }
       maintenance: {
         Row: {
+          completed_by: string | null
           cost: number
           created_at: string
           date_completed: string | null
@@ -463,6 +464,7 @@ export type Database = {
           vendor: string
         }
         Insert: {
+          completed_by?: string | null
           cost?: number
           created_at?: string
           date_completed?: string | null
@@ -477,6 +479,7 @@ export type Database = {
           vendor: string
         }
         Update: {
+          completed_by?: string | null
           cost?: number
           created_at?: string
           date_completed?: string | null

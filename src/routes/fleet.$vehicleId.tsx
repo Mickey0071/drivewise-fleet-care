@@ -304,12 +304,12 @@ function VehicleDetail() {
           </div>
           <Section title={`Service log (${serviceLog.length})`}>
             {serviceLog.length === 0 ? <Empty/> : serviceLog.map(m => (
-              <Row key={m.id} title={m.serviceType} sub={`${fmtDate(m.dateCompleted)} · ${m.vendor || "—"} · ${m.mileageAtService.toLocaleString()} mi · next due ${fmtDate(m.nextServiceDue)}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
+              <Row key={m.id} title={m.serviceType} sub={`${m.vendor || "—"} · ${fmtDate(m.dateCompleted)} · by ${m.completedBy || "—"} · ${m.mileageAtService.toLocaleString()} mi · next due ${fmtDate(m.nextServiceDue)}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
             ))}
           </Section>
           <Section title={`Maintenance records (${vMx.length})`}>
             {vMx.length === 0 ? <Empty/> : vMx.map(m => (
-              <Row key={m.id} title={m.serviceType} sub={`${fmtDate(m.dateCompleted)} · ${m.vendor} · ${m.mileageAtService.toLocaleString()} mi · next due ${fmtDate(m.nextServiceDue)}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
+              <Row key={m.id} title={m.serviceType} sub={`${m.vendor || "—"} · ${fmtDate(m.dateCompleted)} · by ${m.completedBy || "—"} · ${m.mileageAtService.toLocaleString()} mi · next due ${fmtDate(m.nextServiceDue)}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
             ))}
           </Section>
           <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/maintenance">Open maintenance log →</Link></Button>
@@ -333,7 +333,7 @@ function VehicleDetail() {
           </div>
           <Section title={`Repair history (${vRepairs.length})`}>
             {vRepairs.length === 0 ? <Empty/> : vRepairs.map(m => (
-              <Row key={m.id} title={m.serviceType} sub={`${fmtDate(m.dateCompleted)} · ${m.vendor} · ${m.mileageAtService.toLocaleString()} mi${m.notes ? ` · ${m.notes}` : ""}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
+              <Row key={m.id} title={m.serviceType} sub={`${m.vendor || "—"} · ${fmtDate(m.dateCompleted)} · by ${m.completedBy || "—"} · ${m.mileageAtService.toLocaleString()} mi`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
             ))}
           </Section>
         </TabsContent>

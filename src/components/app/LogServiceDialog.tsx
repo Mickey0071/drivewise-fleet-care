@@ -28,6 +28,7 @@ export function LogServiceDialog({ open, onOpenChange, initialVehicleId }: Props
   const [serviceType, setServiceType] = useState("");
   const [vendor, setVendor] = useState("");
   const [dateCompleted, setDateCompleted] = useState(today());
+  const [completedBy, setCompletedBy] = useState("");
   const [mileage, setMileage] = useState<string>("");
   const [cost, setCost] = useState<string>("");
   const [nextServiceDue, setNextServiceDue] = useState(plusDays(90));
@@ -36,7 +37,7 @@ export function LogServiceDialog({ open, onOpenChange, initialVehicleId }: Props
   const reset = () => {
     setVehicleId(initialVehicleId ?? "");
     setServiceType(""); setVendor(""); setDateCompleted(today());
-    setMileage(""); setCost(""); setNextServiceDue(plusDays(90)); setNotes("");
+    setMileage(""); setCost(""); setNextServiceDue(plusDays(90)); setNotes(""); setCompletedBy("");
   };
 
   const submit = () => {
@@ -57,6 +58,7 @@ export function LogServiceDialog({ open, onOpenChange, initialVehicleId }: Props
       cost: costNum,
       nextServiceDue,
       notes: notes.trim() || undefined,
+      completedBy: completedBy.trim() || undefined,
     });
     toast.success(`Logged ${rec.id}`);
     reset();
@@ -102,6 +104,10 @@ export function LogServiceDialog({ open, onOpenChange, initialVehicleId }: Props
             <div className="grid gap-1.5">
               <Label>Cost ($)</Label>
               <Input type="number" min={0} step="0.01" value={cost} onChange={e => setCost(e.target.value)} />
+            </div>
+            <div className="col-span-2 grid gap-1.5">
+              <Label>Completed by</Label>
+              <Input value={completedBy} onChange={e => setCompletedBy(e.target.value)} placeholder="e.g. JR" />
             </div>
             <div className="col-span-2 grid gap-1.5">
               <Label>Next service due</Label>

@@ -45,12 +45,16 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
   const [rows, setRows] = useState<PartRow[]>([emptyRow()]);
   const [downPayment, setDownPayment] = useState<string>("");
   const [estReturn, setEstReturn] = useState<string>(defaultReturn());
+  const [vendor, setVendor] = useState<string>("");
+  const [completedBy, setCompletedBy] = useState<string>("");
 
   const reset = () => {
     setVehicleId(initialVehicleId ?? "");
     setRows([emptyRow()]);
     setDownPayment("");
     setEstReturn(defaultReturn());
+    setVendor("");
+    setCompletedBy("");
   };
 
   const subtotalOf = (r: PartRow) => (Number(r.partPrice) || 0) + (Number(r.laborPrice) || 0);
@@ -88,12 +92,13 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
     const rec = addMaintenance({
       vehicleId,
       serviceType: partsSummary,
-      vendor: "",
+      vendor: vendor.trim(),
       dateCompleted: undefined as unknown as string,
       mileageAtService: v?.mileage ?? 0,
       cost: total,
       nextServiceDue: estReturn ? estReturn.slice(0, 10) : today(),
       notes: detailLines.join("\n"),
+      completedBy: completedBy.trim() || undefined,
     });
 
     if (down > 0) {
@@ -176,6 +181,17 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
               onClick={() => setRows(rs => [...rs, emptyRow()])}>
               <Plus className="mr-1 h-4 w-4" /> Add another repair
             </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Vendor</Label>
+              <Input value={vendor} onChange={e => setVendor(e.target.value)} placeholder="e.g. ABC Repairs" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Completed by</Label>
+              <Input value={completedBy} onChange={e => setCompletedBy(e.target.value)} placeholder="e.g. JR" />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
