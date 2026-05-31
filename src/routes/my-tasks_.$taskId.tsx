@@ -20,16 +20,16 @@ type TaskRow = {
   task_mode: string | null; linked_rental_id: string | null; linked_vehicle_id: string | null;
 };
 
-type WorkflowKey = "dmv" | "return" | "mechanic_run" | "repo" | "vendor" | "other";
+type WorkflowKey = "dmv" | "return" | "mechanic_run" | "parts" | "repo" | "vendor" | "other";
 
 function inferWorkflow(t: TaskRow): WorkflowKey {
   if (t.task_mode === "return") return "return";
   switch (t.task_type) {
     case "dmv": return "dmv";
     case "mechanic_run": return "mechanic_run";
+    case "parts": return "parts";
     case "repo": return "repo";
     case "dropoff": return "return";
-    case "parts": return "vendor";
     case "pickup":
     case "inspection":
     case "other":
@@ -78,6 +78,9 @@ export default function TaskDetailPage() {
         return;
       case "mechanic_run":
         navigate({ to: "/mechanic-run-task", search: { task_id: t.id } });
+        return;
+      case "parts":
+        navigate({ to: "/parts-run-task", search: { task_id: t.id } });
         return;
       case "repo":
       case "vendor":
