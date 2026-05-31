@@ -84,6 +84,7 @@ function RunnerTasksPage() {
   const approveMrFn = useServerFn(approveMechanicRunTask);
   const approvePrFn = useServerFn(approvePartsRunTask);
   const approveRpFn = useServerFn(approveRepoTask);
+  const approveDrFn = useServerFn(approveDmvRunTask);
   const [approving, setApproving] = useState<string | null>(null);
 
   async function handleResend(taskId: string) {
