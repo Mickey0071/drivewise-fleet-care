@@ -27,6 +27,7 @@ import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as MyTasksRouteImport } from './routes/my-tasks'
 import { Route as MyRentalsRouteImport } from './routes/my-rentals'
 import { Route as MechanicTaskRouteImport } from './routes/mechanic-task'
+import { Route as MechanicRunTaskRouteImport } from './routes/mechanic-run-task'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InsuranceRouteImport } from './routes/insurance'
@@ -149,6 +150,11 @@ const MyRentalsRoute = MyRentalsRouteImport.update({
 const MechanicTaskRoute = MechanicTaskRouteImport.update({
   id: '/mechanic-task',
   path: '/mechanic-task',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MechanicRunTaskRoute = MechanicRunTaskRouteImport.update({
+  id: '/mechanic-run-task',
+  path: '/mechanic-run-task',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MaintenanceRoute = MaintenanceRouteImport.update({
@@ -335,6 +341,7 @@ export interface FileRoutesByFullPath {
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/mechanic-run-task': typeof MechanicRunTaskRoute
   '/mechanic-task': typeof MechanicTaskRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/my-tasks': typeof MyTasksRoute
@@ -388,6 +395,7 @@ export interface FileRoutesByTo {
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/mechanic-run-task': typeof MechanicRunTaskRoute
   '/mechanic-task': typeof MechanicTaskRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/my-tasks': typeof MyTasksRoute
@@ -442,6 +450,7 @@ export interface FileRoutesById {
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/mechanic-run-task': typeof MechanicRunTaskRoute
   '/mechanic-task': typeof MechanicTaskRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/my-tasks': typeof MyTasksRoute
@@ -497,6 +506,7 @@ export interface FileRouteTypes {
     | '/insurance'
     | '/login'
     | '/maintenance'
+    | '/mechanic-run-task'
     | '/mechanic-task'
     | '/my-rentals'
     | '/my-tasks'
@@ -550,6 +560,7 @@ export interface FileRouteTypes {
     | '/insurance'
     | '/login'
     | '/maintenance'
+    | '/mechanic-run-task'
     | '/mechanic-task'
     | '/my-rentals'
     | '/my-tasks'
@@ -603,6 +614,7 @@ export interface FileRouteTypes {
     | '/insurance'
     | '/login'
     | '/maintenance'
+    | '/mechanic-run-task'
     | '/mechanic-task'
     | '/my-rentals'
     | '/my-tasks'
@@ -657,6 +669,7 @@ export interface RootRouteChildren {
   InsuranceRoute: typeof InsuranceRoute
   LoginRoute: typeof LoginRoute
   MaintenanceRoute: typeof MaintenanceRoute
+  MechanicRunTaskRoute: typeof MechanicRunTaskRoute
   MechanicTaskRoute: typeof MechanicTaskRoute
   MyRentalsRoute: typeof MyRentalsRouteWithChildren
   MyTasksRoute: typeof MyTasksRoute
@@ -821,6 +834,13 @@ declare module '@tanstack/react-router' {
       path: '/mechanic-task'
       fullPath: '/mechanic-task'
       preLoaderRoute: typeof MechanicTaskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mechanic-run-task': {
+      id: '/mechanic-run-task'
+      path: '/mechanic-run-task'
+      fullPath: '/mechanic-run-task'
+      preLoaderRoute: typeof MechanicRunTaskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/maintenance': {
@@ -1093,6 +1113,7 @@ const rootRouteChildren: RootRouteChildren = {
   InsuranceRoute: InsuranceRoute,
   LoginRoute: LoginRoute,
   MaintenanceRoute: MaintenanceRoute,
+  MechanicRunTaskRoute: MechanicRunTaskRoute,
   MechanicTaskRoute: MechanicTaskRoute,
   MyRentalsRoute: MyRentalsRouteWithChildren,
   MyTasksRoute: MyTasksRoute,
