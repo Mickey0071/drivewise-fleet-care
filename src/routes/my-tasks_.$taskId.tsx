@@ -77,7 +77,7 @@ export default function TaskDetailPage() {
         });
         return;
       case "mechanic_run":
-        navigate({ to: "/mechanic-task" });
+        navigate({ to: "/mechanic-run-task", search: { task_id: t.id } });
         return;
       case "repo":
       case "vendor":

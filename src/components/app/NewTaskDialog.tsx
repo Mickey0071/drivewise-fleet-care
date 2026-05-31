@@ -29,6 +29,7 @@ export const TASK_TYPE_OPTIONS: { value: TaskTypeKey; label: string }[] = [
 type Vehicle = { id: string; year: number; make: string; model: string; plate: string };
 type Rental = { id: string; vehicle_id: string; driver_id: string; start_date: string };
 type Runner = { id: string; first_name: string | null; last_name: string | null; username: string | null; phone: string | null };
+type Vendor = { id: string; name: string; phone: string | null; address: string | null; service_type: string | null };
 
 export type NewTaskPrefill = {
   task_type?: TaskTypeKey;
@@ -57,6 +58,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const [runnersLoading, setRunnersLoading] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [rentals, setRentals] = useState<Rental[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
 
   const [assignedTo, setAssignedTo] = useState<string>("");
   const [runnerSearch, setRunnerSearch] = useState("");
@@ -69,6 +71,11 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const [priority, setPriority] = useState<"urgent" | "normal" | "flexible">("normal");
   const [notifySms, setNotifySms] = useState(true);
   const [busy, setBusy] = useState(false);
+  // Mechanic-run specific fields
+  const [vendorId, setVendorId] = useState<string>("");
+  const [vendorName, setVendorName] = useState<string>("");
+  const [contactPhone, setContactPhone] = useState<string>("");
+  const [workOrder, setWorkOrder] = useState<string>("");
 
   // Reset state when dialog opens (so prefill from a different context is honored)
   useEffect(() => {
@@ -82,6 +89,10 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     setPriority("normal");
     setNotifySms(true);
     setBusy(false);
+    setVendorId("");
+    setVendorName("");
+    setContactPhone("");
+    setWorkOrder("");
   }, [open, prefill]);
 
   // Load data on open
@@ -91,7 +102,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     setRunnersError(null);
     setRunnersLoading(true);
     (async () => {
-      const [{ runners: r }, vRes, rRes] = await Promise.all([
+      const [{ runners: r }, vRes, rRes, venRes] = await Promise.all([
         loadRunners({}).catch((e) => {
           console.error("[NewTaskDialog] loadRunners failed:", e);
           if (!cancelled) setRunnersError(e instanceof Error ? e.message : String(e));
@@ -99,12 +110,14 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         }),
         supabase.from("vehicles").select("id, year, make, model, plate").order("make"),
         supabase.from("rentals").select("id, vehicle_id, driver_id, start_date").order("start_date", { ascending: false }).limit(200),
+        supabase.from("vendors").select("id, name, phone, address, service_type").order("name"),
       ]);
       if (cancelled) return;
       setRunners(r);
       setRunnersLoading(false);
       setVehicles((vRes.data ?? []) as Vehicle[]);
       setRentals((rRes.data ?? []) as Rental[]);
+      setVendors((venRes.data ?? []) as Vendor[]);
     })();
     return () => { cancelled = true; };
   }, [open, loadRunners]);
@@ -120,6 +133,20 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   }, [runners, runnerSearch]);
   const selectedIsStaffOnly = assignedTo.startsWith("staff:");
   const selectedVehicle = useMemo(() => vehicles.find((v) => v.id === vehicleId), [vehicles, vehicleId]);
+  const isMechanicRun = taskType === "mechanic_run";
+
+  function onVendorChange(id: string) {
+    setVendorId(id);
+    if (id === "__custom" || id === "") {
+      return;
+    }
+    const v = vendors.find((x) => x.id === id);
+    if (v) {
+      setVendorName(v.name);
+      setContactPhone(v.phone ?? "");
+      if (v.address) setAddress(v.address);
+    }
+  }
 
   const suggestedDescription = useMemo(() => {
     if (description) return description;
@@ -157,6 +184,9 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         priority,
         notify_sms: notifySms,
         task_mode: prefill?.mode ?? null,
+        mr_vendor_name: isMechanicRun ? (vendorName.trim() || null) : null,
+        mr_contact_phone: isMechanicRun ? (contactPhone.trim() || null) : null,
+        mr_work_order: isMechanicRun ? (workOrder.trim() || null) : null,
       }});
       console.log("Task created successfully");
       console.log(`[NewTaskDialog] Task created. notify_sms was: ${notifySms}, runner_phone: ${selectedRunner?.phone ?? "(none)"}, sms_status: ${res.sms_status}${res.sms_error ? ` (${res.sms_error})` : ""}`);
@@ -251,6 +281,39 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
               </SelectContent>
             </Select>
           </div>
+
+          {isMechanicRun && (
+            <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+              <p className="text-xs font-semibold text-muted-foreground">🔧 Mechanic Run Details</p>
+              <div>
+                <Label>Mechanic / Vendor</Label>
+                <Select value={vendorId} onValueChange={onVendorChange}>
+                  <SelectTrigger><SelectValue placeholder="Pick a vendor or enter manually…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__custom">✏️ Enter manually</SelectItem>
+                    {vendors.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>{v.name}{v.service_type ? ` · ${v.service_type}` : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  className="mt-2"
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  placeholder="Vendor name"
+                  maxLength={200}
+                />
+              </div>
+              <div>
+                <Label htmlFor="mr-phone">Contact Phone</Label>
+                <Input id="mr-phone" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="e.g. 215-555-0999" maxLength={40} />
+              </div>
+              <div>
+                <Label htmlFor="mr-wo">Work Order #</Label>
+                <Input id="mr-wo" value={workOrder} onChange={(e) => setWorkOrder(e.target.value)} placeholder="e.g. WO-2026-0045" maxLength={120} />
+              </div>
+            </div>
+          )}
 
           <div>
             <Label>Linked Rental (optional)</Label>

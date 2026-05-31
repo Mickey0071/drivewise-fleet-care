@@ -1395,6 +1395,13 @@ export type Database = {
           linked_vehicle_id: string | null
           make: string | null
           model: string | null
+          mr_contact_phone: string | null
+          mr_dropoff_at: string | null
+          mr_dropoff_mileage: number | null
+          mr_mechanic_notes: string | null
+          mr_photos: Json
+          mr_vendor_name: string | null
+          mr_work_order: string | null
           plate: string | null
           priority_level: string | null
           runner_name: string | null
@@ -1419,6 +1426,13 @@ export type Database = {
           linked_vehicle_id?: string | null
           make?: string | null
           model?: string | null
+          mr_contact_phone?: string | null
+          mr_dropoff_at?: string | null
+          mr_dropoff_mileage?: number | null
+          mr_mechanic_notes?: string | null
+          mr_photos?: Json
+          mr_vendor_name?: string | null
+          mr_work_order?: string | null
           plate?: string | null
           priority_level?: string | null
           runner_name?: string | null
@@ -1443,6 +1457,13 @@ export type Database = {
           linked_vehicle_id?: string | null
           make?: string | null
           model?: string | null
+          mr_contact_phone?: string | null
+          mr_dropoff_at?: string | null
+          mr_dropoff_mileage?: number | null
+          mr_mechanic_notes?: string | null
+          mr_photos?: Json
+          mr_vendor_name?: string | null
+          mr_work_order?: string | null
           plate?: string | null
           priority_level?: string | null
           runner_name?: string | null
@@ -1538,6 +1559,9 @@ export type Database = {
           registration_expiry: string | null
           risk_tier: string
           seats: number | null
+          shop_dropoff_at: string | null
+          shop_est_return: string | null
+          shop_vendor: string | null
           status: string
           transmission: string | null
           updated_at: string
@@ -1568,6 +1592,9 @@ export type Database = {
           registration_expiry?: string | null
           risk_tier?: string
           seats?: number | null
+          shop_dropoff_at?: string | null
+          shop_est_return?: string | null
+          shop_vendor?: string | null
           status?: string
           transmission?: string | null
           updated_at?: string
@@ -1598,6 +1625,9 @@ export type Database = {
           registration_expiry?: string | null
           risk_tier?: string
           seats?: number | null
+          shop_dropoff_at?: string | null
+          shop_est_return?: string | null
+          shop_vendor?: string | null
           status?: string
           transmission?: string | null
           updated_at?: string
