@@ -119,6 +119,10 @@ export const adminCreateTask = createServerFn({ method: "POST" })
         pr_contact_phone: data.pr_contact_phone ?? null,
         pr_parts_needed: data.pr_parts_needed ?? null,
         pr_destination: data.pr_destination ?? null,
+        rp_reason: data.rp_reason ?? null,
+        rp_customer_name: data.rp_customer_name ?? null,
+        rp_customer_phone: data.rp_customer_phone ?? null,
+        rp_tow_authorized: data.rp_tow_authorized ?? false,
       })
       .select("id")
       .single();
