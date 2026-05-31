@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { updateMaintenance } from "@/lib/mock/store";
 import { vehicleById, fmtDate, type Maintenance } from "@/lib/mock/data";
 import { useAuth } from "@/hooks/use-auth";
+import { EditTicketCostsDialog } from "@/components/app/EditTicketCostsDialog";
+import { Pencil } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -25,6 +27,7 @@ export function ResolveMaintenanceDialog({ open, onOpenChange, record }: Props) 
   const [dateCompleted, setDateCompleted] = useState(today);
   const [completedBy, setCompletedBy] = useState(defaultName);
   const [saving, setSaving] = useState(false);
+  const [editCostsOpen, setEditCostsOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -61,6 +64,7 @@ export function ResolveMaintenanceDialog({ open, onOpenChange, record }: Props) 
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
@@ -71,7 +75,12 @@ export function ResolveMaintenanceDialog({ open, onOpenChange, record }: Props) 
         </DialogHeader>
 
         <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
-          <div className="font-medium">{record.serviceType}</div>
+          <div className="flex items-start justify-between gap-2">
+            <div className="font-medium">{record.serviceType}</div>
+            <Button size="sm" variant="outline" className="shrink-0" onClick={() => setEditCostsOpen(true)}>
+              <Pencil className="mr-1 h-3.5 w-3.5" /> Edit Costs
+            </Button>
+          </div>
           {record.notes && (
             <div className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{record.notes}</div>
           )}
@@ -129,5 +138,7 @@ export function ResolveMaintenanceDialog({ open, onOpenChange, record }: Props) 
         </DialogFooter>
       </DialogContent>
     </Dialog>
+      <EditTicketCostsDialog open={editCostsOpen} onOpenChange={setEditCostsOpen} record={record} />
+    </>
   );
 }
