@@ -185,6 +185,17 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
 
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
+              <Label>Vendor</Label>
+              <Input value={vendor} onChange={e => setVendor(e.target.value)} placeholder="e.g. ABC Repairs" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Completed by</Label>
+              <Input value={completedBy} onChange={e => setCompletedBy(e.target.value)} placeholder="e.g. JR" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
               <Label>Down payment ($)</Label>
               <Input type="number" min={0} step="0.01" value={downPayment}
                 onChange={e => setDownPayment(e.target.value)} placeholder="Optional" />
