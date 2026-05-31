@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { SignaturePad } from "@/components/app/SignaturePad";
-import { renderWorkOrderPdf, type WorkOrderPdfData } from "@/lib/work-order-pdf";
+import { renderFieldFormPdf, type FieldFormData } from "@/lib/work-order-field-form";
 import { DEFAULT_SETTINGS } from "@/lib/agreementSettings";
 import { CheckCircle2, Printer, Loader2, Wrench } from "lucide-react";
 import { toast } from "sonner";
@@ -72,29 +72,17 @@ function FieldWorkOrderPage() {
     return () => { cancelled = true; };
   }, [token, fetchFn]);
 
-  const pdfData: WorkOrderPdfData | null = useMemo(() => {
+  const pdfData: FieldFormData | null = useMemo(() => {
     if (!data || !data.found) return null;
     const w = data.workOrder;
     return {
       workOrderNumber: w.id,
       vehicle: data.vehicle,
-      scheduledDate: fmtDate(w.scheduledDate),
-      priority: w.priority.toUpperCase(),
-      status: w.status.replace("_", " ").toUpperCase(),
       serviceType: w.serviceType,
       description: w.description,
-      estimatedCost: w.estimatedCost,
+      scheduledDate: fmtDate(w.scheduledDate),
       assignedTo: w.assignedTo,
-      completedDate: "",
-      actualCost: "",
-      partsUsed: "",
-      completionNotes: "",
-      mechanicSignature: null,
-      mechanicSignedAt: "",
-      reviewedBy: "",
-      adminSignature: null,
-      adminSignedAt: "",
-      generatedAt: fmtDate(new Date().toISOString().slice(0, 10)),
+      estimatedCost: money(w.estimatedCost),
       settings: DEFAULT_SETTINGS,
     };
   }, [data]);
@@ -102,7 +90,7 @@ function FieldWorkOrderPage() {
   async function printBlank() {
     if (!pdfData) return;
     try {
-      const blob = await renderWorkOrderPdf(pdfData);
+      const blob = await renderFieldFormPdf(pdfData);
       const url = URL.createObjectURL(blob);
       const w = window.open(url, "_blank");
       if (w) w.addEventListener("load", () => setTimeout(() => w.print(), 400));
