@@ -13,13 +13,14 @@ import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { NewTaskDialog } from "@/components/app/NewTaskDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useRef, useState } from "react";
-import { ArrowLeft, Link2, Camera, Pencil, Send } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send, FileText } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
 import { ResolveMaintenanceDialog } from "@/components/app/ResolveMaintenanceDialog";
 import { MaintenanceSettingsDialog } from "@/components/app/MaintenanceSettingsDialog";
+import { ServiceHistoryReportDialog } from "@/components/app/ServiceHistoryReportDialog";
 import type { Maintenance } from "@/lib/mock/data";
 import { isServiceLogRecord, lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { toast } from "sonner";
@@ -44,6 +45,7 @@ function VehicleDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -160,6 +162,9 @@ function VehicleDetail() {
             </Button>
             <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>
               Maintenance settings
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setReportOpen(true)}>
+              <FileText className="mr-1 h-4 w-4" />Generate Service History Report
             </Button>
             {role === "admin" && (
               <Button size="sm" variant="outline" onClick={() => setTaskOpen(true)}>
@@ -403,6 +408,11 @@ function VehicleDetail() {
       <MaintenanceSettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
+        vehicle={v}
+      />
+      <ServiceHistoryReportDialog
+        open={reportOpen}
+        onOpenChange={setReportOpen}
         vehicle={v}
       />
       <div className="mt-6 flex justify-start">
