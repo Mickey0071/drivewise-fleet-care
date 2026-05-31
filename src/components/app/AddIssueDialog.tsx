@@ -152,12 +152,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
                   )}
                 </div>
                 <div className="grid gap-2">
-                  <Select value={r.selection} onValueChange={(v) => updateRow(r.key, { selection: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select repair item" /></SelectTrigger>
-                    <SelectContent>
-                      {options.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <RepairTypeCombobox value={r.selection} onChange={(v) => updateRow(r.key, { selection: v })} />
                   <div className="grid grid-cols-3 gap-2">
                     <div className="grid gap-1">
                       <Label className="text-xs">Part price ($)</Label>
@@ -181,28 +176,6 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
               onClick={() => setRows(rs => [...rs, emptyRow()])}>
               <Plus className="mr-1 h-4 w-4" /> Add another repair
             </Button>
-
-            {!addingType && (
-              <Button type="button" variant="ghost" size="sm" className="w-fit text-primary"
-                onClick={() => setAddingType(true)}>
-                <Plus className="mr-1 h-4 w-4" /> Add New Repair Type
-              </Button>
-            )}
-            {addingType && (
-              <div className="flex items-end gap-2">
-                <div className="grid flex-1 gap-1.5">
-                  <Label className="text-xs">Enter new repair type</Label>
-                  <Input value={newTypeName} onChange={e => setNewTypeName(e.target.value)}
-                    placeholder="e.g. Water Pump" onKeyDown={e => { if (e.key === "Enter") handleSaveType(); }} />
-                </div>
-                <Button type="button" size="sm" onClick={handleSaveType} disabled={savingType}>
-                  {savingType ? "Saving..." : "Save"}
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => { setAddingType(false); setNewTypeName(""); }}>
-                  Cancel
-                </Button>
-              </div>
-            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
