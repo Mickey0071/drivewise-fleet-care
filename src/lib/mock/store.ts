@@ -411,6 +411,8 @@ const toWorkOrder = (w: WorkOrder) => ({
   admin_signature: w.adminSignature ?? null,
   admin_signed_at: w.adminSignedAt ?? null,
   signed_doc_url: w.signedDocUrl ?? null,
+  field_token: w.fieldToken ?? null,
+  field_submitted_at: w.fieldSubmittedAt ?? null,
 });
 
 let hydrationPromise: Promise<void> | null = null;
