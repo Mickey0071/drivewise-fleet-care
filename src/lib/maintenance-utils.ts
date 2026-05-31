@@ -5,7 +5,8 @@ import type { Maintenance } from "@/lib/mock/data";
 // as routine service-log maintenance (logged via LogServiceDialog).
 export function isIssueRecord(m: Maintenance): boolean {
   if (!m.dateCompleted) return true; // open tickets are always issues
-  return (m.notes ?? "").includes("Issue opened");
+  const notes = m.notes ?? "";
+  return notes.includes("Issue opened") || notes.includes("Resolved ");
 }
 
 export function isServiceLogRecord(m: Maintenance): boolean {
