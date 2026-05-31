@@ -467,6 +467,46 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
             </div>
           )}
 
+          {isDmv && (
+            <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+              <p className="text-xs font-semibold text-muted-foreground">📋 DMV Run Details</p>
+              <div>
+                <Label>DMV Service</Label>
+                <Select value={drService || "__none"} onValueChange={(v) => setDrService(v === "__none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Select service…" /></SelectTrigger>
+                  <SelectContent>
+                    {DMV_SERVICES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Documents Needed</Label>
+                <div className="mt-1 space-y-1.5">
+                  {DMV_DOCS_NEEDED.map((d) => (
+                    <label key={d} className="flex items-center gap-2 text-sm">
+                      <Checkbox checked={!!drDocs[d]} onCheckedChange={() => setDrDocs((p) => ({ ...p, [d]: !p[d] }))} />
+                      {d}
+                    </label>
+                  ))}
+                </div>
+                <Input className="mt-2" value={drOtherDoc} onChange={(e) => setDrOtherDoc(e.target.value)}
+                  placeholder="Other document (optional)" maxLength={120} />
+              </div>
+              <div>
+                <Label htmlFor="dr-loc">DMV Location</Label>
+                <Input id="dr-loc" value={drLocation} onChange={(e) => setDrLocation(e.target.value)}
+                  placeholder="e.g. PA DMV (Philly)" maxLength={500} />
+              </div>
+              <div>
+                <Label htmlFor="dr-cost">Expected Cost (optional)</Label>
+                <Input id="dr-cost" type="number" inputMode="decimal" min={0} value={drExpectedCost}
+                  onChange={(e) => setDrExpectedCost(e.target.value)} placeholder="e.g. 95" />
+              </div>
+            </div>
+          )}
+
           <div>
             <Label>Linked Rental (optional)</Label>
             {isRepo && <p className="mb-1 text-xs text-muted-foreground">Link the rental to auto-fill the customer.</p>}
