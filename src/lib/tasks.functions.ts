@@ -20,6 +20,9 @@ const CreateInput = z.object({
   priority: Priority.default("normal"),
   notify_sms: z.boolean().default(true),
   task_mode: z.enum(["return"]).nullable().optional(),
+  mr_vendor_name: z.string().trim().max(200).nullable().optional(),
+  mr_contact_phone: z.string().trim().max(40).nullable().optional(),
+  mr_work_order: z.string().trim().max(120).nullable().optional(),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
