@@ -395,6 +395,8 @@ const fromWorkOrder = (r: any): WorkOrder => ({
   adminSignedAt: r.admin_signed_at ?? undefined,
   signedDocUrl: r.signed_doc_url ?? undefined,
   createdAt: r.created_at ?? undefined,
+  fieldToken: r.field_token ?? undefined,
+  fieldSubmittedAt: r.field_submitted_at ?? undefined,
 });
 const toWorkOrder = (w: WorkOrder) => ({
   id: w.id, vehicle_id: w.vehicleId, service_type: w.serviceType,
