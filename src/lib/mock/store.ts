@@ -1365,6 +1365,9 @@ export function updateDriver(id: string, fields: Partial<Omit<Driver, "id">>) {
   if (fields.zipCode !== undefined) patch.zip_code = fields.zipCode ?? null;
   if (fields.altContactName !== undefined) patch.alt_contact_name = fields.altContactName ?? null;
   if (fields.altContactPhone !== undefined) patch.alt_contact_phone = fields.altContactPhone ?? null;
+  if (fields.blocked !== undefined) patch.blocked = fields.blocked;
+  if (fields.blockReason !== undefined) patch.block_reason = fields.blockReason ?? null;
+  if (fields.blockedAt !== undefined) patch.blocked_at = fields.blockedAt ?? null;
   const cloudReady = cloudWrite("driver:update", supabase.from("drivers").update(patch as never).eq("id", id)).catch((error) => {
     Object.assign(d, prev);
     emit();
