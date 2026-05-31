@@ -394,6 +394,37 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
             </div>
           )}
 
+          {isRepo && (
+            <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+              <p className="text-xs font-semibold text-destructive">🚨 Repo Details</p>
+              <div>
+                <Label>Reason</Label>
+                <Select value={rpReason || "__none"} onValueChange={(v) => setRpReason(v === "__none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Select reason…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Non-payment">Non-payment</SelectItem>
+                    <SelectItem value="Abandonment">Abandonment</SelectItem>
+                    <SelectItem value="Safety Hold">Safety Hold</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="rp-name">Customer Name</Label>
+                <Input id="rp-name" value={rpCustomerName} onChange={(e) => setRpCustomerName(e.target.value)} placeholder="Auto-filled from rental" maxLength={200} />
+              </div>
+              <div>
+                <Label htmlFor="rp-phone">Customer Phone</Label>
+                <Input id="rp-phone" value={rpCustomerPhone} onChange={(e) => setRpCustomerPhone(e.target.value)} placeholder="Auto-filled from rental" maxLength={40} />
+              </div>
+              <p className="text-xs text-muted-foreground">Set the pickup location in the Address field below and instructions in Description.</p>
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Checkbox checked={rpTowAuthorized} onCheckedChange={(v) => setRpTowAuthorized(v === true)} />
+                Tow authorized
+              </label>
+            </div>
+          )}
+
           <div>
             <Label>Linked Rental (optional)</Label>
             {isRepo && <p className="mb-1 text-xs text-muted-foreground">Link the rental to auto-fill the customer.</p>}
