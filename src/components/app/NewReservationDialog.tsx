@@ -707,33 +707,36 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-amber-600" />
-            Vehicle has open maintenance
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            Vehicle unavailable
           </AlertDialogTitle>
-          <AlertDialogDescription>
-            {vehicle ? (
-              <>
-                This vehicle has{" "}
-                <span className="font-semibold">
-                  {maintenance.filter(m => m.vehicleId === vehicle.id && !m.dateCompleted).length}
-                </span>{" "}
-                open maintenance issue(s). Rent anyway?
-              </>
-            ) : null}
+          <AlertDialogDescription asChild>
+            <div>
+              {vehicle ? (
+                <>
+                  This vehicle has an open maintenance issue and cannot be rented
+                  until the repair is completed.
+                  {(() => {
+                    const issue = openIssueFor(maintenance, vehicle.id);
+                    if (!issue) return null;
+                    const s = summarizeOpenIssue(issue);
+                    return (
+                      <ul className="mt-3 space-y-1 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-foreground">
+                        <li><span className="text-muted-foreground">Issue:</span> <span className="font-medium">{s.issue}</span></li>
+                        <li><span className="text-muted-foreground">Vendor:</span> <span className="font-medium">{s.vendor}</span></li>
+                        {s.downPayment && <li><span className="text-muted-foreground">Down payment:</span> <span className="font-medium">{s.downPayment}</span></li>}
+                        {s.balance && <li><span className="text-muted-foreground">Remaining balance:</span> <span className="font-medium">{s.balance}</span></li>}
+                        {s.estimatedReturn && <li><span className="text-muted-foreground">Estimated return:</span> <span className="font-medium">{s.estimatedReturn}</span></li>}
+                      </ul>
+                    );
+                  })()}
+                </>
+              ) : null}
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={() => {
-              setOpenIssueAcknowledged(true);
-              setOpenIssueWarning(false);
-              // Re-trigger confirm now that user has acknowledged
-              setTimeout(() => { void confirm(); }, 0);
-            }}
-          >
-            Proceed
-          </AlertDialogAction>
+          <AlertDialogCancel>Cancel rental</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
