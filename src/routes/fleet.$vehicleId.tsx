@@ -91,6 +91,10 @@ function VehicleDetail() {
       return { driverId, driver, count: rs.length, firstStart: rs.map(r => r.startDate).sort()[0], totalPaid };
     });
 
+  const lastInsp = [...vInsp].sort((a, b) =>
+    ((b.submittedAt ?? b.date ?? "") as string).localeCompare((a.submittedAt ?? a.date ?? "") as string),
+  )[0];
+
   return (
     <div>
       <Button variant="outline" size="sm" asChild className="mb-3">
@@ -192,6 +196,16 @@ function VehicleDetail() {
           </div>
         }
       />
+
+      {lastInsp && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-border bg-muted/30 px-4 py-2 text-sm">
+          <span className="flex items-center gap-1 text-muted-foreground">
+            <ClipboardList className="h-4 w-4" /> Last inspection
+          </span>
+          <span><span className="text-muted-foreground">Date:</span> {fmtDate(lastInsp.date)}</span>
+          <span><span className="text-muted-foreground">Mileage:</span> {(lastInsp.mileage ?? v.mileage)?.toLocaleString()} mi</span>
+        </div>
+      )}
 
       {openIssues.length > 0 && (
         <Card className="mb-4 border-destructive/40 bg-destructive/5">

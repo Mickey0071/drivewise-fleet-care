@@ -452,3 +452,69 @@ export const listAssignableRunners = createServerFn({ method: "GET" })
       }));
     return { runners: [...profiles, ...extraFromStaff] };
   });
+
+// Admin: approve a completed inspection task and push the recorded mileage +
+// inspection date back onto the linked vehicle's fleet record.
+export const approveInspectionTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ task_id: z.string().min(1).max(80) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+
+    const { data: task, error: tErr } = await supabaseAdmin
+      .from("tasks")
+      .select("id, task_type, linked_vehicle_id, completed_inspection_id, status")
+      .eq("id", data.task_id)
+      .maybeSingle();
+    if (tErr) throw new Error(tErr.message);
+    if (!task) throw new Error("Task not found");
+    if (task.status !== "completed") throw new Error("Task is not completed yet");
+
+    // Pull the recorded mileage from the linked inspection (if any).
+    let mileage: number | null = null;
+    if (task.completed_inspection_id) {
+      const { data: insp } = await supabaseAdmin
+        .from("inspections")
+        .select("mileage")
+        .eq("id", task.completed_inspection_id)
+        .maybeSingle();
+      if (insp && typeof insp.mileage === "number") mileage = insp.mileage;
+    }
+
+    const nowIso = new Date().toISOString();
+
+    // Update the vehicle's fleet record: last inspection date + mileage.
+    if (task.linked_vehicle_id) {
+      const update: {
+        last_inspection_at: string;
+        last_inspection_mileage?: number;
+        mileage?: number;
+      } = {
+        last_inspection_at: nowIso,
+      };
+      if (mileage != null) {
+        update.last_inspection_mileage = mileage;
+        // Only advance odometer forward.
+        const { data: veh } = await supabaseAdmin
+          .from("vehicles")
+          .select("mileage")
+          .eq("id", task.linked_vehicle_id)
+          .maybeSingle();
+        if (!veh || mileage >= (veh.mileage ?? 0)) update.mileage = mileage;
+      }
+      const { error: vErr } = await supabaseAdmin
+        .from("vehicles")
+        .update(update)
+        .eq("id", task.linked_vehicle_id);
+      if (vErr) throw new Error(vErr.message);
+    }
+
+    // Mark the task approved.
+    const { error: aErr } = await supabaseAdmin
+      .from("tasks")
+      .update({ approved_at: nowIso })
+      .eq("id", task.id);
+    if (aErr) throw new Error(aErr.message);
+
+    return { ok: true, mileage, last_inspection_at: nowIso, vehicle_id: task.linked_vehicle_id };
+  });

@@ -1383,6 +1383,7 @@ export type Database = {
       tasks: {
         Row: {
           address: string | null
+          approved_at: string | null
           assigned_to_user_id: string | null
           completed_at: string | null
           completed_inspection_id: string | null
@@ -1406,6 +1407,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          approved_at?: string | null
           assigned_to_user_id?: string | null
           completed_at?: string | null
           completed_inspection_id?: string | null
@@ -1429,6 +1431,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          approved_at?: string | null
           assigned_to_user_id?: string | null
           completed_at?: string | null
           completed_inspection_id?: string | null
@@ -1523,6 +1526,8 @@ export type Database = {
           id: string
           image_url: string | null
           insurance_expiry: string | null
+          last_inspection_at: string | null
+          last_inspection_mileage: number | null
           maintenance_settings: Json
           make: string
           mileage: number
@@ -1551,6 +1556,8 @@ export type Database = {
           id: string
           image_url?: string | null
           insurance_expiry?: string | null
+          last_inspection_at?: string | null
+          last_inspection_mileage?: number | null
           maintenance_settings?: Json
           make: string
           mileage?: number
@@ -1579,6 +1586,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           insurance_expiry?: string | null
+          last_inspection_at?: string | null
+          last_inspection_mileage?: number | null
           maintenance_settings?: Json
           make?: string
           mileage?: number
