@@ -200,11 +200,17 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
 
   const canNext =
     (step === 0 && !!startDate) ||
-    (step === 1 && !!vehicle) ||
+    (step === 1 && !!vehicle && !vehicle.hasOpenIssues) ||
     (step === 2 && !!driver && (!existingRental || isSwap)) ||
     step === 3;
 
   function next() {
+    // Open maintenance issue is a HARD block — cannot advance past the
+    // Vehicle step until the repair ticket is marked completed.
+    if (step === 1 && vehicle?.hasOpenIssues) {
+      setOpenIssueWarning(true);
+      return;
+    }
     // When leaving the Vehicle step (1), seed the default rate.
     if (step === 1 && vehicle) setRate(prev => prev || defaultRate(vehicle, billingPeriod));
     if (step < 3) setStep((step + 1) as Step);
