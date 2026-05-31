@@ -1748,6 +1748,8 @@ export type Database = {
           created_by: string | null
           description: string
           estimated_cost: number
+          field_submitted_at: string | null
+          field_token: string | null
           id: string
           mechanic_signature: string | null
           mechanic_signed_at: string | null
@@ -1772,6 +1774,8 @@ export type Database = {
           created_by?: string | null
           description?: string
           estimated_cost?: number
+          field_submitted_at?: string | null
+          field_token?: string | null
           id: string
           mechanic_signature?: string | null
           mechanic_signed_at?: string | null
@@ -1796,6 +1800,8 @@ export type Database = {
           created_by?: string | null
           description?: string
           estimated_cost?: number
+          field_submitted_at?: string | null
+          field_token?: string | null
           id?: string
           mechanic_signature?: string | null
           mechanic_signed_at?: string | null
