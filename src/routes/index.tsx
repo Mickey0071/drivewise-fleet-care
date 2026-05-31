@@ -176,6 +176,38 @@ function Index() {
           <CardTitle className="text-base">Maintenance alerts</CardTitle>
           <Button variant="ghost" size="sm" asChild><Link to="/maintenance">View log</Link></Button>
         </CardHeader>
+        <CardContent />
+      </Card>
+
+      <Card className="mt-6 border-destructive/30">
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="text-base">Overdue Services</CardTitle>
+          <Button variant="ghost" size="sm" asChild><Link to="/fleet">View all</Link></Button>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {overdueServices.length === 0 && <p className="text-sm text-muted-foreground">No overdue services.</p>}
+          {overdueServices.map(({ vehicle: v, alert: a }) => (
+            <Link
+              key={`${v.id}-${a.key}`}
+              to="/fleet/$vehicleId"
+              params={{ vehicleId: v.id }}
+              className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-destructive/50"
+            >
+              <div className="flex items-center gap-2 text-sm">
+                <span aria-hidden>🔴</span>
+                <span className="font-medium">{v.year} {v.make} {v.model}</span>
+                <span className="text-muted-foreground">— {a.label} ({a.detail})</span>
+              </div>
+            </Link>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="text-base">Maintenance alerts (service log)</CardTitle>
+          <Button variant="ghost" size="sm" asChild><Link to="/maintenance">View log</Link></Button>
+        </CardHeader>
         <CardContent className="space-y-2">
           {serviceAlerts.length === 0 && <p className="text-sm text-muted-foreground">No vehicles past service due.</p>}
           {serviceAlerts.map(m => {
