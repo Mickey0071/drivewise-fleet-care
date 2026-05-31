@@ -62,8 +62,11 @@ export interface Driver {
   // Alternate contact
   altContactName?: string;
   altContactPhone?: string;
+  // Block from renting
+  blocked?: boolean;
+  blockReason?: string;
+  blockedAt?: string;
 }
-// Renter block fields
 export interface Rental {
   id: string; vehicleId: string; driverId: string; startDate: string;
   endDate?: string; weeklyRate: number; depositPaid: number;
