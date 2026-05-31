@@ -524,3 +524,102 @@ export const approveInspectionTask = createServerFn({ method: "POST" })
 
     return { ok: true, mileage, last_inspection_at: nowIso, vehicle_id: task.linked_vehicle_id };
   });
+
+// Runner: complete a mechanic-run task (drop-off recorded in the field).
+export const completeMechanicRunTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      task_id: z.string().min(1).max(80),
+      mileage: z.number().int().min(0).max(2_000_000),
+      mechanic_notes: z.string().max(4000).default(""),
+      photos: z.array(z.string().url().max(1000)).max(20).default([]),
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const nowIso = new Date().toISOString();
+
+    const summary = [
+      `Mechanic run drop-off completed at ${nowIso}.`,
+      `Mileage at drop-off: ${data.mileage}.`,
+      data.mechanic_notes.trim() ? `Mechanic notes: ${data.mechanic_notes.trim()}` : null,
+      data.photos.length ? `Photos: ${data.photos.length} attached.` : null,
+    ].filter(Boolean).join("\n");
+
+    const { error: updErr } = await supabase
+      .from("tasks")
+      .update({
+        status: "completed",
+        completed_at: nowIso,
+        mr_dropoff_mileage: data.mileage,
+        mr_dropoff_at: nowIso,
+        mr_mechanic_notes: data.mechanic_notes.trim() || null,
+        mr_photos: data.photos,
+        runner_notes: summary,
+      })
+      .eq("id", data.task_id);
+    if (updErr) throw new Error(updErr.message);
+
+    void notifyAdmins(`✅ Mechanic run completed`, data.task_id).catch((e) =>
+      console.error("[mechanic run complete notify] failed:", e instanceof Error ? e.message : e),
+    );
+
+    return { ok: true };
+  });
+
+// Admin: approve a completed mechanic-run task and mark the vehicle as in-shop.
+export const approveMechanicRunTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ task_id: z.string().min(1).max(80) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+
+    const { data: task, error: tErr } = await supabaseAdmin
+      .from("tasks")
+      .select("id, status, linked_vehicle_id, mr_vendor_name, mr_dropoff_mileage, mr_dropoff_at")
+      .eq("id", data.task_id)
+      .maybeSingle();
+    if (tErr) throw new Error(tErr.message);
+    if (!task) throw new Error("Task not found");
+    if (task.status !== "completed") throw new Error("Task is not completed yet");
+
+    const nowIso = new Date().toISOString();
+    const vendor = task.mr_vendor_name ?? "shop";
+
+    if (task.linked_vehicle_id) {
+      const update: {
+        status: string;
+        shop_vendor: string | null;
+        shop_dropoff_at: string;
+        has_open_issues: boolean;
+        mileage?: number;
+      } = {
+        status: `In shop at ${vendor}`,
+        shop_vendor: task.mr_vendor_name ?? null,
+        shop_dropoff_at: task.mr_dropoff_at ?? nowIso,
+        has_open_issues: true,
+      };
+      if (task.mr_dropoff_mileage != null) {
+        const { data: veh } = await supabaseAdmin
+          .from("vehicles")
+          .select("mileage")
+          .eq("id", task.linked_vehicle_id)
+          .maybeSingle();
+        if (!veh || task.mr_dropoff_mileage >= (veh.mileage ?? 0)) update.mileage = task.mr_dropoff_mileage;
+      }
+      const { error: vErr } = await supabaseAdmin
+        .from("vehicles")
+        .update(update)
+        .eq("id", task.linked_vehicle_id);
+      if (vErr) throw new Error(vErr.message);
+    }
+
+    const { error: aErr } = await supabaseAdmin
+      .from("tasks")
+      .update({ approved_at: nowIso })
+      .eq("id", task.id);
+    if (aErr) throw new Error(aErr.message);
+
+    return { ok: true, approved_at: nowIso, vendor, mileage: task.mr_dropoff_mileage, vehicle_id: task.linked_vehicle_id };
+  });
