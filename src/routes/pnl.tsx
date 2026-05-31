@@ -656,3 +656,150 @@ function Bar({ label, value, total, tone }: { label: string; value: number; tota
     </div>
   );
 }
+
+type ProfitFilter = "all" | "profitable" | "losing";
+type PeriodFilter = "30" | "90" | "all";
+
+function VehicleProfitability() {
+  useStoreVersion();
+  const [filter, setFilter] = useState<ProfitFilter>("all");
+  const [period, setPeriod] = useState<PeriodFilter>("all");
+
+  const rows = useMemo(() => {
+    const since = period === "all" ? null : (() => {
+      const d = new Date();
+      d.setDate(d.getDate() - Number(period));
+      return d.toISOString().slice(0, 10);
+    })();
+    const inRange = (d?: string) => {
+      if (!since) return true;
+      if (!d) return false;
+      return d.slice(0, 10) >= since;
+    };
+
+    return vehicles.map(v => {
+      const rentalIds = new Set(rentals.filter(r => r.vehicleId === v.id).map(r => r.id));
+      const revenue = payments
+        .filter(p => p.status === "paid" && rentalIds.has(p.rentalId) && inRange(p.paidDate ?? p.dueDate))
+        .reduce((s, p) => s + p.amount, 0);
+      const vMx = maintenance.filter(m => m.vehicleId === v.id && inRange(m.dateCompleted));
+      const maintCost = vMx.filter(isServiceLogRecord).reduce((s, m) => s + m.cost, 0);
+      const repairCost = vMx.filter(m => isIssueRecord(m) && !!m.dateCompleted).reduce((s, m) => s + m.cost, 0);
+      const profit = revenue - maintCost - repairCost;
+      return { vehicle: v, revenue, maintCost, repairCost, profit };
+    }).sort((a, b) => b.profit - a.profit);
+  }, [filter, period]);
+
+  const totals = rows.reduce(
+    (acc, r) => {
+      acc.revenue += r.revenue;
+      acc.maint += r.maintCost;
+      acc.repair += r.repairCost;
+      acc.profit += r.profit;
+      if (r.profit < 0) acc.losing += 1; else acc.profitable += 1;
+      return acc;
+    },
+    { revenue: 0, maint: 0, repair: 0, profit: 0, profitable: 0, losing: 0 },
+  );
+  const avgProfit = rows.length > 0 ? totals.profit / rows.length : 0;
+
+  const visible = rows.filter(r =>
+    filter === "all" ? true : filter === "profitable" ? r.profit >= 0 : r.profit < 0,
+  );
+
+  const statusLabel = (profit: number, rank: number) => {
+    if (profit < 0) return { text: "🔴 LOSING MONEY", cls: "text-destructive font-semibold" };
+    if (rank === 0) return { text: "✓ Highly Profitable", cls: "text-success font-semibold" };
+    return { text: "✓ Profitable", cls: "text-success" };
+  };
+
+  const losers = rows.filter(r => r.profit < 0);
+
+  const fb = (key: ProfitFilter, label: string) => (
+    <Button key={key} variant={filter === key ? "default" : "outline"} size="sm" onClick={() => setFilter(key)}>{label}</Button>
+  );
+  const pb = (key: PeriodFilter, label: string) => (
+    <Button key={key} variant={period === key ? "default" : "outline"} size="sm" onClick={() => setPeriod(key)}>{label}</Button>
+  );
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Trophy className="h-4 w-4 text-primary" /> Vehicle Profitability
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-1.5">{fb("all", "All Vehicles")}{fb("profitable", "Profitable")}{fb("losing", "Losing Money")}</div>
+          <div className="flex flex-wrap gap-1.5">{pb("30", "Last 30 days")}{pb("90", "Last 90 days")}{pb("all", "All Time")}</div>
+        </div>
+
+        {/* Fleet summary */}
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <Big label="Fleet revenue" value={totals.revenue} tone="text-success" />
+          <Big label="Maintenance" value={-totals.maint} tone="text-destructive" />
+          <Big label="Repairs" value={-totals.repair} tone="text-destructive" />
+          <Big label="Fleet profit" value={totals.profit} tone={totals.profit >= 0 ? "text-success" : "text-destructive"} />
+          <Big label="Avg / vehicle" value={avgProfit} tone={avgProfit >= 0 ? "text-foreground" : "text-destructive"} />
+          <Card><CardContent className="p-4">
+            <div className="text-xs uppercase text-muted-foreground">Profitable / Losing</div>
+            <div className="mt-1 text-2xl font-bold"><span className="text-success">{totals.profitable}</span> <span className="text-muted-foreground">/</span> <span className="text-destructive">{totals.losing}</span></div>
+          </CardContent></Card>
+        </div>
+
+        {/* Ranking table */}
+        {visible.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No vehicles match this filter.</p>
+        ) : (
+          <div className="overflow-x-auto rounded-md border border-border">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2">#</th>
+                  <th className="px-4 py-2">Vehicle</th>
+                  <th className="px-4 py-2 text-right">Revenue</th>
+                  <th className="px-4 py-2 text-right">Maintenance</th>
+                  <th className="px-4 py-2 text-right">Repairs</th>
+                  <th className="px-4 py-2 text-right">Net Profit</th>
+                  <th className="px-4 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {visible.map(r => {
+                  const rank = rows.indexOf(r);
+                  const st = statusLabel(r.profit, rank);
+                  return (
+                    <tr key={r.vehicle.id}>
+                      <td className="px-4 py-2 font-semibold">{rank === 0 ? "🏆 1" : `#${rank + 1}`}</td>
+                      <td className="px-4 py-2 font-medium">{r.vehicle.year} {r.vehicle.make} {r.vehicle.model}</td>
+                      <td className="px-4 py-2 text-right text-success">{fmtMoney(r.revenue)}</td>
+                      <td className="px-4 py-2 text-right text-destructive">-{fmtMoney(r.maintCost)}</td>
+                      <td className="px-4 py-2 text-right text-destructive">-{fmtMoney(r.repairCost)}</td>
+                      <td className={`px-4 py-2 text-right font-semibold ${r.profit >= 0 ? "text-success" : "text-destructive"}`}>{fmtMoney(r.profit)}</td>
+                      <td className={`px-4 py-2 text-xs ${st.cls}`}>{st.text}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Negative ROI alerts */}
+        {losers.map(r => (
+          <div key={r.vehicle.id} className="rounded-md border border-destructive/40 bg-destructive/10 p-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-destructive">
+              <AlertTriangle className="h-4 w-4" /> NEGATIVE ROI — Consider selling this vehicle
+            </div>
+            <div className="mt-1 text-sm font-medium">{r.vehicle.year} {r.vehicle.make} {r.vehicle.model}</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Revenue {fmtMoney(r.revenue)} · Costs {fmtMoney(r.maintCost + r.repairCost)} · Loss {fmtMoney(r.profit)}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">This vehicle costs more than it makes. Consider selling.</div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
