@@ -131,6 +131,15 @@ function FleetPage() {
                     <div>No service logged yet</div>
                   )}
                 </div>
+                {alerts.length > 0 && (
+                  <div className="mt-2 space-y-1 border-t border-destructive/30 pt-2">
+                    {alerts.map(a => (
+                      <div key={a.key} className="text-xs font-medium text-destructive">
+                        🔴 {a.label}: <span className="font-normal">{a.detail}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </div>
             <div className="flex flex-wrap gap-2 border-t border-border bg-muted/30 p-2" onClick={(e) => e.stopPropagation()}>
