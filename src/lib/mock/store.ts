@@ -1480,6 +1480,72 @@ export function deleteMaintenance(id: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Work orders (preventive maintenance scheduling)
+// ---------------------------------------------------------------------------
+function nextWorkOrderId() {
+  const year = new Date().getFullYear();
+  const prefix = `WO-${year}-`;
+  const maxSeq = workOrders.reduce((m, w) => {
+    if (!w.id.startsWith(prefix)) return m;
+    const n = parseInt(w.id.slice(prefix.length), 10);
+    return Number.isFinite(n) ? Math.max(m, n) : m;
+  }, 0);
+  return `${prefix}${String(maxSeq + 1).padStart(4, "0")}`;
+}
+
+export function addWorkOrder(input: Omit<WorkOrder, "id" | "status" | "createdAt"> & { status?: WorkOrder["status"] }) {
+  const rec: WorkOrder = {
+    id: nextWorkOrderId(),
+    status: input.status ?? "pending",
+    createdAt: new Date().toISOString(),
+    ...input,
+  };
+  workOrders.push(rec);
+  cloudWrite("work_orders:insert", supabase.from("work_orders").insert(toWorkOrder(rec)));
+  emit();
+  return rec;
+}
+
+export function updateWorkOrder(id: string, patch: Partial<WorkOrder>) {
+  const w = workOrders.find(x => x.id === id);
+  if (!w) return;
+  Object.assign(w, patch);
+  cloudWrite("work_orders:update", supabase.from("work_orders").update(toWorkOrder(w)).eq("id", id));
+  emit();
+}
+
+export function deleteWorkOrder(id: string) {
+  const idx = workOrders.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  workOrders.splice(idx, 1);
+  cloudWrite("work_orders:delete", supabase.from("work_orders").delete().eq("id", id));
+  emit();
+}
+
+/** Upload a signed work-order document and return a temporary signed URL. */
+export async function uploadWorkOrderDoc(workOrderId: string, file: File): Promise<string> {
+  const ext = (file.name.split(".").pop() || "pdf").toLowerCase();
+  const path = `${workOrderId}/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from("work-order-docs").upload(path, file, {
+    cacheControl: "3600",
+    upsert: true,
+    contentType: file.type || "application/octet-stream",
+  });
+  if (error) throw error;
+  updateWorkOrder(workOrderId, { signedDocUrl: path });
+  const { data } = await supabase.storage.from("work-order-docs").createSignedUrl(path, 60 * 60);
+  return data?.signedUrl ?? path;
+}
+
+/** Resolve a stored work-order doc path into a viewable signed URL. */
+export async function getWorkOrderDocUrl(path: string): Promise<string | null> {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  const { data } = await supabase.storage.from("work-order-docs").createSignedUrl(path, 60 * 60);
+  return data?.signedUrl ?? null;
+}
+
+// ---------------------------------------------------------------------------
 // Violations
 // ---------------------------------------------------------------------------
 function nextViolationId() {
