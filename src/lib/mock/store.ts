@@ -1348,6 +1348,17 @@ export function addMaintenance(input: Omit<Maintenance, "id">) {
   return rec;
 }
 
+export async function addRepairType(name: string): Promise<RepairType> {
+  const maxOrder = repairTypes.reduce((m, t) => Math.max(m, t.sortOrder), -1);
+  const row = { name, sort_order: maxOrder + 1 };
+  const { data, error } = await supabase.from("repair_types").insert(row).select().single();
+  if (error) throw error;
+  const t = fromRepairType(data);
+  if (!repairTypes.some(x => x.id === t.id)) repairTypes.push(t);
+  emit();
+  return t;
+}
+
 export function updateMaintenance(id: string, patch: Partial<Maintenance>) {
   const m = maintenance.find(x => x.id === id);
   if (!m) return;
