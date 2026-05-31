@@ -257,6 +257,10 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         rp_customer_name: isRepo ? (rpCustomerName.trim() || null) : null,
         rp_customer_phone: isRepo ? (rpCustomerPhone.trim() || null) : null,
         rp_tow_authorized: isRepo ? rpTowAuthorized : false,
+        dr_service: isDmv ? (drService.trim() || null) : null,
+        dr_documents_needed: isDmv ? dmvDocsNeeded : {},
+        dr_location: isDmv ? (drLocation.trim() || null) : null,
+        dr_expected_cost: isDmv && drExpectedCost.trim() ? Number(drExpectedCost) : null,
       }});
       console.log("Task created successfully");
       console.log(`[NewTaskDialog] Task created. notify_sms was: ${notifySms}, runner_phone: ${selectedRunner?.phone ?? "(none)"}, sms_status: ${res.sms_status}${res.sms_error ? ` (${res.sms_error})` : ""}`);
