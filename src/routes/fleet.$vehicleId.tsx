@@ -158,6 +158,9 @@ function VehicleDetail() {
             <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="mr-1 h-4 w-4" />Edit
             </Button>
+            <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>
+              Maintenance settings
+            </Button>
             {role === "admin" && (
               <Button size="sm" variant="outline" onClick={() => setTaskOpen(true)}>
                 <Send className="mr-1 h-4 w-4" />Send Task to Runner
