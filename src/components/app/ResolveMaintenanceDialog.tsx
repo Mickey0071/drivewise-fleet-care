@@ -29,14 +29,16 @@ export function ResolveMaintenanceDialog({ open, onOpenChange, record }: Props) 
   const [saving, setSaving] = useState(false);
   const [editCostsOpen, setEditCostsOpen] = useState(false);
 
+  const vendorName = record?.vendor?.trim() || defaultName;
+
   useEffect(() => {
     if (!open) return;
     setWhatFixed("");
     setCost("");
     setDateCompleted(today);
-    setCompletedBy(defaultName);
+    setCompletedBy(vendorName);
     setSaving(false);
-  }, [open, defaultName, today]);
+  }, [open, vendorName, today]);
 
   if (!record) return null;
   const v = vehicleById(record.vehicleId);
