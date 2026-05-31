@@ -63,6 +63,7 @@ export interface Driver {
   altContactName?: string;
   altContactPhone?: string;
 }
+// Renter block fields
 export interface Rental {
   id: string; vehicleId: string; driverId: string; startDate: string;
   endDate?: string; weeklyRate: number; depositPaid: number;
