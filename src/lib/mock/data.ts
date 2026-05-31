@@ -94,6 +94,12 @@ export interface Payment {
   dueDate: string; paidDate?: string;
   method?: "cash" | "Zelle" | "card" | "Stripe"; status: PaymentStatus;
 }
+export interface RepairType {
+  id: string;
+  name: string;
+  sortOrder: number;
+  createdAt: string;
+}
 export interface Maintenance {
   id: string; vehicleId: string; serviceType: string; cost: number;
   vendor: string; dateCompleted: string; mileageAtService: number;
