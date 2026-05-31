@@ -312,6 +312,44 @@ function RunnerTasksPage() {
                   </Button>
                 )
               )}
+              {detail.task_type === "parts" && (
+                <div className="rounded-md border border-border bg-muted/30 p-2 text-xs">
+                  <p className="mb-1 font-semibold">📦 Parts Run</p>
+                  {detail.pr_vendor_name && <p><span className="text-muted-foreground">Vendor:</span> {detail.pr_vendor_name}</p>}
+                  {detail.pr_contact_phone && <p><span className="text-muted-foreground">Phone:</span> {detail.pr_contact_phone}</p>}
+                  {detail.pr_parts_needed && <p><span className="text-muted-foreground">Parts needed:</span> {detail.pr_parts_needed}</p>}
+                  {detail.pr_destination && <p><span className="text-muted-foreground">Destination:</span> {detail.pr_destination}</p>}
+                  {detail.pr_parts_picked_up && detail.pr_parts_picked_up.length > 0 && (
+                    <p><span className="text-muted-foreground">Picked up:</span> {detail.pr_parts_picked_up.filter((p) => p.checked).map((p) => p.label).join(", ") || "(none)"}</p>
+                  )}
+                  {detail.pr_cost != null && <p><span className="text-muted-foreground">Cost:</span> ${Number(detail.pr_cost).toFixed(2)}</p>}
+                  {detail.pr_pickup_at && <p><span className="text-muted-foreground">Pickup:</span> {new Date(detail.pr_pickup_at).toLocaleString()}</p>}
+                  {detail.pr_delivered_at && <p><span className="text-muted-foreground">Delivered:</span> {new Date(detail.pr_delivered_at).toLocaleString()}</p>}
+                  {detail.pr_delivery_notes && <p><span className="text-muted-foreground">Delivery notes:</span> {detail.pr_delivery_notes}</p>}
+                  {detail.pr_photos && detail.pr_photos.length > 0 && (
+                    <div className="mt-2 grid grid-cols-4 gap-1">
+                      {detail.pr_photos.map((url, i) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer">
+                          <img src={url} alt={`Parts ${i + 1}`} className="h-14 w-full rounded object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {detail.task_type === "parts" && detail.status === "completed" && (
+                detail.approved_at ? (
+                  <p className="text-xs text-emerald-600">✓ Approved & parts logged {new Date(detail.approved_at).toLocaleString()}</p>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={approving === detail.id}
+                    onClick={() => handleApprovePartsRun(detail)}
+                  >
+                    {approving === detail.id ? "Updating…" : "Approve & Update Fleet"}
+                  </Button>
+                )
+              )}
               {detail.task_type === "inspection" && detail.status === "completed" && (
                 detail.approved_at ? (
                   <p className="text-xs text-emerald-600">✓ Approved & fleet updated {new Date(detail.approved_at).toLocaleString()}</p>
