@@ -174,6 +174,9 @@ function VehicleDetail() {
             <Button size="sm" variant="outline" onClick={() => setReportOpen(true)}>
               <FileText className="mr-1 h-4 w-4" />Generate Service History Report
             </Button>
+            <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>
+              <ClipboardList className="mr-1 h-4 w-4" />Create Maintenance Schedule
+            </Button>
             {role === "admin" && (
               <Button size="sm" variant="outline" onClick={() => setTaskOpen(true)}>
                 <Send className="mr-1 h-4 w-4" />Send Task to Runner
