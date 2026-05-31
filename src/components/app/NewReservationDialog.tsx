@@ -27,6 +27,7 @@ import { Check, ArrowLeft, ArrowRight, Car, User, CalendarDays, ClipboardCheck, 
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { US_STATES, formatAddressBlock, formatFullName } from "@/lib/us-states";
+import { openIssueFor, summarizeOpenIssue } from "@/lib/maintenance-utils";
 
 const STEPS = ["Dates", "Vehicle", "Client", "Review"] as const;
 type Step = 0 | 1 | 2 | 3;
@@ -103,7 +104,9 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       const bookable = startDate
         ? isVehicleBookable(v.id, startDate, endDate || null)
         : isVehicleBookable(v.id);
-      if (!bookable && !awaitingPostReturnInspection(v.id)) return false;
+      // Keep blocked-for-issue and awaiting-inspection vehicles in the list so
+      // the user gets an explanatory alert when they try to book them.
+      if (!bookable && !awaitingPostReturnInspection(v.id) && !v.hasOpenIssues) return false;
       return (
         vehQ === "" ||
         `${v.year} ${v.make} ${v.model} ${v.plate}`.toLowerCase().includes(vehQ.toLowerCase())
@@ -117,7 +120,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   useEffect(() => {
     if (!vehicleId || !startDate) return;
     const stillOk = isVehicleBookable(vehicleId, startDate, endDate || null)
-      || awaitingPostReturnInspection(vehicleId);
+      || awaitingPostReturnInspection(vehicleId)
+      || (vehicles.find(v => v.id === vehicleId)?.hasOpenIssues ?? false);
     if (!stillOk) {
       setVehicleId(null);
       setVehicleClearedNotice(true);
