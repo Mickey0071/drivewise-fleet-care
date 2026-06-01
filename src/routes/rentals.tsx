@@ -169,8 +169,25 @@ function RentalsPage() {
   type DisplayStatus = "on_rent" | "returned" | "pending" | "past_due" | "paid";
   function rentalBalance(r: Rental): number {
     const sched = payments.filter(p => p.rentalId === r.id);
-    return sched
+    const unpaid = sched
       .filter(p => p.status !== "paid")
+      .reduce((s, p) => s + Number(p.amount || 0), 0);
+    const rs = r.reservationStatus ?? "active";
+    // PENDING: nothing due yet
+    if (rs === "pending") return 0;
+    // RETURNED: show whatever is still unpaid
+    if (rs === "returned" || rs === "completed") return unpaid;
+    // ON RENT (active)
+    const today = new Date().toISOString().slice(0, 10);
+    const end = r.endDate ?? today;
+    // Rental period has ended -> show full outstanding balance (overdue)
+    if (today >= end) return unpaid;
+    // Within paid rental period -> only show unpaid extension charges, if any
+    const extPaymentIds = new Set(
+      (r.extensions ?? []).map(e => e.paymentId).filter(Boolean) as string[],
+    );
+    return sched
+      .filter(p => p.status !== "paid" && extPaymentIds.has(p.id))
       .reduce((s, p) => s + Number(p.amount || 0), 0);
   }
   function rentalStatus(r: Rental): DisplayStatus {
@@ -178,7 +195,10 @@ function RentalsPage() {
     if (rs === "pending") return "pending";
     if (rs === "returned" || rs === "completed") return "returned";
     if (r.paymentStatus === "late" || r.paymentStatus === "defaulted") return "past_due";
-    if (rentalBalance(r) <= 0) return "paid";
+    const today = new Date().toISOString().slice(0, 10);
+    const end = r.endDate ?? today;
+    // Past the end date with money still owed = overdue
+    if (today >= end && rentalBalance(r) > 0) return "past_due";
     return "on_rent";
   }
   const STATUS_META: Record<DisplayStatus, { label: string; badge: string; row: string }> = {
@@ -188,7 +208,7 @@ function RentalsPage() {
     past_due: { label: "Past Due", badge: "bg-destructive/15 text-destructive", row: "bg-destructive/10 hover:bg-destructive/15" },
     paid: { label: "Paid", badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", row: "" },
   };
-  const STATUS_ORDER: DisplayStatus[] = ["past_due", "pending", "on_rent", "paid", "returned"];
+  const STATUS_ORDER: DisplayStatus[] = ["on_rent", "past_due", "pending", "paid", "returned"];
 
   const filteredSorted = (() => {
     const q = search.trim().toLowerCase();
