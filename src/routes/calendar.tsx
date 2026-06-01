@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { Card } from "@/components/ui/card";
 import { rentals, vehicles, driverById, fmtDate } from "@/lib/mock/data";
 import { useStoreVersion, pendingExpiresAt } from "@/lib/mock/store";
+import { getVehicleBlocks } from "@/lib/vehicle-blocks";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -39,7 +40,7 @@ function CalendarPage() {
     <div>
       <PageHeader
         title="Calendar"
-        subtitle="Vehicle availability — pending holds in amber, active in primary, open-ended (no return date) in red"
+        subtitle="Vehicle availability — active rentals in primary, pending holds in amber, in-repair in red"
         action={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => shift(-7)}><ChevronLeft className="h-4 w-4" /></Button>
@@ -48,6 +49,11 @@ function CalendarPage() {
           </div>
         }
       />
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-primary/80" /> On Rent</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-amber-500/40" /> Pending hold</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-destructive/70" /> In Repair / open-ended</span>
+      </div>
       <Card className="overflow-x-auto">
         <div className="min-w-[900px]">
           <div className="flex border-b">
@@ -82,6 +88,29 @@ function CalendarPage() {
                       <div key={i} className="border-l h-full min-h-[52px]" />
                     ))}
                   </div>
+                  {getVehicleBlocks(v.id)
+                    .filter(b => b.kind === "repair")
+                    .map((b, bi) => {
+                      const bs = b.from.getTime();
+                      const be = (b.to ? b.to.getTime() : rangeEnd) + DAY_MS;
+                      if (be <= rangeStart || bs >= rangeEnd) return null;
+                      const startIdx = Math.max(0, Math.floor((bs - rangeStart) / DAY_MS));
+                      const endIdx = Math.min(DAYS, Math.ceil((be - rangeStart) / DAY_MS));
+                      const span = Math.max(1, endIdx - startIdx);
+                      return (
+                        <div
+                          key={`rep-${bi}`}
+                          className="absolute top-1 bottom-1 rounded px-2 text-xs flex items-center overflow-hidden bg-destructive/80 text-destructive-foreground border border-destructive"
+                          style={{
+                            left: `calc(${(startIdx / DAYS) * 100}% + 2px)`,
+                            width: `calc(${(span / DAYS) * 100}% - 4px)`,
+                          }}
+                          title={`${b.label}${b.to === null ? " — until repair complete" : ""}`}
+                        >
+                          <span className="truncate">🔧 {b.label}</span>
+                        </div>
+                      );
+                    })}
                   {vRentals.map(r => {
                     // Returned rentals free up the vehicle — don't block the calendar.
                     if (r.reservationStatus === "returned" || r.returnedAt) return null;
