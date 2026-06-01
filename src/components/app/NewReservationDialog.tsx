@@ -99,6 +99,13 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const driver = drivers.find(d => d.id === driverId) ?? null;
   const existingRental = driver ? getActiveRentalForDriver(driver.id) : null;
 
+  // Hard block: selected dates overlap a maintenance repair or on-rent window
+  // for the chosen vehicle. Drives the calendar warning + disables Continue.
+  const dateOverlapBlock = useMemo(() => {
+    if (!vehicleId || !startDate) return null;
+    return rangeOverlapsBlocks(getVehicleBlocks(vehicleId), new Date(`${startDate}T00:00:00`), endDate ? new Date(`${endDate}T00:00:00`) : null);
+  }, [vehicleId, startDate, endDate]);
+
   const availableVehicles = useMemo(
     () => vehicles.filter(v => {
       const bookable = startDate
