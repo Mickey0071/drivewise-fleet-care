@@ -42,7 +42,7 @@ export const Route = createFileRoute("/fleet/$vehicleId")({
 function VehicleDetail() {
   useStoreVersion();
   const { vehicleId } = Route.useParams();
-  const { tab } = Route.useSearch();
+  const { tab, maint } = Route.useSearch();
   const v = vehicleById(vehicleId);
   const { role } = useAuth();
   const [reserveOpen, setReserveOpen] = useState(false);
