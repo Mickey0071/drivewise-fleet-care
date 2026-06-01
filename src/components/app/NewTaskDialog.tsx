@@ -524,6 +524,40 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
             </div>
           )}
 
+          {isTransport && (
+            <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+              <p className="text-xs font-semibold text-muted-foreground">🚚 Transport Details</p>
+              <div>
+                <Label htmlFor="tr-from">From Address (pickup)</Label>
+                <Input id="tr-from" value={trFrom} onChange={(e) => setTrFrom(e.target.value)}
+                  placeholder="e.g. 123 Oak St, Philly PA" maxLength={500} />
+              </div>
+              <div>
+                <Label htmlFor="tr-to">To Address (drop off)</Label>
+                <Input id="tr-to" value={trTo} onChange={(e) => setTrTo(e.target.value)}
+                  placeholder="e.g. 456 Main St, Trenton NJ" maxLength={500} />
+              </div>
+              <div>
+                <Label>Reason</Label>
+                <Select value={trReason || "__none"} onValueChange={(v) => setTrReason(v === "__none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Select reason…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Delivery">Delivery</SelectItem>
+                    <SelectItem value="Relocation">Relocation</SelectItem>
+                    <SelectItem value="Repair drop-off">Repair drop-off</SelectItem>
+                    <SelectItem value="Maintenance">Maintenance</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="tr-instr">Instructions (optional)</Label>
+                <Textarea id="tr-instr" value={trInstructions} onChange={(e) => setTrInstructions(e.target.value)} rows={2}
+                  maxLength={2000} placeholder='e.g. "Keys in drop box at location 1"' />
+              </div>
+            </div>
+          )}
+
           <div>
             <Label>Linked Rental (optional)</Label>
             {isRepo && <p className="mb-1 text-xs text-muted-foreground">Link the rental to auto-fill the customer.</p>}
