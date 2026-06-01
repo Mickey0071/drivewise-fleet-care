@@ -237,6 +237,10 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         toast.error("Pick a runner");
         return;
       }
+      if (taskType !== "parts" && !vehicleId) {
+        toast.error("Pick a vehicle");
+        return;
+      }
       if (selectedIsStaffOnly) {
         toast.error("This runner has no login yet. Go to Admin → Users to create their account first.");
         return;
