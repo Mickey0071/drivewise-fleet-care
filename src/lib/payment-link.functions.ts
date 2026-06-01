@@ -16,6 +16,9 @@ export interface PaymentLinkInput {
   paymentId?: string;
   origin?: string;
   customMessage?: string;
+  reason?: string;
+  sendSms?: boolean;
+  sendEmail?: boolean;
 }
 
 /**
@@ -79,9 +82,12 @@ export async function sendPaymentLinkInternal(
   const msg = custom
     ? `${custom} Pay: ${link.url}`
     : `Camauto Rentals: ${amt} due. Pay: ${link.url}`;
+  // Default both channels on when neither flag is provided (back-compat).
+  const wantSms = data.sendSms !== false;
+  const wantEmail = data.sendEmail !== false;
   await notifyRenter({
-    phone: data.phone,
-    email: data.email ?? null,
+    phone: wantSms ? data.phone : null,
+    email: wantEmail ? (data.email ?? null) : null,
     name: data.name ?? null,
     sms: msg,
     emailSubject: "Complete Your Payment — Camauto Rentals",
