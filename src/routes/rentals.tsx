@@ -822,37 +822,67 @@ function RentalsPage() {
               : pendingReview.map(renderRow)}
           </div>
         ) : (<>
-        <Collapsible defaultOpen>
-          <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/40 px-4 py-3 text-sm font-semibold hover:bg-muted/60 transition-colors">
-            <span>On Rent <span className="ml-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">{active.length}</span></span>
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>svg]:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="flex flex-col gap-1.5 pt-2">
-            {active.length === 0 ? <EmptyState label="No vehicles currently on rent." /> : active.map(renderRow)}
-          </CollapsibleContent>
-        </Collapsible>
-
-        <Collapsible defaultOpen>
-          <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/40 px-4 py-3 text-sm font-semibold hover:bg-muted/60 transition-colors">
-            <span>Pending <span className="ml-1.5 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400">{pending.length}</span></span>
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>svg]:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="flex flex-col gap-1.5 pt-2">
-            {pending.length === 0 ? (
-              <EmptyState label="No pending reservations. New reservations are held here for 24h until signature + payment." />
-            ) : pending.map(renderRow)}
-          </CollapsibleContent>
-        </Collapsible>
-
-        <Collapsible>
-          <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/40 px-4 py-3 text-sm font-semibold hover:bg-muted/60 transition-colors">
-            <span>Returned <span className="ml-1.5 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">{completed.length}</span></span>
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>svg]:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="flex flex-col gap-1.5 pt-2">
-            {completed.length === 0 ? <EmptyState label="No returned rentals yet." /> : completed.map(renderRow)}
-          </CollapsibleContent>
-        </Collapsible>
+        <div className="relative">
+          <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, reservation #, or date…"
+            className="pl-9"
+          />
+        </div>
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <SortHead k="id" label="Reservation #" />
+                <SortHead k="name" label="Client Name" />
+                <SortHead k="vehicle" label="Vehicle" />
+                <SortHead k="start" label="Start Date" />
+                <SortHead k="end" label="End Date" />
+                <SortHead k="status" label="Status" />
+                <SortHead k="balance" label="Balance" className="text-right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredSorted.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                    {search ? "No reservations match your search." : "No reservations yet."}
+                  </TableCell>
+                </TableRow>
+              ) : filteredSorted.map(r => {
+                const v = vehicleById(r.vehicleId);
+                const d = driverById(r.driverId);
+                const st = rentalStatus(r);
+                const meta = STATUS_META[st];
+                const bal = rentalBalance(r);
+                return (
+                  <TableRow
+                    key={r.id}
+                    onClick={() => setDetail(r)}
+                    className={`cursor-pointer ${meta.row}`}
+                  >
+                    <TableCell className="font-mono text-xs text-muted-foreground">{r.id}</TableCell>
+                    <TableCell className="font-medium">{d?.fullName ?? r.driverId}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {v ? `${v.year} ${v.make} ${v.model}` : r.vehicleId}
+                      {v?.plate ? <span className="ml-1 text-xs">· {v.plate}</span> : null}
+                    </TableCell>
+                    <TableCell className="text-xs">{fmtDate(r.startDate)}</TableCell>
+                    <TableCell className="text-xs">{r.endDate ? fmtDate(r.endDate) : "—"}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
+                    </TableCell>
+                    <TableCell className={`text-right font-medium ${bal > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                      {fmtMoney(bal)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
         </>)}
       </div>
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
