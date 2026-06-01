@@ -92,7 +92,7 @@ function RentalsPage() {
   const downloadPacketFn = useServerFn(downloadClientPacket);
   const [packetDownloadingId, setPacketDownloadingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<"id" | "name" | "vehicle" | "start" | "end" | "status" | "balance">("start");
+  const [sortKey, setSortKey] = useState<"id" | "name" | "vehicle" | "start" | "end" | "status" | "balance">("status");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   useStoreVersion();
   // Notify staff when a remote signature arrives (via realtime) and the
