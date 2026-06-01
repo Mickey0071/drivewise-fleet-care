@@ -28,6 +28,12 @@ function rentalIsBlocking(r: Rental): boolean {
   return rs === "active" || rs === "pending";
 }
 
+function rentalBlockEnd(r: Rental): Date | null {
+  const status = r.reservationStatus ?? "active";
+  if (status === "active") return null;
+  return parseDay(r.endDate ?? null);
+}
+
 /** Estimated end of an open repair: parsed "Estimated return" → nextServiceDue → null. */
 function repairEnd(m: Maintenance): Date | null {
   const summary = summarizeOpenIssue(m);
@@ -62,7 +68,7 @@ export function getVehicleBlocks(vehicleId: string): VehicleBlock[] {
       kind: "onrent",
       label: "On Rent",
       from: startOfDay(from),
-      to: parseDay(r.endDate ?? null),
+      to: rentalBlockEnd(r),
     });
   }
 
