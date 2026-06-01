@@ -512,6 +512,39 @@ export type Database = {
           },
         ]
       }
+      payment_link_logs: {
+        Row: {
+          amount_cents: number
+          channels: string[]
+          created_at: string
+          custom_message: string | null
+          id: string
+          link_url: string | null
+          reason: string | null
+          rental_id: string
+        }
+        Insert: {
+          amount_cents: number
+          channels?: string[]
+          created_at?: string
+          custom_message?: string | null
+          id?: string
+          link_url?: string | null
+          reason?: string | null
+          rental_id: string
+        }
+        Update: {
+          amount_cents?: number
+          channels?: string[]
+          created_at?: string
+          custom_message?: string | null
+          id?: string
+          link_url?: string | null
+          reason?: string | null
+          rental_id?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
