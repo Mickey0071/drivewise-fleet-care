@@ -1010,11 +1010,16 @@ function VehicleProfitability() {
 
         {/* Fleet summary */}
         <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <Big label="Fleet revenue" value={totals.revenue} tone="text-success" />
-          <Big label="Maintenance" value={-totals.maint} tone="text-destructive" />
-          <Big label="Repairs" value={-totals.repair} tone="text-destructive" />
-          <Big label="Fleet profit" value={totals.profit} tone={totals.profit >= 0 ? "text-success" : "text-destructive"} />
-          <Big label="Avg / vehicle" value={avgProfit} tone={avgProfit >= 0 ? "text-foreground" : "text-destructive"} />
+          <Big label="Total revenue" value={totals.revenue} tone="text-success" />
+          <Big label="Completed maintenance" value={-totals.completed} tone="text-destructive" />
+          <Card className="border-amber-500/40 bg-amber-500/10">
+            <CardContent className="p-4">
+              <div className="text-xs uppercase text-amber-600 dark:text-amber-400">🟡 Pending maintenance</div>
+              <div className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">-{fmtMoney(totals.open)}</div>
+            </CardContent>
+          </Card>
+          <Big label="Total costs" value={-(totals.completed + totals.open)} tone="text-destructive" />
+          <Big label="Fleet net profit" value={totals.profit} tone={totals.profit >= 0 ? "text-success" : "text-destructive"} />
           <Card><CardContent className="p-4">
             <div className="text-xs uppercase text-muted-foreground">Profitable / Losing</div>
             <div className="mt-1 text-2xl font-bold"><span className="text-success">{totals.profitable}</span> <span className="text-muted-foreground">/</span> <span className="text-destructive">{totals.losing}</span></div>
