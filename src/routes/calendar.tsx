@@ -77,7 +77,7 @@ function CalendarPage() {
           {vehicles.map(v => {
             const vRentals = rentals.filter(r => r.vehicleId === v.id);
             return (
-              <div key={v.id} className="flex border-b last:border-b-0 hover:bg-muted/20">
+              <div key={v.id} className={`flex border-b last:border-b-0 hover:bg-muted/20 ${!isVehicleVisibleAsAvailable(v) ? "bg-muted/20" : ""}`}>
                 <div className="w-[220px] shrink-0 p-2 text-sm">
                   <div className="font-medium truncate">{v.year} {v.make} {v.model}</div>
                   <div className="text-xs text-muted-foreground">{v.plate}</div>
@@ -117,10 +117,12 @@ function CalendarPage() {
                     const rs = new Date(r.startDate).getTime();
                     const isPending = r.reservationStatus === "pending";
                     const exp = pendingExpiresAt(r);
-                    // Open-ended (no end date): unavailable indefinitely until returned.
-                    const openEnded = !r.endDate && !isPending;
+                    // Active/on-rent means the car is physically out. Keep it
+                    // blocked indefinitely until returned, even if an expected
+                    // end date exists.
+                    const openEnded = !isPending;
                     const re = r.endDate
-                      ? new Date(r.endDate).getTime() + DAY_MS
+                      ? (isPending ? new Date(r.endDate).getTime() + DAY_MS : rangeEnd)
                       : isPending && exp
                         ? exp
                         : rangeEnd;
@@ -161,4 +163,8 @@ function CalendarPage() {
       </Card>
     </div>
   );
+}
+
+function isVehicleVisibleAsAvailable(v: { status: string; hasOpenIssues?: boolean }) {
+  return v.status === "available" && !v.hasOpenIssues;
 }
