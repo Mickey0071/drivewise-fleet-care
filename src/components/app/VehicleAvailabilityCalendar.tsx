@@ -41,6 +41,10 @@ export function VehicleAvailabilityCalendar({ vehicleId, startDate, endDate, onC
     const hit = dateIsBlocked(blocks, d);
     return hit?.kind === "onrent";
   };
+  const manualMatcher = (d: Date) => {
+    const hit = dateIsBlocked(blocks, d);
+    return hit?.kind === "manual";
+  };
   const disabledMatcher = (d: Date) => !!dateIsBlocked(blocks, d);
 
   const selected: DateRange | undefined = useMemo(() => {
@@ -72,10 +76,11 @@ export function VehicleAvailabilityCalendar({ vehicleId, startDate, endDate, onC
           onSelect={handleSelect}
           disabled={disabledMatcher}
           excludeDisabled
-          modifiers={{ repair: repairMatcher, onrent: onRentMatcher }}
+          modifiers={{ repair: repairMatcher, onrent: onRentMatcher, manual: manualMatcher }}
           modifiersClassNames={{
             repair: "bg-destructive/20 text-destructive line-through",
             onrent: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
+            manual: "bg-muted text-muted-foreground line-through",
           }}
           className="pointer-events-auto"
         />
@@ -99,12 +104,12 @@ export function VehicleAvailabilityCalendar({ vehicleId, startDate, endDate, onC
               key={i}
               className={cn(
                 "flex items-center gap-2 rounded-md border px-3 py-2 text-xs",
-                b.kind === "repair"
+                b.kind === "repair" || b.kind === "manual"
                   ? "border-destructive/40 bg-destructive/5 text-destructive"
                   : "border-blue-500/40 bg-blue-500/5 text-blue-700 dark:text-blue-300",
               )}
             >
-              {b.kind === "repair" ? <Wrench className="h-3.5 w-3.5" /> : <Car className="h-3.5 w-3.5" />}
+              {b.kind === "onrent" ? <Car className="h-3.5 w-3.5" /> : <Wrench className="h-3.5 w-3.5" />}
               <span className="font-medium">{b.label}</span>
               <span className="opacity-80">
                 {fmtBlockRange(b)}
