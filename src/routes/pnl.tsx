@@ -1074,7 +1074,7 @@ function VehicleProfitability() {
             </div>
             <div className="mt-1 text-sm font-medium">{r.vehicle.year} {r.vehicle.make} {r.vehicle.model}</div>
             <div className="mt-1 text-xs text-muted-foreground">
-              Revenue {fmtMoney(r.revenue)} · Costs {fmtMoney(r.maintCost + r.repairCost)} · Loss {fmtMoney(r.profit)}
+              Revenue {fmtMoney(r.revenue)} · Completed {fmtMoney(r.completedCost)} · Pending {fmtMoney(r.openCost)} · Loss {fmtMoney(r.profit)}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">This vehicle costs more than it makes. Consider selling.</div>
           </div>
