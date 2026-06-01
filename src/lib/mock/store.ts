@@ -191,8 +191,14 @@ function rentalBlocksVehicle(
   newEnd?: Date | null,
 ) {
   if (ignoreRentalId && r.id === ignoreRentalId) return false;
+  if (r.returnedAt) return false;
   const status = r.reservationStatus ?? "active";
   if (status !== "active" && status !== "pending") return false;
+
+  // Active/on-rent vehicles stay blocked until the rental is explicitly
+  // returned. The stored end date is billing/expected-return context, not
+  // permission to rebook the car while it is still out.
+  if (status === "active") return true;
 
   // No new window provided → block all active/pending unreturned rentals.
   if (!newStart) return true;
@@ -226,7 +232,7 @@ export function isVehicleBookable(
 ) {
   const vehicle = vehicles.find(v => v.id === vehicleId);
   if (!vehicle) return false;
-  if (vehicle.status === "maintenance" || vehicle.status === "impound") return false;
+  if (vehicle.status === "maintenance" || vehicle.status === "impound" || vehicle.status === "rented") return false;
   // An open maintenance issue (repair ticket) blocks the vehicle from rentals
   // until the ticket is marked completed.
   if (vehicle.hasOpenIssues) return false;
