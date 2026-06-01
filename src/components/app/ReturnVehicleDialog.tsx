@@ -23,11 +23,9 @@ import { ShieldAlert } from "lucide-react";
 type Props = {
   rental: Rental | null;
   onClose: () => void;
-  /** Called when the admin picks "Dispatch runner" — parent opens NewTaskDialog with prefill. */
-  onDispatchRunner: (rental: Rental) => void;
 };
 
-export function ReturnVehicleDialog({ rental, onClose, onDispatchRunner }: Props) {
+export function ReturnVehicleDialog({ rental, onClose }: Props) {
   const navigate = useNavigate();
   const router = useRouter();
   const { role } = useAuth();
@@ -96,16 +94,6 @@ export function ReturnVehicleDialog({ rental, onClose, onDispatchRunner }: Props
           >
             <div className="text-base font-semibold">🚗 Return now (I have the vehicle)</div>
             <div className="mt-1 text-sm opacity-90">Complete the return inspection yourself.</div>
-          </button>
-          <button
-            type="button"
-            onClick={() => onDispatchRunner(rental)}
-            className="w-full rounded-lg border-2 border-border bg-background px-4 py-4 text-left transition hover:bg-muted"
-          >
-            <div className="text-base font-semibold">🏃 Dispatch runner to retrieve</div>
-            <div className="mt-1 text-sm text-muted-foreground">
-              Send a runner to pick up the vehicle. They'll complete the return inspection on-site.
-            </div>
           </button>
           {isAdmin && (
             <button
