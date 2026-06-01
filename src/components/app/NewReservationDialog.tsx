@@ -208,7 +208,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   }
 
   const canNext =
-    (step === 0 && !!startDate) ||
+    (step === 0 && !!startDate && !dateOverlapBlock) ||
     (step === 1 && !!vehicle && !vehicle.hasOpenIssues) ||
     (step === 2 && !!driver && (!existingRental || isSwap)) ||
     step === 3;
