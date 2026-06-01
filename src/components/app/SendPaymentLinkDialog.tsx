@@ -174,6 +174,46 @@ export function SendPaymentLinkDialog({
             />
             <p className="text-xs text-muted-foreground">The payment link is appended automatically to your message.</p>
           </div>
+          <div className="space-y-2">
+            <Label>Send via</Label>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={viaSms}
+                  onCheckedChange={(c) => setViaSms(!!c)}
+                  disabled={!phone}
+                />
+                SMS to customer phone{phone ? ` (${phone})` : " — none on file"}
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={viaEmail}
+                  onCheckedChange={(c) => setViaEmail(!!c)}
+                  disabled={!email}
+                />
+                Email to customer{email ? ` (${email})` : " — none on file"}
+              </label>
+            </div>
+          </div>
+          {logs.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>History</Label>
+              <div className="max-h-32 space-y-1 overflow-y-auto rounded-md border p-2">
+                {logs.map((l) => {
+                  const d = new Date(l.createdAt);
+                  const date = `${d.getMonth() + 1}-${d.getDate()}-${String(d.getFullYear()).slice(2)}`;
+                  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+                  return (
+                    <div key={l.id} className="text-xs text-muted-foreground">
+                      Payment link sent {date} {time} for ${(l.amountCents / 100).toFixed(2)}
+                      {l.reason ? ` (${l.reason})` : ""}
+                      {l.channels.length ? ` · ${l.channels.join(", ")}` : ""}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
             Sends to {renterName || "renter"}
             {phone ? ` · ${phone}` : ""}
