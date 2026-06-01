@@ -15,7 +15,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { CHECKLIST_SECTIONS, JOB_TYPE_LABELS, FUEL_LEVEL_LABELS } from "@/lib/checklist-items";
 import { cn } from "@/lib/utils";
 import { useServerFn } from "@tanstack/react-start";
-import { completeTaskFromInspection } from "@/lib/tasks.functions";
 import { closeoutRental } from "@/lib/return.functions";
 import { refreshStoreFromCloud, syncLocalReturn } from "@/lib/mock/store";
 import { z } from "zod";
