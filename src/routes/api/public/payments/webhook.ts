@@ -274,10 +274,12 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       extLicenseName =
         drv?.full_name || [drv?.first_name, drv?.last_name].filter(Boolean).join(" ") || "";
     }
-    const extScore =
-      extCardName && extLicenseName ? nameMatchScore(extCardName, extLicenseName) : 0;
-    const extMatched = !!(extCardName && extLicenseName && namesMatch(extCardName, extLicenseName));
-    if (extCardName && extLicenseName && !extMatched) {
+    // Hybrid name matching: dictionary/exact → approve, fuzzy >=0.75 → approve,
+    // 0.5-0.75 → admin review (flagged, extension still applied), <0.5 → refund.
+    const extDecision =
+      extCardName && extLicenseName ? decideNameMatch(extCardName, extLicenseName) : null;
+    const extScore = extDecision?.score ?? 0;
+    if (extDecision && extDecision.action === "refund") {
       console.warn(
         `[webhook:ext] name mismatch rental=${rentalId} card="${extCardName}" ${extNameSource}="${extLicenseName}" score=${extScore}`,
       );
@@ -293,6 +295,9 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
           .from("extension_requests")
           .update({
             status: "refunded_name_mismatch",
+            name_match_status: "mismatched",
+            name_match_score: extScore,
+            cardholder_name: extCardName,
             stripe_session_id: session.id,
           })
           .eq("token", extToken2);
