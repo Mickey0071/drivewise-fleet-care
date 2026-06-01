@@ -1,5 +1,5 @@
 import type { Maintenance } from "@/lib/mock/data";
-import type { Vehicle } from "@/lib/mock/data";
+import type { Vehicle, ScheduledTaskKey } from "@/lib/mock/data";
 
 // Issue tickets (repairs) are created via AddIssueDialog, which writes an
 // "Issue opened" marker as the first notes line. Everything else is treated
