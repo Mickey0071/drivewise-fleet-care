@@ -16,6 +16,7 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initialVehicleId?: string;
+  lockVehicle?: boolean;
 }
 
 interface PartRow {
@@ -39,10 +40,13 @@ function defaultReturn() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) {
+export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehicle }: Props) {
   useStoreVersion();
   const [startedAt] = useState(() => new Date());
   const [vehicleId, setVehicleId] = useState<string>(initialVehicleId ?? "");
+  const lockedVehicle = lockVehicle && initialVehicleId
+    ? vehicles.find(x => x.id === initialVehicleId)
+    : undefined;
   const [rows, setRows] = useState<PartRow[]>([emptyRow()]);
   const [downPayment, setDownPayment] = useState<string>("");
   const [estReturn, setEstReturn] = useState<string>(defaultReturn());
@@ -131,6 +135,13 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
             </div>
             <div className="grid gap-1.5">
               <Label>Vehicle</Label>
+              {lockedVehicle ? (
+                <Input
+                  value={`${lockedVehicle.year} ${lockedVehicle.make} ${lockedVehicle.model} · ${lockedVehicle.plate}`}
+                  readOnly
+                  disabled
+                />
+              ) : (
               <Select value={vehicleId} onValueChange={setVehicleId}>
                 <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
                 <SelectContent>
@@ -139,6 +150,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId }: Props) 
                   ))}
                 </SelectContent>
               </Select>
+              )}
             </div>
           </div>
 
