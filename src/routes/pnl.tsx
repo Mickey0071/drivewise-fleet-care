@@ -948,8 +948,16 @@ function VehicleProfitability() {
       const vMx = maintenance.filter(m => m.vehicleId === v.id && inRange(m.dateCompleted));
       const maintCost = vMx.filter(isServiceLogRecord).reduce((s, m) => s + m.cost, 0);
       const repairCost = vMx.filter(m => isIssueRecord(m) && !!m.dateCompleted).reduce((s, m) => s + m.cost, 0);
-      const profit = revenue - maintCost - repairCost;
-      return { vehicle: v, revenue, maintCost, repairCost, profit };
+      const completedCost = maintCost + repairCost;
+      // Open (pending) repair tickets — always counted regardless of period,
+      // since they represent work outstanding right now. Reflects live edits
+      // made via the Edit Costs dialog (updateMaintenance bumps the store).
+      const openCost = maintenance
+        .filter(m => m.vehicleId === v.id && !m.dateCompleted)
+        .reduce((s, m) => s + m.cost, 0);
+      const totalCost = completedCost + openCost;
+      const profit = revenue - totalCost;
+      return { vehicle: v, revenue, maintCost, repairCost, completedCost, openCost, totalCost, profit };
     }).sort((a, b) => b.profit - a.profit);
   }, [filter, period]);
 
@@ -958,11 +966,13 @@ function VehicleProfitability() {
       acc.revenue += r.revenue;
       acc.maint += r.maintCost;
       acc.repair += r.repairCost;
+      acc.completed += r.completedCost;
+      acc.open += r.openCost;
       acc.profit += r.profit;
       if (r.profit < 0) acc.losing += 1; else acc.profitable += 1;
       return acc;
     },
-    { revenue: 0, maint: 0, repair: 0, profit: 0, profitable: 0, losing: 0 },
+    { revenue: 0, maint: 0, repair: 0, completed: 0, open: 0, profit: 0, profitable: 0, losing: 0 },
   );
   const avgProfit = rows.length > 0 ? totals.profit / rows.length : 0;
 
@@ -1000,11 +1010,16 @@ function VehicleProfitability() {
 
         {/* Fleet summary */}
         <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <Big label="Fleet revenue" value={totals.revenue} tone="text-success" />
-          <Big label="Maintenance" value={-totals.maint} tone="text-destructive" />
-          <Big label="Repairs" value={-totals.repair} tone="text-destructive" />
-          <Big label="Fleet profit" value={totals.profit} tone={totals.profit >= 0 ? "text-success" : "text-destructive"} />
-          <Big label="Avg / vehicle" value={avgProfit} tone={avgProfit >= 0 ? "text-foreground" : "text-destructive"} />
+          <Big label="Total revenue" value={totals.revenue} tone="text-success" />
+          <Big label="Completed maintenance" value={-totals.completed} tone="text-destructive" />
+          <Card className="border-amber-500/40 bg-amber-500/10">
+            <CardContent className="p-4">
+              <div className="text-xs uppercase text-amber-600 dark:text-amber-400">🟡 Pending maintenance</div>
+              <div className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">-{fmtMoney(totals.open)}</div>
+            </CardContent>
+          </Card>
+          <Big label="Total costs" value={-(totals.completed + totals.open)} tone="text-destructive" />
+          <Big label="Fleet net profit" value={totals.profit} tone={totals.profit >= 0 ? "text-success" : "text-destructive"} />
           <Card><CardContent className="p-4">
             <div className="text-xs uppercase text-muted-foreground">Profitable / Losing</div>
             <div className="mt-1 text-2xl font-bold"><span className="text-success">{totals.profitable}</span> <span className="text-muted-foreground">/</span> <span className="text-destructive">{totals.losing}</span></div>
@@ -1022,8 +1037,9 @@ function VehicleProfitability() {
                   <th className="px-4 py-2">#</th>
                   <th className="px-4 py-2">Vehicle</th>
                   <th className="px-4 py-2 text-right">Revenue</th>
-                  <th className="px-4 py-2 text-right">Maintenance</th>
-                  <th className="px-4 py-2 text-right">Repairs</th>
+                  <th className="px-4 py-2 text-right">Completed Costs</th>
+                  <th className="px-4 py-2 text-right">Open Costs</th>
+                  <th className="px-4 py-2 text-right">Total Costs</th>
                   <th className="px-4 py-2 text-right">Net Profit</th>
                   <th className="px-4 py-2">Status</th>
                 </tr>
@@ -1037,8 +1053,9 @@ function VehicleProfitability() {
                       <td className="px-4 py-2 font-semibold">{rank === 0 ? "🏆 1" : `#${rank + 1}`}</td>
                       <td className="px-4 py-2 font-medium">{r.vehicle.year} {r.vehicle.make} {r.vehicle.model}</td>
                       <td className="px-4 py-2 text-right text-success">{fmtMoney(r.revenue)}</td>
-                      <td className="px-4 py-2 text-right text-destructive">-{fmtMoney(r.maintCost)}</td>
-                      <td className="px-4 py-2 text-right text-destructive">-{fmtMoney(r.repairCost)}</td>
+                      <td className="px-4 py-2 text-right text-foreground">{fmtMoney(r.completedCost)}</td>
+                      <td className={`px-4 py-2 text-right font-medium ${r.openCost > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{fmtMoney(r.openCost)}</td>
+                      <td className="px-4 py-2 text-right text-destructive">{fmtMoney(r.totalCost)}</td>
                       <td className={`px-4 py-2 text-right font-semibold ${r.profit >= 0 ? "text-success" : "text-destructive"}`}>{fmtMoney(r.profit)}</td>
                       <td className={`px-4 py-2 text-xs ${st.cls}`}>{st.text}</td>
                     </tr>
@@ -1057,7 +1074,7 @@ function VehicleProfitability() {
             </div>
             <div className="mt-1 text-sm font-medium">{r.vehicle.year} {r.vehicle.make} {r.vehicle.model}</div>
             <div className="mt-1 text-xs text-muted-foreground">
-              Revenue {fmtMoney(r.revenue)} · Costs {fmtMoney(r.maintCost + r.repairCost)} · Loss {fmtMoney(r.profit)}
+              Revenue {fmtMoney(r.revenue)} · Completed {fmtMoney(r.completedCost)} · Pending {fmtMoney(r.openCost)} · Loss {fmtMoney(r.profit)}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">This vehicle costs more than it makes. Consider selling.</div>
           </div>
