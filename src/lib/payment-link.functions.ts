@@ -15,6 +15,7 @@ export interface PaymentLinkInput {
   rentalId?: string;
   paymentId?: string;
   origin?: string;
+  customMessage?: string;
 }
 
 /**
@@ -74,7 +75,10 @@ export async function sendPaymentLinkInternal(
   if (!link.url) throw new Error("Stripe did not return a payment link URL");
 
   const amt = `$${(data.amountCents / 100).toFixed(2)}`;
-  const msg = `Camauto Rentals: ${amt} due. Pay: ${link.url}`;
+  const custom = (data.customMessage || "").trim();
+  const msg = custom
+    ? `${custom} Pay: ${link.url}`
+    : `Camauto Rentals: ${amt} due. Pay: ${link.url}`;
   await notifyRenter({
     phone: data.phone,
     email: data.email ?? null,
@@ -82,7 +86,9 @@ export async function sendPaymentLinkInternal(
     sms: msg,
     emailSubject: "Complete Your Payment — Camauto Rentals",
     emailHeading: "Complete Your Payment",
-    emailIntro: `Your payment of <strong>${amt}</strong> is ready. Tap the button below to pay securely via Stripe.`,
+    emailIntro: custom
+      ? `${custom}<br/><br/>Tap the button below to pay <strong>${amt}</strong> securely via Stripe.`
+      : `Your payment of <strong>${amt}</strong> is ready. Tap the button below to pay securely via Stripe.`,
     emailCta: { label: `Pay ${amt} Now`, url: link.url },
     emailDetails: [
       { label: "Amount Due", value: amt },
