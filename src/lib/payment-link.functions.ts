@@ -111,6 +111,8 @@ export const sendPaymentLink = createServerFn({ method: "POST" })
       throw new Error("description required (<=200 chars)");
     if (d.environment !== "sandbox" && d.environment !== "live")
       throw new Error("invalid environment");
+    if (d.customMessage && d.customMessage.length > 300)
+      throw new Error("custom message too long (<=300 chars)");
     return d;
   })
   .handler(async ({ data }) => {
