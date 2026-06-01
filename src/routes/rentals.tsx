@@ -13,13 +13,14 @@ import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
 import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download, Smartphone } from "lucide-react";
+import { Search as SearchIcon, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import logoUrl from "@/assets/camauto-logo-full.jpeg";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
@@ -90,6 +91,9 @@ function RentalsPage() {
   const [receiptRegenId, setReceiptRegenId] = useState<string | null>(null);
   const downloadPacketFn = useServerFn(downloadClientPacket);
   const [packetDownloadingId, setPacketDownloadingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<"id" | "name" | "vehicle" | "start" | "end" | "status" | "balance">("start");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   useStoreVersion();
   // Notify staff when a remote signature arrives (via realtime) and the
   // reservation flips from pending → active.
@@ -160,6 +164,86 @@ function RentalsPage() {
   const completed = rentals.filter(r => r.reservationStatus === "returned" || r.reservationStatus === "completed");
   const pendingReview = rentals.filter(r => r.staffReviewStatus === "pending");
   const reviewFilter = review === "pending";
+
+  // ---- Derive a display status + outstanding balance for a reservation ----
+  type DisplayStatus = "on_rent" | "returned" | "pending" | "past_due" | "paid";
+  function rentalBalance(r: Rental): number {
+    const sched = payments.filter(p => p.rentalId === r.id);
+    return sched
+      .filter(p => p.status !== "paid")
+      .reduce((s, p) => s + Number(p.amount || 0), 0);
+  }
+  function rentalStatus(r: Rental): DisplayStatus {
+    const rs = r.reservationStatus ?? "active";
+    if (rs === "pending") return "pending";
+    if (rs === "returned" || rs === "completed") return "returned";
+    if (r.paymentStatus === "late" || r.paymentStatus === "defaulted") return "past_due";
+    if (rentalBalance(r) <= 0) return "paid";
+    return "on_rent";
+  }
+  const STATUS_META: Record<DisplayStatus, { label: string; badge: string; row: string }> = {
+    on_rent: { label: "On Rent", badge: "bg-blue-500/15 text-blue-600 dark:text-blue-400", row: "" },
+    returned: { label: "Returned", badge: "bg-muted text-muted-foreground", row: "" },
+    pending: { label: "Pending", badge: "bg-amber-500/20 text-amber-700 dark:text-amber-400", row: "" },
+    past_due: { label: "Past Due", badge: "bg-destructive/15 text-destructive", row: "bg-destructive/10 hover:bg-destructive/15" },
+    paid: { label: "Paid", badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", row: "" },
+  };
+  const STATUS_ORDER: DisplayStatus[] = ["past_due", "pending", "on_rent", "paid", "returned"];
+
+  const filteredSorted = (() => {
+    const q = search.trim().toLowerCase();
+    let rows = rentals.slice();
+    if (q) {
+      rows = rows.filter(r => {
+        const v = vehicleById(r.vehicleId);
+        const d = driverById(r.driverId);
+        const hay = [
+          r.id,
+          d?.fullName ?? r.driverId,
+          v ? `${v.year} ${v.make} ${v.model}` : r.vehicleId,
+          v?.plate ?? "",
+          r.startDate,
+          r.endDate ?? "",
+          fmtDate(r.startDate),
+          fmtDate(r.endDate),
+          STATUS_META[rentalStatus(r)].label,
+        ].join(" ").toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    const cmp = (a: Rental, b: Rental): number => {
+      switch (sortKey) {
+        case "id": return a.id.localeCompare(b.id, undefined, { numeric: true });
+        case "name": return (driverById(a.driverId)?.fullName ?? a.driverId).localeCompare(driverById(b.driverId)?.fullName ?? b.driverId);
+        case "vehicle": {
+          const va = vehicleById(a.vehicleId); const vb = vehicleById(b.vehicleId);
+          return (va ? `${va.make} ${va.model}` : a.vehicleId).localeCompare(vb ? `${vb.make} ${vb.model}` : b.vehicleId);
+        }
+        case "start": return a.startDate.localeCompare(b.startDate);
+        case "end": return (a.endDate ?? "").localeCompare(b.endDate ?? "");
+        case "status": return STATUS_ORDER.indexOf(rentalStatus(a)) - STATUS_ORDER.indexOf(rentalStatus(b));
+        case "balance": return rentalBalance(a) - rentalBalance(b);
+        default: return 0;
+      }
+    };
+    rows.sort((a, b) => sortDir === "asc" ? cmp(a, b) : -cmp(a, b));
+    return rows;
+  })();
+
+  function toggleSort(key: typeof sortKey) {
+    if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir("asc"); }
+  }
+  function SortHead({ k, label, className }: { k: typeof sortKey; label: string; className?: string }) {
+    return (
+      <TableHead className={className}>
+        <button type="button" onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 hover:text-foreground">
+          {label}
+          {sortKey === k ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+        </button>
+      </TableHead>
+    );
+  }
 
   function renderRow(r: Rental) {
     const v = vehicleById(r.vehicleId);
@@ -737,37 +821,67 @@ function RentalsPage() {
               : pendingReview.map(renderRow)}
           </div>
         ) : (<>
-        <Collapsible defaultOpen>
-          <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/40 px-4 py-3 text-sm font-semibold hover:bg-muted/60 transition-colors">
-            <span>On Rent <span className="ml-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">{active.length}</span></span>
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>svg]:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="flex flex-col gap-1.5 pt-2">
-            {active.length === 0 ? <EmptyState label="No vehicles currently on rent." /> : active.map(renderRow)}
-          </CollapsibleContent>
-        </Collapsible>
-
-        <Collapsible defaultOpen>
-          <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/40 px-4 py-3 text-sm font-semibold hover:bg-muted/60 transition-colors">
-            <span>Pending <span className="ml-1.5 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400">{pending.length}</span></span>
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>svg]:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="flex flex-col gap-1.5 pt-2">
-            {pending.length === 0 ? (
-              <EmptyState label="No pending reservations. New reservations are held here for 24h until signature + payment." />
-            ) : pending.map(renderRow)}
-          </CollapsibleContent>
-        </Collapsible>
-
-        <Collapsible>
-          <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-muted/40 px-4 py-3 text-sm font-semibold hover:bg-muted/60 transition-colors">
-            <span>Returned <span className="ml-1.5 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">{completed.length}</span></span>
-            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>svg]:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="flex flex-col gap-1.5 pt-2">
-            {completed.length === 0 ? <EmptyState label="No returned rentals yet." /> : completed.map(renderRow)}
-          </CollapsibleContent>
-        </Collapsible>
+        <div className="relative">
+          <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, reservation #, or date…"
+            className="pl-9"
+          />
+        </div>
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <SortHead k="id" label="Reservation #" />
+                <SortHead k="name" label="Client Name" />
+                <SortHead k="vehicle" label="Vehicle" />
+                <SortHead k="start" label="Start Date" />
+                <SortHead k="end" label="End Date" />
+                <SortHead k="status" label="Status" />
+                <SortHead k="balance" label="Balance" className="text-right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredSorted.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                    {search ? "No reservations match your search." : "No reservations yet."}
+                  </TableCell>
+                </TableRow>
+              ) : filteredSorted.map(r => {
+                const v = vehicleById(r.vehicleId);
+                const d = driverById(r.driverId);
+                const st = rentalStatus(r);
+                const meta = STATUS_META[st];
+                const bal = rentalBalance(r);
+                return (
+                  <TableRow
+                    key={r.id}
+                    onClick={() => setDetail(r)}
+                    className={`cursor-pointer ${meta.row}`}
+                  >
+                    <TableCell className="font-mono text-xs text-muted-foreground">{r.id}</TableCell>
+                    <TableCell className="font-medium">{d?.fullName ?? r.driverId}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {v ? `${v.year} ${v.make} ${v.model}` : r.vehicleId}
+                      {v?.plate ? <span className="ml-1 text-xs">· {v.plate}</span> : null}
+                    </TableCell>
+                    <TableCell className="text-xs">{fmtDate(r.startDate)}</TableCell>
+                    <TableCell className="text-xs">{r.endDate ? fmtDate(r.endDate) : "—"}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
+                    </TableCell>
+                    <TableCell className={`text-right font-medium ${bal > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                      {fmtMoney(bal)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
         </>)}
       </div>
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
