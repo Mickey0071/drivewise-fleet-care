@@ -11,6 +11,7 @@ import { VendorCombobox } from "@/components/app/VendorCombobox";
 import { fmtMoney } from "@/lib/mock/data";
 import { toast } from "sonner";
 import { Trash2, Plus } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Props {
   open: boolean;
