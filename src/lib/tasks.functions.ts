@@ -432,7 +432,7 @@ export const resendTaskSms = createServerFn({ method: "POST" })
 
     const { data: task, error: tErr } = await supabaseAdmin
       .from("tasks")
-      .select("id, task_type, description, address, due_date, assigned_to_user_id, year, make, model, plate, runner_name")
+      .select("id, task_type, description, address, due_date, assigned_to_user_id, year, make, model, plate, runner_name, task_mode, linked_rental_id")
       .eq("id", data.task_id)
       .maybeSingle();
     if (tErr) throw new Error(tErr.message);
@@ -458,7 +458,7 @@ export const resendTaskSms = createServerFn({ method: "POST" })
       `New task assigned (resend): ${taskTypeLabelExport(task.task_type)} for ${vehicleLabel || "vehicle"}. Check your app.`,
       task.address ? `Address: ${task.address}` : null,
       task.due_date ? `Due: ${task.due_date}` : null,
-      `Open: ${origin}/my-tasks/${task.id}`,
+      `Open: ${origin}${taskWorkflowPath(task.task_type, task.id, { task_mode: task.task_mode, linked_rental_id: task.linked_rental_id })}`,
     ].filter(Boolean) as string[];
 
     try {
