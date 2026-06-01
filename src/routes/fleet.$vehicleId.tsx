@@ -35,6 +35,7 @@ export const Route = createFileRoute("/fleet/$vehicleId")({
   component: VehicleDetail,
   validateSearch: (search: Record<string, unknown>) => ({
     tab: typeof search.tab === "string" ? search.tab : undefined,
+    maint: search.maint === "1" || search.maint === 1 ? 1 : undefined,
   }),
 });
 
