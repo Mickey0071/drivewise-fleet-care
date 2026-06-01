@@ -521,8 +521,6 @@ function ChecklistPage() {
       { value: "mechanic_run",   title: JOB_TYPE_LABELS.mechanic_run,   subtitle: "Drop off — mechanic type & reason" },
     ];
     const pick = (jt: JobType) => {
-      if (jt === "dmv_reg") { navigate({ to: "/dmv-task" }); return; }
-      if (jt === "mechanic_run") { navigate({ to: "/mechanic-task" }); return; }
       setJobType(jt);
     };
     return (
