@@ -948,8 +948,16 @@ function VehicleProfitability() {
       const vMx = maintenance.filter(m => m.vehicleId === v.id && inRange(m.dateCompleted));
       const maintCost = vMx.filter(isServiceLogRecord).reduce((s, m) => s + m.cost, 0);
       const repairCost = vMx.filter(m => isIssueRecord(m) && !!m.dateCompleted).reduce((s, m) => s + m.cost, 0);
-      const profit = revenue - maintCost - repairCost;
-      return { vehicle: v, revenue, maintCost, repairCost, profit };
+      const completedCost = maintCost + repairCost;
+      // Open (pending) repair tickets — always counted regardless of period,
+      // since they represent work outstanding right now. Reflects live edits
+      // made via the Edit Costs dialog (updateMaintenance bumps the store).
+      const openCost = maintenance
+        .filter(m => m.vehicleId === v.id && !m.dateCompleted)
+        .reduce((s, m) => s + m.cost, 0);
+      const totalCost = completedCost + openCost;
+      const profit = revenue - totalCost;
+      return { vehicle: v, revenue, maintCost, repairCost, completedCost, openCost, totalCost, profit };
     }).sort((a, b) => b.profit - a.profit);
   }, [filter, period]);
 
@@ -958,11 +966,13 @@ function VehicleProfitability() {
       acc.revenue += r.revenue;
       acc.maint += r.maintCost;
       acc.repair += r.repairCost;
+      acc.completed += r.completedCost;
+      acc.open += r.openCost;
       acc.profit += r.profit;
       if (r.profit < 0) acc.losing += 1; else acc.profitable += 1;
       return acc;
     },
-    { revenue: 0, maint: 0, repair: 0, profit: 0, profitable: 0, losing: 0 },
+    { revenue: 0, maint: 0, repair: 0, completed: 0, open: 0, profit: 0, profitable: 0, losing: 0 },
   );
   const avgProfit = rows.length > 0 ? totals.profit / rows.length : 0;
 
