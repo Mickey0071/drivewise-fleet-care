@@ -1443,6 +1443,18 @@ export type Database = {
           status: string
           task_mode: string | null
           task_type: string
+          tr_delivered: boolean
+          tr_dropoff_at: string | null
+          tr_from_address: string | null
+          tr_instructions: string | null
+          tr_mileage_dropoff: number | null
+          tr_mileage_pickup: number | null
+          tr_notes: string | null
+          tr_photos_dropoff: Json
+          tr_photos_pickup: Json
+          tr_pickup_at: string | null
+          tr_reason: string | null
+          tr_to_address: string | null
           updated_at: string
           year: number | null
         }
@@ -1508,6 +1520,18 @@ export type Database = {
           status?: string
           task_mode?: string | null
           task_type?: string
+          tr_delivered?: boolean
+          tr_dropoff_at?: string | null
+          tr_from_address?: string | null
+          tr_instructions?: string | null
+          tr_mileage_dropoff?: number | null
+          tr_mileage_pickup?: number | null
+          tr_notes?: string | null
+          tr_photos_dropoff?: Json
+          tr_photos_pickup?: Json
+          tr_pickup_at?: string | null
+          tr_reason?: string | null
+          tr_to_address?: string | null
           updated_at?: string
           year?: number | null
         }
@@ -1573,6 +1597,18 @@ export type Database = {
           status?: string
           task_mode?: string | null
           task_type?: string
+          tr_delivered?: boolean
+          tr_dropoff_at?: string | null
+          tr_from_address?: string | null
+          tr_instructions?: string | null
+          tr_mileage_dropoff?: number | null
+          tr_mileage_pickup?: number | null
+          tr_notes?: string | null
+          tr_photos_dropoff?: Json
+          tr_photos_pickup?: Json
+          tr_pickup_at?: string | null
+          tr_reason?: string | null
+          tr_to_address?: string | null
           updated_at?: string
           year?: number | null
         }
@@ -1641,6 +1677,7 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string
+          current_location: string | null
           daily_rate: number
           ez_pass_tag: string | null
           fuel_level_pickup: string | null
@@ -1653,6 +1690,7 @@ export type Database = {
           last_dmv_service_at: string | null
           last_inspection_at: string | null
           last_inspection_mileage: number | null
+          last_transport_at: string | null
           maintenance_settings: Json
           make: string
           mileage: number
@@ -1678,6 +1716,7 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string
+          current_location?: string | null
           daily_rate?: number
           ez_pass_tag?: string | null
           fuel_level_pickup?: string | null
@@ -1690,6 +1729,7 @@ export type Database = {
           last_dmv_service_at?: string | null
           last_inspection_at?: string | null
           last_inspection_mileage?: number | null
+          last_transport_at?: string | null
           maintenance_settings?: Json
           make: string
           mileage?: number
@@ -1715,6 +1755,7 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string
+          current_location?: string | null
           daily_rate?: number
           ez_pass_tag?: string | null
           fuel_level_pickup?: string | null
@@ -1727,6 +1768,7 @@ export type Database = {
           last_dmv_service_at?: string | null
           last_inspection_at?: string | null
           last_inspection_mileage?: number | null
+          last_transport_at?: string | null
           maintenance_settings?: Json
           make?: string
           mileage?: number
