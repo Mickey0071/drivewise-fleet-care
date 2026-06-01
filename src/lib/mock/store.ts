@@ -1233,6 +1233,7 @@ export function updateVehicle(id: string, fields: Partial<Omit<Vehicle, "id">>) 
   if (fields.ezPassTag !== undefined) patch.ez_pass_tag = fields.ezPassTag ?? null;
   if (fields.registrationExpiry !== undefined) patch.registration_expiry = fields.registrationExpiry ?? null;
   if (fields.insuranceExpiry !== undefined) patch.insurance_expiry = fields.insuranceExpiry ?? null;
+  if (fields.hasOpenIssues !== undefined) patch.has_open_issues = fields.hasOpenIssues;
   if (fields.maintenanceSettings !== undefined) patch.maintenance_settings = fields.maintenanceSettings ?? {};
   const cloudReady = cloudWrite("vehicle:update", supabase.from("vehicles").update(patch as never).eq("id", id)).catch((error) => {
     Object.assign(v, prev);
@@ -1241,6 +1242,40 @@ export function updateVehicle(id: string, fields: Partial<Omit<Vehicle, "id">>) 
   });
   emit();
   return cloudReady;
+}
+
+export function setVehicleAvailabilityOverride(vehicleId: string, available: boolean, reason?: string) {
+  const v = vehicles.find(x => x.id === vehicleId);
+  if (!v) return Promise.reject(new Error("Vehicle not found"));
+  const stamp = new Date().toISOString();
+  const today = stamp.slice(0, 10);
+  const note = reason?.trim() || (available ? "Admin override: block lifted" : "Admin override: vehicle manually blocked");
+  const writes: Promise<unknown>[] = [];
+
+  if (available) {
+    for (const m of maintenance.filter(m => m.vehicleId === vehicleId && !m.dateCompleted)) {
+      m.dateCompleted = today;
+      m.completedBy = "Admin override";
+      m.notes = [m.notes, `${note} on ${today}`].filter(Boolean).join("\n\n");
+      writes.push(cloudWrite("maintenance:override", supabase.from("maintenance").update(toMaintenance(m)).eq("id", m.id)));
+    }
+    for (const r of rentals.filter(r => r.vehicleId === vehicleId && rentalBlocksVehicle(r))) {
+      r.endDate = r.endDate ?? today;
+      r.returnedAt = stamp;
+      r.reservationStatus = "returned";
+      r.notes = [r.notes, `${note} on ${today}`].filter(Boolean).join(" · ");
+      writes.push(cloudWrite("rental:override", supabase.from("rentals").update({ ...toRental(r), returned_at: r.returnedAt, reservation_status: "returned" }).eq("id", r.id)));
+    }
+    v.status = "available";
+    v.hasOpenIssues = false;
+    writes.push(cloudWrite("vehicle:override", supabase.from("vehicles").update({ status: "available", has_open_issues: false }).eq("id", vehicleId)));
+  } else {
+    v.status = "maintenance";
+    writes.push(cloudWrite("vehicle:override", supabase.from("vehicles").update({ status: "maintenance" }).eq("id", vehicleId)));
+  }
+
+  emit();
+  return Promise.all(writes).then(() => undefined);
 }
 
 export function deleteVehicle(id: string) {
