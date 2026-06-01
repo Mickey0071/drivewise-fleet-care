@@ -400,7 +400,7 @@ function RentalsPage() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    disabled={!!r.paymentReceived || payLinkSendingId === r.id}
+                    disabled={!!r.paymentReceived}
                     onClick={async () => {
                       const d = driverById(r.driverId);
                       if (!d?.phone) { toast.error("No phone on file for renter"); return; }
