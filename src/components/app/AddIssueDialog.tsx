@@ -60,6 +60,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
     setDownPayment("");
     setEstReturn(defaultReturn());
     setVendor("");
+    setDescription("");
   };
 
   const subtotalOf = (r: PartRow) => (Number(r.partPrice) || 0) + (Number(r.laborPrice) || 0);
