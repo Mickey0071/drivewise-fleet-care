@@ -398,36 +398,8 @@ function ChecklistPage() {
         }
       }
 
-      // If completing a dispatched task, mark it done + push summary to maintenance.
-      let taskCompleted = false;
-      let maintenanceSynced = false;
-      if (task_id) {
-        const failedLabels = Object.entries(items)
-          .filter(([, v]) => v === "fail")
-          .map(([k]) => ITEM_LABELS[k] ?? k);
-        const summary =
-          `Inspection submitted at ${new Date().toISOString()}. ` +
-          `Job type: ${JOB_TYPE_LABELS[jobType as JobType]}. ` +
-          `Mileage: ${isReturnMode ? Number(returnMileage) : (jobMileage.trim() ? Number(jobMileage) : (vehicle?.mileage ?? 0))}. ` +
-          `Results: ${counts.pass} Pass, ${counts.fail} Fail, ${counts.na} N/A. ` +
-          `Ready to rent: ${ready === "ready" ? "yes" : "no"}. ` +
-          `Fuel: ${FUEL_LEVEL_LABELS[fuel as FuelKey]}. ` +
-          `Notes: ${notes.trim() || "(none)"}. ` +
-          `Failed items: ${failedLabels.length ? failedLabels.join(", ") : "(none)"}. ` +
-          `Photos: ${damageFiles.length}.`;
-        try {
-          const res = await completeTask({ data: {
-            task_id,
-            inspection_id: inspectionId,
-            runner_notes: summary,
-          }});
-          taskCompleted = true;
-          maintenanceSynced = !!res.maintenance_id;
-          if (res.maintenance_id) setMaintenanceLinked(res.maintenance_id);
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Failed to mark task complete");
-        }
-      }
+      const taskCompleted = false;
+      const maintenanceSynced = false;
 
       setDone({
         vehicle,
