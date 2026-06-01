@@ -551,10 +551,14 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         drv?.full_name || [drv?.first_name, drv?.last_name].filter(Boolean).join(" ") || "";
     }
 
-    const score = cardholderName && licenseName ? nameMatchScore(cardholderName, licenseName) : 0;
-    const matched = !!(cardholderName && licenseName && namesMatch(cardholderName, licenseName));
+    // Hybrid name matching: dictionary/exact → approve (no alert), fuzzy
+    // >=0.75 → approve, 0.5-0.75 → admin review (flagged, rental still
+    // activates), <0.5 → auto-refund.
+    const decision =
+      cardholderName && licenseName ? decideNameMatch(cardholderName, licenseName) : null;
+    const score = decision?.score ?? 0;
 
-    if (cardholderName && licenseName && !matched) {
+    if (decision && decision.action === "refund") {
       // Mismatch — refund the charge, do NOT activate the rental.
       console.warn(
         `[webhook] name mismatch rental=${rentalId} card="${cardholderName}" ${nameSource}="${licenseName}" score=${score}`,
