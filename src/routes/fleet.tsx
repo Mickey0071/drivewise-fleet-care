@@ -8,7 +8,7 @@ import { vehicles, fmtMoney } from "@/lib/mock/data";
 import { maintenance as maintenanceList } from "@/lib/mock/data";
 import { fmtDate, rentals } from "@/lib/mock/data";
 import { lastServiceFor } from "@/lib/maintenance-utils";
-import { computeVehicleAlerts } from "@/lib/maintenance-utils";
+import { computeVehicleAlerts, isScheduleConfigured } from "@/lib/maintenance-utils";
 import { carImage } from "@/lib/mock/carImages";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -65,6 +65,7 @@ function FleetPage() {
           const openIssueCount = maintenanceList.filter(m => m.vehicleId === v.id && !m.dateCompleted).length;
           const lastSvc = lastServiceFor(maintenanceList, v.id);
           const alerts = computeVehicleAlerts(v);
+          const scheduleConfigured = isScheduleConfigured(v);
           const onRent = rentals.find(
             r => r.vehicleId === v.id && (r.reservationStatus ?? "active") === "active" && !r.returnedAt,
           );
@@ -154,6 +155,18 @@ function FleetPage() {
                       </div>
                     ))}
                   </div>
+                )}
+                {!scheduleConfigured && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goto({ to: "/fleet/$vehicleId", params: { vehicleId: v.id }, search: { maint: 1 } });
+                    }}
+                    className="mt-2 block w-full rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-left text-xs font-medium text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
+                  >
+                    🟡 Scheduled maintenance not fully configured — click to set up
+                  </button>
                 )}
               </CardContent>
             </div>

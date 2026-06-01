@@ -11,7 +11,7 @@ import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Plus } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -35,13 +35,14 @@ export const Route = createFileRoute("/fleet/$vehicleId")({
   component: VehicleDetail,
   validateSearch: (search: Record<string, unknown>) => ({
     tab: typeof search.tab === "string" ? search.tab : undefined,
+    maint: search.maint === "1" || search.maint === 1 ? 1 : undefined,
   }),
 });
 
 function VehicleDetail() {
   useStoreVersion();
   const { vehicleId } = Route.useParams();
-  const { tab } = Route.useSearch();
+  const { tab, maint } = Route.useSearch();
   const v = vehicleById(vehicleId);
   const { role } = useAuth();
   const [reserveOpen, setReserveOpen] = useState(false);
@@ -56,6 +57,9 @@ function VehicleDetail() {
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  useEffect(() => {
+    if (maint === 1) setSettingsOpen(true);
+  }, [maint]);
   if (!v) return <div className="text-muted-foreground">Vehicle not found.</div>;
 
   const vRentals = rentals.filter(r => r.vehicleId === v.id);

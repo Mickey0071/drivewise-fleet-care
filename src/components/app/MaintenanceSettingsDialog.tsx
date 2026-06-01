@@ -5,10 +5,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { updateVehicle } from "@/lib/mock/store";
-import type { Vehicle, MaintenanceSettings, CustomMaintenanceAlert } from "@/lib/mock/data";
+import type { Vehicle, MaintenanceSettings, CustomMaintenanceAlert, ScheduledTask, ScheduledTaskKey } from "@/lib/mock/data";
+
+type TaskDef = {
+  key: ScheduledTaskKey;
+  label: string;
+  showMiles: boolean;
+  showMonths: boolean;
+  defMiles?: number;
+  defMonths?: number;
+  required?: boolean;
+};
+const TASK_DEFS: TaskDef[] = [
+  { key: "oil", label: "Oil Change", showMiles: true, showMonths: true, defMiles: 3000, defMonths: 3, required: true },
+  { key: "battery", label: "Battery Test", showMiles: false, showMonths: true, defMonths: 12, required: true },
+  { key: "alternator", label: "Alternator Test", showMiles: false, showMonths: true, defMonths: 12, required: true },
+  { key: "transmission", label: "Transmission Road Test", showMiles: true, showMonths: true, defMiles: 5000, defMonths: 6 },
+  { key: "safety", label: "Safety Inspection", showMiles: true, showMonths: true, defMiles: 3000, defMonths: 6 },
+  { key: "overall", label: "Overall Checklist", showMiles: true, showMonths: true, defMiles: 5000, defMonths: 12 },
+];
 
 export function MaintenanceSettingsDialog({
   open,
@@ -28,6 +47,7 @@ export function MaintenanceSettingsDialog({
   const [batteryLastDone, setBatteryLastDone] = useState("");
   const [alternatorLastDone, setAlternatorLastDone] = useState("");
   const [customAlerts, setCustomAlerts] = useState<CustomMaintenanceAlert[]>([]);
+  const [tasks, setTasks] = useState<Partial<Record<ScheduledTaskKey, ScheduledTask>>>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -42,9 +62,17 @@ export function MaintenanceSettingsDialog({
     setBatteryLastDone(s.batteryLastDone ?? "");
     setAlternatorLastDone(s.alternatorLastDone ?? "");
     setCustomAlerts(s.customAlerts ?? []);
+    setTasks(s.scheduledTasks ?? {});
   }, [open, vehicle]);
 
   if (!vehicle) return null;
+
+  function getTask(key: ScheduledTaskKey): ScheduledTask {
+    return tasks[key] ?? { enabled: false };
+  }
+  function updateTask(key: ScheduledTaskKey, patch: Partial<ScheduledTask>) {
+    setTasks(prev => ({ ...prev, [key]: { ...(prev[key] ?? { enabled: false }), ...patch } }));
+  }
 
   function addCustom() {
     setCustomAlerts(prev => [
@@ -80,6 +108,33 @@ export function MaintenanceSettingsDialog({
       .map(c => ({ ...c, label: c.label.trim() }));
     if (cleanCustom.length) settings.customAlerts = cleanCustom;
 
+    // Scheduled tasks
+    const cleanTasks: Partial<Record<ScheduledTaskKey, ScheduledTask>> = {};
+    for (const def of TASK_DEFS) {
+      const t = tasks[def.key];
+      if (t && t.enabled) {
+        cleanTasks[def.key] = {
+          enabled: true,
+          miles: def.showMiles ? (Number(t.miles) || undefined) : undefined,
+          months: def.showMonths ? (Number(t.months) || undefined) : undefined,
+          lastDone: t.lastDone || undefined,
+        };
+      }
+    }
+    settings.scheduledTasks = cleanTasks;
+
+    // Keep the alert engine fields in sync with the scheduled tasks.
+    const oilTask = cleanTasks.oil;
+    if (oilTask) {
+      if (oilTask.miles) {
+        settings.oilChange = { mode: "miles", interval: oilTask.miles, lastMileage: Number(oilLastMileage) || vehicle.mileage || 0 };
+      } else if (oilTask.months && oilTask.lastDone) {
+        settings.oilChange = { mode: "months", interval: oilTask.months, lastDate: oilTask.lastDone };
+      }
+    }
+    if (cleanTasks.battery?.lastDone) settings.batteryLastDone = cleanTasks.battery.lastDone;
+    if (cleanTasks.alternator?.lastDone) settings.alternatorLastDone = cleanTasks.alternator.lastDone;
+
     try {
       await updateVehicle(vehicle.id, {
         maintenanceSettings: settings,
@@ -101,6 +156,70 @@ export function MaintenanceSettingsDialog({
           <DialogTitle className="text-sm">Maintenance settings · {vehicle.year} {vehicle.make} {vehicle.model}</DialogTitle>
         </DialogHeader>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3 text-sm">
+          {/* Scheduled maintenance tasks */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Scheduled Maintenance Tasks</Label>
+            {TASK_DEFS.map(def => {
+              const t = getTask(def.key);
+              return (
+                <div key={def.key} className="rounded-md border border-border p-2">
+                  <label className="flex items-center gap-2 font-medium">
+                    <Checkbox
+                      checked={!!t.enabled}
+                      onCheckedChange={(c) =>
+                        updateTask(def.key, {
+                          enabled: !!c,
+                          miles: t.miles ?? def.defMiles,
+                          months: t.months ?? def.defMonths,
+                        })
+                      }
+                    />
+                    <span>{def.label}{def.required ? <span className="text-destructive"> *</span> : null}</span>
+                  </label>
+                  {t.enabled && (
+                    <div className="mt-2 space-y-2 pl-6">
+                      {(def.showMiles || def.showMonths) && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {def.showMiles && (
+                            <div>
+                              <Label className="text-xs">Every (miles)</Label>
+                              <Input
+                                type="number"
+                                inputMode="numeric"
+                                placeholder={def.defMiles ? String(def.defMiles) : ""}
+                                value={t.miles ?? ""}
+                                onChange={e => updateTask(def.key, { miles: Number(e.target.value) || undefined })}
+                              />
+                            </div>
+                          )}
+                          {def.showMonths && (
+                            <div>
+                              <Label className="text-xs">{def.showMiles ? "OR (months)" : "Every (months)"}</Label>
+                              <Input
+                                type="number"
+                                inputMode="numeric"
+                                placeholder={def.defMonths ? String(def.defMonths) : ""}
+                                value={t.months ?? ""}
+                                onChange={e => updateTask(def.key, { months: Number(e.target.value) || undefined })}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <div>
+                        <Label className="text-xs">Last done</Label>
+                        <Input type="date" value={t.lastDone ?? ""} onChange={e => updateTask(def.key, { lastDone: e.target.value })} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <p className="text-xs text-muted-foreground">* Required for the schedule to count as fully configured.</p>
+          </div>
+
+          <Separator />
+
           {/* Oil change */}
           <div className="space-y-2">
             <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Oil Change Frequency</Label>

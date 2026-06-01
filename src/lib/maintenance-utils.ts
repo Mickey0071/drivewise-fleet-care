@@ -1,5 +1,5 @@
 import type { Maintenance } from "@/lib/mock/data";
-import type { Vehicle } from "@/lib/mock/data";
+import type { Vehicle, ScheduledTaskKey } from "@/lib/mock/data";
 
 // Issue tickets (repairs) are created via AddIssueDialog, which writes an
 // "Issue opened" marker as the first notes line. Everything else is treated
@@ -219,4 +219,24 @@ export function computeVehicleAlerts(v: Vehicle, now: Date = new Date()): Vehicl
   }
 
   return alerts;
+}
+
+// ---------------------------------------------------------------------------
+// Scheduled maintenance configuration.
+// ---------------------------------------------------------------------------
+
+/** Tasks required before a vehicle's schedule counts as "fully configured". */
+export const REQUIRED_SCHEDULED_TASKS: ScheduledTaskKey[] = ["oil", "battery", "alternator"];
+
+/**
+ * A scheduled maintenance schedule is considered fully configured when every
+ * required task is enabled and has a "last done" date recorded.
+ */
+export function isScheduleConfigured(v: Vehicle): boolean {
+  const tasks = v.maintenanceSettings?.scheduledTasks;
+  if (!tasks) return false;
+  return REQUIRED_SCHEDULED_TASKS.every((k) => {
+    const t = tasks[k];
+    return !!t && t.enabled && !!t.lastDone;
+  });
 }
