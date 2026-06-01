@@ -138,19 +138,17 @@ function CalendarPage() {
                         className={`absolute top-1 bottom-1 rounded px-2 text-xs flex items-center overflow-hidden hover:opacity-80 ${
                           isPending
                             ? "bg-amber-500/25 text-amber-900 dark:text-amber-200 border border-amber-500/40"
-                            : openEnded
-                              ? "bg-destructive/80 text-destructive-foreground border border-destructive"
-                              : "bg-primary/80 text-primary-foreground"
+                            : "bg-primary/80 text-primary-foreground border border-primary"
                         }`}
                         style={{
                           left: `calc(${(startIdx / DAYS) * 100}% + 2px)`,
                           width: `calc(${(span / DAYS) * 100}% - 4px)`,
                         }}
-                        title={`${d?.fullName ?? r.driverId} · ${fmtDate(r.startDate)}${r.endDate ? ` → ${fmtDate(r.endDate)}` : ""}${isPending ? " · PENDING HOLD" : ""}${openEnded ? " · UNAVAILABLE — No return date set" : ""}`}
+                        title={`${d?.fullName ?? r.driverId} · ${fmtDate(r.startDate)}${r.endDate ? ` → ${fmtDate(r.endDate)}` : ""}${isPending ? " · PENDING HOLD" : " · ON RENT — blocked until returned"}`}
                       >
                         <span className="truncate">
-                          {isPending ? "⏳ " : ""}{openEnded ? "⚠️ " : ""}{d?.fullName ?? r.driverId}
-                          {openEnded ? " · UNAVAILABLE — No return date set" : ""}
+                          {isPending ? "⏳ " : ""}{openEnded ? "🚙 " : ""}{d?.fullName ?? r.driverId}
+                          {openEnded ? " · ON RENT — until returned" : ""}
                         </span>
                       </Link>
                     );
