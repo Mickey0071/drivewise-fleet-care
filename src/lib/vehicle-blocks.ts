@@ -1,7 +1,7 @@
-import { maintenance, rentals, type Rental, type Maintenance } from "@/lib/mock/data";
+import { maintenance, rentals, vehicles, type Rental, type Maintenance } from "@/lib/mock/data";
 import { summarizeOpenIssue } from "@/lib/maintenance-utils";
 
-export type VehicleBlockKind = "repair" | "onrent";
+export type VehicleBlockKind = "repair" | "onrent" | "manual";
 
 export interface VehicleBlock {
   kind: VehicleBlockKind;
@@ -28,6 +28,12 @@ function rentalIsBlocking(r: Rental): boolean {
   return rs === "active" || rs === "pending";
 }
 
+function rentalBlockEnd(r: Rental): Date | null {
+  const status = r.reservationStatus ?? "active";
+  if (status === "active") return null;
+  return parseDay(r.endDate ?? null);
+}
+
 /** Estimated end of an open repair: parsed "Estimated return" → nextServiceDue → null. */
 function repairEnd(m: Maintenance): Date | null {
   const summary = summarizeOpenIssue(m);
@@ -37,6 +43,16 @@ function repairEnd(m: Maintenance): Date | null {
 /** All active blocks (maintenance repairs + on-rent windows) for a vehicle. */
 export function getVehicleBlocks(vehicleId: string): VehicleBlock[] {
   const blocks: VehicleBlock[] = [];
+  const vehicle = vehicles.find(v => v.id === vehicleId);
+
+  if (vehicle && ["maintenance", "impound", "inspection"].includes(vehicle.status)) {
+    blocks.push({
+      kind: "manual",
+      label: `Unavailable: ${vehicle.status === "inspection" ? "Inspection" : vehicle.status === "impound" ? "Impound" : "Maintenance"}`,
+      from: startOfDay(new Date()),
+      to: null,
+    });
+  }
 
   // Open maintenance issues (repair tickets) — hard block.
   for (const m of maintenance) {
@@ -62,7 +78,16 @@ export function getVehicleBlocks(vehicleId: string): VehicleBlock[] {
       kind: "onrent",
       label: "On Rent",
       from: startOfDay(from),
-      to: parseDay(r.endDate ?? null),
+      to: rentalBlockEnd(r),
+    });
+  }
+
+  if (vehicle?.status === "rented" && !blocks.some(b => b.kind === "onrent")) {
+    blocks.push({
+      kind: "onrent",
+      label: "On Rent",
+      from: startOfDay(new Date()),
+      to: null,
     });
   }
 

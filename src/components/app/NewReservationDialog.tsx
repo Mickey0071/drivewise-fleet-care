@@ -106,6 +106,11 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     return rangeOverlapsBlocks(getVehicleBlocks(vehicleId), new Date(`${startDate}T00:00:00`), endDate ? new Date(`${endDate}T00:00:00`) : null);
   }, [vehicleId, startDate, endDate]);
 
+  const selectedVehicleUnavailable = useMemo(() => {
+    if (!vehicleId || !startDate) return false;
+    return !isVehicleBookable(vehicleId, startDate, endDate || null, isAdmin && inspectionOverride);
+  }, [vehicleId, startDate, endDate, isAdmin, inspectionOverride]);
+
   const availableVehicles = useMemo(
     () => vehicles.filter(v => {
       const bookable = startDate
@@ -208,8 +213,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   }
 
   const canNext =
-    (step === 0 && !!startDate && !dateOverlapBlock) ||
-    (step === 1 && !!vehicle && !vehicle.hasOpenIssues) ||
+    (step === 0 && !!startDate && !dateOverlapBlock && !selectedVehicleUnavailable) ||
+    (step === 1 && !!vehicle && !vehicle.hasOpenIssues && isVehicleBookable(vehicle.id, startDate || null, endDate || null, isAdmin && inspectionOverride)) ||
     (step === 2 && !!driver && (!existingRental || isSwap)) ||
     step === 3;
 
@@ -244,6 +249,10 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     // until the repair ticket is marked completed.
     if (vehicle.hasOpenIssues) {
       setOpenIssueWarning(true);
+      return;
+    }
+    if (!isVehicleBookable(vehicle.id, startDate, endDate || null, isAdmin && inspectionOverride)) {
+      toast.error("Vehicle unavailable", { description: "This vehicle is currently on rent, in repair, or manually blocked." });
       return;
     }
     if (existingRental && !isSwap) {

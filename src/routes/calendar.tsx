@@ -40,7 +40,7 @@ function CalendarPage() {
     <div>
       <PageHeader
         title="Calendar"
-        subtitle="Vehicle availability — active rentals in primary, pending holds in amber, in-repair in red"
+        subtitle="Vehicle availability — on-rent in blue, pending holds in amber, repairs/manual blocks in red"
         action={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => shift(-7)}><ChevronLeft className="h-4 w-4" /></Button>
@@ -52,7 +52,7 @@ function CalendarPage() {
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-primary/80" /> On Rent</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-amber-500/40" /> Pending hold</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-destructive/70" /> In Repair / open-ended</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-destructive/70" /> In Repair / manual block</span>
       </div>
       <Card className="overflow-x-auto">
         <div className="min-w-[900px]">
@@ -77,7 +77,7 @@ function CalendarPage() {
           {vehicles.map(v => {
             const vRentals = rentals.filter(r => r.vehicleId === v.id);
             return (
-              <div key={v.id} className="flex border-b last:border-b-0 hover:bg-muted/20">
+              <div key={v.id} className={`flex border-b last:border-b-0 hover:bg-muted/20 ${!isVehicleVisibleAsAvailable(v) ? "bg-muted/20" : ""}`}>
                 <div className="w-[220px] shrink-0 p-2 text-sm">
                   <div className="font-medium truncate">{v.year} {v.make} {v.model}</div>
                   <div className="text-xs text-muted-foreground">{v.plate}</div>
@@ -89,7 +89,7 @@ function CalendarPage() {
                     ))}
                   </div>
                   {getVehicleBlocks(v.id)
-                    .filter(b => b.kind === "repair")
+                    .filter(b => b.kind !== "onrent")
                     .map((b, bi) => {
                       const bs = b.from.getTime();
                       const be = (b.to ? b.to.getTime() : rangeEnd) + DAY_MS;
@@ -99,7 +99,7 @@ function CalendarPage() {
                       const span = Math.max(1, endIdx - startIdx);
                       return (
                         <div
-                          key={`rep-${bi}`}
+                          key={`block-${bi}`}
                           className="absolute top-1 bottom-1 rounded px-2 text-xs flex items-center overflow-hidden bg-destructive/80 text-destructive-foreground border border-destructive"
                           style={{
                             left: `calc(${(startIdx / DAYS) * 100}% + 2px)`,
@@ -107,7 +107,7 @@ function CalendarPage() {
                           }}
                           title={`${b.label}${b.to === null ? " — until repair complete" : ""}`}
                         >
-                          <span className="truncate">🔧 {b.label}</span>
+                          <span className="truncate">{b.kind === "repair" ? "🔧" : "⛔"} {b.label}</span>
                         </div>
                       );
                     })}
@@ -117,10 +117,12 @@ function CalendarPage() {
                     const rs = new Date(r.startDate).getTime();
                     const isPending = r.reservationStatus === "pending";
                     const exp = pendingExpiresAt(r);
-                    // Open-ended (no end date): unavailable indefinitely until returned.
-                    const openEnded = !r.endDate && !isPending;
+                    // Active/on-rent means the car is physically out. Keep it
+                    // blocked indefinitely until returned, even if an expected
+                    // end date exists.
+                    const openEnded = !isPending;
                     const re = r.endDate
-                      ? new Date(r.endDate).getTime() + DAY_MS
+                      ? (isPending ? new Date(r.endDate).getTime() + DAY_MS : rangeEnd)
                       : isPending && exp
                         ? exp
                         : rangeEnd;
@@ -136,19 +138,17 @@ function CalendarPage() {
                         className={`absolute top-1 bottom-1 rounded px-2 text-xs flex items-center overflow-hidden hover:opacity-80 ${
                           isPending
                             ? "bg-amber-500/25 text-amber-900 dark:text-amber-200 border border-amber-500/40"
-                            : openEnded
-                              ? "bg-destructive/80 text-destructive-foreground border border-destructive"
-                              : "bg-primary/80 text-primary-foreground"
+                            : "bg-primary/80 text-primary-foreground border border-primary"
                         }`}
                         style={{
                           left: `calc(${(startIdx / DAYS) * 100}% + 2px)`,
                           width: `calc(${(span / DAYS) * 100}% - 4px)`,
                         }}
-                        title={`${d?.fullName ?? r.driverId} · ${fmtDate(r.startDate)}${r.endDate ? ` → ${fmtDate(r.endDate)}` : ""}${isPending ? " · PENDING HOLD" : ""}${openEnded ? " · UNAVAILABLE — No return date set" : ""}`}
+                        title={`${d?.fullName ?? r.driverId} · ${fmtDate(r.startDate)}${r.endDate ? ` → ${fmtDate(r.endDate)}` : ""}${isPending ? " · PENDING HOLD" : " · ON RENT — blocked until returned"}`}
                       >
                         <span className="truncate">
-                          {isPending ? "⏳ " : ""}{openEnded ? "⚠️ " : ""}{d?.fullName ?? r.driverId}
-                          {openEnded ? " · UNAVAILABLE — No return date set" : ""}
+                          {isPending ? "⏳ " : ""}{openEnded ? "🚙 " : ""}{d?.fullName ?? r.driverId}
+                          {openEnded ? " · ON RENT — until returned" : ""}
                         </span>
                       </Link>
                     );
@@ -161,4 +161,8 @@ function CalendarPage() {
       </Card>
     </div>
   );
+}
+
+function isVehicleVisibleAsAvailable(v: { status: string; hasOpenIssues?: boolean }) {
+  return v.status === "available" && !v.hasOpenIssues;
 }

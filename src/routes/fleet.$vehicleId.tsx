@@ -23,6 +23,7 @@ import { ServiceHistoryReportDialog } from "@/components/app/ServiceHistoryRepor
 import { CreateWorkOrderDialog } from "@/components/app/CreateWorkOrderDialog";
 import { WorkOrderDialog } from "@/components/app/WorkOrderDialog";
 import { AddIssueDialog } from "@/components/app/AddIssueDialog";
+import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import type { Maintenance, WorkOrder } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { isServiceLogRecord, lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
@@ -283,6 +284,7 @@ function VehicleDetail() {
       <Tabs defaultValue={tab ?? "overview"} className="mt-2">
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="block">Block Vehicle</TabsTrigger>
           <TabsTrigger value="analytics">Analytics / P&amp;L</TabsTrigger>
           <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
           <TabsTrigger value="repairs">Repair History</TabsTrigger>
@@ -305,6 +307,10 @@ function VehicleDetail() {
             </CardContent>
           </Card>
           <VehicleGallery vehicleId={v.id} coverUrl={v.imageUrl} />
+        </TabsContent>
+
+        <TabsContent value="block" className="mt-4">
+          <BlockVehicleTab vehicle={v} />
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4 space-y-4">
