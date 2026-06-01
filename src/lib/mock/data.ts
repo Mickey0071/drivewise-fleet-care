@@ -34,12 +34,29 @@ export interface CustomMaintenanceAlert {
   lastDate?: string;
   intervalDays: number;
 }
+export type ScheduledTaskKey =
+  | "oil"
+  | "battery"
+  | "alternator"
+  | "transmission"
+  | "safety"
+  | "overall";
+export interface ScheduledTask {
+  enabled: boolean;
+  /** Interval in miles (optional). */
+  miles?: number;
+  /** Interval in months (optional). */
+  months?: number;
+  /** Date the task was last performed (YYYY-MM-DD). */
+  lastDone?: string;
+}
 export interface MaintenanceSettings {
   oilChange?: OilChangeSetting;
   inspectionExpiry?: string;
   batteryLastDone?: string;
   alternatorLastDone?: string;
   customAlerts?: CustomMaintenanceAlert[];
+  scheduledTasks?: Partial<Record<ScheduledTaskKey, ScheduledTask>>;
 }
 export interface Driver {
   id: string; fullName: string; phone: string; email: string;
