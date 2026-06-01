@@ -8,7 +8,6 @@ const runnerTabs = [
   { to: "/checklist", label: "Task Portal", emoji: "📋" },
   { to: "/vendors", label: "Vendors", emoji: "📞" },
   { to: "/inspections", label: "My History", emoji: "📜" },
-  { to: "/my-tasks", label: "My Tasks", emoji: "🏃" },
   { to: "/profile", label: "Profile", emoji: "👤" },
 ] as const;
 
