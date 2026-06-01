@@ -87,6 +87,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
 
     const detailLines = [
       `Issue opened ${startedAt.toLocaleString()}`,
+      ...(description.trim() ? ["Description:", `  ${description.trim()}`] : []),
       "Parts / labor:",
       ...valid.map(r => `  • ${r.selection.trim()} — part ${fmtMoney(Number(r.partPrice) || 0)} + labor ${fmtMoney(Number(r.laborPrice) || 0)} = ${fmtMoney(subtotalOf(r))}`),
       `Total cost: ${fmtMoney(total)}`,
