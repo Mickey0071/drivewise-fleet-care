@@ -857,7 +857,7 @@ function RentalsPage() {
             ? `${v.year} ${v.make} ${v.model} ${v.plate}`
             : returnDispatchRental.vehicleId;
           return {
-            task_type: "pickup" as const,
+            task_type: "other" as const,
             linked_vehicle_id: returnDispatchRental.vehicleId,
             linked_rental_id: returnDispatchRental.id,
             address: d?.streetAddress ?? d?.address ?? "",
