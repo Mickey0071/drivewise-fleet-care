@@ -57,6 +57,9 @@ function VehicleDetail() {
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  useEffect(() => {
+    if (maint === 1) setSettingsOpen(true);
+  }, [maint]);
   if (!v) return <div className="text-muted-foreground">Vehicle not found.</div>;
 
   const vRentals = rentals.filter(r => r.vehicleId === v.id);
