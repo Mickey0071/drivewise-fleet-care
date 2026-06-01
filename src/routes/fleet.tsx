@@ -8,7 +8,7 @@ import { vehicles, fmtMoney } from "@/lib/mock/data";
 import { maintenance as maintenanceList } from "@/lib/mock/data";
 import { fmtDate, rentals } from "@/lib/mock/data";
 import { lastServiceFor } from "@/lib/maintenance-utils";
-import { computeVehicleAlerts } from "@/lib/maintenance-utils";
+import { computeVehicleAlerts, isScheduleConfigured } from "@/lib/maintenance-utils";
 import { carImage } from "@/lib/mock/carImages";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
