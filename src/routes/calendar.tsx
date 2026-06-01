@@ -76,6 +76,8 @@ function CalendarPage() {
           </div>
           {vehicles.map(v => {
             const vRentals = rentals.filter(r => r.vehicleId === v.id);
+            const vehicleBlocks = getVehicleBlocks(v.id);
+            const hasRenderedRentalBlock = vRentals.some(r => r.reservationStatus !== "returned" && !r.returnedAt);
             return (
               <div key={v.id} className={`flex border-b last:border-b-0 hover:bg-muted/20 ${!isVehicleVisibleAsAvailable(v) ? "bg-muted/20" : ""}`}>
                 <div className="w-[220px] shrink-0 p-2 text-sm">
@@ -88,8 +90,8 @@ function CalendarPage() {
                       <div key={i} className="border-l h-full min-h-[52px]" />
                     ))}
                   </div>
-                  {getVehicleBlocks(v.id)
-                    .filter(b => b.kind !== "onrent")
+                  {vehicleBlocks
+                    .filter(b => b.kind !== "onrent" || !hasRenderedRentalBlock)
                     .map((b, bi) => {
                       const bs = b.from.getTime();
                       const be = (b.to ? b.to.getTime() : rangeEnd) + DAY_MS;
@@ -100,14 +102,14 @@ function CalendarPage() {
                       return (
                         <div
                           key={`block-${bi}`}
-                          className="absolute top-1 bottom-1 rounded px-2 text-xs flex items-center overflow-hidden bg-destructive/80 text-destructive-foreground border border-destructive"
+                          className={`absolute top-1 bottom-1 rounded px-2 text-xs flex items-center overflow-hidden ${b.kind === "onrent" ? "bg-primary/80 text-primary-foreground border border-primary" : "bg-destructive/80 text-destructive-foreground border border-destructive"}`}
                           style={{
                             left: `calc(${(startIdx / DAYS) * 100}% + 2px)`,
                             width: `calc(${(span / DAYS) * 100}% - 4px)`,
                           }}
-                          title={`${b.label}${b.to === null ? " — until repair complete" : ""}`}
+                          title={`${b.label}${b.to === null ? b.kind === "onrent" ? " — blocked until returned" : " — until repair complete" : ""}`}
                         >
-                          <span className="truncate">{b.kind === "repair" ? "🔧" : "⛔"} {b.label}</span>
+                          <span className="truncate">{b.kind === "onrent" ? "🚙" : b.kind === "repair" ? "🔧" : "⛔"} {b.label}{b.kind === "onrent" && b.to === null ? " — until returned" : ""}</span>
                         </div>
                       );
                     })}
