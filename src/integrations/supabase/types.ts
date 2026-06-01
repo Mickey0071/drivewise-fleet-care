@@ -194,10 +194,13 @@ export type Database = {
         Row: {
           additional_amount: number
           agreement_version: string | null
+          cardholder_name: string | null
           created_at: string
           created_by: string | null
           expires_at: string
           id: string
+          name_match_score: number | null
+          name_match_status: string | null
           new_end_date: string
           paid_at: string | null
           payment_id: string | null
@@ -219,10 +222,13 @@ export type Database = {
         Insert: {
           additional_amount?: number
           agreement_version?: string | null
+          cardholder_name?: string | null
           created_at?: string
           created_by?: string | null
           expires_at?: string
           id?: string
+          name_match_score?: number | null
+          name_match_status?: string | null
           new_end_date: string
           paid_at?: string | null
           payment_id?: string | null
@@ -244,10 +250,13 @@ export type Database = {
         Update: {
           additional_amount?: number
           agreement_version?: string | null
+          cardholder_name?: string | null
           created_at?: string
           created_by?: string | null
           expires_at?: string
           id?: string
+          name_match_score?: number | null
+          name_match_status?: string | null
           new_end_date?: string
           paid_at?: string | null
           payment_id?: string | null

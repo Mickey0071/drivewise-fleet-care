@@ -10,6 +10,7 @@ import { vehicles, payments, maintenance, drivers, rentals, fmtMoney, fmtDate, v
 import { isVehicleBookable, useStoreVersion } from "@/lib/mock/store";
 import { computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { AgreementReviewModal } from "@/components/app/AgreementReviewModal";
+import { PendingPaymentReviews } from "@/components/app/PendingPaymentReviews";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
@@ -94,6 +95,8 @@ function Index() {
         open={!!reviewingRental}
         onOpenChange={handleReviewClose}
       />
+
+      {role === "admin" && <PendingPaymentReviews />}
 
       {pendingReview.length > 0 && (
         <Link
