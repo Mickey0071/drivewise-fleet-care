@@ -125,7 +125,7 @@ export function VehicleAvailabilityCalendar({ vehicleId, startDate, endDate, onC
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             Vehicle unavailable {fmtBlockRange(overlap)}. Blocked for{" "}
-            {overlap.kind === "repair" ? "Repair" : "On Rent"}. Pick different dates.
+            {overlap.kind === "repair" ? "Repair" : overlap.kind === "manual" ? "Manual Block" : "On Rent"}. Pick different dates.
           </span>
         </div>
       )}
