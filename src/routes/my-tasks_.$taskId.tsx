@@ -107,7 +107,6 @@ export default function TaskDetailPage() {
   // Auto-route directly to the task-specific workflow as soon as the task loads.
   useEffect(() => {
     if (!task || routed) return;
-    if (task.status === "completed") return;
     setRouted(true);
     void startAndOpen(inferWorkflow(task), task);
     // eslint-disable-next-line react-hooks/exhaustive-deps
