@@ -22,6 +22,7 @@ import { MaintenanceSettingsDialog } from "@/components/app/MaintenanceSettingsD
 import { ServiceHistoryReportDialog } from "@/components/app/ServiceHistoryReportDialog";
 import { CreateWorkOrderDialog } from "@/components/app/CreateWorkOrderDialog";
 import { WorkOrderDialog } from "@/components/app/WorkOrderDialog";
+import { AddIssueDialog } from "@/components/app/AddIssueDialog";
 import type { Maintenance, WorkOrder } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { isServiceLogRecord, lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
