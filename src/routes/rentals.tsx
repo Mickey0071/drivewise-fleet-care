@@ -86,8 +86,6 @@ function RentalsPage() {
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
   const getSignLinkFn = useServerFn(getSigningLink);
-  const sendPayLinkFn = useServerFn(sendPaymentLink);
-  const [payLinkSendingId, setPayLinkSendingId] = useState<string | null>(null);
   const [payLinkRental, setPayLinkRental] = useState<Rental | null>(null);
   const sendPortalLinkFn = useServerFn(sendPortalLink);
   const [portalLinkSendingId, setPortalLinkSendingId] = useState<string | null>(null);
