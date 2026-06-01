@@ -43,7 +43,7 @@ function repairEnd(m: Maintenance): Date | null {
 /** All active blocks (maintenance repairs + on-rent windows) for a vehicle. */
 export function getVehicleBlocks(vehicleId: string): VehicleBlock[] {
   const blocks: VehicleBlock[] = [];
-  const vehicle = vehicles.find(v => v.id === vehicleId);
+  const vehicle = vehicles.find((v) => v.id === vehicleId);
 
   if (vehicle && ["maintenance", "impound", "inspection"].includes(vehicle.status)) {
     blocks.push({
@@ -82,7 +82,7 @@ export function getVehicleBlocks(vehicleId: string): VehicleBlock[] {
     });
   }
 
-  if (vehicle?.status === "rented" && !blocks.some(b => b.kind === "onrent")) {
+  if (vehicle?.status === "rented" && !blocks.some((b) => b.kind === "onrent")) {
     blocks.push({
       kind: "onrent",
       label: "On Rent",
