@@ -75,8 +75,8 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
     const valid = rows.filter(r => r.selection.trim());
     if (valid.length === 0) return toast.error("Add at least one part");
     for (const r of valid) {
-      if (!(Number(r.partPrice) >= 0) || r.partPrice === "") return toast.error(`Part price required for ${r.selection}`);
-      if (!(Number(r.laborPrice) >= 0) || r.laborPrice === "") return toast.error(`Labor price required for ${r.selection}`);
+      if (r.partPrice !== "" && Number(r.partPrice) < 0) return toast.error(`Invalid part price for ${r.selection}`);
+      if (r.laborPrice !== "" && Number(r.laborPrice) < 0) return toast.error(`Invalid labor price for ${r.selection}`);
     }
     const down = Number(downPayment) || 0;
     if (down < 0) return toast.error("Down payment cannot be negative");
