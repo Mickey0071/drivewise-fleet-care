@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
 
 const TaskType = z.enum([
-  "pickup", "dropoff", "dmv", "repo", "parts", "inspection", "mechanic_run", "other",
+  "transport", "dmv", "repo", "parts", "inspection", "mechanic_run", "other",
 ]);
 const Priority = z.enum(["urgent", "normal", "flexible"]);
 
@@ -35,6 +35,10 @@ const CreateInput = z.object({
   dr_documents_needed: z.record(z.string().max(120), z.boolean()).default({}),
   dr_location: z.string().trim().max(500).nullable().optional(),
   dr_expected_cost: z.number().min(0).max(100000).nullable().optional(),
+  tr_from_address: z.string().trim().max(500).nullable().optional(),
+  tr_to_address: z.string().trim().max(500).nullable().optional(),
+  tr_reason: z.string().trim().max(120).nullable().optional(),
+  tr_instructions: z.string().trim().max(2000).nullable().optional(),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,8 +50,7 @@ async function assertAdmin(supabase: any, userId: string) {
 
 function taskTypeLabel(t: string): string {
   const map: Record<string, string> = {
-    pickup: "🔑 Pickup",
-    dropoff: "🚗 Dropoff",
+    transport: "🚚 Transport",
     dmv: "📋 DMV",
     repo: "🚨 Repo",
     parts: "🏷️ Parts",
@@ -66,8 +69,8 @@ function taskWorkflowPath(
   opts?: { task_mode?: string | null; linked_rental_id?: string | null },
 ): string {
   const tid = encodeURIComponent(taskId);
-  // Returns (explicit return mode, or pickup/dropoff) go to the checklist in return mode.
-  if (opts?.task_mode === "return" || taskType === "pickup" || taskType === "dropoff") {
+  // Explicit return mode goes to the checklist in return mode.
+  if (opts?.task_mode === "return") {
     const rental = opts?.linked_rental_id ? `&rental_id=${encodeURIComponent(opts.linked_rental_id)}` : "";
     return `/checklist?task_id=${tid}&mode=return${rental}`;
   }
@@ -76,6 +79,7 @@ function taskWorkflowPath(
     case "mechanic_run": return `/mechanic-run-task?task_id=${tid}`;
     case "parts": return `/parts-run-task?task_id=${tid}`;
     case "repo": return `/repo-task?task_id=${tid}`;
+    case "transport": return `/transport-task?task_id=${tid}`;
     case "inspection":
     case "other":
     default: return `/checklist?task_id=${tid}`;
@@ -155,6 +159,10 @@ export const adminCreateTask = createServerFn({ method: "POST" })
         dr_documents_needed: data.dr_documents_needed ?? {},
         dr_location: data.dr_location ?? null,
         dr_expected_cost: data.dr_expected_cost ?? null,
+        tr_from_address: data.tr_from_address ?? null,
+        tr_to_address: data.tr_to_address ?? null,
+        tr_reason: data.tr_reason ?? null,
+        tr_instructions: data.tr_instructions ?? null,
       })
       .select("id")
       .single();
