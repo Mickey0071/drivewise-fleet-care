@@ -16,6 +16,9 @@ export interface PaymentLinkInput {
   paymentId?: string;
   origin?: string;
   customMessage?: string;
+  reason?: string;
+  sendSms?: boolean;
+  sendEmail?: boolean;
 }
 
 /**
@@ -79,9 +82,12 @@ export async function sendPaymentLinkInternal(
   const msg = custom
     ? `${custom} Pay: ${link.url}`
     : `Camauto Rentals: ${amt} due. Pay: ${link.url}`;
+  // Default both channels on when neither flag is provided (back-compat).
+  const wantSms = data.sendSms !== false;
+  const wantEmail = data.sendEmail !== false;
   await notifyRenter({
-    phone: data.phone,
-    email: data.email ?? null,
+    phone: wantSms ? data.phone : null,
+    email: wantEmail ? (data.email ?? null) : null,
     name: data.name ?? null,
     sms: msg,
     emailSubject: "Complete Your Payment — Camauto Rentals",
@@ -133,6 +139,24 @@ export const sendPaymentLink = createServerFn({ method: "POST" })
     try {
       const result = await sendPaymentLinkInternal({ ...data, origin });
       console.log("[sendPaymentLink] payment link sent", { url: result.url });
+      // Record the send in the payment link history.
+      if (data.rentalId) {
+        const channels: string[] = [];
+        if (data.sendSms !== false) channels.push("sms");
+        if (data.sendEmail !== false) channels.push("email");
+        try {
+          await supabaseAdmin.from("payment_link_logs").insert({
+            rental_id: data.rentalId,
+            amount_cents: Math.round(data.amountCents),
+            reason: data.reason ?? null,
+            channels,
+            link_url: result.url,
+            custom_message: data.customMessage ?? null,
+          });
+        } catch (e) {
+          console.error("[sendPaymentLink] failed to log:", e);
+        }
+      }
       // Mark the rental as reviewed by staff — clears the dashboard badge.
       if (data.rentalId) {
         try {
@@ -150,4 +174,36 @@ export const sendPaymentLink = createServerFn({ method: "POST" })
       console.error("[sendPaymentLink] failed:", e);
       throw new Error(msg);
     }
+  });
+
+export interface PaymentLinkLog {
+  id: string;
+  rentalId: string;
+  amountCents: number;
+  reason: string | null;
+  channels: string[];
+  createdAt: string;
+}
+
+export const getPaymentLinkLogs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { rentalId: string }) => {
+    if (!d.rentalId || typeof d.rentalId !== "string") throw new Error("rentalId required");
+    return d;
+  })
+  .handler(async ({ data }): Promise<PaymentLinkLog[]> => {
+    const { data: rows, error } = await supabaseAdmin
+      .from("payment_link_logs")
+      .select("id, rental_id, amount_cents, reason, channels, created_at")
+      .eq("rental_id", data.rentalId)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((r) => ({
+      id: r.id as string,
+      rentalId: r.rental_id as string,
+      amountCents: r.amount_cents as number,
+      reason: (r.reason as string | null) ?? null,
+      channels: (r.channels as string[]) ?? [],
+      createdAt: r.created_at as string,
+    }));
   });
