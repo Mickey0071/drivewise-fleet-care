@@ -27,6 +27,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { US_STATES, formatAddressBlock, formatFullName } from "@/lib/us-states";
 import { openIssueFor, summarizeOpenIssue } from "@/lib/maintenance-utils";
+import { VehicleAvailabilityCalendar } from "@/components/app/VehicleAvailabilityCalendar";
+import { getVehicleBlocks, rangeOverlapsBlocks } from "@/lib/vehicle-blocks";
 
 const STEPS = ["Dates", "Vehicle", "Client", "Review"] as const;
 type Step = 0 | 1 | 2 | 3;
