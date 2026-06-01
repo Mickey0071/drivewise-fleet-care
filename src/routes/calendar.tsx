@@ -40,7 +40,7 @@ function CalendarPage() {
     <div>
       <PageHeader
         title="Calendar"
-        subtitle="Vehicle availability — active rentals in primary, pending holds in amber, in-repair in red"
+        subtitle="Vehicle availability — on-rent in blue, pending holds in amber, repairs/manual blocks in red"
         action={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => shift(-7)}><ChevronLeft className="h-4 w-4" /></Button>
@@ -52,7 +52,7 @@ function CalendarPage() {
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-primary/80" /> On Rent</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-amber-500/40" /> Pending hold</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-destructive/70" /> In Repair / open-ended</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-destructive/70" /> In Repair / manual block</span>
       </div>
       <Card className="overflow-x-auto">
         <div className="min-w-[900px]">
@@ -89,7 +89,7 @@ function CalendarPage() {
                     ))}
                   </div>
                   {getVehicleBlocks(v.id)
-                    .filter(b => b.kind === "repair")
+                    .filter(b => b.kind !== "onrent")
                     .map((b, bi) => {
                       const bs = b.from.getTime();
                       const be = (b.to ? b.to.getTime() : rangeEnd) + DAY_MS;
@@ -99,7 +99,7 @@ function CalendarPage() {
                       const span = Math.max(1, endIdx - startIdx);
                       return (
                         <div
-                          key={`rep-${bi}`}
+                          key={`block-${bi}`}
                           className="absolute top-1 bottom-1 rounded px-2 text-xs flex items-center overflow-hidden bg-destructive/80 text-destructive-foreground border border-destructive"
                           style={{
                             left: `calc(${(startIdx / DAYS) * 100}% + 2px)`,
@@ -107,7 +107,7 @@ function CalendarPage() {
                           }}
                           title={`${b.label}${b.to === null ? " — until repair complete" : ""}`}
                         >
-                          <span className="truncate">🔧 {b.label}</span>
+                          <span className="truncate">{b.kind === "repair" ? "🔧" : "⛔"} {b.label}</span>
                         </div>
                       );
                     })}
