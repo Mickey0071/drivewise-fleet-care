@@ -24,6 +24,7 @@ import { SignaturePad } from "@/components/app/SignaturePad";
 import logoUrl from "@/assets/camauto-logo-full.jpeg";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
+import { SendPaymentLinkDialog } from "@/components/app/SendPaymentLinkDialog";
 import { NewTaskDialog } from "@/components/app/NewTaskDialog";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
@@ -37,11 +38,9 @@ import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { downloadClientPacket } from "@/lib/client-packet.functions";
-import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { sendPortalLink } from "@/lib/portal-link.functions";
 import { closeoutRental } from "@/lib/return.functions";
 import { createExtensionLink } from "@/lib/extension-link.functions";
-import { getStripeEnvironment } from "@/lib/stripe";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
@@ -85,8 +84,7 @@ function RentalsPage() {
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
   const getSignLinkFn = useServerFn(getSigningLink);
-  const sendPayLinkFn = useServerFn(sendPaymentLink);
-  const [payLinkSendingId, setPayLinkSendingId] = useState<string | null>(null);
+  const [payLinkRental, setPayLinkRental] = useState<Rental | null>(null);
   const sendPortalLinkFn = useServerFn(sendPortalLink);
   const [portalLinkSendingId, setPortalLinkSendingId] = useState<string | null>(null);
   const genPdfFn = useServerFn(generateAgreementPdf);
@@ -400,40 +398,16 @@ function RentalsPage() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    disabled={!!r.paymentReceived || payLinkSendingId === r.id}
+                    disabled={!!r.paymentReceived}
                     onClick={async () => {
                       const d = driverById(r.driverId);
-                      const v = vehicleById(r.vehicleId);
                       if (!d?.phone) { toast.error("No phone on file for renter"); return; }
-                      const amount = Number(r.rate ?? r.weeklyRate ?? 0);
-                      if (amount < 0.5) { toast.error("Set a rate before sending a payment link"); return; }
-                      const periodLbl = r.billingPeriod === "daily" ? "day" : r.billingPeriod === "monthly" ? "month" : "week";
-                      setPayLinkSendingId(r.id);
-                      try {
-                        await ensureRentalSynced(r.id);
-                        await sendPayLinkFn({ data: {
-                          phone: d.phone,
-                          name: d.fullName,
-                          amountCents: Math.round(amount * 100),
-                          description: `First ${periodLbl} — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim(),
-                          environment: getStripeEnvironment(),
-                          rentalId: r.id,
-                        } });
-                        toast.success("Payment link texted to renter", { description: d.phone });
-                      } catch (e) {
-                        const msg = e instanceof Error ? (e.stack || e.message) : String(e);
-                        console.error("[sendPaymentLink] failed:", e);
-                        toast.error("Could not send payment link", {
-                          description: msg,
-                          duration: 15000,
-                        });
-                      } finally {
-                        setPayLinkSendingId(null);
-                      }
+                      try { await ensureRentalSynced(r.id); } catch { /* best effort */ }
+                      setPayLinkRental(r);
                     }}
                   >
-                    <Send className="mr-1 h-4 w-4" />
-                    {r.paymentReceived ? "Paid ✓" : payLinkSendingId === r.id ? "Sending…" : "Send Payment Link"}
+                    <Smartphone className="mr-1 h-4 w-4" />
+                    {r.paymentReceived ? "Paid ✓" : "Send Payment Link"}
                   </Button>
                   <Button
                     size="sm"
@@ -835,6 +809,20 @@ function RentalsPage() {
         onOpenChange={(o) => !o && setChatting(null)}
         renterName={chatting ? (driverById(chatting.driverId)?.fullName ?? "") : ""}
         phone={chatting ? (driverById(chatting.driverId)?.phone ?? "") : ""}
+      />
+      <SendPaymentLinkDialog
+        open={!!payLinkRental}
+        onOpenChange={(o) => { if (!o) setPayLinkRental(null); }}
+        rentalId={payLinkRental?.id ?? ""}
+        renterName={payLinkRental ? (driverById(payLinkRental.driverId)?.fullName ?? "") : ""}
+        phone={payLinkRental ? (driverById(payLinkRental.driverId)?.phone ?? "") : ""}
+        email={payLinkRental ? (driverById(payLinkRental.driverId)?.email ?? null) : null}
+        defaultAmount={payLinkRental ? Number(payLinkRental.rate ?? payLinkRental.weeklyRate ?? 0) : 0}
+        description={payLinkRental ? (() => {
+          const v = vehicleById(payLinkRental.vehicleId);
+          const periodLbl = payLinkRental.billingPeriod === "daily" ? "day" : payLinkRental.billingPeriod === "monthly" ? "month" : "week";
+          return `First ${periodLbl} — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim();
+        })() : ""}
       />
       <NewTaskDialog
         open={!!taskRental}
