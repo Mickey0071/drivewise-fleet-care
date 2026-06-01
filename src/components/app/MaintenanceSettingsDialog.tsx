@@ -108,6 +108,33 @@ export function MaintenanceSettingsDialog({
       .map(c => ({ ...c, label: c.label.trim() }));
     if (cleanCustom.length) settings.customAlerts = cleanCustom;
 
+    // Scheduled tasks
+    const cleanTasks: Partial<Record<ScheduledTaskKey, ScheduledTask>> = {};
+    for (const def of TASK_DEFS) {
+      const t = tasks[def.key];
+      if (t && t.enabled) {
+        cleanTasks[def.key] = {
+          enabled: true,
+          miles: def.showMiles ? (Number(t.miles) || undefined) : undefined,
+          months: def.showMonths ? (Number(t.months) || undefined) : undefined,
+          lastDone: t.lastDone || undefined,
+        };
+      }
+    }
+    settings.scheduledTasks = cleanTasks;
+
+    // Keep the alert engine fields in sync with the scheduled tasks.
+    const oilTask = cleanTasks.oil;
+    if (oilTask) {
+      if (oilTask.miles) {
+        settings.oilChange = { mode: "miles", interval: oilTask.miles, lastMileage: Number(oilLastMileage) || vehicle.mileage || 0 };
+      } else if (oilTask.months && oilTask.lastDone) {
+        settings.oilChange = { mode: "months", interval: oilTask.months, lastDate: oilTask.lastDone };
+      }
+    }
+    if (cleanTasks.battery?.lastDone) settings.batteryLastDone = cleanTasks.battery.lastDone;
+    if (cleanTasks.alternator?.lastDone) settings.alternatorLastDone = cleanTasks.alternator.lastDone;
+
     try {
       await updateVehicle(vehicle.id, {
         maintenanceSettings: settings,
