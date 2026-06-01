@@ -96,6 +96,8 @@ function Index() {
         onOpenChange={handleReviewClose}
       />
 
+      {role === "admin" && <PendingPaymentReviews />}
+
       {pendingReview.length > 0 && (
         <Link
           to="/pending-agreements"
