@@ -816,47 +816,9 @@ function RentalsPage() {
           return `First ${periodLbl} — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim();
         })() : ""}
       />
-      <NewTaskDialog
-        open={!!taskRental}
-        onOpenChange={(o) => { if (!o) setTaskRental(null); }}
-        prefill={taskRental ? (() => {
-          const v = vehicleById(taskRental.vehicleId);
-          const d = driverById(taskRental.driverId);
-          const vLabel = v ? `${v.year} ${v.make} ${v.model}` : taskRental.vehicleId;
-          return {
-            linked_vehicle_id: taskRental.vehicleId,
-            linked_rental_id: taskRental.id,
-            address: d?.streetAddress ?? d?.address ?? "",
-            description: `Pickup ${vLabel} from ${d?.fullName ?? "renter"}`,
-          };
-        })() : undefined}
-      />
       <ReturnVehicleDialog
         rental={returnChoiceRental}
         onClose={() => setReturnChoiceRental(null)}
-        onDispatchRunner={(r) => {
-          setReturnChoiceRental(null);
-          setReturnDispatchRental(r);
-        }}
-      />
-      <NewTaskDialog
-        open={!!returnDispatchRental}
-        onOpenChange={(o) => { if (!o) setReturnDispatchRental(null); }}
-        prefill={returnDispatchRental ? (() => {
-          const v = vehicleById(returnDispatchRental.vehicleId);
-          const d = driverById(returnDispatchRental.driverId);
-          const vLabel = v
-            ? `${v.year} ${v.make} ${v.model} ${v.plate}`
-            : returnDispatchRental.vehicleId;
-          return {
-            task_type: "other" as const,
-            linked_vehicle_id: returnDispatchRental.vehicleId,
-            linked_rental_id: returnDispatchRental.id,
-            address: d?.streetAddress ?? d?.address ?? "",
-            description: `Retrieve ${vLabel} from ${d?.fullName ?? "renter"}`,
-            mode: "return" as const,
-          };
-        })() : undefined}
       />
     </div>
   );
