@@ -47,6 +47,7 @@ export function MaintenanceSettingsDialog({
   const [batteryLastDone, setBatteryLastDone] = useState("");
   const [alternatorLastDone, setAlternatorLastDone] = useState("");
   const [customAlerts, setCustomAlerts] = useState<CustomMaintenanceAlert[]>([]);
+  const [tasks, setTasks] = useState<Partial<Record<ScheduledTaskKey, ScheduledTask>>>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -61,9 +62,17 @@ export function MaintenanceSettingsDialog({
     setBatteryLastDone(s.batteryLastDone ?? "");
     setAlternatorLastDone(s.alternatorLastDone ?? "");
     setCustomAlerts(s.customAlerts ?? []);
+    setTasks(s.scheduledTasks ?? {});
   }, [open, vehicle]);
 
   if (!vehicle) return null;
+
+  function getTask(key: ScheduledTaskKey): ScheduledTask {
+    return tasks[key] ?? { enabled: false };
+  }
+  function updateTask(key: ScheduledTaskKey, patch: Partial<ScheduledTask>) {
+    setTasks(prev => ({ ...prev, [key]: { ...(prev[key] ?? { enabled: false }), ...patch } }));
+  }
 
   function addCustom() {
     setCustomAlerts(prev => [
