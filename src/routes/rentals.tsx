@@ -25,7 +25,6 @@ import logoUrl from "@/assets/camauto-logo-full.jpeg";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
 import { SendPaymentLinkDialog } from "@/components/app/SendPaymentLinkDialog";
-import { NewTaskDialog } from "@/components/app/NewTaskDialog";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
 import { ReservationDocuments } from "@/components/app/ReservationDocuments";
@@ -72,9 +71,7 @@ function RentalsPage() {
   const [stoppingAutoBill, setStoppingAutoBill] = useState<Rental | null>(null);
   
   const [signing, setSigning] = useState<Rental | null>(null);
-  const [taskRental, setTaskRental] = useState<Rental | null>(null);
   const [returnChoiceRental, setReturnChoiceRental] = useState<Rental | null>(null);
-  const [returnDispatchRental, setReturnDispatchRental] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
   const [violationFor, setViolationFor] = useState<Rental | null>(null);
   
@@ -544,11 +541,6 @@ function RentalsPage() {
                       1-day upfront (override)
                     </span>
                   )}
-                  {role === "admin" && (
-                    <Button variant="ghost" size="sm" onClick={() => setTaskRental(r)}>
-                      <Send className="mr-1 h-4 w-4" /> Send Task
-                    </Button>
-                  )}
                 </>
               )}
             </div>
@@ -824,47 +816,9 @@ function RentalsPage() {
           return `First ${periodLbl} — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim();
         })() : ""}
       />
-      <NewTaskDialog
-        open={!!taskRental}
-        onOpenChange={(o) => { if (!o) setTaskRental(null); }}
-        prefill={taskRental ? (() => {
-          const v = vehicleById(taskRental.vehicleId);
-          const d = driverById(taskRental.driverId);
-          const vLabel = v ? `${v.year} ${v.make} ${v.model}` : taskRental.vehicleId;
-          return {
-            linked_vehicle_id: taskRental.vehicleId,
-            linked_rental_id: taskRental.id,
-            address: d?.streetAddress ?? d?.address ?? "",
-            description: `Pickup ${vLabel} from ${d?.fullName ?? "renter"}`,
-          };
-        })() : undefined}
-      />
       <ReturnVehicleDialog
         rental={returnChoiceRental}
         onClose={() => setReturnChoiceRental(null)}
-        onDispatchRunner={(r) => {
-          setReturnChoiceRental(null);
-          setReturnDispatchRental(r);
-        }}
-      />
-      <NewTaskDialog
-        open={!!returnDispatchRental}
-        onOpenChange={(o) => { if (!o) setReturnDispatchRental(null); }}
-        prefill={returnDispatchRental ? (() => {
-          const v = vehicleById(returnDispatchRental.vehicleId);
-          const d = driverById(returnDispatchRental.driverId);
-          const vLabel = v
-            ? `${v.year} ${v.make} ${v.model} ${v.plate}`
-            : returnDispatchRental.vehicleId;
-          return {
-            task_type: "other" as const,
-            linked_vehicle_id: returnDispatchRental.vehicleId,
-            linked_rental_id: returnDispatchRental.id,
-            address: d?.streetAddress ?? d?.address ?? "",
-            description: `Retrieve ${vLabel} from ${d?.fullName ?? "renter"}`,
-            mode: "return" as const,
-          };
-        })() : undefined}
       />
     </div>
   );

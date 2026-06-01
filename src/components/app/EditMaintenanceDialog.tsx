@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { updateMaintenance, deleteMaintenance } from "@/lib/mock/store";
 import { vehicleById, fmtDate, type Maintenance } from "@/lib/mock/data";
 import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
-import { NewTaskDialog } from "@/components/app/NewTaskDialog";
 import { useAuth } from "@/hooks/use-auth";
 
 interface Props {
@@ -29,7 +28,6 @@ export function EditMaintenanceDialog({ open, onOpenChange, record }: Props) {
   const [notes, setNotes] = useState("");
   const [inspectionOpen, setInspectionOpen] = useState(false);
   const [inspectorName, setInspectorName] = useState<string | null>(null);
-  const [taskOpen, setTaskOpen] = useState(false);
 
   useEffect(() => {
     if (!record) return;
@@ -152,11 +150,6 @@ export function EditMaintenanceDialog({ open, onOpenChange, record }: Props) {
               Delete
             </Button>
             <div className="flex gap-2">
-              {role === "admin" && (
-                <Button variant="outline" onClick={() => setTaskOpen(true)}>
-                  <Send className="mr-1 h-4 w-4" /> Send Task
-                </Button>
-              )}
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button onClick={save}>Save</Button>
             </div>
@@ -167,15 +160,6 @@ export function EditMaintenanceDialog({ open, onOpenChange, record }: Props) {
         inspectionId={record.sourceInspectionId ?? null}
         open={inspectionOpen}
         onOpenChange={setInspectionOpen}
-      />
-      <NewTaskDialog
-        open={taskOpen}
-        onOpenChange={setTaskOpen}
-        prefill={{
-          task_type: "mechanic_run",
-          linked_vehicle_id: record.vehicleId,
-          description: record.serviceType,
-        }}
       />
     </>
   );

@@ -8,7 +8,6 @@ const runnerTabs = [
   { to: "/checklist", label: "Task Portal", emoji: "📋" },
   { to: "/vendors", label: "Vendors", emoji: "📞" },
   { to: "/inspections", label: "My History", emoji: "📜" },
-  { to: "/my-tasks", label: "My Tasks", emoji: "🏃" },
   { to: "/profile", label: "Profile", emoji: "👤" },
 ] as const;
 
@@ -41,7 +40,7 @@ export function RunnerLayout() {
         <Outlet />
       </main>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur">
-        <ul className={`mx-auto grid max-w-2xl ${tabs.length === 2 ? "grid-cols-2" : tabs.length === 5 ? "grid-cols-5" : "grid-cols-6"}`}>
+        <ul className={`mx-auto grid max-w-2xl ${tabs.length === 2 ? "grid-cols-2" : tabs.length === 4 ? "grid-cols-4" : "grid-cols-5"}`}>
           {tabs.map((t) => {
             const active = path === t.to || path.startsWith(t.to + "/");
             return (

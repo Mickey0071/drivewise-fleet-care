@@ -37,8 +37,6 @@ const adminItems: Item[] = [
 const runnersItems: Item[] = [
   { title: "New Inspection", url: "/checklist", icon: ListChecks, roles: ["admin"] },
   { title: "Inspection History", url: "/inspections", icon: ClipboardCheck, roles: ["admin"] },
-  { title: "New Task", url: "/runners/new-task", icon: ClipboardPlus, roles: ["admin"] },
-  { title: "All Tasks", url: "/runners/tasks", icon: ClipboardList, roles: ["admin"] },
 ];
 const financeItems: Item[] = [
   { title: "P&L", url: "/pnl", icon: TrendingUp, roles: ["admin"] },

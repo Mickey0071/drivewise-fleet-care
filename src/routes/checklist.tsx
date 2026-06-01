@@ -15,7 +15,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { CHECKLIST_SECTIONS, JOB_TYPE_LABELS, FUEL_LEVEL_LABELS } from "@/lib/checklist-items";
 import { cn } from "@/lib/utils";
 import { useServerFn } from "@tanstack/react-start";
-import { completeTaskFromInspection } from "@/lib/tasks.functions";
 import { closeoutRental } from "@/lib/return.functions";
 import { refreshStoreFromCloud, syncLocalReturn } from "@/lib/mock/store";
 import { z } from "zod";
@@ -66,7 +65,6 @@ function ChecklistPage() {
   const router = useRouter();
   const { task_id, rental_id, mode } = Route.useSearch();
   const isReturnMode = mode === "return" && !!rental_id;
-  const completeTask = useServerFn(completeTaskFromInspection);
   const closeout = useServerFn(closeoutRental);
   const [taskBanner, setTaskBanner] = useState<string | null>(null);
   const [taskLockedVehicle, setTaskLockedVehicle] = useState<string | null>(null);
@@ -141,39 +139,6 @@ function ChecklistPage() {
     })();
     return () => { cancelled = true; };
   }, []);
-
-  // If route was opened from My Tasks, load task + lock vehicle
-  useEffect(() => {
-    if (!task_id) return;
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("tasks")
-        .select("description, linked_vehicle_id, task_type, task_mode")
-        .eq("id", task_id)
-        .maybeSingle();
-      if (cancelled || !data) return;
-      setTaskBanner(data.description ?? `Task ${task_id}`);
-      if (data.linked_vehicle_id) {
-        setTaskLockedVehicle(data.linked_vehicle_id);
-        setVehicleId(data.linked_vehicle_id);
-      }
-      // Auto-pick job type from the task so the runner doesn't see the picker.
-      const map: Record<string, JobType> = {
-        repo: "repossession",
-        dropoff: "vehicle_return",
-        pickup: "new_acquisition",
-        inspection: "inspection",
-        parts: "inspection",
-        other: "inspection",
-        mechanic_run: "mechanic_run",
-        dmv: "dmv_reg",
-      };
-      const preset = data.task_mode === "return" ? "vehicle_return" : map[data.task_type];
-      if (preset) setJobType(preset);
-    })();
-    return () => { cancelled = true; };
-  }, [task_id]);
 
   // Return-mode bootstrap: fetch rental + driver + extensions to build banner
   useEffect(() => {
@@ -433,36 +398,8 @@ function ChecklistPage() {
         }
       }
 
-      // If completing a dispatched task, mark it done + push summary to maintenance.
-      let taskCompleted = false;
-      let maintenanceSynced = false;
-      if (task_id) {
-        const failedLabels = Object.entries(items)
-          .filter(([, v]) => v === "fail")
-          .map(([k]) => ITEM_LABELS[k] ?? k);
-        const summary =
-          `Inspection submitted at ${new Date().toISOString()}. ` +
-          `Job type: ${JOB_TYPE_LABELS[jobType as JobType]}. ` +
-          `Mileage: ${isReturnMode ? Number(returnMileage) : (jobMileage.trim() ? Number(jobMileage) : (vehicle?.mileage ?? 0))}. ` +
-          `Results: ${counts.pass} Pass, ${counts.fail} Fail, ${counts.na} N/A. ` +
-          `Ready to rent: ${ready === "ready" ? "yes" : "no"}. ` +
-          `Fuel: ${FUEL_LEVEL_LABELS[fuel as FuelKey]}. ` +
-          `Notes: ${notes.trim() || "(none)"}. ` +
-          `Failed items: ${failedLabels.length ? failedLabels.join(", ") : "(none)"}. ` +
-          `Photos: ${damageFiles.length}.`;
-        try {
-          const res = await completeTask({ data: {
-            task_id,
-            inspection_id: inspectionId,
-            runner_notes: summary,
-          }});
-          taskCompleted = true;
-          maintenanceSynced = !!res.maintenance_id;
-          if (res.maintenance_id) setMaintenanceLinked(res.maintenance_id);
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Failed to mark task complete");
-        }
-      }
+      const taskCompleted = false;
+      const maintenanceSynced = false;
 
       setDone({
         vehicle,
@@ -584,8 +521,6 @@ function ChecklistPage() {
       { value: "mechanic_run",   title: JOB_TYPE_LABELS.mechanic_run,   subtitle: "Drop off — mechanic type & reason" },
     ];
     const pick = (jt: JobType) => {
-      if (jt === "dmv_reg") { navigate({ to: "/dmv-task" }); return; }
-      if (jt === "mechanic_run") { navigate({ to: "/mechanic-task" }); return; }
       setJobType(jt);
     };
     return (
