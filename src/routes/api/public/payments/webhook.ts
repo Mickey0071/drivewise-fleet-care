@@ -651,7 +651,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
           stripe_customer_id: session.customer ?? null,
           stripe_payment_method_id: paymentMethodId,
           cardholder_name: cardholderName || null,
-          name_match_status: matched ? "matched" : cardholderName ? "unverified" : "unverified",
+          name_match_status: decision ? decision.status : "unverified",
           name_match_score: score || null,
           updated_at: new Date().toISOString(),
         })
