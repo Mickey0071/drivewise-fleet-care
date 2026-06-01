@@ -177,12 +177,12 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
                     <div className="grid gap-1">
                       <Label className="text-xs">Part price ($)</Label>
                       <Input type="number" min={0} step="0.01" value={r.partPrice}
-                        onChange={e => updateRow(r.key, { partPrice: e.target.value })} />
+                        onChange={e => updateRow(r.key, { partPrice: e.target.value })} placeholder="Optional" />
                     </div>
                     <div className="grid gap-1">
                       <Label className="text-xs">Labor price ($)</Label>
                       <Input type="number" min={0} step="0.01" value={r.laborPrice}
-                        onChange={e => updateRow(r.key, { laborPrice: e.target.value })} />
+                        onChange={e => updateRow(r.key, { laborPrice: e.target.value })} placeholder="Optional" />
                     </div>
                     <div className="grid gap-1">
                       <Label className="text-xs">Subtotal</Label>
