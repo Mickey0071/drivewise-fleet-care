@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as VendorsRouteImport } from './routes/vendors'
+import { Route as TransportTaskRouteImport } from './routes/transport-task'
 import { Route as StaffPortalRouteImport } from './routes/staff-portal'
 import { Route as SmsLogRouteImport } from './routes/sms-log'
 import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
@@ -73,6 +74,11 @@ const ViolationsRoute = ViolationsRouteImport.update({
 const VendorsRoute = VendorsRouteImport.update({
   id: '/vendors',
   path: '/vendors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TransportTaskRoute = TransportTaskRouteImport.update({
+  id: '/transport-task',
+  path: '/transport-task',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StaffPortalRoute = StaffPortalRouteImport.update({
@@ -379,6 +385,7 @@ export interface FileRoutesByFullPath {
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
+  '/transport-task': typeof TransportTaskRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -436,6 +443,7 @@ export interface FileRoutesByTo {
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
+  '/transport-task': typeof TransportTaskRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -494,6 +502,7 @@ export interface FileRoutesById {
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
+  '/transport-task': typeof TransportTaskRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -553,6 +562,7 @@ export interface FileRouteTypes {
     | '/runner-reports'
     | '/sms-log'
     | '/staff-portal'
+    | '/transport-task'
     | '/vendors'
     | '/violations'
     | '/admin/users'
@@ -610,6 +620,7 @@ export interface FileRouteTypes {
     | '/runner-reports'
     | '/sms-log'
     | '/staff-portal'
+    | '/transport-task'
     | '/vendors'
     | '/violations'
     | '/admin/users'
@@ -667,6 +678,7 @@ export interface FileRouteTypes {
     | '/runner-reports'
     | '/sms-log'
     | '/staff-portal'
+    | '/transport-task'
     | '/vendors'
     | '/violations'
     | '/admin/users'
@@ -725,6 +737,7 @@ export interface RootRouteChildren {
   RunnerReportsRoute: typeof RunnerReportsRoute
   SmsLogRoute: typeof SmsLogRoute
   StaffPortalRoute: typeof StaffPortalRoute
+  TransportTaskRoute: typeof TransportTaskRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -761,6 +774,13 @@ declare module '@tanstack/react-router' {
       path: '/vendors'
       fullPath: '/vendors'
       preLoaderRoute: typeof VendorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transport-task': {
+      id: '/transport-task'
+      path: '/transport-task'
+      fullPath: '/transport-task'
+      preLoaderRoute: typeof TransportTaskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/staff-portal': {
@@ -1193,6 +1213,7 @@ const rootRouteChildren: RootRouteChildren = {
   RunnerReportsRoute: RunnerReportsRoute,
   SmsLogRoute: SmsLogRoute,
   StaffPortalRoute: StaffPortalRoute,
+  TransportTaskRoute: TransportTaskRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
   AdminUsersRoute: AdminUsersRoute,
