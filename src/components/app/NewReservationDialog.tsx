@@ -595,6 +595,20 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
               <p className="text-xs text-muted-foreground">
                 Enter the rental window first — we'll only show vehicles that are free for these dates.
               </p>
+              {vehicle && (
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                    <Car className="h-4 w-4 text-muted-foreground" />
+                    {vehicle.year} {vehicle.make} {vehicle.model} · {vehicle.plate}
+                  </div>
+                  <VehicleAvailabilityCalendar
+                    vehicleId={vehicle.id}
+                    startDate={startDate}
+                    endDate={endDate}
+                    onChange={(s, e) => { setStartDate(s); setEndDate(e); }}
+                  />
+                </div>
+              )}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="start">Start date</Label>
