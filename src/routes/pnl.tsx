@@ -1037,8 +1037,9 @@ function VehicleProfitability() {
                   <th className="px-4 py-2">#</th>
                   <th className="px-4 py-2">Vehicle</th>
                   <th className="px-4 py-2 text-right">Revenue</th>
-                  <th className="px-4 py-2 text-right">Maintenance</th>
-                  <th className="px-4 py-2 text-right">Repairs</th>
+                  <th className="px-4 py-2 text-right">Completed Costs</th>
+                  <th className="px-4 py-2 text-right">Open Costs</th>
+                  <th className="px-4 py-2 text-right">Total Costs</th>
                   <th className="px-4 py-2 text-right">Net Profit</th>
                   <th className="px-4 py-2">Status</th>
                 </tr>
@@ -1052,8 +1053,9 @@ function VehicleProfitability() {
                       <td className="px-4 py-2 font-semibold">{rank === 0 ? "🏆 1" : `#${rank + 1}`}</td>
                       <td className="px-4 py-2 font-medium">{r.vehicle.year} {r.vehicle.make} {r.vehicle.model}</td>
                       <td className="px-4 py-2 text-right text-success">{fmtMoney(r.revenue)}</td>
-                      <td className="px-4 py-2 text-right text-destructive">-{fmtMoney(r.maintCost)}</td>
-                      <td className="px-4 py-2 text-right text-destructive">-{fmtMoney(r.repairCost)}</td>
+                      <td className="px-4 py-2 text-right text-foreground">{fmtMoney(r.completedCost)}</td>
+                      <td className={`px-4 py-2 text-right font-medium ${r.openCost > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{fmtMoney(r.openCost)}</td>
+                      <td className="px-4 py-2 text-right text-destructive">{fmtMoney(r.totalCost)}</td>
                       <td className={`px-4 py-2 text-right font-semibold ${r.profit >= 0 ? "text-success" : "text-destructive"}`}>{fmtMoney(r.profit)}</td>
                       <td className={`px-4 py-2 text-xs ${st.cls}`}>{st.text}</td>
                     </tr>
