@@ -5,16 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useServerFn } from "@tanstack/react-start";
-import { sendPaymentLink } from "@/lib/payment-link.functions";
+import { sendPaymentLink, getPaymentLinkLogs, type PaymentLinkLog } from "@/lib/payment-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { toast } from "sonner";
 import { Smartphone, Loader2 } from "lucide-react";
 
 const REASONS = [
-  { value: "additional", label: "Additional charge" },
   { value: "stripe_error", label: "Stripe error (re-attempt)" },
-  { value: "customer_request", label: "Customer request" },
+  { value: "additional", label: "Additional charge" },
+  { value: "lost_link", label: "Customer lost link" },
   { value: "other", label: "Other" },
 ];
 
@@ -42,18 +43,35 @@ export function SendPaymentLinkDialog({
   onSent,
 }: Props) {
   const sendFn = useServerFn(sendPaymentLink);
+  const logsFn = useServerFn(getPaymentLinkLogs);
   const [amount, setAmount] = useState(String(defaultAmount || ""));
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [viaSms, setViaSms] = useState(true);
+  const [viaEmail, setViaEmail] = useState(true);
+  const [logs, setLogs] = useState<PaymentLinkLog[]>([]);
+
+  async function loadLogs() {
+    if (!rentalId) return;
+    try {
+      setLogs(await logsFn({ data: { rentalId } }));
+    } catch {
+      /* non-fatal */
+    }
+  }
 
   useEffect(() => {
     if (open) {
       setAmount(defaultAmount ? defaultAmount.toFixed(2) : "");
       setReason("");
       setMessage("");
+      setViaSms(true);
+      setViaEmail(!!email);
+      loadLogs();
     }
-  }, [open, defaultAmount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultAmount, rentalId]);
 
   async function handleSend() {
     const amt = Number(amount);
@@ -61,8 +79,16 @@ export function SendPaymentLinkDialog({
       toast.error("Enter a valid amount (min $0.50)");
       return;
     }
-    if (!phone) {
+    if (!viaSms && !viaEmail) {
+      toast.error("Choose at least one delivery method");
+      return;
+    }
+    if (viaSms && !phone) {
       toast.error("No phone on file for renter");
+      return;
+    }
+    if (viaEmail && !email) {
+      toast.error("No email on file for renter");
       return;
     }
     const reasonLabel = REASONS.find((r) => r.value === reason)?.label;
@@ -79,10 +105,16 @@ export function SendPaymentLinkDialog({
           environment: getStripeEnvironment(),
           rentalId,
           customMessage: message.trim() || undefined,
+          reason: reasonLabel,
+          sendSms: viaSms,
+          sendEmail: viaEmail,
         },
       });
-      toast.success("Payment link sent", { description: `$${amt.toFixed(2)} · ${phone}` });
+      toast.success(`Payment link sent to ${renterName || "renter"}`, {
+        description: `$${amt.toFixed(2)}`,
+      });
       onSent?.();
+      await loadLogs();
       onOpenChange(false);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
