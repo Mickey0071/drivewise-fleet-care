@@ -11,12 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as VendorsRouteImport } from './routes/vendors'
-import { Route as TransportTaskRouteImport } from './routes/transport-task'
 import { Route as StaffPortalRouteImport } from './routes/staff-portal'
 import { Route as SmsLogRouteImport } from './routes/sms-log'
 import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as RepoTaskRouteImport } from './routes/repo-task'
 import { Route as RentalsRouteImport } from './routes/rentals'
 import { Route as RentalAgreementRouteImport } from './routes/rental-agreement'
 import { Route as RefundApprovalsRouteImport } from './routes/refund-approvals'
@@ -26,11 +24,7 @@ import { Route as PendingAgreementsRouteImport } from './routes/pending-agreemen
 import { Route as PayrollReturnRouteImport } from './routes/payroll-return'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as PaymentsRouteImport } from './routes/payments'
-import { Route as PartsRunTaskRouteImport } from './routes/parts-run-task'
-import { Route as MyTasksRouteImport } from './routes/my-tasks'
 import { Route as MyRentalsRouteImport } from './routes/my-rentals'
-import { Route as MechanicTaskRouteImport } from './routes/mechanic-task'
-import { Route as MechanicRunTaskRouteImport } from './routes/mechanic-run-task'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InsuranceRouteImport } from './routes/insurance'
@@ -40,8 +34,6 @@ import { Route as FleetRouteImport } from './routes/fleet'
 import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as DriversRouteImport } from './routes/drivers'
 import { Route as DriverPortalRouteImport } from './routes/driver-portal'
-import { Route as DmvTaskRouteImport } from './routes/dmv-task'
-import { Route as DmvRunTaskRouteImport } from './routes/dmv-run-task'
 import { Route as ChecklistRouteImport } from './routes/checklist'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
@@ -49,12 +41,9 @@ import { Route as WorkOrderTokenRouteImport } from './routes/work-order.$token'
 import { Route as VerifyPaymentRentalIdRouteImport } from './routes/verify-payment.$rentalId'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as SetupTokenRouteImport } from './routes/setup.$token'
-import { Route as RunnersTasksRouteImport } from './routes/runners.tasks'
-import { Route as RunnersNewTaskRouteImport } from './routes/runners.new-task'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as PortalSignupRentalIdRouteImport } from './routes/portal-signup.$rentalId'
-import { Route as MyTasksTaskIdRouteImport } from './routes/my-tasks_.$taskId'
 import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rentalId'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
 import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
@@ -76,11 +65,6 @@ const VendorsRoute = VendorsRouteImport.update({
   path: '/vendors',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TransportTaskRoute = TransportTaskRouteImport.update({
-  id: '/transport-task',
-  path: '/transport-task',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const StaffPortalRoute = StaffPortalRouteImport.update({
   id: '/staff-portal',
   path: '/staff-portal',
@@ -99,11 +83,6 @@ const RunnerReportsRoute = RunnerReportsRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RepoTaskRoute = RepoTaskRouteImport.update({
-  id: '/repo-task',
-  path: '/repo-task',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RentalsRoute = RentalsRouteImport.update({
@@ -151,29 +130,9 @@ const PaymentsRoute = PaymentsRouteImport.update({
   path: '/payments',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PartsRunTaskRoute = PartsRunTaskRouteImport.update({
-  id: '/parts-run-task',
-  path: '/parts-run-task',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MyTasksRoute = MyTasksRouteImport.update({
-  id: '/my-tasks',
-  path: '/my-tasks',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const MyRentalsRoute = MyRentalsRouteImport.update({
   id: '/my-rentals',
   path: '/my-rentals',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MechanicTaskRoute = MechanicTaskRouteImport.update({
-  id: '/mechanic-task',
-  path: '/mechanic-task',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MechanicRunTaskRoute = MechanicRunTaskRouteImport.update({
-  id: '/mechanic-run-task',
-  path: '/mechanic-run-task',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MaintenanceRoute = MaintenanceRouteImport.update({
@@ -221,16 +180,6 @@ const DriverPortalRoute = DriverPortalRouteImport.update({
   path: '/driver-portal',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DmvTaskRoute = DmvTaskRouteImport.update({
-  id: '/dmv-task',
-  path: '/dmv-task',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DmvRunTaskRoute = DmvRunTaskRouteImport.update({
-  id: '/dmv-run-task',
-  path: '/dmv-run-task',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ChecklistRoute = ChecklistRouteImport.update({
   id: '/checklist',
   path: '/checklist',
@@ -266,16 +215,6 @@ const SetupTokenRoute = SetupTokenRouteImport.update({
   path: '/setup/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RunnersTasksRoute = RunnersTasksRouteImport.update({
-  id: '/runners/tasks',
-  path: '/runners/tasks',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RunnersNewTaskRoute = RunnersNewTaskRouteImport.update({
-  id: '/runners/new-task',
-  path: '/runners/new-task',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RentPaidRoute = RentPaidRouteImport.update({
   id: '/rent/paid',
   path: '/rent/paid',
@@ -289,11 +228,6 @@ const RentTokenRoute = RentTokenRouteImport.update({
 const PortalSignupRentalIdRoute = PortalSignupRentalIdRouteImport.update({
   id: '/portal-signup/$rentalId',
   path: '/portal-signup/$rentalId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MyTasksTaskIdRoute = MyTasksTaskIdRouteImport.update({
-  id: '/my-tasks_/$taskId',
-  path: '/my-tasks/$taskId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MyRentalsRentalIdRoute = MyRentalsRentalIdRouteImport.update({
@@ -355,8 +289,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/checklist': typeof ChecklistRoute
-  '/dmv-run-task': typeof DmvRunTaskRoute
-  '/dmv-task': typeof DmvTaskRoute
   '/driver-portal': typeof DriverPortalRoute
   '/drivers': typeof DriversRoute
   '/expenses': typeof ExpensesRoute
@@ -366,11 +298,7 @@ export interface FileRoutesByFullPath {
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
-  '/mechanic-run-task': typeof MechanicRunTaskRoute
-  '/mechanic-task': typeof MechanicTaskRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
-  '/my-tasks': typeof MyTasksRoute
-  '/parts-run-task': typeof PartsRunTaskRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
@@ -380,24 +308,19 @@ export interface FileRoutesByFullPath {
   '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
-  '/repo-task': typeof RepoTaskRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
-  '/transport-task': typeof TransportTaskRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
-  '/my-tasks/$taskId': typeof MyTasksTaskIdRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
-  '/runners/new-task': typeof RunnersNewTaskRoute
-  '/runners/tasks': typeof RunnersTasksRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -413,8 +336,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/checklist': typeof ChecklistRoute
-  '/dmv-run-task': typeof DmvRunTaskRoute
-  '/dmv-task': typeof DmvTaskRoute
   '/driver-portal': typeof DriverPortalRoute
   '/drivers': typeof DriversRoute
   '/expenses': typeof ExpensesRoute
@@ -424,11 +345,7 @@ export interface FileRoutesByTo {
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
-  '/mechanic-run-task': typeof MechanicRunTaskRoute
-  '/mechanic-task': typeof MechanicTaskRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
-  '/my-tasks': typeof MyTasksRoute
-  '/parts-run-task': typeof PartsRunTaskRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
@@ -438,24 +355,19 @@ export interface FileRoutesByTo {
   '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
-  '/repo-task': typeof RepoTaskRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
-  '/transport-task': typeof TransportTaskRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
-  '/my-tasks/$taskId': typeof MyTasksTaskIdRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
-  '/runners/new-task': typeof RunnersNewTaskRoute
-  '/runners/tasks': typeof RunnersTasksRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -472,8 +384,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/checklist': typeof ChecklistRoute
-  '/dmv-run-task': typeof DmvRunTaskRoute
-  '/dmv-task': typeof DmvTaskRoute
   '/driver-portal': typeof DriverPortalRoute
   '/drivers': typeof DriversRoute
   '/expenses': typeof ExpensesRoute
@@ -483,11 +393,7 @@ export interface FileRoutesById {
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
-  '/mechanic-run-task': typeof MechanicRunTaskRoute
-  '/mechanic-task': typeof MechanicTaskRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
-  '/my-tasks': typeof MyTasksRoute
-  '/parts-run-task': typeof PartsRunTaskRoute
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
   '/payroll-return': typeof PayrollReturnRoute
@@ -497,24 +403,19 @@ export interface FileRoutesById {
   '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
-  '/repo-task': typeof RepoTaskRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
   '/staff-portal': typeof StaffPortalRoute
-  '/transport-task': typeof TransportTaskRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
-  '/my-tasks_/$taskId': typeof MyTasksTaskIdRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
-  '/runners/new-task': typeof RunnersNewTaskRoute
-  '/runners/tasks': typeof RunnersTasksRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -532,8 +433,6 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/checklist'
-    | '/dmv-run-task'
-    | '/dmv-task'
     | '/driver-portal'
     | '/drivers'
     | '/expenses'
@@ -543,11 +442,7 @@ export interface FileRouteTypes {
     | '/insurance'
     | '/login'
     | '/maintenance'
-    | '/mechanic-run-task'
-    | '/mechanic-task'
     | '/my-rentals'
-    | '/my-tasks'
-    | '/parts-run-task'
     | '/payments'
     | '/payroll'
     | '/payroll-return'
@@ -557,24 +452,19 @@ export interface FileRouteTypes {
     | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
-    | '/repo-task'
     | '/reset-password'
     | '/runner-reports'
     | '/sms-log'
     | '/staff-portal'
-    | '/transport-task'
     | '/vendors'
     | '/violations'
     | '/admin/users'
     | '/extend/$token'
     | '/fleet/$vehicleId'
     | '/my-rentals/$rentalId'
-    | '/my-tasks/$taskId'
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
-    | '/runners/new-task'
-    | '/runners/tasks'
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
@@ -590,8 +480,6 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/checklist'
-    | '/dmv-run-task'
-    | '/dmv-task'
     | '/driver-portal'
     | '/drivers'
     | '/expenses'
@@ -601,11 +489,7 @@ export interface FileRouteTypes {
     | '/insurance'
     | '/login'
     | '/maintenance'
-    | '/mechanic-run-task'
-    | '/mechanic-task'
     | '/my-rentals'
-    | '/my-tasks'
-    | '/parts-run-task'
     | '/payments'
     | '/payroll'
     | '/payroll-return'
@@ -615,24 +499,19 @@ export interface FileRouteTypes {
     | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
-    | '/repo-task'
     | '/reset-password'
     | '/runner-reports'
     | '/sms-log'
     | '/staff-portal'
-    | '/transport-task'
     | '/vendors'
     | '/violations'
     | '/admin/users'
     | '/extend/$token'
     | '/fleet/$vehicleId'
     | '/my-rentals/$rentalId'
-    | '/my-tasks/$taskId'
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
-    | '/runners/new-task'
-    | '/runners/tasks'
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
@@ -648,8 +527,6 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/checklist'
-    | '/dmv-run-task'
-    | '/dmv-task'
     | '/driver-portal'
     | '/drivers'
     | '/expenses'
@@ -659,11 +536,7 @@ export interface FileRouteTypes {
     | '/insurance'
     | '/login'
     | '/maintenance'
-    | '/mechanic-run-task'
-    | '/mechanic-task'
     | '/my-rentals'
-    | '/my-tasks'
-    | '/parts-run-task'
     | '/payments'
     | '/payroll'
     | '/payroll-return'
@@ -673,24 +546,19 @@ export interface FileRouteTypes {
     | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
-    | '/repo-task'
     | '/reset-password'
     | '/runner-reports'
     | '/sms-log'
     | '/staff-portal'
-    | '/transport-task'
     | '/vendors'
     | '/violations'
     | '/admin/users'
     | '/extend/$token'
     | '/fleet/$vehicleId'
     | '/my-rentals/$rentalId'
-    | '/my-tasks_/$taskId'
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
-    | '/runners/new-task'
-    | '/runners/tasks'
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
@@ -707,8 +575,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
   ChecklistRoute: typeof ChecklistRoute
-  DmvRunTaskRoute: typeof DmvRunTaskRoute
-  DmvTaskRoute: typeof DmvTaskRoute
   DriverPortalRoute: typeof DriverPortalRoute
   DriversRoute: typeof DriversRoute
   ExpensesRoute: typeof ExpensesRoute
@@ -718,11 +584,7 @@ export interface RootRouteChildren {
   InsuranceRoute: typeof InsuranceRoute
   LoginRoute: typeof LoginRoute
   MaintenanceRoute: typeof MaintenanceRoute
-  MechanicRunTaskRoute: typeof MechanicRunTaskRoute
-  MechanicTaskRoute: typeof MechanicTaskRoute
   MyRentalsRoute: typeof MyRentalsRouteWithChildren
-  MyTasksRoute: typeof MyTasksRoute
-  PartsRunTaskRoute: typeof PartsRunTaskRoute
   PaymentsRoute: typeof PaymentsRoute
   PayrollRoute: typeof PayrollRoute
   PayrollReturnRoute: typeof PayrollReturnRoute
@@ -732,22 +594,17 @@ export interface RootRouteChildren {
   RefundApprovalsRoute: typeof RefundApprovalsRoute
   RentalAgreementRoute: typeof RentalAgreementRoute
   RentalsRoute: typeof RentalsRoute
-  RepoTaskRoute: typeof RepoTaskRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RunnerReportsRoute: typeof RunnerReportsRoute
   SmsLogRoute: typeof SmsLogRoute
   StaffPortalRoute: typeof StaffPortalRoute
-  TransportTaskRoute: typeof TransportTaskRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ExtendTokenRoute: typeof ExtendTokenRoute
-  MyTasksTaskIdRoute: typeof MyTasksTaskIdRoute
   PortalSignupRentalIdRoute: typeof PortalSignupRentalIdRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
-  RunnersNewTaskRoute: typeof RunnersNewTaskRoute
-  RunnersTasksRoute: typeof RunnersTasksRoute
   SetupTokenRoute: typeof SetupTokenRoute
   SignTokenRoute: typeof SignTokenRoute
   VerifyPaymentRentalIdRoute: typeof VerifyPaymentRentalIdRoute
@@ -776,13 +633,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VendorsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/transport-task': {
-      id: '/transport-task'
-      path: '/transport-task'
-      fullPath: '/transport-task'
-      preLoaderRoute: typeof TransportTaskRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/staff-portal': {
       id: '/staff-portal'
       path: '/staff-portal'
@@ -809,13 +659,6 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/repo-task': {
-      id: '/repo-task'
-      path: '/repo-task'
-      fullPath: '/repo-task'
-      preLoaderRoute: typeof RepoTaskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rentals': {
@@ -881,39 +724,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PaymentsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/parts-run-task': {
-      id: '/parts-run-task'
-      path: '/parts-run-task'
-      fullPath: '/parts-run-task'
-      preLoaderRoute: typeof PartsRunTaskRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/my-tasks': {
-      id: '/my-tasks'
-      path: '/my-tasks'
-      fullPath: '/my-tasks'
-      preLoaderRoute: typeof MyTasksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/my-rentals': {
       id: '/my-rentals'
       path: '/my-rentals'
       fullPath: '/my-rentals'
       preLoaderRoute: typeof MyRentalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mechanic-task': {
-      id: '/mechanic-task'
-      path: '/mechanic-task'
-      fullPath: '/mechanic-task'
-      preLoaderRoute: typeof MechanicTaskRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mechanic-run-task': {
-      id: '/mechanic-run-task'
-      path: '/mechanic-run-task'
-      fullPath: '/mechanic-run-task'
-      preLoaderRoute: typeof MechanicRunTaskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/maintenance': {
@@ -979,20 +794,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DriverPortalRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dmv-task': {
-      id: '/dmv-task'
-      path: '/dmv-task'
-      fullPath: '/dmv-task'
-      preLoaderRoute: typeof DmvTaskRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dmv-run-task': {
-      id: '/dmv-run-task'
-      path: '/dmv-run-task'
-      fullPath: '/dmv-run-task'
-      preLoaderRoute: typeof DmvRunTaskRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/checklist': {
       id: '/checklist'
       path: '/checklist'
@@ -1042,20 +843,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SetupTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/runners/tasks': {
-      id: '/runners/tasks'
-      path: '/runners/tasks'
-      fullPath: '/runners/tasks'
-      preLoaderRoute: typeof RunnersTasksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/runners/new-task': {
-      id: '/runners/new-task'
-      path: '/runners/new-task'
-      fullPath: '/runners/new-task'
-      preLoaderRoute: typeof RunnersNewTaskRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/rent/paid': {
       id: '/rent/paid'
       path: '/rent/paid'
@@ -1075,13 +862,6 @@ declare module '@tanstack/react-router' {
       path: '/portal-signup/$rentalId'
       fullPath: '/portal-signup/$rentalId'
       preLoaderRoute: typeof PortalSignupRentalIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/my-tasks_/$taskId': {
-      id: '/my-tasks_/$taskId'
-      path: '/my-tasks/$taskId'
-      fullPath: '/my-tasks/$taskId'
-      preLoaderRoute: typeof MyTasksTaskIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/my-rentals/$rentalId': {
@@ -1183,8 +963,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
   ChecklistRoute: ChecklistRoute,
-  DmvRunTaskRoute: DmvRunTaskRoute,
-  DmvTaskRoute: DmvTaskRoute,
   DriverPortalRoute: DriverPortalRoute,
   DriversRoute: DriversRoute,
   ExpensesRoute: ExpensesRoute,
@@ -1194,11 +972,7 @@ const rootRouteChildren: RootRouteChildren = {
   InsuranceRoute: InsuranceRoute,
   LoginRoute: LoginRoute,
   MaintenanceRoute: MaintenanceRoute,
-  MechanicRunTaskRoute: MechanicRunTaskRoute,
-  MechanicTaskRoute: MechanicTaskRoute,
   MyRentalsRoute: MyRentalsRouteWithChildren,
-  MyTasksRoute: MyTasksRoute,
-  PartsRunTaskRoute: PartsRunTaskRoute,
   PaymentsRoute: PaymentsRoute,
   PayrollRoute: PayrollRoute,
   PayrollReturnRoute: PayrollReturnRoute,
@@ -1208,22 +982,17 @@ const rootRouteChildren: RootRouteChildren = {
   RefundApprovalsRoute: RefundApprovalsRoute,
   RentalAgreementRoute: RentalAgreementRoute,
   RentalsRoute: RentalsRoute,
-  RepoTaskRoute: RepoTaskRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RunnerReportsRoute: RunnerReportsRoute,
   SmsLogRoute: SmsLogRoute,
   StaffPortalRoute: StaffPortalRoute,
-  TransportTaskRoute: TransportTaskRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
   AdminUsersRoute: AdminUsersRoute,
   ExtendTokenRoute: ExtendTokenRoute,
-  MyTasksTaskIdRoute: MyTasksTaskIdRoute,
   PortalSignupRentalIdRoute: PortalSignupRentalIdRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
-  RunnersNewTaskRoute: RunnersNewTaskRoute,
-  RunnersTasksRoute: RunnersTasksRoute,
   SetupTokenRoute: SetupTokenRoute,
   SignTokenRoute: SignTokenRoute,
   VerifyPaymentRentalIdRoute: VerifyPaymentRentalIdRoute,
@@ -1238,3 +1007,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
