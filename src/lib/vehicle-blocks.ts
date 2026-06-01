@@ -82,6 +82,15 @@ export function getVehicleBlocks(vehicleId: string): VehicleBlock[] {
     });
   }
 
+  if (vehicle?.status === "rented" && !blocks.some(b => b.kind === "onrent")) {
+    blocks.push({
+      kind: "onrent",
+      label: "On Rent",
+      from: startOfDay(new Date()),
+      to: null,
+    });
+  }
+
   return blocks;
 }
 
