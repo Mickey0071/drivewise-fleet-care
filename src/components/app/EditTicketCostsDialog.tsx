@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { updateMaintenance, addExpense } from "@/lib/mock/store";
 import { vehicleById, fmtMoney, type Maintenance } from "@/lib/mock/data";
+import { RepairTypeCombobox } from "@/components/app/RepairTypeCombobox";
+import { Trash2, Plus } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -27,6 +29,10 @@ interface PaymentEntry {
 
 const today = () => new Date().toISOString().slice(0, 10);
 const num = (s: string) => Number((s || "").replace(/,/g, "")) || 0;
+
+function emptyRow(): RepairRow {
+  return { key: Math.random().toString(36).slice(2), name: "", partPrice: "", laborPrice: "" };
+}
 
 /** Parse repair rows from the ticket notes block. */
 function parseRepairs(notes: string): RepairRow[] {
@@ -72,7 +78,7 @@ function parseEstReturn(notes: string): string | null {
 
 export function EditTicketCostsDialog({ open, onOpenChange, record }: Props) {
   const [rows, setRows] = useState<RepairRow[]>([]);
-  const [downPayment, setDownPayment] = useState(0);
+  const [downPayment, setDownPayment] = useState("");
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
   const [newPayment, setNewPayment] = useState("");
   const [saving, setSaving] = useState(false);
@@ -80,8 +86,9 @@ export function EditTicketCostsDialog({ open, onOpenChange, record }: Props) {
   useEffect(() => {
     if (!open || !record) return;
     const notes = record.notes ?? "";
-    setRows(parseRepairs(notes));
-    setDownPayment(parseDownPayment(notes));
+    const parsed = parseRepairs(notes);
+    setRows(parsed.length ? parsed : [emptyRow()]);
+    setDownPayment(String(parseDownPayment(notes) || ""));
     setPayments(parsePayments(notes));
     setNewPayment("");
     setSaving(false);
@@ -89,7 +96,8 @@ export function EditTicketCostsDialog({ open, onOpenChange, record }: Props) {
 
   const subtotal = (r: RepairRow) => num(r.partPrice) + num(r.laborPrice);
   const total = useMemo(() => rows.reduce((s, r) => s + subtotal(r), 0), [rows]);
-  const paidSoFar = downPayment + payments.reduce((s, p) => s + p.amount, 0);
+  const downNum = num(downPayment);
+  const paidSoFar = downNum + payments.reduce((s, p) => s + p.amount, 0);
   const balance = total - paidSoFar;
 
   if (!record) return null;
@@ -99,13 +107,15 @@ export function EditTicketCostsDialog({ open, onOpenChange, record }: Props) {
     setRows(rs => rs.map(r => (r.key === key ? { ...r, ...patch } : r)));
 
   const submit = () => {
-    if (rows.length === 0) return toast.error("No repairs to edit on this ticket");
+    const valid = rows.filter(r => r.name.trim());
+    if (valid.length === 0) return toast.error("Add at least one repair");
     const extra = newPayment.trim() === "" ? 0 : num(newPayment);
     if (extra < 0) return toast.error("Payment cannot be negative");
 
+    const newTotal = valid.reduce((s, r) => s + subtotal(r), 0);
     const allPayments = extra > 0 ? [...payments, { date: today(), amount: extra }] : payments;
-    const paid = downPayment + allPayments.reduce((s, p) => s + p.amount, 0);
-    const newBalance = total - paid;
+    const paid = downNum + allPayments.reduce((s, p) => s + p.amount, 0);
+    const newBalance = newTotal - paid;
 
     const opened = parseOpenedLine(record.notes ?? "");
     const est = parseEstReturn(record.notes ?? "");
@@ -113,11 +123,11 @@ export function EditTicketCostsDialog({ open, onOpenChange, record }: Props) {
     const lines: string[] = [];
     if (opened) lines.push(opened);
     lines.push("Parts / labor:");
-    rows.forEach(r => {
+    valid.forEach(r => {
       lines.push(`  • ${r.name} — part ${fmtMoney(num(r.partPrice))} + labor ${fmtMoney(num(r.laborPrice))} = ${fmtMoney(subtotal(r))}`);
     });
-    lines.push(`Total cost: ${fmtMoney(total)}`);
-    lines.push(`Down payment: ${fmtMoney(downPayment)}`);
+    lines.push(`Total cost: ${fmtMoney(newTotal)}`);
+    lines.push(`Down payment: ${fmtMoney(downNum)}`);
     if (allPayments.length > 0) {
       lines.push("Additional payments:");
       allPayments.forEach(p => lines.push(`  • ${p.date} — ${fmtMoney(p.amount)}`));
@@ -128,8 +138,8 @@ export function EditTicketCostsDialog({ open, onOpenChange, record }: Props) {
 
     setSaving(true);
     updateMaintenance(record.id, {
-      serviceType: rows.map(r => r.name).join(", ") || record.serviceType,
-      cost: total,
+      serviceType: valid.map(r => r.name).join(", ") || record.serviceType,
+      cost: newTotal,
       notes: lines.join("\n"),
     });
 
@@ -158,23 +168,31 @@ export function EditTicketCostsDialog({ open, onOpenChange, record }: Props) {
         </DialogHeader>
 
         <div className="grid gap-3">
-          {rows.length === 0 ? (
-            <div className="rounded-md border border-border p-4 text-center text-sm text-muted-foreground">
-              No editable parts/labor found on this ticket.
-            </div>
-          ) : rows.map((r, i) => (
+          {rows.map((r, i) => (
             <div key={r.key} className="rounded-md border border-border p-3">
-              <div className="mb-2 text-xs font-medium text-muted-foreground">{r.name || `Repair ${i + 1}`}</div>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Repair {i + 1}</span>
+                {rows.length > 1 && (
+                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"
+                    onClick={() => setRows(rs => rs.filter(x => x.key !== r.key))}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="mb-2 grid gap-1">
+                <Label className="text-xs">Part name</Label>
+                <RepairTypeCombobox value={r.name} onChange={(val) => updateRow(r.key, { name: val })} />
+              </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="grid gap-1">
                   <Label className="text-xs">Part price ($)</Label>
                   <Input type="number" min={0} step="0.01" value={r.partPrice}
-                    onChange={e => updateRow(r.key, { partPrice: e.target.value })} />
+                    onChange={e => updateRow(r.key, { partPrice: e.target.value })} placeholder="Optional" />
                 </div>
                 <div className="grid gap-1">
                   <Label className="text-xs">Labor price ($)</Label>
                   <Input type="number" min={0} step="0.01" value={r.laborPrice}
-                    onChange={e => updateRow(r.key, { laborPrice: e.target.value })} />
+                    onChange={e => updateRow(r.key, { laborPrice: e.target.value })} placeholder="Optional" />
                 </div>
                 <div className="grid gap-1">
                   <Label className="text-xs">Subtotal</Label>
@@ -183,11 +201,16 @@ export function EditTicketCostsDialog({ open, onOpenChange, record }: Props) {
               </div>
             </div>
           ))}
+          <Button type="button" variant="outline" size="sm" className="w-fit"
+            onClick={() => setRows(rs => [...rs, emptyRow()])}>
+            <Plus className="mr-1 h-4 w-4" /> Add another repair
+          </Button>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
-              <Label>Down payment (locked)</Label>
-              <Input value={fmtMoney(downPayment)} readOnly disabled />
+              <Label>Down payment ($)</Label>
+              <Input type="number" min={0} step="0.01" value={downPayment}
+                onChange={e => setDownPayment(e.target.value)} placeholder="Optional" />
             </div>
             <div className="grid gap-1.5">
               <Label>Additional payment ($)</Label>
