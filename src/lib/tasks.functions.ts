@@ -1057,3 +1057,107 @@ export const approveDmvRunTask = createServerFn({ method: "POST" })
 
     return { ok: true, approved_at: nowIso, vehicle_id: task.linked_vehicle_id, registration_expiry: task.dr_new_reg_expiry, sticker_expiry: task.dr_new_sticker_expiry, cost };
   });
+
+// Runner: complete a transport task (vehicle moved from pickup to drop-off).
+export const completeTransportTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      task_id: z.string().min(1).max(80),
+      mileage_pickup: z.number().int().min(0).max(2_000_000).nullable().default(null),
+      mileage_dropoff: z.number().int().min(0).max(2_000_000).nullable().default(null),
+      photos_pickup: z.array(z.string().url().max(1000)).max(20).default([]),
+      photos_dropoff: z.array(z.string().url().max(1000)).max(20).default([]),
+      delivered: z.boolean(),
+      notes: z.string().max(4000).default(""),
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    if (!data.delivered) throw new Error("Confirm the transport is complete before submitting");
+    const nowIso = new Date().toISOString();
+
+    const summary = [
+      `Transport completed at ${nowIso}.`,
+      data.mileage_pickup != null ? `Mileage at pickup: ${data.mileage_pickup.toLocaleString()} mi.` : null,
+      data.mileage_dropoff != null ? `Mileage at drop-off: ${data.mileage_dropoff.toLocaleString()} mi.` : null,
+      data.photos_pickup.length ? `Pickup photos: ${data.photos_pickup.length}.` : null,
+      data.photos_dropoff.length ? `Drop-off photos: ${data.photos_dropoff.length}.` : null,
+      data.notes.trim() ? `Notes: ${data.notes.trim()}` : null,
+    ].filter(Boolean).join("\n");
+
+    const { error: updErr } = await supabase
+      .from("tasks")
+      .update({
+        status: "completed",
+        completed_at: nowIso,
+        tr_mileage_pickup: data.mileage_pickup,
+        tr_mileage_dropoff: data.mileage_dropoff,
+        tr_photos_pickup: data.photos_pickup,
+        tr_photos_dropoff: data.photos_dropoff,
+        tr_pickup_at: nowIso,
+        tr_dropoff_at: nowIso,
+        tr_delivered: true,
+        tr_notes: data.notes.trim() || null,
+        runner_notes: summary,
+      })
+      .eq("id", data.task_id);
+    if (updErr) throw new Error(updErr.message);
+
+    void notifyAdmins(`🚚 Transport completed`, data.task_id).catch((e) =>
+      console.error("[transport complete notify] failed:", e instanceof Error ? e.message : e),
+    );
+
+    return { ok: true };
+  });
+
+// Admin: approve a completed transport task and update the vehicle's location + mileage.
+export const approveTransportTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ task_id: z.string().min(1).max(80) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+
+    const { data: task, error: tErr } = await supabaseAdmin
+      .from("tasks")
+      .select("id, status, linked_vehicle_id, tr_to_address, tr_mileage_dropoff, tr_dropoff_at")
+      .eq("id", data.task_id)
+      .maybeSingle();
+    if (tErr) throw new Error(tErr.message);
+    if (!task) throw new Error("Task not found");
+    if (task.status !== "completed") throw new Error("Task is not completed yet");
+
+    const nowIso = new Date().toISOString();
+
+    if (task.linked_vehicle_id) {
+      const update: {
+        current_location: string | null;
+        last_transport_at: string;
+        mileage?: number;
+      } = {
+        current_location: task.tr_to_address ?? null,
+        last_transport_at: task.tr_dropoff_at ?? nowIso,
+      };
+      if (task.tr_mileage_dropoff != null) {
+        const { data: veh } = await supabaseAdmin
+          .from("vehicles")
+          .select("mileage")
+          .eq("id", task.linked_vehicle_id)
+          .maybeSingle();
+        if (!veh || task.tr_mileage_dropoff >= (veh.mileage ?? 0)) update.mileage = task.tr_mileage_dropoff;
+      }
+      const { error: vErr } = await supabaseAdmin
+        .from("vehicles")
+        .update(update)
+        .eq("id", task.linked_vehicle_id);
+      if (vErr) throw new Error(vErr.message);
+    }
+
+    const { error: aErr } = await supabaseAdmin
+      .from("tasks")
+      .update({ approved_at: nowIso })
+      .eq("id", task.id);
+    if (aErr) throw new Error(aErr.message);
+
+    return { ok: true, approved_at: nowIso, location: task.tr_to_address, mileage: task.tr_mileage_dropoff, vehicle_id: task.linked_vehicle_id };
+  });
