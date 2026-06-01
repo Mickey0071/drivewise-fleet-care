@@ -24,6 +24,7 @@ import { SignaturePad } from "@/components/app/SignaturePad";
 import logoUrl from "@/assets/camauto-logo-full.jpeg";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
+import { SendPaymentLinkDialog } from "@/components/app/SendPaymentLinkDialog";
 import { NewTaskDialog } from "@/components/app/NewTaskDialog";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
