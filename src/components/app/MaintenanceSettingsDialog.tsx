@@ -156,6 +156,70 @@ export function MaintenanceSettingsDialog({
           <DialogTitle className="text-sm">Maintenance settings · {vehicle.year} {vehicle.make} {vehicle.model}</DialogTitle>
         </DialogHeader>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3 text-sm">
+          {/* Scheduled maintenance tasks */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Scheduled Maintenance Tasks</Label>
+            {TASK_DEFS.map(def => {
+              const t = getTask(def.key);
+              return (
+                <div key={def.key} className="rounded-md border border-border p-2">
+                  <label className="flex items-center gap-2 font-medium">
+                    <Checkbox
+                      checked={!!t.enabled}
+                      onCheckedChange={(c) =>
+                        updateTask(def.key, {
+                          enabled: !!c,
+                          miles: t.miles ?? def.defMiles,
+                          months: t.months ?? def.defMonths,
+                        })
+                      }
+                    />
+                    <span>{def.label}{def.required ? <span className="text-destructive"> *</span> : null}</span>
+                  </label>
+                  {t.enabled && (
+                    <div className="mt-2 space-y-2 pl-6">
+                      {(def.showMiles || def.showMonths) && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {def.showMiles && (
+                            <div>
+                              <Label className="text-xs">Every (miles)</Label>
+                              <Input
+                                type="number"
+                                inputMode="numeric"
+                                placeholder={def.defMiles ? String(def.defMiles) : ""}
+                                value={t.miles ?? ""}
+                                onChange={e => updateTask(def.key, { miles: Number(e.target.value) || undefined })}
+                              />
+                            </div>
+                          )}
+                          {def.showMonths && (
+                            <div>
+                              <Label className="text-xs">{def.showMiles ? "OR (months)" : "Every (months)"}</Label>
+                              <Input
+                                type="number"
+                                inputMode="numeric"
+                                placeholder={def.defMonths ? String(def.defMonths) : ""}
+                                value={t.months ?? ""}
+                                onChange={e => updateTask(def.key, { months: Number(e.target.value) || undefined })}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <div>
+                        <Label className="text-xs">Last done</Label>
+                        <Input type="date" value={t.lastDone ?? ""} onChange={e => updateTask(def.key, { lastDone: e.target.value })} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <p className="text-xs text-muted-foreground">* Required for the schedule to count as fully configured.</p>
+          </div>
+
+          <Separator />
+
           {/* Oil change */}
           <div className="space-y-2">
             <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Oil Change Frequency</Label>
