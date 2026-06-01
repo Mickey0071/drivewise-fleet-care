@@ -156,6 +156,18 @@ function FleetPage() {
                     ))}
                   </div>
                 )}
+                {!scheduleConfigured && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goto({ to: "/fleet/$vehicleId", params: { vehicleId: v.id }, search: { maint: 1 } });
+                    }}
+                    className="mt-2 block w-full rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-left text-xs font-medium text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
+                  >
+                    🟡 Scheduled maintenance not fully configured — click to set up
+                  </button>
+                )}
               </CardContent>
             </div>
             <div className="flex flex-wrap gap-2 border-t border-border bg-muted/30 p-2" onClick={(e) => e.stopPropagation()}>
