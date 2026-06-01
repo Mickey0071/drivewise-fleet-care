@@ -17,6 +17,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { resendTaskSms, approveInspectionTask, approveMechanicRunTask, approvePartsRunTask } from "@/lib/tasks.functions";
 import { approveRepoTask } from "@/lib/tasks.functions";
 import { approveDmvRunTask } from "@/lib/tasks.functions";
+import { approveTransportTask } from "@/lib/tasks.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/runners/tasks")({
@@ -82,6 +83,18 @@ type TaskRow = {
   dr_new_reg_expiry: string | null;
   dr_new_sticker_expiry: string | null;
   dr_notes: string | null;
+  tr_from_address: string | null;
+  tr_to_address: string | null;
+  tr_reason: string | null;
+  tr_instructions: string | null;
+  tr_mileage_pickup: number | null;
+  tr_mileage_dropoff: number | null;
+  tr_photos_pickup: string[] | null;
+  tr_photos_dropoff: string[] | null;
+  tr_pickup_at: string | null;
+  tr_dropoff_at: string | null;
+  tr_delivered: boolean | null;
+  tr_notes: string | null;
 };
 
 function RunnerTasksPage() {
@@ -98,6 +111,7 @@ function RunnerTasksPage() {
   const approvePrFn = useServerFn(approvePartsRunTask);
   const approveRpFn = useServerFn(approveRepoTask);
   const approveDrFn = useServerFn(approveDmvRunTask);
+  const approveTrFn = useServerFn(approveTransportTask);
   const [approving, setApproving] = useState<string | null>(null);
 
   async function handleResend(taskId: string) {
@@ -192,6 +206,20 @@ function RunnerTasksPage() {
     }
   }
 
+  async function handleApproveTransport(task: TaskRow) {
+    setApproving(task.id);
+    try {
+      const res = await approveTrFn({ data: { task_id: task.id } });
+      toast.success(`Fleet updated${res.location ? ` · vehicle now at ${res.location}` : ""}`);
+      setDetail((d) => (d && d.id === task.id ? { ...d, approved_at: res.approved_at } : d));
+      load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Approve failed");
+    } finally {
+      setApproving(null);
+    }
+  }
+
   const [fStatus, setFStatus] = useState("all");
   const [fType, setFType] = useState("all");
   const [fRunner, setFRunner] = useState("all");
@@ -202,7 +230,7 @@ function RunnerTasksPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .select("id, task_type, status, priority_level, description, address, due_date, runner_name, assigned_to_user_id, linked_vehicle_id, linked_rental_id, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at, approved_at, mr_vendor_name, mr_contact_phone, mr_work_order, mr_dropoff_mileage, mr_dropoff_at, mr_mechanic_notes, mr_photos, pr_vendor_name, pr_contact_phone, pr_parts_needed, pr_destination, pr_parts_picked_up, pr_cost, pr_photos, pr_pickup_at, pr_delivered_at, pr_delivery_notes, rp_reason, rp_customer_name, rp_customer_phone, rp_tow_authorized, rp_status_checklist, rp_odometer, rp_photos, rp_pickup_at, rp_location_after, rp_notes, dr_service, dr_location, dr_expected_cost, dr_documents_packed, dr_arrival_at, dr_service_completed, dr_actual_cost, dr_documents_received, dr_photos, dr_completion_at, dr_new_reg_expiry, dr_new_sticker_expiry, dr_notes")
+      .select("id, task_type, status, priority_level, description, address, due_date, runner_name, assigned_to_user_id, linked_vehicle_id, linked_rental_id, year, make, model, plate, completed_at, completed_inspection_id, runner_notes, created_at, approved_at, mr_vendor_name, mr_contact_phone, mr_work_order, mr_dropoff_mileage, mr_dropoff_at, mr_mechanic_notes, mr_photos, pr_vendor_name, pr_contact_phone, pr_parts_needed, pr_destination, pr_parts_picked_up, pr_cost, pr_photos, pr_pickup_at, pr_delivered_at, pr_delivery_notes, rp_reason, rp_customer_name, rp_customer_phone, rp_tow_authorized, rp_status_checklist, rp_odometer, rp_photos, rp_pickup_at, rp_location_after, rp_notes, dr_service, dr_location, dr_expected_cost, dr_documents_packed, dr_arrival_at, dr_service_completed, dr_actual_cost, dr_documents_received, dr_photos, dr_completion_at, dr_new_reg_expiry, dr_new_sticker_expiry, dr_notes, tr_from_address, tr_to_address, tr_reason, tr_instructions, tr_mileage_pickup, tr_mileage_dropoff, tr_photos_pickup, tr_photos_dropoff, tr_pickup_at, tr_dropoff_at, tr_delivered, tr_notes")
       .order("created_at", { ascending: false })
       .limit(500);
     setLoading(false);
@@ -493,6 +521,41 @@ function RunnerTasksPage() {
                     size="sm"
                     disabled={approving === detail.id}
                     onClick={() => handleApproveDmvRun(detail)}
+                  >
+                    {approving === detail.id ? "Updating…" : "Approve & Update Fleet"}
+                  </Button>
+                )
+              )}
+              {detail.task_type === "transport" && (
+                <div className="rounded-md border border-border bg-muted/30 p-2 text-xs">
+                  <p className="mb-1 font-semibold">🚚 Transport</p>
+                  {detail.tr_from_address && <p><span className="text-muted-foreground">Pickup:</span> {detail.tr_from_address}</p>}
+                  {detail.tr_to_address && <p><span className="text-muted-foreground">Drop off:</span> {detail.tr_to_address}</p>}
+                  {detail.tr_reason && <p><span className="text-muted-foreground">Reason:</span> {detail.tr_reason}</p>}
+                  {detail.tr_instructions && <p><span className="text-muted-foreground">Instructions:</span> {detail.tr_instructions}</p>}
+                  {detail.tr_mileage_pickup != null && <p><span className="text-muted-foreground">Mileage at pickup:</span> {detail.tr_mileage_pickup.toLocaleString()}</p>}
+                  {detail.tr_mileage_dropoff != null && <p><span className="text-muted-foreground">Mileage at drop-off:</span> {detail.tr_mileage_dropoff.toLocaleString()}</p>}
+                  {detail.tr_dropoff_at && <p><span className="text-muted-foreground">Completed:</span> {new Date(detail.tr_dropoff_at).toLocaleString()}</p>}
+                  {detail.tr_notes && <p><span className="text-muted-foreground">Notes:</span> {detail.tr_notes}</p>}
+                  {((detail.tr_photos_pickup ?? []).length > 0 || (detail.tr_photos_dropoff ?? []).length > 0) && (
+                    <div className="mt-2 grid grid-cols-4 gap-1">
+                      {[...(detail.tr_photos_pickup ?? []), ...(detail.tr_photos_dropoff ?? [])].map((url, i) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer">
+                          <img src={url} alt={`Transport ${i + 1}`} className="h-14 w-full rounded object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {detail.task_type === "transport" && detail.status === "completed" && (
+                detail.approved_at ? (
+                  <p className="text-xs text-emerald-600">✓ Approved & fleet updated {new Date(detail.approved_at).toLocaleString()}</p>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={approving === detail.id}
+                    onClick={() => handleApproveTransport(detail)}
                   >
                     {approving === detail.id ? "Updating…" : "Approve & Update Fleet"}
                   </Button>
