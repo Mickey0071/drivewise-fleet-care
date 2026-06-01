@@ -58,6 +58,30 @@ function taskTypeLabel(t: string): string {
   return map[t] ?? "📌 Task";
 }
 
+/** Build the direct workflow URL for a task so the SMS link opens the runner
+ *  straight into the right form (no task-list view in between). */
+function taskWorkflowPath(
+  taskType: string,
+  taskId: string,
+  opts?: { task_mode?: string | null; linked_rental_id?: string | null },
+): string {
+  const tid = encodeURIComponent(taskId);
+  // Returns (explicit return mode, or pickup/dropoff) go to the checklist in return mode.
+  if (opts?.task_mode === "return" || taskType === "pickup" || taskType === "dropoff") {
+    const rental = opts?.linked_rental_id ? `&rental_id=${encodeURIComponent(opts.linked_rental_id)}` : "";
+    return `/checklist?task_id=${tid}&mode=return${rental}`;
+  }
+  switch (taskType) {
+    case "dmv": return `/dmv-run-task?task_id=${tid}`;
+    case "mechanic_run": return `/mechanic-run-task?task_id=${tid}`;
+    case "parts": return `/parts-run-task?task_id=${tid}`;
+    case "repo": return `/repo-task?task_id=${tid}`;
+    case "inspection":
+    case "other":
+    default: return `/checklist?task_id=${tid}`;
+  }
+}
+
 export const adminCreateTask = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => CreateInput.parse(input))
