@@ -65,6 +65,7 @@ function FleetPage() {
           const openIssueCount = maintenanceList.filter(m => m.vehicleId === v.id && !m.dateCompleted).length;
           const lastSvc = lastServiceFor(maintenanceList, v.id);
           const alerts = computeVehicleAlerts(v);
+          const scheduleConfigured = isScheduleConfigured(v);
           const onRent = rentals.find(
             r => r.vehicleId === v.id && (r.reservationStatus ?? "active") === "active" && !r.returnedAt,
           );
