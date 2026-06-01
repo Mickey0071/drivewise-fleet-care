@@ -172,7 +172,7 @@ export const adminCreateTask = createServerFn({ method: "POST" })
         `New task assigned: ${taskTypeLabel(data.task_type)} for ${vehicleForMsg}. Check your app.`,
         data.address ? `Address: ${data.address}` : null,
         data.due_date ? `Due: ${data.due_date}` : null,
-        `Open: ${origin}/my-tasks/${id}`,
+        `Open: ${origin}${taskWorkflowPath(data.task_type, id, { task_mode: data.task_mode, linked_rental_id: data.linked_rental_id })}`,
       ].filter(Boolean) as string[];
       const body = lines.join("\n");
       try {
