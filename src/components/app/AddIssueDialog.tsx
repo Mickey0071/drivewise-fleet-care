@@ -52,6 +52,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
   const [downPayment, setDownPayment] = useState<string>("");
   const [estReturn, setEstReturn] = useState<string>(defaultReturn());
   const [vendor, setVendor] = useState<string>("");
+  const [description, setDescription] = useState("");
 
   const reset = () => {
     setVehicleId(initialVehicleId ?? "");
