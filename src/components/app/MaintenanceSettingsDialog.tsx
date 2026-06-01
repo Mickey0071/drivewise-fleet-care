@@ -5,10 +5,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { updateVehicle } from "@/lib/mock/store";
-import type { Vehicle, MaintenanceSettings, CustomMaintenanceAlert } from "@/lib/mock/data";
+import type { Vehicle, MaintenanceSettings, CustomMaintenanceAlert, ScheduledTask, ScheduledTaskKey } from "@/lib/mock/data";
+
+type TaskDef = {
+  key: ScheduledTaskKey;
+  label: string;
+  showMiles: boolean;
+  showMonths: boolean;
+  defMiles?: number;
+  defMonths?: number;
+  required?: boolean;
+};
+const TASK_DEFS: TaskDef[] = [
+  { key: "oil", label: "Oil Change", showMiles: true, showMonths: true, defMiles: 3000, defMonths: 3, required: true },
+  { key: "battery", label: "Battery Test", showMiles: false, showMonths: true, defMonths: 12, required: true },
+  { key: "alternator", label: "Alternator Test", showMiles: false, showMonths: true, defMonths: 12, required: true },
+  { key: "transmission", label: "Transmission Road Test", showMiles: true, showMonths: true, defMiles: 5000, defMonths: 6 },
+  { key: "safety", label: "Safety Inspection", showMiles: true, showMonths: true, defMiles: 3000, defMonths: 6 },
+  { key: "overall", label: "Overall Checklist", showMiles: true, showMonths: true, defMiles: 5000, defMonths: 12 },
+];
 
 export function MaintenanceSettingsDialog({
   open,
