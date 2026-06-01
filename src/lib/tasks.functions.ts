@@ -58,6 +58,30 @@ function taskTypeLabel(t: string): string {
   return map[t] ?? "📌 Task";
 }
 
+/** Build the direct workflow URL for a task so the SMS link opens the runner
+ *  straight into the right form (no task-list view in between). */
+function taskWorkflowPath(
+  taskType: string,
+  taskId: string,
+  opts?: { task_mode?: string | null; linked_rental_id?: string | null },
+): string {
+  const tid = encodeURIComponent(taskId);
+  // Returns (explicit return mode, or pickup/dropoff) go to the checklist in return mode.
+  if (opts?.task_mode === "return" || taskType === "pickup" || taskType === "dropoff") {
+    const rental = opts?.linked_rental_id ? `&rental_id=${encodeURIComponent(opts.linked_rental_id)}` : "";
+    return `/checklist?task_id=${tid}&mode=return${rental}`;
+  }
+  switch (taskType) {
+    case "dmv": return `/dmv-run-task?task_id=${tid}`;
+    case "mechanic_run": return `/mechanic-run-task?task_id=${tid}`;
+    case "parts": return `/parts-run-task?task_id=${tid}`;
+    case "repo": return `/repo-task?task_id=${tid}`;
+    case "inspection":
+    case "other":
+    default: return `/checklist?task_id=${tid}`;
+  }
+}
+
 export const adminCreateTask = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => CreateInput.parse(input))
@@ -148,7 +172,7 @@ export const adminCreateTask = createServerFn({ method: "POST" })
         `New task assigned: ${taskTypeLabel(data.task_type)} for ${vehicleForMsg}. Check your app.`,
         data.address ? `Address: ${data.address}` : null,
         data.due_date ? `Due: ${data.due_date}` : null,
-        `Open: ${origin}/my-tasks/${id}`,
+        `Open: ${origin}${taskWorkflowPath(data.task_type, id, { task_mode: data.task_mode, linked_rental_id: data.linked_rental_id })}`,
       ].filter(Boolean) as string[];
       const body = lines.join("\n");
       try {
@@ -408,7 +432,7 @@ export const resendTaskSms = createServerFn({ method: "POST" })
 
     const { data: task, error: tErr } = await supabaseAdmin
       .from("tasks")
-      .select("id, task_type, description, address, due_date, assigned_to_user_id, year, make, model, plate, runner_name")
+      .select("id, task_type, description, address, due_date, assigned_to_user_id, year, make, model, plate, runner_name, task_mode, linked_rental_id")
       .eq("id", data.task_id)
       .maybeSingle();
     if (tErr) throw new Error(tErr.message);
@@ -434,7 +458,7 @@ export const resendTaskSms = createServerFn({ method: "POST" })
       `New task assigned (resend): ${taskTypeLabelExport(task.task_type)} for ${vehicleLabel || "vehicle"}. Check your app.`,
       task.address ? `Address: ${task.address}` : null,
       task.due_date ? `Due: ${task.due_date}` : null,
-      `Open: ${origin}/my-tasks/${task.id}`,
+      `Open: ${origin}${taskWorkflowPath(task.task_type, task.id, { task_mode: task.task_mode, linked_rental_id: task.linked_rental_id })}`,
     ].filter(Boolean) as string[];
 
     try {
