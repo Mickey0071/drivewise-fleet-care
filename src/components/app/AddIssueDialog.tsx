@@ -11,6 +11,7 @@ import { VendorCombobox } from "@/components/app/VendorCombobox";
 import { fmtMoney } from "@/lib/mock/data";
 import { toast } from "sonner";
 import { Trash2, Plus } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Props {
   open: boolean;
@@ -51,6 +52,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
   const [downPayment, setDownPayment] = useState<string>("");
   const [estReturn, setEstReturn] = useState<string>(defaultReturn());
   const [vendor, setVendor] = useState<string>("");
+  const [description, setDescription] = useState("");
 
   const reset = () => {
     setVehicleId(initialVehicleId ?? "");
@@ -58,6 +60,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
     setDownPayment("");
     setEstReturn(defaultReturn());
     setVendor("");
+    setDescription("");
   };
 
   const subtotalOf = (r: PartRow) => (Number(r.partPrice) || 0) + (Number(r.laborPrice) || 0);
@@ -84,6 +87,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
 
     const detailLines = [
       `Issue opened ${startedAt.toLocaleString()}`,
+      ...(description.trim() ? ["Description:", `  ${description.trim()}`] : []),
       "Parts / labor:",
       ...valid.map(r => `  • ${r.selection.trim()} — part ${fmtMoney(Number(r.partPrice) || 0)} + labor ${fmtMoney(Number(r.laborPrice) || 0)} = ${fmtMoney(subtotalOf(r))}`),
       `Total cost: ${fmtMoney(total)}`,
@@ -192,6 +196,16 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
               onClick={() => setRows(rs => [...rs, emptyRow()])}>
               <Plus className="mr-1 h-4 w-4" /> Add another repair
             </Button>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label>Description</Label>
+            <Textarea
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe the issue or any additional notes…"
+            />
           </div>
 
           <div className="grid gap-1.5">
