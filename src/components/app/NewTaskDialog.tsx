@@ -13,11 +13,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 export type TaskTypeKey =
-  | "pickup" | "dropoff" | "dmv" | "repo" | "parts" | "inspection" | "mechanic_run" | "other";
+  | "transport" | "dmv" | "repo" | "parts" | "inspection" | "mechanic_run" | "other";
 
 export const TASK_TYPE_OPTIONS: { value: TaskTypeKey; label: string }[] = [
-  { value: "pickup", label: "🔑 Pickup" },
-  { value: "dropoff", label: "🚗 Dropoff" },
+  { value: "transport", label: "🚚 Transport" },
   { value: "dmv", label: "📋 DMV" },
   { value: "repo", label: "🚨 Repo" },
   { value: "mechanic_run", label: "🔧 Mechanic Run" },
@@ -110,6 +109,11 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const [drOtherDoc, setDrOtherDoc] = useState<string>("");
   const [drLocation, setDrLocation] = useState<string>("");
   const [drExpectedCost, setDrExpectedCost] = useState<string>("");
+  // Transport specific fields
+  const [trFrom, setTrFrom] = useState<string>("");
+  const [trTo, setTrTo] = useState<string>("");
+  const [trReason, setTrReason] = useState<string>("");
+  const [trInstructions, setTrInstructions] = useState<string>("");
 
   // Reset state when dialog opens (so prefill from a different context is honored)
   useEffect(() => {
@@ -138,6 +142,10 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
     setDrOtherDoc("");
     setDrLocation("");
     setDrExpectedCost("");
+    setTrFrom("");
+    setTrTo("");
+    setTrReason("");
+    setTrInstructions("");
   }, [open, prefill]);
 
   // Load data on open
@@ -184,6 +192,7 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
   const isPartsRun = taskType === "parts";
   const isRepo = taskType === "repo";
   const isDmv = taskType === "dmv";
+  const isTransport = taskType === "transport";
 
   // Auto-fill customer name/phone/address from the linked rental's driver (repo).
   useEffect(() => {
@@ -273,6 +282,10 @@ export function NewTaskDialog({ open, onOpenChange, prefill, onCreated }: Props)
         dr_documents_needed: isDmv ? dmvDocsNeeded : {},
         dr_location: isDmv ? (drLocation.trim() || null) : null,
         dr_expected_cost: isDmv && drExpectedCost.trim() ? Number(drExpectedCost) : null,
+        tr_from_address: isTransport ? (trFrom.trim() || null) : null,
+        tr_to_address: isTransport ? (trTo.trim() || null) : null,
+        tr_reason: isTransport ? (trReason.trim() || null) : null,
+        tr_instructions: isTransport ? (trInstructions.trim() || null) : null,
       }});
       console.log("Task created successfully");
       console.log(`[NewTaskDialog] Task created. notify_sms was: ${notifySms}, runner_phone: ${selectedRunner?.phone ?? "(none)"}, sms_status: ${res.sms_status}${res.sms_error ? ` (${res.sms_error})` : ""}`);
