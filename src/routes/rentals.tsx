@@ -25,7 +25,6 @@ import logoUrl from "@/assets/camauto-logo-full.jpeg";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
 import { SendPaymentLinkDialog } from "@/components/app/SendPaymentLinkDialog";
-import { NewTaskDialog } from "@/components/app/NewTaskDialog";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
 import { ReservationDocuments } from "@/components/app/ReservationDocuments";
@@ -72,9 +71,7 @@ function RentalsPage() {
   const [stoppingAutoBill, setStoppingAutoBill] = useState<Rental | null>(null);
   
   const [signing, setSigning] = useState<Rental | null>(null);
-  const [taskRental, setTaskRental] = useState<Rental | null>(null);
   const [returnChoiceRental, setReturnChoiceRental] = useState<Rental | null>(null);
-  const [returnDispatchRental, setReturnDispatchRental] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
   const [violationFor, setViolationFor] = useState<Rental | null>(null);
   
@@ -543,11 +540,6 @@ function RentalsPage() {
                     >
                       1-day upfront (override)
                     </span>
-                  )}
-                  {role === "admin" && (
-                    <Button variant="ghost" size="sm" onClick={() => setTaskRental(r)}>
-                      <Send className="mr-1 h-4 w-4" /> Send Task
-                    </Button>
                   )}
                 </>
               )}
