@@ -10,6 +10,7 @@ import {
 } from "@/lib/vehicle-blocks";
 import { AlertTriangle, Wrench, Car } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useStoreVersion } from "@/lib/mock/store";
 
 function toDate(s: string): Date | undefined {
   if (!s) return undefined;
@@ -31,7 +32,8 @@ interface Props {
 }
 
 export function VehicleAvailabilityCalendar({ vehicleId, startDate, endDate, onChange }: Props) {
-  const blocks = useMemo(() => getVehicleBlocks(vehicleId), [vehicleId]);
+  const version = useStoreVersion();
+  const blocks = useMemo(() => getVehicleBlocks(vehicleId), [vehicleId, version]);
 
   const repairMatcher = (d: Date) => {
     const hit = dateIsBlocked(blocks, d);
