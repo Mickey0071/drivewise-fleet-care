@@ -46,40 +46,10 @@ function InspectionsPage() {
     (async () => {
       setLoading(true); setError(null);
       try {
-        // For runners we scope to inspections linked from THEIR completed tasks.
-        // For admins we list every inspection.
-        let inspectionIds: string[] | null = null;
-        const taskMap = new Map<string, { task_type: string; completed_at: string | null; runner_notes: string | null }>();
-        if (!isAdmin) {
-          if (!user?.id) { setRows([]); setLoading(false); return; }
-          const { data: tasks, error: tErr } = await supabase
-            .from("tasks")
-            .select("task_type, completed_at, runner_notes, completed_inspection_id")
-            .eq("assigned_to_user_id", user.id)
-            .eq("status", "completed")
-            .not("completed_inspection_id", "is", null)
-            .order("completed_at", { ascending: false });
-          if (tErr) throw tErr;
-          inspectionIds = [];
-          for (const t of tasks ?? []) {
-            if (t.completed_inspection_id) {
-              inspectionIds.push(t.completed_inspection_id);
-              taskMap.set(t.completed_inspection_id, {
-                task_type: t.task_type,
-                completed_at: t.completed_at,
-                runner_notes: t.runner_notes,
-              });
-            }
-          }
-          if (inspectionIds.length === 0) { setRows([]); setLoading(false); return; }
-        }
-
-        let q = supabase
+        const { data: ins, error: iErr } = await supabase
           .from("inspections")
           .select("id, vehicle_id, date, submitted_at, mileage, inspector_name, completed_by, job_type, ready_to_rent, damage_noted, notes, checklist_items")
           .order("submitted_at", { ascending: false });
-        if (inspectionIds) q = q.in("id", inspectionIds);
-        const { data: ins, error: iErr } = await q;
         if (iErr) throw iErr;
 
         const vIds = Array.from(new Set((ins ?? []).map((r) => r.vehicle_id).filter(Boolean)));
@@ -93,17 +63,14 @@ function InspectionsPage() {
         }
 
         if (cancelled) return;
-        setRows((ins ?? []).map((r) => {
-          const t = taskMap.get(r.id);
-          return {
-            ...r,
-            checklist_items: (r.checklist_items as Record<string, string> | null) ?? null,
-            vehicle_label: vMap.get(r.vehicle_id) ?? r.vehicle_id,
-            task_type: t?.task_type ?? null,
-            task_completed_at: t?.completed_at ?? null,
-            runner_notes: t?.runner_notes ?? null,
-          } as Row;
-        }));
+        setRows((ins ?? []).map((r) => ({
+          ...r,
+          checklist_items: (r.checklist_items as Record<string, string> | null) ?? null,
+          vehicle_label: vMap.get(r.vehicle_id) ?? r.vehicle_id,
+          task_type: null,
+          task_completed_at: null,
+          runner_notes: null,
+        } as Row)));
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load inspections");
       } finally {
