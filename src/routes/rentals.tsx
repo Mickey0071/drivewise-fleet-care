@@ -814,6 +814,20 @@ function RentalsPage() {
         renterName={chatting ? (driverById(chatting.driverId)?.fullName ?? "") : ""}
         phone={chatting ? (driverById(chatting.driverId)?.phone ?? "") : ""}
       />
+      <SendPaymentLinkDialog
+        open={!!payLinkRental}
+        onOpenChange={(o) => { if (!o) setPayLinkRental(null); }}
+        rentalId={payLinkRental?.id ?? ""}
+        renterName={payLinkRental ? (driverById(payLinkRental.driverId)?.fullName ?? "") : ""}
+        phone={payLinkRental ? (driverById(payLinkRental.driverId)?.phone ?? "") : ""}
+        email={payLinkRental ? (driverById(payLinkRental.driverId)?.email ?? null) : null}
+        defaultAmount={payLinkRental ? Number(payLinkRental.rate ?? payLinkRental.weeklyRate ?? 0) : 0}
+        description={payLinkRental ? (() => {
+          const v = vehicleById(payLinkRental.vehicleId);
+          const periodLbl = payLinkRental.billingPeriod === "daily" ? "day" : payLinkRental.billingPeriod === "monthly" ? "month" : "week";
+          return `First ${periodLbl} — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim();
+        })() : ""}
+      />
       <NewTaskDialog
         open={!!taskRental}
         onOpenChange={(o) => { if (!o) setTaskRental(null); }}
