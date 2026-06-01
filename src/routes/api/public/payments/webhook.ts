@@ -415,7 +415,12 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
           .eq("token", extToken);
       }
 
-      // Update rental end_date
+      // Update the existing rental record in place with the new end date.
+      // (We never create a separate rental record for an extension.)
+      const prevEndIso = rentalRow.end_date ? String(rentalRow.end_date).slice(0, 10) : null;
+      console.log(
+        `[webhook:ext] Extending rental ${rentalRow.id}: end_date ${prevEndIso ?? "open-ended"} -> ${newEndIso} (+${periods} ${periodLabel})`,
+      );
       await sb
         .from("rentals")
         .update({
