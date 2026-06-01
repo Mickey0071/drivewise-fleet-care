@@ -417,6 +417,9 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
             stripe_session_id: session.id,
             payment_id: paidId,
             rental_extension_id: extRowId,
+            name_match_status: extDecision ? extDecision.status : "unverified",
+            name_match_score: extScore || null,
+            cardholder_name: extCardName || null,
           })
           .eq("token", extToken);
       }
