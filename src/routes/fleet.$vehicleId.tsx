@@ -10,7 +10,6 @@ import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, useStoreVers
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
-import { NewTaskDialog } from "@/components/app/NewTaskDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useRef, useState } from "react";
 import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList } from "lucide-react";
@@ -46,7 +45,6 @@ function VehicleDetail() {
   const [reserveOpen, setReserveOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [taskOpen, setTaskOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [createWoOpen, setCreateWoOpen] = useState(false);
@@ -181,11 +179,6 @@ function VehicleDetail() {
             <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>
               <ClipboardList className="mr-1 h-4 w-4" />Create Maintenance Schedule
             </Button>
-            {role === "admin" && (
-              <Button size="sm" variant="outline" onClick={() => setTaskOpen(true)}>
-                <Send className="mr-1 h-4 w-4" />Send Task to Runner
-              </Button>
-            )}
             <Button
               size="sm"
               disabled={!bookable}
@@ -445,11 +438,6 @@ function VehicleDetail() {
         inspectionId={inspectionDetailId}
         open={!!inspectionDetailId}
         onOpenChange={(o) => { if (!o) setInspectionDetailId(null); }}
-      />
-      <NewTaskDialog
-        open={taskOpen}
-        onOpenChange={setTaskOpen}
-        prefill={{ linked_vehicle_id: v.id }}
       />
       <ResolveMaintenanceDialog
         open={!!resolveRecord}
