@@ -34,10 +34,12 @@ function rentalBlockEnd(r: Rental): Date | null {
   return parseDay(r.endDate ?? null);
 }
 
-/** Estimated end of an open repair: parsed "Estimated return" → nextServiceDue → null. */
-function repairEnd(m: Maintenance): Date | null {
-  const summary = summarizeOpenIssue(m);
-  return parseDay(summary.estimatedReturn) ?? parseDay(m.nextServiceDue) ?? null;
+/**
+ * Open repairs block the vehicle indefinitely — until the issue is marked
+ * completed (dateCompleted set). The estimated return is informational only.
+ */
+function repairEnd(_m: Maintenance): Date | null {
+  return null;
 }
 
 /** All active blocks (maintenance repairs + on-rent windows) for a vehicle. */
