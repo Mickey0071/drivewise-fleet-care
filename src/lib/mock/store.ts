@@ -1432,6 +1432,14 @@ function syncVehicleOpenIssues(vehicleId: string) {
   if (v.hasOpenIssues !== open) {
     v.hasOpenIssues = open;
   }
+  if (open && v.status !== "rented" && v.status !== "impound") {
+    v.status = "maintenance";
+    cloudWrite("vehicle:update", supabase.from("vehicles").update({ status: "maintenance", has_open_issues: true }).eq("id", v.id));
+  } else if (!open && v.status === "maintenance") {
+    const activeRental = rentals.some(r => r.vehicleId === v.id && rentalBlocksVehicle(r));
+    v.status = activeRental ? "rented" : "available";
+    cloudWrite("vehicle:update", supabase.from("vehicles").update({ status: v.status, has_open_issues: false }).eq("id", v.id));
+  }
 }
 
 export function addMaintenance(input: Omit<Maintenance, "id">) {
