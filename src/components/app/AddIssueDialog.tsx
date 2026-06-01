@@ -199,6 +199,16 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
           </div>
 
           <div className="grid gap-1.5">
+            <Label>Description</Label>
+            <Textarea
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe the issue or any additional notes…"
+            />
+          </div>
+
+          <div className="grid gap-1.5">
             <Label>Vendor</Label>
             <VendorCombobox value={vendor} onChange={setVendor} />
             <p className="text-xs text-muted-foreground">The vendor is recorded as who completes the work.</p>
