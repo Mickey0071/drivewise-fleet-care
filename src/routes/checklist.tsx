@@ -65,7 +65,6 @@ function ChecklistPage() {
   const router = useRouter();
   const { task_id, rental_id, mode } = Route.useSearch();
   const isReturnMode = mode === "return" && !!rental_id;
-  const completeTask = useServerFn(completeTaskFromInspection);
   const closeout = useServerFn(closeoutRental);
   const [taskBanner, setTaskBanner] = useState<string | null>(null);
   const [taskLockedVehicle, setTaskLockedVehicle] = useState<string | null>(null);
@@ -140,39 +139,6 @@ function ChecklistPage() {
     })();
     return () => { cancelled = true; };
   }, []);
-
-  // If route was opened from My Tasks, load task + lock vehicle
-  useEffect(() => {
-    if (!task_id) return;
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("tasks")
-        .select("description, linked_vehicle_id, task_type, task_mode")
-        .eq("id", task_id)
-        .maybeSingle();
-      if (cancelled || !data) return;
-      setTaskBanner(data.description ?? `Task ${task_id}`);
-      if (data.linked_vehicle_id) {
-        setTaskLockedVehicle(data.linked_vehicle_id);
-        setVehicleId(data.linked_vehicle_id);
-      }
-      // Auto-pick job type from the task so the runner doesn't see the picker.
-      const map: Record<string, JobType> = {
-        repo: "repossession",
-        dropoff: "vehicle_return",
-        pickup: "new_acquisition",
-        inspection: "inspection",
-        parts: "inspection",
-        other: "inspection",
-        mechanic_run: "mechanic_run",
-        dmv: "dmv_reg",
-      };
-      const preset = data.task_mode === "return" ? "vehicle_return" : map[data.task_type];
-      if (preset) setJobType(preset);
-    })();
-    return () => { cancelled = true; };
-  }, [task_id]);
 
   // Return-mode bootstrap: fetch rental + driver + extensions to build banner
   useEffect(() => {
