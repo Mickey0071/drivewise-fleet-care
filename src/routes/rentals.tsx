@@ -420,12 +420,24 @@ function RentalsPage() {
             {!isPending && (
               <div className="rounded-md border border-border bg-muted/30 p-3">
                 <div className="text-xs uppercase text-muted-foreground">Next payment</div>
-                {next ? (
-                  <div className="mt-1 flex items-center justify-between">
-                    <span className="font-medium">{fmtMoney(next.amount)} due {fmtDate(next.dueDate)}</span>
-                    <StatusBadge status={next.status} />
-                  </div>
-                ) : <div className="mt-1 text-sm text-muted-foreground">All paid</div>}
+                {next ? (() => {
+                  const today = new Date().toISOString().slice(0, 10);
+                  let label = "Scheduled";
+                  let tone = "bg-muted text-muted-foreground border-border";
+                  if (today > next.dueDate) {
+                    label = "Overdue";
+                    tone = "bg-destructive/15 text-destructive border-destructive/30";
+                  } else if (today === next.dueDate) {
+                    label = "Due today";
+                    tone = "bg-warning/20 text-warning-foreground border-warning/40";
+                  }
+                  return (
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="font-medium">{fmtMoney(next.amount)} due {fmtDate(next.dueDate)}</span>
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${tone}`}>{label}</span>
+                    </div>
+                  );
+                })() : <div className="mt-1 text-sm text-muted-foreground">All paid</div>}
               </div>
             )}
             {!isPending && <ReservationPaymentHistory rental={r} />}
@@ -460,29 +472,6 @@ function RentalsPage() {
               );
             })()}
             {!isPending && <ReservationDocuments rental={r} />}
-            {!isPending && (r.portalLinkSends?.length ?? 0) > 0 && (
-              <div className="rounded-md border border-border bg-muted/30 p-3">
-                <div className="mb-1 flex items-center gap-1.5 text-xs uppercase text-muted-foreground">
-                  <Smartphone className="h-3.5 w-3.5" /> Portal link history
-                </div>
-                <ul className="space-y-0.5">
-                  {r.portalLinkSends!.map((s, i) => (
-                    <li key={i} className="text-sm">
-                      {i === 0 ? "Portal link sent" : "Portal link sent again"}:{" "}
-                      {new Date(s.at).toLocaleString(undefined, {
-                        month: "2-digit", day: "2-digit", year: "2-digit",
-                        hour: "numeric", minute: "2-digit",
-                      })}
-                      <span className="text-muted-foreground">
-                        {[s.phone, s.email].filter(Boolean).length
-                          ? ` · ${[s.phone, s.email].filter(Boolean).join(", ")}`
-                          : ""}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
             <div className="flex flex-wrap gap-2">
               {isPending ? (
                 <>
