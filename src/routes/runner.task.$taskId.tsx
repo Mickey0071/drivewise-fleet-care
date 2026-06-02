@@ -72,11 +72,61 @@ function LockedField({ label, value }: { label: string; value: string }) {
   );
 }
 
+function PhotoBlock({
+  required,
+  photos,
+  addPhotos,
+  removePhoto,
+}: {
+  required: boolean;
+  photos: File[];
+  addPhotos: (files: FileList | null) => void;
+  removePhoto: (i: number) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  return (
+    <div>
+      <Label>Photos {required && <span className="text-destructive">(required)</span>}</Label>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          addPhotos(e.target.files);
+          // Reset so re-selecting the same file still fires onChange.
+          e.target.value = "";
+        }}
+      />
+      <Button type="button" variant="outline" className="mt-1 h-12 w-full" onClick={() => fileRef.current?.click()}>
+        <Camera className="mr-2 h-4 w-4" /> Take / add photos
+      </Button>
+      {photos.length > 0 && (
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          {photos.map((p, i) => (
+            <div key={i} className="relative">
+              <img src={URL.createObjectURL(p)} alt="" className="h-20 w-full rounded object-cover" />
+              <button
+                type="button"
+                onClick={() => removePhoto(i)}
+                className="absolute -right-1.5 -top-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TaskPage() {
   const { taskId } = Route.useParams();
   const navigate = useNavigate();
   const submit = useServerFn(submitTask);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const [task, setTask] = useState<TaskRow | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -270,28 +320,6 @@ function TaskPage() {
   const instructions: string = details.instructions || "";
   const services: string[] = Array.isArray(details.services) ? details.services : [];
 
-  const PhotoBlock = ({ required }: { required: boolean }) => (
-    <div>
-      <Label>Photos {required && <span className="text-destructive">(required)</span>}</Label>
-      <input ref={fileRef} type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={(e) => addPhotos(e.target.files)} />
-      <Button type="button" variant="outline" className="mt-1 h-12 w-full" onClick={() => fileRef.current?.click()}>
-        <Camera className="mr-2 h-4 w-4" /> Take / add photos
-      </Button>
-      {photos.length > 0 && (
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          {photos.map((p, i) => (
-            <div key={i} className="relative">
-              <img src={URL.createObjectURL(p)} alt="" className="h-20 w-full rounded object-cover" />
-              <button type="button" onClick={() => removePhoto(i)} className="absolute -right-1.5 -top-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground">
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="mx-auto max-w-xl space-y-4 pb-28">
       {/* Locked header */}
@@ -357,7 +385,7 @@ function TaskPage() {
                   )}
                 </>
               )}
-              {(repairsNeeded || dashCodes) && <PhotoBlock required />}
+              {(repairsNeeded || dashCodes) && <PhotoBlock required photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />}
             </>
           )}
 
@@ -389,7 +417,7 @@ function TaskPage() {
                         <Label htmlFor="iss">What issues?</Label>
                         <Textarea id="iss" className="mt-1" value={issueText} onChange={(e) => setIssueText(e.target.value)} />
                       </div>
-                      <PhotoBlock required />
+                      <PhotoBlock required photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />
                     </>
                   )}
                 </>
@@ -412,7 +440,7 @@ function TaskPage() {
                 <Label>Any damage?</Label>
                 <div className="mt-1"><YesNo value={damage} onChange={setDamage} /></div>
               </div>
-              {damage && <PhotoBlock required />}
+              {damage && <PhotoBlock required photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />}
             </>
           )}
 
@@ -421,7 +449,7 @@ function TaskPage() {
             <>
               <div><Label>Parts received?</Label><div className="mt-1"><YesNo value={received} onChange={setReceived} /></div></div>
               <div><Label>Damage to parts?</Label><div className="mt-1"><YesNo value={damage} onChange={setDamage} /></div></div>
-              {damage && <PhotoBlock required />}
+              {damage && <PhotoBlock required photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />}
             </>
           )}
 
@@ -430,7 +458,7 @@ function TaskPage() {
             <>
               <div><Label>Completed?</Label><div className="mt-1"><YesNo value={completed} onChange={setCompleted} /></div></div>
               <div><Label>Documents received?</Label><div className="mt-1"><YesNo value={received} onChange={setReceived} /></div></div>
-              {received && <PhotoBlock required />}
+              {received && <PhotoBlock required photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />}
             </>
           )}
 
@@ -442,7 +470,7 @@ function TaskPage() {
                 <Label htmlFor="rt">{foundFlag ? "Condition, mileage, location" : "Notes — why not found"}</Label>
                 <Textarea id="rt" className="mt-1" value={freeText} onChange={(e) => setFreeText(e.target.value)} />
               </div>
-              {foundFlag && <PhotoBlock required={false} />}
+              {foundFlag && <PhotoBlock required={false} photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />}
             </>
           )}
 
@@ -455,7 +483,7 @@ function TaskPage() {
                 <Textarea id="wd" className="mt-1" value={freeText} onChange={(e) => setFreeText(e.target.value)} />
               </div>
               <div><Label>Any issues?</Label><div className="mt-1"><YesNo value={issuesFound} onChange={setIssuesFound} /></div></div>
-              {issuesFound && <PhotoBlock required />}
+              {issuesFound && <PhotoBlock required photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />}
             </>
           )}
 
