@@ -82,7 +82,6 @@ function TaskPage() {
   const [repairsNeeded, setRepairsNeeded] = useState<boolean | null>(null);
   const [repairText, setRepairText] = useState("");
   // mechanic / generic
-  const [secondMileage, setSecondMileage] = useState("");
   const [workCompleted, setWorkCompleted] = useState<boolean | null>(null);
   const [allDone, setAllDone] = useState<boolean | null>(null);
   const [issuesFound, setIssuesFound] = useState<boolean | null>(null);
