@@ -183,8 +183,9 @@ function RentalsPage() {
     // ON RENT (active)
     const today = new Date().toISOString().slice(0, 10);
     const end = r.endDate ?? today;
-    // Rental period has ended -> show full outstanding balance (overdue)
-    if (today >= end) return unpaid;
+    // Rental period has ended -> show full outstanding balance (overdue).
+    // Late only AFTER the due/end date passes (not on the date itself).
+    if (today > end) return unpaid;
     // Within paid rental period -> only show unpaid extension charges, if any
     const extPaymentIds = new Set(
       (r.extensions ?? []).map(e => e.paymentId).filter(Boolean) as string[],
@@ -200,8 +201,8 @@ function RentalsPage() {
     if (r.paymentStatus === "late" || r.paymentStatus === "defaulted") return "past_due";
     const today = new Date().toISOString().slice(0, 10);
     const end = r.endDate ?? today;
-    // Past the end date with money still owed = overdue
-    if (today >= end && rentalBalance(r) > 0) return "past_due";
+    // Past the end date with money still owed = overdue (strictly after end date)
+    if (today > end && rentalBalance(r) > 0) return "past_due";
     return "on_rent";
   }
   const STATUS_META: Record<DisplayStatus, { label: string; badge: string; row: string }> = {
