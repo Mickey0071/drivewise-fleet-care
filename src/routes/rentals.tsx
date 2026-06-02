@@ -529,7 +529,7 @@ function RentalsPage() {
                     }}
                   >
                     <DollarSign className="mr-1 h-4 w-4" />
-                    Record Cash
+                    Pay with Cash
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>Edit</Button>
                   <Button
