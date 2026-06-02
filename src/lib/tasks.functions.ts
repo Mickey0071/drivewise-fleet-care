@@ -100,9 +100,62 @@ export const submitTask = createServerFn({ method: "POST" })
         completed_at: new Date().toISOString(),
       })
       .eq("id", data.taskId)
-      .select("id, status")
+      .select("id, status, type, vehicle_id")
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Task not found or not assigned to you");
-    return { ok: true, taskId: row.id as string };
+
+    // Auto-create a maintenance ticket when an inspection turns up issues.
+    const completion = data.completion as Record<string, unknown>;
+    const issues = Array.isArray((completion as any).issues)
+      ? ((completion as any).issues as string[]).filter((s) => typeof s === "string" && s.trim())
+      : [];
+    let maintenanceCreated = false;
+    if (row.type === "inspection" && issues.length > 0) {
+      const mid =
+        "MN-" +
+        Math.random().toString(36).slice(2, 12).toUpperCase();
+      const noteParts: string[] = [];
+      if (data.notes?.trim()) noteParts.push(data.notes.trim());
+      const { error: mErr } = await supabase.from("maintenance").insert({
+        id: mid,
+        vehicle_id: row.vehicle_id as string,
+        service_type: "Inspection issues: " + issues.join(", "),
+        vendor: "Pending assignment",
+        date_completed: null,
+        mileage_at_service: data.mileage,
+        cost: 0,
+        notes: noteParts.join(" | ") || null,
+        next_service_due: new Date().toISOString().slice(0, 10),
+      });
+      if (mErr) throw new Error(mErr.message);
+
+      // Mark the vehicle unavailable (and flag open issues).
+      await supabase
+        .from("vehicles")
+        .update({ status: "maintenance", has_open_issues: true })
+        .eq("id", row.vehicle_id as string);
+
+      // Alert admin.
+      const { data: veh } = await supabase
+        .from("vehicles")
+        .select("year, make, model, plate")
+        .eq("id", row.vehicle_id as string)
+        .maybeSingle();
+      const vLabel = veh
+        ? `${(veh as any).year} ${(veh as any).make} ${(veh as any).model} (${(veh as any).plate})`
+        : (row.vehicle_id as string);
+      try {
+        await sendSms(
+          "+12672213977",
+          `Camauto: Issues found in inspection — ${vLabel}. ${issues.join(", ")}. Vehicle marked unavailable.`,
+          "Admin",
+        );
+      } catch {
+        /* SMS failure must not block the submission */
+      }
+      maintenanceCreated = true;
+    }
+
+    return { ok: true, taskId: row.id as string, maintenanceCreated };
   });
