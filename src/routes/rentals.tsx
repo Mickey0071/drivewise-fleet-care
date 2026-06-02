@@ -999,7 +999,7 @@ function RentalsPage() {
         renterName={payLinkRental ? (driverById(payLinkRental.driverId)?.fullName ?? "") : ""}
         phone={payLinkRental ? (driverById(payLinkRental.driverId)?.phone ?? "") : ""}
         email={payLinkRental ? (driverById(payLinkRental.driverId)?.email ?? null) : null}
-        defaultAmount={payLinkRental ? Number(payLinkRental.rate ?? payLinkRental.weeklyRate ?? 0) : 0}
+        defaultAmount={payLinkRental ? (rentalBalance(payLinkRental) || Number(payLinkRental.rate ?? payLinkRental.weeklyRate ?? 0)) : 0}
         description={payLinkRental ? (() => {
           const v = vehicleById(payLinkRental.vehicleId);
           const periodLbl = payLinkRental.billingPeriod === "daily" ? "day" : payLinkRental.billingPeriod === "monthly" ? "month" : "week";
