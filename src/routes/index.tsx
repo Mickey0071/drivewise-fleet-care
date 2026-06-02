@@ -10,6 +10,7 @@ import { isVehicleBookable, useStoreVersion } from "@/lib/mock/store";
 import { computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { AgreementReviewModal } from "@/components/app/AgreementReviewModal";
 import { PendingPaymentReviews } from "@/components/app/PendingPaymentReviews";
+import { ApprovedInspections } from "@/components/app/ApprovedInspections";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
