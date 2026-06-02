@@ -41,6 +41,7 @@ import { Route as WorkOrderTokenRouteImport } from './routes/work-order.$token'
 import { Route as VerifyPaymentRentalIdRouteImport } from './routes/verify-payment.$rentalId'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as SetupTokenRouteImport } from './routes/setup.$token'
+import { Route as RunnerDashboardRouteImport } from './routes/runner.dashboard'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as PortalSignupRentalIdRouteImport } from './routes/portal-signup.$rentalId'
@@ -216,6 +217,11 @@ const SetupTokenRoute = SetupTokenRouteImport.update({
   path: '/setup/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RunnerDashboardRoute = RunnerDashboardRouteImport.update({
+  id: '/runner/dashboard',
+  path: '/runner/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RentPaidRoute = RentPaidRouteImport.update({
   id: '/rent/paid',
   path: '/rent/paid',
@@ -328,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
+  '/runner/dashboard': typeof RunnerDashboardRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -376,6 +383,7 @@ export interface FileRoutesByTo {
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
+  '/runner/dashboard': typeof RunnerDashboardRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -425,6 +433,7 @@ export interface FileRoutesById {
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
+  '/runner/dashboard': typeof RunnerDashboardRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -475,6 +484,7 @@ export interface FileRouteTypes {
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
+    | '/runner/dashboard'
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
@@ -523,6 +533,7 @@ export interface FileRouteTypes {
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
+    | '/runner/dashboard'
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
@@ -571,6 +582,7 @@ export interface FileRouteTypes {
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
+    | '/runner/dashboard'
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
@@ -618,6 +630,7 @@ export interface RootRouteChildren {
   PortalSignupRentalIdRoute: typeof PortalSignupRentalIdRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
+  RunnerDashboardRoute: typeof RunnerDashboardRoute
   SetupTokenRoute: typeof SetupTokenRoute
   SignTokenRoute: typeof SignTokenRoute
   VerifyPaymentRentalIdRoute: typeof VerifyPaymentRentalIdRoute
@@ -856,6 +869,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SetupTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/runner/dashboard': {
+      id: '/runner/dashboard'
+      path: '/runner/dashboard'
+      fullPath: '/runner/dashboard'
+      preLoaderRoute: typeof RunnerDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rent/paid': {
       id: '/rent/paid'
       path: '/rent/paid'
@@ -1014,6 +1034,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortalSignupRentalIdRoute: PortalSignupRentalIdRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
+  RunnerDashboardRoute: RunnerDashboardRoute,
   SetupTokenRoute: SetupTokenRoute,
   SignTokenRoute: SignTokenRoute,
   VerifyPaymentRentalIdRoute: VerifyPaymentRentalIdRoute,
