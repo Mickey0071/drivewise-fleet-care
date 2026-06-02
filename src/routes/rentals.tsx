@@ -29,6 +29,7 @@ import { SendPaymentLinkDialog } from "@/components/app/SendPaymentLinkDialog";
 import { AddCardDialog } from "@/components/app/AddCardDialog";
 import { RecordCashDialog } from "@/components/app/RecordCashDialog";
 import { ChargeCardDialog } from "@/components/app/ChargeCardDialog";
+import { RecordPaymentDialog } from "@/components/app/RecordPaymentDialog";
 import { getSavedCard } from "@/lib/card-display";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
