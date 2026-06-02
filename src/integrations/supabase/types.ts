@@ -1230,6 +1230,63 @@ export type Database = {
         }
         Relationships: []
       }
+      runner_tasks: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          completed_at: string | null
+          completion: Json | null
+          created_at: string
+          details: Json
+          due_date: string | null
+          id: string
+          mileage: number | null
+          notes: string | null
+          photo_urls: string[]
+          runner_id: string
+          status: string
+          type: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          completed_at?: string | null
+          completion?: Json | null
+          created_at?: string
+          details?: Json
+          due_date?: string | null
+          id?: string
+          mileage?: number | null
+          notes?: string | null
+          photo_urls?: string[]
+          runner_id: string
+          status?: string
+          type: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          completed_at?: string | null
+          completion?: Json | null
+          created_at?: string
+          details?: Json
+          due_date?: string | null
+          id?: string
+          mileage?: number | null
+          notes?: string | null
+          photo_urls?: string[]
+          runner_id?: string
+          status?: string
+          type?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
       service_types: {
         Row: {
           created_at: string
