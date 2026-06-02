@@ -550,27 +550,6 @@ function RentalsPage() {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => setCharging(r)}
-                    disabled={!!r.paymentReceived}
-                  >
-                    <DollarSign className="mr-1 h-4 w-4" />
-                    {r.paymentReceived ? "Paid ✓" : "Charge Now"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!!r.paymentReceived}
-                    onClick={() => {
-                      if (!confirm(`Record cash payment of ${fmtMoney(r.rate ?? r.weeklyRate)} for ${r.id}?`)) return;
-                      const activated = markReservationPaid(r.id);
-                      toast.success(activated ? "Cash payment recorded — reservation activated" : "Cash payment recorded");
-                    }}
-                  >
-                    <DollarSign className="mr-1 h-4 w-4" />
-                    Pay with Cash
-                  </Button>
-                  <Button
-                    size="sm"
                     onClick={() => setChargeCardRental(r)}
                     disabled={!!r.paymentReceived}
                   >
