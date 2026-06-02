@@ -58,6 +58,25 @@ function VehicleDetail() {
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  // Live last-inspection data (reflects approved runner inspections from the backend).
+  const [liveInsp, setLiveInsp] = useState<{ at: string | null; mileage: number | null; status: string | null } | null>(null);
+  useEffect(() => {
+    let active = true;
+    supabase
+      .from("vehicles")
+      .select("last_inspection_at, last_inspection_mileage, status")
+      .eq("id", vehicleId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active || !data) return;
+        setLiveInsp({
+          at: (data as any).last_inspection_at ?? null,
+          mileage: (data as any).last_inspection_mileage ?? null,
+          status: (data as any).status ?? null,
+        });
+      });
+    return () => { active = false; };
+  }, [vehicleId]);
   useEffect(() => {
     if (maint === 1) setSettingsOpen(true);
   }, [maint]);
