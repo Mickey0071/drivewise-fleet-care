@@ -26,6 +26,8 @@ import logoUrl from "@/assets/camauto-logo-full.jpeg";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
 import { SendPaymentLinkDialog } from "@/components/app/SendPaymentLinkDialog";
+import { AddCardDialog } from "@/components/app/AddCardDialog";
+import { getSavedCard } from "@/lib/card-display";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
 import { ReservationDocuments } from "@/components/app/ReservationDocuments";
@@ -83,6 +85,7 @@ function RentalsPage() {
   const sendSignLinkFn = useServerFn(sendSigningLink);
   const getSignLinkFn = useServerFn(getSigningLink);
   const [payLinkRental, setPayLinkRental] = useState<Rental | null>(null);
+  const [addCardRental, setAddCardRental] = useState<Rental | null>(null);
   const sendPortalLinkFn = useServerFn(sendPortalLink);
   const [portalLinkSendingId, setPortalLinkSendingId] = useState<string | null>(null);
   const genPdfFn = useServerFn(generateAgreementPdf);
@@ -397,6 +400,36 @@ function RentalsPage() {
               </div>
             )}
             {!isPending && <ReservationPaymentHistory rental={r} />}
+            {!isPending && (() => {
+              const card = getSavedCard(d);
+              return (
+                <div className="rounded-md border border-border bg-muted/30 p-3">
+                  <div className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Payment Method</div>
+                  {card ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-sm">
+                        💳 {card.brand} ending in {card.last4}
+                        {card.expired ? (
+                          <div className="mt-0.5 text-xs font-medium text-destructive">⚠️ Expired (update card to charge)</div>
+                        ) : (
+                          <div className="mt-0.5 text-xs text-muted-foreground">Status: Active ✓</div>
+                        )}
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => setAddCardRental(r)}>
+                        Add/Update Card
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-sm text-muted-foreground">No card on file</div>
+                      <Button size="sm" variant="outline" onClick={() => setAddCardRental(r)}>
+                        Add/Update Card
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             {!isPending && <ReservationDocuments rental={r} />}
             {!isPending && (r.portalLinkSends?.length ?? 0) > 0 && (
               <div className="rounded-md border border-border bg-muted/30 p-3">
@@ -949,6 +982,13 @@ function RentalsPage() {
           const periodLbl = payLinkRental.billingPeriod === "daily" ? "day" : payLinkRental.billingPeriod === "monthly" ? "month" : "week";
           return `First ${periodLbl} — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim();
         })() : ""}
+        savedCard={payLinkRental ? getSavedCard(driverById(payLinkRental.driverId)) : null}
+      />
+      <AddCardDialog
+        open={!!addCardRental}
+        onOpenChange={(o) => { if (!o) setAddCardRental(null); }}
+        driverId={addCardRental?.driverId ?? ""}
+        driverName={addCardRental ? (driverById(addCardRental.driverId)?.fullName ?? "") : ""}
       />
       <ReturnVehicleDialog
         rental={returnChoiceRental}

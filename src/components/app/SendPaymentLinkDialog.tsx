@@ -11,6 +11,7 @@ import { sendPaymentLink, getPaymentLinkLogs, type PaymentLinkLog } from "@/lib/
 import { getStripeEnvironment } from "@/lib/stripe";
 import { toast } from "sonner";
 import { Smartphone, Loader2 } from "lucide-react";
+import type { SavedCard } from "@/lib/card-display";
 
 const REASONS = [
   { value: "stripe_error", label: "Stripe error (re-attempt)" },
@@ -29,6 +30,7 @@ interface Props {
   defaultAmount: number;
   description: string;
   onSent?: () => void;
+  savedCard?: SavedCard | null;
 }
 
 export function SendPaymentLinkDialog({
@@ -41,6 +43,7 @@ export function SendPaymentLinkDialog({
   defaultAmount,
   description,
   onSent,
+  savedCard,
 }: Props) {
   const sendFn = useServerFn(sendPaymentLink);
   const logsFn = useServerFn(getPaymentLinkLogs);
@@ -219,6 +222,17 @@ export function SendPaymentLinkDialog({
             {phone ? ` · ${phone}` : ""}
             {email ? ` · ${email}` : ""}
           </div>
+          {savedCard && !savedCard.expired ? (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs text-foreground">
+              💳 Using saved card ending in {savedCard.last4}
+            </div>
+          ) : (
+            <div className="rounded-md border border-border bg-muted/50 p-2 text-xs text-muted-foreground">
+              {savedCard?.expired
+                ? "⚠️ Saved card is expired — customer will enter card info at the link."
+                : "No card on file. Customer will enter card info at the link."}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending}>
