@@ -41,19 +41,68 @@ async function saveCardToDriver(
 ): Promise<void> {
   if (!driverId) return;
   if (!customerId && !paymentMethodId) return;
+  const stripe = createStripeClient(env);
+  const sb = getSupabase();
+
+  // Load the driver so we can reuse an existing Stripe customer if present.
+  const { data: driver } = await sb
+    .from("drivers")
+    .select("stripe_customer_id, full_name, email, phone")
+    .eq("id", driverId)
+    .maybeSingle();
+
+  // 1+2. Resolve the driver's reusable Stripe customer: existing → the one
+  // from this checkout → create a brand new one.
+  let resolvedCustomerId: string | null =
+    driver?.stripe_customer_id || customerId || null;
+  if (!resolvedCustomerId) {
+    try {
+      const created = await stripe.customers.create({
+        ...(driver?.email ? { email: driver.email } : {}),
+        ...(driver?.full_name ? { name: driver.full_name } : {}),
+        ...(driver?.phone ? { phone: driver.phone } : {}),
+        metadata: { driver_id: driverId },
+      });
+      resolvedCustomerId = created.id;
+    } catch (e) {
+      console.warn("[webhook] could not create Stripe customer for driver", e);
+    }
+  }
+
+  // 3. Attach the payment method to the driver's customer so it can be
+  // charged off-session later (violations, extensions, etc.), then read the
+  // card's last4 for display.
   let last4: string | null = null;
   if (paymentMethodId) {
+    if (resolvedCustomerId) {
+      try {
+        await stripe.paymentMethods.attach(paymentMethodId, {
+          customer: resolvedCustomerId,
+        });
+        // Make it the default for future off-session invoices/charges.
+        await stripe.customers.update(resolvedCustomerId, {
+          invoice_settings: { default_payment_method: paymentMethodId },
+        });
+      } catch (e: any) {
+        // Already attached to this customer is fine; log anything else.
+        if (e?.code !== "resource_already_exists") {
+          console.warn("[webhook] could not attach payment method to driver customer", e);
+        }
+      }
+    }
     try {
-      const pm = await createStripeClient(env).paymentMethods.retrieve(paymentMethodId);
+      const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
       last4 = pm.card?.last4 ?? null;
     } catch (e) {
       console.warn("[webhook] could not load card last4 for driver", e);
     }
   }
-  await getSupabase()
+
+  // 4. Persist the reusable card details on the driver record.
+  await sb
     .from("drivers")
     .update({
-      ...(customerId ? { stripe_customer_id: customerId } : {}),
+      ...(resolvedCustomerId ? { stripe_customer_id: resolvedCustomerId } : {}),
       ...(paymentMethodId ? { stripe_payment_method_id: paymentMethodId } : {}),
       ...(last4 ? { card_last4: last4 } : {}),
       card_saved_at: new Date().toISOString(),
