@@ -85,6 +85,7 @@ function RentalsPage() {
   const sendSignLinkFn = useServerFn(sendSigningLink);
   const getSignLinkFn = useServerFn(getSigningLink);
   const [payLinkRental, setPayLinkRental] = useState<Rental | null>(null);
+  const [addCardRental, setAddCardRental] = useState<Rental | null>(null);
   const sendPortalLinkFn = useServerFn(sendPortalLink);
   const [portalLinkSendingId, setPortalLinkSendingId] = useState<string | null>(null);
   const genPdfFn = useServerFn(generateAgreementPdf);
