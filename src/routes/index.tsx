@@ -1,5 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Car, Users, DollarSign, Wrench, AlertTriangle, TrendingUp, Clock, FileSignature } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
