@@ -135,7 +135,6 @@ function SendTaskPage() {
 
           <div>
             <Label htmlFor="runner">Runner</Label>
-            <Label htmlFor="runner">Assign to runner</Label>
             <select
               id="runner"
               className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
