@@ -108,12 +108,22 @@ function RentalsPage() {
   // Notify staff when a remote signature arrives (via realtime) and the
   // reservation flips from pending → active.
   const seenSignedRef = useRef<Set<string>>(new Set());
+  const seenSignedInitRef = useRef(false);
   useEffect(() => {
+    // On the first run, seed all current keys so we never toast for
+    // reservations that were already signed before this page mounted.
+    if (!seenSignedInitRef.current) {
+      for (const r of rentals) {
+        seenSignedRef.current.add(
+          `${r.id}:${r.signatureDataUrl ? 1 : 0}:${r.reservationStatus ?? "active"}`,
+        );
+      }
+      seenSignedInitRef.current = true;
+      return;
+    }
     for (const r of rentals) {
       const key = `${r.id}:${r.signatureDataUrl ? 1 : 0}:${r.reservationStatus ?? "active"}`;
       if (seenSignedRef.current.has(key)) continue;
-      // First pass: just record current state, don't toast.
-      if (seenSignedRef.current.size === 0) { seenSignedRef.current.add(key); continue; }
       seenSignedRef.current.add(key);
       if (r.signatureDataUrl && r.reservationStatus === "active") {
         const d = driverById(r.driverId);
