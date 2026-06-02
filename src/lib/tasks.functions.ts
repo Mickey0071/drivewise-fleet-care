@@ -100,18 +100,22 @@ export const submitTask = createServerFn({ method: "POST" })
         completed_at: new Date().toISOString(),
       })
       .eq("id", data.taskId)
-      .select("id, status, type, vehicle_id")
+      .select("id, status, type, vehicle_id, details")
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Task not found or not assigned to you");
 
     // Auto-create a maintenance ticket when an inspection turns up issues.
+    // Return inspections are gated behind admin approval (see reviewInspection),
+    // so they do NOT auto-create maintenance or change vehicle status here.
+    const isReturnInspection =
+      row.type === "inspection" && (row.details as any)?.return_inspection === true;
     const completion = data.completion as Record<string, unknown>;
     const issues = Array.isArray((completion as any).issues)
       ? ((completion as any).issues as string[]).filter((s) => typeof s === "string" && s.trim())
       : [];
     let maintenanceCreated = false;
-    if (row.type === "inspection" && issues.length > 0) {
+    if (row.type === "inspection" && !isReturnInspection && issues.length > 0) {
       const mid =
         "MN-" +
         Math.random().toString(36).slice(2, 12).toUpperCase();
