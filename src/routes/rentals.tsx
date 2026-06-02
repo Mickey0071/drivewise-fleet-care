@@ -27,6 +27,8 @@ import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
 import { SendPaymentLinkDialog } from "@/components/app/SendPaymentLinkDialog";
 import { AddCardDialog } from "@/components/app/AddCardDialog";
+import { RecordCashDialog } from "@/components/app/RecordCashDialog";
+import { ChargeCardDialog } from "@/components/app/ChargeCardDialog";
 import { getSavedCard } from "@/lib/card-display";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
@@ -86,6 +88,8 @@ function RentalsPage() {
   const getSignLinkFn = useServerFn(getSigningLink);
   const [payLinkRental, setPayLinkRental] = useState<Rental | null>(null);
   const [addCardRental, setAddCardRental] = useState<Rental | null>(null);
+  const [cashRental, setCashRental] = useState<Rental | null>(null);
+  const [chargeCardRental, setChargeCardRental] = useState<Rental | null>(null);
   const sendPortalLinkFn = useServerFn(sendPortalLink);
   const [portalLinkSendingId, setPortalLinkSendingId] = useState<string | null>(null);
   const genPdfFn = useServerFn(generateAgreementPdf);
@@ -546,24 +550,20 @@ function RentalsPage() {
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => setCharging(r)}
+                    onClick={() => setChargeCardRental(r)}
                     disabled={!!r.paymentReceived}
                   >
                     <DollarSign className="mr-1 h-4 w-4" />
-                    {r.paymentReceived ? "Paid ✓" : "Charge Now"}
+                    {r.paymentReceived ? "Paid ✓" : "Charge Card"}
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={!!r.paymentReceived}
-                    onClick={() => {
-                      if (!confirm(`Record cash payment of ${fmtMoney(r.rate ?? r.weeklyRate)} for ${r.id}?`)) return;
-                      const activated = markReservationPaid(r.id);
-                      toast.success(activated ? "Cash payment recorded — reservation activated" : "Cash payment recorded");
-                    }}
+                    onClick={() => setCashRental(r)}
                   >
                     <DollarSign className="mr-1 h-4 w-4" />
-                    Pay with Cash
+                    Record Cash
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>Edit</Button>
                   <Button
@@ -990,6 +990,26 @@ function RentalsPage() {
         onOpenChange={(o) => { if (!o) setAddCardRental(null); }}
         driverId={addCardRental?.driverId ?? ""}
         driverName={addCardRental ? (driverById(addCardRental.driverId)?.fullName ?? "") : ""}
+      />
+      <RecordCashDialog
+        open={!!cashRental}
+        onOpenChange={(o) => { if (!o) setCashRental(null); }}
+        rentalId={cashRental?.id ?? ""}
+        renterName={cashRental ? (driverById(cashRental.driverId)?.fullName ?? "") : ""}
+        defaultAmount={cashRental ? (rentalBalance(cashRental) || Number(cashRental.rate ?? cashRental.weeklyRate ?? 0)) : 0}
+      />
+      <ChargeCardDialog
+        open={!!chargeCardRental}
+        onOpenChange={(o) => { if (!o) setChargeCardRental(null); }}
+        rentalId={chargeCardRental?.id ?? ""}
+        driverId={chargeCardRental?.driverId ?? ""}
+        renterName={chargeCardRental ? (driverById(chargeCardRental.driverId)?.fullName ?? "") : ""}
+        defaultAmount={chargeCardRental ? (rentalBalance(chargeCardRental) || Number(chargeCardRental.rate ?? chargeCardRental.weeklyRate ?? 0)) : 0}
+        description={chargeCardRental ? (() => {
+          const v = vehicleById(chargeCardRental.vehicleId);
+          return `Camauto Rentals — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim();
+        })() : ""}
+        savedCard={chargeCardRental ? getSavedCard(driverById(chargeCardRental.driverId)) : null}
       />
       <ReturnVehicleDialog
         rental={returnChoiceRental}

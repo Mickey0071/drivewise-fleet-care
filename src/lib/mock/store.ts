@@ -1008,6 +1008,75 @@ export function markReservationPaid(id: string) {
 }
 
 /**
+ * Record a manual payment (cash or off-session card charge) of an arbitrary
+ * amount against a rental. The amount is applied across the oldest unpaid
+ * scheduled payments first; a partial amount splits the matching payment so
+ * the remaining balance stays outstanding. Any leftover (first-payment capture
+ * on a pending reservation, or an overpayment) is recorded as a standalone
+ * paid receipt. Paid receipts flow straight into Payments + P&L revenue.
+ */
+export function recordManualPayment(
+  rentalId: string,
+  amount: number,
+  method: NonNullable<Payment["method"]>,
+  paidDate?: string,
+): { activated: boolean; fullyPaid: boolean } {
+  const r = rentals.find(r => r.id === rentalId);
+  if (!r || !(amount > 0)) return { activated: false, fullyPaid: false };
+  const date = paidDate || new Date().toISOString().slice(0, 10);
+
+  let remaining = amount;
+  const unpaid = payments
+    .filter(p => p.rentalId === r.id && p.status !== "paid")
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+  for (const p of unpaid) {
+    if (remaining <= 0) break;
+    const owed = Number(p.amount || 0);
+    if (remaining >= owed) {
+      p.status = "paid";
+      p.method = method;
+      p.paidDate = date;
+      cloudWrite("payment:update", supabase.from("payments").update(toPayment(p)).eq("id", p.id));
+      remaining -= owed;
+    } else {
+      // Partial: keep the outstanding balance on the original record and add a
+      // separate paid record for the portion received.
+      p.amount = owed - remaining;
+      cloudWrite("payment:update", supabase.from("payments").update(toPayment(p)).eq("id", p.id));
+      const part: Payment = {
+        id: nextPaymentId(), rentalId: r.id, driverId: r.driverId,
+        amount: remaining, dueDate: p.dueDate, paidDate: date, method, status: "paid",
+      };
+      payments.push(part);
+      cloudWrite("payment:insert", supabase.from("payments").insert(toPayment(part)));
+      remaining = 0;
+    }
+  }
+
+  if (remaining > 0) {
+    const extra: Payment = {
+      id: nextPaymentId(), rentalId: r.id, driverId: r.driverId,
+      amount: remaining, dueDate: date, paidDate: date, method, status: "paid",
+    };
+    payments.push(extra);
+    cloudWrite("payment:insert", supabase.from("payments").insert(toPayment(extra)));
+  }
+
+  // First money in marks the reservation paid and activates a pending hold.
+  let activated = false;
+  if (!r.paymentReceived) {
+    r.paymentReceived = true;
+    activated = tryActivate(r);
+    cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
+  }
+
+  emit();
+  const fullyPaid = !payments.some(p => p.rentalId === r.id && p.status !== "paid");
+  return { activated, fullyPaid };
+}
+
+/**
  * Has the renter paid for the current billing period?
  * - Pending reservations: true once paymentReceived flag is set (first-week capture).
  * - Active reservations: true when no unpaid payment has a due date BEFORE today
