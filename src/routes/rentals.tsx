@@ -1022,6 +1022,23 @@ function RentalsPage() {
         rental={returnChoiceRental}
         onClose={() => setReturnChoiceRental(null)}
       />
+      <RecordPaymentDialog
+        open={!!recordPayRental}
+        onOpenChange={(o) => { if (!o) setRecordPayRental(null); }}
+        renterName={recordPayRental ? (driverById(recordPayRental.driverId)?.fullName ?? "") : ""}
+        balance={recordPayRental ? rentalBalance(recordPayRental) : 0}
+        savedCard={recordPayRental ? getSavedCard(driverById(recordPayRental.driverId)) : null}
+        onCash={() => recordPayRental && setCashRental(recordPayRental)}
+        onCard={() => recordPayRental && setChargeCardRental(recordPayRental)}
+        onLink={async () => {
+          const r = recordPayRental;
+          if (!r) return;
+          const d = driverById(r.driverId);
+          if (!d?.phone && !d?.email) { toast.error("No phone or email on file for renter"); return; }
+          try { await ensureRentalSynced(r.id); } catch { /* best effort */ }
+          setPayLinkRental(r);
+        }}
+      />
     </div>
   );
 }
