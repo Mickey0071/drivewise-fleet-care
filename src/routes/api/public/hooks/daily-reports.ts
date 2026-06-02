@@ -101,24 +101,9 @@ export const Route = createFileRoute("/api/public/hooks/daily-reports")({
             vehicle: vehShort(veh),
           });
         }
-        // Extensions: only ON RENT, deduped to one row per rental (avoid duplicate links)
-        const seenExtRentals = new Set<string>();
-        for (const e of dueExtensions ?? []) {
-          const rental = rentalsById.get(e.rental_id);
-          if (!isEligibleRental(rental)) continue;
-          if (seenExtRentals.has(e.rental_id)) continue;
-          seenExtRentals.add(e.rental_id);
-          const drv = rental ? driversById.get(rental.driver_id) : undefined;
-          const veh = rental ? vehiclesById.get(rental.vehicle_id) : undefined;
-          pastDueRows.push({
-            rentalId: e.rental_id ?? "—",
-            name: drv?.full_name ?? "Unknown",
-            phone: drv?.phone ?? "N/A",
-            amount: Number(e.additional_amount) || 0,
-            dueISO: e.previous_end_date ?? e.new_end_date,
-            vehicle: vehShort(veh),
-          });
-        }
+        // NOTE: Unpaid extension requests are intentionally excluded from PAST DUE.
+        // They duplicate the rental's payment balance and generate noisy rows.
+        void dueExtensions;
         // Violations are tracked separately (not tied to reservation status)
         for (const v of dueViolations ?? []) {
           const drv = v.driver_id ? driversById.get(v.driver_id) : undefined;
