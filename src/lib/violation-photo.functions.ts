@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 export interface ViolationExtraction {
   license_plate: string | null;
   violation_date: string | null; // MM/DD/YYYY
+  location: string | null;
   toll_amount: number | null;
   fee_amount: number | null;
   total_amount: number | null;
@@ -46,6 +47,7 @@ export const analyzeViolationPhoto = createServerFn({ method: "POST" })
     let extraction: ViolationExtraction = {
       license_plate: null,
       violation_date: null,
+      location: null,
       toll_amount: null,
       fee_amount: null,
       total_amount: null,
@@ -70,7 +72,7 @@ export const analyzeViolationPhoto = createServerFn({ method: "POST" })
             {
               role: "system",
               content:
-                'You read photos of toll bills, parking tickets, traffic citations, and vehicle damage notices. Return ONLY a compact JSON object with this exact shape: {"license_plate":string,"violation_date":string,"toll_amount":number,"fee_amount":number,"total_amount":number,"violation_type":"toll"|"parking"|"traffic"|"damage","confidence":number}. license_plate format: "ST ABC1234" (state abbrev + plate) or just plate if no state. violation_date format: MM/DD/YYYY. Amounts in USD decimal numbers (use 0 if not visible). confidence: 0-100 integer reflecting how clearly you could read the key fields. Use empty string for unreadable text fields and 0 for unreadable numbers. No prose, no code fences.',
+                'You read photos of toll bills, parking tickets, traffic citations, and vehicle damage notices. Return ONLY a compact JSON object with this exact shape: {"license_plate":string,"violation_date":string,"location":string,"toll_amount":number,"fee_amount":number,"total_amount":number,"violation_type":"toll"|"parking"|"traffic"|"damage","confidence":number}. Prioritize reading the license_plate accurately above all else. license_plate format: "ST ABC1234" (state abbrev + plate) or just plate if no state. violation_date format: MM/DD/YYYY. location: the toll plaza, street, or place of the violation (empty string if not shown). Amounts in USD decimal numbers (use 0 if not visible). confidence: 0-100 integer reflecting how clearly you could read the license plate and date. Use empty string for unreadable text fields and 0 for unreadable numbers. No prose, no code fences.',
             },
             {
               role: "user",
@@ -105,6 +107,7 @@ export const analyzeViolationPhoto = createServerFn({ method: "POST" })
       extraction = {
         license_plate: cleanStr(parsed.license_plate) || null,
         violation_date: cleanStr(parsed.violation_date) || null,
+        location: cleanStr(parsed.location) || null,
         toll_amount: cleanNum(parsed.toll_amount) || null,
         fee_amount: cleanNum(parsed.fee_amount) || null,
         total_amount: cleanNum(parsed.total_amount) || null,
