@@ -195,7 +195,7 @@ function SendTaskPage() {
           </div>
 
           <Button className="w-full" size="lg" disabled={!canSend} onClick={handleSend}>
-            {busy ? "Sending…" : "Create Task"}
+            {busy ? "Creating…" : "Create Task"}
           </Button>
         </CardContent>
       </Card>
