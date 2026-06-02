@@ -14,6 +14,7 @@ import { isServiceLogRecord } from "@/lib/maintenance-utils";
 import { useState } from "react";
 import { useStoreVersion } from "@/lib/mock/store";
 import type { Maintenance } from "@/lib/mock/data";
+import { PendingInspections } from "@/components/app/PendingInspections";
 
 export const Route = createFileRoute("/maintenance")({
   head: () => ({ meta: [{ title: "Maintenance — Camauto Rentals" }] }),
@@ -220,6 +221,10 @@ function MaintenancePage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <div className="mt-6">
+        <PendingInspections />
+      </div>
 
       <ResolveMaintenanceDialog
         open={!!resolveRecord}

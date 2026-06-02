@@ -14,8 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { assignTask } from "@/lib/tasks.functions";
 import { TASK_TYPES, TASK_TYPE_KEYS, type TaskType } from "@/lib/task-types";
 
-export const Route = createFileRoute("/admin/send-task")({
-  head: () => ({ meta: [{ title: "Send Task — Camauto Rentals" }] }),
+export const Route = createFileRoute("/admin/create-task")({
+  head: () => ({ meta: [{ title: "Create Task — Camauto Rentals" }] }),
   component: SendTaskPage,
 });
 
@@ -95,15 +95,15 @@ function SendTaskPage() {
       const runnerName = runners.find((r) => r.id === runnerId)?.name || res.runnerName;
       setLastSent(
         res.smsStatus === "sent"
-          ? `✅ Task sent to ${runnerName} (SMS delivered).`
+          ? `✅ Task created for ${runnerName} (SMS delivered).`
           : `✅ Task created for ${runnerName}. ⚠️ No phone on file — SMS not sent.`
       );
-      toast.success(`Task sent to ${runnerName}`);
+      toast.success(`Task created for ${runnerName}`);
       setDetails("");
       setServices([]);
       setDueDate("");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to send task");
+      toast.error(e instanceof Error ? e.message : "Failed to create task");
     } finally {
       setBusy(false);
     }
@@ -111,7 +111,7 @@ function SendTaskPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title="Send Task" subtitle="Assign a task to a runner and text them the link." />
+      <PageHeader title="Create Task" subtitle="Assign a task to a runner and text them the link." />
       {lastSent && (
         <div className="mb-4 rounded-md border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
           {lastSent}
@@ -134,7 +134,7 @@ function SendTaskPage() {
           </div>
 
           <div>
-            <Label htmlFor="runner">Runner</Label>
+            <Label htmlFor="runner">Assign to runner</Label>
             <select
               id="runner"
               className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -195,7 +195,7 @@ function SendTaskPage() {
           </div>
 
           <Button className="w-full" size="lg" disabled={!canSend} onClick={handleSend}>
-            {busy ? "Sending…" : "Send Task"}
+            {busy ? "Creating…" : "Create Task"}
           </Button>
         </CardContent>
       </Card>
