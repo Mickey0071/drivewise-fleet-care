@@ -23,6 +23,9 @@ export type Database = {
           block_reason: string | null
           blocked: boolean
           blocked_at: string | null
+          card_brand: string | null
+          card_exp_month: number | null
+          card_exp_year: number | null
           card_last4: string | null
           card_saved_at: string | null
           city: string | null
@@ -57,6 +60,9 @@ export type Database = {
           block_reason?: string | null
           blocked?: boolean
           blocked_at?: string | null
+          card_brand?: string | null
+          card_exp_month?: number | null
+          card_exp_year?: number | null
           card_last4?: string | null
           card_saved_at?: string | null
           city?: string | null
@@ -91,6 +97,9 @@ export type Database = {
           block_reason?: string | null
           blocked?: boolean
           blocked_at?: string | null
+          card_brand?: string | null
+          card_exp_month?: number | null
+          card_exp_year?: number | null
           card_last4?: string | null
           card_saved_at?: string | null
           city?: string | null
