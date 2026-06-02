@@ -958,7 +958,12 @@ function RentalsPage() {
         </>)}
       </div>
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
-      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
+      <Dialog open={!!detail} onOpenChange={(o) => {
+        if (!o) {
+          setDetail(null);
+          navigate({ to: "/rentals", search: { paid, review } });
+        }
+      }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Reservation details</DialogTitle>
