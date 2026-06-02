@@ -58,6 +58,7 @@ export const Route = createFileRoute("/rentals")({
     paid: typeof search.paid === "string" ? search.paid : undefined,
     session_id: typeof search.session_id === "string" ? search.session_id : undefined,
     review: typeof search.review === "string" ? search.review : undefined,
+    detail: typeof search.detail === "string" ? search.detail : undefined,
   }),
   component: RentalsPage,
 });
