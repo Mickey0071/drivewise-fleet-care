@@ -991,6 +991,26 @@ function RentalsPage() {
         driverId={addCardRental?.driverId ?? ""}
         driverName={addCardRental ? (driverById(addCardRental.driverId)?.fullName ?? "") : ""}
       />
+      <RecordCashDialog
+        open={!!cashRental}
+        onOpenChange={(o) => { if (!o) setCashRental(null); }}
+        rentalId={cashRental?.id ?? ""}
+        renterName={cashRental ? (driverById(cashRental.driverId)?.fullName ?? "") : ""}
+        defaultAmount={cashRental ? (rentalBalance(cashRental) || Number(cashRental.rate ?? cashRental.weeklyRate ?? 0)) : 0}
+      />
+      <ChargeCardDialog
+        open={!!chargeCardRental}
+        onOpenChange={(o) => { if (!o) setChargeCardRental(null); }}
+        rentalId={chargeCardRental?.id ?? ""}
+        driverId={chargeCardRental?.driverId ?? ""}
+        renterName={chargeCardRental ? (driverById(chargeCardRental.driverId)?.fullName ?? "") : ""}
+        defaultAmount={chargeCardRental ? (rentalBalance(chargeCardRental) || Number(chargeCardRental.rate ?? chargeCardRental.weeklyRate ?? 0)) : 0}
+        description={chargeCardRental ? (() => {
+          const v = vehicleById(chargeCardRental.vehicleId);
+          return `Camauto Rentals — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim();
+        })() : ""}
+        savedCard={chargeCardRental ? getSavedCard(driverById(chargeCardRental.driverId)) : null}
+      />
       <ReturnVehicleDialog
         rental={returnChoiceRental}
         onClose={() => setReturnChoiceRental(null)}
