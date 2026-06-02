@@ -385,7 +385,7 @@ function TaskPage() {
                   )}
                 </>
               )}
-              {(repairsNeeded || dashCodes) && <PhotoBlock required />}
+              {(repairsNeeded || dashCodes) && <PhotoBlock required photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />}
             </>
           )}
 
@@ -417,7 +417,7 @@ function TaskPage() {
                         <Label htmlFor="iss">What issues?</Label>
                         <Textarea id="iss" className="mt-1" value={issueText} onChange={(e) => setIssueText(e.target.value)} />
                       </div>
-                      <PhotoBlock required />
+                      <PhotoBlock required photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />
                     </>
                   )}
                 </>
@@ -440,7 +440,7 @@ function TaskPage() {
                 <Label>Any damage?</Label>
                 <div className="mt-1"><YesNo value={damage} onChange={setDamage} /></div>
               </div>
-              {damage && <PhotoBlock required />}
+              {damage && <PhotoBlock required photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />}
             </>
           )}
 
@@ -449,7 +449,7 @@ function TaskPage() {
             <>
               <div><Label>Parts received?</Label><div className="mt-1"><YesNo value={received} onChange={setReceived} /></div></div>
               <div><Label>Damage to parts?</Label><div className="mt-1"><YesNo value={damage} onChange={setDamage} /></div></div>
-              {damage && <PhotoBlock required />}
+              {damage && <PhotoBlock required photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />}
             </>
           )}
 
@@ -458,7 +458,7 @@ function TaskPage() {
             <>
               <div><Label>Completed?</Label><div className="mt-1"><YesNo value={completed} onChange={setCompleted} /></div></div>
               <div><Label>Documents received?</Label><div className="mt-1"><YesNo value={received} onChange={setReceived} /></div></div>
-              {received && <PhotoBlock required />}
+              {received && <PhotoBlock required photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />}
             </>
           )}
 
@@ -470,7 +470,7 @@ function TaskPage() {
                 <Label htmlFor="rt">{foundFlag ? "Condition, mileage, location" : "Notes — why not found"}</Label>
                 <Textarea id="rt" className="mt-1" value={freeText} onChange={(e) => setFreeText(e.target.value)} />
               </div>
-              {foundFlag && <PhotoBlock required={false} />}
+              {foundFlag && <PhotoBlock required={false} photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />}
             </>
           )}
 
@@ -483,7 +483,7 @@ function TaskPage() {
                 <Textarea id="wd" className="mt-1" value={freeText} onChange={(e) => setFreeText(e.target.value)} />
               </div>
               <div><Label>Any issues?</Label><div className="mt-1"><YesNo value={issuesFound} onChange={setIssuesFound} /></div></div>
-              {issuesFound && <PhotoBlock required />}
+              {issuesFound && <PhotoBlock required photos={photos} addPhotos={addPhotos} removePhoto={removePhoto} />}
             </>
           )}
 
