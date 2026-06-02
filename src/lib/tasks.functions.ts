@@ -164,8 +164,6 @@ export const submitTask = createServerFn({ method: "POST" })
     return { ok: true, taskId: row.id as string, maintenanceCreated };
   });
 
-const ADMIN_ALERT_PHONE = "+12672213977";
-
 /**
  * Admin: return a vehicle and dispatch a post-return inspection task to a runner.
  * Marks the rental returned and parks the vehicle in "inspection" status until
