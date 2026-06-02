@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import logo from "@/assets/camauto-logo.jpeg";
 
 const runnerTabs = [
+  { to: "/runner/dashboard", label: "My Tasks", emoji: "✅" },
   { to: "/checklist", label: "Task Portal", emoji: "📋" },
   { to: "/vendors", label: "Vendors", emoji: "📞" },
   { to: "/inspections", label: "My History", emoji: "📜" },
