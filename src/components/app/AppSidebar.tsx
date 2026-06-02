@@ -57,9 +57,6 @@ export function AppSidebar() {
   const pendingReviewCount = rentals.filter(r => r.staffReviewStatus === "pending").length;
   const { role, user, signOut } = useAuth();
   const filter = (items: Item[]) => role ? items.filter(i => i.roles.includes(role)) : [];
-  const visibleRunners = filter(runnersItems);
-  const runnersActive = visibleRunners.some(i => isActive(i.url));
-  const [runnersOpen, setRunnersOpen] = useState(runnersActive);
 
   const renderGroup = (label: string, items: Item[]) => items.length === 0 ? null : (
     <SidebarGroup>
