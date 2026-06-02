@@ -438,6 +438,27 @@ function RentalsPage() {
                     </div>
                   );
                 })() : <div className="mt-1 text-sm text-muted-foreground">All paid</div>}
+                <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
+                  <span className="text-xs uppercase text-muted-foreground">Balance</span>
+                  <span className="text-base font-semibold">{fmtMoney(rentalBalance(r))}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      const dr = driverById(r.driverId);
+                      if (!dr?.phone && !dr?.email) { toast.error("No phone or email on file for renter"); return; }
+                      try { await ensureRentalSynced(r.id); } catch { /* best effort */ }
+                      setPayLinkRental(r);
+                    }}
+                  >
+                    <Smartphone className="mr-1 h-4 w-4" /> Send Payment Link
+                  </Button>
+                  <Button size="sm" onClick={() => setCashRental(r)}>
+                    <DollarSign className="mr-1 h-4 w-4" /> Record Cash Payment
+                  </Button>
+                </div>
               </div>
             )}
             {!isPending && <ReservationPaymentHistory rental={r} />}
