@@ -299,17 +299,22 @@ function Index() {
           <Button variant="ghost" size="sm" asChild><Link to="/maintenance">View log</Link></Button>
         </CardHeader>
         <CardContent className="space-y-2">
-          {serviceAlerts.length === 0 && <p className="text-sm text-muted-foreground">No vehicles past service due.</p>}
-          {serviceAlerts.map(m => {
+          {dedupedServiceAlerts.length === 0 && <p className="text-sm text-muted-foreground">No vehicles past service due.</p>}
+          {dedupedServiceAlerts.map(m => {
             const v = vehicleById(m.vehicleId);
             return (
-              <div key={m.id} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+              <Link
+                key={m.id}
+                to="/fleet/$vehicleId"
+                params={{ vehicleId: m.vehicleId }}
+                className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-primary/50"
+              >
                 <div>
                   <div className="text-sm font-medium">{v?.year} {v?.make} {v?.model} · {v?.plate}</div>
                   <div className="text-xs text-muted-foreground">Next service due {fmtDate(m.nextServiceDue)}</div>
                 </div>
                 <StatusBadge status="maintenance" />
-              </div>
+              </Link>
             );
           })}
         </CardContent>
