@@ -272,7 +272,7 @@ export const reviewInspection = createServerFn({ method: "POST" })
     // RLS "Admins manage runner_tasks" gates this to admins only.
     const { data: task, error: tErr } = await supabase
       .from("runner_tasks")
-      .select("id, type, vehicle_id, runner_id, completion, notes, mileage")
+      .select("id, type, vehicle_id, runner_id, completion, notes, mileage, details, photo_urls, completed_at")
       .eq("id", data.taskId)
       .maybeSingle();
     if (tErr) throw new Error(tErr.message);
@@ -282,6 +282,24 @@ export const reviewInspection = createServerFn({ method: "POST" })
     const issues = Array.isArray((completion as any).issues)
       ? ((completion as any).issues as string[]).filter((s) => typeof s === "string" && s.trim())
       : [];
+    const nowIso = new Date().toISOString();
+
+    // Resolve a human label + runner name for SMS / audit.
+    const { data: veh } = await supabase
+      .from("vehicles")
+      .select("year, make, model, plate")
+      .eq("id", task.vehicle_id as string)
+      .maybeSingle();
+    const vLabel = veh
+      ? `${(veh as any).year} ${(veh as any).make} ${(veh as any).model} (${(veh as any).plate})`
+      : (task.vehicle_id as string);
+    const { data: runnerP } = await supabase
+      .from("profiles")
+      .select("full_name, first_name, phone")
+      .eq("id", task.runner_id as string)
+      .maybeSingle();
+    const runnerName = runnerP?.full_name || runnerP?.first_name || "Runner";
+    const ADMIN_PHONE = "+12672213977";
 
     if (data.action === "reject") {
       const noteParts = [task.notes, data.reason?.trim() ? `Rejected: ${data.reason.trim()}` : "Rejected"].filter(Boolean);
@@ -289,35 +307,73 @@ export const reviewInspection = createServerFn({ method: "POST" })
         // Reopen for the runner to redo. Vehicle stays in inspection.
         await supabase
           .from("runner_tasks")
-          .update({ status: "assigned", completed_at: null, notes: noteParts.join(" | ") })
+          .update({
+            status: "assigned",
+            completed_at: null,
+            notes: noteParts.join(" | "),
+            reviewed_at: nowIso,
+            reviewed_by: context.userId,
+            review_action: "rejected_reinspect",
+          })
           .eq("id", task.id);
-        const { data: runner } = await supabase
-          .from("profiles")
-          .select("full_name, first_name, phone")
-          .eq("id", task.runner_id as string)
-          .maybeSingle();
-        if (runner?.phone && runner.phone.length >= 7 && data.origin) {
+        if (runnerP?.phone && runnerP.phone.length >= 7 && data.origin) {
           const url = `${data.origin.replace(/\/$/, "")}/runner/task/${encodeURIComponent(task.id as string)}`;
           try {
             await sendSms(
-              runner.phone,
+              runnerP.phone,
               `Camauto: Re-inspection needed${data.reason?.trim() ? ` — ${data.reason.trim()}` : ""}. ${url}`,
-              runner.full_name || runner.first_name || "Runner",
+              runnerName,
             );
           } catch { /* ignore */ }
         }
       } else {
         await supabase
           .from("runner_tasks")
-          .update({ status: "rejected", notes: noteParts.join(" | ") })
+          .update({
+            status: "rejected",
+            notes: noteParts.join(" | "),
+            reviewed_at: nowIso,
+            reviewed_by: context.userId,
+            review_action: "rejected_manual",
+          })
           .eq("id", task.id);
       }
       return { ok: true, action: "reject" as const, reopened: !!data.reopen };
     }
 
-    // approve or force_available → vehicle becomes available.
+    // FORCE AVAILABLE → vehicle becomes available immediately, NOTHING logged to inspections.
+    if (data.action === "force_available") {
+      await supabase
+        .from("vehicles")
+        .update({ status: "available" })
+        .eq("id", task.vehicle_id as string);
+      const auditNote = [task.notes, `Override at ${nowIso} by admin - inspection skipped`]
+        .filter(Boolean)
+        .join(" | ");
+      await supabase
+        .from("runner_tasks")
+        .update({
+          status: "forced",
+          forced: true,
+          notes: auditNote,
+          reviewed_at: nowIso,
+          reviewed_by: context.userId,
+          review_action: "forced",
+        })
+        .eq("id", task.id);
+      try {
+        await sendSms(
+          ADMIN_PHONE,
+          `Camauto: Vehicle forced available — ${vLabel}. No inspection logged.`,
+          "Admin",
+        );
+      } catch { /* SMS failure must not block */ }
+      return { ok: true, action: "force_available" as const, maintenanceCreated: false };
+    }
+
+    // APPROVE → log inspection, create maintenance for issues, mark vehicle available.
     let maintenanceCreated = false;
-    if (data.action === "approve" && issues.length > 0) {
+    if (issues.length > 0) {
       const mid = "MN-" + Math.random().toString(36).slice(2, 12).toUpperCase();
       const { error: mErr } = await supabase.from("maintenance").insert({
         id: mid,
@@ -334,15 +390,68 @@ export const reviewInspection = createServerFn({ method: "POST" })
       maintenanceCreated = true;
     }
 
+    // Log the approved inspection to the inspections table (audit trail).
+    const checklist = ((completion as any).checklist as Record<string, boolean>) || {};
+    const inspId = "INS-" + Math.random().toString(36).slice(2, 12).toUpperCase();
+    await supabase.from("inspections").insert({
+      id: inspId,
+      vehicle_id: task.vehicle_id as string,
+      rental_id: ((task.details as any)?.rental_id as string) || null,
+      type: "return",
+      is_return_inspection: true,
+      date: nowIso.slice(0, 10),
+      mileage: (task.mileage as number) ?? 0,
+      fuel_level: ((completion as any).fuel_level as string) || "unknown",
+      damage_noted: issues.length > 0,
+      ready_to_rent: true,
+      completed_by: runnerName,
+      inspector_name: runnerName,
+      notes: (task.notes as string) || null,
+      checklist_items: checklist as any,
+      checklist_data: completion as any,
+      issues_found: issues as any,
+      task_id: task.id as string,
+      runner_id: task.runner_id as string,
+      submitted_at: (task.completed_at as string) || nowIso,
+    });
+
+    // Update the vehicle record with the latest inspection data + make available.
     await supabase
       .from("vehicles")
-      .update({ status: "available" })
+      .update({
+        status: "available",
+        last_inspection_at: nowIso,
+        last_inspection_mileage: (task.mileage as number) ?? null,
+      })
       .eq("id", task.vehicle_id as string);
+
+    // If tied to a rental return, finalize it so P&L treats it as closed.
+    const rentalId = (task.details as any)?.rental_id as string | undefined;
+    if (rentalId) {
+      await supabase
+        .from("rentals")
+        .update({ return_inspection_id: inspId, reservation_status: "completed" })
+        .eq("id", rentalId);
+    }
 
     await supabase
       .from("runner_tasks")
-      .update({ status: "approved" })
+      .update({
+        status: "approved",
+        reviewed_at: nowIso,
+        reviewed_by: context.userId,
+        review_action: "approved",
+      })
       .eq("id", task.id);
 
-    return { ok: true, action: data.action, maintenanceCreated };
+    // Alert admin that the inspection was approved.
+    try {
+      await sendSms(
+        ADMIN_PHONE,
+        `Camauto: ✓ Inspection approved — ${vLabel} by ${runnerName}.`,
+        "Admin",
+      );
+    } catch { /* SMS failure must not block */ }
+
+    return { ok: true, action: "approve" as const, maintenanceCreated };
   });
