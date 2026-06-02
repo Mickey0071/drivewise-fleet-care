@@ -129,6 +129,17 @@ function RentalsPage() {
       }
     }
   }, [rentals]);
+  // Auto-open detail dialog when navigated with ?detail=reservationId
+  useEffect(() => {
+    if (detailId && !detail) {
+      const r = rentals.find(x => x.id === detailId) ?? null;
+      if (r) setDetail(r);
+    }
+    if (!detailId && detail) {
+      setDetail(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailId]);
   // Prune any pending reservations whose 24h hold has expired,
   // and warn once when a hold drops below 2 hours remaining.
   useEffect(() => {
