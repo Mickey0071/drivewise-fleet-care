@@ -255,7 +255,7 @@ function Index() {
           </CardContent>
         </Card>
       </div>
-
+      <Card className="mt-6 border-destructive/30">
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">Overdue Services</CardTitle>
           <Button variant="ghost" size="sm" asChild><Link to="/fleet">View all</Link></Button>
