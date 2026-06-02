@@ -58,6 +58,7 @@ export const Route = createFileRoute("/rentals")({
     paid: typeof search.paid === "string" ? search.paid : undefined,
     session_id: typeof search.session_id === "string" ? search.session_id : undefined,
     review: typeof search.review === "string" ? search.review : undefined,
+    detail: typeof search.detail === "string" ? search.detail : undefined,
   }),
   component: RentalsPage,
 });
@@ -66,7 +67,8 @@ const AGREEMENT_VERSION = "v1.0";
 
 function RentalsPage() {
   const navigate = Route.useNavigate();
-  const { paid, review } = Route.useSearch();
+  const { paid, review, detail: detailId } = Route.useSearch();
+  const [detail, setDetail] = useState<Rental | null>(null);
   const { user, role } = useAuth();
   const [newOpen, setNewOpen] = useState(false);
   const [editing, setEditing] = useState<Rental | null>(null);
@@ -82,7 +84,6 @@ function RentalsPage() {
   const [violationFor, setViolationFor] = useState<Rental | null>(null);
   
   const [chatting, setChatting] = useState<Rental | null>(null);
-  const [detail, setDetail] = useState<Rental | null>(null);
   // (Mark as Returned now opens the full Return Inspection dialog directly.)
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
@@ -128,6 +129,17 @@ function RentalsPage() {
       }
     }
   }, [rentals]);
+  // Auto-open detail dialog when navigated with ?detail=reservationId
+  useEffect(() => {
+    if (detailId && !detail) {
+      const r = rentals.find(x => x.id === detailId) ?? null;
+      if (r) setDetail(r);
+    }
+    if (!detailId && detail) {
+      setDetail(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailId]);
   // Prune any pending reservations whose 24h hold has expired,
   // and warn once when a hold drops below 2 hours remaining.
   useEffect(() => {
@@ -946,7 +958,12 @@ function RentalsPage() {
         </>)}
       </div>
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
-      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
+      <Dialog open={!!detail} onOpenChange={(o) => {
+        if (!o) {
+          setDetail(null);
+          navigate({ to: "/rentals", search: { paid, review } });
+        }
+      }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Reservation details</DialogTitle>

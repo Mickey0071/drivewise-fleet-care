@@ -1,5 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Car, Users, DollarSign, Wrench, AlertTriangle, TrendingUp, Clock, FileSignature } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
@@ -16,6 +15,80 @@ import { useAuth } from "@/hooks/use-auth";
 export const Route = createFileRoute("/")({
   component: Index,
 });
+
+function ReservationRow({
+  rental: r,
+  totalOwed,
+  earliestDue,
+  todayStr,
+}: {
+  rental: typeof rentals[number];
+  totalOwed: number;
+  earliestDue: string;
+  todayStr: string;
+}) {
+  const navigate = useNavigate();
+  const d = driverById(r.driverId);
+  const v = vehicleById(r.vehicleId);
+  const daysPastDue = Math.round(
+    (new Date(todayStr).getTime() - new Date(earliestDue).getTime()) / 86400000,
+  );
+  let statusLabel: string;
+  let statusClass: string;
+  if (daysPastDue > 0) {
+    statusLabel = `🔴 ${daysPastDue} day${daysPastDue === 1 ? "" : "s"} overdue`;
+    statusClass = "bg-destructive/15 text-destructive";
+  } else if (daysPastDue === 0) {
+    statusLabel = "🟡 Due today";
+    statusClass = "bg-amber-500/20 text-amber-700 dark:text-amber-400";
+  } else {
+    statusLabel = `🟡 Due in ${-daysPastDue} day${-daysPastDue === 1 ? "" : "s"}`;
+    statusClass = "bg-amber-500/20 text-amber-700 dark:text-amber-400";
+  }
+
+  const handleRowClick = () => {
+    navigate({ to: "/rentals", search: { detail: r.id } });
+  };
+
+  return (
+    <div
+      key={r.id}
+      onClick={handleRowClick}
+      className={`flex cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 transition-colors hover:bg-muted/40 ${daysPastDue > 0 ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"}`}
+    >
+      <div className="min-w-0">
+        <div className="text-sm font-medium">
+          <Link
+            to="/rentals"
+            search={{ detail: r.id }}
+            onClick={(e) => e.stopPropagation()}
+            className="hover:underline"
+          >
+            {d?.fullName ?? r.driverId}
+          </Link>
+          <span className="ml-2 text-xs text-muted-foreground">{r.id}</span>
+        </div>
+        <div className="truncate text-xs text-muted-foreground">
+          <Link
+            to="/fleet/$vehicleId"
+            params={{ vehicleId: r.vehicleId }}
+            onClick={(e) => e.stopPropagation()}
+            className="hover:underline"
+          >
+            {v ? `${v.make} ${v.model}` : r.vehicleId}
+          </Link>
+          {" · Due "}{fmtDate(earliestDue)}
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-3">
+        <span className="font-semibold">{fmtMoney(totalOwed)}</span>
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}>
+          {statusLabel}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function Index() {
   useStoreVersion();
@@ -155,48 +228,15 @@ function Index() {
           </CardHeader>
           <CardContent className="space-y-2">
             {dueThisWeek.length === 0 && <p className="text-sm text-muted-foreground">No payments due this week.</p>}
-            {dueThisWeek.map(({ rental: r, totalOwed, earliestDue }) => {
-              const d = driverById(r.driverId);
-              const v = vehicleById(r.vehicleId);
-              const daysPastDue = Math.round(
-                (new Date(todayStr).getTime() - new Date(earliestDue!).getTime()) / 86400000,
-              );
-              let statusLabel: string;
-              let statusClass: string;
-              if (daysPastDue > 0) {
-                statusLabel = `🔴 ${daysPastDue} day${daysPastDue === 1 ? "" : "s"} overdue`;
-                statusClass = "bg-destructive/15 text-destructive";
-              } else if (daysPastDue === 0) {
-                statusLabel = "🟡 Due today";
-                statusClass = "bg-amber-500/20 text-amber-700 dark:text-amber-400";
-              } else {
-                statusLabel = `🟡 Due in ${-daysPastDue} day${-daysPastDue === 1 ? "" : "s"}`;
-                statusClass = "bg-amber-500/20 text-amber-700 dark:text-amber-400";
-              }
-              return (
-                <Link
-                  key={r.id}
-                  to="/rentals"
-                  className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 transition-colors hover:bg-muted/40 ${daysPastDue > 0 ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"}`}
-                >
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium">
-                      {d?.fullName ?? r.driverId}
-                      <span className="ml-2 text-xs text-muted-foreground">{r.id}</span>
-                    </div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {v ? `${v.make} ${v.model}` : r.vehicleId} · Due {fmtDate(earliestDue!)}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="font-semibold">{fmtMoney(totalOwed)}</span>
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}>
-                      {statusLabel}
-                    </span>
-                  </div>
-                </Link>
-              );
-            })}
+            {dueThisWeek.map(({ rental: r, totalOwed, earliestDue }) => (
+              <ReservationRow
+                key={r.id}
+                rental={r}
+                totalOwed={totalOwed}
+                earliestDue={earliestDue!}
+                todayStr={todayStr}
+              />
+            ))}
           </CardContent>
         </Card>
 
