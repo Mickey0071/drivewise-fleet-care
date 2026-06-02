@@ -83,6 +83,14 @@ export interface Driver {
   blocked?: boolean;
   blockReason?: string;
   blockedAt?: string;
+  // Card on file
+  stripeCustomerId?: string;
+  stripePaymentMethodId?: string;
+  cardLast4?: string;
+  cardBrand?: string;
+  cardExpMonth?: number;
+  cardExpYear?: number;
+  cardSavedAt?: string;
 }
 export interface Rental {
   id: string; vehicleId: string; driverId: string; startDate: string;
