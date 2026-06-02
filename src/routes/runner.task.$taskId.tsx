@@ -332,7 +332,6 @@ function TaskPage() {
                     <Label htmlFor="rep">What repairs?</Label>
                     <Textarea id="rep" className="mt-1" value={repairText} onChange={(e) => setRepairText(e.target.value)} />
                   </div>
-                  <PhotoBlock required />
                 </>
               )}
               <div>
@@ -358,6 +357,7 @@ function TaskPage() {
                   )}
                 </>
               )}
+              {(repairsNeeded || dashCodes) && <PhotoBlock required />}
             </>
           )}
 
