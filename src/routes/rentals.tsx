@@ -982,6 +982,13 @@ function RentalsPage() {
           const periodLbl = payLinkRental.billingPeriod === "daily" ? "day" : payLinkRental.billingPeriod === "monthly" ? "month" : "week";
           return `First ${periodLbl} — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim();
         })() : ""}
+        savedCard={payLinkRental ? getSavedCard(driverById(payLinkRental.driverId)) : null}
+      />
+      <AddCardDialog
+        open={!!addCardRental}
+        onOpenChange={(o) => { if (!o) setAddCardRental(null); }}
+        driverId={addCardRental?.driverId ?? ""}
+        driverName={addCardRental ? (driverById(addCardRental.driverId)?.fullName ?? "") : ""}
       />
       <ReturnVehicleDialog
         rental={returnChoiceRental}
