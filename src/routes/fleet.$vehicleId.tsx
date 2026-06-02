@@ -12,6 +12,7 @@ import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Plus } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -57,6 +58,25 @@ function VehicleDetail() {
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  // Live last-inspection data (reflects approved runner inspections from the backend).
+  const [liveInsp, setLiveInsp] = useState<{ at: string | null; mileage: number | null; status: string | null } | null>(null);
+  useEffect(() => {
+    let active = true;
+    supabase
+      .from("vehicles")
+      .select("last_inspection_at, last_inspection_mileage, status")
+      .eq("id", vehicleId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active || !data) return;
+        setLiveInsp({
+          at: (data as any).last_inspection_at ?? null,
+          mileage: (data as any).last_inspection_mileage ?? null,
+          status: (data as any).status ?? null,
+        });
+      });
+    return () => { active = false; };
+  }, [vehicleId]);
   useEffect(() => {
     if (maint === 1) setSettingsOpen(true);
   }, [maint]);
@@ -200,13 +220,14 @@ function VehicleDetail() {
         }
       />
 
-      {lastInsp && (
+      {(liveInsp?.at || lastInsp) && (
         <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-border bg-muted/30 px-4 py-2 text-sm">
           <span className="flex items-center gap-1 text-muted-foreground">
             <ClipboardList className="h-4 w-4" /> Last inspection
           </span>
-          <span><span className="text-muted-foreground">Date:</span> {fmtDate(lastInsp.date)}</span>
-          <span><span className="text-muted-foreground">Mileage:</span> {(lastInsp.mileage ?? v.mileage)?.toLocaleString()} mi</span>
+          <span><span className="text-muted-foreground">Date:</span> {fmtDate(liveInsp?.at ?? lastInsp?.date)}</span>
+          <span><span className="text-muted-foreground">Mileage:</span> {(liveInsp?.mileage ?? lastInsp?.mileage ?? v.mileage)?.toLocaleString()} mi</span>
+          <span className="flex items-center gap-1"><span className="text-muted-foreground">Status:</span> <StatusBadge status={liveInsp?.status ?? v.status} /></span>
         </div>
       )}
 
