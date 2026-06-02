@@ -116,6 +116,27 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           (drivers ?? []).forEach((d) => driversById.set(d.id, { phone: d.phone, full_name: d.full_name }));
         }
 
+        // Only ACTIVE rentals should trigger payment reminders/overdue texts.
+        // Skip anything tied to returned/cancelled/pending reservations.
+        const paymentRentalIds = Array.from(
+          new Set([
+            ...(duePayments ?? []).map((p) => p.rental_id),
+            ...(pastDuePayments ?? []).map((p) => p.rental_id),
+            ...(dueTodayPayments ?? []).map((p) => p.rental_id),
+          ].filter(Boolean))
+        );
+        const activeRentalIds = new Set<string>();
+        if (paymentRentalIds.length) {
+          const { data: statusRows } = await supabaseAdmin
+            .from("rentals")
+            .select("id, reservation_status")
+            .in("id", paymentRentalIds)
+            .eq("reservation_status", "active");
+          (statusRows ?? []).forEach((r) => activeRentalIds.add(r.id));
+        }
+        const isActive = (rentalId: string | null | undefined) =>
+          !!rentalId && activeRentalIds.has(rentalId);
+
         // Fetch vehicle info for check-in messages
         const checkinVehicleIds = Array.from(
           new Set((checkinRentals ?? []).map((r) => r.vehicle_id).filter(Boolean))
