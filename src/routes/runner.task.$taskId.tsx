@@ -92,6 +92,10 @@ function TaskPage() {
   const [items, setItems] = useState<Record<string, boolean>>({});
   const [repairsNeeded, setRepairsNeeded] = useState<boolean | null>(null);
   const [repairText, setRepairText] = useState("");
+  // dashboard codes
+  const [dashCodes, setDashCodes] = useState<boolean | null>(null);
+  const [dashCode, setDashCode] = useState("");
+  const [dashCodeOther, setDashCodeOther] = useState("");
   // mechanic / generic
   const [workCompleted, setWorkCompleted] = useState<boolean | null>(null);
   const [allDone, setAllDone] = useState<boolean | null>(null);
