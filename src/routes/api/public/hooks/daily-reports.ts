@@ -77,9 +77,9 @@ export const Route = createFileRoute("/api/public/hooks/daily-reports")({
         type PastDueRow = { name: string; phone: string; amount: number; dueISO: string; vehicle: string };
         const pastDueRows: PastDueRow[] = [];
 
-        // Only include reservations that are ON RENT (active) or PENDING.
-        // Exclude returned, canceled, and paid reservations.
-        const includedStatuses = new Set(["active", "pending"]);
+        // Only include reservations that are ON RENT (active).
+        // Exclude returned, canceled, pending, and paid reservations.
+        const includedStatuses = new Set(["active"]);
         const isEligibleRental = (rental: any) =>
           !!rental && includedStatuses.has((rental.reservation_status ?? "").toLowerCase());
 
