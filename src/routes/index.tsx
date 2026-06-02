@@ -122,6 +122,20 @@ function Index() {
   const overdue = payments.filter(p => p.status === "missed" || p.status === "late");
   const overdueAmount = overdue.reduce((s, p) => s + p.amount, 0);
   const serviceAlerts = maintenance.filter(m => m.nextServiceDue && new Date(m.nextServiceDue) <= weekEnd);
+  const dedupedServiceAlerts = useMemo(() => {
+    const byVehicle: Record<string, typeof maintenance[number]> = {};
+    for (const m of serviceAlerts) {
+      const existing = byVehicle[m.vehicleId];
+      if (!existing || (m.nextServiceDue && existing.nextServiceDue && new Date(m.nextServiceDue) < new Date(existing.nextServiceDue))) {
+        byVehicle[m.vehicleId] = m;
+      }
+    }
+    return Object.values(byVehicle).sort((a, b) => {
+      if (!a.nextServiceDue) return 1;
+      if (!b.nextServiceDue) return -1;
+      return new Date(a.nextServiceDue).getTime() - new Date(b.nextServiceDue).getTime();
+    });
+  }, [serviceAlerts]);
   const overdueServices = vehicles.flatMap(v =>
     computeVehicleAlerts(v).map(a => ({ vehicle: v, alert: a }))
   );
