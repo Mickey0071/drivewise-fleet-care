@@ -288,6 +288,7 @@ export type Database = {
       }
       inspections: {
         Row: {
+          checklist_data: Json | null
           checklist_items: Json | null
           completed_by: string
           created_at: string
@@ -297,16 +298,20 @@ export type Database = {
           id: string
           inspector_name: string | null
           is_return_inspection: boolean
+          issues_found: Json | null
           job_type: string | null
           mileage: number
           notes: string | null
           ready_to_rent: boolean | null
           rental_id: string | null
+          runner_id: string | null
           submitted_at: string | null
+          task_id: string | null
           type: string
           vehicle_id: string
         }
         Insert: {
+          checklist_data?: Json | null
           checklist_items?: Json | null
           completed_by: string
           created_at?: string
@@ -316,16 +321,20 @@ export type Database = {
           id: string
           inspector_name?: string | null
           is_return_inspection?: boolean
+          issues_found?: Json | null
           job_type?: string | null
           mileage?: number
           notes?: string | null
           ready_to_rent?: boolean | null
           rental_id?: string | null
+          runner_id?: string | null
           submitted_at?: string | null
+          task_id?: string | null
           type: string
           vehicle_id: string
         }
         Update: {
+          checklist_data?: Json | null
           checklist_items?: Json | null
           completed_by?: string
           created_at?: string
@@ -335,12 +344,15 @@ export type Database = {
           id?: string
           inspector_name?: string | null
           is_return_inspection?: boolean
+          issues_found?: Json | null
           job_type?: string | null
           mileage?: number
           notes?: string | null
           ready_to_rent?: boolean | null
           rental_id?: string | null
+          runner_id?: string | null
           submitted_at?: string | null
+          task_id?: string | null
           type?: string
           vehicle_id?: string
         }
@@ -1239,10 +1251,14 @@ export type Database = {
           created_at: string
           details: Json
           due_date: string | null
+          forced: boolean
           id: string
           mileage: number | null
           notes: string | null
           photo_urls: string[]
+          review_action: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           runner_id: string
           status: string
           type: string
@@ -1257,10 +1273,14 @@ export type Database = {
           created_at?: string
           details?: Json
           due_date?: string | null
+          forced?: boolean
           id?: string
           mileage?: number | null
           notes?: string | null
           photo_urls?: string[]
+          review_action?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           runner_id: string
           status?: string
           type: string
@@ -1275,10 +1295,14 @@ export type Database = {
           created_at?: string
           details?: Json
           due_date?: string | null
+          forced?: boolean
           id?: string
           mileage?: number | null
           notes?: string | null
           photo_urls?: string[]
+          review_action?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           runner_id?: string
           status?: string
           type?: string
