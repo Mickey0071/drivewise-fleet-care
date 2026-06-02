@@ -2,14 +2,13 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
-  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, ListChecks, Truck, ChevronDown, UsersRound, Building2, Undo2, FileSignature,
+  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { unreadReportCount, useStoreVersion } from "@/lib/mock/store";
 import { rentals } from "@/lib/mock/data";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
@@ -26,6 +25,7 @@ const adminItems: Item[] = [
   { title: "Calendar", url: "/calendar", icon: Calendar, roles: ["admin", "runner"] },
   { title: "Payments", url: "/payments", icon: DollarSign, roles: ["admin"] },
   { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["admin", "runner"] },
+  { title: "Inspections", url: "/inspections", icon: ClipboardCheck, roles: ["admin", "runner"] },
   { title: "Vendors", url: "/vendors", icon: Building2, roles: ["admin"] },
   { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ["admin", "runner"] },
   { title: "Insurance", url: "/insurance", icon: Shield, roles: ["admin"] },
@@ -33,10 +33,6 @@ const adminItems: Item[] = [
   { title: "Rental Agreement", url: "/rental-agreement", icon: ScrollText, roles: ["admin"] },
   { title: "SMS log", url: "/sms-log", icon: MessageSquare, roles: ["admin"] },
   { title: "Refund Approvals", url: "/refund-approvals", icon: Undo2, roles: ["admin", "va"] },
-];
-const runnersItems: Item[] = [
-  { title: "New Inspection", url: "/checklist", icon: ListChecks, roles: ["admin"] },
-  { title: "Inspection History", url: "/inspections", icon: ClipboardCheck, roles: ["admin"] },
 ];
 const financeItems: Item[] = [
   { title: "P&L", url: "/pnl", icon: TrendingUp, roles: ["admin"] },
