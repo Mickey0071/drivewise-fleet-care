@@ -171,8 +171,32 @@ function TaskPage() {
       if (Object.keys(items).length < INSPECTION_ITEMS.length) { toast.error("Check every item"); return; }
       if (repairsNeeded === null) { toast.error("Answer: any repairs needed?"); return; }
       if (repairsNeeded && !repairText.trim()) { toast.error("Describe the repairs"); return; }
-      photosRequired = !!repairsNeeded;
-      completion = { ...completion, checklist: items, repairs_needed: repairsNeeded, repairs: repairText.trim() };
+      if (dashCodes === null) { toast.error("Answer: any dashboard codes?"); return; }
+      if (dashCodes && !dashCode) { toast.error("Select which dashboard code"); return; }
+      if (dashCodes && dashCode === "Other (specify)" && !dashCodeOther.trim()) { toast.error("Specify the dashboard code"); return; }
+
+      const dashboardCodeValue = dashCodes
+        ? dashCode === "Other (specify)" ? dashCodeOther.trim() : dashCode
+        : null;
+
+      // Build issue list: failed checklist items + repairs + dashboard codes.
+      const issues: string[] = [];
+      for (const it of INSPECTION_ITEMS) {
+        if (items[it.key] !== true) issues.push(it.label.replace(/\?$/, "").trim());
+      }
+      if (repairsNeeded) issues.push(repairText.trim() || "Repairs needed");
+      if (dashCodes && dashboardCodeValue) issues.push(`Dashboard code - ${dashboardCodeValue}`);
+
+      photosRequired = !!repairsNeeded || !!dashCodes;
+      completion = {
+        ...completion,
+        checklist: items,
+        repairs_needed: repairsNeeded,
+        repairs: repairText.trim(),
+        dashboard_codes: dashCodes,
+        dashboard_code: dashboardCodeValue,
+        issues,
+      };
     } else if (task.type === "mechanic") {
       if (workCompleted === null) { toast.error("Answer: work completed?"); return; }
       if (workCompleted && allDone === null) { toast.error("Answer: all services done?"); return; }
