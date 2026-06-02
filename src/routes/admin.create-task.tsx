@@ -95,15 +95,15 @@ function SendTaskPage() {
       const runnerName = runners.find((r) => r.id === runnerId)?.name || res.runnerName;
       setLastSent(
         res.smsStatus === "sent"
-          ? `✅ Task sent to ${runnerName} (SMS delivered).`
+          ? `✅ Task created for ${runnerName} (SMS delivered).`
           : `✅ Task created for ${runnerName}. ⚠️ No phone on file — SMS not sent.`
       );
-      toast.success(`Task sent to ${runnerName}`);
+      toast.success(`Task created for ${runnerName}`);
       setDetails("");
       setServices([]);
       setDueDate("");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to send task");
+      toast.error(e instanceof Error ? e.message : "Failed to create task");
     } finally {
       setBusy(false);
     }
