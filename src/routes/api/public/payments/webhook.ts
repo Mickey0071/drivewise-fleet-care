@@ -73,6 +73,9 @@ async function saveCardToDriver(
   // charged off-session later (violations, extensions, etc.), then read the
   // card's last4 for display.
   let last4: string | null = null;
+  let brand: string | null = null;
+  let expMonth: number | null = null;
+  let expYear: number | null = null;
   if (paymentMethodId) {
     if (resolvedCustomerId) {
       try {
@@ -93,6 +96,9 @@ async function saveCardToDriver(
     try {
       const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
       last4 = pm.card?.last4 ?? null;
+      brand = pm.card?.brand ?? null;
+      expMonth = pm.card?.exp_month ?? null;
+      expYear = pm.card?.exp_year ?? null;
     } catch (e) {
       console.warn("[webhook] could not load card last4 for driver", e);
     }
@@ -105,6 +111,9 @@ async function saveCardToDriver(
       ...(resolvedCustomerId ? { stripe_customer_id: resolvedCustomerId } : {}),
       ...(paymentMethodId ? { stripe_payment_method_id: paymentMethodId } : {}),
       ...(last4 ? { card_last4: last4 } : {}),
+      ...(brand ? { card_brand: brand } : {}),
+      ...(expMonth ? { card_exp_month: expMonth } : {}),
+      ...(expYear ? { card_exp_year: expYear } : {}),
       card_saved_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     } as any)
