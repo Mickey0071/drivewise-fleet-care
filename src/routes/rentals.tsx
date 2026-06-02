@@ -90,6 +90,7 @@ function RentalsPage() {
   const [addCardRental, setAddCardRental] = useState<Rental | null>(null);
   const [cashRental, setCashRental] = useState<Rental | null>(null);
   const [chargeCardRental, setChargeCardRental] = useState<Rental | null>(null);
+  const [recordPayRental, setRecordPayRental] = useState<Rental | null>(null);
   const sendPortalLinkFn = useServerFn(sendPortalLink);
   const [portalLinkSendingId, setPortalLinkSendingId] = useState<string | null>(null);
   const genPdfFn = useServerFn(generateAgreementPdf);
