@@ -26,6 +26,8 @@ import logoUrl from "@/assets/camauto-logo-full.jpeg";
 import { StripeRentalCheckout } from "@/components/StripeEmbeddedCheckout";
 import { NotifyRenterDialog } from "@/components/app/NotifyRenterDialog";
 import { SendPaymentLinkDialog } from "@/components/app/SendPaymentLinkDialog";
+import { AddCardDialog } from "@/components/app/AddCardDialog";
+import { getSavedCard } from "@/lib/card-display";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
 import { ReservationDocuments } from "@/components/app/ReservationDocuments";
