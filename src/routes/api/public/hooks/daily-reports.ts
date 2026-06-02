@@ -77,9 +77,16 @@ export const Route = createFileRoute("/api/public/hooks/daily-reports")({
         type PastDueRow = { name: string; phone: string; amount: number; dueISO: string; vehicle: string };
         const pastDueRows: PastDueRow[] = [];
 
+        // Only include reservations that are ON RENT (active) or PENDING.
+        // Exclude returned, canceled, and paid reservations.
+        const includedStatuses = new Set(["active", "pending"]);
+        const isEligibleRental = (rental: any) =>
+          !!rental && includedStatuses.has((rental.reservation_status ?? "").toLowerCase());
+
         for (const p of duePayments ?? []) {
           const drv = driversById.get(p.driver_id);
           const rental = p.rental_id ? rentalsById.get(p.rental_id) : undefined;
+          if (!isEligibleRental(rental)) continue;
           const veh = rental ? vehiclesById.get(rental.vehicle_id) : undefined;
           pastDueRows.push({
             name: drv?.full_name ?? "Unknown",
@@ -102,6 +109,7 @@ export const Route = createFileRoute("/api/public/hooks/daily-reports")({
         }
         for (const e of dueExtensions ?? []) {
           const rental = rentalsById.get(e.rental_id);
+          if (!isEligibleRental(rental)) continue;
           const drv = rental ? driversById.get(rental.driver_id) : undefined;
           const veh = rental ? vehiclesById.get(rental.vehicle_id) : undefined;
           pastDueRows.push({
