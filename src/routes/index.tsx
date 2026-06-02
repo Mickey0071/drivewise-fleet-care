@@ -201,6 +201,8 @@ function Index() {
 
       {role === "admin" && <PendingPaymentReviews />}
 
+      {role === "admin" && <ApprovedInspections />}
+
       {pendingReview.length > 0 && (
         <Link
           to="/pending-agreements"
