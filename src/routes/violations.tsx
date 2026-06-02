@@ -306,6 +306,7 @@ function NewViolationDialog({
   const [tollFee, setTollFee] = useState("");
   const [description, setDescription] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
+  const [location, setLocation] = useState("");
   const [lookupResult, setLookupResult] = useState<Awaited<ReturnType<typeof lookup>> | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -326,6 +327,7 @@ function NewViolationDialog({
     setTollFee("");
     setDescription("");
     setPhotoUrl("");
+    setLocation("");
     setLookupResult(null);
     setThumbnail("");
     setConfidence(null);
@@ -342,23 +344,32 @@ function NewViolationDialog({
       setPhotoUrl(res.photoUrl);
       const ex = res.extraction;
       setConfidence(ex.confidence);
+      let plateForLookup = "";
+      let dateForLookup = "";
       if (ex.confidence >= 70) {
         if (ex.license_plate) {
           // strip leading state abbrev like "NJ "
           const cleaned = ex.license_plate.replace(/^[A-Z]{2}\s+/, "").toUpperCase();
           setPlate(cleaned);
+          plateForLookup = cleaned;
         }
         if (ex.violation_date) {
           const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(ex.violation_date);
           if (m) {
             const [, mo, d, y] = m;
-            setDate(`${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`);
+            dateForLookup = `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+            setDate(dateForLookup);
           }
         }
+        if (ex.location) setLocation(ex.location);
         if (ex.toll_amount != null) setTollAmount(String(ex.toll_amount));
         if (ex.fee_amount != null) setTollFee(String(ex.fee_amount));
         if (ex.violation_type) setType(ex.violation_type);
         toast.success(`Extracted with ${ex.confidence}% confidence`);
+        // Auto-match renter by plate + date as soon as we have both
+        if (plateForLookup) {
+          await doLookup(plateForLookup, dateForLookup || date);
+        }
       } else {
         toast.message("Couldn't read clearly — please enter manually", {
           description: `Confidence ${ex.confidence}%`,
@@ -423,14 +434,21 @@ function NewViolationDialog({
     await analyzeDataUrl(dataUrl);
   };
 
-  const doLookup = async () => {
-    if (!plate.trim() || !date) return;
+  const doLookup = async (plateArg?: string, dateArg?: string) => {
+    const p = (plateArg ?? plate).trim();
+    const d = dateArg ?? date;
+    if (!p || !d) return;
     setLookingUp(true);
     try {
-      const r = await lookup({ data: { plate, date } });
+      const r = await lookup({ data: { plate: p, date: d } });
       setLookupResult(r);
-      if (r.found) setSelectedRentalId("");
-      if (!r.found) toast.message(r.reason || "No matching rental");
+      if (r.found && !r.ambiguous) {
+        // Exactly one rental → auto-select renter
+        setSelectedRentalId(r.matches[0].rental.id);
+      } else {
+        setSelectedRentalId("");
+      }
+      if (!r.vehicleFound) toast.message("Vehicle not in fleet or OCR failed");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Lookup failed");
     } finally {
