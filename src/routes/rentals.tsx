@@ -67,7 +67,8 @@ const AGREEMENT_VERSION = "v1.0";
 
 function RentalsPage() {
   const navigate = Route.useNavigate();
-  const { paid, review } = Route.useSearch();
+  const { paid, review, detail: detailId } = Route.useSearch();
+  const [detail, setDetail] = useState<Rental | null>(null);
   const { user, role } = useAuth();
   const [newOpen, setNewOpen] = useState(false);
   const [editing, setEditing] = useState<Rental | null>(null);
