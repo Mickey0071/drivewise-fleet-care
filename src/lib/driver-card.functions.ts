@@ -1,11 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import {
-  createStripeClient,
-  getStripeErrorMessage,
-  type StripeEnv,
-} from "@/lib/stripe.server";
+import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
+
+function stripeErr(e: unknown): string {
+  if (e && typeof e === "object") {
+    const x = e as { raw?: { message?: string }; message?: string };
+    return x.raw?.message ?? x.message ?? "Stripe request failed";
+  }
+  return "Stripe request failed";
+}
 
 interface SetupIntentInput {
   driverId: string;
