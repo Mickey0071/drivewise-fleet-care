@@ -220,13 +220,14 @@ function VehicleDetail() {
         }
       />
 
-      {lastInsp && (
+      {(liveInsp?.at || lastInsp) && (
         <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-border bg-muted/30 px-4 py-2 text-sm">
           <span className="flex items-center gap-1 text-muted-foreground">
             <ClipboardList className="h-4 w-4" /> Last inspection
           </span>
-          <span><span className="text-muted-foreground">Date:</span> {fmtDate(lastInsp.date)}</span>
-          <span><span className="text-muted-foreground">Mileage:</span> {(lastInsp.mileage ?? v.mileage)?.toLocaleString()} mi</span>
+          <span><span className="text-muted-foreground">Date:</span> {fmtDate(liveInsp?.at ?? lastInsp?.date)}</span>
+          <span><span className="text-muted-foreground">Mileage:</span> {(liveInsp?.mileage ?? lastInsp?.mileage ?? v.mileage)?.toLocaleString()} mi</span>
+          <span className="flex items-center gap-1"><span className="text-muted-foreground">Status:</span> <StatusBadge status={liveInsp?.status ?? v.status} /></span>
         </div>
       )}
 
