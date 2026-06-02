@@ -38,7 +38,17 @@ const INSPECTION_ITEMS = [
   { key: "ac", label: "AC working?" },
   { key: "heat", label: "Heat working?" },
   { key: "keys", label: "Keys present?" },
-  { key: "spare", label: "Spare tire present?" },
+  { key: "tires", label: "Check tires (good condition?)" },
+  { key: "mirrors", label: "Side view mirrors (working?)" },
+  { key: "windows", label: "Windows (clean/intact?)" },
+];
+
+const DASHBOARD_CODE_OPTIONS = [
+  "Engine light",
+  "Service light",
+  "ABS light",
+  "Check transmission",
+  "Other (specify)",
 ];
 
 function YesNo({ value, onChange }: { value: boolean | null; onChange: (v: boolean) => void }) {
