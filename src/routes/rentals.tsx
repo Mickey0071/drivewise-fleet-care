@@ -590,6 +590,28 @@ function RentalsPage() {
               ) : (
                 <>
                   <Button variant="outline" size="sm" onClick={() => setEditing(r)}>Edit</Button>
+                  {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && rentalBalance(r) > 0 && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={async () => {
+                          const d = driverById(r.driverId);
+                          if (!d?.phone) { toast.error("No phone on file for renter"); return; }
+                          try { await ensureRentalSynced(r.id); } catch { /* best effort */ }
+                          setPayLinkRental(r);
+                        }}
+                      >
+                        <Smartphone className="mr-1 h-4 w-4" /> Send Payment Link
+                      </Button>
+                      <Button size="sm" onClick={() => setChargeCardRental(r)}>
+                        <DollarSign className="mr-1 h-4 w-4" /> Charge Card
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setCashRental(r)}>
+                        <DollarSign className="mr-1 h-4 w-4" /> Record Cash
+                      </Button>
+                    </>
+                  )}
                   {r.reservationStatus !== "returned" && r.reservationStatus !== "completed" && !r.endDate && getInspectionsForRental(r.id).every(i => i.type !== "check-out") && (
                     <Button size="sm" onClick={() => setDelivering(r)}>
                       <Truck className="mr-1 h-4 w-4" /> Deliver vehicle
