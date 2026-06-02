@@ -74,14 +74,18 @@ export const Route = createFileRoute("/api/public/hooks/daily-reports")({
             .lt("previous_end_date", today),
         ]);
 
-        type PastDueRow = { name: string; phone: string; amount: number; dueISO: string; vehicle: string };
+        type PastDueRow = { rentalId: string; name: string; phone: string; amount: number; dueISO: string; vehicle: string };
         const pastDueRows: PastDueRow[] = [];
+        const violationRows: PastDueRow[] = [];
 
-        // Only include reservations that are ON RENT (active) or PENDING.
-        // Exclude returned, canceled, and paid reservations.
-        const includedStatuses = new Set(["active", "pending"]);
+        // Only include reservations that are ON RENT (active).
+        // Exclude returned, canceled, pending, and paid reservations.
+        const includedStatuses = new Set(["active"]);
         const isEligibleRental = (rental: any) =>
           !!rental && includedStatuses.has((rental.reservation_status ?? "").toLowerCase());
+
+        const vehShort = (v: any) =>
+          v ? `${v.make ?? ""} ${v.model ?? ""}`.replace(/\s+/g, " ").trim() || "—" : "—";
 
         for (const p of duePayments ?? []) {
           const drv = driversById.get(p.driver_id);
@@ -89,48 +93,56 @@ export const Route = createFileRoute("/api/public/hooks/daily-reports")({
           if (!isEligibleRental(rental)) continue;
           const veh = rental ? vehiclesById.get(rental.vehicle_id) : undefined;
           pastDueRows.push({
+            rentalId: p.rental_id ?? "—",
             name: drv?.full_name ?? "Unknown",
             phone: drv?.phone ?? "N/A",
             amount: Number(p.amount) || 0,
             dueISO: p.due_date,
-            vehicle: veh?.make ?? "—",
+            vehicle: vehShort(veh),
           });
         }
+        // NOTE: Unpaid extension requests are intentionally excluded from PAST DUE.
+        // They duplicate the rental's payment balance and generate noisy rows.
+        void dueExtensions;
+        // Violations are tracked separately (not tied to reservation status)
         for (const v of dueViolations ?? []) {
           const drv = v.driver_id ? driversById.get(v.driver_id) : undefined;
           const veh = v.vehicle_id ? vehiclesById.get(v.vehicle_id) : undefined;
-          pastDueRows.push({
+          violationRows.push({
+            rentalId: "—",
             name: drv?.full_name ?? "Unknown",
             phone: drv?.phone ?? "N/A",
             amount: Number(v.total_amount) || 0,
             dueISO: v.date_issued,
-            vehicle: veh?.make ?? "—",
-          });
-        }
-        for (const e of dueExtensions ?? []) {
-          const rental = rentalsById.get(e.rental_id);
-          if (!isEligibleRental(rental)) continue;
-          const drv = rental ? driversById.get(rental.driver_id) : undefined;
-          const veh = rental ? vehiclesById.get(rental.vehicle_id) : undefined;
-          pastDueRows.push({
-            name: drv?.full_name ?? "Unknown",
-            phone: drv?.phone ?? "N/A",
-            amount: Number(e.additional_amount) || 0,
-            dueISO: e.previous_end_date ?? e.new_end_date,
-            vehicle: veh?.make ?? "—",
+            vehicle: vehShort(veh),
           });
         }
 
         const pastDueLines = pastDueRows.map((r) => {
           const overdue = daysBetween(r.dueISO.slice(0, 10), today);
           const dayLabel = `${overdue} day${overdue === 1 ? "" : "s"} overdue`;
-          return `${r.name} | ${dayLabel} | ${money(r.amount)} | Due ${fmtDate(r.dueISO)} | ${r.vehicle} | ${r.phone}`;
+          return `${r.rentalId} | ${r.name} | ${r.vehicle} | ${dayLabel} | ${money(r.amount)}`;
+        });
+        const violationLines = violationRows.map((r) => {
+          const overdue = daysBetween(r.dueISO.slice(0, 10), today);
+          const dayLabel = `${overdue} day${overdue === 1 ? "" : "s"} overdue`;
+          return `${r.name} | ${r.vehicle} | ${dayLabel} | ${money(r.amount)}`;
         });
         const pastDueTotal = pastDueRows.reduce((s, r) => s + r.amount, 0);
+        const activeRentalCount = (rentals ?? []).filter(
+          (r) => (r.reservation_status ?? "").toLowerCase() === "active"
+        ).length;
         const pastDueMsg =
-          `PAST DUE REPORT - ${dateLabel}\n\n` +
-          (pastDueLines.length ? pastDueLines.join("\n") + "\n\n" : "No past due customers.\n\n") +
-          `Total Past Due: ${pastDueRows.length} customer${pastDueRows.length === 1 ? "" : "s"} | ${money(pastDueTotal)}`;
+          `CAMAUTO DAILY REPORT - ${dateLabel}\n\n` +
+          `PAST DUE:\n` +
+          (pastDueLines.length ? pastDueLines.join("\n") : "None") +
+          `\n\n` +
+          `VIOLATIONS:\n` +
+          (violationLines.length ? violationLines.join("\n") : "None") +
+          `\n\n` +
+          `FLEET STATUS:\n` +
+          `Active Rentals: ${activeRentalCount}\n` +
+          `Total Overdue: ${money(pastDueTotal)}`;
 
         // ========== REPORT 2: CAR REPORTS ==========
         const downVehicleIds = new Set<string>();
