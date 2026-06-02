@@ -49,8 +49,7 @@ import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rent
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
 import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as AdminSendTaskRouteImport } from './routes/admin.send-task'
-import { Route as AdminCompletedInspectionsRouteImport } from './routes/admin.completed-inspections'
+import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as RunnerTaskTaskIdRouteImport } from './routes/runner.task.$taskId'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
@@ -259,17 +258,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminSendTaskRoute = AdminSendTaskRouteImport.update({
-  id: '/admin/send-task',
-  path: '/admin/send-task',
+const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
+  id: '/admin/create-task',
+  path: '/admin/create-task',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminCompletedInspectionsRoute =
-  AdminCompletedInspectionsRouteImport.update({
-    id: '/admin/completed-inspections',
-    path: '/admin/completed-inspections',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const RunnerTaskTaskIdRoute = RunnerTaskTaskIdRouteImport.update({
   id: '/runner/task/$taskId',
   path: '/runner/task/$taskId',
@@ -339,8 +332,7 @@ export interface FileRoutesByFullPath {
   '/staff-portal': typeof StaffPortalRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
-  '/admin/completed-inspections': typeof AdminCompletedInspectionsRoute
-  '/admin/send-task': typeof AdminSendTaskRoute
+  '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -390,8 +382,7 @@ export interface FileRoutesByTo {
   '/staff-portal': typeof StaffPortalRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
-  '/admin/completed-inspections': typeof AdminCompletedInspectionsRoute
-  '/admin/send-task': typeof AdminSendTaskRoute
+  '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -442,8 +433,7 @@ export interface FileRoutesById {
   '/staff-portal': typeof StaffPortalRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
-  '/admin/completed-inspections': typeof AdminCompletedInspectionsRoute
-  '/admin/send-task': typeof AdminSendTaskRoute
+  '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -495,8 +485,7 @@ export interface FileRouteTypes {
     | '/staff-portal'
     | '/vendors'
     | '/violations'
-    | '/admin/completed-inspections'
-    | '/admin/send-task'
+    | '/admin/create-task'
     | '/admin/users'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -546,8 +535,7 @@ export interface FileRouteTypes {
     | '/staff-portal'
     | '/vendors'
     | '/violations'
-    | '/admin/completed-inspections'
-    | '/admin/send-task'
+    | '/admin/create-task'
     | '/admin/users'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -597,8 +585,7 @@ export interface FileRouteTypes {
     | '/staff-portal'
     | '/vendors'
     | '/violations'
-    | '/admin/completed-inspections'
-    | '/admin/send-task'
+    | '/admin/create-task'
     | '/admin/users'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -649,8 +636,7 @@ export interface RootRouteChildren {
   StaffPortalRoute: typeof StaffPortalRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
-  AdminCompletedInspectionsRoute: typeof AdminCompletedInspectionsRoute
-  AdminSendTaskRoute: typeof AdminSendTaskRoute
+  AdminCreateTaskRoute: typeof AdminCreateTaskRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ExtendTokenRoute: typeof ExtendTokenRoute
   PortalSignupRentalIdRoute: typeof PortalSignupRentalIdRoute
@@ -952,18 +938,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/send-task': {
-      id: '/admin/send-task'
-      path: '/admin/send-task'
-      fullPath: '/admin/send-task'
-      preLoaderRoute: typeof AdminSendTaskRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/completed-inspections': {
-      id: '/admin/completed-inspections'
-      path: '/admin/completed-inspections'
-      fullPath: '/admin/completed-inspections'
-      preLoaderRoute: typeof AdminCompletedInspectionsRouteImport
+    '/admin/create-task': {
+      id: '/admin/create-task'
+      path: '/admin/create-task'
+      fullPath: '/admin/create-task'
+      preLoaderRoute: typeof AdminCreateTaskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/runner/task/$taskId': {
@@ -1069,8 +1048,7 @@ const rootRouteChildren: RootRouteChildren = {
   StaffPortalRoute: StaffPortalRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
-  AdminCompletedInspectionsRoute: AdminCompletedInspectionsRoute,
-  AdminSendTaskRoute: AdminSendTaskRoute,
+  AdminCreateTaskRoute: AdminCreateTaskRoute,
   AdminUsersRoute: AdminUsersRoute,
   ExtendTokenRoute: ExtendTokenRoute,
   PortalSignupRentalIdRoute: PortalSignupRentalIdRoute,
@@ -1092,3 +1070,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
