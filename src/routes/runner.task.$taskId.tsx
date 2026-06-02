@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { submitTask } from "@/lib/tasks.functions";
 import { taskTypeLabel } from "@/lib/task-types";
@@ -38,7 +39,17 @@ const INSPECTION_ITEMS = [
   { key: "ac", label: "AC working?" },
   { key: "heat", label: "Heat working?" },
   { key: "keys", label: "Keys present?" },
-  { key: "spare", label: "Spare tire present?" },
+  { key: "tires", label: "Check tires (good condition?)" },
+  { key: "mirrors", label: "Side view mirrors (working?)" },
+  { key: "windows", label: "Windows (clean/intact?)" },
+];
+
+const DASHBOARD_CODE_OPTIONS = [
+  "Engine light",
+  "Service light",
+  "ABS light",
+  "Check transmission",
+  "Other (specify)",
 ];
 
 function YesNo({ value, onChange }: { value: boolean | null; onChange: (v: boolean) => void }) {
@@ -81,6 +92,10 @@ function TaskPage() {
   const [items, setItems] = useState<Record<string, boolean>>({});
   const [repairsNeeded, setRepairsNeeded] = useState<boolean | null>(null);
   const [repairText, setRepairText] = useState("");
+  // dashboard codes
+  const [dashCodes, setDashCodes] = useState<boolean | null>(null);
+  const [dashCode, setDashCode] = useState("");
+  const [dashCodeOther, setDashCodeOther] = useState("");
   // mechanic / generic
   const [workCompleted, setWorkCompleted] = useState<boolean | null>(null);
   const [allDone, setAllDone] = useState<boolean | null>(null);
@@ -156,8 +171,32 @@ function TaskPage() {
       if (Object.keys(items).length < INSPECTION_ITEMS.length) { toast.error("Check every item"); return; }
       if (repairsNeeded === null) { toast.error("Answer: any repairs needed?"); return; }
       if (repairsNeeded && !repairText.trim()) { toast.error("Describe the repairs"); return; }
-      photosRequired = !!repairsNeeded;
-      completion = { ...completion, checklist: items, repairs_needed: repairsNeeded, repairs: repairText.trim() };
+      if (dashCodes === null) { toast.error("Answer: any dashboard codes?"); return; }
+      if (dashCodes && !dashCode) { toast.error("Select which dashboard code"); return; }
+      if (dashCodes && dashCode === "Other (specify)" && !dashCodeOther.trim()) { toast.error("Specify the dashboard code"); return; }
+
+      const dashboardCodeValue = dashCodes
+        ? dashCode === "Other (specify)" ? dashCodeOther.trim() : dashCode
+        : null;
+
+      // Build issue list: failed checklist items + repairs + dashboard codes.
+      const issues: string[] = [];
+      for (const it of INSPECTION_ITEMS) {
+        if (items[it.key] !== true) issues.push(it.label.replace(/\?$/, "").trim());
+      }
+      if (repairsNeeded) issues.push(repairText.trim() || "Repairs needed");
+      if (dashCodes && dashboardCodeValue) issues.push(`Dashboard code - ${dashboardCodeValue}`);
+
+      photosRequired = !!repairsNeeded || !!dashCodes;
+      completion = {
+        ...completion,
+        checklist: items,
+        repairs_needed: repairsNeeded,
+        repairs: repairText.trim(),
+        dashboard_codes: dashCodes,
+        dashboard_code: dashboardCodeValue,
+        issues,
+      };
     } else if (task.type === "mechanic") {
       if (workCompleted === null) { toast.error("Answer: work completed?"); return; }
       if (workCompleted && allDone === null) { toast.error("Answer: all services done?"); return; }
@@ -293,9 +332,32 @@ function TaskPage() {
                     <Label htmlFor="rep">What repairs?</Label>
                     <Textarea id="rep" className="mt-1" value={repairText} onChange={(e) => setRepairText(e.target.value)} />
                   </div>
-                  <PhotoBlock required />
                 </>
               )}
+              <div>
+                <Label>Any dashboard codes?</Label>
+                <div className="mt-1"><YesNo value={dashCodes} onChange={setDashCodes} /></div>
+              </div>
+              {dashCodes && (
+                <>
+                  <div>
+                    <Label>Which code?</Label>
+                    <Select value={dashCode} onValueChange={setDashCode}>
+                      <SelectTrigger className="mt-1 h-12"><SelectValue placeholder="Select which code..." /></SelectTrigger>
+                      <SelectContent>
+                        {DASHBOARD_CODE_OPTIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {dashCode === "Other (specify)" && (
+                    <div>
+                      <Label htmlFor="dco">Specify code</Label>
+                      <Input id="dco" className="mt-1 h-12" value={dashCodeOther} onChange={(e) => setDashCodeOther(e.target.value)} />
+                    </div>
+                  )}
+                </>
+              )}
+              {(repairsNeeded || dashCodes) && <PhotoBlock required />}
             </>
           )}
 
