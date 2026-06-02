@@ -48,6 +48,7 @@ import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rent
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
 import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminSendTaskRouteImport } from './routes/admin.send-task'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
@@ -250,6 +251,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSendTaskRoute = AdminSendTaskRouteImport.update({
+  id: '/admin/send-task',
+  path: '/admin/send-task',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RentPortalRentalIdRoute = RentPortalRentalIdRouteImport.update({
   id: '/rent/portal/$rentalId',
   path: '/rent/portal/$rentalId',
@@ -314,6 +320,7 @@ export interface FileRoutesByFullPath {
   '/staff-portal': typeof StaffPortalRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/admin/send-task': typeof AdminSendTaskRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -361,6 +368,7 @@ export interface FileRoutesByTo {
   '/staff-portal': typeof StaffPortalRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/admin/send-task': typeof AdminSendTaskRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -409,6 +417,7 @@ export interface FileRoutesById {
   '/staff-portal': typeof StaffPortalRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/admin/send-task': typeof AdminSendTaskRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -458,6 +467,7 @@ export interface FileRouteTypes {
     | '/staff-portal'
     | '/vendors'
     | '/violations'
+    | '/admin/send-task'
     | '/admin/users'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -505,6 +515,7 @@ export interface FileRouteTypes {
     | '/staff-portal'
     | '/vendors'
     | '/violations'
+    | '/admin/send-task'
     | '/admin/users'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -552,6 +563,7 @@ export interface FileRouteTypes {
     | '/staff-portal'
     | '/vendors'
     | '/violations'
+    | '/admin/send-task'
     | '/admin/users'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -600,6 +612,7 @@ export interface RootRouteChildren {
   StaffPortalRoute: typeof StaffPortalRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
+  AdminSendTaskRoute: typeof AdminSendTaskRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ExtendTokenRoute: typeof ExtendTokenRoute
   PortalSignupRentalIdRoute: typeof PortalSignupRentalIdRoute
@@ -892,6 +905,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/send-task': {
+      id: '/admin/send-task'
+      path: '/admin/send-task'
+      fullPath: '/admin/send-task'
+      preLoaderRoute: typeof AdminSendTaskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rent/portal/$rentalId': {
       id: '/rent/portal/$rentalId'
       path: '/rent/portal/$rentalId'
@@ -988,6 +1008,7 @@ const rootRouteChildren: RootRouteChildren = {
   StaffPortalRoute: StaffPortalRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
+  AdminSendTaskRoute: AdminSendTaskRoute,
   AdminUsersRoute: AdminUsersRoute,
   ExtendTokenRoute: ExtendTokenRoute,
   PortalSignupRentalIdRoute: PortalSignupRentalIdRoute,
