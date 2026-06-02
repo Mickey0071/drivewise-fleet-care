@@ -92,8 +92,8 @@ function InspectionsPage() {
   return (
     <div>
       <PageHeader
-        title={isAdmin ? "Inspection History" : "My Inspection History"}
-        subtitle={isAdmin ? "Audit log of all submitted vehicle inspections" : "Inspections you have submitted"}
+        title={isAdmin ? "Inspections" : "My Inspections"}
+        subtitle={isAdmin ? "All submitted vehicle inspections" : "Inspections you have submitted"}
       />
       <Card>
         <CardContent className="space-y-2 py-4">
