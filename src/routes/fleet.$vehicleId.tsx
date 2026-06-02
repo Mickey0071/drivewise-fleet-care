@@ -12,6 +12,7 @@ import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Plus } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
