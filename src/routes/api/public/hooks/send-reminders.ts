@@ -201,6 +201,10 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
         }
 
         for (const p of duePayments ?? []) {
+          if (!isActive(p.rental_id)) {
+            results.push({ rentalId: p.rental_id, type: "payment_due", skipped: "rental_not_active" });
+            continue;
+          }
           const drv = driversById.get(p.driver_id);
           const msg = `Reminder from Rentalprise: a payment of $${Number(p.amount).toFixed(2)} for your rental is due tomorrow (${fmtDate(p.due_date)}). Please make payment to keep your rental active. Reply to this message with any questions.`;
           await logAndSend(p.rental_id, "payment_due", drv?.phone ?? null, drv?.full_name ?? null, msg);
@@ -247,8 +251,8 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           target_date: target,
           payments_due: duePayments?.length ?? 0,
           rentals_ending: endingRentals?.length ?? 0,
-          admin_past_due: pastDuePayments?.length ?? 0,
-          admin_due_today: dueTodayPayments?.length ?? 0,
+          admin_past_due: (pastDuePayments ?? []).filter((p) => isActive(p.rental_id)).length,
+          admin_due_today: (dueTodayPayments ?? []).filter((p) => isActive(p.rental_id)).length,
           checkin_2h: checkinRentals?.length ?? 0,
           results,
         });
