@@ -306,6 +306,7 @@ function NewViolationDialog({
   const [tollFee, setTollFee] = useState("");
   const [description, setDescription] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
+  const [location, setLocation] = useState("");
   const [lookupResult, setLookupResult] = useState<Awaited<ReturnType<typeof lookup>> | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -326,6 +327,7 @@ function NewViolationDialog({
     setTollFee("");
     setDescription("");
     setPhotoUrl("");
+    setLocation("");
     setLookupResult(null);
     setThumbnail("");
     setConfidence(null);
@@ -342,23 +344,32 @@ function NewViolationDialog({
       setPhotoUrl(res.photoUrl);
       const ex = res.extraction;
       setConfidence(ex.confidence);
+      let plateForLookup = "";
+      let dateForLookup = "";
       if (ex.confidence >= 70) {
         if (ex.license_plate) {
           // strip leading state abbrev like "NJ "
           const cleaned = ex.license_plate.replace(/^[A-Z]{2}\s+/, "").toUpperCase();
           setPlate(cleaned);
+          plateForLookup = cleaned;
         }
         if (ex.violation_date) {
           const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(ex.violation_date);
           if (m) {
             const [, mo, d, y] = m;
-            setDate(`${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`);
+            dateForLookup = `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+            setDate(dateForLookup);
           }
         }
+        if (ex.location) setLocation(ex.location);
         if (ex.toll_amount != null) setTollAmount(String(ex.toll_amount));
         if (ex.fee_amount != null) setTollFee(String(ex.fee_amount));
         if (ex.violation_type) setType(ex.violation_type);
         toast.success(`Extracted with ${ex.confidence}% confidence`);
+        // Auto-match renter by plate + date as soon as we have both
+        if (plateForLookup) {
+          await doLookup(plateForLookup, dateForLookup || date);
+        }
       } else {
         toast.message("Couldn't read clearly — please enter manually", {
           description: `Confidence ${ex.confidence}%`,
@@ -423,14 +434,21 @@ function NewViolationDialog({
     await analyzeDataUrl(dataUrl);
   };
 
-  const doLookup = async () => {
-    if (!plate.trim() || !date) return;
+  const doLookup = async (plateArg?: string, dateArg?: string) => {
+    const p = (plateArg ?? plate).trim();
+    const d = dateArg ?? date;
+    if (!p || !d) return;
     setLookingUp(true);
     try {
-      const r = await lookup({ data: { plate, date } });
+      const r = await lookup({ data: { plate: p, date: d } });
       setLookupResult(r);
-      if (r.found) setSelectedRentalId("");
-      if (!r.found) toast.message(r.reason || "No matching rental");
+      if (r.found && !r.ambiguous) {
+        // Exactly one rental → auto-select renter
+        setSelectedRentalId(r.matches[0].rental.id);
+      } else {
+        setSelectedRentalId("");
+      }
+      if (!r.vehicleFound) toast.message("Vehicle not in fleet or OCR failed");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Lookup failed");
     } finally {
@@ -448,6 +466,7 @@ function NewViolationDialog({
     const picked = selectedRentalId
       ? rentalOptions.find((r) => r.id === selectedRentalId) ?? null
       : null;
+    const fallbackVehicleId = lookupResult?.vehicle?.id ?? null;
     setSaving(true);
     try {
       const r = await create({
@@ -457,11 +476,13 @@ function NewViolationDialog({
           licensePlate: plate || null,
           amount: amt,
           fee,
-          description: description || `${type} violation${plate ? ` on ${plate.toUpperCase()}` : ""}`,
+          description:
+            description ||
+            `${type} violation${plate ? ` on ${plate.toUpperCase()}` : ""}${location ? ` at ${location}` : ""}`,
           photoUrl: photoUrl || null,
-          rentalId: picked ? picked.id : lookupResult?.found ? lookupResult.rental.id : null,
-          vehicleId: picked ? picked.vehicle_id : lookupResult?.found ? lookupResult.vehicle.id : null,
-          driverId: picked ? picked.driver_id : lookupResult?.found ? lookupResult.rental.driver_id : null,
+          rentalId: picked ? picked.id : null,
+          vehicleId: picked ? picked.vehicle_id : fallbackVehicleId,
+          driverId: picked ? picked.driver_id : null,
           extractedConfidence: confidence,
         },
       });
@@ -615,32 +636,77 @@ function NewViolationDialog({
           </div>
 
           <div>
+            <Label>Location</Label>
+            <Input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Toll plaza, street, or place of violation"
+            />
+          </div>
+
+          <div>
             <Label>Photo URL (optional)</Label>
             <Input value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://…" />
           </div>
 
           <div className="rounded-md border bg-muted/30 p-3">
-            <Label>Select Rental</Label>
+            <div className="mb-2 flex items-center justify-between">
+              <Label>Renter Match</Label>
+              {lookupResult && (
+                <Badge
+                  variant={lookupResult.matchConfidence >= 90 ? "default" : "secondary"}
+                  className="text-xs"
+                >
+                  Match confidence: {lookupResult.matchConfidence}%
+                </Badge>
+              )}
+            </div>
+            {lookupResult && (
+              <div
+                className={`mb-3 rounded-md p-2 text-xs ${
+                  !lookupResult.vehicleFound
+                    ? "bg-destructive/10 text-destructive"
+                    : lookupResult.matchConfidence >= 90
+                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                      : "bg-amber-500/10 text-amber-700 dark:text-amber-500"
+                }`}
+              >
+                {!lookupResult.vehicleFound
+                  ? "Vehicle not in fleet or OCR failed — enter plate / select renter manually."
+                  : lookupResult.matchConfidence >= 90
+                    ? `${lookupResult.confidenceLabel} — renter auto-selected.`
+                    : `Low confidence — ${lookupResult.confidenceLabel}. Verify renter.`}
+              </div>
+            )}
             <Select
               value={selectedRentalId}
               onValueChange={(v) => {
                 setSelectedRentalId(v);
-                setLookupResult(null);
               }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose a rental…" />
               </SelectTrigger>
               <SelectContent>
-                {rentalOptions.length === 0 && (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">No rentals found</div>
-                )}
-                {rentalOptions.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.id}: {r.driver_name ?? "Unknown"}
-                    {r.plate ? ` — ${r.plate}` : ""}
-                  </SelectItem>
-                ))}
+                {(() => {
+                  // When the lookup found overlapping rentals, narrow the list to those.
+                  const matchIds = lookupResult?.matches?.map((m) => m.rental.id) ?? [];
+                  const opts =
+                    matchIds.length > 0
+                      ? rentalOptions.filter((r) => matchIds.includes(r.id))
+                      : rentalOptions;
+                  if (opts.length === 0) {
+                    return (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">No rentals found</div>
+                    );
+                  }
+                  return opts.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.id}: {r.driver_name ?? "Unknown"}
+                      {r.plate ? ` — ${r.plate}` : ""}
+                    </SelectItem>
+                  ));
+                })()}
               </SelectContent>
             </Select>
             {selectedRentalId && (() => {
@@ -657,20 +723,17 @@ function NewViolationDialog({
             })()}
             <div className="my-3 border-t" />
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={doLookup} disabled={!plate || !date || lookingUp}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void doLookup()}
+                disabled={!plate || !date || lookingUp}
+              >
                 {lookingUp ? "Looking up…" : "Lookup Rental"}
               </Button>
-              <span className="text-xs text-muted-foreground">Or match plate + date automatically</span>
+              <span className="text-xs text-muted-foreground">Match plate + date automatically</span>
             </div>
-            {lookupResult && lookupResult.found && (
-              <div className="mt-2 text-sm text-emerald-700 dark:text-emerald-400">
-                Found <strong>{lookupResult.rental.id}</strong> — {lookupResult.driver?.full_name ?? "Unknown driver"}
-                <div className="text-xs text-muted-foreground">
-                  {lookupResult.rental.start_date} → {lookupResult.rental.end_date || "ongoing"}
-                </div>
-              </div>
-            )}
-            {lookupResult && !lookupResult.found && (
+            {lookupResult && lookupResult.vehicleFound && !lookupResult.found && (
               <div className="mt-2 text-sm text-amber-600">
                 {lookupResult.reason || "No rental matched. Violation will be unlinked."}
               </div>

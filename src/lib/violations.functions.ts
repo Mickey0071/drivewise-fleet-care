@@ -59,6 +59,27 @@ export const listViolations = createServerFn({ method: "GET" })
     }));
   });
 
+export interface PlateMatch {
+  rental: {
+    id: string;
+    driver_id: string | null;
+    start_date: string;
+    end_date: string | null;
+  };
+  driver: { id: string; full_name: string | null; phone: string | null; email: string | null } | null;
+}
+
+export interface PlateLookupResult {
+  vehicleFound: boolean;
+  vehicle: { id: string; plate: string; make: string; model: string; year: number } | null;
+  matches: PlateMatch[];
+  found: boolean;
+  ambiguous: boolean;
+  matchConfidence: number;
+  confidenceLabel: string;
+  reason?: string;
+}
+
 export const lookupRentalByPlate = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { plate: string; date: string }) => {
@@ -68,42 +89,82 @@ export const lookupRentalByPlate = createServerFn({ method: "POST" })
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Date must be YYYY-MM-DD");
     return { plate, date };
   })
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<PlateLookupResult> => {
     const { plate, date } = data;
+    // 1) Find vehicle in fleet by plate
     const { data: vehicle } = await supabaseAdmin
       .from("vehicles")
       .select("id, plate, make, model, year")
       .ilike("plate", plate)
       .maybeSingle();
-    if (!vehicle) return { found: false as const, reason: `No vehicle with plate ${plate}` };
+    if (!vehicle) {
+      return {
+        vehicleFound: false,
+        vehicle: null,
+        matches: [],
+        found: false,
+        ambiguous: false,
+        matchConfidence: 0,
+        confidenceLabel: "Vehicle not in fleet or OCR failed",
+        reason: `No vehicle with plate ${plate}`,
+      };
+    }
 
+    // 2) Find all rentals of that vehicle active on the violation date
     const { data: rentals } = await supabaseAdmin
       .from("rentals")
       .select("id, driver_id, start_date, end_date, returned_at")
       .eq("vehicle_id", vehicle.id)
       .lte("start_date", date)
       .order("start_date", { ascending: false })
-      .limit(20);
-    const match = (rentals ?? []).find(
-      (r) => !r.end_date || r.end_date >= date,
-    );
-    if (!match) {
+      .limit(50);
+    const active = (rentals ?? []).filter((r) => !r.end_date || r.end_date >= date);
+
+    if (active.length === 0) {
       return {
-        found: false as const,
-        reason: `No rental covers ${date} on plate ${plate}`,
+        vehicleFound: true,
         vehicle,
+        matches: [],
+        found: false,
+        ambiguous: false,
+        matchConfidence: 40,
+        confidenceLabel: "Plate matched, but no rental covers this date — select renter manually",
+        reason: `No rental covers ${date} on plate ${plate}`,
       };
     }
-    const { data: driver } = await supabaseAdmin
-      .from("drivers")
-      .select("id, full_name, phone, email")
-      .eq("id", match.driver_id)
-      .maybeSingle();
+
+    const driverIds = Array.from(
+      new Set(active.map((r) => r.driver_id).filter(Boolean)),
+    ) as string[];
+    const { data: drivers } = driverIds.length
+      ? await supabaseAdmin
+          .from("drivers")
+          .select("id, full_name, phone, email")
+          .in("id", driverIds)
+      : { data: [] as { id: string; full_name: string; phone: string; email: string }[] };
+    const dMap = new Map((drivers ?? []).map((d) => [d.id, d]));
+
+    const matches: PlateMatch[] = active.map((r) => ({
+      rental: {
+        id: r.id,
+        driver_id: r.driver_id ?? null,
+        start_date: r.start_date,
+        end_date: r.end_date ?? null,
+      },
+      driver: r.driver_id ? dMap.get(r.driver_id) ?? null : null,
+    }));
+
+    const ambiguous = matches.length > 1;
     return {
-      found: true as const,
+      vehicleFound: true,
       vehicle,
-      rental: match,
-      driver: driver ?? null,
+      matches,
+      found: true,
+      ambiguous,
+      matchConfidence: ambiguous ? 70 : 95,
+      confidenceLabel: ambiguous
+        ? `${matches.length} rentals overlap this date — choose the renter`
+        : "Plate + date match",
     };
   });
 
