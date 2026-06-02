@@ -320,28 +320,6 @@ function TaskPage() {
   const instructions: string = details.instructions || "";
   const services: string[] = Array.isArray(details.services) ? details.services : [];
 
-  const PhotoBlock = ({ required }: { required: boolean }) => (
-    <div>
-      <Label>Photos {required && <span className="text-destructive">(required)</span>}</Label>
-      <input ref={fileRef} type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={(e) => addPhotos(e.target.files)} />
-      <Button type="button" variant="outline" className="mt-1 h-12 w-full" onClick={() => fileRef.current?.click()}>
-        <Camera className="mr-2 h-4 w-4" /> Take / add photos
-      </Button>
-      {photos.length > 0 && (
-        <div className="mt-2 grid grid-cols-3 gap-2">
-          {photos.map((p, i) => (
-            <div key={i} className="relative">
-              <img src={URL.createObjectURL(p)} alt="" className="h-20 w-full rounded object-cover" />
-              <button type="button" onClick={() => removePhoto(i)} className="absolute -right-1.5 -top-1.5 rounded-full bg-destructive p-0.5 text-destructive-foreground">
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="mx-auto max-w-xl space-y-4 pb-28">
       {/* Locked header */}
