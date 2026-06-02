@@ -127,7 +127,6 @@ function TaskPage() {
   const { taskId } = Route.useParams();
   const navigate = useNavigate();
   const submit = useServerFn(submitTask);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const [task, setTask] = useState<TaskRow | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
