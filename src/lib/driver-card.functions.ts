@@ -70,7 +70,7 @@ export const createDriverSetupIntent = createServerFn({ method: "POST" })
 
       return { ok: true, clientSecret: si.client_secret ?? undefined, customerId };
     } catch (e) {
-      return { ok: false, error: getStripeErrorMessage(e) };
+      return { ok: false, error: stripeErr(e) };
     }
   });
 
@@ -152,6 +152,6 @@ export const saveDriverCard = createServerFn({ method: "POST" })
         expYear: expYear ?? undefined,
       };
     } catch (e) {
-      return { ok: false, error: getStripeErrorMessage(e) };
+      return { ok: false, error: stripeErr(e) };
     }
   });
