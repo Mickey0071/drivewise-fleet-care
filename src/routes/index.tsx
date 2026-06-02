@@ -122,6 +122,20 @@ function Index() {
   const overdue = payments.filter(p => p.status === "missed" || p.status === "late");
   const overdueAmount = overdue.reduce((s, p) => s + p.amount, 0);
   const serviceAlerts = maintenance.filter(m => m.nextServiceDue && new Date(m.nextServiceDue) <= weekEnd);
+  const dedupedServiceAlerts = useMemo(() => {
+    const byVehicle: Record<string, typeof maintenance[number]> = {};
+    for (const m of serviceAlerts) {
+      const existing = byVehicle[m.vehicleId];
+      if (!existing || (m.nextServiceDue && existing.nextServiceDue && new Date(m.nextServiceDue) < new Date(existing.nextServiceDue))) {
+        byVehicle[m.vehicleId] = m;
+      }
+    }
+    return Object.values(byVehicle).sort((a, b) => {
+      if (!a.nextServiceDue) return 1;
+      if (!b.nextServiceDue) return -1;
+      return new Date(a.nextServiceDue).getTime() - new Date(b.nextServiceDue).getTime();
+    });
+  }, [serviceAlerts]);
   const overdueServices = vehicles.flatMap(v =>
     computeVehicleAlerts(v).map(a => ({ vehicle: v, alert: a }))
   );
@@ -255,15 +269,6 @@ function Index() {
           </CardContent>
         </Card>
       </div>
-
-      <Card className="mt-6">
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-base">Maintenance alerts</CardTitle>
-          <Button variant="ghost" size="sm" asChild><Link to="/maintenance">View log</Link></Button>
-        </CardHeader>
-        <CardContent />
-      </Card>
-
       <Card className="mt-6 border-destructive/30">
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">Overdue Services</CardTitle>
@@ -294,17 +299,22 @@ function Index() {
           <Button variant="ghost" size="sm" asChild><Link to="/maintenance">View log</Link></Button>
         </CardHeader>
         <CardContent className="space-y-2">
-          {serviceAlerts.length === 0 && <p className="text-sm text-muted-foreground">No vehicles past service due.</p>}
-          {serviceAlerts.map(m => {
+          {dedupedServiceAlerts.length === 0 && <p className="text-sm text-muted-foreground">No vehicles past service due.</p>}
+          {dedupedServiceAlerts.map(m => {
             const v = vehicleById(m.vehicleId);
             return (
-              <div key={m.id} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+              <Link
+                key={m.id}
+                to="/fleet/$vehicleId"
+                params={{ vehicleId: m.vehicleId }}
+                className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 transition-colors hover:border-primary/50"
+              >
                 <div>
                   <div className="text-sm font-medium">{v?.year} {v?.make} {v?.model} · {v?.plate}</div>
                   <div className="text-xs text-muted-foreground">Next service due {fmtDate(m.nextServiceDue)}</div>
                 </div>
                 <StatusBadge status="maintenance" />
-              </div>
+              </Link>
             );
           })}
         </CardContent>
