@@ -466,6 +466,7 @@ function NewViolationDialog({
     const picked = selectedRentalId
       ? rentalOptions.find((r) => r.id === selectedRentalId) ?? null
       : null;
+    const fallbackVehicleId = lookupResult?.vehicle?.id ?? null;
     setSaving(true);
     try {
       const r = await create({
@@ -475,11 +476,13 @@ function NewViolationDialog({
           licensePlate: plate || null,
           amount: amt,
           fee,
-          description: description || `${type} violation${plate ? ` on ${plate.toUpperCase()}` : ""}`,
+          description:
+            description ||
+            `${type} violation${plate ? ` on ${plate.toUpperCase()}` : ""}${location ? ` at ${location}` : ""}`,
           photoUrl: photoUrl || null,
-          rentalId: picked ? picked.id : lookupResult?.found ? lookupResult.rental.id : null,
-          vehicleId: picked ? picked.vehicle_id : lookupResult?.found ? lookupResult.vehicle.id : null,
-          driverId: picked ? picked.driver_id : lookupResult?.found ? lookupResult.rental.driver_id : null,
+          rentalId: picked ? picked.id : null,
+          vehicleId: picked ? picked.vehicle_id : fallbackVehicleId,
+          driverId: picked ? picked.driver_id : null,
           extractedConfidence: confidence,
         },
       });
