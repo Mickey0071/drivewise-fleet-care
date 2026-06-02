@@ -84,7 +84,6 @@ function RentalsPage() {
   const [violationFor, setViolationFor] = useState<Rental | null>(null);
   
   const [chatting, setChatting] = useState<Rental | null>(null);
-  const [detail, setDetail] = useState<Rental | null>(null);
   // (Mark as Returned now opens the full Return Inspection dialog directly.)
   const sendSmsFn = useServerFn(sendRentalSms);
   const sendSignLinkFn = useServerFn(sendSigningLink);
