@@ -30,7 +30,22 @@ function Index() {
   };
   const today = new Date();
   const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
-  const dueThisWeek = payments.filter(p => p.status !== "paid" && new Date(p.dueDate) <= weekEnd);
+  const todayStr = today.toISOString().slice(0, 10);
+  const weekEndStr = weekEnd.toISOString().slice(0, 10);
+  // Consolidate all unpaid amounts per ON RENT reservation into a single line.
+  const dueThisWeek = rentals
+    .filter(r => (r.reservationStatus ?? "active") === "active") // exclude pending / returned / completed
+    .map(r => {
+      const unpaid = payments.filter(p => p.rentalId === r.id && p.status !== "paid");
+      const totalOwed = unpaid.reduce((s, p) => s + Number(p.amount || 0), 0);
+      const earliestDue = unpaid.reduce<string | null>(
+        (min, p) => (min === null || p.dueDate < min ? p.dueDate : min),
+        null,
+      );
+      return { rental: r, totalOwed, earliestDue };
+    })
+    .filter(x => x.totalOwed > 0 && x.earliestDue !== null && x.earliestDue <= weekEndStr)
+    .sort((a, b) => (a.earliestDue! < b.earliestDue! ? -1 : 1));
   const overdue = payments.filter(p => p.status === "missed" || p.status === "late");
   const overdueAmount = overdue.reduce((s, p) => s + p.amount, 0);
   const serviceAlerts = maintenance.filter(m => m.nextServiceDue && new Date(m.nextServiceDue) <= weekEnd);
@@ -140,19 +155,46 @@ function Index() {
           </CardHeader>
           <CardContent className="space-y-2">
             {dueThisWeek.length === 0 && <p className="text-sm text-muted-foreground">No payments due this week.</p>}
-            {dueThisWeek.map(p => {
-              const d = driverById(p.driverId);
+            {dueThisWeek.map(({ rental: r, totalOwed, earliestDue }) => {
+              const d = driverById(r.driverId);
+              const v = vehicleById(r.vehicleId);
+              const daysPastDue = Math.round(
+                (new Date(todayStr).getTime() - new Date(earliestDue!).getTime()) / 86400000,
+              );
+              let statusLabel: string;
+              let statusClass: string;
+              if (daysPastDue > 0) {
+                statusLabel = `🔴 ${daysPastDue} day${daysPastDue === 1 ? "" : "s"} overdue`;
+                statusClass = "bg-destructive/15 text-destructive";
+              } else if (daysPastDue === 0) {
+                statusLabel = "🟡 Due today";
+                statusClass = "bg-amber-500/20 text-amber-700 dark:text-amber-400";
+              } else {
+                statusLabel = `🟡 Due in ${-daysPastDue} day${-daysPastDue === 1 ? "" : "s"}`;
+                statusClass = "bg-amber-500/20 text-amber-700 dark:text-amber-400";
+              }
               return (
-                <div key={p.id} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
-                  <div>
-                    <div className="text-sm font-medium">{d?.fullName ?? p.driverId}</div>
-                    <div className="text-xs text-muted-foreground">Due {fmtDate(p.dueDate)}</div>
+                <Link
+                  key={r.id}
+                  to="/rentals"
+                  className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 transition-colors hover:bg-muted/40 ${daysPastDue > 0 ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"}`}
+                >
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium">
+                      {d?.fullName ?? r.driverId}
+                      <span className="ml-2 text-xs text-muted-foreground">{r.id}</span>
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {v ? `${v.make} ${v.model}` : r.vehicleId} · Due {fmtDate(earliestDue!)}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold">{fmtMoney(p.amount)}</span>
-                    <StatusBadge status={p.status} />
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="font-semibold">{fmtMoney(totalOwed)}</span>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}>
+                      {statusLabel}
+                    </span>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </CardContent>

@@ -29,6 +29,7 @@ import { SendPaymentLinkDialog } from "@/components/app/SendPaymentLinkDialog";
 import { AddCardDialog } from "@/components/app/AddCardDialog";
 import { RecordCashDialog } from "@/components/app/RecordCashDialog";
 import { ChargeCardDialog } from "@/components/app/ChargeCardDialog";
+import { RecordPaymentDialog } from "@/components/app/RecordPaymentDialog";
 import { getSavedCard } from "@/lib/card-display";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
@@ -90,6 +91,7 @@ function RentalsPage() {
   const [addCardRental, setAddCardRental] = useState<Rental | null>(null);
   const [cashRental, setCashRental] = useState<Rental | null>(null);
   const [chargeCardRental, setChargeCardRental] = useState<Rental | null>(null);
+  const [recordPayRental, setRecordPayRental] = useState<Rental | null>(null);
   const sendPortalLinkFn = useServerFn(sendPortalLink);
   const [portalLinkSendingId, setPortalLinkSendingId] = useState<string | null>(null);
   const genPdfFn = useServerFn(generateAgreementPdf);
@@ -591,26 +593,9 @@ function RentalsPage() {
                 <>
                   <Button variant="outline" size="sm" onClick={() => setEditing(r)}>Edit</Button>
                   {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && rentalBalance(r) > 0 && (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={async () => {
-                          const d = driverById(r.driverId);
-                          if (!d?.phone) { toast.error("No phone on file for renter"); return; }
-                          try { await ensureRentalSynced(r.id); } catch { /* best effort */ }
-                          setPayLinkRental(r);
-                        }}
-                      >
-                        <Smartphone className="mr-1 h-4 w-4" /> Send Payment Link
-                      </Button>
-                      <Button size="sm" onClick={() => setChargeCardRental(r)}>
-                        <DollarSign className="mr-1 h-4 w-4" /> Charge Card
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => setCashRental(r)}>
-                        <DollarSign className="mr-1 h-4 w-4" /> Record Cash
-                      </Button>
-                    </>
+                    <Button size="sm" onClick={() => setRecordPayRental(r)}>
+                      <DollarSign className="mr-1 h-4 w-4" /> Record Payment
+                    </Button>
                   )}
                   {r.reservationStatus !== "returned" && r.reservationStatus !== "completed" && !r.endDate && getInspectionsForRental(r.id).every(i => i.type !== "check-out") && (
                     <Button size="sm" onClick={() => setDelivering(r)}>
@@ -1036,6 +1021,23 @@ function RentalsPage() {
       <ReturnVehicleDialog
         rental={returnChoiceRental}
         onClose={() => setReturnChoiceRental(null)}
+      />
+      <RecordPaymentDialog
+        open={!!recordPayRental}
+        onOpenChange={(o) => { if (!o) setRecordPayRental(null); }}
+        renterName={recordPayRental ? (driverById(recordPayRental.driverId)?.fullName ?? "") : ""}
+        balance={recordPayRental ? rentalBalance(recordPayRental) : 0}
+        savedCard={recordPayRental ? getSavedCard(driverById(recordPayRental.driverId)) : null}
+        onCash={() => recordPayRental && setCashRental(recordPayRental)}
+        onCard={() => recordPayRental && setChargeCardRental(recordPayRental)}
+        onLink={async () => {
+          const r = recordPayRental;
+          if (!r) return;
+          const d = driverById(r.driverId);
+          if (!d?.phone && !d?.email) { toast.error("No phone or email on file for renter"); return; }
+          try { await ensureRentalSynced(r.id); } catch { /* best effort */ }
+          setPayLinkRental(r);
+        }}
       />
     </div>
   );
