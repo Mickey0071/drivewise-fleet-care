@@ -100,40 +100,6 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         {renderGroup("Operations", filter(adminItems))}
-        {visibleRunners.length > 0 && (
-          <SidebarGroup>
-            {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/60">Runners</SidebarGroupLabel>}
-            <SidebarGroupContent>
-              <Collapsible open={collapsed ? true : runnersOpen} onOpenChange={setRunnersOpen}>
-                <SidebarMenu>
-                  {!collapsed && (
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton isActive={runnersActive} className="w-full">
-                          <Truck className="h-4 w-4 shrink-0" />
-                          <span className="flex-1 text-left">Runners</span>
-                          <ChevronDown className={`h-4 w-4 transition-transform ${runnersOpen ? "rotate-180" : ""}`} />
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                    </SidebarMenuItem>
-                  )}
-                  <CollapsibleContent>
-                    {visibleRunners.map((item) => (
-                      <SidebarMenuItem key={item.url}>
-                        <SidebarMenuButton asChild isActive={isActive(item.url)} className={collapsed ? "" : "pl-8"}>
-                          <Link to={item.url} className="flex items-center gap-3">
-                            <item.icon className="h-4 w-4 shrink-0" />
-                            {!collapsed && <span>{item.title}</span>}
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </CollapsibleContent>
-                </SidebarMenu>
-              </Collapsible>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
         {renderGroup("Finance", filter(financeItems))}
         {renderGroup("Portals", filter(portalItems))}
         {renderGroup("Settings", filter(settingsItems))}
