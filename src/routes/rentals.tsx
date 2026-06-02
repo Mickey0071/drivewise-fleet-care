@@ -569,6 +569,23 @@ function RentalsPage() {
                     <DollarSign className="mr-1 h-4 w-4" />
                     Pay with Cash
                   </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setChargeCardRental(r)}
+                    disabled={!!r.paymentReceived}
+                  >
+                    <DollarSign className="mr-1 h-4 w-4" />
+                    {r.paymentReceived ? "Paid ✓" : "Charge Card"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!!r.paymentReceived}
+                    onClick={() => setCashRental(r)}
+                  >
+                    <DollarSign className="mr-1 h-4 w-4" />
+                    Record Cash
+                  </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>Edit</Button>
                   <Button
                     variant="ghost"
