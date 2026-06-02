@@ -636,32 +636,77 @@ function NewViolationDialog({
           </div>
 
           <div>
+            <Label>Location</Label>
+            <Input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Toll plaza, street, or place of violation"
+            />
+          </div>
+
+          <div>
             <Label>Photo URL (optional)</Label>
             <Input value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://…" />
           </div>
 
           <div className="rounded-md border bg-muted/30 p-3">
-            <Label>Select Rental</Label>
+            <div className="mb-2 flex items-center justify-between">
+              <Label>Renter Match</Label>
+              {lookupResult && (
+                <Badge
+                  variant={lookupResult.matchConfidence >= 90 ? "default" : "secondary"}
+                  className="text-xs"
+                >
+                  Match confidence: {lookupResult.matchConfidence}%
+                </Badge>
+              )}
+            </div>
+            {lookupResult && (
+              <div
+                className={`mb-3 rounded-md p-2 text-xs ${
+                  !lookupResult.vehicleFound
+                    ? "bg-destructive/10 text-destructive"
+                    : lookupResult.matchConfidence >= 90
+                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                      : "bg-amber-500/10 text-amber-700 dark:text-amber-500"
+                }`}
+              >
+                {!lookupResult.vehicleFound
+                  ? "Vehicle not in fleet or OCR failed — enter plate / select renter manually."
+                  : lookupResult.matchConfidence >= 90
+                    ? `${lookupResult.confidenceLabel} — renter auto-selected.`
+                    : `Low confidence — ${lookupResult.confidenceLabel}. Verify renter.`}
+              </div>
+            )}
             <Select
               value={selectedRentalId}
               onValueChange={(v) => {
                 setSelectedRentalId(v);
-                setLookupResult(null);
               }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose a rental…" />
               </SelectTrigger>
               <SelectContent>
-                {rentalOptions.length === 0 && (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">No rentals found</div>
-                )}
-                {rentalOptions.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.id}: {r.driver_name ?? "Unknown"}
-                    {r.plate ? ` — ${r.plate}` : ""}
-                  </SelectItem>
-                ))}
+                {(() => {
+                  // When the lookup found overlapping rentals, narrow the list to those.
+                  const matchIds = lookupResult?.matches?.map((m) => m.rental.id) ?? [];
+                  const opts =
+                    matchIds.length > 0
+                      ? rentalOptions.filter((r) => matchIds.includes(r.id))
+                      : rentalOptions;
+                  if (opts.length === 0) {
+                    return (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">No rentals found</div>
+                    );
+                  }
+                  return opts.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.id}: {r.driver_name ?? "Unknown"}
+                      {r.plate ? ` — ${r.plate}` : ""}
+                    </SelectItem>
+                  ));
+                })()}
               </SelectContent>
             </Select>
             {selectedRentalId && (() => {
@@ -678,20 +723,17 @@ function NewViolationDialog({
             })()}
             <div className="my-3 border-t" />
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" onClick={doLookup} disabled={!plate || !date || lookingUp}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void doLookup()}
+                disabled={!plate || !date || lookingUp}
+              >
                 {lookingUp ? "Looking up…" : "Lookup Rental"}
               </Button>
-              <span className="text-xs text-muted-foreground">Or match plate + date automatically</span>
+              <span className="text-xs text-muted-foreground">Match plate + date automatically</span>
             </div>
-            {lookupResult && lookupResult.found && (
-              <div className="mt-2 text-sm text-emerald-700 dark:text-emerald-400">
-                Found <strong>{lookupResult.rental.id}</strong> — {lookupResult.driver?.full_name ?? "Unknown driver"}
-                <div className="text-xs text-muted-foreground">
-                  {lookupResult.rental.start_date} → {lookupResult.rental.end_date || "ongoing"}
-                </div>
-              </div>
-            )}
-            {lookupResult && !lookupResult.found && (
+            {lookupResult && lookupResult.vehicleFound && !lookupResult.found && (
               <div className="mt-2 text-sm text-amber-600">
                 {lookupResult.reason || "No rental matched. Violation will be unlinked."}
               </div>
