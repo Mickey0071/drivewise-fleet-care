@@ -78,6 +78,7 @@ const fromDriver = (r: any) => ({
   blockedAt: r.blocked_at ?? undefined,
 });
 const toDriver = (d: any) => ({
+  // (card fields are written server-side only; not mapped back here)
   id: d.id, full_name: d.fullName, phone: d.phone, email: d.email,
   license_number: d.licenseNumber, license_expiry: d.licenseExpiry,
   insurance_on_file: d.insuranceOnFile, rideshare: d.rideshare,
