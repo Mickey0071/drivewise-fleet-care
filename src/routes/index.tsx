@@ -34,10 +34,7 @@ function Index() {
   const weekEndStr = weekEnd.toISOString().slice(0, 10);
   // Consolidate all unpaid amounts per ON RENT reservation into a single line.
   const dueThisWeek = rentals
-    .filter(r => {
-      const rs = r.reservationStatus ?? "active";
-      return rs === "active" || rs === "on_rent"; // exclude pending / returned / completed
-    })
+    .filter(r => (r.reservationStatus ?? "active") === "active") // exclude pending / returned / completed
     .map(r => {
       const unpaid = payments.filter(p => p.rentalId === r.id && p.status !== "paid");
       const totalOwed = unpaid.reduce((s, p) => s + Number(p.amount || 0), 0);
