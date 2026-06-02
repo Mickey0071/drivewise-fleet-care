@@ -27,7 +27,7 @@ function ReservationRow({
   earliestDue: string;
   todayStr: string;
 }) {
-  const navigate = useRouter();
+  const navigate = useNavigate();
   const d = driverById(r.driverId);
   const v = vehicleById(r.vehicleId);
   const daysPastDue = Math.round(
@@ -47,7 +47,7 @@ function ReservationRow({
   }
 
   const handleRowClick = () => {
-    navigate.navigate({ to: "/rentals", search: { detail: r.id } });
+    navigate({ to: "/rentals", search: { detail: r.id } });
   };
 
   return (
