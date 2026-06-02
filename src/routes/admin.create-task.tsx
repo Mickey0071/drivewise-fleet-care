@@ -14,8 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { assignTask } from "@/lib/tasks.functions";
 import { TASK_TYPES, TASK_TYPE_KEYS, type TaskType } from "@/lib/task-types";
 
-export const Route = createFileRoute("/admin/send-task")({
-  head: () => ({ meta: [{ title: "Send Task — Camauto Rentals" }] }),
+export const Route = createFileRoute("/admin/create-task")({
+  head: () => ({ meta: [{ title: "Create Task — Camauto Rentals" }] }),
   component: SendTaskPage,
 });
 
@@ -111,7 +111,7 @@ function SendTaskPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title="Send Task" subtitle="Assign a task to a runner and text them the link." />
+      <PageHeader title="Create Task" subtitle="Assign a task to a runner and text them the link." />
       {lastSent && (
         <div className="mb-4 rounded-md border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
           {lastSent}
@@ -195,7 +195,7 @@ function SendTaskPage() {
           </div>
 
           <Button className="w-full" size="lg" disabled={!canSend} onClick={handleSend}>
-            {busy ? "Sending…" : "Send Task"}
+            {busy ? "Sending…" : "Create Task"}
           </Button>
         </CardContent>
       </Card>
