@@ -76,9 +76,15 @@ const fromDriver = (r: any) => ({
   blocked: r.blocked ?? false,
   blockReason: r.block_reason ?? undefined,
   blockedAt: r.blocked_at ?? undefined,
+  stripeCustomerId: r.stripe_customer_id ?? undefined,
+  stripePaymentMethodId: r.stripe_payment_method_id ?? undefined,
+  cardLast4: r.card_last4 ?? undefined,
+  cardBrand: r.card_brand ?? undefined,
+  cardExpMonth: r.card_exp_month ?? undefined,
+  cardExpYear: r.card_exp_year ?? undefined,
+  cardSavedAt: r.card_saved_at ?? undefined,
 });
 const toDriver = (d: any) => ({
-  // (card fields are written server-side only; not mapped back here)
   id: d.id, full_name: d.fullName, phone: d.phone, email: d.email,
   license_number: d.licenseNumber, license_expiry: d.licenseExpiry,
   insurance_on_file: d.insuranceOnFile, rideshare: d.rideshare,
