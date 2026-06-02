@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import logo from "@/assets/camauto-logo.jpeg";
 
 const runnerTabs = [
+  { to: "/runner/dashboard", label: "My Tasks", emoji: "✅" },
   { to: "/checklist", label: "Task Portal", emoji: "📋" },
   { to: "/vendors", label: "Vendors", emoji: "📞" },
   { to: "/inspections", label: "My History", emoji: "📜" },
@@ -40,7 +41,7 @@ export function RunnerLayout() {
         <Outlet />
       </main>
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur">
-        <ul className={`mx-auto grid max-w-2xl ${tabs.length === 2 ? "grid-cols-2" : tabs.length === 4 ? "grid-cols-4" : "grid-cols-5"}`}>
+        <ul className="mx-auto grid max-w-2xl" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
           {tabs.map((t) => {
             const active = path === t.to || path.startsWith(t.to + "/");
             return (
