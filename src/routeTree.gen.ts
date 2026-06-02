@@ -50,6 +50,7 @@ import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
 import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSendTaskRouteImport } from './routes/admin.send-task'
+import { Route as AdminCompletedInspectionsRouteImport } from './routes/admin.completed-inspections'
 import { Route as RunnerTaskTaskIdRouteImport } from './routes/runner.task.$taskId'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
@@ -263,6 +264,12 @@ const AdminSendTaskRoute = AdminSendTaskRouteImport.update({
   path: '/admin/send-task',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCompletedInspectionsRoute =
+  AdminCompletedInspectionsRouteImport.update({
+    id: '/admin/completed-inspections',
+    path: '/admin/completed-inspections',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const RunnerTaskTaskIdRoute = RunnerTaskTaskIdRouteImport.update({
   id: '/runner/task/$taskId',
   path: '/runner/task/$taskId',
@@ -332,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/staff-portal': typeof StaffPortalRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/admin/completed-inspections': typeof AdminCompletedInspectionsRoute
   '/admin/send-task': typeof AdminSendTaskRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
@@ -382,6 +390,7 @@ export interface FileRoutesByTo {
   '/staff-portal': typeof StaffPortalRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/admin/completed-inspections': typeof AdminCompletedInspectionsRoute
   '/admin/send-task': typeof AdminSendTaskRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
@@ -433,6 +442,7 @@ export interface FileRoutesById {
   '/staff-portal': typeof StaffPortalRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/admin/completed-inspections': typeof AdminCompletedInspectionsRoute
   '/admin/send-task': typeof AdminSendTaskRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
@@ -485,6 +495,7 @@ export interface FileRouteTypes {
     | '/staff-portal'
     | '/vendors'
     | '/violations'
+    | '/admin/completed-inspections'
     | '/admin/send-task'
     | '/admin/users'
     | '/extend/$token'
@@ -535,6 +546,7 @@ export interface FileRouteTypes {
     | '/staff-portal'
     | '/vendors'
     | '/violations'
+    | '/admin/completed-inspections'
     | '/admin/send-task'
     | '/admin/users'
     | '/extend/$token'
@@ -585,6 +597,7 @@ export interface FileRouteTypes {
     | '/staff-portal'
     | '/vendors'
     | '/violations'
+    | '/admin/completed-inspections'
     | '/admin/send-task'
     | '/admin/users'
     | '/extend/$token'
@@ -636,6 +649,7 @@ export interface RootRouteChildren {
   StaffPortalRoute: typeof StaffPortalRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
+  AdminCompletedInspectionsRoute: typeof AdminCompletedInspectionsRoute
   AdminSendTaskRoute: typeof AdminSendTaskRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ExtendTokenRoute: typeof ExtendTokenRoute
@@ -945,6 +959,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSendTaskRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/completed-inspections': {
+      id: '/admin/completed-inspections'
+      path: '/admin/completed-inspections'
+      fullPath: '/admin/completed-inspections'
+      preLoaderRoute: typeof AdminCompletedInspectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/runner/task/$taskId': {
       id: '/runner/task/$taskId'
       path: '/runner/task/$taskId'
@@ -1048,6 +1069,7 @@ const rootRouteChildren: RootRouteChildren = {
   StaffPortalRoute: StaffPortalRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
+  AdminCompletedInspectionsRoute: AdminCompletedInspectionsRoute,
   AdminSendTaskRoute: AdminSendTaskRoute,
   AdminUsersRoute: AdminUsersRoute,
   ExtendTokenRoute: ExtendTokenRoute,

@@ -100,18 +100,22 @@ export const submitTask = createServerFn({ method: "POST" })
         completed_at: new Date().toISOString(),
       })
       .eq("id", data.taskId)
-      .select("id, status, type, vehicle_id")
+      .select("id, status, type, vehicle_id, details")
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Task not found or not assigned to you");
 
     // Auto-create a maintenance ticket when an inspection turns up issues.
+    // Return inspections are gated behind admin approval (see reviewInspection),
+    // so they do NOT auto-create maintenance or change vehicle status here.
+    const isReturnInspection =
+      row.type === "inspection" && (row.details as any)?.return_inspection === true;
     const completion = data.completion as Record<string, unknown>;
     const issues = Array.isArray((completion as any).issues)
       ? ((completion as any).issues as string[]).filter((s) => typeof s === "string" && s.trim())
       : [];
     let maintenanceCreated = false;
-    if (row.type === "inspection" && issues.length > 0) {
+    if (row.type === "inspection" && !isReturnInspection && issues.length > 0) {
       const mid =
         "MN-" +
         Math.random().toString(36).slice(2, 12).toUpperCase();
@@ -158,4 +162,187 @@ export const submitTask = createServerFn({ method: "POST" })
     }
 
     return { ok: true, taskId: row.id as string, maintenanceCreated };
+  });
+
+/**
+ * Admin: return a vehicle and dispatch a post-return inspection task to a runner.
+ * Marks the rental returned and parks the vehicle in "inspection" status until
+ * an admin approves the completed inspection (see reviewInspection).
+ */
+export const createReturnInspection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    rentalId: string;
+    runnerId: string;
+    origin: string;
+    vehicleLabel?: string;
+  }) => {
+    if (!input.rentalId) throw new Error("rentalId required");
+    if (!input.runnerId) throw new Error("runnerId required");
+    if (!input.origin || !/^https?:\/\//.test(input.origin)) throw new Error("origin required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    // RLS gates these writes to admins only.
+    const { data: rental, error: rErr } = await supabase
+      .from("rentals")
+      .select("id, vehicle_id, end_date")
+      .eq("id", data.rentalId)
+      .maybeSingle();
+    if (rErr) throw new Error(rErr.message);
+    if (!rental) throw new Error("Rental not found");
+
+    const nowIso = new Date().toISOString();
+    const { error: upErr } = await supabase
+      .from("rentals")
+      .update({
+        reservation_status: "returned",
+        returned_at: nowIso,
+        end_date: rental.end_date || nowIso.slice(0, 10),
+      })
+      .eq("id", rental.id);
+    if (upErr) throw new Error(upErr.message);
+
+    // Park the vehicle in inspection (not bookable) until approved.
+    await supabase
+      .from("vehicles")
+      .update({ status: "inspection" })
+      .eq("id", rental.vehicle_id as string);
+
+    const { data: taskRow, error: tErr } = await supabase
+      .from("runner_tasks")
+      .insert({
+        type: "inspection",
+        vehicle_id: rental.vehicle_id as string,
+        runner_id: data.runnerId,
+        assigned_by: context.userId,
+        details: {
+          return_inspection: true,
+          rental_id: rental.id,
+          instructions: "Post-return inspection — check the vehicle before it goes back on the lot.",
+        } as any,
+        status: "assigned",
+      })
+      .select("id")
+      .single();
+    if (tErr) throw new Error(tErr.message);
+
+    const { data: runner } = await supabase
+      .from("profiles")
+      .select("full_name, first_name, phone")
+      .eq("id", data.runnerId)
+      .maybeSingle();
+
+    const taskId = taskRow.id as string;
+    const url = `${data.origin.replace(/\/$/, "")}/runner/task/${encodeURIComponent(taskId)}`;
+    const label = data.vehicleLabel || (rental.vehicle_id as string);
+    let smsStatus: "sent" | "skipped_no_phone" = "skipped_no_phone";
+    if (runner?.phone && runner.phone.length >= 7) {
+      await sendSms(
+        runner.phone,
+        `Camauto: Inspection needed — ${label}. Open on your phone: ${url}`,
+        runner.full_name || runner.first_name || "Runner",
+      );
+      smsStatus = "sent";
+    }
+
+    return { ok: true, taskId, url, smsStatus };
+  });
+
+/**
+ * Admin: approve / reject / force-available a completed (return) inspection.
+ */
+export const reviewInspection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    taskId: string;
+    action: "approve" | "reject" | "force_available";
+    reason?: string;
+    reopen?: boolean;
+    origin?: string;
+  }) => {
+    if (!input.taskId) throw new Error("taskId required");
+    if (!["approve", "reject", "force_available"].includes(input.action)) throw new Error("Invalid action");
+    if (input.reason && input.reason.length > 1000) throw new Error("reason too long");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    // RLS "Admins manage runner_tasks" gates this to admins only.
+    const { data: task, error: tErr } = await supabase
+      .from("runner_tasks")
+      .select("id, type, vehicle_id, runner_id, completion, notes, mileage")
+      .eq("id", data.taskId)
+      .maybeSingle();
+    if (tErr) throw new Error(tErr.message);
+    if (!task) throw new Error("Task not found");
+
+    const completion = (task.completion as Record<string, unknown>) || {};
+    const issues = Array.isArray((completion as any).issues)
+      ? ((completion as any).issues as string[]).filter((s) => typeof s === "string" && s.trim())
+      : [];
+
+    if (data.action === "reject") {
+      const noteParts = [task.notes, data.reason?.trim() ? `Rejected: ${data.reason.trim()}` : "Rejected"].filter(Boolean);
+      if (data.reopen) {
+        // Reopen for the runner to redo. Vehicle stays in inspection.
+        await supabase
+          .from("runner_tasks")
+          .update({ status: "assigned", completed_at: null, notes: noteParts.join(" | ") })
+          .eq("id", task.id);
+        const { data: runner } = await supabase
+          .from("profiles")
+          .select("full_name, first_name, phone")
+          .eq("id", task.runner_id as string)
+          .maybeSingle();
+        if (runner?.phone && runner.phone.length >= 7 && data.origin) {
+          const url = `${data.origin.replace(/\/$/, "")}/runner/task/${encodeURIComponent(task.id as string)}`;
+          try {
+            await sendSms(
+              runner.phone,
+              `Camauto: Re-inspection needed${data.reason?.trim() ? ` — ${data.reason.trim()}` : ""}. ${url}`,
+              runner.full_name || runner.first_name || "Runner",
+            );
+          } catch { /* ignore */ }
+        }
+      } else {
+        await supabase
+          .from("runner_tasks")
+          .update({ status: "rejected", notes: noteParts.join(" | ") })
+          .eq("id", task.id);
+      }
+      return { ok: true, action: "reject" as const, reopened: !!data.reopen };
+    }
+
+    // approve or force_available → vehicle becomes available.
+    let maintenanceCreated = false;
+    if (data.action === "approve" && issues.length > 0) {
+      const mid = "MN-" + Math.random().toString(36).slice(2, 12).toUpperCase();
+      const { error: mErr } = await supabase.from("maintenance").insert({
+        id: mid,
+        vehicle_id: task.vehicle_id as string,
+        service_type: "Inspection issues: " + issues.join(", "),
+        vendor: "Pending assignment",
+        date_completed: null,
+        mileage_at_service: (task.mileage as number) ?? 0,
+        cost: 0,
+        notes: (task.notes as string) || null,
+        next_service_due: new Date().toISOString().slice(0, 10),
+      });
+      if (mErr) throw new Error(mErr.message);
+      maintenanceCreated = true;
+    }
+
+    await supabase
+      .from("vehicles")
+      .update({ status: "available" })
+      .eq("id", task.vehicle_id as string);
+
+    await supabase
+      .from("runner_tasks")
+      .update({ status: "approved" })
+      .eq("id", task.id);
+
+    return { ok: true, action: data.action, maintenanceCreated };
   });
