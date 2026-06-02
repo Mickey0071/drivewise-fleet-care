@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { JOB_TYPE_LABELS } from "@/lib/checklist-items";
 
 export const Route = createFileRoute("/inspections")({
-  head: () => ({ meta: [{ title: "Inspection History — Camauto Rentals" }] }),
+  head: () => ({ meta: [{ title: "Inspections — Camauto Rentals" }] }),
   component: InspectionsPage,
 });
 
