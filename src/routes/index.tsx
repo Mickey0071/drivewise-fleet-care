@@ -30,7 +30,25 @@ function Index() {
   };
   const today = new Date();
   const weekEnd = new Date(today); weekEnd.setDate(today.getDate() + 7);
-  const dueThisWeek = payments.filter(p => p.status !== "paid" && new Date(p.dueDate) <= weekEnd);
+  const todayStr = today.toISOString().slice(0, 10);
+  const weekEndStr = weekEnd.toISOString().slice(0, 10);
+  // Consolidate all unpaid amounts per ON RENT reservation into a single line.
+  const dueThisWeek = rentals
+    .filter(r => {
+      const rs = r.reservationStatus ?? "active";
+      return rs === "active" || rs === "on_rent"; // exclude pending / returned / completed
+    })
+    .map(r => {
+      const unpaid = payments.filter(p => p.rentalId === r.id && p.status !== "paid");
+      const totalOwed = unpaid.reduce((s, p) => s + Number(p.amount || 0), 0);
+      const earliestDue = unpaid.reduce<string | null>(
+        (min, p) => (min === null || p.dueDate < min ? p.dueDate : min),
+        null,
+      );
+      return { rental: r, totalOwed, earliestDue };
+    })
+    .filter(x => x.totalOwed > 0 && x.earliestDue !== null && x.earliestDue <= weekEndStr)
+    .sort((a, b) => (a.earliestDue! < b.earliestDue! ? -1 : 1));
   const overdue = payments.filter(p => p.status === "missed" || p.status === "late");
   const overdueAmount = overdue.reduce((s, p) => s + p.amount, 0);
   const serviceAlerts = maintenance.filter(m => m.nextServiceDue && new Date(m.nextServiceDue) <= weekEnd);
