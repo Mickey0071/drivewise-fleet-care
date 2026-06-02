@@ -335,6 +335,29 @@ function TaskPage() {
                   <PhotoBlock required />
                 </>
               )}
+              <div>
+                <Label>Any dashboard codes?</Label>
+                <div className="mt-1"><YesNo value={dashCodes} onChange={setDashCodes} /></div>
+              </div>
+              {dashCodes && (
+                <>
+                  <div>
+                    <Label>Which code?</Label>
+                    <Select value={dashCode} onValueChange={setDashCode}>
+                      <SelectTrigger className="mt-1 h-12"><SelectValue placeholder="Select which code..." /></SelectTrigger>
+                      <SelectContent>
+                        {DASHBOARD_CODE_OPTIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {dashCode === "Other (specify)" && (
+                    <div>
+                      <Label htmlFor="dco">Specify code</Label>
+                      <Input id="dco" className="mt-1 h-12" value={dashCodeOther} onChange={(e) => setDashCodeOther(e.target.value)} />
+                    </div>
+                  )}
+                </>
+              )}
             </>
           )}
 
