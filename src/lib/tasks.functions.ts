@@ -33,7 +33,7 @@ export const assignTask = createServerFn({ method: "POST" })
         runner_id: data.runnerId,
         assigned_by: context.userId,
         due_date: data.dueDate || null,
-        details: data.details ?? {},
+        details: (data.details ?? {}) as any,
         status: "assigned",
       })
       .select("id")
@@ -94,7 +94,7 @@ export const submitTask = createServerFn({ method: "POST" })
       .update({
         status: "completed",
         mileage: data.mileage,
-        completion: data.completion,
+        completion: data.completion as any,
         photo_urls: data.photoUrls ?? [],
         notes: data.notes?.trim() || null,
         completed_at: new Date().toISOString(),
