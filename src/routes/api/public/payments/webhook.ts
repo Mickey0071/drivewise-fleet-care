@@ -931,11 +931,64 @@ async function handleSubscriptionDeleted(subscription: any, env: StripeEnv) {
     .eq("environment", env);
 }
 
+// Safety net: a successful PaymentIntent (for a one-time rental deposit/payment)
+// always activates its reservation, idempotently. This guarantees activation
+// even if the `checkout.session.completed` handler errored midway or a duplicate
+// event left the rental in a partial state. It never re-activates a rental that
+// was refunded for a cardholder-name mismatch.
+async function handlePaymentIntentSucceeded(pi: any, env: StripeEnv) {
+  const rentalId = pi?.metadata?.rental_id || null;
+  const kind = pi?.metadata?.kind || "deposit";
+  if (!rentalId) return;
+  // Only one-time rental payments; subscriptions/extensions/custom flows are
+  // handled by their own events and must not be touched here.
+  if (kind === "subscription" || kind === "weekly_subscription") return;
+  if (kind === "renter_extension" || kind === "admin_extension") return;
+  if (kind === "custom_renter_payment") return;
+
+  const sb = getSupabase();
+  const { data: rental } = await sb
+    .from("rentals")
+    .select("id, vehicle_id, reservation_status, payment_received, name_match_status")
+    .eq("id", rentalId)
+    .maybeSingle();
+  if (!rental) return;
+
+  // Respect the name-mismatch refund decision — never override it.
+  if (rental.name_match_status === "mismatched") return;
+  // Already activated (or canceled) — nothing to do; keep this idempotent.
+  if (rental.reservation_status === "active" && rental.payment_received) return;
+  if (rental.reservation_status === "canceled") return;
+  if (rental.reservation_status !== "pending") return;
+
+  console.warn(
+    `[webhook:pi] safety-net activation rental=${rentalId} (was ${rental.reservation_status})`,
+  );
+  await sb
+    .from("rentals")
+    .update({
+      payment_received: true,
+      reservation_status: "active",
+      activated_at: new Date().toISOString(),
+      pending_created_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", rental.id)
+    .eq("reservation_status", "pending");
+
+  if (rental.vehicle_id) {
+    await sb.from("vehicles").update({ status: "rented" }).eq("id", rental.vehicle_id);
+  }
+}
+
 async function handleWebhook(req: Request, env: StripeEnv) {
   const event = await verifyWebhook(req, env);
   switch (event.type) {
     case "checkout.session.completed":
       await handleCheckoutCompleted(event.data.object, env);
+      break;
+    case "payment_intent.succeeded":
+      await handlePaymentIntentSucceeded(event.data.object, env);
       break;
     case "customer.subscription.created":
       await handleSubscriptionCreated(event.data.object, env);
