@@ -3,16 +3,18 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
-import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown } from "lucide-react";
+import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown, ShieldAlert } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
 import { RepairsBoard } from "@/components/app/RepairsBoard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
-import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
+import { useStoreVersion, markScheduledComplete, pendingRunnerRepairs, approveRunnerRepair, rejectRunnerRepair } from "@/lib/mock/store";
+import { supabase } from "@/integrations/supabase/client";
+import { Link } from "@tanstack/react-router";
 import {
   dueSoonScheduledItems,
   computeScheduledItems,
