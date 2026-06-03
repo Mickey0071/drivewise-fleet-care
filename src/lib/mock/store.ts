@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, insuranceEntries, insuranceChecklist, violations, staff, payrollRuns, repairTypes, serviceTypes, workOrders, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto, type InsuranceEntry, type InsuranceChecklistItem, type Violation, type Staff, type PayrollRun, type RepairType, type ServiceType, type WorkOrder } from "./data";
+import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, insuranceEntries, insuranceChecklist, violations, staff, payrollRuns, repairTypes, serviceTypes, workOrders, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto, type InsuranceEntry, type InsuranceChecklistItem, type Violation, type Staff, type PayrollRun, type RepairType, type ServiceType, type WorkOrder, type RepairSolution } from "./data";
 import { supabase } from "@/integrations/supabase/client";
 
 const listeners = new Set<() => void>();
@@ -350,6 +350,14 @@ const fromMaintenance = (r: any): Maintenance => ({
   completedBy: r.completed_by ?? undefined,
   sourceInspectionId: r.source_inspection_id ?? undefined,
   createdAt: r.created_at ?? undefined,
+  status: r.status ?? undefined,
+  issueDescription: r.issue_description ?? undefined,
+  solutions: r.solutions ?? undefined,
+  selectedSolution: r.selected_solution ?? undefined,
+  downPayment: r.down_payment != null ? Number(r.down_payment) : undefined,
+  amountPaid: r.amount_paid != null ? Number(r.amount_paid) : undefined,
+  balance: r.balance != null ? Number(r.balance) : undefined,
+  completionDate: r.completion_date ?? undefined,
 });
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
@@ -357,6 +365,14 @@ const toMaintenance = (m: Maintenance) => ({
   mileage_at_service: m.mileageAtService, cost: m.cost,
   next_service_due: m.nextServiceDue, notes: m.notes ?? null,
   completed_by: m.completedBy ?? null,
+  status: m.status ?? null,
+  issue_description: m.issueDescription ?? null,
+  solutions: (m.solutions ?? null) as any,
+  selected_solution: (m.selectedSolution ?? null) as any,
+  down_payment: m.downPayment ?? 0,
+  amount_paid: m.amountPaid ?? 0,
+  balance: m.balance ?? 0,
+  completion_date: m.completionDate ?? null,
 });
 
 // ---- staff ----
@@ -1615,6 +1631,105 @@ export function deleteMaintenance(id: string) {
   maintenance.splice(idx, 1);
   cloudWrite("maintenance:delete", supabase.from("maintenance").delete().eq("id", id));
   syncVehicleOpenIssues(vehicleId);
+  emit();
+}
+
+// ---------------------------------------------------------------------------
+// Repairs kanban (Open → In Progress → Complete)
+// Repairs are maintenance rows with a non-null `status`. They stay "open"
+// (no date_completed) so the vehicle is flagged unavailable until completed.
+// ---------------------------------------------------------------------------
+export function createRepair(input: {
+  vehicleId: string;
+  issueDescription: string;
+  solutions: RepairSolution[];
+}) {
+  const v = vehicles.find(x => x.id === input.vehicleId);
+  const rec: Maintenance = {
+    id: nextMaintenanceId(),
+    vehicleId: input.vehicleId,
+    serviceType: input.issueDescription,
+    issueDescription: input.issueDescription,
+    solutions: input.solutions,
+    vendor: "Pending assignment",
+    dateCompleted: undefined as unknown as string,
+    mileageAtService: v?.mileage ?? 0,
+    cost: 0,
+    nextServiceDue: new Date().toISOString().slice(0, 10),
+    status: "open",
+    downPayment: 0,
+    amountPaid: 0,
+    balance: 0,
+    createdAt: new Date().toISOString(),
+  };
+  maintenance.push(rec);
+  cloudWrite("maintenance:insert", supabase.from("maintenance").insert(toMaintenance(rec)));
+  if (v) syncVehicleOpenIssues(v.id);
+  emit();
+  return rec;
+}
+
+/** Open → In Progress: admin picks a solution and (optionally) a down payment. */
+export function selectRepairSolution(id: string, solution: RepairSolution, downPayment = 0) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  const dp = Math.max(0, downPayment || 0);
+  m.status = "in_progress";
+  m.selectedSolution = solution;
+  m.cost = solution.totalCost;
+  m.downPayment = dp;
+  m.amountPaid = dp;
+  m.balance = Math.max(0, solution.totalCost - dp);
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  if (dp > 0) {
+    addExpense({
+      category: "Maintenance",
+      amount: dp,
+      date: new Date().toISOString().slice(0, 10),
+      vehicleId: m.vehicleId,
+      notes: `Down payment for repair ${m.id} — ${solution.name}`,
+    });
+  }
+  emit();
+}
+
+/** In Progress: record an additional payment toward the repair. */
+export function recordRepairPayment(id: string, amount: number) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m || !m.selectedSolution) return;
+  const amt = Math.max(0, amount || 0);
+  if (amt <= 0) return;
+  m.amountPaid = (m.amountPaid ?? 0) + amt;
+  m.balance = Math.max(0, (m.selectedSolution.totalCost) - m.amountPaid);
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  addExpense({
+    category: "Maintenance",
+    amount: amt,
+    date: new Date().toISOString().slice(0, 10),
+    vehicleId: m.vehicleId,
+    notes: `Payment for repair ${m.id} — ${m.selectedSolution.name}`,
+  });
+  emit();
+}
+
+/** In Progress → Complete: only when fully paid. Logs to maintenance history. */
+export function completeRepair(id: string, completedBy?: string) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m || !m.selectedSolution) return;
+  if ((m.amountPaid ?? 0) < m.selectedSolution.totalCost) return; // balance must be 0
+  const today = new Date().toISOString().slice(0, 10);
+  m.status = "complete";
+  m.balance = 0;
+  m.completionDate = new Date().toISOString();
+  m.dateCompleted = today;
+  m.serviceType = m.selectedSolution.name;
+  m.cost = m.selectedSolution.totalCost;
+  m.completedBy = completedBy?.trim() || m.completedBy || "Admin";
+  if (m.vendor === "Pending assignment") m.vendor = m.completedBy;
+  const resolution = `Repair completed ${today}: ${m.selectedSolution.name} (total $${m.selectedSolution.totalCost.toFixed(2)}, paid in full)`;
+  m.notes = m.notes ? `${m.notes}\n\n${resolution}` : resolution;
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  syncVehicleOpenIssues(m.vehicleId);
   emit();
 }
 

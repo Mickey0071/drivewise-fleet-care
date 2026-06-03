@@ -488,46 +488,70 @@ export type Database = {
       }
       maintenance: {
         Row: {
+          amount_paid: number
+          balance: number
           completed_by: string | null
+          completion_date: string | null
           cost: number
           created_at: string
           date_completed: string | null
+          down_payment: number
           id: string
+          issue_description: string | null
           mileage_at_service: number
           next_service_due: string
           notes: string | null
+          selected_solution: Json | null
           service_type: string
+          solutions: Json | null
           source_inspection_id: string | null
+          status: string | null
           updated_at: string
           vehicle_id: string
           vendor: string
         }
         Insert: {
+          amount_paid?: number
+          balance?: number
           completed_by?: string | null
+          completion_date?: string | null
           cost?: number
           created_at?: string
           date_completed?: string | null
+          down_payment?: number
           id: string
+          issue_description?: string | null
           mileage_at_service?: number
           next_service_due?: string
           notes?: string | null
+          selected_solution?: Json | null
           service_type: string
+          solutions?: Json | null
           source_inspection_id?: string | null
+          status?: string | null
           updated_at?: string
           vehicle_id: string
           vendor: string
         }
         Update: {
+          amount_paid?: number
+          balance?: number
           completed_by?: string | null
+          completion_date?: string | null
           cost?: number
           created_at?: string
           date_completed?: string | null
+          down_payment?: number
           id?: string
+          issue_description?: string | null
           mileage_at_service?: number
           next_service_due?: string
           notes?: string | null
+          selected_solution?: Json | null
           service_type?: string
+          solutions?: Json | null
           source_inspection_id?: string | null
+          status?: string | null
           updated_at?: string
           vehicle_id?: string
           vendor?: string

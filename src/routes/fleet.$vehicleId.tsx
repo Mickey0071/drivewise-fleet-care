@@ -24,6 +24,7 @@ import { ServiceHistoryReportDialog } from "@/components/app/ServiceHistoryRepor
 import { CreateWorkOrderDialog } from "@/components/app/CreateWorkOrderDialog";
 import { WorkOrderDialog } from "@/components/app/WorkOrderDialog";
 import { AddIssueDialog } from "@/components/app/AddIssueDialog";
+import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
 import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import type { Maintenance, WorkOrder } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
@@ -53,6 +54,7 @@ function VehicleDetail() {
   const [reportOpen, setReportOpen] = useState(false);
   const [createWoOpen, setCreateWoOpen] = useState(false);
   const [addIssueOpen, setAddIssueOpen] = useState(false);
+  const [addRepairOpen, setAddRepairOpen] = useState(false);
   const [activeWo, setActiveWo] = useState<WorkOrder | null>(null);
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
@@ -208,6 +210,9 @@ function VehicleDetail() {
             </Button>
             <Button size="sm" variant="outline" onClick={() => setAddIssueOpen(true)}>
               <Plus className="mr-1 h-4 w-4" />Add Issue
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setAddRepairOpen(true)}>
+              <Plus className="mr-1 h-4 w-4" />New Repair
             </Button>
             <Button
               size="sm"
@@ -498,6 +503,12 @@ function VehicleDetail() {
       <AddIssueDialog
         open={addIssueOpen}
         onOpenChange={setAddIssueOpen}
+        initialVehicleId={v.id}
+        lockVehicle
+      />
+      <CreateRepairDialog
+        open={addRepairOpen}
+        onOpenChange={setAddRepairOpen}
         initialVehicleId={v.id}
         lockVehicle
       />

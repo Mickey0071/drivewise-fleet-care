@@ -9,6 +9,8 @@ import { ReportActions } from "@/components/app/ReportActions";
 import { LogServiceDialog } from "@/components/app/LogServiceDialog";
 import { AddIssueDialog } from "@/components/app/AddIssueDialog";
 import { ResolveMaintenanceDialog } from "@/components/app/ResolveMaintenanceDialog";
+import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
+import { RepairsBoard } from "@/components/app/RepairsBoard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { isServiceLogRecord } from "@/lib/maintenance-utils";
 import { useState } from "react";
@@ -25,6 +27,7 @@ function MaintenancePage() {
   useStoreVersion();
   const [logOpen, setLogOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
+  const [repairOpen, setRepairOpen] = useState(false);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const today = new Date();
   const open = maintenance.filter(m => !m.dateCompleted)
@@ -35,6 +38,7 @@ function MaintenancePage() {
     .sort((a, b) => (b.dateCompleted ?? "").localeCompare(a.dateCompleted ?? ""));
   const totalCost = resolved.reduce((s, m) => s + m.cost, 0);
   const serviceCost = serviceLog.reduce((s, m) => s + m.cost, 0);
+  const repairCount = maintenance.filter(m => !!m.status).length;
 
   return (
     <div>
@@ -58,6 +62,7 @@ function MaintenancePage() {
       />
       <LogServiceDialog open={logOpen} onOpenChange={setLogOpen} />
       <AddIssueDialog open={issueOpen} onOpenChange={setIssueOpen} />
+      <CreateRepairDialog open={repairOpen} onOpenChange={setRepairOpen} />
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <KPI label="Open issues" value={String(open.length)} icon={AlertTriangle} tone={open.length ? "text-destructive" : "text-foreground"} />
@@ -71,6 +76,7 @@ function MaintenancePage() {
           <TabsTrigger value="open">Open Issues ({open.length})</TabsTrigger>
           <TabsTrigger value="closed">Closed Issues ({resolved.length})</TabsTrigger>
           <TabsTrigger value="service">Service Log ({serviceLog.length})</TabsTrigger>
+          <TabsTrigger value="repairs">Repairs ({repairCount})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="open" className="mt-4">
@@ -219,6 +225,14 @@ function MaintenancePage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="repairs" className="mt-4">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Track repairs from open issue to fully-paid completion.</p>
+            <Button size="sm" onClick={() => setRepairOpen(true)}>+ New Repair</Button>
+          </div>
+          <RepairsBoard />
         </TabsContent>
       </Tabs>
 
