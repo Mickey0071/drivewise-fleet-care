@@ -9,9 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
 import { maintenance, vehicleById, fmtMoney, fmtDate, type Maintenance, type RepairSolution } from "@/lib/mock/data";
 import { useStoreVersion, selectRepairSolution, recordRepairPayment, completeRepair, setRepairRentalBlocking } from "@/lib/mock/store";
+import type { RepairCompletionSummary } from "@/lib/mock/store";
+import { useServerFn } from "@tanstack/react-start";
+import { notifyRunnerRepairComplete } from "@/lib/tasks.functions";
 import { toast } from "sonner";
 import { CheckCircle2, Wrench, Ban, Car } from "lucide-react";
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
+import { RepairCompletionSummaryDialog } from "@/components/app/RepairCompletionSummaryDialog";
 
 function VehicleLink({ vehicleId }: { vehicleId: string }) {
   const v = vehicleById(vehicleId);
