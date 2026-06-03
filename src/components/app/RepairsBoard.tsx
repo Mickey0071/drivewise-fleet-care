@@ -117,6 +117,7 @@ function InProgressCard({ m }: { m: Maintenance }) {
           <Badge variant="secondary">In Progress</Badge>
         </div>
         <div className="text-sm font-medium">{sol.name}</div>
+        <RentalBlockToggle m={m} />
         <div className="rounded-md border border-border bg-muted/30 p-2 text-xs">
           <Row label="Estimate" value={fmtMoney(sol.totalCost)} />
           <Row label="Down payment" value={fmtMoney(m.downPayment ?? 0)} />
