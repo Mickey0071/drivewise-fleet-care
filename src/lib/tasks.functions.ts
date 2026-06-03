@@ -552,3 +552,65 @@ export const reviewInspection = createServerFn({ method: "POST" })
 
     return { ok: true, action: "approve" as const, maintenanceCreated };
   });
+/**
+ * Admin: notify the runner who reported a repair that it has been completed.
+ * Best-effort SMS to the runner's phone. No-op if the maintenance record has
+ * no associated runner.
+ */
+export const notifyRunnerRepairComplete = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    maintenanceId: string;
+    issue: string;
+    completedBy: string;
+    mechanicNotes?: string;
+    total: number;
+  }) => {
+    if (!input.maintenanceId) throw new Error("maintenanceId required");
+    if (input.issue && input.issue.length > 300) throw new Error("issue too long");
+    if (input.mechanicNotes && input.mechanicNotes.length > 2000) throw new Error("notes too long");
+    if (typeof input.total !== "number" || input.total < 0 || input.total > 1000000) {
+      throw new Error("Invalid total");
+    }
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    const { data: m } = await supabase
+      .from("maintenance")
+      .select("runner_id, vehicle_id, service_type, issue_description")
+      .eq("id", data.maintenanceId)
+      .maybeSingle();
+
+    const runnerId = (m as any)?.runner_id as string | undefined;
+    if (!runnerId) return { ok: true, notified: false as const, reason: "no_runner" };
+
+    const { data: runner } = await supabase
+      .from("profiles")
+      .select("phone, full_name, first_name")
+      .eq("id", runnerId)
+      .maybeSingle();
+
+    const phone = (runner as any)?.phone as string | undefined;
+    if (!phone) return { ok: true, notified: false as const, reason: "no_phone" };
+
+    const { data: veh } = await supabase
+      .from("vehicles")
+      .select("year, make, model, plate")
+      .eq("id", (m as any)?.vehicle_id)
+      .maybeSingle();
+    const vLabel = veh
+      ? `${(veh as any).year} ${(veh as any).make} ${(veh as any).model} (${(veh as any).plate})`
+      : (m as any)?.vehicle_id;
+
+    const work = data.mechanicNotes?.trim() ? ` What was done: ${data.mechanicNotes.trim()}.` : "";
+    const msg = `Camauto: ✓ COMPLETED — ${vLabel}. Issue you reported: ${data.issue}. Completed by ${data.completedBy}.${work} Cost $${data.total.toFixed(2)}.`;
+
+    try {
+      await sendSms(phone, msg, (runner as any)?.full_name || (runner as any)?.first_name || "Runner");
+      return { ok: true, notified: true as const };
+    } catch {
+      return { ok: true, notified: false as const, reason: "sms_failed" };
+    }
+  });
