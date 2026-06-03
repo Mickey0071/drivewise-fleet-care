@@ -1,18 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { getRenterPortal, createRenterPaymentLink } from "@/lib/renter-portal.functions";
-import { verifyCardOwner } from "@/lib/renter-portal.functions";
+import {
+  getRenterPortal,
+  createRenterCustomPayment,
+  submitExtensionRequest,
+  submitSupportRequest,
+} from "@/lib/renter-portal.functions";
 import { getRenterHistoryByRentalId } from "@/lib/my-rentals.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CreditCard, CheckCircle2, XCircle, Clock, History, ChevronRight } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Loader2, CreditCard, CheckCircle2, Clock, History, ChevronRight,
+  CalendarPlus, MessageSquare, FileText, Receipt, Download, Phone,
+} from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import logo from "@/assets/camauto-logo-full.jpeg";
-import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/rent/portal/$rentalId")({
   head: () => ({ meta: [{ title: "Your reservation — Camauto Rentals" }] }),
@@ -38,25 +46,28 @@ function fmtDate(d: string | null | undefined) {
 
 export function PortalPage({ rentalId }: { rentalId: string }) {
   const fetchInfo = useServerFn(getRenterPortal);
-  const createLink = useServerFn(createRenterPaymentLink);
-  const verifyOwner = useServerFn(verifyCardOwner);
+  const payCustom = useServerFn(createRenterCustomPayment);
+  const extendFn = useServerFn(submitExtensionRequest);
+  const supportFn = useServerFn(submitSupportRequest);
   const fetchHistory = useServerFn(getRenterHistoryByRentalId);
   const [info, setInfo] = useState<Info | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [payingId, setPayingId] = useState<string | null>(null);
   const [history, setHistory] = useState<Array<any>>([]);
 
-  // Card verification flow (shown before redirecting to Stripe)
-  const [verifyFor, setVerifyFor] = useState<string | null>(null);
-  const [cardInName, setCardInName] = useState<"yes" | "no" | null>(null);
-  const [idDataUrl, setIdDataUrl] = useState<string | null>(null);
-  const [selfieDataUrl, setSelfieDataUrl] = useState<string | null>(null);
-  const [payerPhone, setPayerPhone] = useState("");
-  const [loadingImg, setLoadingImg] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [verifyResult, setVerifyResult] = useState<
-    { verified: boolean; cardOwnerName: string | null } | null
-  >(null);
+  // Payment
+  const [payAmount, setPayAmount] = useState("");
+  const [paying, setPaying] = useState(false);
+
+  // Extension
+  const [extendOpen, setExtendOpen] = useState(false);
+  const [extendWeeks, setExtendWeeks] = useState("1");
+  const [extendReason, setExtendReason] = useState("");
+  const [extending, setExtending] = useState(false);
+
+  // Support
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportMsg, setSupportMsg] = useState("");
+  const [supporting, setSupporting] = useState(false);
 
   useEffect(() => {
     fetchInfo({ data: { rentalId } })
@@ -67,75 +78,48 @@ export function PortalPage({ rentalId }: { rentalId: string }) {
       .catch(() => { /* non-fatal */ });
   }, [rentalId, fetchInfo, fetchHistory]);
 
-  async function handlePay(paymentId: string) {
-    // Ask for card verification before starting payment.
-    setVerifyFor(paymentId);
-    setCardInName(null);
-    setIdDataUrl(null);
-    setSelfieDataUrl(null);
-    setVerifyResult(null);
-    setPayerPhone("");
-  }
-
-  async function readImage(file: File): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("Could not read file"));
-      reader.readAsDataURL(file);
-    });
-  }
-
-  async function onPickImage(file: File | null, which: "id" | "selfie") {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { toast.error("Please upload an image"); return; }
-    if (file.size > 8 * 1024 * 1024) { toast.error("File must be under 8MB"); return; }
-    setLoadingImg(true);
+  async function handlePay() {
+    const amt = Number(payAmount);
+    if (!Number.isFinite(amt) || amt < 1) { toast.error("Enter an amount of at least $1"); return; }
+    if (amt > 10000) { toast.error("Maximum is $10,000"); return; }
+    setPaying(true);
     try {
-      const dataUrl = await readImage(file);
-      if (which === "id") setIdDataUrl(dataUrl);
-      else setSelfieDataUrl(dataUrl);
-      setVerifyResult(null);
-      toast.success(`${which === "id" ? "ID" : "Selfie"} added`);
-    } catch (e: any) {
-      toast.error(e?.message || "Could not load image");
-    } finally {
-      setLoadingImg(false);
-    }
-  }
-
-  async function runVerification() {
-    if (!idDataUrl || !selfieDataUrl) { toast.error("Upload both the ID and a selfie"); return; }
-    setVerifying(true);
-    setVerifyResult(null);
-    try {
-      const res = await verifyOwner({
-        data: { rentalId, idDataUrl, selfieDataUrl, payerPhone: payerPhone.trim() || undefined },
-      });
-      setVerifyResult({ verified: res.verified, cardOwnerName: res.cardOwnerName });
-      if (!res.verified) toast.error("ID name doesn't match. Please re-upload.");
-    } catch (e) {
-      toast.error("Could not verify", { description: e instanceof Error ? e.message : String(e) });
-    } finally {
-      setVerifying(false);
-    }
-  }
-
-  async function proceedToPayment() {
-    const paymentId = verifyFor;
-    if (!paymentId) return;
-    if (cardInName === "no" && !verifyResult?.verified) {
-      toast.error("Please verify the card owner's ID first");
-      return;
-    }
-    setPayingId(paymentId);
-    try {
-      const { url } = await createLink({ data: { rentalId, paymentId } });
+      const { url } = await payCustom({ data: { rentalId, amount: amt, note: "Portal payment" } });
       window.location.href = url;
     } catch (e) {
       toast.error("Could not start payment", { description: e instanceof Error ? e.message : String(e) });
-      setPayingId(null);
-      setVerifyFor(null);
+      setPaying(false);
+    }
+  }
+
+  async function handleExtend() {
+    setExtending(true);
+    try {
+      const res = await extendFn({ data: { rentalId, periods: Number(extendWeeks), reason: extendReason.trim() || undefined } });
+      toast.success("Extension requested", {
+        description: `We'll confirm a new return date of ${fmtDate(res.newEndDate)}. Our team will be in touch.`,
+      });
+      setExtendOpen(false);
+      setExtendReason("");
+    } catch (e) {
+      toast.error("Could not request extension", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setExtending(false);
+    }
+  }
+
+  async function handleSupport() {
+    if (supportMsg.trim().length < 3) { toast.error("Please describe your issue"); return; }
+    setSupporting(true);
+    try {
+      const res = await supportFn({ data: { rentalId, message: supportMsg.trim() } });
+      toast.success(`Ticket ${res.ticketId} created`, { description: "Our support team will reach out shortly." });
+      setSupportOpen(false);
+      setSupportMsg("");
+    } catch (e) {
+      toast.error("Could not send message", { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSupporting(false);
     }
   }
 
@@ -167,6 +151,9 @@ export function PortalPage({ rentalId }: { rentalId: string }) {
   const balance = payments
     .filter((p) => p.status !== "paid")
     .reduce((sum, p) => sum + Number(p.amount), 0);
+  const pastRentals = history.filter((h) => h.id !== rentalId);
+  const isActive = (rental.reservation_status ?? "pending") === "active";
+  const isWeekly = (rental.billing_period || "weekly") === "weekly";
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-4 md:p-6">
@@ -176,250 +163,321 @@ export function PortalPage({ rentalId }: { rentalId: string }) {
 
       <div className="text-center">
         <h1 className="text-2xl font-semibold">Hi{driver?.full_name ? `, ${driver.full_name.split(" ")[0]}` : ""} 👋</h1>
-        <p className="text-sm text-muted-foreground">Here's your reservation with Camauto Rentals.</p>
+        <p className="text-sm text-muted-foreground">Manage your rental with Camauto Rentals.</p>
       </div>
 
-      <Card className="overflow-hidden">
-        {vehicle?.image_url && (
-          <div className="aspect-[16/9] w-full bg-muted">
-            <img src={vehicle.image_url} alt="vehicle" className="h-full w-full object-cover" />
-          </div>
-        )}
-        <CardContent className="space-y-2 p-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">Your vehicle</div>
-              <div className="text-lg font-semibold">
-                {vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : "—"}
-              </div>
-              {vehicle?.plate && (
-                <div className="text-xs text-muted-foreground">Plate {vehicle.plate}</div>
-              )}
-            </div>
-            <ReservationStatusBadge status={rental.reservation_status ?? "pending"} />
-          </div>
-          <div className="grid grid-cols-2 gap-3 pt-2 text-sm">
-            <Stat label="Starts" value={fmtDate(rental.start_date)} />
-            <Stat label="Rate" value={`${fmtMoney(rate)}/${periodLabel}`} />
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="current" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="current">Current Rental</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="invoices">Invoices</TabsTrigger>
+        </TabsList>
 
-      <Card className={balance > 0 ? "border-primary/40 bg-primary/5" : ""}>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Payment status</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 p-4 pt-0">
-          <div className="flex items-end justify-between">
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">Balance due</div>
-              <div className="text-3xl font-bold">{fmtMoney(balance)}</div>
-              {next && balance > 0 && (
-                <div className="mt-1 text-xs text-muted-foreground">Next due {fmtDate(next.due_date)}</div>
-              )}
-            </div>
-            {next && balance > 0 && (
-              <Button size="lg" onClick={() => handlePay(next.id)} disabled={!!payingId}>
-                {payingId === next.id ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening…</>
-                ) : (
-                  <><CreditCard className="mr-2 h-4 w-4" /> Make a payment</>
-                )}
-              </Button>
+        {/* ---------------- Current Rental ---------------- */}
+        <TabsContent value="current" className="space-y-4">
+          <Card className="overflow-hidden">
+            {vehicle?.image_url && (
+              <div className="aspect-[16/9] w-full bg-muted">
+                <img src={vehicle.image_url} alt="vehicle" className="h-full w-full object-cover" />
+              </div>
             )}
-          </div>
-          {balance === 0 && (
-            <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" /> You're all paid up — thank you!
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Payment history</CardTitle>
-        </CardHeader>
-        <CardContent className="divide-y divide-border p-0">
-          {payments.length === 0 && (
-            <div className="p-4 text-sm text-muted-foreground">No payments scheduled yet.</div>
-          )}
-          {payments.map((p) => (
-            <div key={p.id} className="flex items-center justify-between p-3 text-sm">
-              <div>
-                <div className="font-medium">{fmtMoney(Number(p.amount))}</div>
-                <div className="text-xs text-muted-foreground">
-                  Due {fmtDate(p.due_date)}
-                  {p.paid_date && ` · paid ${fmtDate(p.paid_date)}${p.method ? ` via ${p.method}` : ""}`}
+            <CardContent className="space-y-2 p-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Your vehicle</div>
+                  <div className="text-lg font-semibold">
+                    {vehicle ? `${vehicle.year} ${vehicle.make} ${vehicle.model}` : "—"}
+                  </div>
+                  {vehicle?.plate && (
+                    <div className="text-xs text-muted-foreground">Plate {vehicle.plate}</div>
+                  )}
                 </div>
+                <ReservationStatusBadge status={rental.reservation_status ?? "pending"} />
               </div>
-              <PaymentStatusBadge status={p.status} />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+              <div className="grid grid-cols-3 gap-3 pt-2 text-sm">
+                <Stat label="Starts" value={fmtDate(rental.start_date)} />
+                <Stat label="Ends" value={fmtDate(rental.end_date)} />
+                <Stat label="Rate" value={`${fmtMoney(rate)}/${periodLabel}`} />
+              </div>
+            </CardContent>
+          </Card>
 
-      <p className="pt-2 text-center text-xs text-muted-foreground">
-        Questions? Reply to your text from Camauto Rentals.
-      </p>
+          {/* Payment section */}
+          <Card className={balance > 0 ? "border-primary/40 bg-primary/5" : ""}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Make a payment</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 p-4 pt-0">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Balance due</div>
+                <div className="text-3xl font-bold">{fmtMoney(balance)}</div>
+                {next && balance > 0 && (
+                  <div className="mt-1 text-xs text-muted-foreground">Next due {fmtDate(next.due_date)}</div>
+                )}
+              </div>
 
-      {history.filter((h) => h.id !== rentalId).length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <History className="h-4 w-4" /> Your rental history
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="divide-y divide-border p-0">
-            {history.filter((h) => h.id !== rentalId).map((h) => (
-              <Link
-                key={h.id}
-                to="/my-rentals/$rentalId"
-                params={{ rentalId: h.id }}
-                className="flex items-center justify-between p-3 text-sm hover:bg-muted/40"
-              >
-                <div>
-                  <div className="font-medium">
-                    {h.vehicle ? `${h.vehicle.year} ${h.vehicle.make} ${h.vehicle.model}` : "Vehicle"}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {fmtDate(h.start_date)} → {h.end_date ? fmtDate(h.end_date) : "—"}
-                    {h.vehicle?.plate ? ` · Plate ${h.vehicle.plate}` : ""}
-                  </div>
+              {balance === 0 ? (
+                <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> You're all paid up — thank you!
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </Link>
-            ))}
-          </CardContent>
-          <div className="border-t px-3 py-2 text-center text-xs text-muted-foreground">
-            Sign in to view full documents and receipts.
-          </div>
-        </Card>
-      )}
-
-      <Dialog open={!!verifyFor} onOpenChange={(o) => { if (!o && !payingId) setVerifyFor(null); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Card verification</DialogTitle>
-            <DialogDescription>Is the card being used to pay in the renter's name?</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant={cardInName === "yes" ? "default" : "outline"}
-                onClick={() => { setCardInName("yes"); setIdDataUrl(null); setSelfieDataUrl(null); setVerifyResult(null); }}
-              >
-                Yes, it's mine
-              </Button>
-              <Button
-                type="button"
-                variant={cardInName === "no" ? "default" : "outline"}
-                onClick={() => setCardInName("no")}
-              >
-                No
-              </Button>
-            </div>
-
-            {cardInName === "no" && (
-              <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+              ) : (
                 <p className="text-xs text-muted-foreground">
-                  Upload the card owner's ID and a selfie of them holding that ID. We'll verify the names match.
+                  Pay the full balance or enter a custom amount below.
                 </p>
-                <div>
-                  <Label htmlFor="payer-id" className="text-xs">1. Card owner's ID photo</Label>
-                  <Input
-                    id="payer-id"
-                    type="file"
-                    accept="image/*"
-                    className="mt-1"
-                    disabled={loadingImg || verifying}
-                    onChange={(e) => onPickImage(e.target.files?.[0] ?? null, "id")}
-                  />
-                  {idDataUrl && (
-                    <p className="mt-1 flex items-center gap-1 text-xs text-emerald-600">
-                      <CheckCircle2 className="h-3 w-3" /> ID added
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="payer-selfie" className="text-xs">2. Selfie of card owner (holding ID)</Label>
-                  <Input
-                    id="payer-selfie"
-                    type="file"
-                    accept="image/*"
-                    capture="user"
-                    className="mt-1"
-                    disabled={loadingImg || verifying}
-                    onChange={(e) => onPickImage(e.target.files?.[0] ?? null, "selfie")}
-                  />
-                  {selfieDataUrl && (
-                    <p className="mt-1 flex items-center gap-1 text-xs text-emerald-600">
-                      <CheckCircle2 className="h-3 w-3" /> Selfie added
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="payer-phone" className="text-xs">Card owner's phone (optional)</Label>
-                  <Input
-                    id="payer-phone"
-                    type="tel"
-                    inputMode="tel"
-                    className="mt-1"
-                    value={payerPhone}
-                    onChange={(e) => setPayerPhone(e.target.value)}
-                  />
-                </div>
+              )}
 
-                {!verifyResult?.verified && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="w-full"
-                    disabled={!idDataUrl || !selfieDataUrl || loadingImg || verifying}
-                    onClick={runVerification}
-                  >
-                    {verifying ? (
-                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying…</>
-                    ) : (
-                      "Verify names"
-                    )}
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex-1 min-w-[140px]">
+                  <Label htmlFor="pay-amount" className="text-xs">Amount (USD)</Label>
+                  <div className="relative mt-1">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                    <Input
+                      id="pay-amount"
+                      type="number"
+                      inputMode="decimal"
+                      min="1"
+                      max="10000"
+                      step="0.01"
+                      className="pl-6"
+                      placeholder="0.00"
+                      value={payAmount}
+                      onChange={(e) => setPayAmount(e.target.value)}
+                      disabled={paying}
+                    />
+                  </div>
+                </div>
+                {balance > 0 && (
+                  <Button type="button" variant="outline" onClick={() => setPayAmount(balance.toFixed(2))} disabled={paying}>
+                    Full {fmtMoney(balance)}
                   </Button>
                 )}
-
-                {verifyResult && (
-                  verifyResult.verified ? (
-                    <p className="flex items-center gap-1 text-sm font-medium text-emerald-600">
-                      <CheckCircle2 className="h-4 w-4" /> Names verified
-                      {verifyResult.cardOwnerName ? ` (${verifyResult.cardOwnerName})` : ""}. Ready to pay.
-                    </p>
-                  ) : (
-                    <p className="flex items-center gap-1 text-sm font-medium text-destructive">
-                      <XCircle className="h-4 w-4" /> ID name doesn't match. Please re-upload.
-                    </p>
-                  )
-                )}
               </div>
-            )}
+              <Button className="w-full" size="lg" onClick={handlePay} disabled={paying || !payAmount}>
+                {paying ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening…</>
+                ) : (
+                  <><CreditCard className="mr-2 h-4 w-4" /> Pay Now</>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
 
-            <Button
-              className="w-full"
-              size="lg"
-              disabled={
-                !!payingId || cardInName === null ||
-                (cardInName === "no" && !verifyResult?.verified)
-              }
-              onClick={proceedToPayment}
-            >
-              {payingId ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening…</>
-              ) : (
-                <><CreditCard className="mr-2 h-4 w-4" /> Pay Now</>
-              )}
+          {/* Quick actions */}
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline" onClick={() => setExtendOpen(true)} disabled={!isActive || !isWeekly}>
+              <CalendarPlus className="mr-2 h-4 w-4" /> Request Extension
+            </Button>
+            <Button variant="outline" onClick={() => setSupportOpen(true)}>
+              <MessageSquare className="mr-2 h-4 w-4" /> Contact Support
             </Button>
           </div>
+
+          {/* Payment history */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Payment history</CardTitle>
+            </CardHeader>
+            <CardContent className="divide-y divide-border p-0">
+              {payments.length === 0 && (
+                <div className="p-4 text-sm text-muted-foreground">No payments scheduled yet.</div>
+              )}
+              {payments.map((p) => (
+                <div key={p.id} className="flex items-center justify-between p-3 text-sm">
+                  <div>
+                    <div className="font-medium">{fmtMoney(Number(p.amount))}</div>
+                    <div className="text-xs text-muted-foreground">
+                      Due {fmtDate(p.due_date)}
+                      {p.paid_date && ` · paid ${fmtDate(p.paid_date)}${p.method ? ` via ${p.method}` : ""}`}
+                    </div>
+                  </div>
+                  <PaymentStatusBadge status={p.status} />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ---------------- History ---------------- */}
+        <TabsContent value="history" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <History className="h-4 w-4" /> Past rentals
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="divide-y divide-border p-0">
+              {pastRentals.length === 0 && (
+                <div className="p-4 text-sm text-muted-foreground">No previous rentals yet.</div>
+              )}
+              {pastRentals.map((h) => (
+                <div key={h.id} className="flex items-center justify-between p-3 text-sm">
+                  <div>
+                    <div className="font-medium">
+                      {h.vehicle ? `${h.vehicle.year} ${h.vehicle.make} ${h.vehicle.model}` : "Vehicle"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {fmtDate(h.start_date)} → {h.end_date ? fmtDate(h.end_date) : "—"}
+                      {h.vehicle?.plate ? ` · Plate ${h.vehicle.plate}` : ""}
+                    </div>
+                  </div>
+                  <ReservationStatusBadge status={h.reservation_status ?? "completed"} />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ---------------- Invoices & Receipts ---------------- */}
+        <TabsContent value="invoices" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">This rental</CardTitle>
+            </CardHeader>
+            <CardContent className="divide-y divide-border p-0">
+              <DocRow icon={<FileText className="h-4 w-4" />} label="Rental Agreement (PDF)" url={(rental as any).agreement_pdf_url} />
+              <DocRow icon={<Receipt className="h-4 w-4" />} label="Receipt (PDF)" url={(rental as any).receipt_pdf_url} />
+            </CardContent>
+          </Card>
+
+          {pastRentals.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Past rentals</CardTitle>
+              </CardHeader>
+              <CardContent className="divide-y divide-border p-0">
+                {pastRentals.map((h) => (
+                  <div key={h.id} className="space-y-1 p-3">
+                    <div className="text-sm font-medium">
+                      {h.vehicle ? `${h.vehicle.year} ${h.vehicle.make} ${h.vehicle.model}` : "Vehicle"}
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">{fmtDate(h.start_date)}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      {h.agreement_pdf_url ? (
+                        <a href={h.agreement_pdf_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                          <FileText className="h-3.5 w-3.5" /> Agreement
+                        </a>
+                      ) : null}
+                      {h.receipt_pdf_url ? (
+                        <a href={h.receipt_pdf_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                          <Receipt className="h-3.5 w-3.5" /> Receipt
+                        </a>
+                      ) : null}
+                      {!h.agreement_pdf_url && !h.receipt_pdf_url && (
+                        <span className="text-xs text-muted-foreground">No documents available</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* Footer */}
+      <div className="space-y-2 rounded-lg border bg-muted/30 p-4 text-center text-sm">
+        <div className="flex items-center justify-center gap-2 font-medium">
+          <Phone className="h-4 w-4" /> Need help?
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Call or text us at <a href="tel:+18666255550" className="font-medium text-primary">1-866-625-5550</a>, or use Contact Support above.
+        </p>
+      </div>
+
+      {/* Extension dialog */}
+      <Dialog open={extendOpen} onOpenChange={(o) => !extending && setExtendOpen(o)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request an extension</DialogTitle>
+            <DialogDescription>Tell us how much longer you need the vehicle. Our team will confirm.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label htmlFor="ext-weeks" className="text-xs">Additional weeks</Label>
+              <Input
+                id="ext-weeks"
+                type="number"
+                min="1"
+                max="12"
+                value={extendWeeks}
+                onChange={(e) => setExtendWeeks(e.target.value)}
+                className="mt-1"
+                disabled={extending}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Estimated cost: {fmtMoney(rate * (Number(extendWeeks) || 0))}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="ext-reason" className="text-xs">Reason (optional)</Label>
+              <Textarea
+                id="ext-reason"
+                value={extendReason}
+                onChange={(e) => setExtendReason(e.target.value)}
+                className="mt-1"
+                rows={3}
+                maxLength={300}
+                disabled={extending}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExtendOpen(false)} disabled={extending}>Cancel</Button>
+            <Button onClick={handleExtend} disabled={extending}>
+              {extending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-2 h-4 w-4" />}
+              Submit request
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Support dialog */}
+      <Dialog open={supportOpen} onOpenChange={(o) => !supporting && setSupportOpen(o)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Contact support</DialogTitle>
+            <DialogDescription>Describe your issue and our team will reach out.</DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Label htmlFor="support-msg" className="text-xs">Your message</Label>
+            <Textarea
+              id="support-msg"
+              value={supportMsg}
+              onChange={(e) => setSupportMsg(e.target.value)}
+              className="mt-1"
+              rows={4}
+              maxLength={1000}
+              placeholder="e.g. Vehicle has an issue with the AC"
+              disabled={supporting}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSupportOpen(false)} disabled={supporting}>Cancel</Button>
+            <Button onClick={handleSupport} disabled={supporting || supportMsg.trim().length < 3}>
+              {supporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-2 h-4 w-4" />}
+              Send
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function DocRow({ icon, label, url }: { icon: ReactNode; label: string; url: string | null | undefined }) {
+  return (
+    <div className="flex items-center justify-between p-3 text-sm">
+      <div className="flex items-center gap-2">
+        {icon}
+        <span>{label}</span>
+      </div>
+      {url ? (
+        <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+          <Download className="h-3.5 w-3.5" /> Download
+        </a>
+      ) : (
+        <span className="text-xs text-muted-foreground">Not available</span>
+      )}
     </div>
   );
 }

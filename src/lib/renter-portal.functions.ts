@@ -3,6 +3,19 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createStripeClient } from "@/lib/stripe.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { extractNameFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
+import { sendSms } from "@/lib/ghl.server";
+
+// Internal support / admin line that receives portal requests.
+const SUPPORT_PHONE = "+12672213977";
+
+function originFromRequest(): string {
+  const originHeader = getRequestHeader("origin") || getRequestHeader("referer");
+  let origin = process.env.PUBLIC_APP_ORIGIN ?? "";
+  if (originHeader) {
+    try { origin = new URL(originHeader).origin; } catch { /* keep default */ }
+  }
+  return origin;
+}
 
 // Normalize a person name for fuzzy comparison: lowercase, strip punctuation,
 // collapse whitespace, and sort the word tokens so order/middle-name
@@ -142,7 +155,7 @@ export const getRenterPortal = createServerFn({ method: "POST" })
     const { data: rental, error: rErr } = await supabaseAdmin
       .from("rentals")
       .select(
-        "id, vehicle_id, driver_id, start_date, end_date, billing_period, rate, weekly_rate, payment_status, reservation_status, payment_received",
+        "id, vehicle_id, driver_id, start_date, end_date, billing_period, rate, weekly_rate, payment_status, reservation_status, payment_received, agreement_pdf_url, receipt_pdf_url",
       )
       .eq("id", data.rentalId)
       .maybeSingle();
@@ -232,4 +245,154 @@ export const createRenterPaymentLink = createServerFn({ method: "POST" })
     });
     if (!link.url) throw new Error("Stripe did not return a payment link URL");
     return { url: link.url };
+  });
+
+// Public custom payment from the no-login portal. The renter chooses an amount
+// (full balance or partial) to pay toward the rental. The webhook records the
+// payment row (kind "custom_renter_payment") and notifies the renter.
+export const createRenterCustomPayment = createServerFn({ method: "POST" })
+  .inputValidator((d: { rentalId: string; amount: number; note?: string }) => {
+    if (!d?.rentalId || typeof d.rentalId !== "string") throw new Error("rentalId required");
+    const amt = Number(d.amount);
+    if (!Number.isFinite(amt) || amt < 1) throw new Error("Minimum payment is $1");
+    if (amt > 10000) throw new Error("Maximum payment is $10,000");
+    const note = (d.note || "").trim().slice(0, 200);
+    return { rentalId: d.rentalId, amount: amt, note };
+  })
+  .handler(async ({ data }) => {
+    const { data: rental, error: rErr } = await supabaseAdmin
+      .from("rentals")
+      .select("id")
+      .eq("id", data.rentalId)
+      .maybeSingle();
+    if (rErr) throw new Error(rErr.message);
+    if (!rental) throw new Error("Reservation not found");
+
+    const amountCents = Math.max(50, Math.round(data.amount * 100));
+    const note = data.note || "Portal payment";
+    const env = process.env.STRIPE_LIVE_API_KEY ? "live" : "sandbox";
+    const stripe = createStripeClient(env);
+    const origin = originFromRequest();
+
+    const metadata = {
+      kind: "custom_renter_payment",
+      rental_id: rental.id,
+      note,
+    };
+    const product = await stripe.products.create({
+      name: `Camauto Rentals — ${note}`.slice(0, 250),
+      metadata: { rental_id: rental.id },
+    });
+    const price = await stripe.prices.create({
+      product: product.id,
+      currency: "usd",
+      unit_amount: amountCents,
+    });
+    const link = await stripe.paymentLinks.create({
+      line_items: [{ price: price.id, quantity: 1 }],
+      metadata,
+      payment_intent_data: { metadata },
+      ...(origin
+        ? {
+            after_completion: {
+              type: "redirect" as const,
+              redirect: {
+                url: `${origin}/rent/paid?session_id={CHECKOUT_SESSION_ID}&rental_id=${encodeURIComponent(rental.id)}`,
+              },
+            },
+          }
+        : {}),
+      restrictions: { completed_sessions: { limit: 1 } },
+    });
+    if (!link.url) throw new Error("Stripe did not return a payment link URL");
+    return { url: link.url };
+  });
+
+// Public extension request from the portal. Records a pending request for the
+// admin to approve and alerts the support line. No payment is taken here.
+export const submitExtensionRequest = createServerFn({ method: "POST" })
+  .inputValidator((d: { rentalId: string; periods: number; reason?: string }) => {
+    if (!d?.rentalId || typeof d.rentalId !== "string") throw new Error("rentalId required");
+    const n = Number(d.periods);
+    if (!Number.isInteger(n) || n < 1 || n > 12) throw new Error("Weeks must be 1–12");
+    const reason = (d.reason || "").trim().slice(0, 300);
+    return { rentalId: d.rentalId, periods: n, reason };
+  })
+  .handler(async ({ data }) => {
+    const { data: rental } = await supabaseAdmin
+      .from("rentals")
+      .select("id, driver_id, end_date, rate, weekly_rate, billing_period")
+      .eq("id", data.rentalId)
+      .maybeSingle();
+    if (!rental) throw new Error("Reservation not found");
+
+    const baseDate = rental.end_date ? new Date(rental.end_date) : new Date();
+    const newEnd = new Date(baseDate.getTime() + data.periods * 7 * 86_400_000);
+    const newEndDate = newEnd.toISOString().slice(0, 10);
+    const rate = Number(rental.rate ?? rental.weekly_rate ?? 0);
+    const additional = Number((rate * data.periods).toFixed(2));
+    const token = `extp_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+
+    const { error: insErr } = await supabaseAdmin.from("extension_requests").insert({
+      token,
+      rental_id: rental.id,
+      periods: data.periods,
+      period_label: "week",
+      previous_end_date: rental.end_date,
+      new_end_date: newEndDate,
+      additional_amount: additional,
+      status: "pending",
+    } as any);
+    if (insErr) throw new Error(insErr.message);
+
+    const { data: drv } = await supabaseAdmin
+      .from("drivers")
+      .select("full_name")
+      .eq("id", rental.driver_id)
+      .maybeSingle();
+    try {
+      await sendSms(
+        SUPPORT_PHONE,
+        `Extension request: ${drv?.full_name ?? "Renter"} wants +${data.periods} week(s) on ${rental.id} (new end ${newEndDate}).${data.reason ? ` Reason: ${data.reason}` : ""}`,
+      );
+    } catch (e) {
+      console.error("[submitExtensionRequest] support SMS failed", e);
+    }
+    return { ok: true as const, newEndDate, additionalAmount: additional };
+  });
+
+// Public support ticket from the portal. Alerts the support line and returns a
+// ticket reference the renter can quote.
+export const submitSupportRequest = createServerFn({ method: "POST" })
+  .inputValidator((d: { rentalId: string; message: string; category?: string }) => {
+    if (!d?.rentalId || typeof d.rentalId !== "string") throw new Error("rentalId required");
+    const message = (d.message || "").trim();
+    if (message.length < 3) throw new Error("Please describe your issue");
+    if (message.length > 1000) throw new Error("Message too long (max 1000 chars)");
+    const category = (d.category || "General").trim().slice(0, 50);
+    return { rentalId: d.rentalId, message, category };
+  })
+  .handler(async ({ data }) => {
+    const { data: rental } = await supabaseAdmin
+      .from("rentals")
+      .select("id, driver_id")
+      .eq("id", data.rentalId)
+      .maybeSingle();
+    if (!rental) throw new Error("Reservation not found");
+
+    const ticketId = `TK-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+    const { data: drv } = await supabaseAdmin
+      .from("drivers")
+      .select("full_name, phone")
+      .eq("id", rental.driver_id)
+      .maybeSingle();
+    try {
+      await sendSms(
+        SUPPORT_PHONE,
+        `Support ticket ${ticketId} [${data.category}] from ${drv?.full_name ?? "Renter"}${drv?.phone ? ` (${drv.phone})` : ""} on ${rental.id}: ${data.message}`,
+      );
+    } catch (e) {
+      console.error("[submitSupportRequest] support SMS failed", e);
+    }
+    return { ok: true as const, ticketId };
   });
