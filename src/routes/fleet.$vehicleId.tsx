@@ -506,6 +506,12 @@ function VehicleDetail() {
         initialVehicleId={v.id}
         lockVehicle
       />
+      <CreateRepairDialog
+        open={addRepairOpen}
+        onOpenChange={setAddRepairOpen}
+        initialVehicleId={v.id}
+        lockVehicle
+      />
       {activeWo && (
         <WorkOrderDialog
           open={!!activeWo}
