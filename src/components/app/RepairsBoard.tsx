@@ -2,12 +2,16 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
 import { maintenance, vehicleById, fmtMoney, fmtDate, type Maintenance, type RepairSolution } from "@/lib/mock/data";
 import { useStoreVersion, selectRepairSolution, recordRepairPayment, completeRepair, setRepairRentalBlocking } from "@/lib/mock/store";
 import { toast } from "sonner";
 import { CheckCircle2, Wrench, Ban, Car } from "lucide-react";
+import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 
 function VehicleLink({ vehicleId }: { vehicleId: string }) {
   const v = vehicleById(vehicleId);
@@ -91,6 +95,7 @@ function OpenCard({ m }: { m: Maintenance }) {
 
 function InProgressCard({ m }: { m: Maintenance }) {
   const [payment, setPayment] = useState("");
+  const [completeOpen, setCompleteOpen] = useState(false);
   const sol = m.selectedSolution;
   if (!sol) return null;
   const paid = m.amountPaid ?? 0;
@@ -104,12 +109,9 @@ function InProgressCard({ m }: { m: Maintenance }) {
     setPayment("");
     toast.success(`Recorded ${fmtMoney(amt)}`);
   };
-  const finish = () => {
-    completeRepair(m.id);
-    toast.success("Repair completed & logged to history");
-  };
 
   return (
+    <>
     <Card className="border-border">
       <CardContent className="space-y-2 p-3">
         <div className="flex items-center justify-between gap-2">
@@ -132,19 +134,88 @@ function InProgressCard({ m }: { m: Maintenance }) {
             value={payment} onChange={e => setPayment(e.target.value)} />
           <Button size="sm" variant="outline" className="shrink-0" onClick={addPayment}>Record Payment</Button>
         </div>
-        {fullyPaid && (
-          <Button size="sm" className="w-full" onClick={finish}>
-            <CheckCircle2 className="mr-1 h-4 w-4" /> Complete
-          </Button>
-        )}
+        <Button size="sm" className="w-full" onClick={() => setCompleteOpen(true)}>
+          <CheckCircle2 className="mr-1 h-4 w-4" /> Complete
+        </Button>
       </CardContent>
     </Card>
+    <CompleteRepairDialog m={m} open={completeOpen} onOpenChange={setCompleteOpen} />
+    </>
+  );
+}
+
+function CompleteRepairDialog({ m, open, onOpenChange }: { m: Maintenance; open: boolean; onOpenChange: (v: boolean) => void }) {
+  const sol = m.selectedSolution;
+  const [parts, setParts] = useState(String(m.partsCost ?? sol?.partsCost ?? 0));
+  const [labor, setLabor] = useState(String(m.laborCost ?? sol?.laborCost ?? 0));
+  const [mechanic, setMechanic] = useState(m.completedBy ?? "");
+  const [notes, setNotes] = useState(m.mechanicNotes ?? "");
+
+  const partsNum = Number(parts) || 0;
+  const laborNum = Number(labor) || 0;
+  const total = partsNum + laborNum;
+
+  const submit = () => {
+    if (!mechanic.trim()) return toast.error("Mechanic name is required");
+    if (total <= 0) return toast.error("Enter parts and/or labor cost");
+    completeRepair(m.id, {
+      completedBy: mechanic.trim(),
+      partsCost: partsNum,
+      laborCost: laborNum,
+      mechanicNotes: notes.trim() || undefined,
+    });
+    toast.success("Repair completed & logged to P&L");
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Complete repair</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid gap-1.5">
+            <Label>Mechanic / completed by *</Label>
+            <Input value={mechanic} onChange={e => setMechanic(e.target.value)} placeholder="e.g. John Smith" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Parts cost ($)</Label>
+              <Input type="number" min={0} step="0.01" value={parts} onChange={e => setParts(e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Labor cost ($)</Label>
+              <Input type="number" min={0} step="0.01" value={labor} onChange={e => setLabor(e.target.value)} />
+            </div>
+          </div>
+          <div className="rounded-md border border-border bg-muted/30 p-2 text-sm font-semibold">
+            <div className="flex items-center justify-between">
+              <span>Total cost</span>
+              <span>{fmtMoney(total)}</span>
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Mechanic work notes</Label>
+            <Textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Replaced oil & filter, checked levels" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={submit}><CheckCircle2 className="mr-1 h-4 w-4" /> Mark Complete</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 function CompleteCard({ m }: { m: Maintenance }) {
+  const [detailOpen, setDetailOpen] = useState(false);
   const sol = m.selectedSolution;
+  const parts = m.partsCost ?? sol?.partsCost ?? 0;
+  const labor = m.laborCost ?? sol?.laborCost ?? 0;
   return (
+    <>
     <Card className="border-border">
       <CardContent className="space-y-2 p-3">
         <div className="flex items-center justify-between gap-2">
@@ -153,14 +224,17 @@ function CompleteCard({ m }: { m: Maintenance }) {
         </div>
         <div className="text-sm font-medium">{sol?.name ?? m.serviceType}</div>
         <div className="rounded-md border border-border bg-muted/30 p-2 text-xs">
-          <Row label="Estimate" value={fmtMoney(sol?.totalCost ?? m.cost)} />
-          <Row label="Down payment" value={fmtMoney(m.downPayment ?? 0)} />
-          <Row label="Total paid ✓" value={fmtMoney(m.amountPaid ?? m.cost)} />
+          <Row label="Parts" value={fmtMoney(parts)} />
+          <Row label="Labor" value={fmtMoney(labor)} />
+          <Row label="Total ✓" value={fmtMoney(m.cost)} />
+          <Row label="Mechanic" value={m.completedBy || m.vendor || "—"} />
           <Row label="Completed" value={fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))} />
         </div>
-        <div className="text-xs text-muted-foreground">Logged to maintenance history</div>
+        <Button size="sm" variant="outline" className="w-full" onClick={() => setDetailOpen(true)}>View Details</Button>
       </CardContent>
     </Card>
+    <CompletedRepairDetailDialog record={m} open={detailOpen} onOpenChange={setDetailOpen} />
+    </>
   );
 }
 

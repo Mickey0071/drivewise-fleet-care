@@ -7,6 +7,7 @@ import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown, ShieldAle
 import { ReportActions } from "@/components/app/ReportActions";
 import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
 import { RepairsBoard } from "@/components/app/RepairsBoard";
+import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useEffect, useState } from "react";
@@ -20,6 +21,7 @@ import {
   isScheduleConfigured,
   type ScheduledItem,
 } from "@/lib/maintenance-utils";
+import type { Maintenance } from "@/lib/mock/data";
 
 export const Route = createFileRoute("/maintenance")({
   head: () => ({ meta: [{ title: "Maintenance — Camauto Rentals" }] }),
@@ -32,6 +34,7 @@ function MaintenancePage() {
   const [repairOpen, setRepairOpen] = useState(false);
   const [tab, setTab] = useState("scheduled");
   const [configOpen, setConfigOpen] = useState(false);
+  const [detailRecord, setDetailRecord] = useState<Maintenance | null>(null);
 
   // Repairs (kanban-tracked)
   const repairs = maintenance.filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected");
@@ -279,10 +282,15 @@ function MaintenancePage() {
                   const v = vehicleById(m.vehicleId);
                   return (
                     <li key={m.id} className="flex items-center justify-between gap-2">
-                      <span className="truncate">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {fmtMoney(m.cost)} · {fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}
-                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {m.issueDescription || m.serviceType} · {fmtMoney(m.cost)} · {fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" onClick={() => setDetailRecord(m)}>
+                        View Details
+                      </Button>
                     </li>
                   );
                 })}
@@ -399,8 +407,10 @@ function MaintenancePage() {
                       <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                         <th className="px-4 py-2 font-medium">Vehicle</th>
                         <th className="px-4 py-2 font-medium">Repair</th>
+                        <th className="px-4 py-2 font-medium">Mechanic</th>
                         <th className="px-4 py-2 text-right font-medium">Cost</th>
                         <th className="px-4 py-2 font-medium">Completed</th>
+                        <th className="px-4 py-2 text-right font-medium">Details</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -413,8 +423,14 @@ function MaintenancePage() {
                               <div className="text-xs text-muted-foreground">Tag #{v?.plate ?? "—"}</div>
                             </td>
                             <td className="px-4 py-2">{m.selectedSolution?.name ?? m.serviceType}</td>
+                            <td className="px-4 py-2">{m.completedBy || m.vendor || "—"}</td>
                             <td className="px-4 py-2 text-right font-medium">{fmtMoney(m.cost)}</td>
                             <td className="px-4 py-2">{fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}</td>
+                            <td className="px-4 py-2 text-right">
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setDetailRecord(m)}>
+                                View Details
+                              </Button>
+                            </td>
                           </tr>
                         );
                       })}
@@ -426,6 +442,12 @@ function MaintenancePage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <CompletedRepairDetailDialog
+        record={detailRecord}
+        open={!!detailRecord}
+        onOpenChange={(v) => { if (!v) setDetailRecord(null); }}
+      />
     </div>
   );
 }

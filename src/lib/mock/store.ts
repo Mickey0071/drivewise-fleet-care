@@ -359,6 +359,9 @@ const fromMaintenance = (r: any): Maintenance => ({
   balance: r.balance != null ? Number(r.balance) : undefined,
   completionDate: r.completion_date ?? undefined,
   isRentalBlocking: !!r.is_rental_blocking,
+  partsCost: r.parts_cost != null ? Number(r.parts_cost) : undefined,
+  laborCost: r.labor_cost != null ? Number(r.labor_cost) : undefined,
+  mechanicNotes: r.mechanic_notes ?? undefined,
   runnerId: r.runner_id ?? undefined,
   repairRequestNotes: r.repair_request_notes ?? undefined,
   approvalStatus: r.approval_status ?? undefined,
@@ -380,6 +383,9 @@ const toMaintenance = (m: Maintenance) => ({
   balance: m.balance ?? 0,
   completion_date: m.completionDate ?? null,
   is_rental_blocking: m.isRentalBlocking ?? false,
+  parts_cost: m.partsCost ?? 0,
+  labor_cost: m.laborCost ?? 0,
+  mechanic_notes: m.mechanicNotes ?? null,
   runner_id: m.runnerId ?? null,
   repair_request_notes: m.repairRequestNotes ?? null,
   approval_status: m.approvalStatus ?? null,
@@ -1770,23 +1776,63 @@ export function recordRepairPayment(id: string, amount: number) {
   emit();
 }
 
-/** In Progress → Complete: only when fully paid. Logs to maintenance history. */
-export function completeRepair(id: string, completedBy?: string) {
+/**
+ * In Progress → Complete. Captures the actual parts/labor cost breakdown and
+ * the mechanic's work notes. The actual total (parts + labor) becomes the
+ * repair cost, and any amount not yet posted to P&L is recorded as a
+ * Maintenance expense so the books reflect the full cost exactly once.
+ */
+export function completeRepair(
+  id: string,
+  opts?: {
+    completedBy?: string;
+    partsCost?: number;
+    laborCost?: number;
+    mechanicNotes?: string;
+  },
+) {
   const m = maintenance.find(x => x.id === id);
-  if (!m || !m.selectedSolution) return;
-  if ((m.amountPaid ?? 0) < m.selectedSolution.totalCost) return; // balance must be 0
+  if (!m) return;
   const today = new Date().toISOString().slice(0, 10);
+  // Payments recorded so far (down payment + any recorded payments) were each
+  // already posted to P&L, so only the difference is posted at completion.
+  const alreadyExpensed = Math.max(0, m.amountPaid ?? 0);
+  const parts = Math.max(0, opts?.partsCost ?? m.partsCost ?? m.selectedSolution?.partsCost ?? 0);
+  const labor = Math.max(0, opts?.laborCost ?? m.laborCost ?? m.selectedSolution?.laborCost ?? 0);
+  const total = parts + labor;
+
   m.status = "complete";
+  m.partsCost = parts;
+  m.laborCost = labor;
+  m.cost = total;
   m.balance = 0;
+  m.amountPaid = total;
   m.completionDate = new Date().toISOString();
   m.dateCompleted = today;
-  m.serviceType = m.selectedSolution.name;
-  m.cost = m.selectedSolution.totalCost;
-  m.completedBy = completedBy?.trim() || m.completedBy || "Admin";
+  if (m.selectedSolution) {
+    m.selectedSolution = { ...m.selectedSolution, partsCost: parts, laborCost: labor, totalCost: total };
+    m.serviceType = m.selectedSolution.name;
+  }
+  m.completedBy = opts?.completedBy?.trim() || m.completedBy || "Admin";
+  if (opts?.mechanicNotes?.trim()) m.mechanicNotes = opts.mechanicNotes.trim();
   if (m.vendor === "Pending assignment") m.vendor = m.completedBy;
-  const resolution = `Repair completed ${today}: ${m.selectedSolution.name} (total $${m.selectedSolution.totalCost.toFixed(2)}, paid in full)`;
+
+  const resolution = `Repair completed ${today} by ${m.completedBy}: parts $${parts.toFixed(2)} + labor $${labor.toFixed(2)} = $${total.toFixed(2)}`;
   m.notes = m.notes ? `${m.notes}\n\n${resolution}` : resolution;
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+
+  // Post the remaining (not-yet-expensed) cost to P&L so the total lands once.
+  const remaining = Math.max(0, total - alreadyExpensed);
+  if (remaining > 0) {
+    addExpense({
+      category: "Maintenance",
+      amount: remaining,
+      date: today,
+      vehicleId: m.vehicleId,
+      notes: `Repair ${m.id} completed — ${m.serviceType} (parts $${parts.toFixed(2)} + labor $${labor.toFixed(2)})`,
+    });
+  }
+
   syncVehicleOpenIssues(m.vehicleId);
   emit();
 }
