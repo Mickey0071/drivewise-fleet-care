@@ -7,6 +7,7 @@ import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown, ShieldAle
 import { ReportActions } from "@/components/app/ReportActions";
 import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
 import { RepairsBoard } from "@/components/app/RepairsBoard";
+import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useEffect, useState } from "react";
@@ -20,6 +21,7 @@ import {
   isScheduleConfigured,
   type ScheduledItem,
 } from "@/lib/maintenance-utils";
+import type { Maintenance } from "@/lib/mock/data";
 
 export const Route = createFileRoute("/maintenance")({
   head: () => ({ meta: [{ title: "Maintenance — Camauto Rentals" }] }),
@@ -32,6 +34,7 @@ function MaintenancePage() {
   const [repairOpen, setRepairOpen] = useState(false);
   const [tab, setTab] = useState("scheduled");
   const [configOpen, setConfigOpen] = useState(false);
+  const [detailRecord, setDetailRecord] = useState<Maintenance | null>(null);
 
   // Repairs (kanban-tracked)
   const repairs = maintenance.filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected");
