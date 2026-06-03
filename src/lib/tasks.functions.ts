@@ -416,13 +416,30 @@ export const reviewInspection = createServerFn({ method: "POST" })
     });
 
     // Update the vehicle record with the latest inspection data + make available.
+    const vehUpdate: Record<string, unknown> = {
+      status: "available",
+      last_inspection_at: nowIso,
+      last_inspection_mileage: (task.mileage as number) ?? null,
+    };
+    // Clean approval (no issues found) clears the recurring scheduled alerts
+    // (oil / battery / alternator / inspection) by resetting their markers.
+    if (issues.length === 0) {
+      const settings = ((veh as any)?.maintenance_settings as Record<string, any>) || {};
+      const today = nowIso.slice(0, 10);
+      const mileage = (task.mileage as number) ?? (veh as any)?.mileage ?? 0;
+      if (settings.oilChange) {
+        settings.oilChange = { ...settings.oilChange, lastMileage: mileage, lastDate: today };
+      }
+      settings.batteryLastDone = today;
+      settings.alternatorLastDone = today;
+      const nextYear = new Date(nowIso);
+      nextYear.setFullYear(nextYear.getFullYear() + 1);
+      settings.inspectionExpiry = nextYear.toISOString().slice(0, 10);
+      vehUpdate.maintenance_settings = settings;
+    }
     await supabase
       .from("vehicles")
-      .update({
-        status: "available",
-        last_inspection_at: nowIso,
-        last_inspection_mileage: (task.mileage as number) ?? null,
-      })
+      .update(vehUpdate)
       .eq("id", task.vehicle_id as string);
 
     // If tied to a rental return, finalize it so P&L treats it as closed.
