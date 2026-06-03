@@ -113,11 +113,24 @@ function FleetPage() {
                           <AlertTriangle className="mr-1 h-3 w-3" /> Needs inspection
                         </Badge>
                       )}
-                      {(openIssueCount > 0 || v.hasOpenIssues) && (
+                      {blockingRepairs.length > 0 && (
+                        <Badge variant="destructive">
+                          <AlertTriangle className="mr-1 h-3 w-3" />
+                          🔴 In Repair: {blockingRepairs[0].issueDescription || blockingRepairs[0].serviceType}
+                          {blockingRepairs.length > 1 ? ` (+${blockingRepairs.length - 1})` : ""}
+                        </Badge>
+                      )}
+                      {nonBlockingRepairs.length > 0 && (
+                        <Badge variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                          <AlertTriangle className="mr-1 h-3 w-3" />
+                          ⚠️ Open repair: {nonBlockingRepairs[0].issueDescription || nonBlockingRepairs[0].serviceType}
+                          {nonBlockingRepairs.length > 1 ? ` (+${nonBlockingRepairs.length - 1})` : ""}
+                        </Badge>
+                      )}
+                      {v.hasOpenIssues && blockingRepairs.length === 0 && (
                         <Badge variant="destructive">
                           <AlertTriangle className="mr-1 h-3 w-3" />
                           Unavailable · Open maintenance issue
-                          {openIssueCount > 1 ? ` (${openIssueCount})` : ""}
                         </Badge>
                       )}
                       {onRent && (
