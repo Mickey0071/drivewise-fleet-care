@@ -97,7 +97,7 @@ function OpenCard({ m }: { m: Maintenance }) {
   );
 }
 
-function InProgressCard({ m }: { m: Maintenance }) {
+function InProgressCard({ m, onCompleted }: { m: Maintenance; onCompleted: (s: RepairCompletionSummary) => void }) {
   const [payment, setPayment] = useState("");
   const [completeOpen, setCompleteOpen] = useState(false);
   const sol = m.selectedSolution;
@@ -143,17 +143,18 @@ function InProgressCard({ m }: { m: Maintenance }) {
         </Button>
       </CardContent>
     </Card>
-    <CompleteRepairDialog m={m} open={completeOpen} onOpenChange={setCompleteOpen} />
+    <CompleteRepairDialog m={m} open={completeOpen} onOpenChange={setCompleteOpen} onCompleted={onCompleted} />
     </>
   );
 }
 
-function CompleteRepairDialog({ m, open, onOpenChange }: { m: Maintenance; open: boolean; onOpenChange: (v: boolean) => void }) {
+function CompleteRepairDialog({ m, open, onOpenChange, onCompleted }: { m: Maintenance; open: boolean; onOpenChange: (v: boolean) => void; onCompleted: (s: RepairCompletionSummary) => void }) {
   const sol = m.selectedSolution;
   const [parts, setParts] = useState(String(m.partsCost ?? sol?.partsCost ?? 0));
   const [labor, setLabor] = useState(String(m.laborCost ?? sol?.laborCost ?? 0));
   const [mechanic, setMechanic] = useState(m.completedBy ?? "");
   const [notes, setNotes] = useState(m.mechanicNotes ?? "");
+  const notifyRunner = useServerFn(notifyRunnerRepairComplete);
 
   const partsNum = Number(parts) || 0;
   const laborNum = Number(labor) || 0;
@@ -162,7 +163,7 @@ function CompleteRepairDialog({ m, open, onOpenChange }: { m: Maintenance; open:
   const submit = () => {
     if (!mechanic.trim()) return toast.error("Mechanic name is required");
     if (total <= 0) return toast.error("Enter parts and/or labor cost");
-    completeRepair(m.id, {
+    const summary = completeRepair(m.id, {
       completedBy: mechanic.trim(),
       partsCost: partsNum,
       laborCost: laborNum,
@@ -170,6 +171,23 @@ function CompleteRepairDialog({ m, open, onOpenChange }: { m: Maintenance; open:
     });
     toast.success("Repair completed & logged to P&L");
     onOpenChange(false);
+    if (summary) {
+      onCompleted(summary);
+      // Best-effort notify the runner who reported the issue.
+      if (summary.runnerId) {
+        notifyRunner({
+          data: {
+            maintenanceId: summary.maintenanceId,
+            issue: summary.issue,
+            completedBy: summary.completedBy,
+            mechanicNotes: notes.trim() || undefined,
+            total: summary.total,
+          },
+        })
+          .then((r) => { if (r?.notified) toast.success("Runner notified of completion"); })
+          .catch(() => { /* notification failure must not block */ });
+      }
+    }
   };
 
   return (
@@ -273,6 +291,12 @@ function Column({ title, count, tone, children }: { title: string; count: number
 
 export function RepairsBoard() {
   useStoreVersion();
+  const [summary, setSummary] = useState<RepairCompletionSummary | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const handleCompleted = (s: RepairCompletionSummary) => {
+    setSummary(s);
+    setSummaryOpen(true);
+  };
   const repairs = maintenance
     .filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected")
     .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
@@ -281,16 +305,19 @@ export function RepairsBoard() {
   const complete = repairs.filter(m => m.status === "complete");
 
   return (
+    <>
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       <Column title="Open" count={open.length} tone="bg-muted text-foreground">
         {open.map(m => <OpenCard key={m.id} m={m} />)}
       </Column>
       <Column title="In Progress" count={inProgress.length} tone="bg-amber-500/20 text-amber-700">
-        {inProgress.map(m => <InProgressCard key={m.id} m={m} />)}
+        {inProgress.map(m => <InProgressCard key={m.id} m={m} onCompleted={handleCompleted} />)}
       </Column>
       <Column title="Complete" count={complete.length} tone="bg-green-500/20 text-green-700">
         {complete.map(m => <CompleteCard key={m.id} m={m} />)}
       </Column>
     </div>
+    <RepairCompletionSummaryDialog open={summaryOpen} onOpenChange={setSummaryOpen} summary={summary} />
+    </>
   );
 }
