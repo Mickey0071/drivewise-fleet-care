@@ -164,6 +164,22 @@ export interface Maintenance {
   nextServiceDue: string; notes?: string; completedBy?: string;
   sourceInspectionId?: string;
   createdAt?: string;
+  // ---- Repair kanban fields (null for plain maintenance / service-log rows) ----
+  status?: RepairStatus;
+  issueDescription?: string;
+  solutions?: RepairSolution[];
+  selectedSolution?: RepairSolution;
+  downPayment?: number;
+  amountPaid?: number;
+  balance?: number;
+  completionDate?: string;
+}
+export type RepairStatus = "open" | "in_progress" | "complete";
+export interface RepairSolution {
+  name: string;
+  partsCost: number;
+  laborCost: number;
+  totalCost: number;
 }
 export interface Inspection {
   id: string; vehicleId: string; rentalId: string;
