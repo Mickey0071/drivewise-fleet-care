@@ -25,6 +25,7 @@ import { CreateWorkOrderDialog } from "@/components/app/CreateWorkOrderDialog";
 import { WorkOrderDialog } from "@/components/app/WorkOrderDialog";
 import { AddIssueDialog } from "@/components/app/AddIssueDialog";
 import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
+import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import type { Maintenance, WorkOrder } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
