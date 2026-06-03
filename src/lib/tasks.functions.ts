@@ -287,7 +287,7 @@ export const reviewInspection = createServerFn({ method: "POST" })
     // Resolve a human label + runner name for SMS / audit.
     const { data: veh } = await supabase
       .from("vehicles")
-      .select("year, make, model, plate")
+      .select("year, make, model, plate, mileage, maintenance_settings")
       .eq("id", task.vehicle_id as string)
       .maybeSingle();
     const vLabel = veh
