@@ -2,12 +2,16 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
 import { maintenance, vehicleById, fmtMoney, fmtDate, type Maintenance, type RepairSolution } from "@/lib/mock/data";
 import { useStoreVersion, selectRepairSolution, recordRepairPayment, completeRepair, setRepairRentalBlocking } from "@/lib/mock/store";
 import { toast } from "sonner";
 import { CheckCircle2, Wrench, Ban, Car } from "lucide-react";
+import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 
 function VehicleLink({ vehicleId }: { vehicleId: string }) {
   const v = vehicleById(vehicleId);
