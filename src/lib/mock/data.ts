@@ -173,6 +173,12 @@ export interface Maintenance {
   amountPaid?: number;
   balance?: number;
   completionDate?: string;
+  /** Actual parts cost entered at completion. */
+  partsCost?: number;
+  /** Actual labor cost entered at completion. */
+  laborCost?: number;
+  /** Work notes from the mechanic/admin who completed the repair. */
+  mechanicNotes?: string;
   /** When true, an open repair blocks the vehicle from new bookings. Default false. */
   isRentalBlocking?: boolean;
   // ---- Runner repair request / approval workflow ----
