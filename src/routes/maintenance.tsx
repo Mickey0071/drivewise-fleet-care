@@ -36,7 +36,7 @@ function MaintenancePage() {
   const [configOpen, setConfigOpen] = useState(false);
 
   // Repairs (kanban-tracked)
-  const repairs = maintenance.filter(m => !!m.status);
+  const repairs = maintenance.filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected");
   const openRepairs = repairs.filter(m => m.status !== "complete")
     .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
   const completedRepairs = repairs.filter(m => m.status === "complete")
@@ -52,6 +52,34 @@ function MaintenancePage() {
   const dueSoon = dueSoonScheduledItems(vehicles);
   const allScheduled = vehicles.flatMap(v => computeScheduledItems(v));
   const configuredCount = vehicles.filter(isScheduleConfigured).length;
+
+  // Pending runner repair requests (awaiting admin approval)
+  const pending = pendingRunnerRepairs();
+  const [runnerNames, setRunnerNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const ids = Array.from(new Set(pending.map(p => p.runnerId).filter(Boolean))) as string[];
+    const missing = ids.filter(id => !(id in runnerNames));
+    if (missing.length === 0) return;
+    (async () => {
+      const { data } = await supabase.from("profiles").select("id, full_name, first_name").in("id", missing);
+      if (!data) return;
+      setRunnerNames(prev => {
+        const next = { ...prev };
+        for (const r of data as any[]) next[r.id] = r.full_name || r.first_name || "Runner";
+        return next;
+      });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending.map(p => p.runnerId).join(",")]);
+
+  async function handleApprove(id: string) {
+    await approveRunnerRepair(id);
+    toast.success("Repair approved — moved to Open repairs");
+  }
+  function handleReject(id: string) {
+    rejectRunnerRepair(id);
+    toast.success("Repair request rejected");
+  }
 
   async function handleMarkComplete(it: ScheduledItem) {
     try {
