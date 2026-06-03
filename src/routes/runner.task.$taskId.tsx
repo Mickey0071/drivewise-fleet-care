@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { submitTask } from "@/lib/tasks.functions";
+import { submitTask, createRunnerRepairRequest } from "@/lib/tasks.functions";
 import { taskTypeLabel } from "@/lib/task-types";
 import { compressImage } from "@/lib/image-compress";
 
@@ -149,6 +149,7 @@ function TaskPage() {
   const { taskId } = Route.useParams();
   const navigate = useNavigate();
   const submit = useServerFn(submitTask);
+  const createRepairReq = useServerFn(createRunnerRepairRequest);
 
   const [task, setTask] = useState<TaskRow | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -162,6 +163,10 @@ function TaskPage() {
 
   // inspection
   const [items, setItems] = useState<Record<string, boolean>>({});
+  // per-item repair request panels (keyed by checklist item key)
+  const [repairPanels, setRepairPanels] = useState<Record<string, { notes: string; cost: string }>>({});
+  const [ticketed, setTicketed] = useState<Record<string, boolean>>({});
+  const [creatingTicket, setCreatingTicket] = useState<string | null>(null);
   const [repairsNeeded, setRepairsNeeded] = useState<boolean | null>(null);
   const [repairText, setRepairText] = useState("");
   // dashboard codes
