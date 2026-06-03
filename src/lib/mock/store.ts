@@ -358,6 +358,7 @@ const fromMaintenance = (r: any): Maintenance => ({
   amountPaid: r.amount_paid != null ? Number(r.amount_paid) : undefined,
   balance: r.balance != null ? Number(r.balance) : undefined,
   completionDate: r.completion_date ?? undefined,
+  isRentalBlocking: !!r.is_rental_blocking,
 });
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
@@ -373,6 +374,7 @@ const toMaintenance = (m: Maintenance) => ({
   amount_paid: m.amountPaid ?? 0,
   balance: m.balance ?? 0,
   completion_date: m.completionDate ?? null,
+  is_rental_blocking: m.isRentalBlocking ?? false,
 });
 
 // ---- staff ----
@@ -1550,13 +1552,23 @@ function nextMaintenanceId() {
   return `M-${n + 1}`;
 }
 
+/** Does an open maintenance/repair row block the vehicle from new bookings?
+ *  - Repair rows (status set) block ONLY when isRentalBlocking is true.
+ *  - Legacy non-repair open issues (no status) keep blocking by default. */
+function maintenanceBlocksVehicle(m: Maintenance): boolean {
+  if (m.dateCompleted) return false;
+  if (m.status === "complete") return false;
+  if (m.status) return !!m.isRentalBlocking;
+  return true;
+}
+
 /** Recompute the local vehicle.hasOpenIssues flag from open maintenance
  *  tickets. The DB keeps the persisted flag in sync via triggers; this
  *  mirrors it in-memory so the UI reflects the change immediately. */
 function syncVehicleOpenIssues(vehicleId: string) {
   const v = vehicles.find(x => x.id === vehicleId);
   if (!v) return;
-  const open = maintenance.some(m => m.vehicleId === vehicleId && !m.dateCompleted);
+  const open = maintenance.some(m => m.vehicleId === vehicleId && maintenanceBlocksVehicle(m));
   if (v.hasOpenIssues !== open) {
     v.hasOpenIssues = open;
   }
@@ -1731,6 +1743,26 @@ export function completeRepair(id: string, completedBy?: string) {
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   syncVehicleOpenIssues(m.vehicleId);
   emit();
+}
+
+/** Toggle whether an open repair blocks the vehicle from new bookings. */
+export function setRepairRentalBlocking(id: string, blocking: boolean) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  m.isRentalBlocking = blocking;
+  cloudWrite(
+    "maintenance:update",
+    supabase.from("maintenance").update({ is_rental_blocking: blocking }).eq("id", id),
+  );
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
+}
+
+/** Open (non-completed) repairs for a vehicle, most recent first. */
+export function openRepairsForVehicle(vehicleId: string): Maintenance[] {
+  return maintenance
+    .filter(m => m.vehicleId === vehicleId && !!m.status && m.status !== "complete" && !m.dateCompleted)
+    .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
 }
 
 // ---------------------------------------------------------------------------

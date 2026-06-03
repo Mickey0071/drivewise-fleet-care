@@ -497,6 +497,7 @@ export type Database = {
           date_completed: string | null
           down_payment: number
           id: string
+          is_rental_blocking: boolean
           issue_description: string | null
           mileage_at_service: number
           next_service_due: string
@@ -520,6 +521,7 @@ export type Database = {
           date_completed?: string | null
           down_payment?: number
           id: string
+          is_rental_blocking?: boolean
           issue_description?: string | null
           mileage_at_service?: number
           next_service_due?: string
@@ -543,6 +545,7 @@ export type Database = {
           date_completed?: string | null
           down_payment?: number
           id?: string
+          is_rental_blocking?: boolean
           issue_description?: string | null
           mileage_at_service?: number
           next_service_due?: string
