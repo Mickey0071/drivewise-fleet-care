@@ -1639,8 +1639,6 @@ export function deleteMaintenance(id: string) {
 // Repairs are maintenance rows with a non-null `status`. They stay "open"
 // (no date_completed) so the vehicle is flagged unavailable until completed.
 // ---------------------------------------------------------------------------
-import type { RepairSolution } from "./data";
-
 export function createRepair(input: {
   vehicleId: string;
   issueDescription: string;
