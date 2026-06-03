@@ -25,13 +25,12 @@ import { CreateWorkOrderDialog } from "@/components/app/CreateWorkOrderDialog";
 import { WorkOrderDialog } from "@/components/app/WorkOrderDialog";
 import { AddIssueDialog } from "@/components/app/AddIssueDialog";
 import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
+import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import type { Maintenance, WorkOrder } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { isServiceLogRecord, lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { toast } from "sonner";
-
-const REPAIR_KEYWORDS = ["brake", "transmission", "repair", "pads", "engine", "battery", "tire", "body", "glass", "diagnostic"];
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
   component: VehicleDetail,
@@ -58,6 +57,7 @@ function VehicleDetail() {
   const [activeWo, setActiveWo] = useState<WorkOrder | null>(null);
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
+  const [completedRepair, setCompletedRepair] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   // Live last-inspection data (reflects approved runner inspections from the backend).
@@ -90,7 +90,16 @@ function VehicleDetail() {
   const serviceLog = vMx.filter(isServiceLogRecord)
     .sort((a, b) => (b.dateCompleted ?? "").localeCompare(a.dateCompleted ?? ""));
   const lastSvc = lastServiceFor(maintenance, v.id);
-  const vRepairs = vMx.filter(m => REPAIR_KEYWORDS.some(keyword => m.serviceType.toLowerCase().includes(keyword)));
+  const SCHEDULED_KEYWORDS = ["oil", "battery", "alternator", "inspection"];
+  const completedRepairs = vMx
+    .filter(m => m.status === "complete")
+    .filter(m => {
+      const label = `${m.serviceType ?? ""} ${m.issueDescription ?? ""}`.toLowerCase();
+      return !SCHEDULED_KEYWORDS.some(k => label.includes(k));
+    })
+    .sort((a, b) =>
+      (b.completionDate ?? b.dateCompleted ?? "").localeCompare(a.completionDate ?? a.dateCompleted ?? ""),
+    );
   const vViol = violations.filter(x => x.vehicleId === v.id);
   const vInsp = inspections.filter(i => i.vehicleId === v.id);
   const rentalIds = new Set(vRentals.map(r => r.id));
@@ -421,10 +430,32 @@ function VehicleDetail() {
               <Link2 className="mr-1 h-4 w-4" />Copy deep link
             </Button>
           </div>
-          <Section title={`Repair history (${vRepairs.length})`}>
-            {vRepairs.length === 0 ? <Empty/> : vRepairs.map(m => (
-              <Row key={m.id} title={m.serviceType} sub={`${m.vendor || "—"} · ${fmtDate(m.dateCompleted)} · by ${m.completedBy || "—"} · ${m.mileageAtService.toLocaleString()} mi`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
-            ))}
+          <Section title={`Repair history (${completedRepairs.length})`}>
+            {completedRepairs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No repair history.</p>
+            ) : (
+              completedRepairs.map(m => {
+                const issue = m.issueDescription || m.selectedSolution?.name || m.serviceType;
+                const mechanic = m.completedBy || m.vendor || "—";
+                const parts = m.partsCost ?? m.selectedSolution?.partsCost ?? 0;
+                const labor = m.laborCost ?? m.selectedSolution?.laborCost ?? 0;
+                const total = m.cost ?? parts + labor;
+                return (
+                  <div key={m.id} className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{issue}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {fmtDate(m.completionDate ?? m.dateCompleted)} · {mechanic}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-medium">{fmtMoney(total)}</span>
+                      <Button variant="outline" size="sm" onClick={() => setCompletedRepair(m)}>View Details</Button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </Section>
         </TabsContent>
 
@@ -484,6 +515,11 @@ function VehicleDetail() {
         open={!!resolveRecord}
         onOpenChange={(o) => { if (!o) setResolveRecord(null); }}
         record={resolveRecord}
+      />
+      <CompletedRepairDetailDialog
+        open={!!completedRepair}
+        onOpenChange={(o) => { if (!o) setCompletedRepair(null); }}
+        record={completedRepair}
       />
       <MaintenanceSettingsDialog
         open={settingsOpen}
