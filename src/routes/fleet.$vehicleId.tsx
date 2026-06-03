@@ -433,10 +433,32 @@ function VehicleDetail() {
               <Link2 className="mr-1 h-4 w-4" />Copy deep link
             </Button>
           </div>
-          <Section title={`Repair history (${vRepairs.length})`}>
-            {vRepairs.length === 0 ? <Empty/> : vRepairs.map(m => (
-              <Row key={m.id} title={m.serviceType} sub={`${m.vendor || "—"} · ${fmtDate(m.dateCompleted)} · by ${m.completedBy || "—"} · ${m.mileageAtService.toLocaleString()} mi`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
-            ))}
+          <Section title={`Repair history (${completedRepairs.length})`}>
+            {completedRepairs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No repair history.</p>
+            ) : (
+              completedRepairs.map(m => {
+                const issue = m.issueDescription || m.selectedSolution?.name || m.serviceType;
+                const mechanic = m.completedBy || m.vendor || "—";
+                const parts = m.partsCost ?? m.selectedSolution?.partsCost ?? 0;
+                const labor = m.laborCost ?? m.selectedSolution?.laborCost ?? 0;
+                const total = m.cost ?? parts + labor;
+                return (
+                  <div key={m.id} className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{issue}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {fmtDate(m.completionDate ?? m.dateCompleted)} · {mechanic}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-medium">{fmtMoney(total)}</span>
+                      <Button variant="outline" size="sm" onClick={() => setCompletedRepair(m)}>View Details</Button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </Section>
         </TabsContent>
 
