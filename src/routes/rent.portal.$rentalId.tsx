@@ -464,7 +464,7 @@ export function PortalPage({ rentalId }: { rentalId: string }) {
   );
 }
 
-function DocRow({ icon, label, url }: { icon: React.ReactNode; label: string; url: string | null | undefined }) {
+function DocRow({ icon, label, url }: { icon: ReactNode; label: string; url: string | null | undefined }) {
   return (
     <div className="flex items-center justify-between p-3 text-sm">
       <div className="flex items-center gap-2">
