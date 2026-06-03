@@ -140,6 +140,48 @@ function MaintenancePage() {
         </Card>
       </Collapsible>
 
+      {/* Pending runner repairs alert */}
+      <Card className={`mb-6 ${pending.length > 0 ? "border-amber-500/50 bg-amber-500/5" : ""}`}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ShieldAlert className={`h-4 w-4 ${pending.length > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+            {pending.length > 0
+              ? `⚠️ Pending runner repairs — ${pending.length} awaiting approval`
+              : "No repairs awaiting approval"}
+          </CardTitle>
+        </CardHeader>
+        {pending.length > 0 && (
+          <CardContent className="space-y-3 p-0">
+            <ul className="divide-y divide-border">
+              {pending.map(m => {
+                const v = vehicleById(m.vehicleId);
+                return (
+                  <li key={m.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
+                      <div className="text-sm text-muted-foreground">{m.issueDescription || m.serviceType}</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        {(m.runnerId && runnerNames[m.runnerId]) || "Runner"}
+                        {" · "}
+                        {fmtDate((m.createdAt ?? "").slice(0, 10))}
+                        {m.cost > 0 ? ` · Est. ${fmtMoney(m.cost)}` : ""}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link to="/fleet/$vehicleId" params={{ vehicleId: m.vehicleId }}>View</Link>
+                      </Button>
+                      <Button size="sm" onClick={() => handleApprove(m.id)}>Approve</Button>
+                      <Button size="sm" variant="destructive" onClick={() => handleReject(m.id)}>Reject</Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        )}
+      </Card>
+
       {/* Dashboard summary — 3 cards */}
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* CARD 1: Scheduled repairs due soon */}
