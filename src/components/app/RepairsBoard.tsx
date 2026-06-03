@@ -57,9 +57,6 @@ function RentalBlockToggle({ m }: { m: Maintenance }) {
   );
 }
 
-function OpenCard({ m }: { m: Maintenance }) {
-  const [downPayments, setDownPayments] = useState<Record<string, string>>({});
-
 function IssueCard({ m }: { m: Maintenance }) {
   const [editing, setEditing] = useState(false);
   const [issue, setIssue] = useState(m.issueDescription ?? "");
@@ -158,7 +155,7 @@ function IssueCard({ m }: { m: Maintenance }) {
   );
 }
 
-function OpenCardInner({ m }: { m: Maintenance }) {
+function OpenCard({ m }: { m: Maintenance }) {
   const [downPayments, setDownPayments] = useState<Record<string, string>>({});
   const choose = (sol: RepairSolution) => {
     const dp = Number(downPayments[sol.name]) || 0;
