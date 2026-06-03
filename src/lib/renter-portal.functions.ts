@@ -155,7 +155,7 @@ export const getRenterPortal = createServerFn({ method: "POST" })
     const { data: rental, error: rErr } = await supabaseAdmin
       .from("rentals")
       .select(
-        "id, vehicle_id, driver_id, start_date, end_date, billing_period, rate, weekly_rate, payment_status, reservation_status, payment_received",
+        "id, vehicle_id, driver_id, start_date, end_date, billing_period, rate, weekly_rate, payment_status, reservation_status, payment_received, agreement_pdf_url, receipt_pdf_url",
       )
       .eq("id", data.rentalId)
       .maybeSingle();
