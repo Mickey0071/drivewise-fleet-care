@@ -259,7 +259,7 @@ function TaskPage() {
       // Build issue list: failed checklist items + repairs + dashboard codes.
       const issues: string[] = [];
       for (const it of INSPECTION_ITEMS) {
-        if (items[it.key] !== true) issues.push(it.label.replace(/\?$/, "").trim());
+        if (items[it.key] !== true && !ticketed[it.key]) issues.push(it.label.replace(/\?$/, "").trim());
       }
       if (repairsNeeded) issues.push(repairText.trim() || "Repairs needed");
       if (dashCodes && dashboardCodeValue) issues.push(`Dashboard code - ${dashboardCodeValue}`);
