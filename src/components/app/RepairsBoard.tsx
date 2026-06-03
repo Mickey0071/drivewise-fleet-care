@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
 import { maintenance, vehicleById, fmtMoney, fmtDate, type Maintenance, type RepairSolution } from "@/lib/mock/data";
-import { useStoreVersion, selectRepairSolution, recordRepairPayment, completeRepair } from "@/lib/mock/store";
+import { useStoreVersion, selectRepairSolution, recordRepairPayment, completeRepair, setRepairRentalBlocking } from "@/lib/mock/store";
 import { toast } from "sonner";
-import { CheckCircle2, Wrench } from "lucide-react";
+import { CheckCircle2, Wrench, Ban, Car } from "lucide-react";
 
 function VehicleLink({ vehicleId }: { vehicleId: string }) {
   const v = vehicleById(vehicleId);
@@ -16,6 +16,35 @@ function VehicleLink({ vehicleId }: { vehicleId: string }) {
     <Link to="/fleet/$vehicleId" params={{ vehicleId }} className="text-sm font-semibold text-primary hover:underline">
       {label}
     </Link>
+  );
+}
+
+function RentalBlockToggle({ m }: { m: Maintenance }) {
+  const blocking = !!m.isRentalBlocking;
+  const setBlocking = (next: boolean) => {
+    if (next === blocking) return;
+    setRepairRentalBlocking(m.id, next);
+    toast.success(next ? "Vehicle marked non-rentable" : "Vehicle re-opened for rentals");
+  };
+  return (
+    <div className="grid grid-cols-2 gap-1.5 pt-1">
+      <Button
+        size="sm"
+        variant={blocking ? "destructive" : "outline"}
+        className="h-8 text-xs"
+        onClick={() => setBlocking(true)}
+      >
+        <Ban className="mr-1 h-3.5 w-3.5" /> Non-Rentable
+      </Button>
+      <Button
+        size="sm"
+        variant={blocking ? "outline" : "default"}
+        className="h-8 text-xs"
+        onClick={() => setBlocking(false)}
+      >
+        <Car className="mr-1 h-3.5 w-3.5" /> Allow Rentals
+      </Button>
+    </div>
   );
 }
 
@@ -34,6 +63,7 @@ function OpenCard({ m }: { m: Maintenance }) {
           <Badge variant="outline">Open</Badge>
         </div>
         <div className="text-sm text-muted-foreground">{m.issueDescription || m.serviceType}</div>
+        <RentalBlockToggle m={m} />
         <div className="space-y-2 pt-1">
           {(m.solutions ?? []).map((sol, i) => (
             <div key={i} className="rounded-md border border-border p-2">
