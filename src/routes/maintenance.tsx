@@ -282,10 +282,15 @@ function MaintenancePage() {
                   const v = vehicleById(m.vehicleId);
                   return (
                     <li key={m.id} className="flex items-center justify-between gap-2">
-                      <span className="truncate">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {fmtMoney(m.cost)} · {fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}
-                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {m.issueDescription || m.serviceType} · {fmtMoney(m.cost)} · {fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" onClick={() => setDetailRecord(m)}>
+                        View Details
+                      </Button>
                     </li>
                   );
                 })}
