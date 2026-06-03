@@ -173,6 +173,8 @@ export interface Maintenance {
   amountPaid?: number;
   balance?: number;
   completionDate?: string;
+  /** When true, an open repair blocks the vehicle from new bookings. Default false. */
+  isRentalBlocking?: boolean;
 }
 export type RepairStatus = "open" | "in_progress" | "complete";
 export interface RepairSolution {
