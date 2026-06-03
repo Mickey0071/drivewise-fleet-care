@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, insuranceEntries, insuranceChecklist, violations, staff, payrollRuns, repairTypes, serviceTypes, workOrders, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto, type InsuranceEntry, type InsuranceChecklistItem, type Violation, type Staff, type PayrollRun, type RepairType, type ServiceType, type WorkOrder, type RepairSolution } from "./data";
 import { supabase } from "@/integrations/supabase/client";
+import { computeScheduledItems, type ScheduledItem } from "@/lib/maintenance-utils";
 
 const listeners = new Set<() => void>();
 let version = 0;
