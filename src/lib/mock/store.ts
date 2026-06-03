@@ -1745,6 +1745,26 @@ export function completeRepair(id: string, completedBy?: string) {
   emit();
 }
 
+/** Toggle whether an open repair blocks the vehicle from new bookings. */
+export function setRepairRentalBlocking(id: string, blocking: boolean) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  m.isRentalBlocking = blocking;
+  cloudWrite(
+    "maintenance:update",
+    supabase.from("maintenance").update({ is_rental_blocking: blocking }).eq("id", id),
+  );
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
+}
+
+/** Open (non-completed) repairs for a vehicle, most recent first. */
+export function openRepairsForVehicle(vehicleId: string): Maintenance[] {
+  return maintenance
+    .filter(m => m.vehicleId === vehicleId && !!m.status && m.status !== "complete" && !m.dateCompleted)
+    .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
+}
+
 // ---------------------------------------------------------------------------
 // Work orders (preventive maintenance scheduling)
 // ---------------------------------------------------------------------------
