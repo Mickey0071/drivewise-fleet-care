@@ -373,6 +373,7 @@ const toMaintenance = (m: Maintenance) => ({
   amount_paid: m.amountPaid ?? 0,
   balance: m.balance ?? 0,
   completion_date: m.completionDate ?? null,
+  is_rental_blocking: m.isRentalBlocking ?? false,
 });
 
 // ---- staff ----
