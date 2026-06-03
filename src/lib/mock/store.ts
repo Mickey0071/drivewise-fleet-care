@@ -360,7 +360,14 @@ const fromMaintenance = (r: any): Maintenance => ({
   completionDate: r.completion_date ?? undefined,
   isRentalBlocking: !!r.is_rental_blocking,
 });
-// approval workflow fields handled below
+const fromMaintenanceApproval = (r: any, m: Maintenance): Maintenance => ({
+  ...m,
+  runnerId: r.runner_id ?? undefined,
+  repairRequestNotes: r.repair_request_notes ?? undefined,
+  approvalStatus: r.approval_status ?? undefined,
+  approvalDate: r.approval_date ?? undefined,
+  approvedBy: r.approved_by ?? undefined,
+});
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
   vendor: m.vendor, date_completed: m.dateCompleted,
@@ -376,6 +383,11 @@ const toMaintenance = (m: Maintenance) => ({
   balance: m.balance ?? 0,
   completion_date: m.completionDate ?? null,
   is_rental_blocking: m.isRentalBlocking ?? false,
+  runner_id: m.runnerId ?? null,
+  repair_request_notes: m.repairRequestNotes ?? null,
+  approval_status: m.approvalStatus ?? null,
+  approval_date: m.approvalDate ?? null,
+  approved_by: m.approvedBy ?? null,
 });
 
 // ---- staff ----
