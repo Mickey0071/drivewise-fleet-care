@@ -407,8 +407,10 @@ function MaintenancePage() {
                       <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                         <th className="px-4 py-2 font-medium">Vehicle</th>
                         <th className="px-4 py-2 font-medium">Repair</th>
+                        <th className="px-4 py-2 font-medium">Mechanic</th>
                         <th className="px-4 py-2 text-right font-medium">Cost</th>
                         <th className="px-4 py-2 font-medium">Completed</th>
+                        <th className="px-4 py-2 text-right font-medium">Details</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -421,8 +423,14 @@ function MaintenancePage() {
                               <div className="text-xs text-muted-foreground">Tag #{v?.plate ?? "—"}</div>
                             </td>
                             <td className="px-4 py-2">{m.selectedSolution?.name ?? m.serviceType}</td>
+                            <td className="px-4 py-2">{m.completedBy || m.vendor || "—"}</td>
                             <td className="px-4 py-2 text-right font-medium">{fmtMoney(m.cost)}</td>
                             <td className="px-4 py-2">{fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}</td>
+                            <td className="px-4 py-2 text-right">
+                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setDetailRecord(m)}>
+                                View Details
+                              </Button>
+                            </td>
                           </tr>
                         );
                       })}
@@ -434,6 +442,12 @@ function MaintenancePage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <CompletedRepairDetailDialog
+        record={detailRecord}
+        open={!!detailRecord}
+        onOpenChange={(v) => { if (!v) setDetailRecord(null); }}
+      />
     </div>
   );
 }
