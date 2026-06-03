@@ -360,7 +360,7 @@ const fromMaintenance = (r: any): Maintenance => ({
   completionDate: r.completion_date ?? undefined,
   isRentalBlocking: !!r.is_rental_blocking,
 });
-const _fromMaintenanceApproval = null;
+// approval workflow fields handled below
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
   vendor: m.vendor, date_completed: m.dateCompleted,
