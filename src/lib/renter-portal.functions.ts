@@ -3,6 +3,19 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createStripeClient } from "@/lib/stripe.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { extractNameFromIdImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
+import { sendSms } from "@/lib/ghl.server";
+
+// Internal support / admin line that receives portal requests.
+const SUPPORT_PHONE = "+12672213977";
+
+function originFromRequest(): string {
+  const originHeader = getRequestHeader("origin") || getRequestHeader("referer");
+  let origin = process.env.PUBLIC_APP_ORIGIN ?? "";
+  if (originHeader) {
+    try { origin = new URL(originHeader).origin; } catch { /* keep default */ }
+  }
+  return origin;
+}
 
 // Normalize a person name for fuzzy comparison: lowercase, strip punctuation,
 // collapse whitespace, and sort the word tokens so order/middle-name
