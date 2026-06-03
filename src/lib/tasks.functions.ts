@@ -165,6 +165,86 @@ export const submitTask = createServerFn({ method: "POST" })
   });
 
 /**
+ * Runner: create a repair request from a failed inspection checklist item.
+ * Creates an open maintenance ticket with approval_status = "pending" so an
+ * admin can approve it into the Repairs board (or reject it).
+ */
+export const createRunnerRepairRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    vehicleId: string;
+    issue: string;
+    notes?: string;
+    estimatedCost?: number;
+    mileage?: number;
+  }) => {
+    if (!input.vehicleId) throw new Error("vehicleId required");
+    if (!input.issue || !input.issue.trim()) throw new Error("issue required");
+    if (input.issue.length > 300) throw new Error("issue too long");
+    if (input.notes && input.notes.length > 2000) throw new Error("notes too long");
+    if (input.estimatedCost != null && (typeof input.estimatedCost !== "number" || input.estimatedCost < 0 || input.estimatedCost > 1000000)) {
+      throw new Error("Invalid estimated cost");
+    }
+    if (input.mileage != null && (!Number.isInteger(input.mileage) || input.mileage < 0)) {
+      throw new Error("Invalid mileage");
+    }
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const issue = data.issue.trim();
+    const notes = data.notes?.trim() || "";
+    const description = notes ? `${issue} — ${notes}` : issue;
+    const mid = "MN-" + Math.random().toString(36).slice(2, 12).toUpperCase();
+
+    // RLS "Runners insert maintenance" gates this insert to runners.
+    const { error: mErr } = await supabase.from("maintenance").insert({
+      id: mid,
+      vehicle_id: data.vehicleId,
+      service_type: issue,
+      issue_description: description,
+      status: "open",
+      vendor: "Pending assignment",
+      date_completed: null,
+      mileage_at_service: data.mileage ?? 0,
+      cost: data.estimatedCost ?? 0,
+      next_service_due: new Date().toISOString().slice(0, 10),
+      runner_id: context.userId,
+      repair_request_notes: notes || null,
+      approval_status: "pending",
+      is_rental_blocking: true,
+    });
+    if (mErr) throw new Error(mErr.message);
+
+    // Flag the vehicle as having an open issue.
+    await supabase
+      .from("vehicles")
+      .update({ has_open_issues: true })
+      .eq("id", data.vehicleId);
+
+    // Alert admin by SMS (best-effort).
+    const { data: veh } = await supabase
+      .from("vehicles")
+      .select("year, make, model, plate")
+      .eq("id", data.vehicleId)
+      .maybeSingle();
+    const vLabel = veh
+      ? `${(veh as any).year} ${(veh as any).make} ${(veh as any).model} (${(veh as any).plate})`
+      : data.vehicleId;
+    try {
+      await sendSms(
+        "+12672213977",
+        `Camauto: Runner repair request — ${vLabel}. ${description}${data.estimatedCost ? ` (est. $${data.estimatedCost})` : ""}. Awaiting approval.`,
+        "Admin",
+      );
+    } catch {
+      /* SMS failure must not block the request */
+    }
+
+    return { ok: true, maintenanceId: mid };
+  });
+
+/**
  * Admin: return a vehicle and dispatch a post-return inspection task to a runner.
  * Marks the rental returned and parks the vehicle in "inspection" status until
  * an admin approves the completed inspection (see reviewInspection).
