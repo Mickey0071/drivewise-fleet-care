@@ -92,7 +92,6 @@ function VehicleDetail() {
   const serviceLog = vMx.filter(isServiceLogRecord)
     .sort((a, b) => (b.dateCompleted ?? "").localeCompare(a.dateCompleted ?? ""));
   const lastSvc = lastServiceFor(maintenance, v.id);
-  const vRepairs = vMx.filter(m => REPAIR_KEYWORDS.some(keyword => m.serviceType.toLowerCase().includes(keyword)));
   const SCHEDULED_KEYWORDS = ["oil", "battery", "alternator", "inspection"];
   const completedRepairs = vMx
     .filter(m => m.status === "complete")
