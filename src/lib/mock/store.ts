@@ -1635,6 +1635,107 @@ export function deleteMaintenance(id: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Repairs kanban (Open → In Progress → Complete)
+// Repairs are maintenance rows with a non-null `status`. They stay "open"
+// (no date_completed) so the vehicle is flagged unavailable until completed.
+// ---------------------------------------------------------------------------
+import type { RepairSolution } from "./data";
+
+export function createRepair(input: {
+  vehicleId: string;
+  issueDescription: string;
+  solutions: RepairSolution[];
+}) {
+  const v = vehicles.find(x => x.id === input.vehicleId);
+  const rec: Maintenance = {
+    id: nextMaintenanceId(),
+    vehicleId: input.vehicleId,
+    serviceType: input.issueDescription,
+    issueDescription: input.issueDescription,
+    solutions: input.solutions,
+    vendor: "Pending assignment",
+    dateCompleted: undefined as unknown as string,
+    mileageAtService: v?.mileage ?? 0,
+    cost: 0,
+    nextServiceDue: new Date().toISOString().slice(0, 10),
+    status: "open",
+    downPayment: 0,
+    amountPaid: 0,
+    balance: 0,
+    createdAt: new Date().toISOString(),
+  };
+  maintenance.push(rec);
+  cloudWrite("maintenance:insert", supabase.from("maintenance").insert(toMaintenance(rec)));
+  if (v) syncVehicleOpenIssues(v.id);
+  emit();
+  return rec;
+}
+
+/** Open → In Progress: admin picks a solution and (optionally) a down payment. */
+export function selectRepairSolution(id: string, solution: RepairSolution, downPayment = 0) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  const dp = Math.max(0, downPayment || 0);
+  m.status = "in_progress";
+  m.selectedSolution = solution;
+  m.cost = solution.totalCost;
+  m.downPayment = dp;
+  m.amountPaid = dp;
+  m.balance = Math.max(0, solution.totalCost - dp);
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  if (dp > 0) {
+    addExpense({
+      category: "Maintenance",
+      amount: dp,
+      date: new Date().toISOString().slice(0, 10),
+      vehicleId: m.vehicleId,
+      notes: `Down payment for repair ${m.id} — ${solution.name}`,
+    });
+  }
+  emit();
+}
+
+/** In Progress: record an additional payment toward the repair. */
+export function recordRepairPayment(id: string, amount: number) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m || !m.selectedSolution) return;
+  const amt = Math.max(0, amount || 0);
+  if (amt <= 0) return;
+  m.amountPaid = (m.amountPaid ?? 0) + amt;
+  m.balance = Math.max(0, (m.selectedSolution.totalCost) - m.amountPaid);
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  addExpense({
+    category: "Maintenance",
+    amount: amt,
+    date: new Date().toISOString().slice(0, 10),
+    vehicleId: m.vehicleId,
+    notes: `Payment for repair ${m.id} — ${m.selectedSolution.name}`,
+  });
+  emit();
+}
+
+/** In Progress → Complete: only when fully paid. Logs to maintenance history. */
+export function completeRepair(id: string, completedBy?: string) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m || !m.selectedSolution) return;
+  if ((m.amountPaid ?? 0) < m.selectedSolution.totalCost) return; // balance must be 0
+  const today = new Date().toISOString().slice(0, 10);
+  m.status = "complete";
+  m.balance = 0;
+  m.completionDate = new Date().toISOString();
+  m.dateCompleted = today;
+  m.serviceType = m.selectedSolution.name;
+  m.cost = m.selectedSolution.totalCost;
+  m.completedBy = completedBy?.trim() || m.completedBy || "Admin";
+  if (m.vendor === "Pending assignment") m.vendor = m.completedBy;
+  const resolution = `Repair completed ${today}: ${m.selectedSolution.name} (total $${m.selectedSolution.totalCost.toFixed(2)}, paid in full)`;
+  m.notes = m.notes ? `${m.notes}\n\n${resolution}` : resolution;
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
+}
+
+// ---------------------------------------------------------------------------
 // Work orders (preventive maintenance scheduling)
 // ---------------------------------------------------------------------------
 function nextWorkOrderId() {
