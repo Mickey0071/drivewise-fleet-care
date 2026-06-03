@@ -93,6 +93,16 @@ function VehicleDetail() {
     .sort((a, b) => (b.dateCompleted ?? "").localeCompare(a.dateCompleted ?? ""));
   const lastSvc = lastServiceFor(maintenance, v.id);
   const vRepairs = vMx.filter(m => REPAIR_KEYWORDS.some(keyword => m.serviceType.toLowerCase().includes(keyword)));
+  const SCHEDULED_KEYWORDS = ["oil", "battery", "alternator", "inspection"];
+  const completedRepairs = vMx
+    .filter(m => m.status === "complete")
+    .filter(m => {
+      const label = `${m.serviceType ?? ""} ${m.issueDescription ?? ""}`.toLowerCase();
+      return !SCHEDULED_KEYWORDS.some(k => label.includes(k));
+    })
+    .sort((a, b) =>
+      (b.completionDate ?? b.dateCompleted ?? "").localeCompare(a.completionDate ?? a.dateCompleted ?? ""),
+    );
   const vViol = violations.filter(x => x.vehicleId === v.id);
   const vInsp = inspections.filter(i => i.vehicleId === v.id);
   const rentalIds = new Set(vRentals.map(r => r.id));
