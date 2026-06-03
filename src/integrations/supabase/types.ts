@@ -502,9 +502,12 @@ export type Database = {
           id: string
           is_rental_blocking: boolean
           issue_description: string | null
+          labor_cost: number
+          mechanic_notes: string | null
           mileage_at_service: number
           next_service_due: string
           notes: string | null
+          parts_cost: number
           repair_request_notes: string | null
           runner_id: string | null
           selected_solution: Json | null
@@ -531,9 +534,12 @@ export type Database = {
           id: string
           is_rental_blocking?: boolean
           issue_description?: string | null
+          labor_cost?: number
+          mechanic_notes?: string | null
           mileage_at_service?: number
           next_service_due?: string
           notes?: string | null
+          parts_cost?: number
           repair_request_notes?: string | null
           runner_id?: string | null
           selected_solution?: Json | null
@@ -560,9 +566,12 @@ export type Database = {
           id?: string
           is_rental_blocking?: boolean
           issue_description?: string | null
+          labor_cost?: number
+          mechanic_notes?: string | null
           mileage_at_service?: number
           next_service_due?: string
           notes?: string | null
+          parts_cost?: number
           repair_request_notes?: string | null
           runner_id?: string | null
           selected_solution?: Json | null
