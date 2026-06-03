@@ -3,20 +3,13 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
-import { Wrench, AlertTriangle, ClipboardList } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Wrench, AlertTriangle } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
-import { LogServiceDialog } from "@/components/app/LogServiceDialog";
-import { AddIssueDialog } from "@/components/app/AddIssueDialog";
-import { ResolveMaintenanceDialog } from "@/components/app/ResolveMaintenanceDialog";
 import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
 import { RepairsBoard } from "@/components/app/RepairsBoard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { isServiceLogRecord } from "@/lib/maintenance-utils";
 import { useState } from "react";
 import { useStoreVersion } from "@/lib/mock/store";
-import type { Maintenance } from "@/lib/mock/data";
-import { PendingInspections } from "@/components/app/PendingInspections";
 
 export const Route = createFileRoute("/maintenance")({
   head: () => ({ meta: [{ title: "Maintenance — Camauto Rentals" }] }),
@@ -25,19 +18,8 @@ export const Route = createFileRoute("/maintenance")({
 
 function MaintenancePage() {
   useStoreVersion();
-  const [logOpen, setLogOpen] = useState(false);
-  const [issueOpen, setIssueOpen] = useState(false);
   const [repairOpen, setRepairOpen] = useState(false);
-  const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const [tab, setTab] = useState("scheduled");
-
-  // Scheduled maintenance = routine service log + non-repair open issues
-  const openIssues = maintenance
-    .filter(m => !m.dateCompleted && !m.status)
-    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
-  const serviceLog = maintenance.filter(isServiceLogRecord)
-    .sort((a, b) => (b.dateCompleted ?? "").localeCompare(a.dateCompleted ?? ""));
-  const serviceCost = serviceLog.reduce((s, m) => s + m.cost, 0);
 
   // Repairs (kanban-tracked)
   const repairs = maintenance.filter(m => !!m.status);
@@ -68,13 +50,9 @@ function MaintenancePage() {
                 return [m.id, v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId, v?.plate ?? "", m.serviceType, m.vendor, m.dateCompleted, m.mileageAtService, m.cost, m.nextServiceDue];
               }),
             }} />
-            <Button variant="outline" onClick={() => setIssueOpen(true)}>+ Add Issue</Button>
-            <Button onClick={() => setLogOpen(true)}>+ Log Service</Button>
           </div>
         }
       />
-      <LogServiceDialog open={logOpen} onOpenChange={setLogOpen} />
-      <AddIssueDialog open={issueOpen} onOpenChange={setIssueOpen} />
       <CreateRepairDialog open={repairOpen} onOpenChange={setRepairOpen} />
 
       {/* Dashboard summary */}
@@ -156,95 +134,13 @@ function MaintenancePage() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="scheduled">Scheduled ({serviceLog.length + openIssues.length})</TabsTrigger>
+          <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
           <TabsTrigger value="repairs">Repairs ({repairs.length})</TabsTrigger>
           <TabsTrigger value="completed">Completed ({completedRepairs.length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="scheduled" className="mt-4 space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-            Open issues ({openIssues.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="divide-y divide-border p-0">
-          {openIssues.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">
-              No open maintenance issues. The fleet is in good shape.
-            </div>
-          ) : openIssues.map(m => {
-            const v = vehicleById(m.vehicleId);
-            const issue = (m.serviceType ?? "").split("\n")[0].trim();
-            return (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setResolveRecord(m)}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
-              >
-                <div className="min-w-0 shrink-0 basis-1/3">
-                  <div className="truncate text-sm font-medium">
-                    {v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Tag #{v?.plate ?? "—"}</div>
-                </div>
-                <div className="min-w-0 flex-1 truncate text-sm">{issue}</div>
-              </button>
-            );
-          })}
-        </CardContent>
-      </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ClipboardList className="h-4 w-4 text-muted-foreground" />
-                Service log ({serviceLog.length}) · {fmtMoney(serviceCost)}
-              </CardTitle>
-              <Button size="sm" onClick={() => setLogOpen(true)}>+ Log Service</Button>
-            </CardHeader>
-            <CardContent className="p-0">
-              {serviceLog.length === 0 ? (
-                <div className="p-6 text-center text-sm text-muted-foreground">
-                  No routine service logged yet. Click “+ Log Service” to add one.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
-                        <th className="px-4 py-2 font-medium">Vehicle</th>
-                        <th className="px-4 py-2 font-medium">Service type</th>
-                        <th className="px-4 py-2 font-medium">Date done</th>
-                        <th className="px-4 py-2 font-medium">Mileage</th>
-                        <th className="px-4 py-2 text-right font-medium">Cost</th>
-                        <th className="px-4 py-2 font-medium">Next due</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {serviceLog.map(m => {
-                        const v = vehicleById(m.vehicleId);
-                        return (
-                          <tr key={m.id} className="hover:bg-muted/40">
-                            <td className="px-4 py-2">
-                              <div className="font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
-                              <div className="text-xs text-muted-foreground">Tag #{v?.plate ?? "—"}</div>
-                            </td>
-                            <td className="px-4 py-2">{m.serviceType}</td>
-                            <td className="px-4 py-2">{fmtDate(m.dateCompleted)}</td>
-                            <td className="px-4 py-2">{m.mileageAtService.toLocaleString()} mi</td>
-                            <td className="px-4 py-2 text-right font-medium">{fmtMoney(m.cost)}</td>
-                            <td className="px-4 py-2">{fmtDate(m.nextServiceDue)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="scheduled" className="mt-4">
+          <p className="text-sm text-muted-foreground">Scheduled maintenance view coming soon.</p>
         </TabsContent>
 
         <TabsContent value="repairs" className="mt-4">
@@ -300,18 +196,6 @@ function MaintenancePage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <div className="mt-6">
-        <PendingInspections />
-      </div>
-
-      <ResolveMaintenanceDialog
-        open={!!resolveRecord}
-        onOpenChange={(o) => { if (!o) setResolveRecord(null); }}
-        record={resolveRecord}
-      />
     </div>
   );
 }
-
-
