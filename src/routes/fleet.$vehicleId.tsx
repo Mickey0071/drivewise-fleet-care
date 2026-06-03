@@ -519,6 +519,11 @@ function VehicleDetail() {
         onOpenChange={(o) => { if (!o) setResolveRecord(null); }}
         record={resolveRecord}
       />
+      <CompletedRepairDetailDialog
+        open={!!completedRepair}
+        onOpenChange={(o) => { if (!o) setCompletedRepair(null); }}
+        record={completedRepair}
+      />
       <MaintenanceSettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
