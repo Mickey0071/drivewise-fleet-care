@@ -2,14 +2,24 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { maintenance, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
-import { Wrench, AlertTriangle } from "lucide-react";
+import { maintenance, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
+import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
 import { RepairsBoard } from "@/components/app/RepairsBoard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
-import { useStoreVersion } from "@/lib/mock/store";
+import { toast } from "sonner";
+import { useNavigate } from "@tanstack/react-router";
+import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
+import {
+  dueSoonScheduledItems,
+  computeScheduledItems,
+  scheduledRemainingLabel,
+  isScheduleConfigured,
+  type ScheduledItem,
+} from "@/lib/maintenance-utils";
 
 export const Route = createFileRoute("/maintenance")({
   head: () => ({ meta: [{ title: "Maintenance — Camauto Rentals" }] }),
@@ -18,8 +28,10 @@ export const Route = createFileRoute("/maintenance")({
 
 function MaintenancePage() {
   useStoreVersion();
+  const navigate = useNavigate();
   const [repairOpen, setRepairOpen] = useState(false);
   const [tab, setTab] = useState("scheduled");
+  const [configOpen, setConfigOpen] = useState(false);
 
   // Repairs (kanban-tracked)
   const repairs = maintenance.filter(m => !!m.status);
@@ -33,7 +45,21 @@ function MaintenancePage() {
   const completedThisMonth = completedRepairs.filter(
     m => (m.completionDate ?? m.dateCompleted ?? "").slice(0, 7) === monthKey,
   );
-  const completedThisMonthCost = completedThisMonth.reduce((s, m) => s + m.cost, 0);
+
+  // Scheduled maintenance (derived from per-vehicle Alert Settings)
+  const dueSoon = dueSoonScheduledItems(vehicles);
+  const allScheduled = vehicles.flatMap(v => computeScheduledItems(v));
+  const configuredCount = vehicles.filter(isScheduleConfigured).length;
+
+  async function handleMarkComplete(it: ScheduledItem) {
+    try {
+      await markScheduledComplete(it.vehicleId, it.type, it.customId);
+      const v = vehicleById(it.vehicleId);
+      toast.success(`${it.label} cleared for ${v ? `${v.year} ${v.make} ${v.model}` : it.vehicleId}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update");
+    }
+  }
 
   return (
     <div>
@@ -55,8 +81,77 @@ function MaintenancePage() {
       />
       <CreateRepairDialog open={repairOpen} onOpenChange={setRepairOpen} />
 
-      {/* Dashboard summary */}
-      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {/* Configuration section */}
+      <Collapsible open={configOpen} onOpenChange={setConfigOpen} className="mb-4">
+        <Card>
+          <CollapsibleTrigger asChild>
+            <button className="flex w-full items-center justify-between p-4 text-left">
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <Settings2 className="h-4 w-4 text-muted-foreground" />
+                Configure Scheduled Repairs Alerts
+              </span>
+              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                {configuredCount}/{vehicles.length} vehicles configured
+                <ChevronDown className={`h-4 w-4 transition-transform ${configOpen ? "rotate-180" : ""}`} />
+              </span>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="border-t border-border p-4 text-sm text-muted-foreground">
+              <p>
+                Alert intervals (oil, battery, alternator, inspection) are set per vehicle in Fleet.
+                Due dates are auto-calculated from each vehicle's current mileage and last-service dates.
+              </p>
+              <Button size="sm" variant="outline" className="mt-3" onClick={() => navigate({ to: "/fleet" })}>
+                Edit Alert Settings
+              </Button>
+            </div>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* Dashboard summary — 3 cards */}
+      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* CARD 1: Scheduled repairs due soon */}
+        <Card className="border-amber-500/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between text-base">
+              <span className="flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 text-amber-500" />
+                Scheduled ({dueSoon.length})
+              </span>
+              <span className="text-xs font-normal text-muted-foreground">due soon</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {dueSoon.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nothing due within 7 days or 100 miles.</p>
+            ) : (
+              <ul className="space-y-1.5 text-sm">
+                {dueSoon.slice(0, 3).map(it => {
+                  const v = vehicleById(it.vehicleId);
+                  return (
+                    <li key={it.key} className="flex items-center justify-between gap-2">
+                      <span className="truncate">{v ? `${v.year} ${v.make} ${v.model}` : it.vehicleId}</span>
+                      <span className={`shrink-0 text-xs ${it.status === "overdue" ? "text-destructive" : "text-muted-foreground"}`}>
+                        {it.label} · {scheduledRemainingLabel(it)}
+                      </span>
+                    </li>
+                  );
+                })}
+                {dueSoon.length > 3 && (
+                  <li className="text-xs text-muted-foreground">…{dueSoon.length - 3} more</li>
+                )}
+              </ul>
+            )}
+            <div className="mt-2 flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setTab("scheduled")}>Scheduled tab</Button>
+              <Button size="sm" variant="ghost" onClick={() => navigate({ to: "/fleet" })}>Configure</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* CARD 2: Open repairs */}
         <Card className="border-destructive/30">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-base">
@@ -74,7 +169,7 @@ function MaintenancePage() {
               <p className="text-sm text-muted-foreground">No open repairs. Fleet is in good shape.</p>
             ) : (
               <ul className="space-y-1.5 text-sm">
-                {openRepairs.slice(0, 3).map(m => {
+                {openRepairs.slice(0, 2).map(m => {
                   const v = vehicleById(m.vehicleId);
                   return (
                     <li key={m.id} className="flex items-center justify-between gap-2">
@@ -83,8 +178,8 @@ function MaintenancePage() {
                     </li>
                   );
                 })}
-                {openRepairs.length > 3 && (
-                  <li className="text-xs text-muted-foreground">…{openRepairs.length - 3} more</li>
+                {openRepairs.length > 2 && (
+                  <li className="text-xs text-muted-foreground">…{openRepairs.length - 2} more</li>
                 )}
               </ul>
             )}
@@ -94,39 +189,37 @@ function MaintenancePage() {
           </CardContent>
         </Card>
 
+        {/* CARD 3: Completed (recent) */}
         <Card className="border-green-600/30">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-base">
               <span className="flex items-center gap-2">
                 <Wrench className="h-4 w-4 text-green-600" />
-                Completed this month ({completedThisMonth.length})
+                Completed ({completedRepairs.length})
               </span>
-              <span className="text-sm font-normal text-muted-foreground">
-                {fmtMoney(completedThisMonthCost)}
-              </span>
+              <span className="text-xs font-normal text-muted-foreground">recent</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {completedThisMonth.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No repairs completed this month yet.</p>
+            {completedRepairs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No completed repairs yet.</p>
             ) : (
               <ul className="space-y-1.5 text-sm">
-                {completedThisMonth.slice(0, 3).map(m => {
+                {completedRepairs.slice(0, 3).map(m => {
                   const v = vehicleById(m.vehicleId);
                   return (
                     <li key={m.id} className="flex items-center justify-between gap-2">
                       <span className="truncate">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</span>
-                      <span className="truncate text-muted-foreground">{m.selectedSolution?.name ?? m.serviceType}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {fmtMoney(m.cost)} · {fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}
+                      </span>
                     </li>
                   );
                 })}
-                {completedThisMonth.length > 3 && (
-                  <li className="text-xs text-muted-foreground">…{completedThisMonth.length - 3} more</li>
-                )}
               </ul>
             )}
             <Button size="sm" variant="outline" className="mt-2" onClick={() => setTab("completed")}>
-              Go to Completed tab
+              View all completed repairs →
             </Button>
           </CardContent>
         </Card>
@@ -134,13 +227,80 @@ function MaintenancePage() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
+          <TabsTrigger value="scheduled">Scheduled ({dueSoon.length})</TabsTrigger>
           <TabsTrigger value="repairs">Repairs ({repairs.length})</TabsTrigger>
           <TabsTrigger value="completed">Completed ({completedRepairs.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="scheduled" className="mt-4">
-          <p className="text-sm text-muted-foreground">Scheduled maintenance view coming soon.</p>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {/* Due soon */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CalendarClock className="h-4 w-4 text-amber-500" />
+                  Due soon ({dueSoon.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {dueSoon.length === 0 ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">Nothing due within 7 days or 100 miles.</div>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {dueSoon.map(it => {
+                      const v = vehicleById(it.vehicleId);
+                      return (
+                        <li key={it.key} className="flex items-center justify-between gap-2 px-4 py-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : it.vehicleId}</div>
+                            <div className={`text-xs ${it.status === "overdue" ? "text-destructive" : "text-muted-foreground"}`}>
+                              {it.label} · {scheduledRemainingLabel(it)}
+                              {it.dueDate ? ` · due ${fmtDate(it.dueDate)}` : it.dueMileage ? ` · at ${it.dueMileage.toLocaleString()} mi` : ""}
+                            </div>
+                          </div>
+                          <Button size="sm" variant="outline" className="shrink-0" onClick={() => handleMarkComplete(it)}>
+                            Mark Complete
+                          </Button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Upcoming (not yet due) */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Wrench className="h-4 w-4 text-muted-foreground" />
+                  Upcoming
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {allScheduled.filter(it => it.status === "upcoming").length === 0 ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">No upcoming scheduled maintenance.</div>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {allScheduled.filter(it => it.status === "upcoming").map(it => {
+                      const v = vehicleById(it.vehicleId);
+                      return (
+                        <li key={it.key} className="flex items-center justify-between gap-2 px-4 py-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : it.vehicleId}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {it.label} · {scheduledRemainingLabel(it)}
+                              {it.dueDate ? ` · due ${fmtDate(it.dueDate)}` : it.dueMileage ? ` · at ${it.dueMileage.toLocaleString()} mi` : ""}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="repairs" className="mt-4">

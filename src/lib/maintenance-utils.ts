@@ -240,3 +240,150 @@ export function isScheduleConfigured(v: Vehicle): boolean {
     return !!t && t.enabled && !!t.lastDone;
   });
 }
+
+// ---------------------------------------------------------------------------
+// Scheduled maintenance items (dashboard) — derived from per-vehicle Alert
+// Settings. "Due soon" = overdue, OR within 7 days, OR within 100 miles.
+// ---------------------------------------------------------------------------
+
+export type ScheduledType = "oil" | "battery" | "alternator" | "inspection" | "custom";
+export type ScheduledStatus = "overdue" | "due_soon" | "upcoming";
+
+/** Dashboard "due soon" thresholds (distinct from the Fleet badge thresholds). */
+export const SCHEDULED_DAYS_SOON = 7;
+export const SCHEDULED_MILES_SOON = 100;
+
+export interface ScheduledItem {
+  key: string;
+  vehicleId: string;
+  type: ScheduledType;
+  /** Original custom-alert id (only set when type === "custom"). */
+  customId?: string;
+  label: string;
+  dueDate?: string;
+  dueMileage?: number;
+  milesRemaining?: number;
+  daysRemaining?: number;
+  status: ScheduledStatus;
+}
+
+function classify(daysRemaining?: number, milesRemaining?: number): ScheduledStatus {
+  const overdue =
+    (daysRemaining != null && daysRemaining < 0) ||
+    (milesRemaining != null && milesRemaining < 0);
+  if (overdue) return "overdue";
+  const soon =
+    (daysRemaining != null && daysRemaining <= SCHEDULED_DAYS_SOON) ||
+    (milesRemaining != null && milesRemaining <= SCHEDULED_MILES_SOON);
+  return soon ? "due_soon" : "upcoming";
+}
+
+/** All scheduled maintenance items for a vehicle, regardless of urgency. */
+export function computeScheduledItems(v: Vehicle, now: Date = new Date()): ScheduledItem[] {
+  const items: ScheduledItem[] = [];
+  const s = v.maintenanceSettings ?? {};
+  const today = startOfDay(now);
+
+  // --- Oil change ---
+  if (s.oilChange && s.oilChange.interval > 0) {
+    const oc = s.oilChange;
+    if (oc.mode === "miles" && oc.lastMileage != null) {
+      const dueMileage = oc.lastMileage + oc.interval;
+      const milesRemaining = dueMileage - v.mileage;
+      items.push({
+        key: `${v.id}-oil`, vehicleId: v.id, type: "oil", label: "Oil Change",
+        dueMileage, milesRemaining, status: classify(undefined, milesRemaining),
+      });
+    } else if (oc.mode === "months") {
+      const last = parseDay(oc.lastDate);
+      if (last) {
+        const due = addMonths(last, oc.interval);
+        const daysRemaining = daysBetween(due, today);
+        items.push({
+          key: `${v.id}-oil`, vehicleId: v.id, type: "oil", label: "Oil Change",
+          dueDate: due.toISOString().slice(0, 10), daysRemaining,
+          status: classify(daysRemaining),
+        });
+      }
+    }
+  }
+
+  // --- Battery (annual) ---
+  const batt = parseDay(s.batteryLastDone);
+  if (batt) {
+    const due = addYears(batt, 1);
+    const daysRemaining = daysBetween(due, today);
+    items.push({
+      key: `${v.id}-battery`, vehicleId: v.id, type: "battery", label: "Battery Test",
+      dueDate: due.toISOString().slice(0, 10), daysRemaining, status: classify(daysRemaining),
+    });
+  }
+
+  // --- Alternator (annual) ---
+  const alt = parseDay(s.alternatorLastDone);
+  if (alt) {
+    const due = addYears(alt, 1);
+    const daysRemaining = daysBetween(due, today);
+    items.push({
+      key: `${v.id}-alternator`, vehicleId: v.id, type: "alternator", label: "Alternator Test",
+      dueDate: due.toISOString().slice(0, 10), daysRemaining, status: classify(daysRemaining),
+    });
+  }
+
+  // --- Inspection (expiry date) ---
+  const insp = parseDay(s.inspectionExpiry);
+  if (insp) {
+    const daysRemaining = daysBetween(insp, today);
+    items.push({
+      key: `${v.id}-inspection`, vehicleId: v.id, type: "inspection", label: "Inspection",
+      dueDate: insp.toISOString().slice(0, 10), daysRemaining, status: classify(daysRemaining),
+    });
+  }
+
+  // --- Custom alerts ---
+  for (const c of s.customAlerts ?? []) {
+    const last = parseDay(c.lastDate);
+    if (!last || !(c.intervalDays > 0)) continue;
+    const due = new Date(last.getTime() + c.intervalDays * MS_DAY);
+    const daysRemaining = daysBetween(due, today);
+    items.push({
+      key: `${v.id}-custom-${c.id}`, vehicleId: v.id, type: "custom", customId: c.id,
+      label: c.label || "Custom Alert", dueDate: due.toISOString().slice(0, 10),
+      daysRemaining, status: classify(daysRemaining),
+    });
+  }
+
+  return items;
+}
+
+/** Scheduled items that are overdue or due soon, most urgent first. */
+export function dueSoonScheduledItems(list: Vehicle[], now: Date = new Date()): ScheduledItem[] {
+  return list
+    .flatMap((v) => computeScheduledItems(v, now))
+    .filter((it) => it.status !== "upcoming")
+    .sort((a, b) => urgencyScore(a) - urgencyScore(b));
+}
+
+function urgencyScore(it: ScheduledItem): number {
+  // Lower = more urgent. Combine days and miles into a single ordering.
+  const byDays = it.daysRemaining ?? Number.POSITIVE_INFINITY;
+  const byMiles = it.milesRemaining != null ? it.milesRemaining / 14 : Number.POSITIVE_INFINITY;
+  return Math.min(byDays, byMiles);
+}
+
+/** Human-readable "remaining" string for a scheduled item. */
+export function scheduledRemainingLabel(it: ScheduledItem): string {
+  if (it.milesRemaining != null) {
+    return it.milesRemaining < 0
+      ? `overdue ${Math.abs(it.milesRemaining).toLocaleString()} mi`
+      : `${it.milesRemaining.toLocaleString()} mi left`;
+  }
+  if (it.daysRemaining != null) {
+    return it.daysRemaining < 0
+      ? `overdue ${Math.abs(it.daysRemaining)} days`
+      : it.daysRemaining === 0
+        ? "due today"
+        : `${it.daysRemaining} days left`;
+  }
+  return "—";
+}

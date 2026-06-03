@@ -1,47 +1,39 @@
-## Phase 2 — Inspection Approval, Alerts, Logging & Audit
+## Goal
 
-Builds on the existing return-inspection flow (`reviewInspection` in `tasks.functions.ts` + `PendingInspections` in the Maintenance dashboard). Reuses the existing SMS sender (`sendSms` from `ghl.server`, same as daily reports). Admin alert number stays `+12672213977`.
+Turn the Maintenance page into a true dashboard: a collapsible config section, three summary cards (Scheduled Repairs due soon, Open Repairs, Completed recent), and three tabs (Scheduled Maintenance, Repairs kanban, Completed log). The Scheduled section is wired to the Alert Settings already configured per vehicle in Fleet.
 
-### 1. Database migration
+## Key architecture decision
 
-`runner_tasks` — add audit columns:
-- `reviewed_at` (timestamptz), `reviewed_by` (uuid), `review_action` (text), `forced` (boolean default false)
+The app already has a complete "scheduled maintenance" engine: every vehicle stores `maintenanceSettings` (oil interval, battery, alternator, inspection, custom alerts) set via the Fleet detail's **Alert Settings** dialog, and `computeVehicleAlerts()` derives what's due from current mileage + dates.
 
-`inspections` — add link/audit columns (table already has `checklist_items`, `mileage`, `notes`, etc.):
-- `task_id` (text), `runner_id` (uuid), `checklist_data` (jsonb), `issues_found` (jsonb)
+I will **drive the Scheduled cards/tab from this existing engine** instead of creating a separate `scheduled_maintenance` table. A second table would duplicate the source of truth and require constant syncing on every mileage change, fleet edit, and inspection — a maintenance burden with no functional gain. The computed approach already satisfies every Part-9 success criterion (auto-calculated due dates, 7-day / 100-mile alerting, pass/fail clearing).
 
-`vehicles` already has `last_inspection_at` and `last_inspection_mileage` — reused, no change. Vehicle `status` represents inspection status (`available` after approval).
+## What changes
 
-(All are additive `ALTER TABLE ADD COLUMN`; existing GRANTs/RLS unchanged.)
+### 1. Scheduling helpers (`src/lib/maintenance-utils.ts`)
+- Add `computeScheduledItems(vehicle, now)` returning structured rows: `{ vehicleId, type ('oil'|'battery'|'alternator'|'inspection'|custom), label, dueDate?, dueMileage?, milesRemaining?, daysRemaining?, status ('overdue'|'due_soon'|'upcoming') }`. Reuses the same interval math already in `computeVehicleAlerts`.
+- "Due soon" threshold for the dashboard = within **7 days OR 100 miles** (overdue always included). Existing red-alert thresholds (500 mi / 15 days) stay as-is for the Fleet badges so I don't change unrelated screens.
+- `markScheduledComplete(vehicleId, type)` helper that updates the vehicle's `maintenanceSettings` (sets `lastDone`/`lastMileage`/`lastDate` to today/current mileage), which automatically clears the alert.
 
-### 2. `reviewInspection` server function (extend existing)
+### 2. Maintenance dashboard (`src/routes/maintenance.tsx`)
+- **Collapsible config section** (top): "⚙️ Configure Scheduled Repairs Alerts" — summarizes how many vehicles have alerts configured and an **Edit Alert Settings** action that routes to Fleet.
+- **Three summary cards**:
+  - *Scheduled Repairs (due soon)* — count + top 3 most urgent (vehicle, type, miles/days remaining, due date) + buttons to Scheduled tab / Fleet.
+  - *Open Repairs* — count + top 2 recent + total pending cost + button to Repairs tab.
+  - *Completed (recent)* — total count + 3 most recent by completion date + button to Completed tab.
+- **Three tabs**:
+  - *Scheduled Maintenance* — left: Due soon list with **Mark Complete** per row; right: recently completed scheduled services (from the service-log maintenance records).
+  - *Repairs* — existing `RepairsBoard` kanban (unchanged).
+  - *Completed* — existing sortable completed-repairs log table.
 
-On **Approve**:
-- Insert a row into `inspections` (type `return`, `is_return_inspection=true`, `task_id`, `runner_id`, `checklist_data`, `issues_found`, `mileage`, `inspector_name`, `completed_by`, `damage_noted`, `ready_to_rent=true`, `date`/`submitted_at`).
-- Auto-create maintenance ticket if issues exist (already implemented).
-- Update vehicle: `status='available'`, `last_inspection_at=now()`, `last_inspection_mileage=mileage`.
-- If task is tied to a rental (`details.rental_id`): set `rentals.return_inspection_id` + mark return finalized so P&L treats it closed.
-- Mark task `status='approved'`, set `reviewed_at/by`, `review_action='approved'`.
-- SMS admin: `✓ Inspection approved [vehicle]`.
+### 3. Runner inspection pass/fail (Part 7)
+- The inspection→maintenance flow already exists: a failed inspection auto-creates a repair ticket (DB trigger `inspections_auto_maintenance`) and a passed inspection updates the vehicle. I will add, on inspection **approval**, clearing of the matching scheduled alerts (oil/battery/alternator/inspection) for that vehicle via `markScheduledComplete`, and confirm a failed check keeps the alert red (ticket already created). This is a small addition to the existing approval path, not a new system.
 
-On **Reject & Re-inspect**: existing reopen + runner SMS, plus `review_action='rejected_reinspect'`, `reviewed_at/by`.
-On **Reject (fix manually)**: `status='rejected'`, `review_action='rejected_manual'`, `reviewed_at/by`. No re-send.
-On **Force Available**: vehicle `status='available'`; task `status='forced'`, `forced=true`, `review_action='forced'`, `reviewed_at/by`; append audit note `Override at [time] by admin - inspection skipped`. Do **not** insert into `inspections`. SMS admin: `Vehicle forced available — no inspection logged`.
+## Out of scope / not building
+- No new `scheduled_maintenance` DB table (computed from existing per-vehicle settings instead — see decision above).
+- No changes to the Fleet Alert Settings dialog UI; it already captures all required intervals. The "Fleet add auto-populates Alert Settings" step is the admin opening that dialog after adding a vehicle (existing flow).
 
-### 3. Dashboard alerts widget
-
-New `ApprovedInspections.tsx` (self-fetches from Supabase like `PendingInspections`): shows last 5 tasks with `status in (approved, forced)`, newest first — `"[Vehicle] inspection approved by [runner] on [date]"` (forced ones flagged as override). Each links to `/fleet/$vehicleId`, plus a "View all" link to Maintenance. Rendered on the admin dashboard (`index.tsx`) for `role === "admin"`.
-
-### 4. Fleet detail — last inspection
-
-On the fleet vehicle detail (`fleet.$vehicleId.tsx`), surface `last_inspection_at` + `last_inspection_mileage` + availability status from Supabase so the card reflects the latest approved inspection.
-
-### 5. Out of scope (Phase 3, per spec)
-
-Runner feedback on rejection, inspection reminder alerts, automated re-inspection scheduling.
-
-### Technical notes
-
-- All writes go through the existing `reviewInspection` `createServerFn` (admin-gated via RLS + `requireSupabaseAuth`); timestamps captured server-side for a tamper-proof audit trail.
-- The dashboard widget and fleet detail read live Supabase data directly (the admin app already mixes the mock store for legacy views with Supabase for runner/inspection data).
-- SMS failures are caught and never block approval.
+## Technical notes
+- All scheduled data is derived client-side from `vehicles[].maintenanceSettings`; no schema migration required.
+- "Mark Complete" mutates the vehicle via the existing `updateVehicle` store action, so Fleet badges and the dashboard stay in sync automatically through `useStoreVersion`.
+- P&L on repair completion is already wired through `recordRepairPayment` / `completeRepair`; unchanged.
