@@ -399,13 +399,17 @@ export function RepairsBoard() {
   const repairs = maintenance
     .filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected")
     .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
+  const reported = reportedIssues();
   const open = repairs.filter(m => m.status === "open");
   const inProgress = repairs.filter(m => m.status === "in_progress");
   const complete = repairs.filter(m => m.status === "complete");
 
   return (
     <>
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <Column title="Issues Reported" count={reported.length} tone="bg-blue-500/20 text-blue-700">
+        {reported.map(m => <IssueCard key={m.id} m={m} />)}
+      </Column>
       <Column title="Open" count={open.length} tone="bg-muted text-foreground">
         {open.map(m => <OpenCard key={m.id} m={m} />)}
       </Column>
