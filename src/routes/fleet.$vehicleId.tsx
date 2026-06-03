@@ -32,8 +32,6 @@ import { workOrders } from "@/lib/mock/data";
 import { isServiceLogRecord, lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { toast } from "sonner";
 
-const REPAIR_KEYWORDS = ["brake", "transmission", "repair", "pads", "engine", "battery", "tire", "body", "glass", "diagnostic"];
-
 export const Route = createFileRoute("/fleet/$vehicleId")({
   component: VehicleDetail,
   validateSearch: (search: Record<string, unknown>) => ({
