@@ -61,6 +61,29 @@ function YesNo({ value, onChange }: { value: boolean | null; onChange: (v: boole
   );
 }
 
+function PassFail({ value, onChange }: { value: boolean | undefined; onChange: (v: boolean) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <Button
+        type="button"
+        variant={value === true ? "default" : "outline"}
+        className={`h-10 ${value === true ? "bg-emerald-600 hover:bg-emerald-600 text-white" : ""}`}
+        onClick={() => onChange(true)}
+      >
+        Pass
+      </Button>
+      <Button
+        type="button"
+        variant={value === false ? "destructive" : "outline"}
+        className="h-10"
+        onClick={() => onChange(false)}
+      >
+        Fail
+      </Button>
+    </div>
+  );
+}
+
 function LockedField({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
