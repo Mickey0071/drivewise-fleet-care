@@ -63,6 +63,9 @@ function FleetPage() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map(v => {
           const openIssueCount = maintenanceList.filter(m => m.vehicleId === v.id && !m.dateCompleted).length;
+          const openRepairs = openRepairsForVehicle(v.id);
+          const blockingRepairs = openRepairs.filter(r => r.isRentalBlocking);
+          const nonBlockingRepairs = openRepairs.filter(r => !r.isRentalBlocking);
           const lastSvc = lastServiceFor(maintenanceList, v.id);
           const alerts = computeVehicleAlerts(v);
           const scheduleConfigured = isScheduleConfigured(v);
