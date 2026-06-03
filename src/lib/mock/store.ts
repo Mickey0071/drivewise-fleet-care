@@ -358,8 +358,8 @@ const fromMaintenance = (r: any): Maintenance => ({
   amountPaid: r.amount_paid != null ? Number(r.amount_paid) : undefined,
   balance: r.balance != null ? Number(r.balance) : undefined,
   completionDate: r.completion_date ?? undefined,
+  isRentalBlocking: !!r.is_rental_blocking,
 });
-const _maintenanceIsRentalBlocking = true; // marker (see fromMaintenance below)
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
   vendor: m.vendor, date_completed: m.dateCompleted,
