@@ -134,7 +134,7 @@ export const getRenterHistoryByRentalId = createServerFn({ method: "POST" })
 
     const { data: rs } = await supabaseAdmin
       .from("rentals")
-      .select("id, vehicle_id, start_date, end_date, returned_at, reservation_status")
+      .select("id, vehicle_id, start_date, end_date, returned_at, reservation_status, agreement_pdf_url, receipt_pdf_url")
       .eq("driver_id", root.driver_id)
       .order("start_date", { ascending: false });
 
