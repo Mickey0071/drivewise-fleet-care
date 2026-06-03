@@ -59,6 +59,107 @@ function RentalBlockToggle({ m }: { m: Maintenance }) {
 
 function OpenCard({ m }: { m: Maintenance }) {
   const [downPayments, setDownPayments] = useState<Record<string, string>>({});
+
+function IssueCard({ m }: { m: Maintenance }) {
+  const [editing, setEditing] = useState(false);
+  const [issue, setIssue] = useState(m.issueDescription ?? "");
+  const [customerNotes, setCustomerNotes] = useState(m.customerNotes ?? "");
+  const [diagnosis, setDiagnosis] = useState(m.diagnosisNotes ?? "");
+  const [parts, setParts] = useState(m.partsCost != null ? String(m.partsCost) : "");
+  const [labor, setLabor] = useState(m.laborCost != null ? String(m.laborCost) : "");
+
+  const partsNum = Number(parts) || 0;
+  const laborNum = Number(labor) || 0;
+  const total = partsNum + laborNum;
+  const canMove = diagnosis.trim() !== "" && partsNum > 0 && laborNum > 0;
+
+  const save = () => {
+    updateIssue(m.id, {
+      issueDescription: issue.trim() || m.issueDescription,
+      customerNotes,
+      diagnosisNotes: diagnosis,
+      partsCost: partsNum,
+      laborCost: laborNum,
+    });
+    toast.success("Issue updated");
+  };
+
+  const move = () => {
+    save();
+    const rec = moveIssueToOpenRepair(m.id);
+    if (rec) toast.success("Issue moved to repairs");
+    else toast.error("Complete diagnosis and costs to move");
+  };
+
+  return (
+    <Card className="border-border">
+      <CardContent className="space-y-2 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <VehicleLink vehicleId={m.vehicleId} />
+          <Badge variant="outline">Reported</Badge>
+        </div>
+        {!editing ? (
+          <>
+            <div className="text-sm font-medium">{m.issueDescription || m.serviceType}</div>
+            {m.customerNotes && (
+              <div className="text-xs text-muted-foreground">{m.customerNotes}</div>
+            )}
+            <Button size="sm" variant="outline" className="w-full" onClick={() => setEditing(true)}>Edit</Button>
+          </>
+        ) : (
+          <div className="space-y-2">
+            <div className="grid gap-1">
+              <Label className="text-xs">Issue</Label>
+              <Textarea rows={2} value={issue} onChange={e => setIssue(e.target.value)} />
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-xs">Customer notes</Label>
+              <Textarea rows={2} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} />
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-xs">Diagnosis notes</Label>
+              <Textarea rows={2} value={diagnosis} onChange={e => setDiagnosis(e.target.value)} placeholder="e.g. Battery dead, needs replacement" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="grid gap-1">
+                <Label className="text-xs">Parts ($)</Label>
+                <Input type="number" min={0} step="0.01" value={parts} onChange={e => setParts(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">Labour ($)</Label>
+                <Input type="number" min={0} step="0.01" value={labor} onChange={e => setLabor(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">Total</Label>
+                <Input value={fmtMoney(total)} readOnly disabled />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <Button size="sm" variant="outline" onClick={save}>Save Changes</Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Button size="sm" className="w-full" disabled={!canMove} onClick={move}>
+                        <ArrowRight className="mr-1 h-3.5 w-3.5" /> Move to Open Repair
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!canMove && (
+                    <TooltipContent>Complete diagnosis and costs to move</TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OpenCardInner({ m }: { m: Maintenance }) {
+  const [downPayments, setDownPayments] = useState<Record<string, string>>({});
   const choose = (sol: RepairSolution) => {
     const dp = Number(downPayments[sol.name]) || 0;
     selectRepairSolution(m.id, sol, dp);
