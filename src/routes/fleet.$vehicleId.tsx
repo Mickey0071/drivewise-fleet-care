@@ -59,6 +59,7 @@ function VehicleDetail() {
   const [activeWo, setActiveWo] = useState<WorkOrder | null>(null);
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
+  const [completedRepair, setCompletedRepair] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   // Live last-inspection data (reflects approved runner inspections from the backend).
