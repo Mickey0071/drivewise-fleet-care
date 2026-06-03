@@ -1783,6 +1783,42 @@ export function recordRepairPayment(id: string, amount: number) {
  * repair cost, and any amount not yet posted to P&L is recorded as a
  * Maintenance expense so the books reflect the full cost exactly once.
  */
+/** Summary of everything that changed when a repair was completed. */
+export interface ScheduledDueInfo { type: string; label: string; dueDate?: string; dueMileage?: number; }
+export interface RepairCompletionSummary {
+  maintenanceId: string;
+  vehicleId: string;
+  vehicleLabel: string;
+  vehiclePlate?: string;
+  issue: string;
+  completedBy: string;
+  completionDate: string; // YYYY-MM-DD
+  parts: number;
+  labor: number;
+  total: number;
+  /** Amount newly posted to P&L at completion (total minus already-expensed). */
+  expensePosted: number;
+  /** Whether the vehicle is now available for rental. */
+  vehicleAvailable: boolean;
+  vehicleStatus: string;
+  /** The scheduled-maintenance alert that was reset/cleared, if any. */
+  alertCleared?: string;
+  /** Upcoming scheduled services after the recalculation. */
+  nextScheduled: ScheduledDueInfo[];
+  /** runner_id of the runner who reported the issue (for notification). */
+  runnerId?: string;
+}
+
+/** Map a repair's service type / issue text to a scheduled-maintenance key. */
+function inferScheduledType(m: Maintenance): "oil" | "battery" | "alternator" | "inspection" | null {
+  const hay = `${m.serviceType ?? ""} ${m.issueDescription ?? ""} ${m.selectedSolution?.name ?? ""}`.toLowerCase();
+  if (/\boil\b|oil change|oil filter/.test(hay)) return "oil";
+  if (/batter/.test(hay)) return "battery";
+  if (/alternator/.test(hay)) return "alternator";
+  if (/inspect/.test(hay)) return "inspection";
+  return null;
+}
+
 export function completeRepair(
   id: string,
   opts?: {
@@ -1791,7 +1827,7 @@ export function completeRepair(
     laborCost?: number;
     mechanicNotes?: string;
   },
-) {
+): RepairCompletionSummary | undefined {
   const m = maintenance.find(x => x.id === id);
   if (!m) return;
   const today = new Date().toISOString().slice(0, 10);
@@ -1834,8 +1870,68 @@ export function completeRepair(
     });
   }
 
+  // --- Reset the related scheduled-maintenance marker so the alert clears
+  //     and the next due date recalculates from today. ---
+  const v = vehicles.find(x => x.id === m.vehicleId);
+  let alertCleared: string | undefined;
+  if (v) {
+    const sType = inferScheduledType(m);
+    if (sType) {
+      const s = { ...(v.maintenanceSettings ?? {}) };
+      if (sType === "oil") {
+        const oc = { ...(s.oilChange ?? { mode: "miles" as const, interval: 0 }) };
+        oc.lastMileage = v.mileage;
+        oc.lastDate = today;
+        s.oilChange = oc;
+        alertCleared = "Oil change";
+      } else if (sType === "battery") {
+        s.batteryLastDone = today;
+        alertCleared = "Battery test";
+      } else if (sType === "alternator") {
+        s.alternatorLastDone = today;
+        alertCleared = "Alternator test";
+      } else if (sType === "inspection") {
+        const next = new Date();
+        next.setFullYear(next.getFullYear() + 1);
+        s.inspectionExpiry = next.toISOString().slice(0, 10);
+        alertCleared = "Inspection";
+      }
+      v.maintenanceSettings = s;
+      cloudWrite("vehicle:update", supabase.from("vehicles").update({ maintenance_settings: s as never }).eq("id", v.id));
+    }
+  }
+
   syncVehicleOpenIssues(m.vehicleId);
   emit();
+
+  const vNow = vehicles.find(x => x.id === m.vehicleId);
+  const nextScheduled: ScheduledDueInfo[] = vNow
+    ? computeScheduledItems(vNow).map((it: ScheduledItem) => ({
+        type: it.type,
+        label: it.label,
+        dueDate: it.dueDate,
+        dueMileage: it.dueMileage,
+      }))
+    : [];
+
+  return {
+    maintenanceId: m.id,
+    vehicleId: m.vehicleId,
+    vehicleLabel: vNow ? `${vNow.year} ${vNow.make} ${vNow.model}` : m.vehicleId,
+    vehiclePlate: vNow?.plate,
+    issue: m.issueDescription || m.selectedSolution?.name || m.serviceType,
+    completedBy: m.completedBy ?? "Admin",
+    completionDate: today,
+    parts,
+    labor,
+    total,
+    expensePosted: remaining,
+    vehicleAvailable: vNow?.status === "available",
+    vehicleStatus: vNow?.status ?? "—",
+    alertCleared,
+    nextScheduled,
+    runnerId: m.runnerId,
+  };
 }
 
 /** Toggle whether an open repair blocks the vehicle from new bookings. */
