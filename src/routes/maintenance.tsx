@@ -6,6 +6,7 @@ import { maintenance, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/moc
 import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown, ShieldAlert } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
+import { ReportIssueDialog } from "@/components/app/ReportIssueDialog";
 import { RepairsBoard } from "@/components/app/RepairsBoard";
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -32,13 +33,14 @@ function MaintenancePage() {
   useStoreVersion();
   const navigate = useNavigate();
   const [repairOpen, setRepairOpen] = useState(false);
+  const [reportIssueOpen, setReportIssueOpen] = useState(false);
   const [tab, setTab] = useState("scheduled");
   const [configOpen, setConfigOpen] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Maintenance | null>(null);
 
   // Repairs (kanban-tracked)
   const repairs = maintenance.filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected");
-  const openRepairs = repairs.filter(m => m.status !== "complete")
+  const openRepairs = repairs.filter(m => m.status !== "complete" && m.status !== "reported")
     .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
   const completedRepairs = repairs.filter(m => m.status === "complete")
     .sort((a, b) => (b.completionDate ?? b.dateCompleted ?? "").localeCompare(a.completionDate ?? a.dateCompleted ?? ""));
@@ -99,6 +101,9 @@ function MaintenancePage() {
         subtitle={`${openRepairs.length} open repair${openRepairs.length === 1 ? "" : "s"} across the fleet`}
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={() => setReportIssueOpen(true)}>
+              <AlertTriangle className="mr-1 h-4 w-4" /> Report Issue
+            </Button>
             <ReportActions csv={{
               filename: "maintenance.csv",
               headers: ["ID", "Vehicle", "Plate", "Service", "Vendor", "Date", "Mileage", "Cost", "Next due"],
@@ -111,6 +116,7 @@ function MaintenancePage() {
         }
       />
       <CreateRepairDialog open={repairOpen} onOpenChange={setRepairOpen} />
+      <ReportIssueDialog open={reportIssueOpen} onOpenChange={setReportIssueOpen} />
 
       {/* Configuration section */}
       <Collapsible open={configOpen} onOpenChange={setConfigOpen} className="mb-4">

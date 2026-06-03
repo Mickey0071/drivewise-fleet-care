@@ -497,7 +497,10 @@ export type Database = {
           completion_date: string | null
           cost: number
           created_at: string
+          created_from_issue: boolean
+          customer_notes: string | null
           date_completed: string | null
+          diagnosis_notes: string | null
           down_payment: number
           id: string
           is_rental_blocking: boolean
@@ -529,7 +532,10 @@ export type Database = {
           completion_date?: string | null
           cost?: number
           created_at?: string
+          created_from_issue?: boolean
+          customer_notes?: string | null
           date_completed?: string | null
+          diagnosis_notes?: string | null
           down_payment?: number
           id: string
           is_rental_blocking?: boolean
@@ -561,7 +567,10 @@ export type Database = {
           completion_date?: string | null
           cost?: number
           created_at?: string
+          created_from_issue?: boolean
+          customer_notes?: string | null
           date_completed?: string | null
+          diagnosis_notes?: string | null
           down_payment?: number
           id?: string
           is_rental_blocking?: boolean

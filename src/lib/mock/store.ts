@@ -353,6 +353,9 @@ const fromMaintenance = (r: any): Maintenance => ({
   createdAt: r.created_at ?? undefined,
   status: r.status ?? undefined,
   issueDescription: r.issue_description ?? undefined,
+  customerNotes: r.customer_notes ?? undefined,
+  diagnosisNotes: r.diagnosis_notes ?? undefined,
+  createdFromIssue: !!r.created_from_issue,
   solutions: r.solutions ?? undefined,
   selectedSolution: r.selected_solution ?? undefined,
   downPayment: r.down_payment != null ? Number(r.down_payment) : undefined,
@@ -377,6 +380,9 @@ const toMaintenance = (m: Maintenance) => ({
   completed_by: m.completedBy ?? null,
   status: m.status ?? null,
   issue_description: m.issueDescription ?? null,
+  customer_notes: m.customerNotes ?? null,
+  diagnosis_notes: m.diagnosisNotes ?? null,
+  created_from_issue: m.createdFromIssue ?? false,
   solutions: (m.solutions ?? null) as any,
   selected_solution: (m.selectedSolution ?? null) as any,
   down_payment: m.downPayment ?? 0,
@@ -1991,6 +1997,99 @@ export function rejectRunnerRepair(id: string) {
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   syncVehicleOpenIssues(m.vehicleId);
   emit();
+}
+
+// ---------------------------------------------------------------------------
+// Reported issues (optional diagnosis at save)
+// An admin reports a customer issue without a diagnosis. The record lives as a
+// maintenance row with status="reported" and blocks the vehicle from rentals.
+// Later the admin fills diagnosis + parts/labour costs and moves it into the
+// Repairs "Open" column.
+// ---------------------------------------------------------------------------
+/** Reported issues awaiting diagnosis, newest first. */
+export function reportedIssues(): Maintenance[] {
+  return maintenance
+    .filter(m => m.status === "reported")
+    .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
+}
+
+/** Admin reports a customer issue with no diagnosis required. */
+export function reportIssue(input: {
+  vehicleId: string;
+  issueDescription: string;
+  customerNotes?: string;
+}) {
+  const v = vehicles.find(x => x.id === input.vehicleId);
+  const rec: Maintenance = {
+    id: nextMaintenanceId(),
+    vehicleId: input.vehicleId,
+    serviceType: input.issueDescription,
+    issueDescription: input.issueDescription,
+    customerNotes: input.customerNotes?.trim() || undefined,
+    vendor: "Pending assignment",
+    dateCompleted: undefined as unknown as string,
+    mileageAtService: v?.mileage ?? 0,
+    cost: 0,
+    nextServiceDue: new Date().toISOString().slice(0, 10),
+    status: "reported",
+    isRentalBlocking: true,
+    downPayment: 0,
+    amountPaid: 0,
+    balance: 0,
+    createdAt: new Date().toISOString(),
+  };
+  maintenance.push(rec);
+  cloudWrite("maintenance:insert", supabase.from("maintenance").insert(toMaintenance(rec)));
+  if (v) syncVehicleOpenIssues(v.id);
+  emit();
+  return rec;
+}
+
+/** Save edits to a reported issue (issue text, customer + diagnosis notes, costs). */
+export function updateIssue(id: string, patch: {
+  issueDescription?: string;
+  customerNotes?: string;
+  diagnosisNotes?: string;
+  partsCost?: number;
+  laborCost?: number;
+}) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  if (patch.issueDescription !== undefined) {
+    m.issueDescription = patch.issueDescription;
+    m.serviceType = patch.issueDescription;
+  }
+  if (patch.customerNotes !== undefined) m.customerNotes = patch.customerNotes.trim() || undefined;
+  if (patch.diagnosisNotes !== undefined) m.diagnosisNotes = patch.diagnosisNotes.trim() || undefined;
+  if (patch.partsCost !== undefined) m.partsCost = Math.max(0, patch.partsCost || 0);
+  if (patch.laborCost !== undefined) m.laborCost = Math.max(0, patch.laborCost || 0);
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  emit();
+}
+
+/** Move a diagnosed reported issue into the Repairs "Open" column. */
+export function moveIssueToOpenRepair(id: string) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m || m.status !== "reported") return;
+  const parts = Math.max(0, m.partsCost ?? 0);
+  const labor = Math.max(0, m.laborCost ?? 0);
+  if (!m.diagnosisNotes?.trim() || parts <= 0 || labor <= 0) return;
+  const total = parts + labor;
+  const solution: RepairSolution = {
+    name: m.diagnosisNotes.trim(),
+    partsCost: parts,
+    laborCost: labor,
+    totalCost: total,
+  };
+  m.status = "open";
+  m.createdFromIssue = true;
+  m.isRentalBlocking = true;
+  m.solutions = [solution];
+  m.cost = total;
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
+  return m;
 }
 
 // ---------------------------------------------------------------------------

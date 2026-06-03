@@ -167,6 +167,12 @@ export interface Maintenance {
   // ---- Repair kanban fields (null for plain maintenance / service-log rows) ----
   status?: RepairStatus;
   issueDescription?: string;
+  /** What the customer reported about the issue (reported stage). */
+  customerNotes?: string;
+  /** Diagnosis notes added by an admin before moving to an open repair. */
+  diagnosisNotes?: string;
+  /** True when this repair started life as a reported issue. */
+  createdFromIssue?: boolean;
   solutions?: RepairSolution[];
   selectedSolution?: RepairSolution;
   downPayment?: number;
@@ -188,7 +194,7 @@ export interface Maintenance {
   approvalDate?: string;
   approvedBy?: string;
 }
-export type RepairStatus = "open" | "in_progress" | "complete";
+export type RepairStatus = "reported" | "open" | "in_progress" | "complete";
 export interface RepairSolution {
   name: string;
   partsCost: number;

@@ -8,12 +8,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
 import { maintenance, vehicleById, fmtMoney, fmtDate, type Maintenance, type RepairSolution } from "@/lib/mock/data";
-import { useStoreVersion, selectRepairSolution, recordRepairPayment, completeRepair, setRepairRentalBlocking } from "@/lib/mock/store";
+import { useStoreVersion, selectRepairSolution, recordRepairPayment, completeRepair, setRepairRentalBlocking, reportedIssues, updateIssue, moveIssueToOpenRepair } from "@/lib/mock/store";
 import type { RepairCompletionSummary } from "@/lib/mock/store";
 import { useServerFn } from "@tanstack/react-start";
 import { notifyRunnerRepairComplete } from "@/lib/tasks.functions";
 import { toast } from "sonner";
-import { CheckCircle2, Wrench, Ban, Car } from "lucide-react";
+import { CheckCircle2, Wrench, Ban, Car, ArrowRight } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 import { RepairCompletionSummaryDialog } from "@/components/app/RepairCompletionSummaryDialog";
 
@@ -53,6 +54,104 @@ function RentalBlockToggle({ m }: { m: Maintenance }) {
         <Car className="mr-1 h-3.5 w-3.5" /> Allow Rentals
       </Button>
     </div>
+  );
+}
+
+function IssueCard({ m }: { m: Maintenance }) {
+  const [editing, setEditing] = useState(false);
+  const [issue, setIssue] = useState(m.issueDescription ?? "");
+  const [customerNotes, setCustomerNotes] = useState(m.customerNotes ?? "");
+  const [diagnosis, setDiagnosis] = useState(m.diagnosisNotes ?? "");
+  const [parts, setParts] = useState(m.partsCost != null ? String(m.partsCost) : "");
+  const [labor, setLabor] = useState(m.laborCost != null ? String(m.laborCost) : "");
+
+  const partsNum = Number(parts) || 0;
+  const laborNum = Number(labor) || 0;
+  const total = partsNum + laborNum;
+  const canMove = diagnosis.trim() !== "" && partsNum > 0 && laborNum > 0;
+
+  const save = () => {
+    updateIssue(m.id, {
+      issueDescription: issue.trim() || m.issueDescription,
+      customerNotes,
+      diagnosisNotes: diagnosis,
+      partsCost: partsNum,
+      laborCost: laborNum,
+    });
+    toast.success("Issue updated");
+  };
+
+  const move = () => {
+    save();
+    const rec = moveIssueToOpenRepair(m.id);
+    if (rec) toast.success("Issue moved to repairs");
+    else toast.error("Complete diagnosis and costs to move");
+  };
+
+  return (
+    <Card className="border-border">
+      <CardContent className="space-y-2 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <VehicleLink vehicleId={m.vehicleId} />
+          <Badge variant="outline">Reported</Badge>
+        </div>
+        {!editing ? (
+          <>
+            <div className="text-sm font-medium">{m.issueDescription || m.serviceType}</div>
+            {m.customerNotes && (
+              <div className="text-xs text-muted-foreground">{m.customerNotes}</div>
+            )}
+            <Button size="sm" variant="outline" className="w-full" onClick={() => setEditing(true)}>Edit</Button>
+          </>
+        ) : (
+          <div className="space-y-2">
+            <div className="grid gap-1">
+              <Label className="text-xs">Issue</Label>
+              <Textarea rows={2} value={issue} onChange={e => setIssue(e.target.value)} />
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-xs">Customer notes</Label>
+              <Textarea rows={2} value={customerNotes} onChange={e => setCustomerNotes(e.target.value)} />
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-xs">Diagnosis notes</Label>
+              <Textarea rows={2} value={diagnosis} onChange={e => setDiagnosis(e.target.value)} placeholder="e.g. Battery dead, needs replacement" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="grid gap-1">
+                <Label className="text-xs">Parts ($)</Label>
+                <Input type="number" min={0} step="0.01" value={parts} onChange={e => setParts(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">Labour ($)</Label>
+                <Input type="number" min={0} step="0.01" value={labor} onChange={e => setLabor(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">Total</Label>
+                <Input value={fmtMoney(total)} readOnly disabled />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <Button size="sm" variant="outline" onClick={save}>Save Changes</Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Button size="sm" className="w-full" disabled={!canMove} onClick={move}>
+                        <ArrowRight className="mr-1 h-3.5 w-3.5" /> Move to Open Repair
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {!canMove && (
+                    <TooltipContent>Complete diagnosis and costs to move</TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -300,13 +399,17 @@ export function RepairsBoard() {
   const repairs = maintenance
     .filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected")
     .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
+  const reported = reportedIssues();
   const open = repairs.filter(m => m.status === "open");
   const inProgress = repairs.filter(m => m.status === "in_progress");
   const complete = repairs.filter(m => m.status === "complete");
 
   return (
     <>
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <Column title="Issues Reported" count={reported.length} tone="bg-blue-500/20 text-blue-700">
+        {reported.map(m => <IssueCard key={m.id} m={m} />)}
+      </Column>
       <Column title="Open" count={open.length} tone="bg-muted text-foreground">
         {open.map(m => <OpenCard key={m.id} m={m} />)}
       </Column>
