@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addVehicle, isVehicleBookable, awaitingPostReturnInspection, updateVehicleImage, uploadVehiclePhoto, useStoreVersion } from "@/lib/mock/store";
+import { addVehicle, isVehicleBookable, awaitingPostReturnInspection, updateVehicleImage, uploadVehiclePhoto, useStoreVersion, openRepairsForVehicle } from "@/lib/mock/store";
 import { toast } from "sonner";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
