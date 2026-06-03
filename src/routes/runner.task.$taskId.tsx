@@ -222,6 +222,32 @@ function TaskPage() {
   };
   const removePhoto = (i: number) => setPhotos((p) => p.filter((_, idx) => idx !== i));
 
+  const handleCreateTicket = async (key: string, label: string) => {
+    if (!task) return;
+    const panel = repairPanels[key] || { notes: "", cost: "" };
+    const issue = label.replace(/\?$/, "").trim();
+    const cost = panel.cost.trim() ? Number(panel.cost) : undefined;
+    if (cost != null && (!Number.isFinite(cost) || cost < 0)) { toast.error("Enter a valid estimated cost"); return; }
+    setCreatingTicket(key);
+    try {
+      await createRepairReq({
+        data: {
+          vehicleId: task.vehicle_id,
+          issue,
+          notes: panel.notes.trim() || undefined,
+          estimatedCost: cost,
+          mileage: mileage.trim() ? Number(mileage) : undefined,
+        },
+      });
+      setTicketed((t) => ({ ...t, [key]: true }));
+      toast.success("Repair ticket created — awaiting admin approval");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create ticket");
+    } finally {
+      setCreatingTicket(null);
+    }
+  };
+
   const uploadPhotos = async (): Promise<string[]> => {
     const urls: string[] = [];
     for (let i = 0; i < photos.length; i++) {
