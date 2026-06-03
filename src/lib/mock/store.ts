@@ -1794,6 +1794,9 @@ export function completeRepair(
   const m = maintenance.find(x => x.id === id);
   if (!m) return;
   const today = new Date().toISOString().slice(0, 10);
+  // Payments recorded so far (down payment + any recorded payments) were each
+  // already posted to P&L, so only the difference is posted at completion.
+  const alreadyExpensed = Math.max(0, m.amountPaid ?? 0);
   const parts = Math.max(0, opts?.partsCost ?? m.partsCost ?? m.selectedSolution?.partsCost ?? 0);
   const labor = Math.max(0, opts?.laborCost ?? m.laborCost ?? m.selectedSolution?.laborCost ?? 0);
   const total = parts + labor;
@@ -1819,7 +1822,6 @@ export function completeRepair(
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
 
   // Post the remaining (not-yet-expensed) cost to P&L so the total lands once.
-  const alreadyExpensed = Math.max(0, (m.downPayment ?? 0));
   const remaining = Math.max(0, total - alreadyExpensed);
   if (remaining > 0) {
     addExpense({
