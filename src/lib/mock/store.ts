@@ -1340,6 +1340,41 @@ export function updateVehicle(id: string, fields: Partial<Omit<Vehicle, "id">>) 
 }
 
 export function setVehicleAvailabilityOverride(vehicleId: string, available: boolean, reason?: string) {
+
+/** Mark a computed scheduled-maintenance item as done by resetting its
+ * "last done" marker on the vehicle's Alert Settings. Clears the alert. */
+export function markScheduledComplete(
+  vehicleId: string,
+  type: "oil" | "battery" | "alternator" | "inspection" | "custom",
+  customId?: string,
+) {
+  const v = vehicles.find(x => x.id === vehicleId);
+  if (!v) return Promise.reject(new Error("Vehicle not found"));
+  const today = new Date().toISOString().slice(0, 10);
+  const s = { ...(v.maintenanceSettings ?? {}) };
+  if (type === "oil") {
+    const oc = { ...(s.oilChange ?? { mode: "miles" as const, interval: 0 }) };
+    oc.lastMileage = v.mileage;
+    oc.lastDate = today;
+    s.oilChange = oc;
+  } else if (type === "battery") {
+    s.batteryLastDone = today;
+  } else if (type === "alternator") {
+    s.alternatorLastDone = today;
+  } else if (type === "inspection") {
+    // Inspections are annual — push the expiry out one year.
+    const next = new Date();
+    next.setFullYear(next.getFullYear() + 1);
+    s.inspectionExpiry = next.toISOString().slice(0, 10);
+  } else if (type === "custom" && customId) {
+    s.customAlerts = (s.customAlerts ?? []).map(c =>
+      c.id === customId ? { ...c, lastDate: today } : c,
+    );
+  }
+  return updateVehicle(vehicleId, { maintenanceSettings: s });
+}
+
+export function _setVehicleAvailabilityOverride_placeholder() { /* no-op */ }
   const v = vehicles.find(x => x.id === vehicleId);
   if (!v) return Promise.reject(new Error("Vehicle not found"));
   const stamp = new Date().toISOString();
