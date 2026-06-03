@@ -350,6 +350,14 @@ const fromMaintenance = (r: any): Maintenance => ({
   completedBy: r.completed_by ?? undefined,
   sourceInspectionId: r.source_inspection_id ?? undefined,
   createdAt: r.created_at ?? undefined,
+  status: r.status ?? undefined,
+  issueDescription: r.issue_description ?? undefined,
+  solutions: r.solutions ?? undefined,
+  selectedSolution: r.selected_solution ?? undefined,
+  downPayment: r.down_payment != null ? Number(r.down_payment) : undefined,
+  amountPaid: r.amount_paid != null ? Number(r.amount_paid) : undefined,
+  balance: r.balance != null ? Number(r.balance) : undefined,
+  completionDate: r.completion_date ?? undefined,
 });
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
@@ -357,6 +365,14 @@ const toMaintenance = (m: Maintenance) => ({
   mileage_at_service: m.mileageAtService, cost: m.cost,
   next_service_due: m.nextServiceDue, notes: m.notes ?? null,
   completed_by: m.completedBy ?? null,
+  status: m.status ?? null,
+  issue_description: m.issueDescription ?? null,
+  solutions: m.solutions ?? null,
+  selected_solution: m.selectedSolution ?? null,
+  down_payment: m.downPayment ?? 0,
+  amount_paid: m.amountPaid ?? 0,
+  balance: m.balance ?? 0,
+  completion_date: m.completionDate ?? null,
 });
 
 // ---- staff ----
