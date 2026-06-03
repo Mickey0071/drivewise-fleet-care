@@ -101,6 +101,9 @@ function MaintenancePage() {
         subtitle={`${openRepairs.length} open repair${openRepairs.length === 1 ? "" : "s"} across the fleet`}
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={() => setReportIssueOpen(true)}>
+              <AlertTriangle className="mr-1 h-4 w-4" /> Report Issue
+            </Button>
             <ReportActions csv={{
               filename: "maintenance.csv",
               headers: ["ID", "Vehicle", "Plate", "Service", "Vendor", "Date", "Mileage", "Cost", "Next due"],
@@ -113,6 +116,7 @@ function MaintenancePage() {
         }
       />
       <CreateRepairDialog open={repairOpen} onOpenChange={setRepairOpen} />
+      <ReportIssueDialog open={reportIssueOpen} onOpenChange={setReportIssueOpen} />
 
       {/* Configuration section */}
       <Collapsible open={configOpen} onOpenChange={setConfigOpen} className="mb-4">
