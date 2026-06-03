@@ -164,11 +164,9 @@ function Column({ title, count, tone, children }: { title: string; count: number
 
 export function RepairsBoard() {
   useStoreVersion();
-  const repairs = useMemo(
-    () => maintenance.filter(m => !!m.status).sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [maintenance.length, useStoreVersion()],
-  );
+  const repairs = maintenance
+    .filter(m => !!m.status)
+    .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
   const open = repairs.filter(m => m.status === "open");
   const inProgress = repairs.filter(m => m.status === "in_progress");
   const complete = repairs.filter(m => m.status === "complete");
