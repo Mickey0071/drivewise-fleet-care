@@ -439,7 +439,7 @@ export const reviewInspection = createServerFn({ method: "POST" })
     }
     await supabase
       .from("vehicles")
-      .update(vehUpdate)
+      .update(vehUpdate as never)
       .eq("id", task.vehicle_id as string);
 
     // If tied to a rental return, finalize it so P&L treats it as closed.
