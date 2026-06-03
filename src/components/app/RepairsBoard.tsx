@@ -196,7 +196,7 @@ function Column({ title, count, tone, children }: { title: string; count: number
 export function RepairsBoard() {
   useStoreVersion();
   const repairs = maintenance
-    .filter(m => !!m.status)
+    .filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected")
     .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
   const open = repairs.filter(m => m.status === "open");
   const inProgress = repairs.filter(m => m.status === "in_progress");

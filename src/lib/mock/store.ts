@@ -359,6 +359,11 @@ const fromMaintenance = (r: any): Maintenance => ({
   balance: r.balance != null ? Number(r.balance) : undefined,
   completionDate: r.completion_date ?? undefined,
   isRentalBlocking: !!r.is_rental_blocking,
+  runnerId: r.runner_id ?? undefined,
+  repairRequestNotes: r.repair_request_notes ?? undefined,
+  approvalStatus: r.approval_status ?? undefined,
+  approvalDate: r.approval_date ?? undefined,
+  approvedBy: r.approved_by ?? undefined,
 });
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
@@ -375,6 +380,11 @@ const toMaintenance = (m: Maintenance) => ({
   balance: m.balance ?? 0,
   completion_date: m.completionDate ?? null,
   is_rental_blocking: m.isRentalBlocking ?? false,
+  runner_id: m.runnerId ?? null,
+  repair_request_notes: m.repairRequestNotes ?? null,
+  approval_status: m.approvalStatus ?? null,
+  approval_date: m.approvalDate ?? null,
+  approved_by: m.approvedBy ?? null,
 });
 
 // ---- staff ----
@@ -1799,6 +1809,45 @@ export function openRepairsForVehicle(vehicleId: string): Maintenance[] {
   return maintenance
     .filter(m => m.vehicleId === vehicleId && !!m.status && m.status !== "complete" && !m.dateCompleted)
     .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
+}
+
+// ---------------------------------------------------------------------------
+// Runner repair requests (pending admin approval)
+// Tickets created by a runner from a failed inspection item land here with
+// approval_status = "pending". They are kept OUT of the Repairs kanban until
+// an admin approves them.
+// ---------------------------------------------------------------------------
+/** Pending runner repair requests awaiting admin approval, newest first. */
+export function pendingRunnerRepairs(): Maintenance[] {
+  return maintenance
+    .filter(m => m.approvalStatus === "pending")
+    .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
+}
+
+/** Admin: approve a pending runner repair → moves it into the Open column. */
+export async function approveRunnerRepair(id: string) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  const { data } = await supabase.auth.getUser();
+  m.approvalStatus = "approved";
+  m.approvalDate = new Date().toISOString();
+  m.approvedBy = data.user?.id ?? undefined;
+  m.status = "open";
+  m.isRentalBlocking = true;
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
+}
+
+/** Admin: reject a pending runner repair → closes the alert, frees the vehicle. */
+export function rejectRunnerRepair(id: string) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  m.approvalStatus = "rejected";
+  m.isRentalBlocking = false;
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
 }
 
 // ---------------------------------------------------------------------------

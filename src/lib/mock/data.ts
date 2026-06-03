@@ -175,6 +175,12 @@ export interface Maintenance {
   completionDate?: string;
   /** When true, an open repair blocks the vehicle from new bookings. Default false. */
   isRentalBlocking?: boolean;
+  // ---- Runner repair request / approval workflow ----
+  runnerId?: string;
+  repairRequestNotes?: string;
+  approvalStatus?: "pending" | "approved" | "rejected";
+  approvalDate?: string;
+  approvedBy?: string;
 }
 export type RepairStatus = "open" | "in_progress" | "complete";
 export interface RepairSolution {

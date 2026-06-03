@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { submitTask } from "@/lib/tasks.functions";
+import { submitTask, createRunnerRepairRequest } from "@/lib/tasks.functions";
 import { taskTypeLabel } from "@/lib/task-types";
 import { compressImage } from "@/lib/image-compress";
 
@@ -149,6 +149,7 @@ function TaskPage() {
   const { taskId } = Route.useParams();
   const navigate = useNavigate();
   const submit = useServerFn(submitTask);
+  const createRepairReq = useServerFn(createRunnerRepairRequest);
 
   const [task, setTask] = useState<TaskRow | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -162,6 +163,10 @@ function TaskPage() {
 
   // inspection
   const [items, setItems] = useState<Record<string, boolean>>({});
+  // per-item repair request panels (keyed by checklist item key)
+  const [repairPanels, setRepairPanels] = useState<Record<string, { notes: string; cost: string }>>({});
+  const [ticketed, setTicketed] = useState<Record<string, boolean>>({});
+  const [creatingTicket, setCreatingTicket] = useState<string | null>(null);
   const [repairsNeeded, setRepairsNeeded] = useState<boolean | null>(null);
   const [repairText, setRepairText] = useState("");
   // dashboard codes
@@ -217,6 +222,32 @@ function TaskPage() {
   };
   const removePhoto = (i: number) => setPhotos((p) => p.filter((_, idx) => idx !== i));
 
+  const handleCreateTicket = async (key: string, label: string) => {
+    if (!task) return;
+    const panel = repairPanels[key] || { notes: "", cost: "" };
+    const issue = label.replace(/\?$/, "").trim();
+    const cost = panel.cost.trim() ? Number(panel.cost) : undefined;
+    if (cost != null && (!Number.isFinite(cost) || cost < 0)) { toast.error("Enter a valid estimated cost"); return; }
+    setCreatingTicket(key);
+    try {
+      await createRepairReq({
+        data: {
+          vehicleId: task.vehicle_id,
+          issue,
+          notes: panel.notes.trim() || undefined,
+          estimatedCost: cost,
+          mileage: mileage.trim() ? Number(mileage) : undefined,
+        },
+      });
+      setTicketed((t) => ({ ...t, [key]: true }));
+      toast.success("Repair ticket created — awaiting admin approval");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create ticket");
+    } finally {
+      setCreatingTicket(null);
+    }
+  };
+
   const uploadPhotos = async (): Promise<string[]> => {
     const urls: string[] = [];
     for (let i = 0; i < photos.length; i++) {
@@ -254,7 +285,7 @@ function TaskPage() {
       // Build issue list: failed checklist items + repairs + dashboard codes.
       const issues: string[] = [];
       for (const it of INSPECTION_ITEMS) {
-        if (items[it.key] !== true) issues.push(it.label.replace(/\?$/, "").trim());
+        if (items[it.key] !== true && !ticketed[it.key]) issues.push(it.label.replace(/\?$/, "").trim());
       }
       if (repairsNeeded) issues.push(repairText.trim() || "Repairs needed");
       if (dashCodes && dashboardCodeValue) issues.push(`Dashboard code - ${dashboardCodeValue}`);
@@ -366,11 +397,68 @@ function TaskPage() {
               <div className="space-y-2">
                 <Label>Checklist</Label>
                 {INSPECTION_ITEMS.map((it) => (
-                  <div key={it.key} className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 text-sm">
-                    <span className="flex-1">{it.label}</span>
-                    <div className="w-40 shrink-0">
-                      <PassFail value={items[it.key]} onChange={(v) => setItems((p) => ({ ...p, [it.key]: v }))} />
+                  <div key={it.key} className="rounded-md border border-border px-3 py-2.5 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="flex-1">{it.label}</span>
+                      <div className="w-40 shrink-0">
+                        <PassFail
+                          value={items[it.key]}
+                          onChange={(v) => {
+                            setItems((p) => ({ ...p, [it.key]: v }));
+                            if (v === false) {
+                              setRepairPanels((p) => ({ ...p, [it.key]: p[it.key] || { notes: "", cost: "" } }));
+                            }
+                          }}
+                        />
+                      </div>
                     </div>
+                    {items[it.key] === false && (
+                      <div className="mt-3 space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-destructive">Repair request</div>
+                        <div>
+                          <Label className="text-xs">Issue</Label>
+                          <Input className="mt-1 h-9 bg-background" value={it.label.replace(/\?$/, "").trim()} readOnly />
+                        </div>
+                        <div>
+                          <Label htmlFor={`notes-${it.key}`} className="text-xs">Notes</Label>
+                          <Textarea
+                            id={`notes-${it.key}`}
+                            className="mt-1 bg-background"
+                            placeholder="Describe the problem…"
+                            disabled={ticketed[it.key]}
+                            value={repairPanels[it.key]?.notes ?? ""}
+                            onChange={(e) => setRepairPanels((p) => ({ ...p, [it.key]: { notes: e.target.value, cost: p[it.key]?.cost ?? "" } }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`cost-${it.key}`} className="text-xs">Estimated cost (optional)</Label>
+                          <Input
+                            id={`cost-${it.key}`}
+                            inputMode="decimal"
+                            className="mt-1 h-9 bg-background"
+                            placeholder="e.g. 120"
+                            disabled={ticketed[it.key]}
+                            value={repairPanels[it.key]?.cost ?? ""}
+                            onChange={(e) => setRepairPanels((p) => ({ ...p, [it.key]: { notes: p[it.key]?.notes ?? "", cost: e.target.value.replace(/[^0-9.]/g, "") } }))}
+                          />
+                        </div>
+                        {ticketed[it.key] ? (
+                          <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+                            <CheckCircle2 className="h-4 w-4" /> Repair ticket created — awaiting approval
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="w-full"
+                            disabled={creatingTicket === it.key}
+                            onClick={() => handleCreateTicket(it.key, it.label)}
+                          >
+                            {creatingTicket === it.key ? "Creating…" : "Create Repair Ticket"}
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

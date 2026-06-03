@@ -1,18 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
-import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown } from "lucide-react";
+import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown, ShieldAlert } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
 import { RepairsBoard } from "@/components/app/RepairsBoard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useNavigate } from "@tanstack/react-router";
-import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
+import { useStoreVersion, markScheduledComplete, pendingRunnerRepairs, approveRunnerRepair, rejectRunnerRepair } from "@/lib/mock/store";
+import { supabase } from "@/integrations/supabase/client";
 import {
   dueSoonScheduledItems,
   computeScheduledItems,
@@ -34,7 +34,7 @@ function MaintenancePage() {
   const [configOpen, setConfigOpen] = useState(false);
 
   // Repairs (kanban-tracked)
-  const repairs = maintenance.filter(m => !!m.status);
+  const repairs = maintenance.filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected");
   const openRepairs = repairs.filter(m => m.status !== "complete")
     .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
   const completedRepairs = repairs.filter(m => m.status === "complete")
@@ -50,6 +50,34 @@ function MaintenancePage() {
   const dueSoon = dueSoonScheduledItems(vehicles);
   const allScheduled = vehicles.flatMap(v => computeScheduledItems(v));
   const configuredCount = vehicles.filter(isScheduleConfigured).length;
+
+  // Pending runner repair requests (awaiting admin approval)
+  const pending = pendingRunnerRepairs();
+  const [runnerNames, setRunnerNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const ids = Array.from(new Set(pending.map(p => p.runnerId).filter(Boolean))) as string[];
+    const missing = ids.filter(id => !(id in runnerNames));
+    if (missing.length === 0) return;
+    (async () => {
+      const { data } = await supabase.from("profiles").select("id, full_name, first_name").in("id", missing);
+      if (!data) return;
+      setRunnerNames(prev => {
+        const next = { ...prev };
+        for (const r of data as any[]) next[r.id] = r.full_name || r.first_name || "Runner";
+        return next;
+      });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending.map(p => p.runnerId).join(",")]);
+
+  async function handleApprove(id: string) {
+    await approveRunnerRepair(id);
+    toast.success("Repair approved — moved to Open repairs");
+  }
+  function handleReject(id: string) {
+    rejectRunnerRepair(id);
+    toast.success("Repair request rejected");
+  }
 
   async function handleMarkComplete(it: ScheduledItem) {
     try {
@@ -109,6 +137,48 @@ function MaintenancePage() {
           </CollapsibleContent>
         </Card>
       </Collapsible>
+
+      {/* Pending runner repairs alert */}
+      <Card className={`mb-6 ${pending.length > 0 ? "border-amber-500/50 bg-amber-500/5" : ""}`}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ShieldAlert className={`h-4 w-4 ${pending.length > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+            {pending.length > 0
+              ? `⚠️ Pending runner repairs — ${pending.length} awaiting approval`
+              : "No repairs awaiting approval"}
+          </CardTitle>
+        </CardHeader>
+        {pending.length > 0 && (
+          <CardContent className="space-y-3 p-0">
+            <ul className="divide-y divide-border">
+              {pending.map(m => {
+                const v = vehicleById(m.vehicleId);
+                return (
+                  <li key={m.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
+                      <div className="text-sm text-muted-foreground">{m.issueDescription || m.serviceType}</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        {(m.runnerId && runnerNames[m.runnerId]) || "Runner"}
+                        {" · "}
+                        {fmtDate((m.createdAt ?? "").slice(0, 10))}
+                        {m.cost > 0 ? ` · Est. ${fmtMoney(m.cost)}` : ""}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link to="/fleet/$vehicleId" params={{ vehicleId: m.vehicleId }}>View</Link>
+                      </Button>
+                      <Button size="sm" onClick={() => handleApprove(m.id)}>Approve</Button>
+                      <Button size="sm" variant="destructive" onClick={() => handleReject(m.id)}>Reject</Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        )}
+      </Card>
 
       {/* Dashboard summary — 3 cards */}
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">

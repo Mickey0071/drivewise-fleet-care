@@ -489,6 +489,9 @@ export type Database = {
       maintenance: {
         Row: {
           amount_paid: number
+          approval_date: string | null
+          approval_status: string | null
+          approved_by: string | null
           balance: number
           completed_by: string | null
           completion_date: string | null
@@ -502,6 +505,8 @@ export type Database = {
           mileage_at_service: number
           next_service_due: string
           notes: string | null
+          repair_request_notes: string | null
+          runner_id: string | null
           selected_solution: Json | null
           service_type: string
           solutions: Json | null
@@ -513,6 +518,9 @@ export type Database = {
         }
         Insert: {
           amount_paid?: number
+          approval_date?: string | null
+          approval_status?: string | null
+          approved_by?: string | null
           balance?: number
           completed_by?: string | null
           completion_date?: string | null
@@ -526,6 +534,8 @@ export type Database = {
           mileage_at_service?: number
           next_service_due?: string
           notes?: string | null
+          repair_request_notes?: string | null
+          runner_id?: string | null
           selected_solution?: Json | null
           service_type: string
           solutions?: Json | null
@@ -537,6 +547,9 @@ export type Database = {
         }
         Update: {
           amount_paid?: number
+          approval_date?: string | null
+          approval_status?: string | null
+          approved_by?: string | null
           balance?: number
           completed_by?: string | null
           completion_date?: string | null
@@ -550,6 +563,8 @@ export type Database = {
           mileage_at_service?: number
           next_service_due?: string
           notes?: string | null
+          repair_request_notes?: string | null
+          runner_id?: string | null
           selected_solution?: Json | null
           service_type?: string
           solutions?: Json | null
