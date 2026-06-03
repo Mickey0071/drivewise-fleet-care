@@ -359,9 +359,6 @@ const fromMaintenance = (r: any): Maintenance => ({
   balance: r.balance != null ? Number(r.balance) : undefined,
   completionDate: r.completion_date ?? undefined,
   isRentalBlocking: !!r.is_rental_blocking,
-});
-const fromMaintenanceApproval = (r: any, m: Maintenance): Maintenance => ({
-  ...m,
   runnerId: r.runner_id ?? undefined,
   repairRequestNotes: r.repair_request_notes ?? undefined,
   approvalStatus: r.approval_status ?? undefined,
