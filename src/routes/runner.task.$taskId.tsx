@@ -9,7 +9,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { submitTask } from "@/lib/tasks.functions";
@@ -57,6 +56,29 @@ function YesNo({ value, onChange }: { value: boolean | null; onChange: (v: boole
     <div className="grid grid-cols-2 gap-2">
       <Button type="button" variant={value === true ? "default" : "outline"} className="h-12" onClick={() => onChange(true)}>Yes</Button>
       <Button type="button" variant={value === false ? "default" : "outline"} className="h-12" onClick={() => onChange(false)}>No</Button>
+    </div>
+  );
+}
+
+function PassFail({ value, onChange }: { value: boolean | undefined; onChange: (v: boolean) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <Button
+        type="button"
+        variant={value === true ? "default" : "outline"}
+        className={`h-10 ${value === true ? "bg-emerald-600 hover:bg-emerald-600 text-white" : ""}`}
+        onClick={() => onChange(true)}
+      >
+        Pass
+      </Button>
+      <Button
+        type="button"
+        variant={value === false ? "destructive" : "outline"}
+        className="h-10"
+        onClick={() => onChange(false)}
+      >
+        Fail
+      </Button>
     </div>
   );
 }
@@ -344,10 +366,12 @@ function TaskPage() {
               <div className="space-y-2">
                 <Label>Checklist</Label>
                 {INSPECTION_ITEMS.map((it) => (
-                  <label key={it.key} className="flex items-center gap-3 rounded-md border border-border px-3 py-3 text-sm">
-                    <Checkbox className="h-5 w-5" checked={!!items[it.key]} onCheckedChange={(c) => setItems((p) => ({ ...p, [it.key]: !!c }))} />
-                    {it.label}
-                  </label>
+                  <div key={it.key} className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 text-sm">
+                    <span className="flex-1">{it.label}</span>
+                    <div className="w-40 shrink-0">
+                      <PassFail value={items[it.key]} onChange={(v) => setItems((p) => ({ ...p, [it.key]: v }))} />
+                    </div>
+                  </div>
                 ))}
               </div>
               <div>
