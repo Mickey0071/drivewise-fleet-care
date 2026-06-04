@@ -6,8 +6,6 @@ import { maintenance, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/moc
 import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown, ShieldAlert } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 
-import { ReportIssueDialog } from "@/components/app/ReportIssueDialog";
-import { RepairsBoard } from "@/components/app/RepairsBoard";
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -32,7 +30,6 @@ export const Route = createFileRoute("/maintenance")({
 function MaintenancePage() {
   useStoreVersion();
   const navigate = useNavigate();
-  const [reportIssueOpen, setReportIssueOpen] = useState(false);
   const [tab, setTab] = useState("scheduled");
   const [configOpen, setConfigOpen] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Maintenance | null>(null);
@@ -111,7 +108,6 @@ function MaintenancePage() {
           </div>
         }
       />
-      <ReportIssueDialog open={reportIssueOpen} onOpenChange={setReportIssueOpen} />
 
       {/* Configuration section */}
       <Collapsible open={configOpen} onOpenChange={setConfigOpen} className="mb-4">
