@@ -2153,6 +2153,87 @@ function moveIssueToOpenRepairImpl(id: string) {
 }
 
 // ---------------------------------------------------------------------------
+// 3-phase repair workflow (reported → diagnosing → pending_complete → complete)
+// Used by the Maintenance "Active Repairs" board.
+// ---------------------------------------------------------------------------
+/** [+ Create Repair] — admin opens a repair manually. Phase 1 (reported). */
+export function createManualRepair(vehicleId: string, issueDescription: string) {
+  const issue = issueDescription.trim();
+  const v = vehicles.find(x => x.id === vehicleId);
+  const rec: Maintenance = {
+    id: nextMaintenanceId(),
+    vehicleId,
+    serviceType: issue,
+    issueDescription: issue,
+    vendor: "Pending assignment",
+    dateCompleted: undefined as unknown as string,
+    mileageAtService: v?.mileage ?? 0,
+    cost: 0,
+    nextServiceDue: new Date().toISOString().slice(0, 10),
+    status: "reported",
+    source: "manual",
+    isRentalBlocking: true,
+    downPayment: 0,
+    amountPaid: 0,
+    balance: 0,
+    createdAt: new Date().toISOString(),
+  };
+  maintenance.push(rec);
+  cloudWrite("maintenance:insert", supabase.from("maintenance").insert(toMaintenance(rec)));
+  if (v) syncVehicleOpenIssues(v.id);
+  emit();
+  return rec;
+}
+
+/** Phase 1 → Phase 2: move a reported repair into Diagnose. */
+export function moveRepairToDiagnose(id: string) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  m.status = "diagnosing";
+  m.isRentalBlocking = true;
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
+  return m;
+}
+
+/** Phase 2 → Phase 3: save diagnosis (parts needed + costs) and move to Complete. */
+export function saveRepairDiagnosis(
+  id: string,
+  input: { partsNeeded: string; partsCost: number; laborCost: number },
+) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  const parts = Math.max(0, input.partsCost || 0);
+  const labor = Math.max(0, input.laborCost || 0);
+  const total = parts + labor;
+  m.diagnosisNotes = input.partsNeeded.trim();
+  m.partsCost = parts;
+  m.laborCost = labor;
+  m.cost = total;
+  m.balance = Math.max(0, total - (m.amountPaid ?? 0));
+  m.status = "pending_complete";
+  m.isRentalBlocking = true;
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
+  return m;
+}
+
+/** Phase 3: record a payment toward the repair (tracks paid/balance only). */
+export function recordRepairPaymentRaw(id: string, amount: number) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  const amt = Math.max(0, amount || 0);
+  if (amt <= 0) return;
+  m.amountPaid = (m.amountPaid ?? 0) + amt;
+  m.balance = Math.max(0, (m.cost ?? 0) - m.amountPaid);
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  emit();
+  return m;
+}
+
+// ---------------------------------------------------------------------------
 // Work orders (preventive maintenance scheduling)
 // ---------------------------------------------------------------------------
 function nextWorkOrderId() {
