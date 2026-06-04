@@ -410,7 +410,7 @@ function TaskPage() {
                           onChange={(v) => {
                             setItems((p) => ({ ...p, [it.key]: v }));
                             if (v === false) {
-                              setRepairPanels((p) => ({ ...p, [it.key]: p[it.key] || { notes: "", cost: "" } }));
+                              setRepairPanels((p) => ({ ...p, [it.key]: p[it.key] || { notes: "", partsCost: "", laborCost: "" } }));
                             }
                           }}
                         />
