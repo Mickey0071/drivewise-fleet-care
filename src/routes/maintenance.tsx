@@ -60,6 +60,29 @@ function MaintenancePage() {
     toast.success("Repair ticket created — moved to Pending Deposit");
   }
 
+  // Pending Deposit: per-record editable deposit amounts
+  const [depositInputs, setDepositInputs] = useState<Record<string, string>>({});
+  const depositValue = (m: Maintenance) => {
+    const fallback = (m.depositAmount ?? m.depositRequired ?? (m.cost ?? 0) * 0.5);
+    return depositInputs[m.id] ?? String(Math.round(fallback * 100) / 100);
+  };
+
+  function handleProcessDeposit(m: Maintenance) {
+    const amt = parseFloat(depositValue(m));
+    if (!(amt > 0)) { toast.error("Enter a deposit amount"); return; }
+    processRepairDeposit(m.id, amt);
+    toast.success(`Deposit of ${fmtMoney(amt)} processed`);
+  }
+
+  function handleCompleteRepair(m: Maintenance) {
+    const amtStr = depositInputs[m.id];
+    if (amtStr != null && parseFloat(amtStr) > 0 && !m.depositProcessed) {
+      processRepairDeposit(m.id, parseFloat(amtStr));
+    }
+    const summary = completeRepair(m.id);
+    if (summary) toast.success(`Repair completed — ${fmtMoney(summary.total)} posted to P&L`);
+  }
+
   // Repairs (kanban-tracked)
   const repairs = maintenance.filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected");
   const openRepairs = repairs.filter(m => m.status !== "complete" && m.status !== "reported")
