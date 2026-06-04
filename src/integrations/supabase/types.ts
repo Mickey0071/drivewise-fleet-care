@@ -1299,6 +1299,93 @@ export type Database = {
           },
         ]
       }
+      repair_history: {
+        Row: {
+          completed_by: string | null
+          created_at: string
+          id: string
+          issue: string | null
+          labor_cost: number
+          maintenance_id: string | null
+          mechanic_name: string | null
+          notes: string | null
+          parts: string | null
+          parts_cost: number
+          repair_date: string
+          total_cost: number
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          issue?: string | null
+          labor_cost?: number
+          maintenance_id?: string | null
+          mechanic_name?: string | null
+          notes?: string | null
+          parts?: string | null
+          parts_cost?: number
+          repair_date: string
+          total_cost?: number
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          issue?: string | null
+          labor_cost?: number
+          maintenance_id?: string | null
+          mechanic_name?: string | null
+          notes?: string | null
+          parts?: string | null
+          parts_cost?: number
+          repair_date?: string
+          total_cost?: number
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
+      repair_scorecard: {
+        Row: {
+          cost: number
+          created_at: string
+          days_in_repair: number
+          id: string
+          issue_category: string | null
+          maintenance_id: string | null
+          repair_date: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          days_in_repair?: number
+          id?: string
+          issue_category?: string | null
+          maintenance_id?: string | null
+          repair_date: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          days_in_repair?: number
+          id?: string
+          issue_category?: string | null
+          maintenance_id?: string | null
+          repair_date?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
       repair_types: {
         Row: {
           created_at: string
