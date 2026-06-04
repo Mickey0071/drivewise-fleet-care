@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { vehicles, fmtMoney, type RepairSolution } from "@/lib/mock/data";
 import { createRepair } from "@/lib/mock/store";
+import { sendNewRepairAlert } from "@/lib/repair-alert.functions";
 import { toast } from "sonner";
 import { Trash2, Plus } from "lucide-react";
 
@@ -58,6 +59,10 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
     }));
     const rec = createRepair({ vehicleId, issueDescription: issue.trim(), solutions });
     toast.success(`Repair ${rec.id} created`);
+    const v = vehicles.find(x => x.id === vehicleId);
+    const vehicleLabel = v ? `${v.year} ${v.make} ${v.model}` : vehicleId;
+    // Fire-and-forget real-time admin alert for the new issue.
+    sendNewRepairAlert({ data: { vehicle: vehicleLabel, issue: issue.trim() } }).catch(() => {});
     reset();
     onOpenChange(false);
   };
