@@ -5,7 +5,6 @@ import { notifyRenter } from "@/lib/renter-notify.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 
 const AGREEMENT_VERSION = "v1.0";
-const AUTOPAY_DISCOUNT = 0.05;
 
 function genToken(): string {
   const a = crypto.getRandomValues(new Uint8Array(16));
@@ -57,7 +56,6 @@ export const getAutoExtensionOffer = createServerFn({ method: "POST" })
       currentEndDate: (row.current_end_date as string) ?? null,
       dailyRate,
       weeklyRate,
-      autoPayDiscount: AUTOPAY_DISCOUNT,
       vehicle: {
         make: row.vehicle_make as string | null,
         model: row.vehicle_model as string | null,
@@ -69,7 +67,7 @@ export const getAutoExtensionOffer = createServerFn({ method: "POST" })
   });
 
 /**
- * Public: customer chooses daily/weekly + auto-pay, signs, and is sent to
+ * Public: customer chooses daily/weekly, signs, and is sent to
  * Stripe to pay. We create an extension_requests row + Stripe payment link
  * tagged kind=admin_extension so the existing payments webhook applies the
  * extension, records payment, saves the card, and confirms on payment.
@@ -78,7 +76,6 @@ export const submitAutoExtension = createServerFn({ method: "POST" })
   .inputValidator((d: {
     token: string;
     choice: "daily" | "weekly";
-    autoPay: boolean;
     signatureDataUrl: string;
     signedBy: string;
   }) => {
@@ -96,7 +93,6 @@ export const submitAutoExtension = createServerFn({ method: "POST" })
     return {
       token: d.token,
       choice: d.choice,
-      autoPay: !!d.autoPay,
       signatureDataUrl: d.signatureDataUrl,
       signedBy: name,
     };
@@ -119,10 +115,7 @@ export const submitAutoExtension = createServerFn({ method: "POST" })
     if (!rate || rate <= 0) throw new Error("Rate is not configured for this rental.");
     const periodLabel = data.choice === "daily" ? "day" : "week";
     const periods = 1;
-    const baseAmount = data.choice === "daily" ? rate : rate;
-    const additionalAmount = Number(
-      (baseAmount * (data.autoPay ? 1 - AUTOPAY_DISCOUNT : 1)).toFixed(2),
-    );
+    const additionalAmount = Number(rate.toFixed(2));
     const amountCents = Math.round(additionalAmount * 100);
 
     const baseEnd = offer.current_end_date
@@ -207,22 +200,10 @@ export const submitAutoExtension = createServerFn({ method: "POST" })
         status: "consumed",
         extension_token: extToken,
         extension_choice: data.choice,
-        auto_pay_enabled: data.autoPay,
+        auto_pay_enabled: false,
         consumed_at: new Date().toISOString(),
       })
       .eq("token", data.token);
-
-    // If auto-pay: enable future auto-renewal on the rental at the chosen cadence.
-    if (data.autoPay) {
-      await supabaseAdmin
-        .from("rentals")
-        .update({
-          auto_renew: true,
-          billing_cadence: data.choice,
-          updated_at: new Date().toISOString(),
-        } as any)
-        .eq("id", offer.rental_id);
-    }
 
     // Notify admin that a customer is completing an extension.
     try {
@@ -231,7 +212,7 @@ export const submitAutoExtension = createServerFn({ method: "POST" })
         phone: adminPhone,
         email: null,
         name: "Admin",
-        sms: `Camauto: ${offer.driver_full_name || "Customer"} is extending ${offer.vehicle_year ?? ""} ${offer.vehicle_make ?? ""} ${offer.vehicle_model ?? ""} (${data.choice}${data.autoPay ? ", auto-pay" : ""}).`,
+        sms: `Camauto: ${offer.driver_full_name || "Customer"} is extending ${offer.vehicle_year ?? ""} ${offer.vehicle_make ?? ""} ${offer.vehicle_model ?? ""} (${data.choice}).`,
         emailSubject: "Extension in progress",
         emailHeading: "Extension in progress",
         emailIntro: "A customer is completing a rental extension.",
