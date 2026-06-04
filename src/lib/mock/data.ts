@@ -197,6 +197,15 @@ export interface Maintenance {
   source?: string;
   /** Inspection that triggered this issue, when source = "inspection_fail". */
   inspectionId?: string;
+  // ---- Deposit (pending_deposit stage) ----
+  /** Calculated deposit required (50% of total). */
+  depositRequired?: number;
+  /** Deposit amount actually received. */
+  depositAmount?: number;
+  /** Whether the deposit has been processed. */
+  depositProcessed?: boolean;
+  /** When the deposit was processed. */
+  depositDate?: string;
 }
 export type RepairStatus = "reported" | "open" | "pending_deposit" | "in_progress" | "complete";
 export interface RepairSolution {
