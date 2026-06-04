@@ -13,7 +13,7 @@ import type { RepairCompletionSummary } from "@/lib/mock/store";
 import { useServerFn } from "@tanstack/react-start";
 import { notifyRunnerRepairComplete } from "@/lib/tasks.functions";
 import { toast } from "sonner";
-import { CheckCircle2, Wrench, Ban, Car, ArrowRight } from "lucide-react";
+import { CheckCircle2, Wrench, Ban, Car, ArrowRight, Plus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 import { RepairCompletionSummaryDialog } from "@/components/app/RepairCompletionSummaryDialog";
