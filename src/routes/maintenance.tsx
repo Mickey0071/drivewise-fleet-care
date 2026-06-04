@@ -124,53 +124,32 @@ function MaintenancePage() {
     .sort((a, b) => (b.completionDate ?? b.dateCompleted ?? "").localeCompare(a.completionDate ?? a.dateCompleted ?? ""));
   const pendingCost = openRepairs.reduce((s, m) => s + (m.balance ?? 0), 0);
 
-  // Open repairs from inspection failures (reported, awaiting ticket creation)
-  const reportedInspectionRepairs = maintenance
-    .filter(m => m.status === "reported" && m.source === "inspection_fail")
-    .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
+  const byNewest = (a: Maintenance, b: Maintenance) =>
+    (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id);
 
-  // Repairs awaiting deposit (ticket created, pre-completion)
-  const pendingDepositRepairs = maintenance
-    .filter(m => m.status === "pending_deposit")
-    .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
+  // --- 3-phase active repairs ---
+  // Phase 1 — State Issue: reported (awaiting ticket creation)
+  const phase1 = maintenance.filter(m => m.status === "reported").sort(byNewest);
+  // Phase 2 — Diagnose: diagnosing / open / pending deposit
+  const phase2 = maintenance
+    .filter(m => m.status === "diagnosing" || m.status === "open" || m.status === "pending_deposit")
+    .sort(byNewest);
+  // Phase 3 — Complete: ready to finalize / in progress
+  const phase3 = maintenance
+    .filter(m => m.status === "pending_complete" || m.status === "in_progress")
+    .sort(byNewest);
+  const activeCount = phase1.length + phase2.length + phase3.length;
 
   const monthKey = new Date().toISOString().slice(0, 7);
   const completedThisMonth = completedRepairs.filter(
     m => (m.completionDate ?? m.dateCompleted ?? "").slice(0, 7) === monthKey,
   );
+  const completedThisMonthTotal = completedThisMonth.reduce((s, m) => s + (m.cost ?? 0), 0);
 
   // Scheduled maintenance (derived from per-vehicle Alert Settings)
   const dueSoon = dueSoonScheduledItems(vehicles);
   const allScheduled = vehicles.flatMap(v => computeScheduledItems(v));
   const configuredCount = vehicles.filter(isScheduleConfigured).length;
-
-  // Pending runner repair requests (awaiting admin approval)
-  const pending = pendingRunnerRepairs();
-  const [runnerNames, setRunnerNames] = useState<Record<string, string>>({});
-  useEffect(() => {
-    const ids = Array.from(new Set(pending.map(p => p.runnerId).filter(Boolean))) as string[];
-    const missing = ids.filter(id => !(id in runnerNames));
-    if (missing.length === 0) return;
-    (async () => {
-      const { data } = await supabase.from("profiles").select("id, full_name, first_name").in("id", missing);
-      if (!data) return;
-      setRunnerNames(prev => {
-        const next = { ...prev };
-        for (const r of data as any[]) next[r.id] = r.full_name || r.first_name || "Runner";
-        return next;
-      });
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pending.map(p => p.runnerId).join(",")]);
-
-  async function handleApprove(id: string) {
-    await approveRunnerRepair(id);
-    toast.success("Repair approved — moved to Open repairs");
-  }
-  function handleReject(id: string) {
-    rejectRunnerRepair(id);
-    toast.success("Repair request rejected");
-  }
 
   async function handleMarkComplete(it: ScheduledItem) {
     try {
