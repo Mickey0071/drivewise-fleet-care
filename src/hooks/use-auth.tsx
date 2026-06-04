@@ -32,13 +32,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let lastUserId: string | null = null;
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       if (!mounted) return;
       setSession(s);
       if (s?.user) {
-        setRole(null);
-        setTimeout(() => { fetchRole(s.user.id); fetchMustReset(s.user.id); }, 0);
+        // Only (re)fetch the role when the signed-in user actually changes.
+        // Benign events like TOKEN_REFRESHED / focus re-fire with the same
+        // user; blanking the role on those caused the whole app to flash the
+        // loading/home state and bounce the current page.
+        if (s.user.id !== lastUserId) {
+          lastUserId = s.user.id;
+          setRole(null);
+          setTimeout(() => { fetchRole(s.user.id); fetchMustReset(s.user.id); }, 0);
+        }
       } else {
+        lastUserId = null;
         setRole(null);
         setRoleError(null);
         setRoleLoading(false);
@@ -49,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
       setSession(data.session);
       if (data.session?.user) {
+        lastUserId = data.session.user.id;
         await fetchRole(data.session.user.id);
         await fetchMustReset(data.session.user.id);
       }
