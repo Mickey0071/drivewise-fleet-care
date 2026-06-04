@@ -400,6 +400,7 @@ const toMaintenance = (m: Maintenance) => ({
   parts_cost: m.partsCost ?? 0,
   labor_cost: m.laborCost ?? 0,
   mechanic_notes: m.mechanicNotes ?? null,
+  mechanic_name: m.mechanicName ?? null,
   runner_id: m.runnerId ?? null,
   repair_request_notes: m.repairRequestNotes ?? null,
   approval_status: m.approvalStatus ?? null,
