@@ -388,7 +388,7 @@ function Column({ title, count, tone, children }: { title: string; count: number
   );
 }
 
-export function RepairsBoard() {
+export function RepairsBoard({ onReportIssue }: { onReportIssue?: () => void }) {
   useStoreVersion();
   const [summary, setSummary] = useState<RepairCompletionSummary | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -407,7 +407,11 @@ export function RepairsBoard() {
   return (
     <>
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <Column title="Issues Reported" count={reported.length} tone="bg-blue-500/20 text-blue-700">
+      <Column title="Issues Reported" count={reported.length} tone="bg-blue-500/20 text-blue-700" action={onReportIssue ? (
+        <Button size="sm" variant="outline" className="h-6 gap-1 px-2 text-xs" onClick={onReportIssue}>
+          <Plus className="h-3 w-3" /> Report Issue
+        </Button>
+      ) : undefined}>
         {reported.map(m => <IssueCard key={m.id} m={m} />)}
       </Column>
       <Column title="Open" count={open.length} tone="bg-muted text-foreground">
