@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
+import { isNotificationEnabled } from "@/lib/notifications.server";
 
 const ADMIN_REPAIR_PHONE = "267-221-3977";
 
@@ -26,6 +27,11 @@ export const Route = createFileRoute("/api/public/hooks/repair-digest")({
         }
 
         const today = todayISO();
+
+        // Respect the admin Notifications Control Center toggle.
+        if (!(await isNotificationEnabled("admin_morning_text"))) {
+          return Response.json({ ok: true, skipped: "disabled" });
+        }
 
         // Dedupe: only one digest per calendar day, even if invoked twice.
         const { data: prior } = await supabaseAdmin
