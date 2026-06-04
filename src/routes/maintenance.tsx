@@ -1,15 +1,14 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
-import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown, CheckCircle2, Plus, Flame } from "lucide-react";
+import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
@@ -37,7 +36,6 @@ function MaintenancePage() {
   useStoreVersion();
   const navigate = useNavigate();
   const [tab, setTab] = useState("scheduled");
-  const [configOpen, setConfigOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Maintenance | null>(null);
   const [ticketRecord, setTicketRecord] = useState<Maintenance | null>(null);
@@ -118,11 +116,8 @@ function MaintenancePage() {
 
   // Repairs (kanban-tracked)
   const repairs = maintenance.filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected");
-  const openRepairs = repairs.filter(m => m.status !== "complete" && m.status !== "reported")
-    .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
   const completedRepairs = repairs.filter(m => m.status === "complete")
     .sort((a, b) => (b.completionDate ?? b.dateCompleted ?? "").localeCompare(a.completionDate ?? a.dateCompleted ?? ""));
-  const pendingCost = openRepairs.reduce((s, m) => s + (m.balance ?? 0), 0);
 
   const byNewest = (a: Maintenance, b: Maintenance) =>
     (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id);
