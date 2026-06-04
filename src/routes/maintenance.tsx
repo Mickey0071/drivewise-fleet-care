@@ -525,6 +525,49 @@ function MaintenancePage() {
         open={!!detailRecord}
         onOpenChange={(v) => { if (!v) setDetailRecord(null); }}
       />
+
+      <Dialog open={!!ticketRecord} onOpenChange={(o) => { if (!o) setTicketRecord(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Repair Ticket</DialogTitle>
+          </DialogHeader>
+          {ticketRecord && (() => {
+            const v = vehicleById(ticketRecord.vehicleId);
+            const parts = parseFloat(ticketParts) || 0;
+            const labour = parseFloat(ticketLabour) || 0;
+            const total = parts + labour;
+            return (
+              <div className="space-y-4">
+                <div className="space-y-1 rounded-md bg-muted/40 p-3 text-sm">
+                  <div><span className="font-medium">Vehicle:</span> {v ? `${v.year} ${v.make} ${v.model}` : ticketRecord.vehicleId}</div>
+                  <div><span className="font-medium">Issue:</span> {ticketRecord.serviceType}</div>
+                  {ticketRecord.repairRequestNotes && (
+                    <div><span className="font-medium">Symptoms:</span> {ticketRecord.repairRequestNotes}</div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ticket-parts">Parts Cost ($)</Label>
+                  <Input id="ticket-parts" type="number" min="0" step="0.01" value={ticketParts}
+                    onChange={(e) => setTicketParts(e.target.value)} placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ticket-labour">Labour Cost ($)</Label>
+                  <Input id="ticket-labour" type="number" min="0" step="0.01" value={ticketLabour}
+                    onChange={(e) => setTicketLabour(e.target.value)} placeholder="0.00" />
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm font-medium">
+                  <span>Total Cost</span>
+                  <span>{fmtMoney(total)}</span>
+                </div>
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTicketRecord(null)}>Cancel</Button>
+            <Button onClick={submitTicket}>Submit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
