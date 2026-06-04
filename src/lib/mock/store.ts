@@ -2073,7 +2073,32 @@ export function updateIssue(id: string, patch: {
 
 /** Move a diagnosed reported issue into the Repairs "Open" column. */
 export function moveIssueToOpenRepair(id: string) {
-  // unchanged below
+  return moveIssueToOpenRepairImpl(id);
+}
+
+/** Admin creates a repair ticket from an open (reported) inspection-fail repair.
+ *  Stores parts/labour/total costs and moves the record to "pending_deposit". */
+export function createRepairTicket(id: string, partsCost: number, laborCost: number) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  const parts = Math.max(0, partsCost || 0);
+  const labor = Math.max(0, laborCost || 0);
+  const total = parts + labor;
+  m.partsCost = parts;
+  m.laborCost = labor;
+  m.cost = total;
+  m.balance = total;
+  if (!m.diagnosisNotes?.trim()) m.diagnosisNotes = m.repairRequestNotes?.trim() || m.serviceType;
+  m.status = "pending_deposit";
+  m.isRentalBlocking = true;
+  m.source = m.source ?? "inspection_fail";
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
+  return m;
+}
+
+function moveIssueToOpenRepairImpl(id: string) {
   const m = maintenance.find(x => x.id === id);
   if (!m || m.status !== "reported") return;
   const parts = Math.max(0, m.partsCost ?? 0);
