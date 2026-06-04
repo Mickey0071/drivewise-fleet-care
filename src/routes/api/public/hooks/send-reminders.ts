@@ -246,70 +246,6 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           }
         }
 
-        // 6) Daily 8AM admin alert: every active (non-complete) repair, until complete
-        const ADMIN_REPAIR_PHONE = "267-221-3977";
-        // This hook runs every 15 min; only send the repair digest once per day,
-        // at/after 8AM Eastern (~12:00 UTC), deduped via reminder_log.
-        const nowUtcHour = new Date().getUTCHours();
-        const repairWindowOpen = nowUtcHour >= 12;
-        let repairAlreadySentToday = false;
-        if (repairWindowOpen) {
-          const { data: priorRepair } = await supabaseAdmin
-            .from("reminder_log")
-            .select("id")
-            .eq("reminder_type", "admin_active_repairs")
-            .eq("target_date", today)
-            .limit(1);
-          repairAlreadySentToday = (priorRepair ?? []).length > 0;
-        }
-        const { data: openRepairs, error: repairErr } = await supabaseAdmin
-          .from("maintenance")
-          .select("id, vehicle_id, service_type, issue_description, status, created_at, date_completed")
-          .in("status", ["reported", "diagnosing", "pending_complete"])
-          .order("created_at", { ascending: true });
-        if (repairErr) {
-          return Response.json({ ok: false, stage: "repairs", error: repairErr.message }, { status: 500 });
-        }
-        const activeRepairs = (openRepairs ?? []);
-        if (activeRepairs.length > 0 && repairWindowOpen && !repairAlreadySentToday) {
-          const repairVehicleIds = Array.from(
-            new Set(activeRepairs.map((r) => r.vehicle_id).filter(Boolean))
-          );
-          const repairVehiclesById = new Map<string, string>();
-          if (repairVehicleIds.length) {
-            const { data: rvs } = await supabaseAdmin
-              .from("vehicles")
-              .select("id, year, make, model")
-              .in("id", repairVehicleIds);
-            (rvs ?? []).forEach((v) =>
-              repairVehiclesById.set(v.id, `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}`.trim())
-            );
-          }
-          const lines = activeRepairs
-            .slice(0, 20)
-            .map((r) => {
-              const veh = repairVehiclesById.get(r.vehicle_id) || r.vehicle_id;
-              const issue = (r.issue_description || r.service_type || "Repair").toString();
-              return `• ${veh} — ${issue}`;
-            })
-            .join("\n");
-          const more = activeRepairs.length > 20 ? `\n…and ${activeRepairs.length - 20} more` : "";
-          const repairMsg = `Camauto: ${activeRepairs.length} active repair${activeRepairs.length === 1 ? "" : "s"}\n${lines}${more}`;
-          try {
-            await sendSms(ADMIN_REPAIR_PHONE, repairMsg, "Admin");
-            await supabaseAdmin.from("reminder_log").insert({
-              rental_id: "ADMIN",
-              reminder_type: "admin_active_repairs",
-              target_date: today,
-              phone: ADMIN_REPAIR_PHONE,
-              message: repairMsg,
-            });
-            results.push({ type: "admin_active_repairs", count: activeRepairs.length, sent: true });
-          } catch (e: any) {
-            results.push({ type: "admin_active_repairs", error: e?.message ?? String(e) });
-          }
-        }
-
         return Response.json({
           ok: true,
           target_date: target,
@@ -318,7 +254,6 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           admin_past_due: (pastDuePayments ?? []).filter((p) => isActive(p.rental_id)).length,
           admin_due_today: (dueTodayPayments ?? []).filter((p) => isActive(p.rental_id)).length,
           checkin_2h: checkinRentals?.length ?? 0,
-          active_repairs: (openRepairs ?? []).length,
           results,
         });
       },
