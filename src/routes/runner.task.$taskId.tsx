@@ -472,7 +472,7 @@ function TaskPage() {
                             disabled={creatingTicket === it.key}
                             onClick={() => handleCreateTicket(it.key, it.label)}
                           >
-                            {creatingTicket === it.key ? "Creating…" : "Create Repair Ticket"}
+                            {creatingTicket === it.key ? "Sending…" : "Send to Maintenance for Repair"}
                           </Button>
                         )}
                       </div>
