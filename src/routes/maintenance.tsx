@@ -194,7 +194,7 @@ function MaintenancePage() {
               <CardTitle className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2 text-yellow-600">
                   <span className="inline-block h-2 w-2 rounded-full bg-yellow-500" />
-                  State Issue
+                  Phase 1 · State Issue
                 </span>
                 <span className="text-xs font-normal text-muted-foreground">{phase1.length}</span>
               </CardTitle>
@@ -228,7 +228,7 @@ function MaintenancePage() {
               <CardTitle className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2 text-blue-600">
                   <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
-                  Diagnose
+                  Phase 2 · Diagnose
                 </span>
                 <span className="text-xs font-normal text-muted-foreground">{phase2.length}</span>
               </CardTitle>
@@ -278,7 +278,7 @@ function MaintenancePage() {
               <CardTitle className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2 text-green-600">
                   <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-                  Complete
+                  Phase 3 · Complete
                 </span>
                 <span className="text-xs font-normal text-muted-foreground">{phase3.length}</span>
               </CardTitle>
