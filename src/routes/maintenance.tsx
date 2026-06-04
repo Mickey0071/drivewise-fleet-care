@@ -308,6 +308,7 @@ function MaintenancePage() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="scheduled">Scheduled ({dueSoon.length})</TabsTrigger>
+          <TabsTrigger value="repairs">Repairs ({reportedInspectionRepairs.length})</TabsTrigger>
           <TabsTrigger value="completed">Completed ({completedRepairs.length})</TabsTrigger>
         </TabsList>
 
