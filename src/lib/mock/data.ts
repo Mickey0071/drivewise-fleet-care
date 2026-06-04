@@ -185,6 +185,8 @@ export interface Maintenance {
   laborCost?: number;
   /** Work notes from the mechanic/admin who completed the repair. */
   mechanicNotes?: string;
+  /** Name of the mechanic who performed the repair (optional). */
+  mechanicName?: string;
   /** When true, an open repair blocks the vehicle from new bookings. Default false. */
   isRentalBlocking?: boolean;
   // ---- Runner repair request / approval workflow ----

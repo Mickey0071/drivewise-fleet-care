@@ -366,6 +366,7 @@ const fromMaintenance = (r: any): Maintenance => ({
   partsCost: r.parts_cost != null ? Number(r.parts_cost) : undefined,
   laborCost: r.labor_cost != null ? Number(r.labor_cost) : undefined,
   mechanicNotes: r.mechanic_notes ?? undefined,
+  mechanicName: r.mechanic_name ?? undefined,
   runnerId: r.runner_id ?? undefined,
   repairRequestNotes: r.repair_request_notes ?? undefined,
   approvalStatus: r.approval_status ?? undefined,
@@ -399,6 +400,7 @@ const toMaintenance = (m: Maintenance) => ({
   parts_cost: m.partsCost ?? 0,
   labor_cost: m.laborCost ?? 0,
   mechanic_notes: m.mechanicNotes ?? null,
+  mechanic_name: m.mechanicName ?? null,
   runner_id: m.runnerId ?? null,
   repair_request_notes: m.repairRequestNotes ?? null,
   approval_status: m.approvalStatus ?? null,
@@ -1811,6 +1813,7 @@ export interface RepairCompletionSummary {
   issue: string;
   completedBy: string;
   completionDate: string; // YYYY-MM-DD
+  mechanicName?: string;
   parts: number;
   labor: number;
   total: number;
@@ -1844,6 +1847,7 @@ export function completeRepair(
     partsCost?: number;
     laborCost?: number;
     mechanicNotes?: string;
+    mechanicName?: string;
   },
 ): RepairCompletionSummary | undefined {
   const m = maintenance.find(x => x.id === id);
@@ -1870,6 +1874,7 @@ export function completeRepair(
   }
   m.completedBy = opts?.completedBy?.trim() || m.completedBy || "Admin";
   if (opts?.mechanicNotes?.trim()) m.mechanicNotes = opts.mechanicNotes.trim();
+  if (opts?.mechanicName?.trim()) m.mechanicName = opts.mechanicName.trim();
   if (m.vendor === "Pending assignment") m.vendor = m.completedBy;
 
   const resolution = `Repair completed ${today} by ${m.completedBy}: parts $${parts.toFixed(2)} + labor $${labor.toFixed(2)} = $${total.toFixed(2)}`;
@@ -1940,6 +1945,7 @@ export function completeRepair(
     issue: m.issueDescription || m.selectedSolution?.name || m.serviceType,
     completedBy: m.completedBy ?? "Admin",
     completionDate: today,
+    mechanicName: m.mechanicName,
     parts,
     labor,
     total,

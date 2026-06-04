@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
-import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown, ShieldAlert } from "lucide-react";
+import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete, pendingRunnerRepairs, approveRunnerRepair, rejectRunnerRepair } from "@/lib/mock/store";
 import { createRepairTicket, processRepairDeposit, completeRepair } from "@/lib/mock/store";
+import type { RepairCompletionSummary } from "@/lib/mock/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,13 +75,43 @@ function MaintenancePage() {
     toast.success(`Deposit of ${fmtMoney(amt)} processed`);
   }
 
+  // Completion summary dialog
+  const [completeRecord, setCompleteRecord] = useState<Maintenance | null>(null);
+  const [mechanicName, setMechanicName] = useState("");
+  const [completionSummary, setCompletionSummary] = useState<RepairCompletionSummary | null>(null);
+  const [adminName, setAdminName] = useState("Admin");
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const uid = data.user?.id;
+      if (!uid) return;
+      const { data: prof } = await supabase
+        .from("profiles").select("full_name, first_name").eq("id", uid).maybeSingle();
+      setAdminName(prof?.full_name || prof?.first_name || data.user?.email || "Admin");
+    })();
+  }, []);
+
   function handleCompleteRepair(m: Maintenance) {
     const amtStr = depositInputs[m.id];
     if (amtStr != null && parseFloat(amtStr) > 0 && !m.depositProcessed) {
       processRepairDeposit(m.id, parseFloat(amtStr));
     }
-    const summary = completeRepair(m.id);
-    if (summary) toast.success(`Repair completed — ${fmtMoney(summary.total)} posted to P&L`);
+    setMechanicName(m.mechanicName ?? "");
+    setCompletionSummary(null);
+    setCompleteRecord(m);
+  }
+
+  function confirmCompleteRepair() {
+    if (!completeRecord) return;
+    const summary = completeRepair(completeRecord.id, {
+      completedBy: adminName,
+      mechanicName: mechanicName.trim() || undefined,
+    });
+    if (summary) {
+      setCompletionSummary(summary);
+      toast.success(`Repair completed — ${fmtMoney(summary.total)} posted to P&L`);
+    }
   }
 
   // Repairs (kanban-tracked)
@@ -660,6 +691,70 @@ function MaintenancePage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setTicketRecord(null)}>Cancel</Button>
             <Button onClick={submitTicket}>Submit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!completeRecord} onOpenChange={(o) => { if (!o) { setCompleteRecord(null); setCompletionSummary(null); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{completionSummary ? "Repair Completed" : "Complete Repair"}</DialogTitle>
+          </DialogHeader>
+          {completeRecord && (() => {
+            const m = completeRecord;
+            const v = vehicleById(m.vehicleId);
+            const parts = m.partsCost ?? 0;
+            const labour = m.laborCost ?? 0;
+            const total = parts + labour;
+            const today = new Date().toISOString().slice(0, 10);
+            return (
+              <div className="space-y-4">
+                <div className="space-y-1 rounded-md bg-muted/40 p-3 text-sm">
+                  <div><span className="font-medium">Vehicle:</span> {v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
+                  <div><span className="font-medium">Issue:</span> {m.serviceType}</div>
+                  <div className="flex items-center gap-1 font-medium text-green-600">
+                    <CheckCircle2 className="h-4 w-4" /> Completed
+                  </div>
+                </div>
+                <div className="space-y-1 rounded-md border border-border p-3 text-sm">
+                  <div className="flex justify-between"><span>Parts</span><span>{fmtMoney(parts)}</span></div>
+                  <div className="flex justify-between"><span>Labour</span><span>{fmtMoney(labour)}</span></div>
+                  <div className="flex justify-between border-t border-border pt-1 font-medium"><span>Total</span><span>{fmtMoney(total)}</span></div>
+                </div>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <div><span className="font-medium text-foreground">Completion date:</span> {fmtDate(today)}</div>
+                  <div><span className="font-medium text-foreground">Completed by:</span> {adminName}</div>
+                </div>
+                {!completionSummary ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="mechanic-name">Mechanic name (optional)</Label>
+                    <Input id="mechanic-name" value={mechanicName}
+                      onChange={(e) => setMechanicName(e.target.value)} placeholder="e.g. Joe's Auto" />
+                  </div>
+                ) : (
+                  <div className="space-y-2 rounded-md bg-green-500/10 p-3 text-sm">
+                    {mechanicName.trim() && (
+                      <div className="text-muted-foreground">
+                        <span className="font-medium text-foreground">Mechanic:</span> {mechanicName.trim()}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-green-600"><CheckCircle2 className="h-4 w-4" /> Logged to fleet card repair history</div>
+                    <div className="flex items-center gap-2 text-green-600"><CheckCircle2 className="h-4 w-4" /> Posted to P&L expenses ({fmtMoney(completionSummary.expensePosted)})</div>
+                    <div className="flex items-center gap-2 text-green-600"><CheckCircle2 className="h-4 w-4" /> Added to scorecard data</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            {!completionSummary ? (
+              <>
+                <Button variant="outline" onClick={() => setCompleteRecord(null)}>Cancel</Button>
+                <Button onClick={confirmCompleteRepair}>Complete Repair</Button>
+              </>
+            ) : (
+              <Button onClick={() => { setCompleteRecord(null); setCompletionSummary(null); }}>Done</Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
