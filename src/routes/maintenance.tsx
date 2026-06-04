@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown, ShieldAlert } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
-import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
+
 import { ReportIssueDialog } from "@/components/app/ReportIssueDialog";
 import { RepairsBoard } from "@/components/app/RepairsBoard";
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
