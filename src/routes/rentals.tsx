@@ -14,6 +14,7 @@ import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
 import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download, Smartphone } from "lucide-react";
 import { Search as SearchIcon, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -885,6 +886,9 @@ function RentalsPage() {
         subtitle={`${active.length} on rent · ${pending.length} pending · ${completed.length} returned`}
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={() => navigate({ to: "/" })}>
+              <LayoutDashboard className="h-4 w-4" /> Dashboard
+            </Button>
             <ReportActions csv={{
               filename: "rentals.csv",
               headers: ["ID", "Driver", "Vehicle", "Plate", "Started", "Ended", "Weekly", "Deposit", "Status", "Reservation"],
