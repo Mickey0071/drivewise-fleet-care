@@ -32,7 +32,6 @@ export const Route = createFileRoute("/maintenance")({
 function MaintenancePage() {
   useStoreVersion();
   const navigate = useNavigate();
-  const [repairOpen, setRepairOpen] = useState(false);
   const [reportIssueOpen, setReportIssueOpen] = useState(false);
   const [tab, setTab] = useState("scheduled");
   const [configOpen, setConfigOpen] = useState(false);
