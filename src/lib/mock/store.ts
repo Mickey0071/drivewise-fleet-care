@@ -2228,7 +2228,6 @@ export function moveRepairToDiagnose(id: string) {
   const m = maintenance.find(x => x.id === id);
   if (!m) return;
   m.status = "diagnosing";
-  m.isRentalBlocking = true;
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   syncVehicleOpenIssues(m.vehicleId);
   emit();
@@ -2251,7 +2250,6 @@ export function saveRepairDiagnosis(
   m.cost = total;
   m.balance = Math.max(0, total - (m.amountPaid ?? 0));
   m.status = "pending_complete";
-  m.isRentalBlocking = true;
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   syncVehicleOpenIssues(m.vehicleId);
   emit();
