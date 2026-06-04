@@ -1945,6 +1945,7 @@ export function completeRepair(
     issue: m.issueDescription || m.selectedSolution?.name || m.serviceType,
     completedBy: m.completedBy ?? "Admin",
     completionDate: today,
+    mechanicName: m.mechanicName,
     parts,
     labor,
     total,
