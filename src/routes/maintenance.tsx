@@ -37,6 +37,28 @@ function MaintenancePage() {
   const [tab, setTab] = useState("scheduled");
   const [configOpen, setConfigOpen] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Maintenance | null>(null);
+  const [ticketRecord, setTicketRecord] = useState<Maintenance | null>(null);
+  const [ticketParts, setTicketParts] = useState("");
+  const [ticketLabour, setTicketLabour] = useState("");
+
+  function openTicketForm(m: Maintenance) {
+    setTicketRecord(m);
+    setTicketParts(m.partsCost ? String(m.partsCost) : "");
+    setTicketLabour(m.laborCost ? String(m.laborCost) : "");
+  }
+
+  function submitTicket() {
+    if (!ticketRecord) return;
+    const parts = parseFloat(ticketParts);
+    const labour = parseFloat(ticketLabour);
+    if (!(parts > 0) || !(labour > 0)) {
+      toast.error("Enter both parts and labour costs");
+      return;
+    }
+    createRepairTicket(ticketRecord.id, parts, labour);
+    setTicketRecord(null);
+    toast.success("Repair ticket created — moved to Pending Deposit");
+  }
 
   // Repairs (kanban-tracked)
   const repairs = maintenance.filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected");
