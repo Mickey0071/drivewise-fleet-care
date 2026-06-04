@@ -198,7 +198,7 @@ export interface Maintenance {
   /** Inspection that triggered this issue, when source = "inspection_fail". */
   inspectionId?: string;
 }
-export type RepairStatus = "reported" | "open" | "in_progress" | "complete";
+export type RepairStatus = "reported" | "open" | "pending_deposit" | "in_progress" | "complete";
 export interface RepairSolution {
   name: string;
   partsCost: number;

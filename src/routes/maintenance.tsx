@@ -12,6 +12,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete, pendingRunnerRepairs, approveRunnerRepair, rejectRunnerRepair } from "@/lib/mock/store";
+import { createRepairTicket } from "@/lib/mock/store";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import {
   dueSoonScheduledItems,
@@ -33,6 +37,28 @@ function MaintenancePage() {
   const [tab, setTab] = useState("scheduled");
   const [configOpen, setConfigOpen] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Maintenance | null>(null);
+  const [ticketRecord, setTicketRecord] = useState<Maintenance | null>(null);
+  const [ticketParts, setTicketParts] = useState("");
+  const [ticketLabour, setTicketLabour] = useState("");
+
+  function openTicketForm(m: Maintenance) {
+    setTicketRecord(m);
+    setTicketParts(m.partsCost ? String(m.partsCost) : "");
+    setTicketLabour(m.laborCost ? String(m.laborCost) : "");
+  }
+
+  function submitTicket() {
+    if (!ticketRecord) return;
+    const parts = parseFloat(ticketParts);
+    const labour = parseFloat(ticketLabour);
+    if (!(parts > 0) || !(labour > 0)) {
+      toast.error("Enter both parts and labour costs");
+      return;
+    }
+    createRepairTicket(ticketRecord.id, parts, labour);
+    setTicketRecord(null);
+    toast.success("Repair ticket created — moved to Pending Deposit");
+  }
 
   // Repairs (kanban-tracked)
   const repairs = maintenance.filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected");
@@ -428,7 +454,7 @@ function MaintenancePage() {
                       <Button
                         size="sm"
                         className="mt-2"
-                        onClick={() => toast.info("Create ticket form coming soon.")}
+                        onClick={() => openTicketForm(m)}
                       >
                         Send to Create Ticket
                       </Button>
@@ -499,6 +525,49 @@ function MaintenancePage() {
         open={!!detailRecord}
         onOpenChange={(v) => { if (!v) setDetailRecord(null); }}
       />
+
+      <Dialog open={!!ticketRecord} onOpenChange={(o) => { if (!o) setTicketRecord(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Repair Ticket</DialogTitle>
+          </DialogHeader>
+          {ticketRecord && (() => {
+            const v = vehicleById(ticketRecord.vehicleId);
+            const parts = parseFloat(ticketParts) || 0;
+            const labour = parseFloat(ticketLabour) || 0;
+            const total = parts + labour;
+            return (
+              <div className="space-y-4">
+                <div className="space-y-1 rounded-md bg-muted/40 p-3 text-sm">
+                  <div><span className="font-medium">Vehicle:</span> {v ? `${v.year} ${v.make} ${v.model}` : ticketRecord.vehicleId}</div>
+                  <div><span className="font-medium">Issue:</span> {ticketRecord.serviceType}</div>
+                  {ticketRecord.repairRequestNotes && (
+                    <div><span className="font-medium">Symptoms:</span> {ticketRecord.repairRequestNotes}</div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ticket-parts">Parts Cost ($)</Label>
+                  <Input id="ticket-parts" type="number" min="0" step="0.01" value={ticketParts}
+                    onChange={(e) => setTicketParts(e.target.value)} placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ticket-labour">Labour Cost ($)</Label>
+                  <Input id="ticket-labour" type="number" min="0" step="0.01" value={ticketLabour}
+                    onChange={(e) => setTicketLabour(e.target.value)} placeholder="0.00" />
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm font-medium">
+                  <span>Total Cost</span>
+                  <span>{fmtMoney(total)}</span>
+                </div>
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTicketRecord(null)}>Cancel</Button>
+            <Button onClick={submitTicket}>Submit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
