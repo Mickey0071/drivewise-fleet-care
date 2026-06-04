@@ -165,7 +165,7 @@ function MaintenancePage() {
     <div>
       <PageHeader
         title="Maintenance"
-        subtitle={`${openRepairs.length} open repair${openRepairs.length === 1 ? "" : "s"} across the fleet`}
+        subtitle={`${activeCount} active repair${activeCount === 1 ? "" : "s"} · Daily 8AM SMS until complete`}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ReportActions csv={{
@@ -176,456 +176,341 @@ function MaintenancePage() {
                 return [m.id, v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId, v?.plate ?? "", m.serviceType, m.vendor, m.dateCompleted, m.mileageAtService, m.cost, m.nextServiceDue];
               }),
             }} />
+            <Button
+              className="bg-amber-500 text-white hover:bg-amber-600"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="mr-1 h-4 w-4" /> Create Repair
+            </Button>
           </div>
         }
       />
 
-      {/* Configuration section */}
-      <Collapsible open={configOpen} onOpenChange={setConfigOpen} className="mb-4">
-        <Card>
-          <CollapsibleTrigger asChild>
-            <button className="flex w-full items-center justify-between p-4 text-left">
-              <span className="flex items-center gap-2 text-sm font-medium">
-                <Settings2 className="h-4 w-4 text-muted-foreground" />
-                Configure Scheduled Repairs Alerts
-              </span>
-              <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                {configuredCount}/{vehicles.length} vehicles configured
-                <ChevronDown className={`h-4 w-4 transition-transform ${configOpen ? "rotate-180" : ""}`} />
-              </span>
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="border-t border-border p-4 text-sm text-muted-foreground">
-              <p>
-                Alert intervals (oil, battery, alternator, inspection) are set per vehicle in Fleet.
-                Due dates are auto-calculated from each vehicle's current mileage and last-service dates.
-              </p>
-              <Button size="sm" variant="outline" className="mt-3" onClick={() => navigate({ to: "/fleet" })}>
-                Edit Alert Settings
-              </Button>
-            </div>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
-
-      {/* Pending runner repairs alert */}
-      <Card className={`mb-6 ${pending.length > 0 ? "border-amber-500/50 bg-amber-500/5" : ""}`}>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ShieldAlert className={`h-4 w-4 ${pending.length > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
-            {pending.length > 0
-              ? `⚠️ Pending runner repairs — ${pending.length} awaiting approval`
-              : "No repairs awaiting approval"}
-          </CardTitle>
-        </CardHeader>
-        {pending.length > 0 && (
-          <CardContent className="space-y-3 p-0">
-            <ul className="divide-y divide-border">
-              {pending.map(m => {
+      {/* ===================== ACTIVE REPAIRS (TOP) ===================== */}
+      <section className="mb-8">
+        <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+          <Flame className="h-5 w-5 text-amber-500" />
+          Active Repairs ({activeCount})
+        </h2>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          {/* Phase 1 — State Issue */}
+          <Card className="border-yellow-500/40">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-yellow-600">
+                  <span className="inline-block h-2 w-2 rounded-full bg-yellow-500" />
+                  State Issue
+                </span>
+                <span className="text-xs font-normal text-muted-foreground">{phase1.length}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 p-3 pt-0">
+              {phase1.length === 0 ? (
+                <p className="px-1 text-xs text-muted-foreground">Nothing here.</p>
+              ) : phase1.map(m => {
                 const v = vehicleById(m.vehicleId);
                 return (
-                  <li key={m.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
-                      <div className="text-sm text-muted-foreground">{m.issueDescription || m.serviceType}</div>
-                      <div className="mt-0.5 text-xs text-muted-foreground">
-                        {(m.runnerId && runnerNames[m.runnerId]) || "Runner"}
-                        {" · "}
-                        {fmtDate((m.createdAt ?? "").slice(0, 10))}
-                        {m.cost > 0 ? ` · Est. ${fmtMoney(m.cost)}` : ""}
+                  <div key={m.id} className="rounded-md border border-border p-3">
+                    <div className="text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{m.serviceType}</div>
+                    {m.repairRequestNotes && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Symptoms:</span> {m.repairRequestNotes}
                       </div>
-                    </div>
-                    <div className="flex shrink-0 gap-2">
-                      <Button asChild size="sm" variant="outline">
-                        <Link to="/fleet/$vehicleId" params={{ vehicleId: m.vehicleId }}>View</Link>
-                      </Button>
-                      <Button size="sm" onClick={() => handleApprove(m.id)}>Approve</Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleReject(m.id)}>Reject</Button>
-                    </div>
-                  </li>
+                    )}
+                    <Button size="sm" className="mt-2 w-full" onClick={() => openTicketForm(m)}>
+                      Send to Create Ticket
+                    </Button>
+                  </div>
                 );
               })}
-            </ul>
-          </CardContent>
-        )}
-      </Card>
+            </CardContent>
+          </Card>
 
-      {/* Dashboard summary — 3 cards */}
-      <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* CARD 1: Scheduled repairs due soon */}
-        <Card className="border-amber-500/30">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-base">
-              <span className="flex items-center gap-2">
-                <CalendarClock className="h-4 w-4 text-amber-500" />
-                Scheduled ({dueSoon.length})
-              </span>
-              <span className="text-xs font-normal text-muted-foreground">due soon</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {dueSoon.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing due within 7 days or 100 miles.</p>
-            ) : (
-              <ul className="space-y-1.5 text-sm">
-                {dueSoon.slice(0, 3).map(it => {
-                  const v = vehicleById(it.vehicleId);
-                  return (
-                    <li key={it.key} className="flex items-center justify-between gap-2">
-                      <span className="truncate">{v ? `${v.year} ${v.make} ${v.model}` : it.vehicleId}</span>
-                      <span className={`shrink-0 text-xs ${it.status === "overdue" ? "text-destructive" : "text-muted-foreground"}`}>
-                        {it.label} · {scheduledRemainingLabel(it)}
-                      </span>
-                    </li>
-                  );
-                })}
-                {dueSoon.length > 3 && (
-                  <li className="text-xs text-muted-foreground">…{dueSoon.length - 3} more</li>
-                )}
-              </ul>
-            )}
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setTab("scheduled")}>Scheduled tab</Button>
-              <Button size="sm" variant="ghost" onClick={() => navigate({ to: "/fleet" })}>Configure</Button>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Phase 2 — Diagnose */}
+          <Card className="border-blue-500/40">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-blue-600">
+                  <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
+                  Diagnose
+                </span>
+                <span className="text-xs font-normal text-muted-foreground">{phase2.length}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 p-3 pt-0">
+              {phase2.length === 0 ? (
+                <p className="px-1 text-xs text-muted-foreground">Nothing here.</p>
+              ) : phase2.map(m => {
+                const v = vehicleById(m.vehicleId);
+                const total = m.cost ?? 0;
+                const required = m.depositRequired ?? total * 0.5;
+                return (
+                  <div key={m.id} className="rounded-md border border-border p-3">
+                    <div className="text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{m.serviceType}</div>
+                    <div className="mt-2 space-y-0.5 rounded bg-muted/40 p-2 text-xs">
+                      <div className="flex justify-between"><span>Parts</span><span>{fmtMoney(m.partsCost ?? 0)}</span></div>
+                      <div className="flex justify-between"><span>Labour</span><span>{fmtMoney(m.laborCost ?? 0)}</span></div>
+                      <div className="flex justify-between border-t border-border pt-0.5 font-medium"><span>Total</span><span>{fmtMoney(total)}</span></div>
+                    </div>
+                    {m.status === "pending_deposit" && (
+                      <>
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          Deposit (50%): <span className="font-medium text-foreground">{fmtMoney(required)}</span>
+                        </div>
+                        <Input
+                          className="mt-1 h-8"
+                          type="number" min="0" step="0.01"
+                          value={depositValue(m)}
+                          onChange={(e) => setDepositInputs(prev => ({ ...prev, [m.id]: e.target.value }))}
+                        />
+                        <div className="mt-2 flex gap-2">
+                          <Button size="sm" variant="outline" className="flex-1" onClick={() => handleProcessDeposit(m)}>Deposit</Button>
+                          <Button size="sm" className="flex-1" onClick={() => handleCompleteRepair(m)}>Complete</Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
 
-        {/* CARD 2: Open repairs */}
-        <Card className="border-destructive/30">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-base">
-              <span className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-                Open repairs ({openRepairs.length})
-              </span>
-              <span className="text-sm font-normal text-muted-foreground">
-                {fmtMoney(pendingCost)} pending
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {openRepairs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No open repairs. Fleet is in good shape.</p>
-            ) : (
-              <ul className="space-y-1.5 text-sm">
-                {openRepairs.slice(0, 2).map(m => {
-                  const v = vehicleById(m.vehicleId);
-                  return (
-                    <li key={m.id} className="flex items-center justify-between gap-2">
-                      <span className="truncate">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</span>
-                      <span className="truncate text-muted-foreground">{m.issueDescription || m.serviceType}</span>
-                    </li>
-                  );
-                })}
-                {openRepairs.length > 2 && (
-                  <li className="text-xs text-muted-foreground">…{openRepairs.length - 2} more</li>
-                )}
-              </ul>
-            )}
-            <Button size="sm" variant="outline" className="mt-2" onClick={() => setTab("completed")}>
-              View completed repairs
-            </Button>
-          </CardContent>
-        </Card>
+          {/* Phase 3 — Complete */}
+          <Card className="border-green-600/40">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-green-600">
+                  <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                  Complete
+                </span>
+                <span className="text-xs font-normal text-muted-foreground">{phase3.length}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 p-3 pt-0">
+              {phase3.length === 0 ? (
+                <p className="px-1 text-xs text-muted-foreground">Nothing here.</p>
+              ) : phase3.map(m => {
+                const v = vehicleById(m.vehicleId);
+                return (
+                  <div key={m.id} className="rounded-md border border-border p-3">
+                    <div className="text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{m.serviceType}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">Total {fmtMoney(m.cost ?? 0)}</div>
+                    <Button size="sm" className="mt-2 w-full" onClick={() => handleCompleteRepair(m)}>
+                      Complete Repair
+                    </Button>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </div>
+      </section>
 
-        {/* CARD 3: Completed (recent) */}
-        <Card className="border-green-600/30">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-base">
-              <span className="flex items-center gap-2">
-                <Wrench className="h-4 w-4 text-green-600" />
-                Completed ({completedRepairs.length})
-              </span>
-              <span className="text-xs font-normal text-muted-foreground">recent</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
+      {/* ===================== COMPLETED (MIDDLE) ===================== */}
+      <section className="mb-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            Completed (3 recent)
+          </h2>
+          <span className="text-sm text-muted-foreground">
+            {fmtMoney(completedThisMonthTotal)} this month
+          </span>
+        </div>
+        <Card>
+          <CardContent className="p-0">
             {completedRepairs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No completed repairs yet.</p>
+              <div className="p-6 text-center text-sm text-muted-foreground">No completed repairs yet.</div>
             ) : (
-              <ul className="space-y-1.5 text-sm">
+              <ul className="divide-y divide-border">
                 {completedRepairs.slice(0, 3).map(m => {
                   const v = vehicleById(m.vehicleId);
                   return (
-                    <li key={m.id} className="flex items-center justify-between gap-2">
+                    <li key={m.id} className="flex items-center justify-between gap-2 px-4 py-3">
                       <div className="min-w-0">
-                        <div className="truncate">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
+                        <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
                         <div className="truncate text-xs text-muted-foreground">
-                          {m.issueDescription || m.serviceType} · {fmtMoney(m.cost)} · {fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}
+                          {m.selectedSolution?.name ?? m.serviceType} · {fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}
                         </div>
                       </div>
-                      <Button size="sm" variant="ghost" className="h-7 shrink-0 px-2 text-xs" onClick={() => setDetailRecord(m)}>
-                        View Details
-                      </Button>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <span className="text-sm font-medium">{fmtMoney(m.cost)}</span>
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setDetailRecord(m)}>
+                          Details
+                        </Button>
+                      </div>
                     </li>
                   );
                 })}
               </ul>
             )}
-            <Button size="sm" variant="outline" className="mt-2" onClick={() => setTab("completed")}>
-              View all completed repairs →
-            </Button>
           </CardContent>
         </Card>
-      </div>
+        <button
+          className="mt-2 text-sm text-primary hover:underline"
+          onClick={() => { setTab("completed"); document.getElementById("scheduled-section")?.scrollIntoView({ behavior: "smooth" }); }}
+        >
+          View all completed repairs →
+        </button>
+      </section>
 
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="scheduled">Scheduled ({dueSoon.length})</TabsTrigger>
-          <TabsTrigger value="repairs">Repairs ({reportedInspectionRepairs.length})</TabsTrigger>
-          <TabsTrigger value="completed">Completed ({completedRepairs.length})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="scheduled" className="mt-4">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {/* Due soon */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <CalendarClock className="h-4 w-4 text-amber-500" />
-                  Due soon ({dueSoon.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                {dueSoon.length === 0 ? (
-                  <div className="p-6 text-center text-sm text-muted-foreground">Nothing due within 7 days or 100 miles.</div>
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {dueSoon.map(it => {
-                      const v = vehicleById(it.vehicleId);
-                      return (
-                        <li key={it.key} className="flex items-center justify-between gap-2 px-4 py-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : it.vehicleId}</div>
-                            <div className={`text-xs ${it.status === "overdue" ? "text-destructive" : "text-muted-foreground"}`}>
-                              {it.label} · {scheduledRemainingLabel(it)}
-                              {it.dueDate ? ` · due ${fmtDate(it.dueDate)}` : it.dueMileage ? ` · at ${it.dueMileage.toLocaleString()} mi` : ""}
-                            </div>
-                          </div>
-                          <Button size="sm" variant="outline" className="shrink-0" onClick={() => handleMarkComplete(it)}>
-                            Mark Complete
-                          </Button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Upcoming (not yet due) */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Wrench className="h-4 w-4 text-muted-foreground" />
-                  Upcoming
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                {allScheduled.filter(it => it.status === "upcoming").length === 0 ? (
-                  <div className="p-6 text-center text-sm text-muted-foreground">No upcoming scheduled maintenance.</div>
-                ) : (
-                  <ul className="divide-y divide-border">
-                    {allScheduled.filter(it => it.status === "upcoming").map(it => {
-                      const v = vehicleById(it.vehicleId);
-                      return (
-                        <li key={it.key} className="flex items-center justify-between gap-2 px-4 py-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : it.vehicleId}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {it.label} · {scheduledRemainingLabel(it)}
-                              {it.dueDate ? ` · due ${fmtDate(it.dueDate)}` : it.dueMileage ? ` · at ${it.dueMileage.toLocaleString()} mi` : ""}
-                            </div>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="repairs" className="mt-4">
-          {reportedInspectionRepairs.length === 0 && pendingDepositRepairs.length === 0 ? (
-            <Card>
-              <CardContent className="p-6 text-center text-sm text-muted-foreground">
-                No open repairs.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-6">
-            {reportedInspectionRepairs.length > 0 && (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {reportedInspectionRepairs.map(m => {
-                const v = vehicleById(m.vehicleId);
-                return (
-                  <Card key={m.id}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center justify-between text-base">
-                        <span className="flex items-center gap-2">
-                          <AlertTriangle className="h-4 w-4 text-amber-500" />
-                          Open Repair ({reportedInspectionRepairs.length})
-                        </span>
-                        <span className="text-xs font-normal text-muted-foreground">From inspection</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <div className="text-sm font-medium">
-                        {v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">Issue:</span>{" "}
-                        {m.serviceType}
-                      </div>
-                      {m.repairRequestNotes && (
-                        <div className="text-sm text-muted-foreground">
-                          <span className="font-medium text-foreground">Symptoms:</span>{" "}
-                          {m.repairRequestNotes}
-                        </div>
-                      )}
-                      {(m.partsCost || m.laborCost) && (
-                        <div className="flex gap-4 text-sm text-muted-foreground">
-                          {m.partsCost ? <span>Est. Parts: {fmtMoney(m.partsCost)}</span> : null}
-                          {m.laborCost ? <span>Est. Labour: {fmtMoney(m.laborCost)}</span> : null}
-                        </div>
-                      )}
-                      <Button
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => openTicketForm(m)}
-                      >
-                        Send to Create Ticket
-                      </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-            )}
-
-            {pendingDepositRepairs.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-muted-foreground">
-                  Pending Deposit ({pendingDepositRepairs.length})
-                </h3>
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  {pendingDepositRepairs.map(m => {
-                    const v = vehicleById(m.vehicleId);
-                    const total = m.cost ?? 0;
-                    const required = m.depositRequired ?? total * 0.5;
-                    return (
-                      <Card key={m.id}>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="flex items-center justify-between text-base">
-                            <span className="flex items-center gap-2">
-                              <Wrench className="h-4 w-4 text-blue-500" />
-                              Pending Deposit
-                            </span>
-                            {m.depositProcessed && (
-                              <span className="text-xs font-normal text-green-600">Deposit received</span>
-                            )}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          <div className="text-sm font-medium">
-                            {v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            <span className="font-medium text-foreground">Issue:</span> {m.serviceType}
-                          </div>
-                          <div className="space-y-1 rounded-md bg-muted/40 p-3 text-sm">
-                            <div className="flex justify-between"><span>Parts</span><span>{fmtMoney(m.partsCost ?? 0)}</span></div>
-                            <div className="flex justify-between"><span>Labour</span><span>{fmtMoney(m.laborCost ?? 0)}</span></div>
-                            <div className="flex justify-between border-t border-border pt-1 font-medium"><span>Total</span><span>{fmtMoney(total)}</span></div>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Deposit required (50%): <span className="font-medium text-foreground">{fmtMoney(required)}</span>
-                          </div>
-                          <div className="space-y-1">
-                            <Label htmlFor={`dep-${m.id}`}>Deposit amount ($)</Label>
-                            <Input
-                              id={`dep-${m.id}`}
-                              type="number" min="0" step="0.01"
-                              value={depositValue(m)}
-                              onChange={(e) => setDepositInputs(prev => ({ ...prev, [m.id]: e.target.value }))}
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline" onClick={() => handleProcessDeposit(m)}>
-                              Process Deposit
-                            </Button>
-                            <Button size="sm" onClick={() => handleCompleteRepair(m)}>
-                              Complete Repair
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
+      {/* ===================== SCHEDULED MAINTENANCE (BOTTOM) ===================== */}
+      <section id="scheduled-section" className="mb-6">
+        <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+          <Settings2 className="h-5 w-5 text-muted-foreground" />
+          Scheduled Maintenance
+        </h2>
+        <Card className="mb-4">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <div className="text-sm font-medium">{configuredCount}/{vehicles.length} vehicles configured</div>
+              <div className="text-sm text-muted-foreground">
+                {dueSoon.length === 0
+                  ? "Nothing due within 7 days or 100 miles."
+                  : `${dueSoon.length} item${dueSoon.length === 1 ? "" : "s"} due within 7 days or 100 miles.`}
               </div>
-            )}
             </div>
-          )}
-        </TabsContent>
+            <div className="flex shrink-0 gap-2">
+              <Button size="sm" variant="outline" onClick={() => navigate({ to: "/fleet" })}>Configure Alerts</Button>
+              <Button size="sm" onClick={() => setTab("scheduled")}>View Scheduled Tab</Button>
+            </div>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="completed" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Wrench className="h-4 w-4 text-green-600" />
-                Completed repairs ({completedRepairs.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {completedRepairs.length === 0 ? (
-                <div className="p-6 text-center text-sm text-muted-foreground">No completed repairs yet.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
-                        <th className="px-4 py-2 font-medium">Vehicle</th>
-                        <th className="px-4 py-2 font-medium">Repair</th>
-                        <th className="px-4 py-2 font-medium">Mechanic</th>
-                        <th className="px-4 py-2 text-right font-medium">Cost</th>
-                        <th className="px-4 py-2 font-medium">Completed</th>
-                        <th className="px-4 py-2 text-right font-medium">Details</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {completedRepairs.map(m => {
-                        const v = vehicleById(m.vehicleId);
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList>
+            <TabsTrigger value="scheduled">Scheduled ({dueSoon.length})</TabsTrigger>
+            <TabsTrigger value="completed">Completed ({completedRepairs.length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="scheduled" className="mt-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {/* Due soon */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <CalendarClock className="h-4 w-4 text-amber-500" />
+                    Due soon ({dueSoon.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {dueSoon.length === 0 ? (
+                    <div className="p-6 text-center text-sm text-muted-foreground">Nothing due within 7 days or 100 miles.</div>
+                  ) : (
+                    <ul className="divide-y divide-border">
+                      {dueSoon.map(it => {
+                        const v = vehicleById(it.vehicleId);
                         return (
-                          <tr key={m.id} className="hover:bg-muted/40">
-                            <td className="px-4 py-2">
-                              <div className="font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
-                              <div className="text-xs text-muted-foreground">Tag #{v?.plate ?? "—"}</div>
-                            </td>
-                            <td className="px-4 py-2">{m.selectedSolution?.name ?? m.serviceType}</td>
-                            <td className="px-4 py-2">{m.completedBy || m.vendor || "—"}</td>
-                            <td className="px-4 py-2 text-right font-medium">{fmtMoney(m.cost)}</td>
-                            <td className="px-4 py-2">{fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}</td>
-                            <td className="px-4 py-2 text-right">
-                              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setDetailRecord(m)}>
-                                View Details
-                              </Button>
-                            </td>
-                          </tr>
+                          <li key={it.key} className="flex items-center justify-between gap-2 px-4 py-3">
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : it.vehicleId}</div>
+                              <div className={`text-xs ${it.status === "overdue" ? "text-destructive" : "text-muted-foreground"}`}>
+                                {it.label} · {scheduledRemainingLabel(it)}
+                                {it.dueDate ? ` · due ${fmtDate(it.dueDate)}` : it.dueMileage ? ` · at ${it.dueMileage.toLocaleString()} mi` : ""}
+                              </div>
+                            </div>
+                            <Button size="sm" variant="outline" className="shrink-0" onClick={() => handleMarkComplete(it)}>
+                              Mark Complete
+                            </Button>
+                          </li>
                         );
                       })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Upcoming (not yet due) */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Wrench className="h-4 w-4 text-muted-foreground" />
+                    Upcoming
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {allScheduled.filter(it => it.status === "upcoming").length === 0 ? (
+                    <div className="p-6 text-center text-sm text-muted-foreground">No upcoming scheduled maintenance.</div>
+                  ) : (
+                    <ul className="divide-y divide-border">
+                      {allScheduled.filter(it => it.status === "upcoming").map(it => {
+                        const v = vehicleById(it.vehicleId);
+                        return (
+                          <li key={it.key} className="flex items-center justify-between gap-2 px-4 py-3">
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : it.vehicleId}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {it.label} · {scheduledRemainingLabel(it)}
+                                {it.dueDate ? ` · due ${fmtDate(it.dueDate)}` : it.dueMileage ? ` · at ${it.dueMileage.toLocaleString()} mi` : ""}
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="completed" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Wrench className="h-4 w-4 text-green-600" />
+                  Completed repairs ({completedRepairs.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {completedRepairs.length === 0 ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">No completed repairs yet.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                          <th className="px-4 py-2 font-medium">Vehicle</th>
+                          <th className="px-4 py-2 font-medium">Repair</th>
+                          <th className="px-4 py-2 font-medium">Mechanic</th>
+                          <th className="px-4 py-2 text-right font-medium">Cost</th>
+                          <th className="px-4 py-2 font-medium">Completed</th>
+                          <th className="px-4 py-2 text-right font-medium">Details</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {completedRepairs.map(m => {
+                          const v = vehicleById(m.vehicleId);
+                          return (
+                            <tr key={m.id} className="hover:bg-muted/40">
+                              <td className="px-4 py-2">
+                                <div className="font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
+                                <div className="text-xs text-muted-foreground">Tag #{v?.plate ?? "—"}</div>
+                              </td>
+                              <td className="px-4 py-2">{m.selectedSolution?.name ?? m.serviceType}</td>
+                              <td className="px-4 py-2">{m.completedBy || m.vendor || "—"}</td>
+                              <td className="px-4 py-2 text-right font-medium">{fmtMoney(m.cost)}</td>
+                              <td className="px-4 py-2">{fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}</td>
+                              <td className="px-4 py-2 text-right">
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setDetailRecord(m)}>
+                                  View Details
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </section>
 
       <CompletedRepairDetailDialog
         record={detailRecord}
