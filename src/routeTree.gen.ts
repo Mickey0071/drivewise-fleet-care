@@ -60,8 +60,6 @@ import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/publi
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
 import { Route as ApiPublicHooksRepairDigestRouteImport } from './routes/api/public/hooks/repair-digest'
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
-import { Route as ApiPublicHooksAutopayRemindersRouteImport } from './routes/api/public/hooks/autopay-reminders'
-import { Route as ApiPublicHooksAutoRenewChargesRouteImport } from './routes/api/public/hooks/auto-renew-charges'
 import { Route as ApiPublicHooksAutoExtensionLinksRouteImport } from './routes/api/public/hooks/auto-extension-links'
 
 const ViolationsRoute = ViolationsRouteImport.update({
@@ -323,18 +321,6 @@ const ApiPublicHooksDailyReportsRoute =
     path: '/api/public/hooks/daily-reports',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicHooksAutopayRemindersRoute =
-  ApiPublicHooksAutopayRemindersRouteImport.update({
-    id: '/api/public/hooks/autopay-reminders',
-    path: '/api/public/hooks/autopay-reminders',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksAutoRenewChargesRoute =
-  ApiPublicHooksAutoRenewChargesRouteImport.update({
-    id: '/api/public/hooks/auto-renew-charges',
-    path: '/api/public/hooks/auto-renew-charges',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicHooksAutoExtensionLinksRoute =
   ApiPublicHooksAutoExtensionLinksRouteImport.update({
     id: '/api/public/hooks/auto-extension-links',
@@ -391,8 +377,6 @@ export interface FileRoutesByFullPath {
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
-  '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
-  '/api/public/hooks/autopay-reminders': typeof ApiPublicHooksAutopayRemindersRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
@@ -447,8 +431,6 @@ export interface FileRoutesByTo {
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
-  '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
-  '/api/public/hooks/autopay-reminders': typeof ApiPublicHooksAutopayRemindersRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
@@ -504,8 +486,6 @@ export interface FileRoutesById {
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
-  '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
-  '/api/public/hooks/autopay-reminders': typeof ApiPublicHooksAutopayRemindersRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
@@ -562,8 +542,6 @@ export interface FileRouteTypes {
     | '/rent/portal/$rentalId'
     | '/runner/task/$taskId'
     | '/api/public/hooks/auto-extension-links'
-    | '/api/public/hooks/auto-renew-charges'
-    | '/api/public/hooks/autopay-reminders'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
@@ -618,8 +596,6 @@ export interface FileRouteTypes {
     | '/rent/portal/$rentalId'
     | '/runner/task/$taskId'
     | '/api/public/hooks/auto-extension-links'
-    | '/api/public/hooks/auto-renew-charges'
-    | '/api/public/hooks/autopay-reminders'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
@@ -674,8 +650,6 @@ export interface FileRouteTypes {
     | '/rent/portal/$rentalId'
     | '/runner/task/$taskId'
     | '/api/public/hooks/auto-extension-links'
-    | '/api/public/hooks/auto-renew-charges'
-    | '/api/public/hooks/autopay-reminders'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
@@ -729,8 +703,6 @@ export interface RootRouteChildren {
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
   RunnerTaskTaskIdRoute: typeof RunnerTaskTaskIdRoute
   ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
-  ApiPublicHooksAutoRenewChargesRoute: typeof ApiPublicHooksAutoRenewChargesRoute
-  ApiPublicHooksAutopayRemindersRoute: typeof ApiPublicHooksAutopayRemindersRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
   ApiPublicHooksRepairDigestRoute: typeof ApiPublicHooksRepairDigestRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
@@ -1096,20 +1068,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksDailyReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/autopay-reminders': {
-      id: '/api/public/hooks/autopay-reminders'
-      path: '/api/public/hooks/autopay-reminders'
-      fullPath: '/api/public/hooks/autopay-reminders'
-      preLoaderRoute: typeof ApiPublicHooksAutopayRemindersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/auto-renew-charges': {
-      id: '/api/public/hooks/auto-renew-charges'
-      path: '/api/public/hooks/auto-renew-charges'
-      fullPath: '/api/public/hooks/auto-renew-charges'
-      preLoaderRoute: typeof ApiPublicHooksAutoRenewChargesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/hooks/auto-extension-links': {
       id: '/api/public/hooks/auto-extension-links'
       path: '/api/public/hooks/auto-extension-links'
@@ -1189,8 +1147,6 @@ const rootRouteChildren: RootRouteChildren = {
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
   RunnerTaskTaskIdRoute: RunnerTaskTaskIdRoute,
   ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
-  ApiPublicHooksAutoRenewChargesRoute: ApiPublicHooksAutoRenewChargesRoute,
-  ApiPublicHooksAutopayRemindersRoute: ApiPublicHooksAutopayRemindersRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
   ApiPublicHooksRepairDigestRoute: ApiPublicHooksRepairDigestRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,
@@ -1199,3 +1155,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
