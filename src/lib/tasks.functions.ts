@@ -177,6 +177,10 @@ export const createRunnerRepairRequest = createServerFn({ method: "POST" })
     notes?: string;
     estimatedCost?: number;
     mileage?: number;
+    partsCost?: number;
+    laborCost?: number;
+    inspectionId?: string;
+    runnerName?: string;
   }) => {
     if (!input.vehicleId) throw new Error("vehicleId required");
     if (!input.issue || !input.issue.trim()) throw new Error("issue required");
@@ -184,6 +188,11 @@ export const createRunnerRepairRequest = createServerFn({ method: "POST" })
     if (input.notes && input.notes.length > 2000) throw new Error("notes too long");
     if (input.estimatedCost != null && (typeof input.estimatedCost !== "number" || input.estimatedCost < 0 || input.estimatedCost > 1000000)) {
       throw new Error("Invalid estimated cost");
+    }
+    for (const c of [input.partsCost, input.laborCost]) {
+      if (c != null && (typeof c !== "number" || c < 0 || c > 1000000)) {
+        throw new Error("Invalid cost");
+      }
     }
     if (input.mileage != null && (!Number.isInteger(input.mileage) || input.mileage < 0)) {
       throw new Error("Invalid mileage");
@@ -196,6 +205,9 @@ export const createRunnerRepairRequest = createServerFn({ method: "POST" })
     const notes = data.notes?.trim() || "";
     const description = notes ? `${issue} — ${notes}` : issue;
     const mid = "MN-" + Math.random().toString(36).slice(2, 12).toUpperCase();
+    const parts = data.partsCost ?? 0;
+    const labor = data.laborCost ?? 0;
+    const totalCost = parts + labor || (data.estimatedCost ?? 0);
 
     // RLS "Runners insert maintenance" gates this insert to runners.
     const { error: mErr } = await supabase.from("maintenance").insert({
@@ -203,20 +215,24 @@ export const createRunnerRepairRequest = createServerFn({ method: "POST" })
       vehicle_id: data.vehicleId,
       service_type: issue,
       issue_description: description,
-      status: "open",
+      status: "reported",
       vendor: "Pending assignment",
       date_completed: null,
       mileage_at_service: data.mileage ?? 0,
-      cost: data.estimatedCost ?? 0,
+      cost: totalCost,
+      parts_cost: parts,
+      labor_cost: labor,
       next_service_due: new Date().toISOString().slice(0, 10),
       runner_id: context.userId,
       repair_request_notes: notes || null,
-      approval_status: "pending",
+      customer_notes: notes || null,
+      source: "inspection_fail",
+      inspection_id: data.inspectionId ?? null,
       is_rental_blocking: true,
     });
     if (mErr) throw new Error(mErr.message);
 
-    // Flag the vehicle as having an open issue.
+    // Flag the vehicle as having an open issue and block rentals.
     await supabase
       .from("vehicles")
       .update({ has_open_issues: true })
@@ -234,7 +250,7 @@ export const createRunnerRepairRequest = createServerFn({ method: "POST" })
     try {
       await sendSms(
         "+12672213977",
-        `Camauto: Runner repair request — ${vLabel}. ${description}${data.estimatedCost ? ` (est. $${data.estimatedCost})` : ""}. Awaiting approval.`,
+        `⚠️ INSPECTION ISSUE: ${vLabel} — ${issue}${data.runnerName ? ` | Runner: ${data.runnerName}` : ""}${totalCost ? ` | est. $${totalCost}` : ""}`,
         "Admin",
       );
     } catch {
