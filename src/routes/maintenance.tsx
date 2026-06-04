@@ -253,8 +253,8 @@ function MaintenancePage() {
                 )}
               </ul>
             )}
-            <Button size="sm" variant="outline" className="mt-2" onClick={() => setTab("repairs")}>
-              Go to Repairs tab
+            <Button size="sm" variant="outline" className="mt-2" onClick={() => setTab("completed")}>
+              View completed repairs
             </Button>
           </CardContent>
         </Card>
@@ -303,7 +303,6 @@ function MaintenancePage() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="scheduled">Scheduled ({dueSoon.length})</TabsTrigger>
-          <TabsTrigger value="repairs">Repairs ({repairs.length})</TabsTrigger>
           <TabsTrigger value="completed">Completed ({completedRepairs.length})</TabsTrigger>
         </TabsList>
 
@@ -376,10 +375,6 @@ function MaintenancePage() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="repairs" className="mt-4">
-          <RepairsBoard onReportIssue={() => setReportIssueOpen(true)} />
         </TabsContent>
 
         <TabsContent value="completed" className="mt-4">
