@@ -373,6 +373,10 @@ const fromMaintenance = (r: any): Maintenance => ({
   approvedBy: r.approved_by ?? undefined,
   source: r.source ?? undefined,
   inspectionId: r.inspection_id ?? undefined,
+  depositRequired: r.deposit_required != null ? Number(r.deposit_required) : undefined,
+  depositAmount: r.deposit_amount != null ? Number(r.deposit_amount) : undefined,
+  depositProcessed: !!r.deposit_processed,
+  depositDate: r.deposit_date ?? undefined,
 });
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
