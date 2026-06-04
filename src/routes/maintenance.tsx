@@ -73,6 +73,11 @@ function MaintenancePage() {
     .filter(m => m.status === "reported" && m.source === "inspection_fail")
     .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
 
+  // Repairs awaiting deposit (ticket created, pre-completion)
+  const pendingDepositRepairs = maintenance
+    .filter(m => m.status === "pending_deposit")
+    .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
+
   const monthKey = new Date().toISOString().slice(0, 7);
   const completedThisMonth = completedRepairs.filter(
     m => (m.completionDate ?? m.dateCompleted ?? "").slice(0, 7) === monthKey,
