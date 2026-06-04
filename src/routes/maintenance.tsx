@@ -407,6 +407,17 @@ function MaintenancePage() {
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
                         <span className="text-sm font-medium">{fmtMoney(m.cost)}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => {
+                            reverseRepairToDiagnose(m.id);
+                            toast.success("Repair reversed back to Diagnose");
+                          }}
+                        >
+                          <RotateCcw className="mr-1 h-3 w-3" /> Reverse
+                        </Button>
                         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setDetailRecord(m)}>
                           Details
                         </Button>
