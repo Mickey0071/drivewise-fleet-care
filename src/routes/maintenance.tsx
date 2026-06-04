@@ -114,7 +114,6 @@ function MaintenancePage() {
           </div>
         }
       />
-      <CreateRepairDialog open={repairOpen} onOpenChange={setRepairOpen} />
       <ReportIssueDialog open={reportIssueOpen} onOpenChange={setReportIssueOpen} />
 
       {/* Configuration section */}
