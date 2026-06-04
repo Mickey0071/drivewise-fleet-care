@@ -386,11 +386,7 @@ function MaintenancePage() {
         </TabsContent>
 
         <TabsContent value="repairs" className="mt-4">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Track repairs from open issue to fully-paid completion.</p>
-            <Button size="sm" onClick={() => setRepairOpen(true)}>+ New Repair</Button>
-          </div>
-          <RepairsBoard />
+          <RepairsBoard onReportIssue={() => setReportIssueOpen(true)} />
         </TabsContent>
 
         <TabsContent value="completed" className="mt-4">
