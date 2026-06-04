@@ -212,17 +212,24 @@ function MaintenancePage() {
                 <p className="px-1 text-xs text-muted-foreground">Nothing here.</p>
               ) : phase1.map(m => {
                 const v = vehicleById(m.vehicleId);
+                const fromInspection = (m.source ?? "").includes("inspection");
                 return (
-                  <div key={m.id} className="rounded-md border border-border p-3">
+                  <div key={m.id} className="rounded-md border border-l-[3px] border-l-yellow-500 border-border p-3">
                     <div className="text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{m.serviceType}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{m.issueDescription ?? m.serviceType}</div>
                     {m.repairRequestNotes && (
                       <div className="mt-1 text-xs text-muted-foreground">
                         <span className="font-medium text-foreground">Symptoms:</span> {m.repairRequestNotes}
                       </div>
                     )}
-                    <Button size="sm" className="mt-2 w-full" onClick={() => openTicketForm(m)}>
-                      Send to Create Ticket
+                    <div className="mt-2 flex items-center justify-between">
+                      <Badge variant="secondary" className="text-[10px]">
+                        {fromInspection ? "From inspection" : "Manual"}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground">{fmtDate((m.createdAt ?? "").slice(0, 10))}</span>
+                    </div>
+                    <Button size="sm" className="mt-2 w-full" onClick={() => moveRepairToDiagnose(m.id)}>
+                      Move to Diagnose →
                     </Button>
                   </div>
                 );
@@ -246,34 +253,43 @@ function MaintenancePage() {
                 <p className="px-1 text-xs text-muted-foreground">Nothing here.</p>
               ) : phase2.map(m => {
                 const v = vehicleById(m.vehicleId);
-                const total = m.cost ?? 0;
-                const required = m.depositRequired ?? total * 0.5;
+                const d = diagFor(m);
+                const parts = parseFloat(d.partsCost) || 0;
+                const labour = parseFloat(d.laborCost) || 0;
+                const total = parts + labour;
                 return (
-                  <div key={m.id} className="rounded-md border border-border p-3">
+                  <div key={m.id} className="rounded-md border border-l-[3px] border-l-blue-500 border-border p-3">
                     <div className="text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{m.serviceType}</div>
-                    <div className="mt-2 space-y-0.5 rounded bg-muted/40 p-2 text-xs">
-                      <div className="flex justify-between"><span>Parts</span><span>{fmtMoney(m.partsCost ?? 0)}</span></div>
-                      <div className="flex justify-between"><span>Labour</span><span>{fmtMoney(m.laborCost ?? 0)}</span></div>
-                      <div className="flex justify-between border-t border-border pt-0.5 font-medium"><span>Total</span><span>{fmtMoney(total)}</span></div>
-                    </div>
-                    {m.status === "pending_deposit" && (
-                      <>
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          Deposit (50%): <span className="font-medium text-foreground">{fmtMoney(required)}</span>
-                        </div>
-                        <Input
-                          className="mt-1 h-8"
-                          type="number" min="0" step="0.01"
-                          value={depositValue(m)}
-                          onChange={(e) => setDepositInputs(prev => ({ ...prev, [m.id]: e.target.value }))}
+                    <div className="mt-0.5 text-xs text-muted-foreground">{m.issueDescription ?? m.serviceType}</div>
+                    <div className="mt-2 space-y-2">
+                      <div>
+                        <Label className="text-[11px]">Parts needed</Label>
+                        <Textarea
+                          className="mt-1 min-h-[52px] text-xs"
+                          placeholder="e.g. Front brake pads, rotors"
+                          value={d.partsNeeded}
+                          onChange={(e) => setDiag(m.id, { partsNeeded: e.target.value })}
                         />
-                        <div className="mt-2 flex gap-2">
-                          <Button size="sm" variant="outline" className="flex-1" onClick={() => handleProcessDeposit(m)}>Deposit</Button>
-                          <Button size="sm" className="flex-1" onClick={() => handleCompleteRepair(m)}>Complete</Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Label className="text-[11px]">Parts $</Label>
+                          <Input className="mt-1 h-8" type="number" min="0" step="0.01"
+                            value={d.partsCost} onChange={(e) => setDiag(m.id, { partsCost: e.target.value })} />
                         </div>
-                      </>
-                    )}
+                        <div className="flex-1">
+                          <Label className="text-[11px]">Labour $</Label>
+                          <Input className="mt-1 h-8" type="number" min="0" step="0.01"
+                            value={d.laborCost} onChange={(e) => setDiag(m.id, { laborCost: e.target.value })} />
+                        </div>
+                      </div>
+                      <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs font-medium">
+                        <span>Total</span><span>{fmtMoney(total)}</span>
+                      </div>
+                    </div>
+                    <Button size="sm" className="mt-2 w-full" onClick={() => handleSaveDiagnosis(m)}>
+                      Save Diagnosis →
+                    </Button>
                   </div>
                 );
               })}
@@ -296,12 +312,35 @@ function MaintenancePage() {
                 <p className="px-1 text-xs text-muted-foreground">Nothing here.</p>
               ) : phase3.map(m => {
                 const v = vehicleById(m.vehicleId);
+                const total = m.cost ?? 0;
+                const paid = m.amountPaid ?? 0;
+                const balance = Math.max(0, total - paid);
                 return (
-                  <div key={m.id} className="rounded-md border border-border p-3">
+                  <div key={m.id} className="rounded-md border border-l-[3px] border-l-green-600 border-border p-3">
                     <div className="text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{m.serviceType}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">Total {fmtMoney(m.cost ?? 0)}</div>
-                    <Button size="sm" className="mt-2 w-full" onClick={() => handleCompleteRepair(m)}>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{m.issueDescription ?? m.serviceType}</div>
+                    {m.diagnosisNotes && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Parts used:</span> {m.diagnosisNotes}
+                      </div>
+                    )}
+                    <div className="mt-2 space-y-0.5 rounded bg-muted/40 p-2 text-xs">
+                      <div className="flex justify-between"><span>Total</span><span>{fmtMoney(total)}</span></div>
+                      <div className="flex justify-between"><span>Paid</span><span>{fmtMoney(paid)}</span></div>
+                      <div className="flex justify-between border-t border-border pt-0.5 font-medium"><span>Balance</span><span>{fmtMoney(balance)}</span></div>
+                    </div>
+                    {payOpenId === m.id ? (
+                      <div className="mt-2 flex gap-2">
+                        <Input className="h-8" type="number" min="0" step="0.01" placeholder="Amount"
+                          value={payInputs[m.id] ?? ""} onChange={(e) => setPayInputs(prev => ({ ...prev, [m.id]: e.target.value }))} />
+                        <Button size="sm" onClick={() => handleProcessPayment(m)}>Submit</Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" className="mt-2 w-full" onClick={() => setPayOpenId(m.id)}>
+                        + Process Payment
+                      </Button>
+                    )}
+                    <Button size="sm" className="mt-2 w-full" disabled={balance > 0} onClick={() => handleCompleteRepair(m)}>
                       Complete Repair
                     </Button>
                   </div>
