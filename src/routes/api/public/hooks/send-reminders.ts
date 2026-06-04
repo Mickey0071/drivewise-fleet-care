@@ -285,27 +285,16 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
               repairVehiclesById.set(v.id, `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}`.trim())
             );
           }
-          const phaseLabel: Record<string, string> = {
-            reported: "Phase 1 State Issue",
-            diagnosing: "Phase 2 Diagnose",
-            pending_complete: "Phase 3 Complete",
-          };
-          const daysOpen = (iso: string | null | undefined) => {
-            if (!iso) return 0;
-            return Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 86400000));
-          };
           const lines = activeRepairs
-            .slice(0, 10)
+            .slice(0, 20)
             .map((r) => {
               const veh = repairVehiclesById.get(r.vehicle_id) || r.vehicle_id;
               const issue = (r.issue_description || r.service_type || "Repair").toString();
-              const phase = phaseLabel[r.status as string] || r.status;
-              const d = daysOpen(r.created_at);
-              return `• ${veh} — ${issue} | ${phase} | ${d}d open`;
+              return `• ${veh} — ${issue}`;
             })
             .join("\n");
-          const more = activeRepairs.length > 10 ? `\n…and ${activeRepairs.length - 10} more` : "";
-          const repairMsg = `Camauto: ${activeRepairs.length} active repair${activeRepairs.length === 1 ? "" : "s"} still open.\n${lines}${more}`;
+          const more = activeRepairs.length > 20 ? `\n…and ${activeRepairs.length - 20} more` : "";
+          const repairMsg = `Camauto: ${activeRepairs.length} active repair${activeRepairs.length === 1 ? "" : "s"}\n${lines}${more}`;
           try {
             await sendSms(ADMIN_REPAIR_PHONE, repairMsg, "Admin");
             await supabaseAdmin.from("reminder_log").insert({
