@@ -93,7 +93,9 @@ function IssueCard({ m }: { m: Maintenance }) {
       <CardContent className="space-y-2 p-3">
         <div className="flex items-center justify-between gap-2">
           <VehicleLink vehicleId={m.vehicleId} />
-          <Badge variant="outline">Reported</Badge>
+          <Badge variant={m.source === "inspection_fail" ? "secondary" : "outline"}>
+            {m.source === "inspection_fail" ? "From inspection" : "Reported"}
+          </Badge>
         </div>
         {!editing ? (
           <>

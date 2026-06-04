@@ -371,6 +371,8 @@ const fromMaintenance = (r: any): Maintenance => ({
   approvalStatus: r.approval_status ?? undefined,
   approvalDate: r.approval_date ?? undefined,
   approvedBy: r.approved_by ?? undefined,
+  source: r.source ?? undefined,
+  inspectionId: r.inspection_id ?? undefined,
 });
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
@@ -398,6 +400,8 @@ const toMaintenance = (m: Maintenance) => ({
   approval_status: m.approvalStatus ?? null,
   approval_date: m.approvalDate ?? null,
   approved_by: m.approvedBy ?? null,
+  source: m.source ?? "manual_report",
+  inspection_id: m.inspectionId ?? null,
 });
 
 // ---- staff ----

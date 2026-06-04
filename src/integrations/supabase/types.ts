@@ -503,6 +503,7 @@ export type Database = {
           diagnosis_notes: string | null
           down_payment: number
           id: string
+          inspection_id: string | null
           is_rental_blocking: boolean
           issue_description: string | null
           labor_cost: number
@@ -516,6 +517,7 @@ export type Database = {
           selected_solution: Json | null
           service_type: string
           solutions: Json | null
+          source: string
           source_inspection_id: string | null
           status: string | null
           updated_at: string
@@ -538,6 +540,7 @@ export type Database = {
           diagnosis_notes?: string | null
           down_payment?: number
           id: string
+          inspection_id?: string | null
           is_rental_blocking?: boolean
           issue_description?: string | null
           labor_cost?: number
@@ -551,6 +554,7 @@ export type Database = {
           selected_solution?: Json | null
           service_type: string
           solutions?: Json | null
+          source?: string
           source_inspection_id?: string | null
           status?: string | null
           updated_at?: string
@@ -573,6 +577,7 @@ export type Database = {
           diagnosis_notes?: string | null
           down_payment?: number
           id?: string
+          inspection_id?: string | null
           is_rental_blocking?: boolean
           issue_description?: string | null
           labor_cost?: number
@@ -586,6 +591,7 @@ export type Database = {
           selected_solution?: Json | null
           service_type?: string
           solutions?: Json | null
+          source?: string
           source_inspection_id?: string | null
           status?: string | null
           updated_at?: string

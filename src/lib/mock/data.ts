@@ -193,6 +193,10 @@ export interface Maintenance {
   approvalStatus?: "pending" | "approved" | "rejected";
   approvalDate?: string;
   approvedBy?: string;
+  /** Where the issue originated: "manual_report" or "inspection_fail". */
+  source?: string;
+  /** Inspection that triggered this issue, when source = "inspection_fail". */
+  inspectionId?: string;
 }
 export type RepairStatus = "reported" | "open" | "in_progress" | "complete";
 export interface RepairSolution {
