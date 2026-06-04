@@ -3,8 +3,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { listMyRentals } from "@/lib/my-rentals.functions";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { Loader2, ChevronRight, Car } from "lucide-react";
 
 export const Route = createFileRoute("/my-rentals")({
