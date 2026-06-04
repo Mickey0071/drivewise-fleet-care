@@ -400,6 +400,8 @@ const toMaintenance = (m: Maintenance) => ({
   approval_status: m.approvalStatus ?? null,
   approval_date: m.approvalDate ?? null,
   approved_by: m.approvedBy ?? null,
+  source: m.source ?? "manual_report",
+  inspection_id: m.inspectionId ?? null,
 });
 
 // ---- staff ----
