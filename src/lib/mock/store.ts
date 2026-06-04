@@ -2195,7 +2195,7 @@ function moveIssueToOpenRepairImpl(id: string) {
 // Used by the Maintenance "Active Repairs" board.
 // ---------------------------------------------------------------------------
 /** [+ Create Repair] — admin opens a repair manually. Phase 1 (reported). */
-export function createManualRepair(vehicleId: string, issueDescription: string) {
+export function createManualRepair(vehicleId: string, issueDescription: string, takeOffRental = true) {
   const issue = issueDescription.trim();
   const v = vehicles.find(x => x.id === vehicleId);
   const rec: Maintenance = {
@@ -2210,7 +2210,7 @@ export function createManualRepair(vehicleId: string, issueDescription: string) 
     nextServiceDue: new Date().toISOString().slice(0, 10),
     status: "reported",
     source: "manual",
-    isRentalBlocking: true,
+    isRentalBlocking: takeOffRental,
     downPayment: 0,
     amountPaid: 0,
     balance: 0,
