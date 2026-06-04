@@ -50,8 +50,6 @@ function VehicleDetail() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [createWoOpen, setCreateWoOpen] = useState(false);
-  const [addIssueOpen, setAddIssueOpen] = useState(false);
-  const [addRepairOpen, setAddRepairOpen] = useState(false);
   const [activeWo, setActiveWo] = useState<WorkOrder | null>(null);
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
