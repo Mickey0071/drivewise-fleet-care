@@ -74,13 +74,43 @@ function MaintenancePage() {
     toast.success(`Deposit of ${fmtMoney(amt)} processed`);
   }
 
+  // Completion summary dialog
+  const [completeRecord, setCompleteRecord] = useState<Maintenance | null>(null);
+  const [mechanicName, setMechanicName] = useState("");
+  const [completionSummary, setCompletionSummary] = useState<RepairCompletionSummary | null>(null);
+  const [adminName, setAdminName] = useState("Admin");
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const uid = data.user?.id;
+      if (!uid) return;
+      const { data: prof } = await supabase
+        .from("profiles").select("full_name, first_name").eq("id", uid).maybeSingle();
+      setAdminName(prof?.full_name || prof?.first_name || data.user?.email || "Admin");
+    })();
+  }, []);
+
   function handleCompleteRepair(m: Maintenance) {
     const amtStr = depositInputs[m.id];
     if (amtStr != null && parseFloat(amtStr) > 0 && !m.depositProcessed) {
       processRepairDeposit(m.id, parseFloat(amtStr));
     }
-    const summary = completeRepair(m.id);
-    if (summary) toast.success(`Repair completed — ${fmtMoney(summary.total)} posted to P&L`);
+    setMechanicName(m.mechanicName ?? "");
+    setCompletionSummary(null);
+    setCompleteRecord(m);
+  }
+
+  function confirmCompleteRepair() {
+    if (!completeRecord) return;
+    const summary = completeRepair(completeRecord.id, {
+      completedBy: adminName,
+      mechanicName: mechanicName.trim() || undefined,
+    });
+    if (summary) {
+      setCompletionSummary(summary);
+      toast.success(`Repair completed — ${fmtMoney(summary.total)} posted to P&L`);
+    }
   }
 
   // Repairs (kanban-tracked)
