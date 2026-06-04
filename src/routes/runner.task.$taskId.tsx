@@ -244,7 +244,7 @@ function TaskPage() {
         },
       });
       setTicketed((t) => ({ ...t, [key]: true }));
-      toast.success("Repair ticket created — awaiting admin approval");
+      toast.success("Issue sent to Maintenance — vehicle marked unavailable");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to create ticket");
     } finally {
