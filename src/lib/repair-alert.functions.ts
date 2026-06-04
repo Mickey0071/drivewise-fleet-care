@@ -16,6 +16,10 @@ export const sendNewRepairAlert = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }) => {
+    const { isNotificationEnabled } = await import("@/lib/notifications.server");
+    if (!(await isNotificationEnabled("new_issue_alerts"))) {
+      return { ok: true, skipped: "disabled" };
+    }
     const msg = `🔧 New repair logged\n• ${data.vehicle} — ${data.issue}`;
     await sendSms(ADMIN_REPAIR_PHONE, msg, "Admin");
     return { ok: true };

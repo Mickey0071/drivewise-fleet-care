@@ -623,6 +623,45 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          link_template: string | null
+          message_template: string | null
+          notification_type: string
+          recipient_number: string | null
+          recipient_type: string
+          send_time: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          link_template?: string | null
+          message_template?: string | null
+          notification_type: string
+          recipient_number?: string | null
+          recipient_type?: string
+          send_time?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          link_template?: string | null
+          message_template?: string | null
+          notification_type?: string
+          recipient_number?: string | null
+          recipient_type?: string
+          send_time?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payment_link_logs: {
         Row: {
           amount_cents: number

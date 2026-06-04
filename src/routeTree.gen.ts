@@ -49,6 +49,7 @@ import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rent
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
 import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as RunnerTaskTaskIdRouteImport } from './routes/runner.task.$taskId'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
@@ -259,6 +260,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
+  id: '/admin/notifications',
+  path: '/admin/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
   id: '/admin/create-task',
   path: '/admin/create-task',
@@ -340,6 +346,7 @@ export interface FileRoutesByFullPath {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -391,6 +398,7 @@ export interface FileRoutesByTo {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -443,6 +451,7 @@ export interface FileRoutesById {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -496,6 +505,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/admin/create-task'
+    | '/admin/notifications'
     | '/admin/users'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -547,6 +557,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/admin/create-task'
+    | '/admin/notifications'
     | '/admin/users'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -598,6 +609,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/admin/create-task'
+    | '/admin/notifications'
     | '/admin/users'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -650,6 +662,7 @@ export interface RootRouteChildren {
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
   AdminCreateTaskRoute: typeof AdminCreateTaskRoute
+  AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ExtendTokenRoute: typeof ExtendTokenRoute
   PortalSignupRentalIdRoute: typeof PortalSignupRentalIdRoute
@@ -952,6 +965,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/notifications': {
+      id: '/admin/notifications'
+      path: '/admin/notifications'
+      fullPath: '/admin/notifications'
+      preLoaderRoute: typeof AdminNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/create-task': {
       id: '/admin/create-task'
       path: '/admin/create-task'
@@ -1070,6 +1090,7 @@ const rootRouteChildren: RootRouteChildren = {
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
   AdminCreateTaskRoute: AdminCreateTaskRoute,
+  AdminNotificationsRoute: AdminNotificationsRoute,
   AdminUsersRoute: AdminUsersRoute,
   ExtendTokenRoute: ExtendTokenRoute,
   PortalSignupRentalIdRoute: PortalSignupRentalIdRoute,
