@@ -701,3 +701,22 @@ function MaintenancePage() {
     </div>
   );
 }
+
+function RepairRow({ m, open, onToggle }: { m: Maintenance; open: boolean; onToggle: () => void }) {
+  const v = vehicleById(m.vehicleId);
+  const name = v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId;
+  const issue = m.issueDescription ?? m.serviceType;
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/40"
+    >
+      {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+      <span className="min-w-0 flex-1 truncate text-sm">
+        <span className="font-medium">{name}</span>
+        <span className="text-muted-foreground"> — {issue}</span>
+      </span>
+    </button>
+  );
+}
