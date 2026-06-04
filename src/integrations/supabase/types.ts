@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      auto_extension_offers: {
+        Row: {
+          auto_pay_enabled: boolean
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          extension_choice: string | null
+          extension_token: string | null
+          id: string
+          offer_type: string
+          rental_id: string
+          sent_at: string
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          auto_pay_enabled?: boolean
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          extension_choice?: string | null
+          extension_token?: string | null
+          id?: string
+          offer_type?: string
+          rental_id: string
+          sent_at?: string
+          status?: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          auto_pay_enabled?: boolean
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          extension_choice?: string | null
+          extension_token?: string | null
+          id?: string
+          offer_type?: string
+          rental_id?: string
+          sent_at?: string
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       drivers: {
         Row: {
           address: string | null
@@ -1160,6 +1208,8 @@ export type Database = {
           deposit_paid: number
           driver_id: string
           end_date: string | null
+          extension_link_sent: boolean
+          extension_link_sent_date: string | null
           final_charge_amount: number | null
           final_charge_breakdown: Json | null
           id: string
@@ -1220,6 +1270,8 @@ export type Database = {
           deposit_paid?: number
           driver_id: string
           end_date?: string | null
+          extension_link_sent?: boolean
+          extension_link_sent_date?: string | null
           final_charge_amount?: number | null
           final_charge_breakdown?: Json | null
           id: string
@@ -1280,6 +1332,8 @@ export type Database = {
           deposit_paid?: number
           driver_id?: string
           end_date?: string | null
+          extension_link_sent?: boolean
+          extension_link_sent_date?: string | null
           final_charge_amount?: number | null
           final_charge_breakdown?: Json | null
           id?: string
@@ -2124,6 +2178,29 @@ export type Database = {
     }
     Functions: {
       current_driver_id: { Args: never; Returns: string }
+      get_auto_extension_offer_public: {
+        Args: { _token: string }
+        Returns: {
+          billing_period: string
+          consumed_at: string
+          current_end_date: string
+          driver_full_name: string
+          expires_at: string
+          extension_token: string
+          offer_type: string
+          rental_id: string
+          rental_rate: number
+          rental_weekly_rate: number
+          status: string
+          token: string
+          vehicle_daily_rate: number
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_weekly_rate: number
+          vehicle_year: number
+        }[]
+      }
       get_extension_request_public: {
         Args: { _token: string }
         Returns: {
