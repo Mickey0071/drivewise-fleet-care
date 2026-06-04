@@ -209,7 +209,7 @@ export interface Maintenance {
   /** When the deposit was processed. */
   depositDate?: string;
 }
-export type RepairStatus = "reported" | "open" | "pending_deposit" | "in_progress" | "complete";
+export type RepairStatus = "reported" | "diagnosing" | "open" | "pending_deposit" | "pending_complete" | "in_progress" | "complete";
 export interface RepairSolution {
   name: string;
   partsCost: number;
