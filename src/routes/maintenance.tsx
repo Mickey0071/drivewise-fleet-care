@@ -7,16 +7,18 @@ import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame } from "luc
 import { ReportActions } from "@/components/app/ReportActions";
 
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
-import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
-import { createRepairTicket, processRepairDeposit, completeRepair } from "@/lib/mock/store";
+import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, recordRepairPaymentRaw, completeRepair } from "@/lib/mock/store";
 import type { RepairCompletionSummary } from "@/lib/mock/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import {
   dueSoonScheduledItems,
