@@ -38,48 +38,63 @@ function MaintenancePage() {
   useStoreVersion();
   const navigate = useNavigate();
   const [tab, setTab] = useState("scheduled");
-  const [createOpen, setCreateOpen] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Maintenance | null>(null);
-  const [ticketRecord, setTicketRecord] = useState<Maintenance | null>(null);
-  const [ticketParts, setTicketParts] = useState("");
-  const [ticketLabour, setTicketLabour] = useState("");
 
-  function openTicketForm(m: Maintenance) {
-    setTicketRecord(m);
-    setTicketParts(m.partsCost ? String(m.partsCost) : "");
-    setTicketLabour(m.laborCost ? String(m.laborCost) : "");
+  // --- [+ Create Repair] (Phase 1) form ---
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createVehicleId, setCreateVehicleId] = useState("");
+  const [createIssue, setCreateIssue] = useState("");
+
+  function submitCreateRepair() {
+    if (!createVehicleId) { toast.error("Select a vehicle"); return; }
+    if (!createIssue.trim()) { toast.error("Describe the issue"); return; }
+    createManualRepair(createVehicleId, createIssue);
+    setCreateOpen(false);
+    setCreateVehicleId("");
+    setCreateIssue("");
+    toast.success("Repair created — added to Phase 1");
   }
 
-  function submitTicket() {
-    if (!ticketRecord) return;
-    const parts = parseFloat(ticketParts);
-    const labour = parseFloat(ticketLabour);
-    if (!(parts > 0) || !(labour > 0)) {
-      toast.error("Enter both parts and labour costs");
+  // --- Phase 2 (Diagnose) per-record inputs ---
+  const [diagInputs, setDiagInputs] = useState<Record<string, { partsNeeded: string; partsCost: string; laborCost: string }>>({});
+  const diagFor = (m: Maintenance) =>
+    diagInputs[m.id] ?? {
+      partsNeeded: m.diagnosisNotes ?? "",
+      partsCost: m.partsCost ? String(m.partsCost) : "",
+      laborCost: m.laborCost ? String(m.laborCost) : "",
+    };
+  const setDiag = (id: string, patch: Partial<{ partsNeeded: string; partsCost: string; laborCost: string }>) =>
+    setDiagInputs(prev => ({ ...prev, [id]: { ...diagFor(maintenance.find(x => x.id === id)!), ...prev[id], ...patch } }));
+
+  function handleSaveDiagnosis(m: Maintenance) {
+    const d = diagFor(m);
+    const parts = parseFloat(d.partsCost) || 0;
+    const labour = parseFloat(d.laborCost) || 0;
+    if (!d.partsNeeded.trim() || (!(parts > 0) && !(labour > 0))) {
+      toast.error("Complete parts info to save");
       return;
     }
-    createRepairTicket(ticketRecord.id, parts, labour);
-    setTicketRecord(null);
-    toast.success("Repair ticket created — moved to Pending Deposit");
+    saveRepairDiagnosis(m.id, { partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour });
+    toast.success("Diagnosis saved — moved to Complete");
   }
 
-  // Pending Deposit: per-record editable deposit amounts
-  const [depositInputs, setDepositInputs] = useState<Record<string, string>>({});
-  const depositValue = (m: Maintenance) => {
-    const fallback = (m.depositAmount ?? m.depositRequired ?? (m.cost ?? 0) * 0.5);
-    return depositInputs[m.id] ?? String(Math.round(fallback * 100) / 100);
-  };
+  // --- Phase 3 (Complete) payment inputs ---
+  const [payInputs, setPayInputs] = useState<Record<string, string>>({});
+  const [payOpenId, setPayOpenId] = useState<string | null>(null);
 
-  function handleProcessDeposit(m: Maintenance) {
-    const amt = parseFloat(depositValue(m));
-    if (!(amt > 0)) { toast.error("Enter a deposit amount"); return; }
-    processRepairDeposit(m.id, amt);
-    toast.success(`Deposit of ${fmtMoney(amt)} processed`);
+  function handleProcessPayment(m: Maintenance) {
+    const amt = parseFloat(payInputs[m.id] ?? "");
+    if (!(amt > 0)) { toast.error("Enter a payment amount"); return; }
+    recordRepairPaymentRaw(m.id, amt);
+    setPayInputs(prev => ({ ...prev, [m.id]: "" }));
+    setPayOpenId(null);
+    toast.success(`Payment of ${fmtMoney(amt)} recorded`);
   }
 
   // Completion summary dialog
   const [completeRecord, setCompleteRecord] = useState<Maintenance | null>(null);
   const [mechanicName, setMechanicName] = useState("");
+  const [completionNotes, setCompletionNotes] = useState("");
   const [completionSummary, setCompletionSummary] = useState<RepairCompletionSummary | null>(null);
   const [adminName, setAdminName] = useState("Admin");
 
@@ -95,11 +110,8 @@ function MaintenancePage() {
   }, []);
 
   function handleCompleteRepair(m: Maintenance) {
-    const amtStr = depositInputs[m.id];
-    if (amtStr != null && parseFloat(amtStr) > 0 && !m.depositProcessed) {
-      processRepairDeposit(m.id, parseFloat(amtStr));
-    }
     setMechanicName(m.mechanicName ?? "");
+    setCompletionNotes("");
     setCompletionSummary(null);
     setCompleteRecord(m);
   }
@@ -109,6 +121,7 @@ function MaintenancePage() {
     const summary = completeRepair(completeRecord.id, {
       completedBy: adminName,
       mechanicName: mechanicName.trim() || undefined,
+      mechanicNotes: completionNotes.trim() || undefined,
     });
     if (summary) {
       setCompletionSummary(summary);
@@ -125,16 +138,9 @@ function MaintenancePage() {
     (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id);
 
   // --- 3-phase active repairs ---
-  // Phase 1 — State Issue: reported (awaiting ticket creation)
   const phase1 = maintenance.filter(m => m.status === "reported").sort(byNewest);
-  // Phase 2 — Diagnose: diagnosing / open / pending deposit
-  const phase2 = maintenance
-    .filter(m => m.status === "diagnosing" || m.status === "open" || m.status === "pending_deposit")
-    .sort(byNewest);
-  // Phase 3 — Complete: ready to finalize / in progress
-  const phase3 = maintenance
-    .filter(m => m.status === "pending_complete" || m.status === "in_progress")
-    .sort(byNewest);
+  const phase2 = maintenance.filter(m => m.status === "diagnosing").sort(byNewest);
+  const phase3 = maintenance.filter(m => m.status === "pending_complete").sort(byNewest);
   const activeCount = phase1.length + phase2.length + phase3.length;
 
   const monthKey = new Date().toISOString().slice(0, 7);
