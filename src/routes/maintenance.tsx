@@ -12,6 +12,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete, pendingRunnerRepairs, approveRunnerRepair, rejectRunnerRepair } from "@/lib/mock/store";
+import { createRepairTicket } from "@/lib/mock/store";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import {
   dueSoonScheduledItems,
