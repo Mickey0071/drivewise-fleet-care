@@ -383,6 +383,63 @@ function MaintenancePage() {
           </div>
         </TabsContent>
 
+        <TabsContent value="repairs" className="mt-4">
+          {reportedInspectionRepairs.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center text-sm text-muted-foreground">
+                No open repairs.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {reportedInspectionRepairs.map(m => {
+                const v = vehicleById(m.vehicleId);
+                return (
+                  <Card key={m.id}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center justify-between text-base">
+                        <span className="flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-500" />
+                          Open Repair ({reportedInspectionRepairs.length})
+                        </span>
+                        <span className="text-xs font-normal text-muted-foreground">From inspection</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div className="text-sm font-medium">
+                        {v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">Issue:</span>{" "}
+                        {m.serviceType}
+                      </div>
+                      {m.repairRequestNotes && (
+                        <div className="text-sm text-muted-foreground">
+                          <span className="font-medium text-foreground">Symptoms:</span>{" "}
+                          {m.repairRequestNotes}
+                        </div>
+                      )}
+                      {(m.partsCost || m.laborCost) && (
+                        <div className="flex gap-4 text-sm text-muted-foreground">
+                          {m.partsCost ? <span>Est. Parts: {fmtMoney(m.partsCost)}</span> : null}
+                          {m.laborCost ? <span>Est. Labour: {fmtMoney(m.laborCost)}</span> : null}
+                        </div>
+                      )}
+                      <Button
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => toast.info("Create ticket form coming soon.")}
+                      >
+                        Send to Create Ticket
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
         <TabsContent value="completed" className="mt-4">
           <Card>
             <CardHeader>
