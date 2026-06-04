@@ -7,16 +7,18 @@ import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame } from "luc
 import { ReportActions } from "@/components/app/ReportActions";
 
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
-import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
-import { createRepairTicket, processRepairDeposit, completeRepair } from "@/lib/mock/store";
+import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, recordRepairPaymentRaw, completeRepair } from "@/lib/mock/store";
 import type { RepairCompletionSummary } from "@/lib/mock/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import {
   dueSoonScheduledItems,
@@ -36,48 +38,63 @@ function MaintenancePage() {
   useStoreVersion();
   const navigate = useNavigate();
   const [tab, setTab] = useState("scheduled");
-  const [createOpen, setCreateOpen] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Maintenance | null>(null);
-  const [ticketRecord, setTicketRecord] = useState<Maintenance | null>(null);
-  const [ticketParts, setTicketParts] = useState("");
-  const [ticketLabour, setTicketLabour] = useState("");
 
-  function openTicketForm(m: Maintenance) {
-    setTicketRecord(m);
-    setTicketParts(m.partsCost ? String(m.partsCost) : "");
-    setTicketLabour(m.laborCost ? String(m.laborCost) : "");
+  // --- [+ Create Repair] (Phase 1) form ---
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createVehicleId, setCreateVehicleId] = useState("");
+  const [createIssue, setCreateIssue] = useState("");
+
+  function submitCreateRepair() {
+    if (!createVehicleId) { toast.error("Select a vehicle"); return; }
+    if (!createIssue.trim()) { toast.error("Describe the issue"); return; }
+    createManualRepair(createVehicleId, createIssue);
+    setCreateOpen(false);
+    setCreateVehicleId("");
+    setCreateIssue("");
+    toast.success("Repair created — added to Phase 1");
   }
 
-  function submitTicket() {
-    if (!ticketRecord) return;
-    const parts = parseFloat(ticketParts);
-    const labour = parseFloat(ticketLabour);
-    if (!(parts > 0) || !(labour > 0)) {
-      toast.error("Enter both parts and labour costs");
+  // --- Phase 2 (Diagnose) per-record inputs ---
+  const [diagInputs, setDiagInputs] = useState<Record<string, { partsNeeded: string; partsCost: string; laborCost: string }>>({});
+  const diagFor = (m: Maintenance) =>
+    diagInputs[m.id] ?? {
+      partsNeeded: m.diagnosisNotes ?? "",
+      partsCost: m.partsCost ? String(m.partsCost) : "",
+      laborCost: m.laborCost ? String(m.laborCost) : "",
+    };
+  const setDiag = (id: string, patch: Partial<{ partsNeeded: string; partsCost: string; laborCost: string }>) =>
+    setDiagInputs(prev => ({ ...prev, [id]: { ...diagFor(maintenance.find(x => x.id === id)!), ...prev[id], ...patch } }));
+
+  function handleSaveDiagnosis(m: Maintenance) {
+    const d = diagFor(m);
+    const parts = parseFloat(d.partsCost) || 0;
+    const labour = parseFloat(d.laborCost) || 0;
+    if (!d.partsNeeded.trim() || (!(parts > 0) && !(labour > 0))) {
+      toast.error("Complete parts info to save");
       return;
     }
-    createRepairTicket(ticketRecord.id, parts, labour);
-    setTicketRecord(null);
-    toast.success("Repair ticket created — moved to Pending Deposit");
+    saveRepairDiagnosis(m.id, { partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour });
+    toast.success("Diagnosis saved — moved to Complete");
   }
 
-  // Pending Deposit: per-record editable deposit amounts
-  const [depositInputs, setDepositInputs] = useState<Record<string, string>>({});
-  const depositValue = (m: Maintenance) => {
-    const fallback = (m.depositAmount ?? m.depositRequired ?? (m.cost ?? 0) * 0.5);
-    return depositInputs[m.id] ?? String(Math.round(fallback * 100) / 100);
-  };
+  // --- Phase 3 (Complete) payment inputs ---
+  const [payInputs, setPayInputs] = useState<Record<string, string>>({});
+  const [payOpenId, setPayOpenId] = useState<string | null>(null);
 
-  function handleProcessDeposit(m: Maintenance) {
-    const amt = parseFloat(depositValue(m));
-    if (!(amt > 0)) { toast.error("Enter a deposit amount"); return; }
-    processRepairDeposit(m.id, amt);
-    toast.success(`Deposit of ${fmtMoney(amt)} processed`);
+  function handleProcessPayment(m: Maintenance) {
+    const amt = parseFloat(payInputs[m.id] ?? "");
+    if (!(amt > 0)) { toast.error("Enter a payment amount"); return; }
+    recordRepairPaymentRaw(m.id, amt);
+    setPayInputs(prev => ({ ...prev, [m.id]: "" }));
+    setPayOpenId(null);
+    toast.success(`Payment of ${fmtMoney(amt)} recorded`);
   }
 
   // Completion summary dialog
   const [completeRecord, setCompleteRecord] = useState<Maintenance | null>(null);
   const [mechanicName, setMechanicName] = useState("");
+  const [completionNotes, setCompletionNotes] = useState("");
   const [completionSummary, setCompletionSummary] = useState<RepairCompletionSummary | null>(null);
   const [adminName, setAdminName] = useState("Admin");
 
@@ -93,11 +110,8 @@ function MaintenancePage() {
   }, []);
 
   function handleCompleteRepair(m: Maintenance) {
-    const amtStr = depositInputs[m.id];
-    if (amtStr != null && parseFloat(amtStr) > 0 && !m.depositProcessed) {
-      processRepairDeposit(m.id, parseFloat(amtStr));
-    }
     setMechanicName(m.mechanicName ?? "");
+    setCompletionNotes("");
     setCompletionSummary(null);
     setCompleteRecord(m);
   }
@@ -107,6 +121,7 @@ function MaintenancePage() {
     const summary = completeRepair(completeRecord.id, {
       completedBy: adminName,
       mechanicName: mechanicName.trim() || undefined,
+      mechanicNotes: completionNotes.trim() || undefined,
     });
     if (summary) {
       setCompletionSummary(summary);
@@ -123,16 +138,9 @@ function MaintenancePage() {
     (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id);
 
   // --- 3-phase active repairs ---
-  // Phase 1 — State Issue: reported (awaiting ticket creation)
   const phase1 = maintenance.filter(m => m.status === "reported").sort(byNewest);
-  // Phase 2 — Diagnose: diagnosing / open / pending deposit
-  const phase2 = maintenance
-    .filter(m => m.status === "diagnosing" || m.status === "open" || m.status === "pending_deposit")
-    .sort(byNewest);
-  // Phase 3 — Complete: ready to finalize / in progress
-  const phase3 = maintenance
-    .filter(m => m.status === "pending_complete" || m.status === "in_progress")
-    .sort(byNewest);
+  const phase2 = maintenance.filter(m => m.status === "diagnosing").sort(byNewest);
+  const phase3 = maintenance.filter(m => m.status === "pending_complete").sort(byNewest);
   const activeCount = phase1.length + phase2.length + phase3.length;
 
   const monthKey = new Date().toISOString().slice(0, 7);
@@ -204,17 +212,24 @@ function MaintenancePage() {
                 <p className="px-1 text-xs text-muted-foreground">Nothing here.</p>
               ) : phase1.map(m => {
                 const v = vehicleById(m.vehicleId);
+                const fromInspection = (m.source ?? "").includes("inspection");
                 return (
-                  <div key={m.id} className="rounded-md border border-border p-3">
+                  <div key={m.id} className="rounded-md border border-l-[3px] border-l-yellow-500 border-border p-3">
                     <div className="text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{m.serviceType}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{m.issueDescription ?? m.serviceType}</div>
                     {m.repairRequestNotes && (
                       <div className="mt-1 text-xs text-muted-foreground">
                         <span className="font-medium text-foreground">Symptoms:</span> {m.repairRequestNotes}
                       </div>
                     )}
-                    <Button size="sm" className="mt-2 w-full" onClick={() => openTicketForm(m)}>
-                      Send to Create Ticket
+                    <div className="mt-2 flex items-center justify-between">
+                      <Badge variant="secondary" className="text-[10px]">
+                        {fromInspection ? "From inspection" : "Manual"}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground">{fmtDate((m.createdAt ?? "").slice(0, 10))}</span>
+                    </div>
+                    <Button size="sm" className="mt-2 w-full" onClick={() => moveRepairToDiagnose(m.id)}>
+                      Move to Diagnose →
                     </Button>
                   </div>
                 );
@@ -238,34 +253,43 @@ function MaintenancePage() {
                 <p className="px-1 text-xs text-muted-foreground">Nothing here.</p>
               ) : phase2.map(m => {
                 const v = vehicleById(m.vehicleId);
-                const total = m.cost ?? 0;
-                const required = m.depositRequired ?? total * 0.5;
+                const d = diagFor(m);
+                const parts = parseFloat(d.partsCost) || 0;
+                const labour = parseFloat(d.laborCost) || 0;
+                const total = parts + labour;
                 return (
-                  <div key={m.id} className="rounded-md border border-border p-3">
+                  <div key={m.id} className="rounded-md border border-l-[3px] border-l-blue-500 border-border p-3">
                     <div className="text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{m.serviceType}</div>
-                    <div className="mt-2 space-y-0.5 rounded bg-muted/40 p-2 text-xs">
-                      <div className="flex justify-between"><span>Parts</span><span>{fmtMoney(m.partsCost ?? 0)}</span></div>
-                      <div className="flex justify-between"><span>Labour</span><span>{fmtMoney(m.laborCost ?? 0)}</span></div>
-                      <div className="flex justify-between border-t border-border pt-0.5 font-medium"><span>Total</span><span>{fmtMoney(total)}</span></div>
-                    </div>
-                    {m.status === "pending_deposit" && (
-                      <>
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          Deposit (50%): <span className="font-medium text-foreground">{fmtMoney(required)}</span>
-                        </div>
-                        <Input
-                          className="mt-1 h-8"
-                          type="number" min="0" step="0.01"
-                          value={depositValue(m)}
-                          onChange={(e) => setDepositInputs(prev => ({ ...prev, [m.id]: e.target.value }))}
+                    <div className="mt-0.5 text-xs text-muted-foreground">{m.issueDescription ?? m.serviceType}</div>
+                    <div className="mt-2 space-y-2">
+                      <div>
+                        <Label className="text-[11px]">Parts needed</Label>
+                        <Textarea
+                          className="mt-1 min-h-[52px] text-xs"
+                          placeholder="e.g. Front brake pads, rotors"
+                          value={d.partsNeeded}
+                          onChange={(e) => setDiag(m.id, { partsNeeded: e.target.value })}
                         />
-                        <div className="mt-2 flex gap-2">
-                          <Button size="sm" variant="outline" className="flex-1" onClick={() => handleProcessDeposit(m)}>Deposit</Button>
-                          <Button size="sm" className="flex-1" onClick={() => handleCompleteRepair(m)}>Complete</Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Label className="text-[11px]">Parts $</Label>
+                          <Input className="mt-1 h-8" type="number" min="0" step="0.01"
+                            value={d.partsCost} onChange={(e) => setDiag(m.id, { partsCost: e.target.value })} />
                         </div>
-                      </>
-                    )}
+                        <div className="flex-1">
+                          <Label className="text-[11px]">Labour $</Label>
+                          <Input className="mt-1 h-8" type="number" min="0" step="0.01"
+                            value={d.laborCost} onChange={(e) => setDiag(m.id, { laborCost: e.target.value })} />
+                        </div>
+                      </div>
+                      <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs font-medium">
+                        <span>Total</span><span>{fmtMoney(total)}</span>
+                      </div>
+                    </div>
+                    <Button size="sm" className="mt-2 w-full" onClick={() => handleSaveDiagnosis(m)}>
+                      Save Diagnosis →
+                    </Button>
                   </div>
                 );
               })}
@@ -288,12 +312,35 @@ function MaintenancePage() {
                 <p className="px-1 text-xs text-muted-foreground">Nothing here.</p>
               ) : phase3.map(m => {
                 const v = vehicleById(m.vehicleId);
+                const total = m.cost ?? 0;
+                const paid = m.amountPaid ?? 0;
+                const balance = Math.max(0, total - paid);
                 return (
-                  <div key={m.id} className="rounded-md border border-border p-3">
+                  <div key={m.id} className="rounded-md border border-l-[3px] border-l-green-600 border-border p-3">
                     <div className="text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{m.serviceType}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">Total {fmtMoney(m.cost ?? 0)}</div>
-                    <Button size="sm" className="mt-2 w-full" onClick={() => handleCompleteRepair(m)}>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{m.issueDescription ?? m.serviceType}</div>
+                    {m.diagnosisNotes && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Parts used:</span> {m.diagnosisNotes}
+                      </div>
+                    )}
+                    <div className="mt-2 space-y-0.5 rounded bg-muted/40 p-2 text-xs">
+                      <div className="flex justify-between"><span>Total</span><span>{fmtMoney(total)}</span></div>
+                      <div className="flex justify-between"><span>Paid</span><span>{fmtMoney(paid)}</span></div>
+                      <div className="flex justify-between border-t border-border pt-0.5 font-medium"><span>Balance</span><span>{fmtMoney(balance)}</span></div>
+                    </div>
+                    {payOpenId === m.id ? (
+                      <div className="mt-2 flex gap-2">
+                        <Input className="h-8" type="number" min="0" step="0.01" placeholder="Amount"
+                          value={payInputs[m.id] ?? ""} onChange={(e) => setPayInputs(prev => ({ ...prev, [m.id]: e.target.value }))} />
+                        <Button size="sm" onClick={() => handleProcessPayment(m)}>Submit</Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" className="mt-2 w-full" onClick={() => setPayOpenId(m.id)}>
+                        + Process Payment
+                      </Button>
+                    )}
+                    <Button size="sm" className="mt-2 w-full" disabled={balance > 0} onClick={() => handleCompleteRepair(m)}>
                       Complete Repair
                     </Button>
                   </div>
@@ -513,45 +560,32 @@ function MaintenancePage() {
         onOpenChange={(v) => { if (!v) setDetailRecord(null); }}
       />
 
-      <Dialog open={!!ticketRecord} onOpenChange={(o) => { if (!o) setTicketRecord(null); }}>
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Create Repair Ticket</DialogTitle>
+            <DialogTitle>Create Repair</DialogTitle>
           </DialogHeader>
-          {ticketRecord && (() => {
-            const v = vehicleById(ticketRecord.vehicleId);
-            const parts = parseFloat(ticketParts) || 0;
-            const labour = parseFloat(ticketLabour) || 0;
-            const total = parts + labour;
-            return (
-              <div className="space-y-4">
-                <div className="space-y-1 rounded-md bg-muted/40 p-3 text-sm">
-                  <div><span className="font-medium">Vehicle:</span> {v ? `${v.year} ${v.make} ${v.model}` : ticketRecord.vehicleId}</div>
-                  <div><span className="font-medium">Issue:</span> {ticketRecord.serviceType}</div>
-                  {ticketRecord.repairRequestNotes && (
-                    <div><span className="font-medium">Symptoms:</span> {ticketRecord.repairRequestNotes}</div>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ticket-parts">Parts Cost ($)</Label>
-                  <Input id="ticket-parts" type="number" min="0" step="0.01" value={ticketParts}
-                    onChange={(e) => setTicketParts(e.target.value)} placeholder="0.00" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ticket-labour">Labour Cost ($)</Label>
-                  <Input id="ticket-labour" type="number" min="0" step="0.01" value={ticketLabour}
-                    onChange={(e) => setTicketLabour(e.target.value)} placeholder="0.00" />
-                </div>
-                <div className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm font-medium">
-                  <span>Total Cost</span>
-                  <span>{fmtMoney(total)}</span>
-                </div>
-              </div>
-            );
-          })()}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Vehicle</Label>
+              <Select value={createVehicleId} onValueChange={setCreateVehicleId}>
+                <SelectTrigger><SelectValue placeholder="Select a vehicle" /></SelectTrigger>
+                <SelectContent>
+                  {vehicles.map(v => (
+                    <SelectItem key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-issue">Issue</Label>
+              <Input id="create-issue" value={createIssue} maxLength={200}
+                onChange={(e) => setCreateIssue(e.target.value)} placeholder="What's wrong?" />
+            </div>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTicketRecord(null)}>Cancel</Button>
-            <Button onClick={submitTicket}>Submit</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button onClick={submitCreateRepair}>Create</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -587,10 +621,17 @@ function MaintenancePage() {
                   <div><span className="font-medium text-foreground">Completed by:</span> {adminName}</div>
                 </div>
                 {!completionSummary ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="mechanic-name">Mechanic name (optional)</Label>
-                    <Input id="mechanic-name" value={mechanicName}
-                      onChange={(e) => setMechanicName(e.target.value)} placeholder="e.g. Joe's Auto" />
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="mechanic-name">Mechanic name (optional)</Label>
+                      <Input id="mechanic-name" value={mechanicName}
+                        onChange={(e) => setMechanicName(e.target.value)} placeholder="e.g. Joe's Auto" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="completion-notes">Completion notes (optional)</Label>
+                      <Textarea id="completion-notes" value={completionNotes}
+                        onChange={(e) => setCompletionNotes(e.target.value)} placeholder="Work performed, parts replaced…" />
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-2 rounded-md bg-green-500/10 p-3 text-sm">
@@ -620,7 +661,6 @@ function MaintenancePage() {
         </DialogContent>
       </Dialog>
 
-      <CreateRepairDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }
