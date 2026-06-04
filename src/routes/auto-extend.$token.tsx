@@ -204,35 +204,6 @@ function AutoExtendPage() {
               </button>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Payment option</Label>
-              <button
-                type="button"
-                onClick={() => setAutoPay(false)}
-                className={`w-full flex items-center justify-between rounded-md border p-3 text-left text-sm transition ${
-                  !autoPay ? "border-primary bg-primary/5" : "hover:bg-muted/40"
-                }`}
-              >
-                <span className="font-medium">Pay one-time</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setAutoPay(true)}
-                className={`w-full flex items-center justify-between rounded-md border p-3 text-left text-sm transition ${
-                  autoPay ? "border-primary bg-primary/5" : "hover:bg-muted/40"
-                }`}
-              >
-                <span>
-                  <span className="font-medium">Auto-Pay</span>
-                  <span className="text-green-600 font-medium">
-                    {" "}
-                    ({Math.round(offer.autoPayDiscount * 100)}% off)
-                  </span>
-                  <span className="text-muted-foreground"> — card saved & auto-charged</span>
-                </span>
-              </button>
-            </div>
-
             <div className="rounded-md border bg-primary/5 p-4">
               <div className="text-xs uppercase text-muted-foreground">Total due today</div>
               <div className="mt-1 flex items-baseline justify-between">
