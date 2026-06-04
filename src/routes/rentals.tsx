@@ -885,6 +885,9 @@ function RentalsPage() {
         subtitle={`${active.length} on rent · ${pending.length} pending · ${completed.length} returned`}
         action={
           <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={() => navigate({ to: "/" })}>
+              <LayoutDashboard className="h-4 w-4" /> Dashboard
+            </Button>
             <ReportActions csv={{
               filename: "rentals.csv",
               headers: ["ID", "Driver", "Vehicle", "Plate", "Started", "Ended", "Weekly", "Deposit", "Status", "Reservation"],
