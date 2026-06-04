@@ -246,6 +246,46 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           }
         }
 
+        // 6) Daily 8AM admin alert: every active (non-complete) repair, until complete
+        const ADMIN_REPAIR_PHONE = "267-221-3977";
+        const { data: openRepairs, error: repairErr } = await supabaseAdmin
+          .from("maintenance")
+          .select("id, vehicle_id, service_type, status, date_completed")
+          .is("date_completed", null)
+          .not("status", "is", null)
+          .neq("status", "complete");
+        if (repairErr) {
+          return Response.json({ ok: false, stage: "repairs", error: repairErr.message }, { status: 500 });
+        }
+        const activeRepairs = (openRepairs ?? []);
+        if (activeRepairs.length > 0) {
+          const repairVehicleIds = Array.from(
+            new Set(activeRepairs.map((r) => r.vehicle_id).filter(Boolean))
+          );
+          const repairVehiclesById = new Map<string, string>();
+          if (repairVehicleIds.length) {
+            const { data: rvs } = await supabaseAdmin
+              .from("vehicles")
+              .select("id, year, make, model")
+              .in("id", repairVehicleIds);
+            (rvs ?? []).forEach((v) =>
+              repairVehiclesById.set(v.id, `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}`.trim())
+            );
+          }
+          const lines = activeRepairs
+            .slice(0, 10)
+            .map((r) => `• ${repairVehiclesById.get(r.vehicle_id) || r.vehicle_id}: ${r.service_type}`)
+            .join("\n");
+          const more = activeRepairs.length > 10 ? `\n…and ${activeRepairs.length - 10} more` : "";
+          const repairMsg = `Camauto: ${activeRepairs.length} active repair${activeRepairs.length === 1 ? "" : "s"} still open.\n${lines}${more}`;
+          try {
+            await sendSms(ADMIN_REPAIR_PHONE, repairMsg, "Admin");
+            results.push({ type: "admin_active_repairs", count: activeRepairs.length, sent: true });
+          } catch (e: any) {
+            results.push({ type: "admin_active_repairs", error: e?.message ?? String(e) });
+          }
+        }
+
         return Response.json({
           ok: true,
           target_date: target,
@@ -254,6 +294,7 @@ export const Route = createFileRoute("/api/public/hooks/send-reminders")({
           admin_past_due: (pastDuePayments ?? []).filter((p) => isActive(p.rental_id)).length,
           admin_due_today: (dueTodayPayments ?? []).filter((p) => isActive(p.rental_id)).length,
           checkin_2h: checkinRentals?.length ?? 0,
+          active_repairs: (openRepairs ?? []).length,
           results,
         });
       },
