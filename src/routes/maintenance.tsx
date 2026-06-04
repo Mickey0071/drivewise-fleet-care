@@ -624,6 +624,8 @@ function MaintenancePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CreateRepairDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }
