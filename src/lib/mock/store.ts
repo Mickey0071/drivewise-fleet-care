@@ -1895,10 +1895,7 @@ export function completeRepair(
 
   // --- Log the completed repair to the vehicle's fleet-card repair history,
   //     and capture scorecard analytics data. ---
-  const partsList = m.selectedSolution?.partsNeeded
-    ?? (m as unknown as { partsNeeded?: string }).partsNeeded
-    ?? m.diagnosisNotes
-    ?? null;
+  const partsList = m.diagnosisNotes ?? null;
   const issueText = m.issueDescription || m.selectedSolution?.name || m.serviceType;
   let daysInRepair = 0;
   if (m.createdAt) {
