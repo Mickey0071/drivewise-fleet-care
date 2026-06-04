@@ -19,6 +19,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   dueSoonScheduledItems,
@@ -44,14 +46,20 @@ function MaintenancePage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createVehicleId, setCreateVehicleId] = useState("");
   const [createIssue, setCreateIssue] = useState("");
+  const [createTakeOffRental, setCreateTakeOffRental] = useState(true);
+
+  // Which repair line is expanded (one at a time, across all phases)
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const toggleExpand = (id: string) => setExpandedId(prev => (prev === id ? null : id));
 
   function submitCreateRepair() {
     if (!createVehicleId) { toast.error("Select a vehicle"); return; }
     if (!createIssue.trim()) { toast.error("Describe the issue"); return; }
-    createManualRepair(createVehicleId, createIssue);
+    createManualRepair(createVehicleId, createIssue, createTakeOffRental);
     setCreateOpen(false);
     setCreateVehicleId("");
     setCreateIssue("");
+    setCreateTakeOffRental(true);
     toast.success("Repair created — added to Phase 1");
   }
 
