@@ -221,7 +221,6 @@ function MaintenancePage() {
               ) : (
                 <ul className="divide-y divide-border">
                   {phase1.map(m => {
-                    const v = vehicleById(m.vehicleId);
                     const fromInspection = (m.source ?? "").includes("inspection");
                     const open = expandedId === m.id;
                     return (
