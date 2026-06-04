@@ -46,7 +46,6 @@ function AutoExtendPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [choice, setChoice] = useState<"daily" | "weekly" | null>(null);
-  const [autoPay, setAutoPay] = useState<boolean>(false);
   const [name, setName] = useState("");
   const [sig, setSig] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
@@ -75,8 +74,7 @@ function AutoExtendPage() {
   }, [token, fetchOffer]);
 
   function priceFor(c: "daily" | "weekly", o: Extract<Offer, { found: true }>) {
-    const base = c === "daily" ? o.dailyRate : o.weeklyRate;
-    return autoPay ? Number((base * (1 - o.autoPayDiscount)).toFixed(2)) : base;
+    return c === "daily" ? o.dailyRate : o.weeklyRate;
   }
 
   async function onSubmit() {
@@ -103,7 +101,6 @@ function AutoExtendPage() {
         data: {
           token,
           choice,
-          autoPay,
           signatureDataUrl: sig,
           signedBy: name.trim(),
         },
@@ -204,35 +201,6 @@ function AutoExtendPage() {
                   <span className="text-muted-foreground"> — 7 days</span>
                 </span>
                 <span className="font-semibold">{fmtMoney(offer.weeklyRate)}/week</span>
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Payment option</Label>
-              <button
-                type="button"
-                onClick={() => setAutoPay(false)}
-                className={`w-full flex items-center justify-between rounded-md border p-3 text-left text-sm transition ${
-                  !autoPay ? "border-primary bg-primary/5" : "hover:bg-muted/40"
-                }`}
-              >
-                <span className="font-medium">Pay one-time</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setAutoPay(true)}
-                className={`w-full flex items-center justify-between rounded-md border p-3 text-left text-sm transition ${
-                  autoPay ? "border-primary bg-primary/5" : "hover:bg-muted/40"
-                }`}
-              >
-                <span>
-                  <span className="font-medium">Auto-Pay</span>
-                  <span className="text-green-600 font-medium">
-                    {" "}
-                    ({Math.round(offer.autoPayDiscount * 100)}% off)
-                  </span>
-                  <span className="text-muted-foreground"> — card saved & auto-charged</span>
-                </span>
               </button>
             </div>
 
