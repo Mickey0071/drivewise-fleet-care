@@ -537,6 +537,11 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
               updated_at: new Date().toISOString(),
             } as any)
             .eq("id", rentalRow.driver_id);
+          const { data: drvForAutopay } = await sb
+            .from("drivers")
+            .select("full_name, phone, email")
+            .eq("id", rentalRow.driver_id)
+            .maybeSingle();
           if (drvForAutopay?.phone) {
             try {
               await notifyRenter({
