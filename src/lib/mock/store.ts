@@ -2073,6 +2073,7 @@ export function updateIssue(id: string, patch: {
 
 /** Move a diagnosed reported issue into the Repairs "Open" column. */
 export function moveIssueToOpenRepair(id: string) {
+  // unchanged below
   const m = maintenance.find(x => x.id === id);
   if (!m || m.status !== "reported") return;
   const parts = Math.max(0, m.partsCost ?? 0);
