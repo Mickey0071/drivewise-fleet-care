@@ -431,24 +431,38 @@ function TaskPage() {
                             placeholder="Describe the problem…"
                             disabled={ticketed[it.key]}
                             value={repairPanels[it.key]?.notes ?? ""}
-                            onChange={(e) => setRepairPanels((p) => ({ ...p, [it.key]: { notes: e.target.value, cost: p[it.key]?.cost ?? "" } }))}
+                            onChange={(e) => setRepairPanels((p) => ({ ...p, [it.key]: { notes: e.target.value, partsCost: p[it.key]?.partsCost ?? "", laborCost: p[it.key]?.laborCost ?? "" } }))}
                           />
                         </div>
-                        <div>
-                          <Label htmlFor={`cost-${it.key}`} className="text-xs">Estimated cost (optional)</Label>
-                          <Input
-                            id={`cost-${it.key}`}
-                            inputMode="decimal"
-                            className="mt-1 h-9 bg-background"
-                            placeholder="e.g. 120"
-                            disabled={ticketed[it.key]}
-                            value={repairPanels[it.key]?.cost ?? ""}
-                            onChange={(e) => setRepairPanels((p) => ({ ...p, [it.key]: { notes: p[it.key]?.notes ?? "", cost: e.target.value.replace(/[^0-9.]/g, "") } }))}
-                          />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label htmlFor={`parts-${it.key}`} className="text-xs">Est. parts cost (optional)</Label>
+                            <Input
+                              id={`parts-${it.key}`}
+                              inputMode="decimal"
+                              className="mt-1 h-9 bg-background"
+                              placeholder="e.g. 45"
+                              disabled={ticketed[it.key]}
+                              value={repairPanels[it.key]?.partsCost ?? ""}
+                              onChange={(e) => setRepairPanels((p) => ({ ...p, [it.key]: { notes: p[it.key]?.notes ?? "", partsCost: e.target.value.replace(/[^0-9.]/g, ""), laborCost: p[it.key]?.laborCost ?? "" } }))}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`labor-${it.key}`} className="text-xs">Est. labour cost (optional)</Label>
+                            <Input
+                              id={`labor-${it.key}`}
+                              inputMode="decimal"
+                              className="mt-1 h-9 bg-background"
+                              placeholder="e.g. 75"
+                              disabled={ticketed[it.key]}
+                              value={repairPanels[it.key]?.laborCost ?? ""}
+                              onChange={(e) => setRepairPanels((p) => ({ ...p, [it.key]: { notes: p[it.key]?.notes ?? "", partsCost: p[it.key]?.partsCost ?? "", laborCost: e.target.value.replace(/[^0-9.]/g, "") } }))}
+                            />
+                          </div>
                         </div>
                         {ticketed[it.key] ? (
                           <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
-                            <CheckCircle2 className="h-4 w-4" /> Repair ticket created — awaiting approval
+                            <CheckCircle2 className="h-4 w-4" /> Sent to Maintenance
                           </div>
                         ) : (
                           <Button
