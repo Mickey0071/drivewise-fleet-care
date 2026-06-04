@@ -164,7 +164,7 @@ function TaskPage() {
   // inspection
   const [items, setItems] = useState<Record<string, boolean>>({});
   // per-item repair request panels (keyed by checklist item key)
-  const [repairPanels, setRepairPanels] = useState<Record<string, { notes: string; cost: string }>>({});
+  const [repairPanels, setRepairPanels] = useState<Record<string, { notes: string; partsCost: string; laborCost: string }>>({});
   const [ticketed, setTicketed] = useState<Record<string, boolean>>({});
   const [creatingTicket, setCreatingTicket] = useState<string | null>(null);
   const [repairsNeeded, setRepairsNeeded] = useState<boolean | null>(null);
