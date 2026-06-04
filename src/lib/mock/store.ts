@@ -2096,12 +2096,28 @@ export function createRepairTicket(id: string, partsCost: number, laborCost: num
   m.laborCost = labor;
   m.cost = total;
   m.balance = total;
+  m.depositRequired = Math.round(total * 0.5 * 100) / 100;
   if (!m.diagnosisNotes?.trim()) m.diagnosisNotes = m.repairRequestNotes?.trim() || m.serviceType;
   m.status = "pending_deposit";
   m.isRentalBlocking = true;
   m.source = m.source ?? "inspection_fail";
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   syncVehicleOpenIssues(m.vehicleId);
+  emit();
+  return m;
+}
+
+/** Admin processes (records) the deposit for a pending-deposit repair. Optional step. */
+export function processRepairDeposit(id: string, depositAmount: number) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  const amt = Math.max(0, depositAmount || 0);
+  m.depositAmount = amt;
+  m.amountPaid = amt;
+  m.balance = Math.max(0, (m.cost ?? 0) - amt);
+  m.depositProcessed = true;
+  m.depositDate = new Date().toISOString();
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   emit();
   return m;
 }
