@@ -38,6 +38,7 @@ function MaintenancePage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("scheduled");
   const [configOpen, setConfigOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Maintenance | null>(null);
   const [ticketRecord, setTicketRecord] = useState<Maintenance | null>(null);
   const [ticketParts, setTicketParts] = useState("");
