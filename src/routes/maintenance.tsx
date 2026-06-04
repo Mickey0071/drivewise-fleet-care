@@ -12,7 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete, pendingRunnerRepairs, approveRunnerRepair, rejectRunnerRepair } from "@/lib/mock/store";
-import { createRepairTicket } from "@/lib/mock/store";
+import { createRepairTicket, processRepairDeposit, completeRepair } from "@/lib/mock/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +60,29 @@ function MaintenancePage() {
     toast.success("Repair ticket created — moved to Pending Deposit");
   }
 
+  // Pending Deposit: per-record editable deposit amounts
+  const [depositInputs, setDepositInputs] = useState<Record<string, string>>({});
+  const depositValue = (m: Maintenance) => {
+    const fallback = (m.depositAmount ?? m.depositRequired ?? (m.cost ?? 0) * 0.5);
+    return depositInputs[m.id] ?? String(Math.round(fallback * 100) / 100);
+  };
+
+  function handleProcessDeposit(m: Maintenance) {
+    const amt = parseFloat(depositValue(m));
+    if (!(amt > 0)) { toast.error("Enter a deposit amount"); return; }
+    processRepairDeposit(m.id, amt);
+    toast.success(`Deposit of ${fmtMoney(amt)} processed`);
+  }
+
+  function handleCompleteRepair(m: Maintenance) {
+    const amtStr = depositInputs[m.id];
+    if (amtStr != null && parseFloat(amtStr) > 0 && !m.depositProcessed) {
+      processRepairDeposit(m.id, parseFloat(amtStr));
+    }
+    const summary = completeRepair(m.id);
+    if (summary) toast.success(`Repair completed — ${fmtMoney(summary.total)} posted to P&L`);
+  }
+
   // Repairs (kanban-tracked)
   const repairs = maintenance.filter(m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected");
   const openRepairs = repairs.filter(m => m.status !== "complete" && m.status !== "reported")
@@ -71,6 +94,11 @@ function MaintenancePage() {
   // Open repairs from inspection failures (reported, awaiting ticket creation)
   const reportedInspectionRepairs = maintenance
     .filter(m => m.status === "reported" && m.source === "inspection_fail")
+    .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
+
+  // Repairs awaiting deposit (ticket created, pre-completion)
+  const pendingDepositRepairs = maintenance
+    .filter(m => m.status === "pending_deposit")
     .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
 
   const monthKey = new Date().toISOString().slice(0, 7);
@@ -410,13 +438,15 @@ function MaintenancePage() {
         </TabsContent>
 
         <TabsContent value="repairs" className="mt-4">
-          {reportedInspectionRepairs.length === 0 ? (
+          {reportedInspectionRepairs.length === 0 && pendingDepositRepairs.length === 0 ? (
             <Card>
               <CardContent className="p-6 text-center text-sm text-muted-foreground">
                 No open repairs.
               </CardContent>
             </Card>
           ) : (
+            <div className="space-y-6">
+            {reportedInspectionRepairs.length > 0 && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {reportedInspectionRepairs.map(m => {
                 const v = vehicleById(m.vehicleId);
@@ -462,6 +492,71 @@ function MaintenancePage() {
                   </Card>
                 );
               })}
+            </div>
+            )}
+
+            {pendingDepositRepairs.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  Pending Deposit ({pendingDepositRepairs.length})
+                </h3>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {pendingDepositRepairs.map(m => {
+                    const v = vehicleById(m.vehicleId);
+                    const total = m.cost ?? 0;
+                    const required = m.depositRequired ?? total * 0.5;
+                    return (
+                      <Card key={m.id}>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="flex items-center justify-between text-base">
+                            <span className="flex items-center gap-2">
+                              <Wrench className="h-4 w-4 text-blue-500" />
+                              Pending Deposit
+                            </span>
+                            {m.depositProcessed && (
+                              <span className="text-xs font-normal text-green-600">Deposit received</span>
+                            )}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="text-sm font-medium">
+                            {v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <span className="font-medium text-foreground">Issue:</span> {m.serviceType}
+                          </div>
+                          <div className="space-y-1 rounded-md bg-muted/40 p-3 text-sm">
+                            <div className="flex justify-between"><span>Parts</span><span>{fmtMoney(m.partsCost ?? 0)}</span></div>
+                            <div className="flex justify-between"><span>Labour</span><span>{fmtMoney(m.laborCost ?? 0)}</span></div>
+                            <div className="flex justify-between border-t border-border pt-1 font-medium"><span>Total</span><span>{fmtMoney(total)}</span></div>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Deposit required (50%): <span className="font-medium text-foreground">{fmtMoney(required)}</span>
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor={`dep-${m.id}`}>Deposit amount ($)</Label>
+                            <Input
+                              id={`dep-${m.id}`}
+                              type="number" min="0" step="0.01"
+                              value={depositValue(m)}
+                              onChange={(e) => setDepositInputs(prev => ({ ...prev, [m.id]: e.target.value }))}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleProcessDeposit(m)}>
+                              Process Deposit
+                            </Button>
+                            <Button size="sm" onClick={() => handleCompleteRepair(m)}>
+                              Complete Repair
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             </div>
           )}
         </TabsContent>

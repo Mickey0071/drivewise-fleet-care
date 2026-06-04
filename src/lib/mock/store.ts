@@ -373,6 +373,10 @@ const fromMaintenance = (r: any): Maintenance => ({
   approvedBy: r.approved_by ?? undefined,
   source: r.source ?? undefined,
   inspectionId: r.inspection_id ?? undefined,
+  depositRequired: r.deposit_required != null ? Number(r.deposit_required) : undefined,
+  depositAmount: r.deposit_amount != null ? Number(r.deposit_amount) : undefined,
+  depositProcessed: !!r.deposit_processed,
+  depositDate: r.deposit_date ?? undefined,
 });
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
@@ -402,6 +406,10 @@ const toMaintenance = (m: Maintenance) => ({
   approved_by: m.approvedBy ?? null,
   source: m.source ?? "manual_report",
   inspection_id: m.inspectionId ?? null,
+  deposit_required: m.depositRequired ?? 0,
+  deposit_amount: m.depositAmount ?? 0,
+  deposit_processed: m.depositProcessed ?? false,
+  deposit_date: m.depositDate ?? null,
 });
 
 // ---- staff ----
@@ -2088,12 +2096,28 @@ export function createRepairTicket(id: string, partsCost: number, laborCost: num
   m.laborCost = labor;
   m.cost = total;
   m.balance = total;
+  m.depositRequired = Math.round(total * 0.5 * 100) / 100;
   if (!m.diagnosisNotes?.trim()) m.diagnosisNotes = m.repairRequestNotes?.trim() || m.serviceType;
   m.status = "pending_deposit";
   m.isRentalBlocking = true;
   m.source = m.source ?? "inspection_fail";
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   syncVehicleOpenIssues(m.vehicleId);
+  emit();
+  return m;
+}
+
+/** Admin processes (records) the deposit for a pending-deposit repair. Optional step. */
+export function processRepairDeposit(id: string, depositAmount: number) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  const amt = Math.max(0, depositAmount || 0);
+  m.depositAmount = amt;
+  m.amountPaid = amt;
+  m.balance = Math.max(0, (m.cost ?? 0) - amt);
+  m.depositProcessed = true;
+  m.depositDate = new Date().toISOString();
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   emit();
   return m;
 }
