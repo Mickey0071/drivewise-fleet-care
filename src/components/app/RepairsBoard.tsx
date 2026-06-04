@@ -368,12 +368,15 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Column({ title, count, tone, children }: { title: string; count: number; tone: string; children: React.ReactNode }) {
+function Column({ title, count, tone, action, children }: { title: string; count: number; tone: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <Card className="bg-muted/20">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between text-sm">
-          <span>{title}</span>
+          <span className="flex items-center gap-2">
+            {title}
+            {action}
+          </span>
           <span className={`rounded-full px-2 py-0.5 text-xs ${tone}`}>{count}</span>
         </CardTitle>
       </CardHeader>
