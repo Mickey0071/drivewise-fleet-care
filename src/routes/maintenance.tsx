@@ -560,45 +560,32 @@ function MaintenancePage() {
         onOpenChange={(v) => { if (!v) setDetailRecord(null); }}
       />
 
-      <Dialog open={!!ticketRecord} onOpenChange={(o) => { if (!o) setTicketRecord(null); }}>
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Create Repair Ticket</DialogTitle>
+            <DialogTitle>Create Repair</DialogTitle>
           </DialogHeader>
-          {ticketRecord && (() => {
-            const v = vehicleById(ticketRecord.vehicleId);
-            const parts = parseFloat(ticketParts) || 0;
-            const labour = parseFloat(ticketLabour) || 0;
-            const total = parts + labour;
-            return (
-              <div className="space-y-4">
-                <div className="space-y-1 rounded-md bg-muted/40 p-3 text-sm">
-                  <div><span className="font-medium">Vehicle:</span> {v ? `${v.year} ${v.make} ${v.model}` : ticketRecord.vehicleId}</div>
-                  <div><span className="font-medium">Issue:</span> {ticketRecord.serviceType}</div>
-                  {ticketRecord.repairRequestNotes && (
-                    <div><span className="font-medium">Symptoms:</span> {ticketRecord.repairRequestNotes}</div>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ticket-parts">Parts Cost ($)</Label>
-                  <Input id="ticket-parts" type="number" min="0" step="0.01" value={ticketParts}
-                    onChange={(e) => setTicketParts(e.target.value)} placeholder="0.00" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ticket-labour">Labour Cost ($)</Label>
-                  <Input id="ticket-labour" type="number" min="0" step="0.01" value={ticketLabour}
-                    onChange={(e) => setTicketLabour(e.target.value)} placeholder="0.00" />
-                </div>
-                <div className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm font-medium">
-                  <span>Total Cost</span>
-                  <span>{fmtMoney(total)}</span>
-                </div>
-              </div>
-            );
-          })()}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Vehicle</Label>
+              <Select value={createVehicleId} onValueChange={setCreateVehicleId}>
+                <SelectTrigger><SelectValue placeholder="Select a vehicle" /></SelectTrigger>
+                <SelectContent>
+                  {vehicles.map(v => (
+                    <SelectItem key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-issue">Issue</Label>
+              <Input id="create-issue" value={createIssue} maxLength={200}
+                onChange={(e) => setCreateIssue(e.target.value)} placeholder="What's wrong?" />
+            </div>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTicketRecord(null)}>Cancel</Button>
-            <Button onClick={submitTicket}>Submit</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button onClick={submitCreateRepair}>Create</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -634,10 +621,17 @@ function MaintenancePage() {
                   <div><span className="font-medium text-foreground">Completed by:</span> {adminName}</div>
                 </div>
                 {!completionSummary ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="mechanic-name">Mechanic name (optional)</Label>
-                    <Input id="mechanic-name" value={mechanicName}
-                      onChange={(e) => setMechanicName(e.target.value)} placeholder="e.g. Joe's Auto" />
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="mechanic-name">Mechanic name (optional)</Label>
+                      <Input id="mechanic-name" value={mechanicName}
+                        onChange={(e) => setMechanicName(e.target.value)} placeholder="e.g. Joe's Auto" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="completion-notes">Completion notes (optional)</Label>
+                      <Textarea id="completion-notes" value={completionNotes}
+                        onChange={(e) => setCompletionNotes(e.target.value)} placeholder="Work performed, parts replaced…" />
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-2 rounded-md bg-green-500/10 p-3 text-sm">
@@ -667,7 +661,6 @@ function MaintenancePage() {
         </DialogContent>
       </Dialog>
 
-      <CreateRepairDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }
