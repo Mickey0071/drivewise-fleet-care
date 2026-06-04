@@ -366,6 +366,7 @@ const fromMaintenance = (r: any): Maintenance => ({
   partsCost: r.parts_cost != null ? Number(r.parts_cost) : undefined,
   laborCost: r.labor_cost != null ? Number(r.labor_cost) : undefined,
   mechanicNotes: r.mechanic_notes ?? undefined,
+  mechanicName: r.mechanic_name ?? undefined,
   runnerId: r.runner_id ?? undefined,
   repairRequestNotes: r.repair_request_notes ?? undefined,
   approvalStatus: r.approval_status ?? undefined,
