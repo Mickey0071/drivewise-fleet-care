@@ -454,7 +454,7 @@ function MaintenancePage() {
                       <Button
                         size="sm"
                         className="mt-2"
-                        onClick={() => toast.info("Create ticket form coming soon.")}
+                        onClick={() => openTicketForm(m)}
                       >
                         Send to Create Ticket
                       </Button>
