@@ -438,13 +438,15 @@ function MaintenancePage() {
         </TabsContent>
 
         <TabsContent value="repairs" className="mt-4">
-          {reportedInspectionRepairs.length === 0 ? (
+          {reportedInspectionRepairs.length === 0 && pendingDepositRepairs.length === 0 ? (
             <Card>
               <CardContent className="p-6 text-center text-sm text-muted-foreground">
                 No open repairs.
               </CardContent>
             </Card>
           ) : (
+            <div className="space-y-6">
+            {reportedInspectionRepairs.length > 0 && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {reportedInspectionRepairs.map(m => {
                 const v = vehicleById(m.vehicleId);
@@ -490,6 +492,71 @@ function MaintenancePage() {
                   </Card>
                 );
               })}
+            </div>
+            )}
+
+            {pendingDepositRepairs.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  Pending Deposit ({pendingDepositRepairs.length})
+                </h3>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {pendingDepositRepairs.map(m => {
+                    const v = vehicleById(m.vehicleId);
+                    const total = m.cost ?? 0;
+                    const required = m.depositRequired ?? total * 0.5;
+                    return (
+                      <Card key={m.id}>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="flex items-center justify-between text-base">
+                            <span className="flex items-center gap-2">
+                              <Wrench className="h-4 w-4 text-blue-500" />
+                              Pending Deposit
+                            </span>
+                            {m.depositProcessed && (
+                              <span className="text-xs font-normal text-green-600">Deposit received</span>
+                            )}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="text-sm font-medium">
+                            {v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <span className="font-medium text-foreground">Issue:</span> {m.serviceType}
+                          </div>
+                          <div className="space-y-1 rounded-md bg-muted/40 p-3 text-sm">
+                            <div className="flex justify-between"><span>Parts</span><span>{fmtMoney(m.partsCost ?? 0)}</span></div>
+                            <div className="flex justify-between"><span>Labour</span><span>{fmtMoney(m.laborCost ?? 0)}</span></div>
+                            <div className="flex justify-between border-t border-border pt-1 font-medium"><span>Total</span><span>{fmtMoney(total)}</span></div>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Deposit required (50%): <span className="font-medium text-foreground">{fmtMoney(required)}</span>
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor={`dep-${m.id}`}>Deposit amount ($)</Label>
+                            <Input
+                              id={`dep-${m.id}`}
+                              type="number" min="0" step="0.01"
+                              value={depositValue(m)}
+                              onChange={(e) => setDepositInputs(prev => ({ ...prev, [m.id]: e.target.value }))}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleProcessDeposit(m)}>
+                              Process Deposit
+                            </Button>
+                            <Button size="sm" onClick={() => handleCompleteRepair(m)}>
+                              Complete Repair
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             </div>
           )}
         </TabsContent>
