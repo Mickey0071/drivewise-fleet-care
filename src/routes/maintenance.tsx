@@ -694,6 +694,70 @@ function MaintenancePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!completeRecord} onOpenChange={(o) => { if (!o) { setCompleteRecord(null); setCompletionSummary(null); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{completionSummary ? "Repair Completed" : "Complete Repair"}</DialogTitle>
+          </DialogHeader>
+          {completeRecord && (() => {
+            const m = completeRecord;
+            const v = vehicleById(m.vehicleId);
+            const parts = m.partsCost ?? 0;
+            const labour = m.laborCost ?? 0;
+            const total = parts + labour;
+            const today = new Date().toISOString().slice(0, 10);
+            return (
+              <div className="space-y-4">
+                <div className="space-y-1 rounded-md bg-muted/40 p-3 text-sm">
+                  <div><span className="font-medium">Vehicle:</span> {v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
+                  <div><span className="font-medium">Issue:</span> {m.serviceType}</div>
+                  <div className="flex items-center gap-1 font-medium text-green-600">
+                    <CheckCircle2 className="h-4 w-4" /> Completed
+                  </div>
+                </div>
+                <div className="space-y-1 rounded-md border border-border p-3 text-sm">
+                  <div className="flex justify-between"><span>Parts</span><span>{fmtMoney(parts)}</span></div>
+                  <div className="flex justify-between"><span>Labour</span><span>{fmtMoney(labour)}</span></div>
+                  <div className="flex justify-between border-t border-border pt-1 font-medium"><span>Total</span><span>{fmtMoney(total)}</span></div>
+                </div>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <div><span className="font-medium text-foreground">Completion date:</span> {fmtDate(today)}</div>
+                  <div><span className="font-medium text-foreground">Completed by:</span> {adminName}</div>
+                </div>
+                {!completionSummary ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="mechanic-name">Mechanic name (optional)</Label>
+                    <Input id="mechanic-name" value={mechanicName}
+                      onChange={(e) => setMechanicName(e.target.value)} placeholder="e.g. Joe's Auto" />
+                  </div>
+                ) : (
+                  <div className="space-y-2 rounded-md bg-green-500/10 p-3 text-sm">
+                    {mechanicName.trim() && (
+                      <div className="text-muted-foreground">
+                        <span className="font-medium text-foreground">Mechanic:</span> {mechanicName.trim()}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-green-600"><CheckCircle2 className="h-4 w-4" /> Logged to fleet card repair history</div>
+                    <div className="flex items-center gap-2 text-green-600"><CheckCircle2 className="h-4 w-4" /> Posted to P&L expenses ({fmtMoney(completionSummary.expensePosted)})</div>
+                    <div className="flex items-center gap-2 text-green-600"><CheckCircle2 className="h-4 w-4" /> Added to scorecard data</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            {!completionSummary ? (
+              <>
+                <Button variant="outline" onClick={() => setCompleteRecord(null)}>Cancel</Button>
+                <Button onClick={confirmCompleteRepair}>Complete Repair</Button>
+              </>
+            ) : (
+              <Button onClick={() => { setCompleteRecord(null); setCompletionSummary(null); }}>Done</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
