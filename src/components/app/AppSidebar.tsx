@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
-  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature, Bell, CalendarPlus,
+  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, UserCog, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature, Bell, CalendarPlus, BarChart3,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -32,6 +32,7 @@ const adminItems: Item[] = [
   { title: "Runner Reports", url: "/runner-reports", icon: ClipboardList, roles: ["admin", "runner"] },
   { title: "Rental Agreement", url: "/rental-agreement", icon: ScrollText, roles: ["admin"] },
   { title: "SMS log", url: "/sms-log", icon: MessageSquare, roles: ["admin"] },
+  { title: "Analytics", url: "/analytics", icon: BarChart3, roles: ["admin"] },
   { title: "Notifications", url: "/admin/notifications", icon: Bell, roles: ["admin"] },
   { title: "Extension Offers", url: "/admin/extensions", icon: CalendarPlus, roles: ["admin"] },
   { title: "Refund Approvals", url: "/refund-approvals", icon: Undo2, roles: ["admin", "va"] },
