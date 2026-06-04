@@ -215,33 +215,41 @@ function MaintenancePage() {
                 <span className="text-xs font-normal text-muted-foreground">{phase1.length}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 p-3 pt-0">
+            <CardContent className="p-0 pb-2">
               {phase1.length === 0 ? (
-                <p className="px-1 text-xs text-muted-foreground">Nothing here.</p>
-              ) : phase1.map(m => {
-                const v = vehicleById(m.vehicleId);
-                const fromInspection = (m.source ?? "").includes("inspection");
-                return (
-                  <div key={m.id} className="rounded-md border border-l-[3px] border-l-yellow-500 border-border p-3">
-                    <div className="text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{m.issueDescription ?? m.serviceType}</div>
-                    {m.repairRequestNotes && (
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">Symptoms:</span> {m.repairRequestNotes}
-                      </div>
-                    )}
-                    <div className="mt-2 flex items-center justify-between">
-                      <Badge variant="secondary" className="text-[10px]">
-                        {fromInspection ? "From inspection" : "Manual"}
-                      </Badge>
-                      <span className="text-[10px] text-muted-foreground">{fmtDate((m.createdAt ?? "").slice(0, 10))}</span>
-                    </div>
-                    <Button size="sm" className="mt-2 w-full" onClick={() => moveRepairToDiagnose(m.id)}>
-                      Move to Diagnose →
-                    </Button>
-                  </div>
-                );
-              })}
+                <p className="px-4 py-2 text-xs text-muted-foreground">Nothing here.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {phase1.map(m => {
+                    const v = vehicleById(m.vehicleId);
+                    const fromInspection = (m.source ?? "").includes("inspection");
+                    const open = expandedId === m.id;
+                    return (
+                      <li key={m.id} className="border-l-[3px] border-l-yellow-500">
+                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} />
+                        {open && (
+                          <div className="space-y-2 px-3 pb-3">
+                            {m.repairRequestNotes && (
+                              <div className="text-xs text-muted-foreground">
+                                <span className="font-medium text-foreground">Symptoms:</span> {m.repairRequestNotes}
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between">
+                              <Badge variant="secondary" className="text-[10px]">
+                                {fromInspection ? "From inspection" : "Manual"}
+                              </Badge>
+                              <span className="text-[10px] text-muted-foreground">{fmtDate((m.createdAt ?? "").slice(0, 10))}</span>
+                            </div>
+                            <Button size="sm" className="w-full" onClick={() => moveRepairToDiagnose(m.id)}>
+                              Move to Diagnose →
+                            </Button>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </CardContent>
           </Card>
 
@@ -256,20 +264,22 @@ function MaintenancePage() {
                 <span className="text-xs font-normal text-muted-foreground">{phase2.length}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 p-3 pt-0">
+            <CardContent className="p-0 pb-2">
               {phase2.length === 0 ? (
-                <p className="px-1 text-xs text-muted-foreground">Nothing here.</p>
-              ) : phase2.map(m => {
-                const v = vehicleById(m.vehicleId);
-                const d = diagFor(m);
-                const parts = parseFloat(d.partsCost) || 0;
-                const labour = parseFloat(d.laborCost) || 0;
-                const total = parts + labour;
-                return (
-                  <div key={m.id} className="rounded-md border border-l-[3px] border-l-blue-500 border-border p-3">
-                    <div className="text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{m.issueDescription ?? m.serviceType}</div>
-                    <div className="mt-2 space-y-2">
+                <p className="px-4 py-2 text-xs text-muted-foreground">Nothing here.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {phase2.map(m => {
+                    const d = diagFor(m);
+                    const parts = parseFloat(d.partsCost) || 0;
+                    const labour = parseFloat(d.laborCost) || 0;
+                    const total = parts + labour;
+                    const open = expandedId === m.id;
+                    return (
+                      <li key={m.id} className="border-l-[3px] border-l-blue-500">
+                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} />
+                        {open && (
+                          <div className="space-y-2 px-3 pb-3">
                       <div>
                         <Label className="text-[11px]">Parts needed</Label>
                         <Textarea
@@ -294,13 +304,16 @@ function MaintenancePage() {
                       <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs font-medium">
                         <span>Total</span><span>{fmtMoney(total)}</span>
                       </div>
-                    </div>
-                    <Button size="sm" className="mt-2 w-full" onClick={() => handleSaveDiagnosis(m)}>
-                      Save Diagnosis →
-                    </Button>
-                  </div>
-                );
-              })}
+                            <Button size="sm" className="w-full" onClick={() => handleSaveDiagnosis(m)}>
+                              Save Diagnosis →
+                            </Button>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </CardContent>
           </Card>
 
@@ -315,45 +328,52 @@ function MaintenancePage() {
                 <span className="text-xs font-normal text-muted-foreground">{phase3.length}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 p-3 pt-0">
+            <CardContent className="p-0 pb-2">
               {phase3.length === 0 ? (
-                <p className="px-1 text-xs text-muted-foreground">Nothing here.</p>
-              ) : phase3.map(m => {
-                const v = vehicleById(m.vehicleId);
-                const total = m.cost ?? 0;
-                const paid = m.amountPaid ?? 0;
-                const balance = Math.max(0, total - paid);
-                return (
-                  <div key={m.id} className="rounded-md border border-l-[3px] border-l-green-600 border-border p-3">
-                    <div className="text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{m.issueDescription ?? m.serviceType}</div>
+                <p className="px-4 py-2 text-xs text-muted-foreground">Nothing here.</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {phase3.map(m => {
+                    const total = m.cost ?? 0;
+                    const paid = m.amountPaid ?? 0;
+                    const balance = Math.max(0, total - paid);
+                    const open = expandedId === m.id;
+                    return (
+                      <li key={m.id} className="border-l-[3px] border-l-green-600">
+                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} />
+                        {open && (
+                          <div className="space-y-2 px-3 pb-3">
                     {m.diagnosisNotes && (
                       <div className="mt-1 text-xs text-muted-foreground">
                         <span className="font-medium text-foreground">Parts used:</span> {m.diagnosisNotes}
                       </div>
                     )}
-                    <div className="mt-2 space-y-0.5 rounded bg-muted/40 p-2 text-xs">
+                    <div className="space-y-0.5 rounded bg-muted/40 p-2 text-xs">
                       <div className="flex justify-between"><span>Total</span><span>{fmtMoney(total)}</span></div>
                       <div className="flex justify-between"><span>Paid</span><span>{fmtMoney(paid)}</span></div>
                       <div className="flex justify-between border-t border-border pt-0.5 font-medium"><span>Balance</span><span>{fmtMoney(balance)}</span></div>
                     </div>
                     {payOpenId === m.id ? (
-                      <div className="mt-2 flex gap-2">
+                      <div className="flex gap-2">
                         <Input className="h-8" type="number" min="0" step="0.01" placeholder="Amount"
                           value={payInputs[m.id] ?? ""} onChange={(e) => setPayInputs(prev => ({ ...prev, [m.id]: e.target.value }))} />
                         <Button size="sm" onClick={() => handleProcessPayment(m)}>Submit</Button>
                       </div>
                     ) : (
-                      <Button size="sm" variant="outline" className="mt-2 w-full" onClick={() => setPayOpenId(m.id)}>
+                      <Button size="sm" variant="outline" className="w-full" onClick={() => setPayOpenId(m.id)}>
                         + Process Payment
                       </Button>
                     )}
-                    <Button size="sm" className="mt-2 w-full" disabled={balance > 0} onClick={() => handleCompleteRepair(m)}>
+                    <Button size="sm" className="w-full" disabled={balance > 0} onClick={() => handleCompleteRepair(m)}>
                       Complete Repair
                     </Button>
-                  </div>
-                );
-              })}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </CardContent>
           </Card>
         </div>
