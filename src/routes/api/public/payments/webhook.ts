@@ -515,6 +515,48 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         await saveCardToDriver(rentalRow.driver_id, env, session.customer, extPaymentMethodId);
       }
 
+      // Auto-Pay enrollment: if the originating offer opted into auto-pay,
+      // mark the driver enabled and schedule the next charge one period out.
+      if (extToken) {
+        const { data: offerRow } = await sb
+          .from("auto_extension_offers")
+          .select("auto_pay_enabled, extension_choice")
+          .eq("extension_token", extToken)
+          .maybeSingle();
+        if (offerRow?.auto_pay_enabled && rentalRow.driver_id) {
+          const cadence = (offerRow.extension_choice as string) === "weekly" ? "weekly" : "daily";
+          const next = new Date();
+          next.setDate(next.getDate() + (cadence === "weekly" ? 7 : 1));
+          await sb
+            .from("drivers")
+            .update({
+              auto_pay_enabled: true,
+              auto_pay_cadence: cadence,
+              next_auto_charge_date: next.toISOString(),
+              auto_pay_started_date: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            } as any)
+            .eq("id", rentalRow.driver_id);
+          if (drvForAutopay?.phone) {
+            try {
+              await notifyRenter({
+                phone: drvForAutopay.phone,
+                email: drvForAutopay.email ?? null,
+                name: drvForAutopay.full_name,
+                sms: `Camauto Rentals: Auto-Pay is active — you'll save 5% on future rentals. Next charge: ${next.toISOString().slice(0, 10)}. Cancel anytime from your portal.`,
+                emailSubject: "Auto-Pay Enabled — Camauto Rentals",
+                emailHeading: "Auto-Pay Enabled",
+                emailIntro:
+                  "Auto-Pay is now active on your account. You'll save 5% on every future rental and we'll remind you 24 hours before each charge. You can cancel anytime from your portal.",
+                emailDetails: [{ label: "Next Charge", value: next.toISOString().slice(0, 10) }],
+              });
+            } catch (e) {
+              console.error("[webhook:ext] auto-pay confirm notify failed", e);
+            }
+          }
+        }
+      }
+
       // Renter SMS
       const { data: drv } = await sb
         .from("drivers")
