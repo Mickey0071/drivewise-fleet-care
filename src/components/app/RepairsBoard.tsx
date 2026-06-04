@@ -13,7 +13,7 @@ import type { RepairCompletionSummary } from "@/lib/mock/store";
 import { useServerFn } from "@tanstack/react-start";
 import { notifyRunnerRepairComplete } from "@/lib/tasks.functions";
 import { toast } from "sonner";
-import { CheckCircle2, Wrench, Ban, Car, ArrowRight } from "lucide-react";
+import { CheckCircle2, Wrench, Ban, Car, ArrowRight, Plus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 import { RepairCompletionSummaryDialog } from "@/components/app/RepairCompletionSummaryDialog";
@@ -368,12 +368,15 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Column({ title, count, tone, children }: { title: string; count: number; tone: string; children: React.ReactNode }) {
+function Column({ title, count, tone, action, children }: { title: string; count: number; tone: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <Card className="bg-muted/20">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between text-sm">
-          <span>{title}</span>
+          <span className="flex items-center gap-2">
+            {title}
+            {action}
+          </span>
           <span className={`rounded-full px-2 py-0.5 text-xs ${tone}`}>{count}</span>
         </CardTitle>
       </CardHeader>
@@ -388,7 +391,7 @@ function Column({ title, count, tone, children }: { title: string; count: number
   );
 }
 
-export function RepairsBoard() {
+export function RepairsBoard({ onReportIssue }: { onReportIssue?: () => void }) {
   useStoreVersion();
   const [summary, setSummary] = useState<RepairCompletionSummary | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -407,7 +410,11 @@ export function RepairsBoard() {
   return (
     <>
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <Column title="Issues Reported" count={reported.length} tone="bg-blue-500/20 text-blue-700">
+      <Column title="Issues Reported" count={reported.length} tone="bg-blue-500/20 text-blue-700" action={onReportIssue ? (
+        <Button size="sm" variant="outline" className="h-6 gap-1 px-2 text-xs" onClick={onReportIssue}>
+          <Plus className="h-3 w-3" /> Report Issue
+        </Button>
+      ) : undefined}>
         {reported.map(m => <IssueCard key={m.id} m={m} />)}
       </Column>
       <Column title="Open" count={open.length} tone="bg-muted text-foreground">

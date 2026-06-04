@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { Wrench, AlertTriangle, CalendarClock, Settings2, ChevronDown, ShieldAlert } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
-import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
+
 import { ReportIssueDialog } from "@/components/app/ReportIssueDialog";
 import { RepairsBoard } from "@/components/app/RepairsBoard";
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
@@ -32,7 +32,6 @@ export const Route = createFileRoute("/maintenance")({
 function MaintenancePage() {
   useStoreVersion();
   const navigate = useNavigate();
-  const [repairOpen, setRepairOpen] = useState(false);
   const [reportIssueOpen, setReportIssueOpen] = useState(false);
   const [tab, setTab] = useState("scheduled");
   const [configOpen, setConfigOpen] = useState(false);
@@ -101,9 +100,6 @@ function MaintenancePage() {
         subtitle={`${openRepairs.length} open repair${openRepairs.length === 1 ? "" : "s"} across the fleet`}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={() => setReportIssueOpen(true)}>
-              <AlertTriangle className="mr-1 h-4 w-4" /> Report Issue
-            </Button>
             <ReportActions csv={{
               filename: "maintenance.csv",
               headers: ["ID", "Vehicle", "Plate", "Service", "Vendor", "Date", "Mileage", "Cost", "Next due"],
@@ -115,7 +111,6 @@ function MaintenancePage() {
           </div>
         }
       />
-      <CreateRepairDialog open={repairOpen} onOpenChange={setRepairOpen} />
       <ReportIssueDialog open={reportIssueOpen} onOpenChange={setReportIssueOpen} />
 
       {/* Configuration section */}
@@ -388,11 +383,7 @@ function MaintenancePage() {
         </TabsContent>
 
         <TabsContent value="repairs" className="mt-4">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Track repairs from open issue to fully-paid completion.</p>
-            <Button size="sm" onClick={() => setRepairOpen(true)}>+ New Repair</Button>
-          </div>
-          <RepairsBoard />
+          <RepairsBoard onReportIssue={() => setReportIssueOpen(true)} />
         </TabsContent>
 
         <TabsContent value="completed" className="mt-4">

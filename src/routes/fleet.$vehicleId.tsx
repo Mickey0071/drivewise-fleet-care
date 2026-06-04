@@ -13,7 +13,7 @@ import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Plus } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
@@ -23,8 +23,6 @@ import { MaintenanceSettingsDialog } from "@/components/app/MaintenanceSettingsD
 import { ServiceHistoryReportDialog } from "@/components/app/ServiceHistoryReportDialog";
 import { CreateWorkOrderDialog } from "@/components/app/CreateWorkOrderDialog";
 import { WorkOrderDialog } from "@/components/app/WorkOrderDialog";
-import { AddIssueDialog } from "@/components/app/AddIssueDialog";
-import { CreateRepairDialog } from "@/components/app/CreateRepairDialog";
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import type { Maintenance, WorkOrder } from "@/lib/mock/data";
@@ -52,8 +50,6 @@ function VehicleDetail() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [createWoOpen, setCreateWoOpen] = useState(false);
-  const [addIssueOpen, setAddIssueOpen] = useState(false);
-  const [addRepairOpen, setAddRepairOpen] = useState(false);
   const [activeWo, setActiveWo] = useState<WorkOrder | null>(null);
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
@@ -216,12 +212,6 @@ function VehicleDetail() {
             </Button>
             <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>
               <ClipboardList className="mr-1 h-4 w-4" />Create Maintenance Schedule
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setAddIssueOpen(true)}>
-              <Plus className="mr-1 h-4 w-4" />Add Issue
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setAddRepairOpen(true)}>
-              <Plus className="mr-1 h-4 w-4" />New Repair
             </Button>
             <Button
               size="sm"
@@ -535,18 +525,6 @@ function VehicleDetail() {
         open={createWoOpen}
         onOpenChange={setCreateWoOpen}
         vehicle={v}
-      />
-      <AddIssueDialog
-        open={addIssueOpen}
-        onOpenChange={setAddIssueOpen}
-        initialVehicleId={v.id}
-        lockVehicle
-      />
-      <CreateRepairDialog
-        open={addRepairOpen}
-        onOpenChange={setAddRepairOpen}
-        initialVehicleId={v.id}
-        lockVehicle
       />
       {activeWo && (
         <WorkOrderDialog
