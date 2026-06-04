@@ -511,6 +511,7 @@ export type Database = {
           is_rental_blocking: boolean
           issue_description: string | null
           labor_cost: number
+          mechanic_name: string | null
           mechanic_notes: string | null
           mileage_at_service: number
           next_service_due: string
@@ -552,6 +553,7 @@ export type Database = {
           is_rental_blocking?: boolean
           issue_description?: string | null
           labor_cost?: number
+          mechanic_name?: string | null
           mechanic_notes?: string | null
           mileage_at_service?: number
           next_service_due?: string
@@ -593,6 +595,7 @@ export type Database = {
           is_rental_blocking?: boolean
           issue_description?: string | null
           labor_cost?: number
+          mechanic_name?: string | null
           mechanic_notes?: string | null
           mileage_at_service?: number
           next_service_due?: string
