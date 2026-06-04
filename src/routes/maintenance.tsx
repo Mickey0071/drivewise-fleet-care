@@ -42,6 +42,11 @@ function MaintenancePage() {
     .sort((a, b) => (b.completionDate ?? b.dateCompleted ?? "").localeCompare(a.completionDate ?? a.dateCompleted ?? ""));
   const pendingCost = openRepairs.reduce((s, m) => s + (m.balance ?? 0), 0);
 
+  // Open repairs from inspection failures (reported, awaiting ticket creation)
+  const reportedInspectionRepairs = maintenance
+    .filter(m => m.status === "reported" && m.source === "inspection_fail")
+    .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
+
   const monthKey = new Date().toISOString().slice(0, 7);
   const completedThisMonth = completedRepairs.filter(
     m => (m.completionDate ?? m.dateCompleted ?? "").slice(0, 7) === monthKey,
