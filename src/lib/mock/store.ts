@@ -1813,6 +1813,7 @@ export interface RepairCompletionSummary {
   issue: string;
   completedBy: string;
   completionDate: string; // YYYY-MM-DD
+  mechanicName?: string;
   parts: number;
   labor: number;
   total: number;
