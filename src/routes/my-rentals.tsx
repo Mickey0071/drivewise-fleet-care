@@ -1,9 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { listMyRentals } from "@/lib/my-rentals.functions";
+import { listMyRentals, getMyAutoPayStatus, cancelMyAutoPay } from "@/lib/my-rentals.functions";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, ChevronRight, Car } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { Loader2, ChevronRight, Car, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/my-rentals")({
   head: () => ({ meta: [{ title: "My rentals — Camauto Rentals" }] }),
@@ -49,6 +52,8 @@ function MyRentalsPage() {
         <h1 className="text-2xl font-semibold">My rentals</h1>
         <p className="text-sm text-muted-foreground">Tap any rental to see documents, billing, and inspection history.</p>
       </div>
+
+      <AutoPayCard />
 
       {data.rentals.length === 0 && (
         <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">
