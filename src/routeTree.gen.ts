@@ -50,6 +50,11 @@ import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rent
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
 import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
 import { Route as AutoExtendTokenRouteImport } from './routes/auto-extend.$token'
+import { Route as AnalyticsUtilizationRouteImport } from './routes/analytics.utilization'
+import { Route as AnalyticsProfitabilityRouteImport } from './routes/analytics.profitability'
+import { Route as AnalyticsFailuresRouteImport } from './routes/analytics.failures'
+import { Route as AnalyticsCostsRouteImport } from './routes/analytics.costs'
+import { Route as AnalyticsBreakevenRouteImport } from './routes/analytics.breakeven'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
@@ -268,6 +273,31 @@ const AutoExtendTokenRoute = AutoExtendTokenRouteImport.update({
   path: '/auto-extend/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalyticsUtilizationRoute = AnalyticsUtilizationRouteImport.update({
+  id: '/utilization',
+  path: '/utilization',
+  getParentRoute: () => AnalyticsRoute,
+} as any)
+const AnalyticsProfitabilityRoute = AnalyticsProfitabilityRouteImport.update({
+  id: '/profitability',
+  path: '/profitability',
+  getParentRoute: () => AnalyticsRoute,
+} as any)
+const AnalyticsFailuresRoute = AnalyticsFailuresRouteImport.update({
+  id: '/failures',
+  path: '/failures',
+  getParentRoute: () => AnalyticsRoute,
+} as any)
+const AnalyticsCostsRoute = AnalyticsCostsRouteImport.update({
+  id: '/costs',
+  path: '/costs',
+  getParentRoute: () => AnalyticsRoute,
+} as any)
+const AnalyticsBreakevenRoute = AnalyticsBreakevenRouteImport.update({
+  id: '/breakeven',
+  path: '/breakeven',
+  getParentRoute: () => AnalyticsRoute,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
@@ -336,7 +366,7 @@ const ApiPublicHooksAutoExtensionLinksRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/analytics': typeof AnalyticsRoute
+  '/analytics': typeof AnalyticsRouteWithChildren
   '/calendar': typeof CalendarRoute
   '/checklist': typeof ChecklistRoute
   '/driver-portal': typeof DriverPortalRoute
@@ -368,6 +398,11 @@ export interface FileRoutesByFullPath {
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/analytics/breakeven': typeof AnalyticsBreakevenRoute
+  '/analytics/costs': typeof AnalyticsCostsRoute
+  '/analytics/failures': typeof AnalyticsFailuresRoute
+  '/analytics/profitability': typeof AnalyticsProfitabilityRoute
+  '/analytics/utilization': typeof AnalyticsUtilizationRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -391,7 +426,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/analytics': typeof AnalyticsRoute
+  '/analytics': typeof AnalyticsRouteWithChildren
   '/calendar': typeof CalendarRoute
   '/checklist': typeof ChecklistRoute
   '/driver-portal': typeof DriverPortalRoute
@@ -423,6 +458,11 @@ export interface FileRoutesByTo {
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/analytics/breakeven': typeof AnalyticsBreakevenRoute
+  '/analytics/costs': typeof AnalyticsCostsRoute
+  '/analytics/failures': typeof AnalyticsFailuresRoute
+  '/analytics/profitability': typeof AnalyticsProfitabilityRoute
+  '/analytics/utilization': typeof AnalyticsUtilizationRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -447,7 +487,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/analytics': typeof AnalyticsRoute
+  '/analytics': typeof AnalyticsRouteWithChildren
   '/calendar': typeof CalendarRoute
   '/checklist': typeof ChecklistRoute
   '/driver-portal': typeof DriverPortalRoute
@@ -479,6 +519,11 @@ export interface FileRoutesById {
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/analytics/breakeven': typeof AnalyticsBreakevenRoute
+  '/analytics/costs': typeof AnalyticsCostsRoute
+  '/analytics/failures': typeof AnalyticsFailuresRoute
+  '/analytics/profitability': typeof AnalyticsProfitabilityRoute
+  '/analytics/utilization': typeof AnalyticsUtilizationRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -536,6 +581,11 @@ export interface FileRouteTypes {
     | '/admin/extensions'
     | '/admin/notifications'
     | '/admin/users'
+    | '/analytics/breakeven'
+    | '/analytics/costs'
+    | '/analytics/failures'
+    | '/analytics/profitability'
+    | '/analytics/utilization'
     | '/auto-extend/$token'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -591,6 +641,11 @@ export interface FileRouteTypes {
     | '/admin/extensions'
     | '/admin/notifications'
     | '/admin/users'
+    | '/analytics/breakeven'
+    | '/analytics/costs'
+    | '/analytics/failures'
+    | '/analytics/profitability'
+    | '/analytics/utilization'
     | '/auto-extend/$token'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -646,6 +701,11 @@ export interface FileRouteTypes {
     | '/admin/extensions'
     | '/admin/notifications'
     | '/admin/users'
+    | '/analytics/breakeven'
+    | '/analytics/costs'
+    | '/analytics/failures'
+    | '/analytics/profitability'
+    | '/analytics/utilization'
     | '/auto-extend/$token'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -670,7 +730,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AnalyticsRoute: typeof AnalyticsRoute
+  AnalyticsRoute: typeof AnalyticsRouteWithChildren
   CalendarRoute: typeof CalendarRoute
   ChecklistRoute: typeof ChecklistRoute
   DriverPortalRoute: typeof DriverPortalRoute
@@ -1011,6 +1071,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AutoExtendTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analytics/utilization': {
+      id: '/analytics/utilization'
+      path: '/utilization'
+      fullPath: '/analytics/utilization'
+      preLoaderRoute: typeof AnalyticsUtilizationRouteImport
+      parentRoute: typeof AnalyticsRoute
+    }
+    '/analytics/profitability': {
+      id: '/analytics/profitability'
+      path: '/profitability'
+      fullPath: '/analytics/profitability'
+      preLoaderRoute: typeof AnalyticsProfitabilityRouteImport
+      parentRoute: typeof AnalyticsRoute
+    }
+    '/analytics/failures': {
+      id: '/analytics/failures'
+      path: '/failures'
+      fullPath: '/analytics/failures'
+      preLoaderRoute: typeof AnalyticsFailuresRouteImport
+      parentRoute: typeof AnalyticsRoute
+    }
+    '/analytics/costs': {
+      id: '/analytics/costs'
+      path: '/costs'
+      fullPath: '/analytics/costs'
+      preLoaderRoute: typeof AnalyticsCostsRouteImport
+      parentRoute: typeof AnalyticsRoute
+    }
+    '/analytics/breakeven': {
+      id: '/analytics/breakeven'
+      path: '/breakeven'
+      fullPath: '/analytics/breakeven'
+      preLoaderRoute: typeof AnalyticsBreakevenRouteImport
+      parentRoute: typeof AnalyticsRoute
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/admin/users'
@@ -1098,6 +1193,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AnalyticsRouteChildren {
+  AnalyticsBreakevenRoute: typeof AnalyticsBreakevenRoute
+  AnalyticsCostsRoute: typeof AnalyticsCostsRoute
+  AnalyticsFailuresRoute: typeof AnalyticsFailuresRoute
+  AnalyticsProfitabilityRoute: typeof AnalyticsProfitabilityRoute
+  AnalyticsUtilizationRoute: typeof AnalyticsUtilizationRoute
+}
+
+const AnalyticsRouteChildren: AnalyticsRouteChildren = {
+  AnalyticsBreakevenRoute: AnalyticsBreakevenRoute,
+  AnalyticsCostsRoute: AnalyticsCostsRoute,
+  AnalyticsFailuresRoute: AnalyticsFailuresRoute,
+  AnalyticsProfitabilityRoute: AnalyticsProfitabilityRoute,
+  AnalyticsUtilizationRoute: AnalyticsUtilizationRoute,
+}
+
+const AnalyticsRouteWithChildren = AnalyticsRoute._addFileChildren(
+  AnalyticsRouteChildren,
+)
+
 interface FleetRouteChildren {
   FleetVehicleIdRoute: typeof FleetVehicleIdRoute
 }
@@ -1122,7 +1237,7 @@ const MyRentalsRouteWithChildren = MyRentalsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AnalyticsRoute: AnalyticsRoute,
+  AnalyticsRoute: AnalyticsRouteWithChildren,
   CalendarRoute: CalendarRoute,
   ChecklistRoute: ChecklistRoute,
   DriverPortalRoute: DriverPortalRoute,
@@ -1176,3 +1291,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
