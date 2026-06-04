@@ -51,6 +51,7 @@ import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
 import { Route as AutoExtendTokenRouteImport } from './routes/auto-extend.$token'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
+import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as RunnerTaskTaskIdRouteImport } from './routes/runner.task.$taskId'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
@@ -59,6 +60,7 @@ import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/publi
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
 import { Route as ApiPublicHooksRepairDigestRouteImport } from './routes/api/public/hooks/repair-digest'
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
+import { Route as ApiPublicHooksAutopayRemindersRouteImport } from './routes/api/public/hooks/autopay-reminders'
 import { Route as ApiPublicHooksAutoRenewChargesRouteImport } from './routes/api/public/hooks/auto-renew-charges'
 import { Route as ApiPublicHooksAutoExtensionLinksRouteImport } from './routes/api/public/hooks/auto-extension-links'
 
@@ -272,6 +274,11 @@ const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
   path: '/admin/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminExtensionsRoute = AdminExtensionsRouteImport.update({
+  id: '/admin/extensions',
+  path: '/admin/extensions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
   id: '/admin/create-task',
   path: '/admin/create-task',
@@ -314,6 +321,12 @@ const ApiPublicHooksDailyReportsRoute =
   ApiPublicHooksDailyReportsRouteImport.update({
     id: '/api/public/hooks/daily-reports',
     path: '/api/public/hooks/daily-reports',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksAutopayRemindersRoute =
+  ApiPublicHooksAutopayRemindersRouteImport.update({
+    id: '/api/public/hooks/autopay-reminders',
+    path: '/api/public/hooks/autopay-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksAutoRenewChargesRoute =
@@ -359,6 +372,7 @@ export interface FileRoutesByFullPath {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
@@ -378,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
+  '/api/public/hooks/autopay-reminders': typeof ApiPublicHooksAutopayRemindersRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
@@ -413,6 +428,7 @@ export interface FileRoutesByTo {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
@@ -432,6 +448,7 @@ export interface FileRoutesByTo {
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
+  '/api/public/hooks/autopay-reminders': typeof ApiPublicHooksAutopayRemindersRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
@@ -468,6 +485,7 @@ export interface FileRoutesById {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
@@ -487,6 +505,7 @@ export interface FileRoutesById {
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
+  '/api/public/hooks/autopay-reminders': typeof ApiPublicHooksAutopayRemindersRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
@@ -524,6 +543,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/admin/create-task'
+    | '/admin/extensions'
     | '/admin/notifications'
     | '/admin/users'
     | '/auto-extend/$token'
@@ -543,6 +563,7 @@ export interface FileRouteTypes {
     | '/runner/task/$taskId'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/auto-renew-charges'
+    | '/api/public/hooks/autopay-reminders'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
@@ -578,6 +599,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/admin/create-task'
+    | '/admin/extensions'
     | '/admin/notifications'
     | '/admin/users'
     | '/auto-extend/$token'
@@ -597,6 +619,7 @@ export interface FileRouteTypes {
     | '/runner/task/$taskId'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/auto-renew-charges'
+    | '/api/public/hooks/autopay-reminders'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
@@ -632,6 +655,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/admin/create-task'
+    | '/admin/extensions'
     | '/admin/notifications'
     | '/admin/users'
     | '/auto-extend/$token'
@@ -651,6 +675,7 @@ export interface FileRouteTypes {
     | '/runner/task/$taskId'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/auto-renew-charges'
+    | '/api/public/hooks/autopay-reminders'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
@@ -687,6 +712,7 @@ export interface RootRouteChildren {
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
   AdminCreateTaskRoute: typeof AdminCreateTaskRoute
+  AdminExtensionsRoute: typeof AdminExtensionsRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AutoExtendTokenRoute: typeof AutoExtendTokenRoute
@@ -704,6 +730,7 @@ export interface RootRouteChildren {
   RunnerTaskTaskIdRoute: typeof RunnerTaskTaskIdRoute
   ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
   ApiPublicHooksAutoRenewChargesRoute: typeof ApiPublicHooksAutoRenewChargesRoute
+  ApiPublicHooksAutopayRemindersRoute: typeof ApiPublicHooksAutopayRemindersRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
   ApiPublicHooksRepairDigestRoute: typeof ApiPublicHooksRepairDigestRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
@@ -1006,6 +1033,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminNotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/extensions': {
+      id: '/admin/extensions'
+      path: '/admin/extensions'
+      fullPath: '/admin/extensions'
+      preLoaderRoute: typeof AdminExtensionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/create-task': {
       id: '/admin/create-task'
       path: '/admin/create-task'
@@ -1060,6 +1094,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/daily-reports'
       fullPath: '/api/public/hooks/daily-reports'
       preLoaderRoute: typeof ApiPublicHooksDailyReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/autopay-reminders': {
+      id: '/api/public/hooks/autopay-reminders'
+      path: '/api/public/hooks/autopay-reminders'
+      fullPath: '/api/public/hooks/autopay-reminders'
+      preLoaderRoute: typeof ApiPublicHooksAutopayRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/auto-renew-charges': {
@@ -1131,6 +1172,7 @@ const rootRouteChildren: RootRouteChildren = {
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
   AdminCreateTaskRoute: AdminCreateTaskRoute,
+  AdminExtensionsRoute: AdminExtensionsRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AutoExtendTokenRoute: AutoExtendTokenRoute,
@@ -1148,6 +1190,7 @@ const rootRouteChildren: RootRouteChildren = {
   RunnerTaskTaskIdRoute: RunnerTaskTaskIdRoute,
   ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
   ApiPublicHooksAutoRenewChargesRoute: ApiPublicHooksAutoRenewChargesRoute,
+  ApiPublicHooksAutopayRemindersRoute: ApiPublicHooksAutopayRemindersRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
   ApiPublicHooksRepairDigestRoute: ApiPublicHooksRepairDigestRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,

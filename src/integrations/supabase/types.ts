@@ -17,6 +17,7 @@ export type Database = {
       auto_extension_offers: {
         Row: {
           auto_pay_enabled: boolean
+          cancelled_at: string | null
           consumed_at: string | null
           created_at: string
           expires_at: string
@@ -24,7 +25,9 @@ export type Database = {
           extension_token: string | null
           id: string
           offer_type: string
+          opened_at: string | null
           rental_id: string
+          resent_count: number
           sent_at: string
           status: string
           token: string
@@ -32,6 +35,7 @@ export type Database = {
         }
         Insert: {
           auto_pay_enabled?: boolean
+          cancelled_at?: string | null
           consumed_at?: string | null
           created_at?: string
           expires_at?: string
@@ -39,7 +43,9 @@ export type Database = {
           extension_token?: string | null
           id?: string
           offer_type?: string
+          opened_at?: string | null
           rental_id: string
+          resent_count?: number
           sent_at?: string
           status?: string
           token: string
@@ -47,6 +53,7 @@ export type Database = {
         }
         Update: {
           auto_pay_enabled?: boolean
+          cancelled_at?: string | null
           consumed_at?: string | null
           created_at?: string
           expires_at?: string
@@ -54,7 +61,9 @@ export type Database = {
           extension_token?: string | null
           id?: string
           offer_type?: string
+          opened_at?: string | null
           rental_id?: string
+          resent_count?: number
           sent_at?: string
           status?: string
           token?: string
@@ -68,6 +77,9 @@ export type Database = {
           alt_contact_name: string | null
           alt_contact_phone: string | null
           apt_unit: string | null
+          auto_pay_cadence: string | null
+          auto_pay_enabled: boolean
+          auto_pay_started_date: string | null
           block_reason: string | null
           blocked: boolean
           blocked_at: string | null
@@ -90,6 +102,7 @@ export type Database = {
           license_expiry: string
           license_number: string
           middle_initial: string | null
+          next_auto_charge_date: string | null
           phone: string
           rideshare: string
           state: string | null
@@ -105,6 +118,9 @@ export type Database = {
           alt_contact_name?: string | null
           alt_contact_phone?: string | null
           apt_unit?: string | null
+          auto_pay_cadence?: string | null
+          auto_pay_enabled?: boolean
+          auto_pay_started_date?: string | null
           block_reason?: string | null
           blocked?: boolean
           blocked_at?: string | null
@@ -127,6 +143,7 @@ export type Database = {
           license_expiry: string
           license_number: string
           middle_initial?: string | null
+          next_auto_charge_date?: string | null
           phone: string
           rideshare?: string
           state?: string | null
@@ -142,6 +159,9 @@ export type Database = {
           alt_contact_name?: string | null
           alt_contact_phone?: string | null
           apt_unit?: string | null
+          auto_pay_cadence?: string | null
+          auto_pay_enabled?: boolean
+          auto_pay_started_date?: string | null
           block_reason?: string | null
           blocked?: boolean
           blocked_at?: string | null
@@ -164,6 +184,7 @@ export type Database = {
           license_expiry?: string
           license_number?: string
           middle_initial?: string | null
+          next_auto_charge_date?: string | null
           phone?: string
           rideshare?: string
           state?: string | null

@@ -1,9 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { listMyRentals } from "@/lib/my-rentals.functions";
+import { listMyRentals, getMyAutoPayStatus, cancelMyAutoPay } from "@/lib/my-rentals.functions";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, ChevronRight, Car } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { Loader2, ChevronRight, Car, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/my-rentals")({
   head: () => ({ meta: [{ title: "My rentals — Camauto Rentals" }] }),
@@ -49,6 +52,8 @@ function MyRentalsPage() {
         <h1 className="text-2xl font-semibold">My rentals</h1>
         <p className="text-sm text-muted-foreground">Tap any rental to see documents, billing, and inspection history.</p>
       </div>
+
+      <AutoPayCard />
 
       {data.rentals.length === 0 && (
         <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -100,5 +105,63 @@ function MyRentalsPage() {
         })}
       </div>
     </div>
+  );
+}
+
+function AutoPayCard() {
+  const fetchStatus = useServerFn(getMyAutoPayStatus);
+  const cancelFn = useServerFn(cancelMyAutoPay);
+  const [status, setStatus] = useState<Awaited<ReturnType<typeof getMyAutoPayStatus>> | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = () => fetchStatus().then(setStatus).catch(() => setStatus(null));
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!status || !status.linked || !status.enabled) return null;
+
+  async function onCancel() {
+    if (!confirm("Cancel Auto-Pay? Your card stays saved, but future rentals will be full price.")) return;
+    setBusy(true);
+    try {
+      await cancelFn();
+      toast.success("Auto-Pay cancelled");
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not cancel");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="border-primary/30 bg-primary/5">
+      <CardContent className="py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-primary" />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Auto-Pay</span>
+                <Badge>Active</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {status.cardBrand ? `${status.cardBrand} ` : ""}
+                {status.cardLast4 ? `•••• ${status.cardLast4}` : "Card on file"}
+                {status.nextChargeDate
+                  ? ` · Next charge ${fmtDate(status.nextChargeDate)}`
+                  : ""}
+                {status.cadence ? ` · ${status.cadence}` : ""}
+              </p>
+            </div>
+          </div>
+          <Button size="sm" variant="outline" disabled={busy} onClick={onCancel}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cancel Auto-Pay"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

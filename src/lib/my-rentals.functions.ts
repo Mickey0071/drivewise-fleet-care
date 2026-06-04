@@ -151,3 +151,47 @@ export const getRenterHistoryByRentalId = createServerFn({ method: "POST" })
       rentals: (rs ?? []).map((r) => ({ ...r, vehicle: vMap.get(r.vehicle_id) ?? null })),
     };
   });
+
+// --- Auto-Pay management (customer portal) -------------------------------
+
+/** Return the current driver's Auto-Pay status + saved card for the portal. */
+export const getMyAutoPayStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const driverId = await currentDriverId(context.userId);
+    if (!driverId) return { linked: false as const };
+    const { data, error } = await supabaseAdmin
+      .from("drivers")
+      .select(
+        "auto_pay_enabled, auto_pay_cadence, next_auto_charge_date, card_last4, card_brand",
+      )
+      .eq("id", driverId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return {
+      linked: true as const,
+      enabled: !!data?.auto_pay_enabled,
+      cadence: (data?.auto_pay_cadence as string | null) ?? null,
+      nextChargeDate: (data?.next_auto_charge_date as string | null) ?? null,
+      cardLast4: (data?.card_last4 as string | null) ?? null,
+      cardBrand: (data?.card_brand as string | null) ?? null,
+    };
+  });
+
+/** Cancel Auto-Pay for the current driver. Card stays saved. */
+export const cancelMyAutoPay = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const driverId = await currentDriverId(context.userId);
+    if (!driverId) throw new Error("No renter profile linked to this account.");
+    const { error } = await supabaseAdmin
+      .from("drivers")
+      .update({
+        auto_pay_enabled: false,
+        next_auto_charge_date: null,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq("id", driverId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
