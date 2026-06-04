@@ -548,6 +548,25 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         status: "paid",
         environment: env,
       } as any);
+
+      // Admin notification: extension complete.
+      try {
+        const { data: veh } = await sb
+          .from("vehicles")
+          .select("make, model, year")
+          .eq("id", rentalRow.vehicle_id)
+          .maybeSingle();
+        const vehLabel = veh
+          ? `${veh.year ?? ""} ${veh.make ?? ""} ${veh.model ?? ""}`.trim()
+          : rentalRow.vehicle_id;
+        await sendSms(
+          "267-221-3977",
+          `✅ Extension complete: ${drv?.full_name || "Customer"} ${vehLabel} until ${newEndIso}`,
+          "Admin",
+        );
+      } catch (e) {
+        console.error("[webhook:ext] admin notify failed", e);
+      }
     }
     return;
   }

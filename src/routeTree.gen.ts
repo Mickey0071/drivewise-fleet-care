@@ -48,6 +48,7 @@ import { Route as PortalSignupRentalIdRouteImport } from './routes/portal-signup
 import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rentalId'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
 import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
+import { Route as AutoExtendTokenRouteImport } from './routes/auto-extend.$token'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
@@ -59,6 +60,7 @@ import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/pu
 import { Route as ApiPublicHooksRepairDigestRouteImport } from './routes/api/public/hooks/repair-digest'
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
 import { Route as ApiPublicHooksAutoRenewChargesRouteImport } from './routes/api/public/hooks/auto-renew-charges'
+import { Route as ApiPublicHooksAutoExtensionLinksRouteImport } from './routes/api/public/hooks/auto-extension-links'
 
 const ViolationsRoute = ViolationsRouteImport.update({
   id: '/violations',
@@ -255,6 +257,11 @@ const ExtendTokenRoute = ExtendTokenRouteImport.update({
   path: '/extend/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AutoExtendTokenRoute = AutoExtendTokenRouteImport.update({
+  id: '/auto-extend/$token',
+  path: '/auto-extend/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
@@ -315,6 +322,12 @@ const ApiPublicHooksAutoRenewChargesRoute =
     path: '/api/public/hooks/auto-renew-charges',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksAutoExtensionLinksRoute =
+  ApiPublicHooksAutoExtensionLinksRouteImport.update({
+    id: '/api/public/hooks/auto-extension-links',
+    path: '/api/public/hooks/auto-extension-links',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -348,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/auto-extend/$token': typeof AutoExtendTokenRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
@@ -362,6 +376,7 @@ export interface FileRoutesByFullPath {
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
+  '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
@@ -400,6 +415,7 @@ export interface FileRoutesByTo {
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/auto-extend/$token': typeof AutoExtendTokenRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
@@ -414,6 +430,7 @@ export interface FileRoutesByTo {
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
+  '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
@@ -453,6 +470,7 @@ export interface FileRoutesById {
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/auto-extend/$token': typeof AutoExtendTokenRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
@@ -467,6 +485,7 @@ export interface FileRoutesById {
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
+  '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
@@ -507,6 +526,7 @@ export interface FileRouteTypes {
     | '/admin/create-task'
     | '/admin/notifications'
     | '/admin/users'
+    | '/auto-extend/$token'
     | '/extend/$token'
     | '/fleet/$vehicleId'
     | '/my-rentals/$rentalId'
@@ -521,6 +541,7 @@ export interface FileRouteTypes {
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/runner/task/$taskId'
+    | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/auto-renew-charges'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
@@ -559,6 +580,7 @@ export interface FileRouteTypes {
     | '/admin/create-task'
     | '/admin/notifications'
     | '/admin/users'
+    | '/auto-extend/$token'
     | '/extend/$token'
     | '/fleet/$vehicleId'
     | '/my-rentals/$rentalId'
@@ -573,6 +595,7 @@ export interface FileRouteTypes {
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/runner/task/$taskId'
+    | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/auto-renew-charges'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
@@ -611,6 +634,7 @@ export interface FileRouteTypes {
     | '/admin/create-task'
     | '/admin/notifications'
     | '/admin/users'
+    | '/auto-extend/$token'
     | '/extend/$token'
     | '/fleet/$vehicleId'
     | '/my-rentals/$rentalId'
@@ -625,6 +649,7 @@ export interface FileRouteTypes {
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/runner/task/$taskId'
+    | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/auto-renew-charges'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
@@ -664,6 +689,7 @@ export interface RootRouteChildren {
   AdminCreateTaskRoute: typeof AdminCreateTaskRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  AutoExtendTokenRoute: typeof AutoExtendTokenRoute
   ExtendTokenRoute: typeof ExtendTokenRoute
   PortalSignupRentalIdRoute: typeof PortalSignupRentalIdRoute
   RentTokenRoute: typeof RentTokenRoute
@@ -676,6 +702,7 @@ export interface RootRouteChildren {
   InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
   RunnerTaskTaskIdRoute: typeof RunnerTaskTaskIdRoute
+  ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
   ApiPublicHooksAutoRenewChargesRoute: typeof ApiPublicHooksAutoRenewChargesRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
   ApiPublicHooksRepairDigestRoute: typeof ApiPublicHooksRepairDigestRoute
@@ -958,6 +985,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExtendTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auto-extend/$token': {
+      id: '/auto-extend/$token'
+      path: '/auto-extend/$token'
+      fullPath: '/auto-extend/$token'
+      preLoaderRoute: typeof AutoExtendTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/admin/users'
@@ -1035,6 +1069,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksAutoRenewChargesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/auto-extension-links': {
+      id: '/api/public/hooks/auto-extension-links'
+      path: '/api/public/hooks/auto-extension-links'
+      fullPath: '/api/public/hooks/auto-extension-links'
+      preLoaderRoute: typeof ApiPublicHooksAutoExtensionLinksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1092,6 +1133,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminCreateTaskRoute: AdminCreateTaskRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminUsersRoute: AdminUsersRoute,
+  AutoExtendTokenRoute: AutoExtendTokenRoute,
   ExtendTokenRoute: ExtendTokenRoute,
   PortalSignupRentalIdRoute: PortalSignupRentalIdRoute,
   RentTokenRoute: RentTokenRoute,
@@ -1104,6 +1146,7 @@ const rootRouteChildren: RootRouteChildren = {
   InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
   RunnerTaskTaskIdRoute: RunnerTaskTaskIdRoute,
+  ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
   ApiPublicHooksAutoRenewChargesRoute: ApiPublicHooksAutoRenewChargesRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
   ApiPublicHooksRepairDigestRoute: ApiPublicHooksRepairDigestRoute,
