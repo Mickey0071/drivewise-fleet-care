@@ -51,6 +51,7 @@ import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
 import { Route as AutoExtendTokenRouteImport } from './routes/auto-extend.$token'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
+import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as RunnerTaskTaskIdRouteImport } from './routes/runner.task.$taskId'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
@@ -272,6 +273,11 @@ const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
   path: '/admin/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminExtensionsRoute = AdminExtensionsRouteImport.update({
+  id: '/admin/extensions',
+  path: '/admin/extensions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
   id: '/admin/create-task',
   path: '/admin/create-task',
@@ -359,6 +365,7 @@ export interface FileRoutesByFullPath {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
@@ -413,6 +420,7 @@ export interface FileRoutesByTo {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
@@ -468,6 +476,7 @@ export interface FileRoutesById {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/users': typeof AdminUsersRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
@@ -524,6 +533,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/admin/create-task'
+    | '/admin/extensions'
     | '/admin/notifications'
     | '/admin/users'
     | '/auto-extend/$token'
@@ -578,6 +588,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/admin/create-task'
+    | '/admin/extensions'
     | '/admin/notifications'
     | '/admin/users'
     | '/auto-extend/$token'
@@ -632,6 +643,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/admin/create-task'
+    | '/admin/extensions'
     | '/admin/notifications'
     | '/admin/users'
     | '/auto-extend/$token'
@@ -687,6 +699,7 @@ export interface RootRouteChildren {
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
   AdminCreateTaskRoute: typeof AdminCreateTaskRoute
+  AdminExtensionsRoute: typeof AdminExtensionsRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AutoExtendTokenRoute: typeof AutoExtendTokenRoute
@@ -1006,6 +1019,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminNotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/extensions': {
+      id: '/admin/extensions'
+      path: '/admin/extensions'
+      fullPath: '/admin/extensions'
+      preLoaderRoute: typeof AdminExtensionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/create-task': {
       id: '/admin/create-task'
       path: '/admin/create-task'
@@ -1131,6 +1151,7 @@ const rootRouteChildren: RootRouteChildren = {
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
   AdminCreateTaskRoute: AdminCreateTaskRoute,
+  AdminExtensionsRoute: AdminExtensionsRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AutoExtendTokenRoute: AutoExtendTokenRoute,
