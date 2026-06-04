@@ -122,7 +122,7 @@ function NotificationsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Notifications Control Center"
-        description="Manage all SMS and email alerts. Turn each on or off, customize timing, message, and links."
+        subtitle="Manage all SMS and email alerts. Turn each on or off, customize timing, message, and links."
       />
 
       {loading ? (
