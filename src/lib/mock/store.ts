@@ -2269,6 +2269,36 @@ export function recordRepairPaymentRaw(id: string, amount: number) {
   return m;
 }
 
+/** Phase 3 → Phase 2: reverse a completed repair back into Diagnose (undo). */
+export function reverseRepairToDiagnose(id: string) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m || m.status !== "complete") return;
+
+  // Remove the completion expense that was posted to P&L on completion, and
+  // restore the amount paid to what was recorded before completion.
+  const completionExpense = expenses.find(
+    e => e.category === "Repair & Maintenance" && (e.notes ?? "").includes(`Repair ${m.id} completed`),
+  );
+  if (completionExpense) {
+    const back = completionExpense.amount;
+    deleteExpense(completionExpense.id);
+    m.amountPaid = Math.max(0, (m.amountPaid ?? 0) - back);
+  }
+
+  // Remove the fleet-card history + scorecard rows logged at completion.
+  cloudWrite("repair_history:delete", supabase.from("repair_history").delete().eq("maintenance_id", m.id));
+  cloudWrite("repair_scorecard:delete", supabase.from("repair_scorecard").delete().eq("maintenance_id", m.id));
+
+  m.status = "diagnosing";
+  m.dateCompleted = undefined as unknown as string;
+  m.completionDate = undefined;
+  m.balance = Math.max(0, (m.cost ?? 0) - (m.amountPaid ?? 0));
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
+  return m;
+}
+
 // ---------------------------------------------------------------------------
 // Work orders (preventive maintenance scheduling)
 // ---------------------------------------------------------------------------

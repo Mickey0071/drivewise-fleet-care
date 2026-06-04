@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
-import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame } from "lucide-react";
+import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame, RotateCcw } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
-import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, recordRepairPaymentRaw, completeRepair } from "@/lib/mock/store";
+import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, recordRepairPaymentRaw, completeRepair, reverseRepairToDiagnose } from "@/lib/mock/store";
 import type { RepairCompletionSummary } from "@/lib/mock/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -407,6 +407,17 @@ function MaintenancePage() {
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
                         <span className="text-sm font-medium">{fmtMoney(m.cost)}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => {
+                            reverseRepairToDiagnose(m.id);
+                            toast.success("Repair reversed back to Diagnose");
+                          }}
+                        >
+                          <RotateCcw className="mr-1 h-3 w-3" /> Reverse
+                        </Button>
                         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setDetailRecord(m)}>
                           Details
                         </Button>
@@ -564,6 +575,17 @@ function MaintenancePage() {
                               <td className="px-4 py-2 text-right font-medium">{fmtMoney(m.cost)}</td>
                               <td className="px-4 py-2">{fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}</td>
                               <td className="px-4 py-2 text-right">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="mr-2 h-7 px-2 text-xs"
+                                  onClick={() => {
+                                    reverseRepairToDiagnose(m.id);
+                                    toast.success("Repair reversed back to Diagnose");
+                                  }}
+                                >
+                                  <RotateCcw className="mr-1 h-3 w-3" /> Reverse
+                                </Button>
                                 <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setDetailRecord(m)}>
                                   View Details
                                 </Button>
