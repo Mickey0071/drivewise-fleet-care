@@ -224,10 +224,13 @@ function TaskPage() {
 
   const handleCreateTicket = async (key: string, label: string) => {
     if (!task) return;
-    const panel = repairPanels[key] || { notes: "", cost: "" };
+    const panel = repairPanels[key] || { notes: "", partsCost: "", laborCost: "" };
     const issue = label.replace(/\?$/, "").trim();
-    const cost = panel.cost.trim() ? Number(panel.cost) : undefined;
-    if (cost != null && (!Number.isFinite(cost) || cost < 0)) { toast.error("Enter a valid estimated cost"); return; }
+    const parts = panel.partsCost.trim() ? Number(panel.partsCost) : undefined;
+    const labor = panel.laborCost.trim() ? Number(panel.laborCost) : undefined;
+    for (const c of [parts, labor]) {
+      if (c != null && (!Number.isFinite(c) || c < 0)) { toast.error("Enter a valid cost"); return; }
+    }
     setCreatingTicket(key);
     try {
       await createRepairReq({
@@ -235,7 +238,8 @@ function TaskPage() {
           vehicleId: task.vehicle_id,
           issue,
           notes: panel.notes.trim() || undefined,
-          estimatedCost: cost,
+          partsCost: parts,
+          laborCost: labor,
           mileage: mileage.trim() ? Number(mileage) : undefined,
         },
       });
