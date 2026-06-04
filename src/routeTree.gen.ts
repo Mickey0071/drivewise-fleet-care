@@ -55,6 +55,7 @@ import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$re
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
+import { Route as ApiPublicHooksRepairDigestRouteImport } from './routes/api/public/hooks/repair-digest'
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
 import { Route as ApiPublicHooksAutoRenewChargesRouteImport } from './routes/api/public/hooks/auto-renew-charges'
 
@@ -290,6 +291,12 @@ const ApiPublicHooksSendRemindersRoute =
     path: '/api/public/hooks/send-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksRepairDigestRoute =
+  ApiPublicHooksRepairDigestRouteImport.update({
+    id: '/api/public/hooks/repair-digest',
+    path: '/api/public/hooks/repair-digest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDailyReportsRoute =
   ApiPublicHooksDailyReportsRouteImport.update({
     id: '/api/public/hooks/daily-reports',
@@ -350,6 +357,7 @@ export interface FileRoutesByFullPath {
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
+  '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -400,6 +408,7 @@ export interface FileRoutesByTo {
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
+  '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -451,6 +460,7 @@ export interface FileRoutesById {
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
   '/api/public/hooks/auto-renew-charges': typeof ApiPublicHooksAutoRenewChargesRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
+  '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -503,6 +513,7 @@ export interface FileRouteTypes {
     | '/runner/task/$taskId'
     | '/api/public/hooks/auto-renew-charges'
     | '/api/public/hooks/daily-reports'
+    | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -553,6 +564,7 @@ export interface FileRouteTypes {
     | '/runner/task/$taskId'
     | '/api/public/hooks/auto-renew-charges'
     | '/api/public/hooks/daily-reports'
+    | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
   id:
@@ -603,6 +615,7 @@ export interface FileRouteTypes {
     | '/runner/task/$taskId'
     | '/api/public/hooks/auto-renew-charges'
     | '/api/public/hooks/daily-reports'
+    | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
@@ -652,6 +665,7 @@ export interface RootRouteChildren {
   RunnerTaskTaskIdRoute: typeof RunnerTaskTaskIdRoute
   ApiPublicHooksAutoRenewChargesRoute: typeof ApiPublicHooksAutoRenewChargesRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
+  ApiPublicHooksRepairDigestRoute: typeof ApiPublicHooksRepairDigestRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
@@ -980,6 +994,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSendRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/repair-digest': {
+      id: '/api/public/hooks/repair-digest'
+      path: '/api/public/hooks/repair-digest'
+      fullPath: '/api/public/hooks/repair-digest'
+      preLoaderRoute: typeof ApiPublicHooksRepairDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/daily-reports': {
       id: '/api/public/hooks/daily-reports'
       path: '/api/public/hooks/daily-reports'
@@ -1064,6 +1085,7 @@ const rootRouteChildren: RootRouteChildren = {
   RunnerTaskTaskIdRoute: RunnerTaskTaskIdRoute,
   ApiPublicHooksAutoRenewChargesRoute: ApiPublicHooksAutoRenewChargesRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
+  ApiPublicHooksRepairDigestRoute: ApiPublicHooksRepairDigestRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
