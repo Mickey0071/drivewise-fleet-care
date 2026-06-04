@@ -500,6 +500,10 @@ export type Database = {
           created_from_issue: boolean
           customer_notes: string | null
           date_completed: string | null
+          deposit_amount: number | null
+          deposit_date: string | null
+          deposit_processed: boolean | null
+          deposit_required: number | null
           diagnosis_notes: string | null
           down_payment: number
           id: string
@@ -537,6 +541,10 @@ export type Database = {
           created_from_issue?: boolean
           customer_notes?: string | null
           date_completed?: string | null
+          deposit_amount?: number | null
+          deposit_date?: string | null
+          deposit_processed?: boolean | null
+          deposit_required?: number | null
           diagnosis_notes?: string | null
           down_payment?: number
           id: string
@@ -574,6 +582,10 @@ export type Database = {
           created_from_issue?: boolean
           customer_notes?: string | null
           date_completed?: string | null
+          deposit_amount?: number | null
+          deposit_date?: string | null
+          deposit_processed?: boolean | null
+          deposit_required?: number | null
           diagnosis_notes?: string | null
           down_payment?: number
           id?: string
