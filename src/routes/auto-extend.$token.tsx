@@ -46,7 +46,6 @@ function AutoExtendPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [choice, setChoice] = useState<"daily" | "weekly" | null>(null);
-  const [autoPay, setAutoPay] = useState<boolean>(false);
   const [name, setName] = useState("");
   const [sig, setSig] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
@@ -75,8 +74,7 @@ function AutoExtendPage() {
   }, [token, fetchOffer]);
 
   function priceFor(c: "daily" | "weekly", o: Extract<Offer, { found: true }>) {
-    const base = c === "daily" ? o.dailyRate : o.weeklyRate;
-    return autoPay ? Number((base * (1 - o.autoPayDiscount)).toFixed(2)) : base;
+    return c === "daily" ? o.dailyRate : o.weeklyRate;
   }
 
   async function onSubmit() {
@@ -103,7 +101,6 @@ function AutoExtendPage() {
         data: {
           token,
           choice,
-          autoPay,
           signatureDataUrl: sig,
           signedBy: name.trim(),
         },
