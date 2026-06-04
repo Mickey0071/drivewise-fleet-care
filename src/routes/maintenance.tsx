@@ -568,7 +568,7 @@ function MaintenancePage() {
         onOpenChange={(v) => { if (!v) setDetailRecord(null); }}
       />
 
-      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); } }}>
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateTakeOffRental(true); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create Repair</DialogTitle>
@@ -589,6 +589,15 @@ function MaintenancePage() {
               <Label htmlFor="create-issue">Issue</Label>
               <Input id="create-issue" value={createIssue} maxLength={200}
                 onChange={(e) => setCreateIssue(e.target.value)} placeholder="What's wrong?" />
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="take-off-rental">Take off rental availability?</Label>
+                <p className="text-xs text-muted-foreground">
+                  {createTakeOffRental ? "Vehicle will be blocked from new rentals." : "Vehicle stays bookable while in repair."}
+                </p>
+              </div>
+              <Switch id="take-off-rental" checked={createTakeOffRental} onCheckedChange={setCreateTakeOffRental} />
             </div>
           </div>
           <DialogFooter>
