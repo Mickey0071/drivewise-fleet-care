@@ -575,6 +575,17 @@ function MaintenancePage() {
                               <td className="px-4 py-2 text-right font-medium">{fmtMoney(m.cost)}</td>
                               <td className="px-4 py-2">{fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}</td>
                               <td className="px-4 py-2 text-right">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="mr-2 h-7 px-2 text-xs"
+                                  onClick={() => {
+                                    reverseRepairToDiagnose(m.id);
+                                    toast.success("Repair reversed back to Diagnose");
+                                  }}
+                                >
+                                  <RotateCcw className="mr-1 h-3 w-3" /> Reverse
+                                </Button>
                                 <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setDetailRecord(m)}>
                                   View Details
                                 </Button>
