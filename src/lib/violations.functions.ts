@@ -621,7 +621,7 @@ export const sendViolationToCustomer = createServerFn({ method: "POST" })
     return { id: input.id };
   })
   .handler(async ({ data }) => {
-    const { data: v, error } = await supabaseAdmin
+    const { data: v, error } = await (supabaseAdmin as any)
       .from("violations")
       .select("*")
       .eq("id", data.id)
@@ -632,7 +632,7 @@ export const sendViolationToCustomer = createServerFn({ method: "POST" })
     }
 
     const { data: driver } = v.driver_id
-      ? await supabaseAdmin
+      ? await (supabaseAdmin as any)
           .from("drivers")
           .select("full_name, phone, email")
           .eq("id", v.driver_id)
@@ -644,7 +644,7 @@ export const sendViolationToCustomer = createServerFn({ method: "POST" })
 
     const token = (v.customer_token as string) || genCustomerToken();
     const expires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
-    await supabaseAdmin
+    await (supabaseAdmin as any)
       .from("violations")
       .update({
         customer_token: token,
@@ -687,7 +687,7 @@ export const sendViolationReminders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
     const sevenDaysAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString();
-    const { data: rows } = await supabaseAdmin
+    const { data: rows } = await (supabaseAdmin as any)
       .from("violations")
       .select("*")
       .in("status", ["sent_to_customer", "viewing"])
@@ -697,7 +697,7 @@ export const sendViolationReminders = createServerFn({ method: "POST" })
     let sent = 0;
     for (const v of rows ?? []) {
       const { data: driver } = v.driver_id
-        ? await supabaseAdmin
+        ? await (supabaseAdmin as any)
             .from("drivers")
             .select("full_name, phone, email")
             .eq("id", v.driver_id)
@@ -716,7 +716,7 @@ export const sendViolationReminders = createServerFn({ method: "POST" })
         emailIntro: `This is a reminder that your EZPass violation of <strong>${amt}</strong> is still unresolved. Please pay or sign the affidavit.`,
         emailCta: { label: "Resolve Now", url },
       });
-      await supabaseAdmin
+      await (supabaseAdmin as any)
         .from("violations")
         .update({ reminder_sent_at: new Date().toISOString() } as never)
         .eq("id", v.id);
