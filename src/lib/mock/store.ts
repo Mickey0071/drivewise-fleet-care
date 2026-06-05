@@ -2240,17 +2240,30 @@ export function moveRepairToDiagnose(id: string) {
   return m;
 }
 
-/** Phase 2 → Phase 3: save diagnosis (parts needed + costs) and move to Complete. */
+/** Phase 2 → Phase 3: save diagnosis (mechanic info + parts list + labour) and move to Complete. */
 export function saveRepairDiagnosis(
   id: string,
-  input: { partsNeeded: string; partsCost: number; laborCost: number },
+  input: {
+    mechanicName: string;
+    mechanicPhone: string;
+    mechanicShop?: string;
+    partsList: PartLine[];
+    laborCost: number;
+  },
 ) {
   const m = maintenance.find(x => x.id === id);
   if (!m) return;
-  const parts = Math.max(0, input.partsCost || 0);
+  const partsList = (input.partsList ?? [])
+    .map(p => ({ name: (p.name ?? "").trim(), price: Math.max(0, Number(p.price) || 0) }))
+    .filter(p => p.name && p.price > 0);
+  const parts = partsList.reduce((s, p) => s + p.price, 0);
   const labor = Math.max(0, input.laborCost || 0);
   const total = parts + labor;
-  m.diagnosisNotes = input.partsNeeded.trim();
+  m.mechanicName = input.mechanicName.trim();
+  m.mechanicPhone = input.mechanicPhone.trim() || undefined;
+  m.mechanicShop = input.mechanicShop?.trim() || undefined;
+  m.partsList = partsList;
+  m.diagnosisNotes = partsList.map(p => p.name).join(", ");
   m.partsCost = parts;
   m.laborCost = labor;
   m.cost = total;
@@ -2258,6 +2271,21 @@ export function saveRepairDiagnosis(
   m.status = "pending_complete";
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   syncVehicleOpenIssues(m.vehicleId);
+  emit();
+  return m;
+}
+
+/** Phase 1 (optional): assign mechanic contact info to a repair before diagnosis. */
+export function setRepairMechanic(
+  id: string,
+  input: { mechanicName: string; mechanicPhone: string; mechanicShop?: string },
+) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  m.mechanicName = input.mechanicName.trim() || undefined;
+  m.mechanicPhone = input.mechanicPhone.trim() || undefined;
+  m.mechanicShop = input.mechanicShop?.trim() || undefined;
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   emit();
   return m;
 }
