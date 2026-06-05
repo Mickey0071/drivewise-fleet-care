@@ -66,6 +66,7 @@ import { Route as RunnerTaskTaskIdRouteImport } from './routes/runner.task.$task
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiPublicHooksViolationRemindersRouteImport } from './routes/api/public/hooks/violation-reminders'
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
 import { Route as ApiPublicHooksRepairDigestRouteImport } from './routes/api/public/hooks/repair-digest'
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
@@ -357,6 +358,12 @@ const ApiPublicPaymentsWebhookRoute =
     path: '/api/public/payments/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksViolationRemindersRoute =
+  ApiPublicHooksViolationRemindersRouteImport.update({
+    id: '/api/public/hooks/violation-reminders',
+    path: '/api/public/hooks/violation-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSendRemindersRoute =
   ApiPublicHooksSendRemindersRouteImport.update({
     id: '/api/public/hooks/send-reminders',
@@ -443,6 +450,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
+  '/api/public/hooks/violation-reminders': typeof ApiPublicHooksViolationRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -506,6 +514,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
+  '/api/public/hooks/violation-reminders': typeof ApiPublicHooksViolationRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
@@ -570,6 +579,7 @@ export interface FileRoutesById {
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
+  '/api/public/hooks/violation-reminders': typeof ApiPublicHooksViolationRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
@@ -635,6 +645,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
+    | '/api/public/hooks/violation-reminders'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -698,6 +709,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
+    | '/api/public/hooks/violation-reminders'
     | '/api/public/payments/webhook'
   id:
     | '__root__'
@@ -761,6 +773,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
+    | '/api/public/hooks/violation-reminders'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -818,6 +831,7 @@ export interface RootRouteChildren {
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
   ApiPublicHooksRepairDigestRoute: typeof ApiPublicHooksRepairDigestRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
+  ApiPublicHooksViolationRemindersRoute: typeof ApiPublicHooksViolationRemindersRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
@@ -1222,6 +1236,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/violation-reminders': {
+      id: '/api/public/hooks/violation-reminders'
+      path: '/api/public/hooks/violation-reminders'
+      fullPath: '/api/public/hooks/violation-reminders'
+      preLoaderRoute: typeof ApiPublicHooksViolationRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/send-reminders': {
       id: '/api/public/hooks/send-reminders'
       path: '/api/public/hooks/send-reminders'
@@ -1349,8 +1370,19 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
   ApiPublicHooksRepairDigestRoute: ApiPublicHooksRepairDigestRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,
+  ApiPublicHooksViolationRemindersRoute: ApiPublicHooksViolationRemindersRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
