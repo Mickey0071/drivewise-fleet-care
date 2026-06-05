@@ -181,12 +181,6 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     return null;
   }
 
-  // Custom renter-initiated payment (extensions, violations, etc.).
-  // Just log a payment row and notify; do NOT touch reservation/vehicle state.
-  if (kind === "custom_renter_payment" && rentalId) {
-    // handled below
-  }
-
   // Customer-resolved violation (from the public /violation/[token] page).
   if (kind === "violation_customer") {
     const sb = getSupabase();
