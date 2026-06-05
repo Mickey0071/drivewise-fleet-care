@@ -81,7 +81,15 @@ export const Route = createFileRoute("/violations")({
 const fmtMoney = (n: number) => `$${Number(n || 0).toFixed(2)}`;
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "—");
 
-type Filter = "all" | "unpaid" | "paid" | "disputed";
+type Filter =
+  | "all"
+  | "pending_response"
+  | "paid"
+  | "affidavit_signed"
+  | "submitted"
+  | "resolved";
+
+const PENDING_RESPONSE = ["pending", "failed", "sent_to_customer", "viewing"];
 
 function ViolationsPage() {
   const list = useServerFn(listViolations);
