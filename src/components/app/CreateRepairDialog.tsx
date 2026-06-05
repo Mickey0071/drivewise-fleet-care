@@ -91,17 +91,12 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
             )}
           </div>
 
-          <div className="grid gap-1.5">
-            <Label>Issue description</Label>
-            <Textarea rows={2} value={issue} onChange={e => setIssue(e.target.value)} placeholder="e.g. Grinding noise from front brakes" />
-          </div>
-
           <div className="grid gap-2">
-            <Label>Solution options</Label>
+            <Label>Issues</Label>
             {rows.map((r, i) => (
               <div key={r.key} className="rounded-md border border-border p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Solution {i + 1}</span>
+                  <span className="text-xs font-medium text-muted-foreground">Issue {i + 1}</span>
                   {rows.length > 1 && (
                     <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"
                       onClick={() => setRows(rs => rs.filter(x => x.key !== r.key))}>
@@ -110,10 +105,10 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
                   )}
                 </div>
                 <div className="grid gap-2">
-                  <Input value={r.name} onChange={e => update(r.key, { name: e.target.value })} placeholder="Solution name (e.g. OEM brake pads + rotors)" />
+                  <Textarea rows={2} value={r.issue} onChange={e => update(r.key, { issue: e.target.value })} placeholder="Describe the issue (e.g. Grinding noise from front brakes)" />
                   <div className="grid grid-cols-3 gap-2">
                     <div className="grid gap-1">
-                      <Label className="text-xs">Parts ($)</Label>
+                      <Label className="text-xs">Part ($)</Label>
                       <Input type="number" min={0} step="0.01" value={r.partsCost} onChange={e => update(r.key, { partsCost: e.target.value })} placeholder="0" />
                     </div>
                     <div className="grid gap-1">
@@ -121,7 +116,7 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
                       <Input type="number" min={0} step="0.01" value={r.laborCost} onChange={e => update(r.key, { laborCost: e.target.value })} placeholder="0" />
                     </div>
                     <div className="grid gap-1">
-                      <Label className="text-xs">Total</Label>
+                      <Label className="text-xs">Amount</Label>
                       <Input value={fmtMoney(totalOf(r))} readOnly disabled />
                     </div>
                   </div>
@@ -129,8 +124,13 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
               </div>
             ))}
             <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => setRows(rs => [...rs, emptyRow()])}>
-              <Plus className="mr-1 h-4 w-4" /> Add another solution
+              <Plus className="mr-1 h-4 w-4" /> Add another issue
             </Button>
+          </div>
+
+          <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 p-3 text-sm">
+            <span className="text-muted-foreground">Total amount</span>
+            <span className="font-semibold">{fmtMoney(grandTotal)}</span>
           </div>
         </div>
 
