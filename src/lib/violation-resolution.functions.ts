@@ -62,7 +62,7 @@ type ViolationCtx = {
 };
 
 async function loadByToken(token: string): Promise<ViolationCtx> {
-  const { data: v } = await supabaseAdmin
+  const { data: v } = await (supabaseAdmin as any)
     .from("violations")
     .select("*")
     .eq("customer_token", token)
@@ -73,7 +73,7 @@ async function loadByToken(token: string): Promise<ViolationCtx> {
   }
   const [{ data: driver }, { data: vehicle }, { data: rental }] = await Promise.all([
     v.driver_id
-      ? supabaseAdmin
+      ? (supabaseAdmin as any)
           .from("drivers")
           .select(
             "full_name, first_name, last_name, phone, email, license_number, dl_state, address, street_address, city, state, zip_code, stripe_customer_id, stripe_payment_method_id",
@@ -82,14 +82,14 @@ async function loadByToken(token: string): Promise<ViolationCtx> {
           .maybeSingle()
       : Promise.resolve({ data: null }),
     v.vehicle_id
-      ? supabaseAdmin
+      ? (supabaseAdmin as any)
           .from("vehicles")
           .select("year, make, model, vin, plate")
           .eq("id", v.vehicle_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
     v.rental_id
-      ? supabaseAdmin
+      ? (supabaseAdmin as any)
           .from("rentals")
           .select("id, start_date, end_date, driver_id")
           .eq("id", v.rental_id)
@@ -125,10 +125,10 @@ async function buildAndStoreAffidavit(
   const path = signature
     ? `signed/affidavit-${v.id}.pdf`
     : `draft/affidavit-${v.id}.pdf`;
-  await supabaseAdmin.storage
+  await (supabaseAdmin as any).storage
     .from(AFFIDAVIT_BUCKET)
     .upload(path, pdf, { contentType: "application/pdf", upsert: true });
-  const { data: signed } = await supabaseAdmin.storage
+  const { data: signed } = await (supabaseAdmin as any).storage
     .from(AFFIDAVIT_BUCKET)
     .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
   return signed?.signedUrl ?? "";
@@ -143,7 +143,7 @@ export const getViolationForCustomer = createServerFn({ method: "POST" })
     return { token: d.token };
   })
   .handler(async ({ data }) => {
-    const { data: rows, error } = await supabaseAdmin.rpc("get_violation_public", {
+    const { data: rows, error } = await (supabaseAdmin as any).rpc("get_violation_public", {
       _token: data.token,
     });
     if (error) throw new Error(error.message);
@@ -153,12 +153,12 @@ export const getViolationForCustomer = createServerFn({ method: "POST" })
     const resolved = RESOLVED_STATUSES.includes(row.status as string);
     // Mark as viewing on first open (best-effort, non-blocking).
     if (!resolved && row.status === "sent_to_customer") {
-      await supabaseAdmin
+      await (supabaseAdmin as any)
         .from("violations")
         .update({ status: "viewing", viewed_at: new Date().toISOString() } as never)
         .eq("customer_token", data.token);
     } else if (!resolved && !row.viewed_at) {
-      await supabaseAdmin
+      await (supabaseAdmin as any)
         .from("violations")
         .update({ viewed_at: new Date().toISOString() } as never)
         .eq("customer_token", data.token)
@@ -257,10 +257,10 @@ export const signViolationAffidavit = createServerFn({ method: "POST" })
       if (m) {
         const buf = Buffer.from(m[2], "base64");
         const sigPath = `signatures/${v.id}.png`;
-        await supabaseAdmin.storage
+        await (supabaseAdmin as any).storage
           .from(AFFIDAVIT_BUCKET)
           .upload(sigPath, buf, { contentType: m[1], upsert: true });
-        const { data: s } = await supabaseAdmin.storage
+        const { data: s } = await (supabaseAdmin as any).storage
           .from(AFFIDAVIT_BUCKET)
           .createSignedUrl(sigPath, 60 * 60 * 24 * 365 * 5);
         signatureUrl = s?.signedUrl ?? "";
@@ -278,7 +278,7 @@ export const signViolationAffidavit = createServerFn({ method: "POST" })
       userAgent,
     });
 
-    await supabaseAdmin
+    await (supabaseAdmin as any)
       .from("violations")
       .update({
         status: "affidavit_signed",
@@ -293,7 +293,7 @@ export const signViolationAffidavit = createServerFn({ method: "POST" })
       } as never)
       .eq("id", v.id);
 
-    await supabaseAdmin.from("violation_status_history").insert({
+    await (supabaseAdmin as any).from("violation_status_history").insert({
       violation_id: v.id,
       from_status: v.status,
       to_status: "affidavit_signed",
@@ -393,7 +393,7 @@ export const createViolationCustomerPayment = createServerFn({ method: "POST" })
     });
     if (!link.url) throw new Error("Stripe did not return a payment link URL");
 
-    await supabaseAdmin
+    await (supabaseAdmin as any)
       .from("violations")
       .update({
         resolution_choice: "pay",
