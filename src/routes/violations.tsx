@@ -73,6 +73,29 @@ function DownloadPacketButton({ violationId }: { violationId: string }) {
   );
 }
 
+function SendCustomerButton({ violation, onDone }: { violation: ViolationRow; onDone: () => void }) {
+  const send = useServerFn(sendViolationToCustomer);
+  const [busy, setBusy] = useState(false);
+  const handle = async () => {
+    setBusy(true);
+    try {
+      await send({ data: { id: violation.id } });
+      toast.success("Resolution link sent to customer");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const label = violation.sent_to_customer_at ? "Resend Link" : "Send to Customer";
+  return (
+    <Button size="sm" variant="outline" onClick={handle} disabled={busy} className="ml-2">
+      {busy ? "Sending…" : label}
+    </Button>
+  );
+}
+
 export const Route = createFileRoute("/violations")({
   head: () => ({ meta: [{ title: "Violations — Camauto Rentals" }] }),
   component: ViolationsPage,
