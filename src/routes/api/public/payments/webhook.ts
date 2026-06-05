@@ -181,8 +181,53 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     return null;
   }
 
-  // Custom renter-initiated payment (extensions, violations, etc.).
-  // Just log a payment row and notify; do NOT touch reservation/vehicle state.
+  // Customer-resolved violation (from the public /violation/[token] page).
+  if (kind === "violation_customer") {
+    const sb = getSupabase();
+    const violationId = (session.metadata?.violation_id as string | undefined) || null;
+    const amountCents = session.amount_total ?? 0;
+    if (violationId) {
+      await sb
+        .from("violations")
+        .update({
+          status: "paid",
+          resolution_choice: "pay",
+          payment_method: "payment_link",
+          paid_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", violationId);
+
+      const { data: v } = await sb
+        .from("violations")
+        .select("id, driver_id, description, total_amount, amount")
+        .eq("id", violationId)
+        .maybeSingle();
+      const { data: drv } = v?.driver_id
+        ? await sb.from("drivers").select("full_name, phone, email").eq("id", v.driver_id).maybeSingle()
+        : { data: null };
+      const amt = fmtAmount(amountCents);
+      if (drv?.phone || drv?.email) {
+        await notifyRenter({
+          phone: drv.phone ?? null,
+          email: drv.email ?? null,
+          name: drv.full_name ?? null,
+          sms: `✓ Payment received ${amt}. We'll handle resolution with EZPass. — Camauto Rentals`,
+          emailSubject: "Violation Payment Received — Camauto Rentals",
+          emailHeading: "Payment Received",
+          emailIntro: `We received your payment of <strong>${amt}</strong>. We'll resolve this violation with EZPass on your behalf.`,
+          emailDetails: [{ label: "Amount", value: amt }],
+        });
+      }
+      try {
+        await sendSms("267-221-3977", `💰 Violation paid: ${drv?.full_name || "Customer"} ${amt}`, null);
+      } catch (e) {
+        console.error("[webhook:violation] admin sms failed", e);
+      }
+    }
+    return;
+  }
+
   if (kind === "custom_renter_payment" && rentalId) {
     const sb = getSupabase();
     const note =

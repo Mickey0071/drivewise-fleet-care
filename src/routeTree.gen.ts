@@ -40,6 +40,7 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkOrderTokenRouteImport } from './routes/work-order.$token'
 import { Route as ViolationsBulkUploadRouteImport } from './routes/violations_.bulk-upload'
+import { Route as ViolationTokenRouteImport } from './routes/violation.$token'
 import { Route as VerifyPaymentRentalIdRouteImport } from './routes/verify-payment.$rentalId'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as SetupTokenRouteImport } from './routes/setup.$token'
@@ -60,10 +61,12 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
+import { Route as ViolationTokenAffidavitRouteImport } from './routes/violation.$token_.affidavit'
 import { Route as RunnerTaskTaskIdRouteImport } from './routes/runner.task.$taskId'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiPublicHooksViolationRemindersRouteImport } from './routes/api/public/hooks/violation-reminders'
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
 import { Route as ApiPublicHooksRepairDigestRouteImport } from './routes/api/public/hooks/repair-digest'
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
@@ -224,6 +227,11 @@ const ViolationsBulkUploadRoute = ViolationsBulkUploadRouteImport.update({
   path: '/violations/bulk-upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ViolationTokenRoute = ViolationTokenRouteImport.update({
+  id: '/violation/$token',
+  path: '/violation/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VerifyPaymentRentalIdRoute = VerifyPaymentRentalIdRouteImport.update({
   id: '/verify-payment/$rentalId',
   path: '/verify-payment/$rentalId',
@@ -324,6 +332,11 @@ const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
   path: '/admin/create-task',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ViolationTokenAffidavitRoute = ViolationTokenAffidavitRouteImport.update({
+  id: '/violation/$token_/affidavit',
+  path: '/violation/$token/affidavit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RunnerTaskTaskIdRoute = RunnerTaskTaskIdRouteImport.update({
   id: '/runner/task/$taskId',
   path: '/runner/task/$taskId',
@@ -343,6 +356,12 @@ const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
     path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksViolationRemindersRoute =
+  ApiPublicHooksViolationRemindersRouteImport.update({
+    id: '/api/public/hooks/violation-reminders',
+    path: '/api/public/hooks/violation-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksSendRemindersRoute =
@@ -420,15 +439,18 @@ export interface FileRoutesByFullPath {
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
+  '/violation/$token': typeof ViolationTokenRoute
   '/violations/bulk-upload': typeof ViolationsBulkUploadRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
+  '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
+  '/api/public/hooks/violation-reminders': typeof ApiPublicHooksViolationRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -481,15 +503,18 @@ export interface FileRoutesByTo {
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
+  '/violation/$token': typeof ViolationTokenRoute
   '/violations/bulk-upload': typeof ViolationsBulkUploadRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
+  '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
+  '/api/public/hooks/violation-reminders': typeof ApiPublicHooksViolationRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
@@ -543,15 +568,18 @@ export interface FileRoutesById {
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
+  '/violation/$token': typeof ViolationTokenRoute
   '/violations_/bulk-upload': typeof ViolationsBulkUploadRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
+  '/violation/$token_/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
+  '/api/public/hooks/violation-reminders': typeof ApiPublicHooksViolationRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
@@ -606,15 +634,18 @@ export interface FileRouteTypes {
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
+    | '/violation/$token'
     | '/violations/bulk-upload'
     | '/work-order/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/runner/task/$taskId'
+    | '/violation/$token/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
+    | '/api/public/hooks/violation-reminders'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -667,15 +698,18 @@ export interface FileRouteTypes {
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
+    | '/violation/$token'
     | '/violations/bulk-upload'
     | '/work-order/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/runner/task/$taskId'
+    | '/violation/$token/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
+    | '/api/public/hooks/violation-reminders'
     | '/api/public/payments/webhook'
   id:
     | '__root__'
@@ -728,15 +762,18 @@ export interface FileRouteTypes {
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
+    | '/violation/$token'
     | '/violations_/bulk-upload'
     | '/work-order/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/runner/task/$taskId'
+    | '/violation/$token_/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
+    | '/api/public/hooks/violation-reminders'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -783,15 +820,18 @@ export interface RootRouteChildren {
   SetupTokenRoute: typeof SetupTokenRoute
   SignTokenRoute: typeof SignTokenRoute
   VerifyPaymentRentalIdRoute: typeof VerifyPaymentRentalIdRoute
+  ViolationTokenRoute: typeof ViolationTokenRoute
   ViolationsBulkUploadRoute: typeof ViolationsBulkUploadRoute
   WorkOrderTokenRoute: typeof WorkOrderTokenRoute
   InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
   RunnerTaskTaskIdRoute: typeof RunnerTaskTaskIdRoute
+  ViolationTokenAffidavitRoute: typeof ViolationTokenAffidavitRoute
   ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
   ApiPublicHooksRepairDigestRoute: typeof ApiPublicHooksRepairDigestRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
+  ApiPublicHooksViolationRemindersRoute: typeof ApiPublicHooksViolationRemindersRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
@@ -1014,6 +1054,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ViolationsBulkUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/violation/$token': {
+      id: '/violation/$token'
+      path: '/violation/$token'
+      fullPath: '/violation/$token'
+      preLoaderRoute: typeof ViolationTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/verify-payment/$rentalId': {
       id: '/verify-payment/$rentalId'
       path: '/verify-payment/$rentalId'
@@ -1154,6 +1201,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCreateTaskRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/violation/$token_/affidavit': {
+      id: '/violation/$token_/affidavit'
+      path: '/violation/$token/affidavit'
+      fullPath: '/violation/$token/affidavit'
+      preLoaderRoute: typeof ViolationTokenAffidavitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/runner/task/$taskId': {
       id: '/runner/task/$taskId'
       path: '/runner/task/$taskId'
@@ -1180,6 +1234,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/payments/webhook'
       fullPath: '/api/public/payments/webhook'
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/violation-reminders': {
+      id: '/api/public/hooks/violation-reminders'
+      path: '/api/public/hooks/violation-reminders'
+      fullPath: '/api/public/hooks/violation-reminders'
+      preLoaderRoute: typeof ApiPublicHooksViolationRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/send-reminders': {
@@ -1298,17 +1359,30 @@ const rootRouteChildren: RootRouteChildren = {
   SetupTokenRoute: SetupTokenRoute,
   SignTokenRoute: SignTokenRoute,
   VerifyPaymentRentalIdRoute: VerifyPaymentRentalIdRoute,
+  ViolationTokenRoute: ViolationTokenRoute,
   ViolationsBulkUploadRoute: ViolationsBulkUploadRoute,
   WorkOrderTokenRoute: WorkOrderTokenRoute,
   InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
   RunnerTaskTaskIdRoute: RunnerTaskTaskIdRoute,
+  ViolationTokenAffidavitRoute: ViolationTokenAffidavitRoute,
   ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
   ApiPublicHooksRepairDigestRoute: ApiPublicHooksRepairDigestRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,
+  ApiPublicHooksViolationRemindersRoute: ApiPublicHooksViolationRemindersRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

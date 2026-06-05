@@ -30,6 +30,7 @@ import {
   listViolationHistory,
   type ViolationHistoryRow,
 } from "@/lib/violations.functions";
+import { sendViolationToCustomer } from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
@@ -72,6 +73,29 @@ function DownloadPacketButton({ violationId }: { violationId: string }) {
   );
 }
 
+function SendCustomerButton({ violation, onDone }: { violation: ViolationRow; onDone: () => void }) {
+  const send = useServerFn(sendViolationToCustomer);
+  const [busy, setBusy] = useState(false);
+  const handle = async () => {
+    setBusy(true);
+    try {
+      await send({ data: { id: violation.id } });
+      toast.success("Resolution link sent to customer");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const label = violation.sent_to_customer_at ? "Resend Link" : "Send to Customer";
+  return (
+    <Button size="sm" variant="outline" onClick={handle} disabled={busy} className="ml-2">
+      {busy ? "Sending…" : label}
+    </Button>
+  );
+}
+
 export const Route = createFileRoute("/violations")({
   head: () => ({ meta: [{ title: "Violations — Camauto Rentals" }] }),
   component: ViolationsPage,
@@ -80,7 +104,15 @@ export const Route = createFileRoute("/violations")({
 const fmtMoney = (n: number) => `$${Number(n || 0).toFixed(2)}`;
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "—");
 
-type Filter = "all" | "unpaid" | "paid" | "disputed";
+type Filter =
+  | "all"
+  | "pending_response"
+  | "paid"
+  | "affidavit_signed"
+  | "submitted"
+  | "resolved";
+
+const PENDING_RESPONSE = ["pending", "failed", "sent_to_customer", "viewing"];
 
 function ViolationsPage() {
   const list = useServerFn(listViolations);
@@ -99,9 +131,11 @@ function ViolationsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (filter === "unpaid" && !(r.status === "pending" || r.status === "failed")) return false;
+      if (filter === "pending_response" && !PENDING_RESPONSE.includes(r.status)) return false;
       if (filter === "paid" && r.status !== "paid") return false;
-      if (filter === "disputed" && r.status !== "disputed") return false;
+      if (filter === "affidavit_signed" && r.status !== "affidavit_signed") return false;
+      if (filter === "submitted" && r.status !== "submitted_to_authority") return false;
+      if (filter === "resolved" && r.status !== "resolved") return false;
       if (!q) return true;
       const hay = [
         r.id,
@@ -155,9 +189,11 @@ function ViolationsPage() {
           <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
             <TabsList>
               <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="unpaid">Unpaid</TabsTrigger>
+              <TabsTrigger value="pending_response">Pending Response</TabsTrigger>
               <TabsTrigger value="paid">Paid</TabsTrigger>
-              <TabsTrigger value="disputed">Disputed</TabsTrigger>
+              <TabsTrigger value="affidavit_signed">Affidavit Signed</TabsTrigger>
+              <TabsTrigger value="submitted">Submitted</TabsTrigger>
+              <TabsTrigger value="resolved">Resolved</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="relative w-full max-w-sm">
@@ -221,12 +257,38 @@ function ViolationsPage() {
                             ✓ {new Date(v.paid_at).toLocaleString()}
                           </div>
                         )}
+                        {v.status === "affidavit_signed" && v.signed_at && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            📝 Signed {new Date(v.signed_at).toLocaleString()}
+                          </div>
+                        )}
+                        {v.resolution_choice && v.status !== "paid" && v.status !== "affidavit_signed" && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            Choice: {v.resolution_choice === "pay" ? "Paid" : "Affidavit"}
+                          </div>
+                        )}
+                        {PENDING_RESPONSE.includes(v.status) && v.sent_to_customer_at && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            Sent {new Date(v.sent_to_customer_at).toLocaleDateString()}
+                            {v.viewed_at ? " · viewed" : ""}
+                          </div>
+                        )}
                       </td>
                       <td className="p-3 text-right">
                         {(v.status === "pending" || v.status === "failed") && v.rental_id && (
                           <Button size="sm" variant="outline" onClick={() => setChargeFor(v)}>
                             Charge
                           </Button>
+                        )}
+                        {v.signed_pdf_url && (
+                          <a
+                            href={v.signed_pdf_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ml-2 text-xs text-primary underline"
+                          >
+                            Affidavit
+                          </a>
                         )}
                         {v.payment_link_url && v.status === "pending" && (
                           <a
@@ -237,6 +299,9 @@ function ViolationsPage() {
                           >
                             Link
                           </a>
+                        )}
+                        {!["paid", "resolved", "submitted_to_authority"].includes(v.status) && (
+                          <SendCustomerButton violation={v} onDone={refresh} />
                         )}
                         <Button
                           size="sm"

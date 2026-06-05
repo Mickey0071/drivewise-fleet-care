@@ -26,6 +26,14 @@ export interface AffidavitData {
     zip_code?: unknown;
   } | null;
   rental: { id?: unknown; start_date?: unknown; end_date?: unknown } | null;
+  /** When the customer e-signs, embed their signature + metadata. */
+  signature?: {
+    dataUrl: string;
+    name: string;
+    signedAt: string;
+    ip?: string | null;
+    userAgent?: string | null;
+  } | null;
 }
 
 function fmtMoney(n: number | null | undefined): string {
@@ -186,6 +194,50 @@ export async function buildAffidavitPdf(data: AffidavitData): Promise<Uint8Array
     left,
     y + 18,
   );
+
+  // Customer e-signature block (when signed online).
+  if (data.signature?.dataUrl?.startsWith("data:image/")) {
+    y += 48;
+    if (y > pageH - 150) {
+      doc.addPage();
+      y = 64;
+    }
+    doc.setDrawColor(...GREEN);
+    doc.setLineWidth(1);
+    doc.line(left, y, right, y);
+    y += 18;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(...TEXT);
+    doc.text("RENTER ELECTRONIC SIGNATURE", left, y);
+    y += 14;
+    try {
+      const fmt = data.signature.dataUrl.includes("image/jpeg") ? "JPEG" : "PNG";
+      doc.addImage(data.signature.dataUrl, fmt, left, y, 200, 70);
+    } catch {
+      /* ignore bad image */
+    }
+    y += 80;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    doc.text(`Signed by: ${data.signature.name}`, left, y);
+    y += 12;
+    doc.text(
+      `Signed at: ${new Date(data.signature.signedAt).toLocaleString("en-US")}`,
+      left,
+      y,
+    );
+    if (data.signature.ip) {
+      y += 12;
+      doc.text(`IP address: ${data.signature.ip}`, left, y);
+    }
+    if (data.signature.userAgent) {
+      y += 12;
+      const ua = doc.splitTextToSize(`Device: ${data.signature.userAgent}`, right - left);
+      doc.text(ua, left, y);
+    }
+  }
 
   // Footer
   const pages = doc.getNumberOfPages();
