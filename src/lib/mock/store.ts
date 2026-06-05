@@ -1855,6 +1855,8 @@ export function completeRepair(
     laborCost?: number;
     mechanicNotes?: string;
     mechanicName?: string;
+    mechanicPhone?: string;
+    mechanicShop?: string;
   },
 ): RepairCompletionSummary | undefined {
   const m = maintenance.find(x => x.id === id);
@@ -1882,6 +1884,8 @@ export function completeRepair(
   m.completedBy = opts?.completedBy?.trim() || m.completedBy || "Admin";
   if (opts?.mechanicNotes?.trim()) m.mechanicNotes = opts.mechanicNotes.trim();
   if (opts?.mechanicName?.trim()) m.mechanicName = opts.mechanicName.trim();
+  if (opts?.mechanicPhone?.trim()) m.mechanicPhone = opts.mechanicPhone.trim();
+  if (opts?.mechanicShop?.trim()) m.mechanicShop = opts.mechanicShop.trim();
   if (m.vendor === "Pending assignment") m.vendor = m.completedBy;
 
   const resolution = `Repair completed ${today} by ${m.completedBy}: parts $${parts.toFixed(2)} + labor $${labor.toFixed(2)} = $${total.toFixed(2)}`;
@@ -1922,6 +1926,9 @@ export function completeRepair(
       labor_cost: labor,
       total_cost: total,
       mechanic_name: m.mechanicName ?? null,
+      mechanic_phone: m.mechanicPhone ?? null,
+      mechanic_shop: m.mechanicShop ?? null,
+      parts_list: (m.partsList ?? null) as never,
       completed_by: m.completedBy ?? "Admin",
       notes: m.mechanicNotes ?? m.notes ?? null,
     } as never),
