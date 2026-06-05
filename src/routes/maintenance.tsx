@@ -428,13 +428,29 @@ function MaintenancePage() {
                         <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
-                    {m.diagnosisNotes && (
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        <span className="font-medium text-foreground">Parts used:</span> {m.diagnosisNotes}
+                    {(m.mechanicName || m.mechanicPhone || m.mechanicShop) && (
+                      <div className="rounded bg-muted/40 p-2 text-xs">
+                        <div className="mb-0.5 font-medium text-foreground">Mechanic</div>
+                        <div className="text-muted-foreground">
+                          {m.mechanicName || "—"}
+                          {m.mechanicPhone && (
+                            <> · <a href={`tel:${m.mechanicPhone.replace(/\D/g, "")}`} className="inline-flex items-center gap-0.5 text-primary hover:underline"><Phone className="h-3 w-3" />{formatUSPhone(m.mechanicPhone)}</a></>
+                          )}
+                        </div>
+                        {m.mechanicShop && <div className="text-muted-foreground">{m.mechanicShop}</div>}
                       </div>
                     )}
                     <div className="space-y-0.5 rounded bg-muted/40 p-2 text-xs">
-                      <div className="flex justify-between"><span>Total</span><span>{fmtMoney(total)}</span></div>
+                      {m.partsList && m.partsList.length > 0 ? (
+                        m.partsList.map((p, i) => (
+                          <div key={i} className="flex justify-between text-muted-foreground"><span>{p.name}</span><span>{fmtMoney(p.price)}</span></div>
+                        ))
+                      ) : m.diagnosisNotes ? (
+                        <div className="text-muted-foreground"><span className="font-medium text-foreground">Parts used:</span> {m.diagnosisNotes}</div>
+                      ) : null}
+                      <div className="flex justify-between"><span>Parts Total</span><span>{fmtMoney(m.partsCost ?? 0)}</span></div>
+                      <div className="flex justify-between"><span>Labour</span><span>{fmtMoney(m.laborCost ?? 0)}</span></div>
+                      <div className="flex justify-between border-t border-border pt-0.5 font-medium"><span>Grand Total</span><span>{fmtMoney(total)}</span></div>
                       <div className="flex justify-between"><span>Paid</span><span>{fmtMoney(paid)}</span></div>
                       <div className="flex justify-between border-t border-border pt-0.5 font-medium"><span>Balance</span><span>{fmtMoney(balance)}</span></div>
                     </div>
