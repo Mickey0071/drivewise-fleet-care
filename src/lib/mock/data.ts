@@ -222,6 +222,10 @@ export interface RepairSolution {
   laborCost: number;
   totalCost: number;
 }
+export interface PartLine {
+  name: string;
+  price: number;
+}
 export interface Inspection {
   id: string; vehicleId: string; rentalId: string;
   type: "check-in" | "check-out"; date: string; mileage: number;
