@@ -257,12 +257,38 @@ function ViolationsPage() {
                             ✓ {new Date(v.paid_at).toLocaleString()}
                           </div>
                         )}
+                        {v.status === "affidavit_signed" && v.signed_at && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            📝 Signed {new Date(v.signed_at).toLocaleString()}
+                          </div>
+                        )}
+                        {v.resolution_choice && v.status !== "paid" && v.status !== "affidavit_signed" && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            Choice: {v.resolution_choice === "pay" ? "Paid" : "Affidavit"}
+                          </div>
+                        )}
+                        {PENDING_RESPONSE.includes(v.status) && v.sent_to_customer_at && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            Sent {new Date(v.sent_to_customer_at).toLocaleDateString()}
+                            {v.viewed_at ? " · viewed" : ""}
+                          </div>
+                        )}
                       </td>
                       <td className="p-3 text-right">
                         {(v.status === "pending" || v.status === "failed") && v.rental_id && (
                           <Button size="sm" variant="outline" onClick={() => setChargeFor(v)}>
                             Charge
                           </Button>
+                        )}
+                        {v.signed_pdf_url && (
+                          <a
+                            href={v.signed_pdf_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ml-2 text-xs text-primary underline"
+                          >
+                            Affidavit
+                          </a>
                         )}
                         {v.payment_link_url && v.status === "pending" && (
                           <a
@@ -273,6 +299,9 @@ function ViolationsPage() {
                           >
                             Link
                           </a>
+                        )}
+                        {!["paid", "resolved", "submitted_to_authority"].includes(v.status) && (
+                          <SendCustomerButton violation={v} onDone={refresh} />
                         )}
                         <Button
                           size="sm"
