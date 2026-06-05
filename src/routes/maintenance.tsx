@@ -66,26 +66,62 @@ function MaintenancePage() {
   }
 
   // --- Phase 2 (Diagnose) per-record inputs ---
-  const [diagInputs, setDiagInputs] = useState<Record<string, { partsNeeded: string; partsCost: string; laborCost: string }>>({});
-  const diagFor = (m: Maintenance) =>
+  type PartInput = { name: string; price: string };
+  type DiagInput = {
+    mechanicName: string;
+    mechanicPhone: string;
+    mechanicShop: string;
+    parts: PartInput[];
+    laborCost: string;
+  };
+  const [diagInputs, setDiagInputs] = useState<Record<string, DiagInput>>({});
+  const diagFor = (m: Maintenance): DiagInput =>
     diagInputs[m.id] ?? {
-      partsNeeded: m.diagnosisNotes ?? "",
-      partsCost: m.partsCost ? String(m.partsCost) : "",
+      mechanicName: m.mechanicName ?? "",
+      mechanicPhone: m.mechanicPhone ?? "",
+      mechanicShop: m.mechanicShop ?? "",
+      parts:
+        m.partsList && m.partsList.length
+          ? m.partsList.map(p => ({ name: p.name, price: String(p.price) }))
+          : [{ name: "", price: "" }],
       laborCost: m.laborCost ? String(m.laborCost) : "",
     };
-  const setDiag = (id: string, patch: Partial<{ partsNeeded: string; partsCost: string; laborCost: string }>) =>
+  const setDiag = (id: string, patch: Partial<DiagInput>) =>
     setDiagInputs(prev => ({ ...prev, [id]: { ...diagFor(maintenance.find(x => x.id === id)!), ...prev[id], ...patch } }));
+
+  const partsTotalOf = (d: DiagInput) =>
+    d.parts.reduce((s, p) => s + (parseFloat(p.price) || 0), 0);
 
   function handleSaveDiagnosis(m: Maintenance) {
     const d = diagFor(m);
-    const parts = parseFloat(d.partsCost) || 0;
+    const cleanedParts: PartLine[] = d.parts
+      .map(p => ({ name: p.name.trim(), price: parseFloat(p.price) || 0 }))
+      .filter(p => p.name && p.price > 0);
     const labour = parseFloat(d.laborCost) || 0;
-    if (!d.partsNeeded.trim() || (!(parts > 0) && !(labour > 0))) {
-      toast.error("Complete parts info to save");
+    if (!d.mechanicName.trim() || !d.mechanicPhone.trim() || (cleanedParts.length === 0 && !(labour > 0))) {
+      toast.error("Add mechanic info and at least one cost");
       return;
     }
-    saveRepairDiagnosis(m.id, { partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour });
+    saveRepairDiagnosis(m.id, {
+      mechanicName: d.mechanicName,
+      mechanicPhone: d.mechanicPhone,
+      mechanicShop: d.mechanicShop,
+      partsList: cleanedParts,
+      laborCost: labour,
+    });
     toast.success("Diagnosis saved — moved to Complete");
+  }
+
+  // --- Phase 1 (optional) mechanic assignment inputs ---
+  const [mechInputs, setMechInputs] = useState<Record<string, { name: string; phone: string; shop: string }>>({});
+  const mechFor = (m: Maintenance) =>
+    mechInputs[m.id] ?? { name: m.mechanicName ?? "", phone: m.mechanicPhone ?? "", shop: m.mechanicShop ?? "" };
+  const setMech = (id: string, patch: Partial<{ name: string; phone: string; shop: string }>) =>
+    setMechInputs(prev => ({ ...prev, [id]: { ...mechFor(maintenance.find(x => x.id === id)!), ...prev[id], ...patch } }));
+  function handleSaveMechanic(m: Maintenance) {
+    const d = mechFor(m);
+    setRepairMechanic(m.id, { mechanicName: d.name, mechanicPhone: d.phone, mechanicShop: d.shop });
+    toast.success("Mechanic info saved");
   }
 
   // --- Phase 3 (Complete) payment inputs ---
