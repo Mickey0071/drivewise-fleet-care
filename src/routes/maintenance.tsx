@@ -11,10 +11,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
-import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, setRepairMechanic, recordRepairPaymentRaw, completeRepair, reverseRepairToDiagnose } from "@/lib/mock/store";
+import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, recordRepairPaymentRaw, completeRepair, reverseRepairToDiagnose } from "@/lib/mock/store";
 import type { RepairCompletionSummary } from "@/lib/mock/store";
-import { formatUSPhone } from "@/lib/utils";
-import { Trash2, Phone } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +29,7 @@ import {
   isScheduleConfigured,
   type ScheduledItem,
 } from "@/lib/maintenance-utils";
-import type { Maintenance, PartLine } from "@/lib/mock/data";
+import type { Maintenance } from "@/lib/mock/data";
 
 export const Route = createFileRoute("/maintenance")({
   head: () => ({ meta: [{ title: "Maintenance — Camauto Rentals" }] }),
@@ -66,62 +64,26 @@ function MaintenancePage() {
   }
 
   // --- Phase 2 (Diagnose) per-record inputs ---
-  type PartInput = { name: string; price: string };
-  type DiagInput = {
-    mechanicName: string;
-    mechanicPhone: string;
-    mechanicShop: string;
-    parts: PartInput[];
-    laborCost: string;
-  };
-  const [diagInputs, setDiagInputs] = useState<Record<string, DiagInput>>({});
-  const diagFor = (m: Maintenance): DiagInput =>
+  const [diagInputs, setDiagInputs] = useState<Record<string, { partsNeeded: string; partsCost: string; laborCost: string }>>({});
+  const diagFor = (m: Maintenance) =>
     diagInputs[m.id] ?? {
-      mechanicName: m.mechanicName ?? "",
-      mechanicPhone: m.mechanicPhone ?? "",
-      mechanicShop: m.mechanicShop ?? "",
-      parts:
-        m.partsList && m.partsList.length
-          ? m.partsList.map(p => ({ name: p.name, price: String(p.price) }))
-          : [{ name: "", price: "" }],
+      partsNeeded: m.diagnosisNotes ?? "",
+      partsCost: m.partsCost ? String(m.partsCost) : "",
       laborCost: m.laborCost ? String(m.laborCost) : "",
     };
-  const setDiag = (id: string, patch: Partial<DiagInput>) =>
+  const setDiag = (id: string, patch: Partial<{ partsNeeded: string; partsCost: string; laborCost: string }>) =>
     setDiagInputs(prev => ({ ...prev, [id]: { ...diagFor(maintenance.find(x => x.id === id)!), ...prev[id], ...patch } }));
-
-  const partsTotalOf = (d: DiagInput) =>
-    d.parts.reduce((s, p) => s + (parseFloat(p.price) || 0), 0);
 
   function handleSaveDiagnosis(m: Maintenance) {
     const d = diagFor(m);
-    const cleanedParts: PartLine[] = d.parts
-      .map(p => ({ name: p.name.trim(), price: parseFloat(p.price) || 0 }))
-      .filter(p => p.name && p.price > 0);
+    const parts = parseFloat(d.partsCost) || 0;
     const labour = parseFloat(d.laborCost) || 0;
-    if (!d.mechanicName.trim() || !d.mechanicPhone.trim() || (cleanedParts.length === 0 && !(labour > 0))) {
-      toast.error("Add mechanic info and at least one cost");
+    if (!d.partsNeeded.trim() || (!(parts > 0) && !(labour > 0))) {
+      toast.error("Complete parts info to save");
       return;
     }
-    saveRepairDiagnosis(m.id, {
-      mechanicName: d.mechanicName,
-      mechanicPhone: d.mechanicPhone,
-      mechanicShop: d.mechanicShop,
-      partsList: cleanedParts,
-      laborCost: labour,
-    });
+    saveRepairDiagnosis(m.id, { partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour });
     toast.success("Diagnosis saved — moved to Complete");
-  }
-
-  // --- Phase 1 (optional) mechanic assignment inputs ---
-  const [mechInputs, setMechInputs] = useState<Record<string, { name: string; phone: string; shop: string }>>({});
-  const mechFor = (m: Maintenance) =>
-    mechInputs[m.id] ?? { name: m.mechanicName ?? "", phone: m.mechanicPhone ?? "", shop: m.mechanicShop ?? "" };
-  const setMech = (id: string, patch: Partial<{ name: string; phone: string; shop: string }>) =>
-    setMechInputs(prev => ({ ...prev, [id]: { ...mechFor(maintenance.find(x => x.id === id)!), ...prev[id], ...patch } }));
-  function handleSaveMechanic(m: Maintenance) {
-    const d = mechFor(m);
-    setRepairMechanic(m.id, { mechanicName: d.name, mechanicPhone: d.phone, mechanicShop: d.shop });
-    toast.success("Mechanic info saved");
   }
 
   // --- Phase 3 (Complete) payment inputs ---
@@ -271,33 +233,6 @@ function MaintenancePage() {
                                 <span className="font-medium text-foreground">Symptoms:</span> {m.repairRequestNotes}
                               </div>
                             )}
-                            <div className="rounded bg-muted/40 px-2 py-1 text-[11px]">
-                              <span className="font-medium text-foreground">Current location: </span>
-                              {m.mechanicName ? (
-                                <span>{m.mechanicName}{m.mechanicPhone ? ` — ${formatUSPhone(m.mechanicPhone)}` : ""}</span>
-                              ) : (
-                                <span className="text-muted-foreground">Not assigned yet</span>
-                              )}
-                            </div>
-                            {(() => {
-                              const mc = mechFor(m);
-                              return (
-                                <details className="rounded border border-border/60 px-2 py-1">
-                                  <summary className="cursor-pointer text-[11px] text-muted-foreground">Add mechanic info (optional)</summary>
-                                  <div className="mt-2 space-y-2">
-                                    <Input className="h-8 text-xs" placeholder="Mechanic name"
-                                      value={mc.name} onChange={(e) => setMech(m.id, { name: e.target.value })} />
-                                    <Input className="h-8 text-xs" placeholder="(XXX) XXX-XXXX" inputMode="tel"
-                                      value={mc.phone} onChange={(e) => setMech(m.id, { phone: formatUSPhone(e.target.value) })} />
-                                    <Input className="h-8 text-xs" placeholder="Shop location (optional)"
-                                      value={mc.shop} onChange={(e) => setMech(m.id, { shop: e.target.value })} />
-                                    <Button size="sm" variant="outline" className="w-full" onClick={() => handleSaveMechanic(m)}>
-                                      Save mechanic info
-                                    </Button>
-                                  </div>
-                                </details>
-                              );
-                            })()}
                             <div className="flex items-center justify-between">
                               <Badge variant="secondary" className="text-[10px]">
                                 {fromInspection ? "From inspection" : "Manual"}
@@ -335,60 +270,39 @@ function MaintenancePage() {
                 <ul className="divide-y divide-border">
                   {phase2.map(m => {
                     const d = diagFor(m);
-                    const partsTotal = partsTotalOf(d);
+                    const parts = parseFloat(d.partsCost) || 0;
                     const labour = parseFloat(d.laborCost) || 0;
-                    const total = partsTotal + labour;
+                    const total = parts + labour;
                     const open = expandedId === m.id;
                     return (
                       <li key={m.id} className="border-l-[3px] border-l-blue-500">
                         <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
-                            {/* Mechanic info */}
-                            <div className="space-y-2">
-                              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mechanic</div>
-                              <Input className="h-8 text-xs" placeholder="Mechanic name"
-                                value={d.mechanicName} onChange={(e) => setDiag(m.id, { mechanicName: e.target.value })} />
-                              <Input className="h-8 text-xs" placeholder="(XXX) XXX-XXXX" inputMode="tel"
-                                value={d.mechanicPhone} onChange={(e) => setDiag(m.id, { mechanicPhone: formatUSPhone(e.target.value) })} />
-                              <Input className="h-8 text-xs" placeholder="Shop location (optional)"
-                                value={d.mechanicShop} onChange={(e) => setDiag(m.id, { mechanicShop: e.target.value })} />
-                            </div>
-                            {/* Parts list */}
-                            <div className="space-y-2">
-                              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Parts Used</div>
-                              {d.parts.map((p, i) => (
-                                <div key={i} className="flex items-center gap-1.5">
-                                  <Input className="h-8 flex-1 text-xs" placeholder="Part name"
-                                    value={p.name}
-                                    onChange={(e) => setDiag(m.id, { parts: d.parts.map((x, xi) => xi === i ? { ...x, name: e.target.value } : x) })} />
-                                  <Input className="h-8 w-20 text-xs" type="number" min="0" step="0.01" placeholder="$"
-                                    value={p.price}
-                                    onChange={(e) => setDiag(m.id, { parts: d.parts.map((x, xi) => xi === i ? { ...x, price: e.target.value } : x) })} />
-                                  <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-destructive"
-                                    disabled={d.parts.length === 1}
-                                    onClick={() => setDiag(m.id, { parts: d.parts.filter((_, xi) => xi !== i) })}>
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              ))}
-                              <Button size="sm" variant="outline" className="w-full"
-                                onClick={() => setDiag(m.id, { parts: [...d.parts, { name: "", price: "" }] })}>
-                                <Plus className="mr-1 h-3.5 w-3.5" /> Add Part
-                              </Button>
-                              <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs">
-                                <span>Parts Total</span><span>{fmtMoney(partsTotal)}</span>
-                              </div>
-                            </div>
-                            {/* Labour */}
-                            <div>
-                              <Label className="text-[11px]">Labour $</Label>
-                              <Input className="mt-1 h-8" type="number" min="0" step="0.01"
-                                value={d.laborCost} onChange={(e) => setDiag(m.id, { laborCost: e.target.value })} />
-                            </div>
-                            <div className="flex justify-between rounded bg-primary/10 px-2 py-1 text-sm font-semibold">
-                              <span>Total</span><span>{fmtMoney(total)}</span>
-                            </div>
+                      <div>
+                        <Label className="text-[11px]">Parts needed</Label>
+                        <Textarea
+                          className="mt-1 min-h-[52px] text-xs"
+                          placeholder="e.g. Front brake pads, rotors"
+                          value={d.partsNeeded}
+                          onChange={(e) => setDiag(m.id, { partsNeeded: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Label className="text-[11px]">Parts $</Label>
+                          <Input className="mt-1 h-8" type="number" min="0" step="0.01"
+                            value={d.partsCost} onChange={(e) => setDiag(m.id, { partsCost: e.target.value })} />
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-[11px]">Labour $</Label>
+                          <Input className="mt-1 h-8" type="number" min="0" step="0.01"
+                            value={d.laborCost} onChange={(e) => setDiag(m.id, { laborCost: e.target.value })} />
+                        </div>
+                      </div>
+                      <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs font-medium">
+                        <span>Total</span><span>{fmtMoney(total)}</span>
+                      </div>
                             <Button size="sm" className="w-full" onClick={() => handleSaveDiagnosis(m)}>
                               Save Diagnosis →
                             </Button>
@@ -428,29 +342,13 @@ function MaintenancePage() {
                         <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
-                    {(m.mechanicName || m.mechanicPhone || m.mechanicShop) && (
-                      <div className="rounded bg-muted/40 p-2 text-xs">
-                        <div className="mb-0.5 font-medium text-foreground">Mechanic</div>
-                        <div className="text-muted-foreground">
-                          {m.mechanicName || "—"}
-                          {m.mechanicPhone && (
-                            <> · <a href={`tel:${m.mechanicPhone.replace(/\D/g, "")}`} className="inline-flex items-center gap-0.5 text-primary hover:underline"><Phone className="h-3 w-3" />{formatUSPhone(m.mechanicPhone)}</a></>
-                          )}
-                        </div>
-                        {m.mechanicShop && <div className="text-muted-foreground">{m.mechanicShop}</div>}
+                    {m.diagnosisNotes && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Parts used:</span> {m.diagnosisNotes}
                       </div>
                     )}
                     <div className="space-y-0.5 rounded bg-muted/40 p-2 text-xs">
-                      {m.partsList && m.partsList.length > 0 ? (
-                        m.partsList.map((p, i) => (
-                          <div key={i} className="flex justify-between text-muted-foreground"><span>{p.name}</span><span>{fmtMoney(p.price)}</span></div>
-                        ))
-                      ) : m.diagnosisNotes ? (
-                        <div className="text-muted-foreground"><span className="font-medium text-foreground">Parts used:</span> {m.diagnosisNotes}</div>
-                      ) : null}
-                      <div className="flex justify-between"><span>Parts Total</span><span>{fmtMoney(m.partsCost ?? 0)}</span></div>
-                      <div className="flex justify-between"><span>Labour</span><span>{fmtMoney(m.laborCost ?? 0)}</span></div>
-                      <div className="flex justify-between border-t border-border pt-0.5 font-medium"><span>Grand Total</span><span>{fmtMoney(total)}</span></div>
+                      <div className="flex justify-between"><span>Total</span><span>{fmtMoney(total)}</span></div>
                       <div className="flex justify-between"><span>Paid</span><span>{fmtMoney(paid)}</span></div>
                       <div className="flex justify-between border-t border-border pt-0.5 font-medium"><span>Balance</span><span>{fmtMoney(balance)}</span></div>
                     </div>

@@ -1,9 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Phone } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { vehicleById, fmtMoney, fmtDate, type Maintenance } from "@/lib/mock/data";
-import { formatUSPhone } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -62,15 +61,6 @@ export function CompletedRepairDetailDialog({ open, onOpenChange, record }: Prop
           <div className="rounded-md border border-border bg-muted/30 p-3">
             <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cost breakdown</div>
             <div className="space-y-1">
-              {record.partsList && record.partsList.length > 0 && (
-                <div className="mb-1 space-y-0.5">
-                  {record.partsList.map((p, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{p.name}</span><span>{fmtMoney(p.price)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
               <Row label="Parts" value={fmtMoney(parts)} />
               <Row label="Labor" value={fmtMoney(labor)} />
               <Row label="Total" value={fmtMoney(total)} strong />
@@ -79,22 +69,6 @@ export function CompletedRepairDetailDialog({ open, onOpenChange, record }: Prop
               )}
             </div>
           </div>
-
-          {/* Mechanic */}
-          {(record.mechanicName || record.mechanicPhone || record.mechanicShop) && (
-            <div className="rounded-md border border-border bg-muted/30 p-3">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mechanic</div>
-              <div className="space-y-0.5">
-                <div>{record.mechanicName || "—"}</div>
-                {record.mechanicPhone && (
-                  <a href={`tel:${record.mechanicPhone.replace(/\D/g, "")}`} className="inline-flex items-center gap-1 text-primary hover:underline">
-                    <Phone className="h-3.5 w-3.5" />{formatUSPhone(record.mechanicPhone)}
-                  </a>
-                )}
-                {record.mechanicShop && <div className="text-muted-foreground">{record.mechanicShop}</div>}
-              </div>
-            </div>
-          )}
 
           {/* Notes */}
           <div className="space-y-2">

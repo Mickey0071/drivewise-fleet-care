@@ -187,12 +187,6 @@ export interface Maintenance {
   mechanicNotes?: string;
   /** Name of the mechanic who performed the repair (optional). */
   mechanicName?: string;
-  /** Mechanic phone number (formatted). */
-  mechanicPhone?: string;
-  /** Mechanic shop / location (optional). */
-  mechanicShop?: string;
-  /** Structured list of parts used during the repair. */
-  partsList?: PartLine[];
   /** When true, an open repair blocks the vehicle from new bookings. Default false. */
   isRentalBlocking?: boolean;
   // ---- Runner repair request / approval workflow ----
@@ -221,10 +215,6 @@ export interface RepairSolution {
   partsCost: number;
   laborCost: number;
   totalCost: number;
-}
-export interface PartLine {
-  name: string;
-  price: number;
 }
 export interface Inspection {
   id: string; vehicleId: string; rentalId: string;

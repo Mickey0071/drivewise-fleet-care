@@ -689,13 +689,10 @@ export type Database = {
           labor_cost: number
           mechanic_name: string | null
           mechanic_notes: string | null
-          mechanic_phone: string | null
-          mechanic_shop: string | null
           mileage_at_service: number
           next_service_due: string
           notes: string | null
           parts_cost: number
-          parts_list: Json | null
           repair_request_notes: string | null
           runner_id: string | null
           selected_solution: Json | null
@@ -734,13 +731,10 @@ export type Database = {
           labor_cost?: number
           mechanic_name?: string | null
           mechanic_notes?: string | null
-          mechanic_phone?: string | null
-          mechanic_shop?: string | null
           mileage_at_service?: number
           next_service_due?: string
           notes?: string | null
           parts_cost?: number
-          parts_list?: Json | null
           repair_request_notes?: string | null
           runner_id?: string | null
           selected_solution?: Json | null
@@ -779,13 +773,10 @@ export type Database = {
           labor_cost?: number
           mechanic_name?: string | null
           mechanic_notes?: string | null
-          mechanic_phone?: string | null
-          mechanic_shop?: string | null
           mileage_at_service?: number
           next_service_due?: string
           notes?: string | null
           parts_cost?: number
-          parts_list?: Json | null
           repair_request_notes?: string | null
           runner_id?: string | null
           selected_solution?: Json | null
@@ -1538,12 +1529,9 @@ export type Database = {
           labor_cost: number
           maintenance_id: string | null
           mechanic_name: string | null
-          mechanic_phone: string | null
-          mechanic_shop: string | null
           notes: string | null
           parts: string | null
           parts_cost: number
-          parts_list: Json | null
           repair_date: string
           total_cost: number
           updated_at: string
@@ -1557,12 +1545,9 @@ export type Database = {
           labor_cost?: number
           maintenance_id?: string | null
           mechanic_name?: string | null
-          mechanic_phone?: string | null
-          mechanic_shop?: string | null
           notes?: string | null
           parts?: string | null
           parts_cost?: number
-          parts_list?: Json | null
           repair_date: string
           total_cost?: number
           updated_at?: string
@@ -1576,12 +1561,9 @@ export type Database = {
           labor_cost?: number
           maintenance_id?: string | null
           mechanic_name?: string | null
-          mechanic_phone?: string | null
-          mechanic_shop?: string | null
           notes?: string | null
           parts?: string | null
           parts_cost?: number
-          parts_list?: Json | null
           repair_date?: string
           total_cost?: number
           updated_at?: string
