@@ -166,9 +166,11 @@ function ViolationsPage() {
           <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
             <TabsList>
               <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="unpaid">Unpaid</TabsTrigger>
+              <TabsTrigger value="pending_response">Pending Response</TabsTrigger>
               <TabsTrigger value="paid">Paid</TabsTrigger>
-              <TabsTrigger value="disputed">Disputed</TabsTrigger>
+              <TabsTrigger value="affidavit_signed">Affidavit Signed</TabsTrigger>
+              <TabsTrigger value="submitted">Submitted</TabsTrigger>
+              <TabsTrigger value="resolved">Resolved</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="relative w-full max-w-sm">
