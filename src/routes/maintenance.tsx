@@ -11,8 +11,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
-import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, recordRepairPaymentRaw, completeRepair, reverseRepairToDiagnose } from "@/lib/mock/store";
+import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, setRepairMechanic, recordRepairPaymentRaw, completeRepair, reverseRepairToDiagnose } from "@/lib/mock/store";
 import type { RepairCompletionSummary } from "@/lib/mock/store";
+import { formatUSPhone } from "@/lib/utils";
+import { Trash2, Phone } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +31,7 @@ import {
   isScheduleConfigured,
   type ScheduledItem,
 } from "@/lib/maintenance-utils";
-import type { Maintenance } from "@/lib/mock/data";
+import type { Maintenance, PartLine } from "@/lib/mock/data";
 
 export const Route = createFileRoute("/maintenance")({
   head: () => ({ meta: [{ title: "Maintenance — Camauto Rentals" }] }),
