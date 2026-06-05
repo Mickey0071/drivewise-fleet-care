@@ -187,6 +187,12 @@ export interface Maintenance {
   mechanicNotes?: string;
   /** Name of the mechanic who performed the repair (optional). */
   mechanicName?: string;
+  /** Mechanic phone number (formatted). */
+  mechanicPhone?: string;
+  /** Mechanic shop / location (optional). */
+  mechanicShop?: string;
+  /** Structured list of parts used during the repair. */
+  partsList?: PartLine[];
   /** When true, an open repair blocks the vehicle from new bookings. Default false. */
   isRentalBlocking?: boolean;
   // ---- Runner repair request / approval workflow ----
