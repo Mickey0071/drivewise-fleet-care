@@ -608,3 +608,119 @@ export const chargeViolationRecord = createServerFn({ method: "POST" })
       throw new Error(msg);
     }
   });
+function genCustomerToken(): string {
+  const a = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Admin: generate a customer resolution link and send it via SMS + email. */
+export const sendViolationToCustomer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input.id) throw new Error("id required");
+    return { id: input.id };
+  })
+  .handler(async ({ data }) => {
+    const { data: v, error } = await supabaseAdmin
+      .from("violations")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error || !v) throw new Error("Violation not found");
+    if (["paid", "resolved", "submitted_to_authority"].includes(v.status as string)) {
+      throw new Error("This violation is already resolved.");
+    }
+
+    const { data: driver } = v.driver_id
+      ? await supabaseAdmin
+          .from("drivers")
+          .select("full_name, phone, email")
+          .eq("id", v.driver_id)
+          .maybeSingle()
+      : { data: null };
+    if (!driver?.phone && !driver?.email) {
+      throw new Error("Renter has no phone or email on file.");
+    }
+
+    const token = (v.customer_token as string) || genCustomerToken();
+    const expires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
+    await supabaseAdmin
+      .from("violations")
+      .update({
+        customer_token: token,
+        customer_token_expires_at: expires,
+        status: "sent_to_customer",
+        sent_to_customer_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq("id", v.id);
+
+    const originHeader = getRequestHeader("origin") || getRequestHeader("referer");
+    let origin = process.env.PUBLIC_APP_ORIGIN ?? "https://camautorentals.lovable.app";
+    if (originHeader) {
+      try {
+        origin = new URL(originHeader).origin;
+      } catch {
+        /* keep default */
+      }
+    }
+    const url = `${origin}/violation/${encodeURIComponent(token)}`;
+    const amt = `$${Number(v.total_amount || v.amount || 0).toFixed(2)}`;
+
+    await notifyRenter({
+      phone: driver?.phone ?? null,
+      email: driver?.email ?? null,
+      name: driver?.full_name ?? null,
+      sms: `Camauto Rentals: You have an EZPass violation (${amt}). Resolve it here: ${url}`,
+      emailSubject: "EZPass Violation Notice — Camauto Rentals",
+      emailHeading: "EZPass Violation Notice",
+      emailIntro: `You have an outstanding EZPass violation of <strong>${amt}</strong>. You can pay it directly or sign an affidavit to transfer liability to yourself.`,
+      emailCta: { label: "Resolve Violation", url },
+      emailDetails: [{ label: "Amount Due", value: amt }],
+    });
+
+    return { ok: true as const, url };
+  });
+
+/** Cron/admin: send reminders for violations awaiting a customer response 7+ days. */
+export const sendViolationReminders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const sevenDaysAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString();
+    const { data: rows } = await supabaseAdmin
+      .from("violations")
+      .select("*")
+      .in("status", ["sent_to_customer", "viewing"])
+      .lte("sent_to_customer_at", sevenDaysAgo)
+      .is("reminder_sent_at", null)
+      .limit(200);
+    let sent = 0;
+    for (const v of rows ?? []) {
+      const { data: driver } = v.driver_id
+        ? await supabaseAdmin
+            .from("drivers")
+            .select("full_name, phone, email")
+            .eq("id", v.driver_id)
+            .maybeSingle()
+        : { data: null };
+      if (!driver?.phone && !driver?.email) continue;
+      const url = `${process.env.PUBLIC_APP_ORIGIN ?? "https://camautorentals.lovable.app"}/violation/${encodeURIComponent(v.customer_token as string)}`;
+      const amt = `$${Number(v.total_amount || v.amount || 0).toFixed(2)}`;
+      await notifyRenter({
+        phone: driver.phone ?? null,
+        email: driver.email ?? null,
+        name: driver.full_name ?? null,
+        sms: `Reminder from Camauto Rentals: Your EZPass violation (${amt}) is still unresolved. ${url}`,
+        emailSubject: "Reminder: EZPass Violation — Camauto Rentals",
+        emailHeading: "Reminder: Unresolved Violation",
+        emailIntro: `This is a reminder that your EZPass violation of <strong>${amt}</strong> is still unresolved. Please pay or sign the affidavit.`,
+        emailCta: { label: "Resolve Now", url },
+      });
+      await supabaseAdmin
+        .from("violations")
+        .update({ reminder_sent_at: new Date().toISOString() } as never)
+        .eq("id", v.id);
+      sent++;
+    }
+    return { ok: true as const, sent };
+  });
