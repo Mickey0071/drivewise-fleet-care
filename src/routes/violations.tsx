@@ -108,9 +108,11 @@ function ViolationsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (filter === "unpaid" && !(r.status === "pending" || r.status === "failed")) return false;
+      if (filter === "pending_response" && !PENDING_RESPONSE.includes(r.status)) return false;
       if (filter === "paid" && r.status !== "paid") return false;
-      if (filter === "disputed" && r.status !== "disputed") return false;
+      if (filter === "affidavit_signed" && r.status !== "affidavit_signed") return false;
+      if (filter === "submitted" && r.status !== "submitted_to_authority") return false;
+      if (filter === "resolved" && r.status !== "resolved") return false;
       if (!q) return true;
       const hay = [
         r.id,
