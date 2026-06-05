@@ -1316,6 +1316,7 @@ function nextVehicleId() {
 }
 
 import type { Vehicle } from "./data";
+import type { PartLine } from "./data";
 
 export function addVehicle(input: Omit<Vehicle, "id" | "status" | "mileage" | "riskTier"> & Partial<Pick<Vehicle, "status" | "mileage" | "riskTier">>) {
   const vehicle: Vehicle = {
