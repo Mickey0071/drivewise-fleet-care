@@ -426,7 +426,7 @@ function VehicleDetail() {
             ) : (
               completedRepairs.map(m => {
                 const issue = m.issueDescription || m.selectedSolution?.name || m.serviceType;
-                const mechanic = m.completedBy || m.vendor || "—";
+                const mechanic = m.mechanicName || m.completedBy || m.vendor || "—";
                 const parts = m.partsCost ?? m.selectedSolution?.partsCost ?? 0;
                 const labor = m.laborCost ?? m.selectedSolution?.laborCost ?? 0;
                 const total = m.cost ?? parts + labor;

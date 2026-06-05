@@ -367,6 +367,9 @@ const fromMaintenance = (r: any): Maintenance => ({
   laborCost: r.labor_cost != null ? Number(r.labor_cost) : undefined,
   mechanicNotes: r.mechanic_notes ?? undefined,
   mechanicName: r.mechanic_name ?? undefined,
+  mechanicPhone: r.mechanic_phone ?? undefined,
+  mechanicShop: r.mechanic_shop ?? undefined,
+  partsList: Array.isArray(r.parts_list) ? r.parts_list : undefined,
   runnerId: r.runner_id ?? undefined,
   repairRequestNotes: r.repair_request_notes ?? undefined,
   approvalStatus: r.approval_status ?? undefined,
@@ -401,6 +404,9 @@ const toMaintenance = (m: Maintenance) => ({
   labor_cost: m.laborCost ?? 0,
   mechanic_notes: m.mechanicNotes ?? null,
   mechanic_name: m.mechanicName ?? null,
+  mechanic_phone: m.mechanicPhone ?? null,
+  mechanic_shop: m.mechanicShop ?? null,
+  parts_list: (m.partsList ?? null) as any,
   runner_id: m.runnerId ?? null,
   repair_request_notes: m.repairRequestNotes ?? null,
   approval_status: m.approvalStatus ?? null,
@@ -1310,6 +1316,7 @@ function nextVehicleId() {
 }
 
 import type { Vehicle } from "./data";
+import type { PartLine } from "./data";
 
 export function addVehicle(input: Omit<Vehicle, "id" | "status" | "mileage" | "riskTier"> & Partial<Pick<Vehicle, "status" | "mileage" | "riskTier">>) {
   const vehicle: Vehicle = {
@@ -1848,6 +1855,8 @@ export function completeRepair(
     laborCost?: number;
     mechanicNotes?: string;
     mechanicName?: string;
+    mechanicPhone?: string;
+    mechanicShop?: string;
   },
 ): RepairCompletionSummary | undefined {
   const m = maintenance.find(x => x.id === id);
@@ -1875,6 +1884,8 @@ export function completeRepair(
   m.completedBy = opts?.completedBy?.trim() || m.completedBy || "Admin";
   if (opts?.mechanicNotes?.trim()) m.mechanicNotes = opts.mechanicNotes.trim();
   if (opts?.mechanicName?.trim()) m.mechanicName = opts.mechanicName.trim();
+  if (opts?.mechanicPhone?.trim()) m.mechanicPhone = opts.mechanicPhone.trim();
+  if (opts?.mechanicShop?.trim()) m.mechanicShop = opts.mechanicShop.trim();
   if (m.vendor === "Pending assignment") m.vendor = m.completedBy;
 
   const resolution = `Repair completed ${today} by ${m.completedBy}: parts $${parts.toFixed(2)} + labor $${labor.toFixed(2)} = $${total.toFixed(2)}`;
@@ -1915,6 +1926,9 @@ export function completeRepair(
       labor_cost: labor,
       total_cost: total,
       mechanic_name: m.mechanicName ?? null,
+      mechanic_phone: m.mechanicPhone ?? null,
+      mechanic_shop: m.mechanicShop ?? null,
+      parts_list: (m.partsList ?? null) as never,
       completed_by: m.completedBy ?? "Admin",
       notes: m.mechanicNotes ?? m.notes ?? null,
     } as never),
@@ -2234,17 +2248,30 @@ export function moveRepairToDiagnose(id: string) {
   return m;
 }
 
-/** Phase 2 → Phase 3: save diagnosis (parts needed + costs) and move to Complete. */
+/** Phase 2 → Phase 3: save diagnosis (mechanic info + parts list + labour) and move to Complete. */
 export function saveRepairDiagnosis(
   id: string,
-  input: { partsNeeded: string; partsCost: number; laborCost: number },
+  input: {
+    mechanicName: string;
+    mechanicPhone: string;
+    mechanicShop?: string;
+    partsList: PartLine[];
+    laborCost: number;
+  },
 ) {
   const m = maintenance.find(x => x.id === id);
   if (!m) return;
-  const parts = Math.max(0, input.partsCost || 0);
+  const partsList = (input.partsList ?? [])
+    .map(p => ({ name: (p.name ?? "").trim(), price: Math.max(0, Number(p.price) || 0) }))
+    .filter(p => p.name && p.price > 0);
+  const parts = partsList.reduce((s, p) => s + p.price, 0);
   const labor = Math.max(0, input.laborCost || 0);
   const total = parts + labor;
-  m.diagnosisNotes = input.partsNeeded.trim();
+  m.mechanicName = input.mechanicName.trim();
+  m.mechanicPhone = input.mechanicPhone.trim() || undefined;
+  m.mechanicShop = input.mechanicShop?.trim() || undefined;
+  m.partsList = partsList;
+  m.diagnosisNotes = partsList.map(p => p.name).join(", ");
   m.partsCost = parts;
   m.laborCost = labor;
   m.cost = total;
@@ -2252,6 +2279,21 @@ export function saveRepairDiagnosis(
   m.status = "pending_complete";
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   syncVehicleOpenIssues(m.vehicleId);
+  emit();
+  return m;
+}
+
+/** Phase 1 (optional): assign mechanic contact info to a repair before diagnosis. */
+export function setRepairMechanic(
+  id: string,
+  input: { mechanicName: string; mechanicPhone: string; mechanicShop?: string },
+) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  m.mechanicName = input.mechanicName.trim() || undefined;
+  m.mechanicPhone = input.mechanicPhone.trim() || undefined;
+  m.mechanicShop = input.mechanicShop?.trim() || undefined;
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   emit();
   return m;
 }
