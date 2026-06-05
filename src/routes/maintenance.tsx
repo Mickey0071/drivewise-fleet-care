@@ -335,39 +335,60 @@ function MaintenancePage() {
                 <ul className="divide-y divide-border">
                   {phase2.map(m => {
                     const d = diagFor(m);
-                    const parts = parseFloat(d.partsCost) || 0;
+                    const partsTotal = partsTotalOf(d);
                     const labour = parseFloat(d.laborCost) || 0;
-                    const total = parts + labour;
+                    const total = partsTotal + labour;
                     const open = expandedId === m.id;
                     return (
                       <li key={m.id} className="border-l-[3px] border-l-blue-500">
                         <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
-                      <div>
-                        <Label className="text-[11px]">Parts needed</Label>
-                        <Textarea
-                          className="mt-1 min-h-[52px] text-xs"
-                          placeholder="e.g. Front brake pads, rotors"
-                          value={d.partsNeeded}
-                          onChange={(e) => setDiag(m.id, { partsNeeded: e.target.value })}
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="flex-1">
-                          <Label className="text-[11px]">Parts $</Label>
-                          <Input className="mt-1 h-8" type="number" min="0" step="0.01"
-                            value={d.partsCost} onChange={(e) => setDiag(m.id, { partsCost: e.target.value })} />
-                        </div>
-                        <div className="flex-1">
-                          <Label className="text-[11px]">Labour $</Label>
-                          <Input className="mt-1 h-8" type="number" min="0" step="0.01"
-                            value={d.laborCost} onChange={(e) => setDiag(m.id, { laborCost: e.target.value })} />
-                        </div>
-                      </div>
-                      <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs font-medium">
-                        <span>Total</span><span>{fmtMoney(total)}</span>
-                      </div>
+                            {/* Mechanic info */}
+                            <div className="space-y-2">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Mechanic</div>
+                              <Input className="h-8 text-xs" placeholder="Mechanic name"
+                                value={d.mechanicName} onChange={(e) => setDiag(m.id, { mechanicName: e.target.value })} />
+                              <Input className="h-8 text-xs" placeholder="(XXX) XXX-XXXX" inputMode="tel"
+                                value={d.mechanicPhone} onChange={(e) => setDiag(m.id, { mechanicPhone: formatUSPhone(e.target.value) })} />
+                              <Input className="h-8 text-xs" placeholder="Shop location (optional)"
+                                value={d.mechanicShop} onChange={(e) => setDiag(m.id, { mechanicShop: e.target.value })} />
+                            </div>
+                            {/* Parts list */}
+                            <div className="space-y-2">
+                              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Parts Used</div>
+                              {d.parts.map((p, i) => (
+                                <div key={i} className="flex items-center gap-1.5">
+                                  <Input className="h-8 flex-1 text-xs" placeholder="Part name"
+                                    value={p.name}
+                                    onChange={(e) => setDiag(m.id, { parts: d.parts.map((x, xi) => xi === i ? { ...x, name: e.target.value } : x) })} />
+                                  <Input className="h-8 w-20 text-xs" type="number" min="0" step="0.01" placeholder="$"
+                                    value={p.price}
+                                    onChange={(e) => setDiag(m.id, { parts: d.parts.map((x, xi) => xi === i ? { ...x, price: e.target.value } : x) })} />
+                                  <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-destructive"
+                                    disabled={d.parts.length === 1}
+                                    onClick={() => setDiag(m.id, { parts: d.parts.filter((_, xi) => xi !== i) })}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <Button size="sm" variant="outline" className="w-full"
+                                onClick={() => setDiag(m.id, { parts: [...d.parts, { name: "", price: "" }] })}>
+                                <Plus className="mr-1 h-3.5 w-3.5" /> Add Part
+                              </Button>
+                              <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs">
+                                <span>Parts Total</span><span>{fmtMoney(partsTotal)}</span>
+                              </div>
+                            </div>
+                            {/* Labour */}
+                            <div>
+                              <Label className="text-[11px]">Labour $</Label>
+                              <Input className="mt-1 h-8" type="number" min="0" step="0.01"
+                                value={d.laborCost} onChange={(e) => setDiag(m.id, { laborCost: e.target.value })} />
+                            </div>
+                            <div className="flex justify-between rounded bg-primary/10 px-2 py-1 text-sm font-semibold">
+                              <span>Total</span><span>{fmtMoney(total)}</span>
+                            </div>
                             <Button size="sm" className="w-full" onClick={() => handleSaveDiagnosis(m)}>
                               Save Diagnosis →
                             </Button>
