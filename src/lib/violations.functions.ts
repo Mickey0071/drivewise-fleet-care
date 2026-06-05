@@ -26,6 +26,13 @@ export interface ViolationRow {
   notes: string | null;
   driver_name?: string | null;
   vehicle_label?: string | null;
+  customer_token?: string | null;
+  sent_to_customer_at?: string | null;
+  viewed_at?: string | null;
+  resolution_choice?: string | null;
+  signed_at?: string | null;
+  signed_pdf_url?: string | null;
+  reminder_sent_at?: string | null;
 }
 
 export const listViolations = createServerFn({ method: "GET" })
