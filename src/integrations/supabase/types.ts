@@ -355,6 +355,113 @@ export type Database = {
         }
         Relationships: []
       }
+      ezpass_batch_items: {
+        Row: {
+          affidavit_pdf_url: string | null
+          amount: number
+          batch_id: string
+          candidates: Json | null
+          created_at: string
+          driver_id: string | null
+          driver_name: string | null
+          id: string
+          location: string | null
+          match_status: string
+          plate: string | null
+          rental_id: string | null
+          updated_at: string
+          vehicle_id: string | null
+          violation_date: string | null
+          violation_id: string | null
+          violation_time: string | null
+        }
+        Insert: {
+          affidavit_pdf_url?: string | null
+          amount?: number
+          batch_id: string
+          candidates?: Json | null
+          created_at?: string
+          driver_id?: string | null
+          driver_name?: string | null
+          id?: string
+          location?: string | null
+          match_status?: string
+          plate?: string | null
+          rental_id?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          violation_date?: string | null
+          violation_id?: string | null
+          violation_time?: string | null
+        }
+        Update: {
+          affidavit_pdf_url?: string | null
+          amount?: number
+          batch_id?: string
+          candidates?: Json | null
+          created_at?: string
+          driver_id?: string | null
+          driver_name?: string | null
+          id?: string
+          location?: string | null
+          match_status?: string
+          plate?: string | null
+          rental_id?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          violation_date?: string | null
+          violation_id?: string | null
+          violation_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ezpass_batch_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "ezpass_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ezpass_batches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          file_url: string | null
+          id: string
+          matched_count: number
+          source_filename: string | null
+          status: string
+          total_amount: number
+          total_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          file_url?: string | null
+          id: string
+          matched_count?: number
+          source_filename?: string | null
+          status?: string
+          total_amount?: number
+          total_count?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          file_url?: string | null
+          id?: string
+          matched_count?: number
+          source_filename?: string | null
+          status?: string
+          total_amount?: number
+          total_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inspections: {
         Row: {
           checklist_data: Json | null
