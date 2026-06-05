@@ -271,6 +271,33 @@ function MaintenancePage() {
                                 <span className="font-medium text-foreground">Symptoms:</span> {m.repairRequestNotes}
                               </div>
                             )}
+                            <div className="rounded bg-muted/40 px-2 py-1 text-[11px]">
+                              <span className="font-medium text-foreground">Current location: </span>
+                              {m.mechanicName ? (
+                                <span>{m.mechanicName}{m.mechanicPhone ? ` — ${formatUSPhone(m.mechanicPhone)}` : ""}</span>
+                              ) : (
+                                <span className="text-muted-foreground">Not assigned yet</span>
+                              )}
+                            </div>
+                            {(() => {
+                              const mc = mechFor(m);
+                              return (
+                                <details className="rounded border border-border/60 px-2 py-1">
+                                  <summary className="cursor-pointer text-[11px] text-muted-foreground">Add mechanic info (optional)</summary>
+                                  <div className="mt-2 space-y-2">
+                                    <Input className="h-8 text-xs" placeholder="Mechanic name"
+                                      value={mc.name} onChange={(e) => setMech(m.id, { name: e.target.value })} />
+                                    <Input className="h-8 text-xs" placeholder="(XXX) XXX-XXXX" inputMode="tel"
+                                      value={mc.phone} onChange={(e) => setMech(m.id, { phone: formatUSPhone(e.target.value) })} />
+                                    <Input className="h-8 text-xs" placeholder="Shop location (optional)"
+                                      value={mc.shop} onChange={(e) => setMech(m.id, { shop: e.target.value })} />
+                                    <Button size="sm" variant="outline" className="w-full" onClick={() => handleSaveMechanic(m)}>
+                                      Save mechanic info
+                                    </Button>
+                                  </div>
+                                </details>
+                              );
+                            })()}
                             <div className="flex items-center justify-between">
                               <Badge variant="secondary" className="text-[10px]">
                                 {fromInspection ? "From inspection" : "Manual"}
