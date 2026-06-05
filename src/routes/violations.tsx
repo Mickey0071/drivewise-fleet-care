@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Search, AlertTriangle } from "lucide-react";
+import { Plus, Search, AlertTriangle, FileUp } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -138,6 +138,11 @@ function ViolationsPage() {
                 {unpaidCount} unpaid · {fmtMoney(unpaidTotal)}
               </Badge>
             )}
+            <Button variant="outline" asChild>
+              <Link to="/violations/bulk-upload">
+                <FileUp className="mr-1 h-4 w-4" /> Bulk Upload EZPass
+              </Link>
+            </Button>
             <Button onClick={() => setNewOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="mr-1 h-4 w-4" /> New Violation
             </Button>

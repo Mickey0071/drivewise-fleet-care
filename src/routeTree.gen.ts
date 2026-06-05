@@ -39,6 +39,7 @@ import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkOrderTokenRouteImport } from './routes/work-order.$token'
+import { Route as ViolationsBulkUploadRouteImport } from './routes/violations_.bulk-upload'
 import { Route as VerifyPaymentRentalIdRouteImport } from './routes/verify-payment.$rentalId'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as SetupTokenRouteImport } from './routes/setup.$token'
@@ -216,6 +217,11 @@ const IndexRoute = IndexRouteImport.update({
 const WorkOrderTokenRoute = WorkOrderTokenRouteImport.update({
   id: '/work-order/$token',
   path: '/work-order/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ViolationsBulkUploadRoute = ViolationsBulkUploadRouteImport.update({
+  id: '/violations_/bulk-upload',
+  path: '/violations/bulk-upload',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VerifyPaymentRentalIdRoute = VerifyPaymentRentalIdRouteImport.update({
@@ -414,6 +420,7 @@ export interface FileRoutesByFullPath {
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
+  '/violations/bulk-upload': typeof ViolationsBulkUploadRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
@@ -474,6 +481,7 @@ export interface FileRoutesByTo {
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
+  '/violations/bulk-upload': typeof ViolationsBulkUploadRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
@@ -535,6 +543,7 @@ export interface FileRoutesById {
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
+  '/violations_/bulk-upload': typeof ViolationsBulkUploadRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
@@ -597,6 +606,7 @@ export interface FileRouteTypes {
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
+    | '/violations/bulk-upload'
     | '/work-order/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
@@ -657,6 +667,7 @@ export interface FileRouteTypes {
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
+    | '/violations/bulk-upload'
     | '/work-order/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
@@ -717,6 +728,7 @@ export interface FileRouteTypes {
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
+    | '/violations_/bulk-upload'
     | '/work-order/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
@@ -771,6 +783,7 @@ export interface RootRouteChildren {
   SetupTokenRoute: typeof SetupTokenRoute
   SignTokenRoute: typeof SignTokenRoute
   VerifyPaymentRentalIdRoute: typeof VerifyPaymentRentalIdRoute
+  ViolationsBulkUploadRoute: typeof ViolationsBulkUploadRoute
   WorkOrderTokenRoute: typeof WorkOrderTokenRoute
   InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
@@ -992,6 +1005,13 @@ declare module '@tanstack/react-router' {
       path: '/work-order/$token'
       fullPath: '/work-order/$token'
       preLoaderRoute: typeof WorkOrderTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/violations_/bulk-upload': {
+      id: '/violations_/bulk-upload'
+      path: '/violations/bulk-upload'
+      fullPath: '/violations/bulk-upload'
+      preLoaderRoute: typeof ViolationsBulkUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/verify-payment/$rentalId': {
@@ -1278,6 +1298,7 @@ const rootRouteChildren: RootRouteChildren = {
   SetupTokenRoute: SetupTokenRoute,
   SignTokenRoute: SignTokenRoute,
   VerifyPaymentRentalIdRoute: VerifyPaymentRentalIdRoute,
+  ViolationsBulkUploadRoute: ViolationsBulkUploadRoute,
   WorkOrderTokenRoute: WorkOrderTokenRoute,
   InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
@@ -1291,3 +1312,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
