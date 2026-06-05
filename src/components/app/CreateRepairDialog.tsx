@@ -18,51 +18,50 @@ interface Props {
   lockVehicle?: boolean;
 }
 
-interface SolutionRow {
+interface IssueRow {
   key: string;
-  name: string;
+  issue: string;
   partsCost: string;
   laborCost: string;
 }
 
-function emptyRow(): SolutionRow {
-  return { key: Math.random().toString(36).slice(2), name: "", partsCost: "", laborCost: "" };
+function emptyRow(): IssueRow {
+  return { key: Math.random().toString(36).slice(2), issue: "", partsCost: "", laborCost: "" };
 }
 
 export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockVehicle }: Props) {
   const [vehicleId, setVehicleId] = useState(initialVehicleId ?? "");
-  const [issue, setIssue] = useState("");
-  const [rows, setRows] = useState<SolutionRow[]>([emptyRow()]);
+  const [rows, setRows] = useState<IssueRow[]>([emptyRow()]);
 
   const lockedVehicle = lockVehicle && initialVehicleId ? vehicles.find(x => x.id === initialVehicleId) : undefined;
 
   const reset = () => {
     setVehicleId(initialVehicleId ?? "");
-    setIssue("");
     setRows([emptyRow()]);
   };
 
-  const totalOf = (r: SolutionRow) => (Number(r.partsCost) || 0) + (Number(r.laborCost) || 0);
-  const update = (key: string, patch: Partial<SolutionRow>) =>
+  const totalOf = (r: IssueRow) => (Number(r.partsCost) || 0) + (Number(r.laborCost) || 0);
+  const grandTotal = rows.reduce((s, r) => s + totalOf(r), 0);
+  const update = (key: string, patch: Partial<IssueRow>) =>
     setRows(rs => rs.map(r => (r.key === key ? { ...r, ...patch } : r)));
 
   const submit = () => {
     if (!vehicleId) return toast.error("Select a vehicle");
-    if (!issue.trim()) return toast.error("Describe the issue");
-    const valid = rows.filter(r => r.name.trim());
-    if (valid.length === 0) return toast.error("Add at least one solution option");
+    const valid = rows.filter(r => r.issue.trim());
+    if (valid.length === 0) return toast.error("Add at least one issue");
+    const issueDescription = valid.map(r => r.issue.trim()).join("; ");
     const solutions: RepairSolution[] = valid.map(r => ({
-      name: r.name.trim(),
+      name: r.issue.trim(),
       partsCost: Number(r.partsCost) || 0,
       laborCost: Number(r.laborCost) || 0,
       totalCost: totalOf(r),
     }));
-    const rec = createRepair({ vehicleId, issueDescription: issue.trim(), solutions });
+    const rec = createRepair({ vehicleId, issueDescription, solutions });
     toast.success(`Repair ${rec.id} created`);
     const v = vehicles.find(x => x.id === vehicleId);
     const vehicleLabel = v ? `${v.year} ${v.make} ${v.model}` : vehicleId;
     // Fire-and-forget real-time admin alert for the new issue.
-    sendNewRepairAlert({ data: { vehicle: vehicleLabel, issue: issue.trim() } }).catch(() => {});
+    sendNewRepairAlert({ data: { vehicle: vehicleLabel, issue: issueDescription } }).catch(() => {});
     reset();
     onOpenChange(false);
   };
