@@ -18,51 +18,50 @@ interface Props {
   lockVehicle?: boolean;
 }
 
-interface SolutionRow {
+interface IssueRow {
   key: string;
-  name: string;
+  issue: string;
   partsCost: string;
   laborCost: string;
 }
 
-function emptyRow(): SolutionRow {
-  return { key: Math.random().toString(36).slice(2), name: "", partsCost: "", laborCost: "" };
+function emptyRow(): IssueRow {
+  return { key: Math.random().toString(36).slice(2), issue: "", partsCost: "", laborCost: "" };
 }
 
 export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockVehicle }: Props) {
   const [vehicleId, setVehicleId] = useState(initialVehicleId ?? "");
-  const [issue, setIssue] = useState("");
-  const [rows, setRows] = useState<SolutionRow[]>([emptyRow()]);
+  const [rows, setRows] = useState<IssueRow[]>([emptyRow()]);
 
   const lockedVehicle = lockVehicle && initialVehicleId ? vehicles.find(x => x.id === initialVehicleId) : undefined;
 
   const reset = () => {
     setVehicleId(initialVehicleId ?? "");
-    setIssue("");
     setRows([emptyRow()]);
   };
 
-  const totalOf = (r: SolutionRow) => (Number(r.partsCost) || 0) + (Number(r.laborCost) || 0);
-  const update = (key: string, patch: Partial<SolutionRow>) =>
+  const totalOf = (r: IssueRow) => (Number(r.partsCost) || 0) + (Number(r.laborCost) || 0);
+  const grandTotal = rows.reduce((s, r) => s + totalOf(r), 0);
+  const update = (key: string, patch: Partial<IssueRow>) =>
     setRows(rs => rs.map(r => (r.key === key ? { ...r, ...patch } : r)));
 
   const submit = () => {
     if (!vehicleId) return toast.error("Select a vehicle");
-    if (!issue.trim()) return toast.error("Describe the issue");
-    const valid = rows.filter(r => r.name.trim());
-    if (valid.length === 0) return toast.error("Add at least one solution option");
+    const valid = rows.filter(r => r.issue.trim());
+    if (valid.length === 0) return toast.error("Add at least one issue");
+    const issueDescription = valid.map(r => r.issue.trim()).join("; ");
     const solutions: RepairSolution[] = valid.map(r => ({
-      name: r.name.trim(),
+      name: r.issue.trim(),
       partsCost: Number(r.partsCost) || 0,
       laborCost: Number(r.laborCost) || 0,
       totalCost: totalOf(r),
     }));
-    const rec = createRepair({ vehicleId, issueDescription: issue.trim(), solutions });
+    const rec = createRepair({ vehicleId, issueDescription, solutions });
     toast.success(`Repair ${rec.id} created`);
     const v = vehicles.find(x => x.id === vehicleId);
     const vehicleLabel = v ? `${v.year} ${v.make} ${v.model}` : vehicleId;
     // Fire-and-forget real-time admin alert for the new issue.
-    sendNewRepairAlert({ data: { vehicle: vehicleLabel, issue: issue.trim() } }).catch(() => {});
+    sendNewRepairAlert({ data: { vehicle: vehicleLabel, issue: issueDescription } }).catch(() => {});
     reset();
     onOpenChange(false);
   };
@@ -92,17 +91,12 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
             )}
           </div>
 
-          <div className="grid gap-1.5">
-            <Label>Issue description</Label>
-            <Textarea rows={2} value={issue} onChange={e => setIssue(e.target.value)} placeholder="e.g. Grinding noise from front brakes" />
-          </div>
-
           <div className="grid gap-2">
-            <Label>Solution options</Label>
+            <Label>Issues</Label>
             {rows.map((r, i) => (
               <div key={r.key} className="rounded-md border border-border p-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Solution {i + 1}</span>
+                  <span className="text-xs font-medium text-muted-foreground">Issue {i + 1}</span>
                   {rows.length > 1 && (
                     <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive"
                       onClick={() => setRows(rs => rs.filter(x => x.key !== r.key))}>
@@ -111,10 +105,10 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
                   )}
                 </div>
                 <div className="grid gap-2">
-                  <Input value={r.name} onChange={e => update(r.key, { name: e.target.value })} placeholder="Solution name (e.g. OEM brake pads + rotors)" />
+                  <Textarea rows={2} value={r.issue} onChange={e => update(r.key, { issue: e.target.value })} placeholder="Describe the issue (e.g. Grinding noise from front brakes)" />
                   <div className="grid grid-cols-3 gap-2">
                     <div className="grid gap-1">
-                      <Label className="text-xs">Parts ($)</Label>
+                      <Label className="text-xs">Part ($)</Label>
                       <Input type="number" min={0} step="0.01" value={r.partsCost} onChange={e => update(r.key, { partsCost: e.target.value })} placeholder="0" />
                     </div>
                     <div className="grid gap-1">
@@ -122,7 +116,7 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
                       <Input type="number" min={0} step="0.01" value={r.laborCost} onChange={e => update(r.key, { laborCost: e.target.value })} placeholder="0" />
                     </div>
                     <div className="grid gap-1">
-                      <Label className="text-xs">Total</Label>
+                      <Label className="text-xs">Amount</Label>
                       <Input value={fmtMoney(totalOf(r))} readOnly disabled />
                     </div>
                   </div>
@@ -130,8 +124,13 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
               </div>
             ))}
             <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => setRows(rs => [...rs, emptyRow()])}>
-              <Plus className="mr-1 h-4 w-4" /> Add another solution
+              <Plus className="mr-1 h-4 w-4" /> Add another issue
             </Button>
+          </div>
+
+          <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 p-3 text-sm">
+            <span className="text-muted-foreground">Total amount</span>
+            <span className="font-semibold">{fmtMoney(grandTotal)}</span>
           </div>
         </div>
 
