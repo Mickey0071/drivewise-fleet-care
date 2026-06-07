@@ -31,6 +31,11 @@ import {
   type ViolationHistoryRow,
 } from "@/lib/violations.functions";
 import { sendViolationToCustomer } from "@/lib/violations.functions";
+import {
+  getViolationSubmissionDetail,
+  submitViolationToAuthority,
+  markViolationResolved,
+} from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
