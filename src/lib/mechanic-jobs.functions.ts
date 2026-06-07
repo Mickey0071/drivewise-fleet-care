@@ -266,8 +266,6 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
     const hours = d.estimatedHours == null ? null : Number(d.estimatedHours);
     if (hours != null && (!Number.isFinite(hours) || hours < 0 || hours > 1000)) throw new Error("Invalid hours");
     const partsTotal = parts.reduce((s, p) => s + p.price, 0);
-    const completedAny = results.some((r) => r.result === "pass" || r.result === "fail" || (r.notes ?? "").trim().length > 0);
-    if (!completedAny) throw new Error("Complete at least one checklist item");
     if (!(partsTotal > 0) && !(labour > 0)) throw new Error("Add parts or a labour estimate");
     return {
       token: d.token,
