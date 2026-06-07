@@ -116,11 +116,12 @@ export const createMechanicJob = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const link = `${originFromEnv()}/mechanic-job/${token}`;
+    const action = data.checklistItems.length > 0 ? "Complete the checklist here" : "Submit your diagnosis here";
     const msg =
       `Hi ${data.mechanicName}, Camauto Rentals needs your diagnosis on a vehicle.\n\n` +
       `Vehicle: ${data.vehicleLabel || "—"}${data.plate ? ` (Plate: ${data.plate})` : ""}\n` +
       `Issue: ${data.issueDescription || "—"}\n\n` +
-      `Complete the checklist here: ${link}\n\nReply when done.`;
+      `${action}: ${link}\n\nReply when done.`;
     try {
       await sendSms(data.mechanicPhone, msg, data.mechanicName);
     } catch (e) {
