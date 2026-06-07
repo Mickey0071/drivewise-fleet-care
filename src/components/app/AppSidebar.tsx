@@ -20,6 +20,7 @@ const adminItems: Item[] = [
   { title: "Fleet", url: "/fleet", icon: Car, roles: ["admin"] },
   { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["admin"] },
   { title: "Create Task", url: "/admin/create-task", icon: ClipboardList, roles: ["admin"] },
+  { title: "Runner Tasks", url: "/admin/tasks", icon: ClipboardList, roles: ["admin"] },
   { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ["admin"] },
   { title: "Customers", url: "/drivers", icon: Users, roles: ["admin"] },
   { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin"] },
