@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
-import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame, RotateCcw } from "lucide-react";
+import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame, RotateCcw, Trash2, Car } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
-import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, recordRepairPaymentRaw, completeRepair, reverseRepairToDiagnose } from "@/lib/mock/store";
+import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, recordRepairPaymentRaw, completeRepair, reverseRepairToDiagnose, deleteRepair } from "@/lib/mock/store";
 import type { RepairCompletionSummary } from "@/lib/mock/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,11 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import {
   dueSoonScheduledItems,
@@ -51,6 +56,23 @@ function MaintenancePage() {
   // Which repair line is expanded (one at a time, across all phases)
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const toggleExpand = (id: string) => setExpandedId(prev => (prev === id ? null : id));
+
+  // Which phase boxes are open (multiple allowed)
+  const [openPhases, setOpenPhases] = useState<Record<string, boolean>>({});
+  const togglePhase = (key: string) => setOpenPhases(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // Which scheduled vehicle groups are open (multiple allowed)
+  const [openVehicles, setOpenVehicles] = useState<Record<string, boolean>>({});
+  const toggleVehicle = (id: string) => setOpenVehicles(prev => ({ ...prev, [id]: !prev[id] }));
+
+  // Delete-repair confirmation
+  const [deleteRecord, setDeleteRecord] = useState<Maintenance | null>(null);
+  function confirmDeleteRepair() {
+    if (!deleteRecord) return;
+    deleteRepair(deleteRecord.id);
+    setDeleteRecord(null);
+    toast.success("✓ Repair deleted — removed from P&L and history");
+  }
 
   function submitCreateRepair() {
     if (!createVehicleId) { toast.error("Select a vehicle"); return; }
@@ -173,6 +195,7 @@ function MaintenancePage() {
   }
 
   return (
+    <TooltipProvider>
     <div>
       <PageHeader
         title="Maintenance"
@@ -203,18 +226,22 @@ function MaintenancePage() {
           <Flame className="h-5 w-5 text-amber-500" />
           Active Repairs ({activeCount})
         </h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="space-y-3">
           {/* Phase 1 — State Issue */}
           <Card className="border-yellow-500/40">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-yellow-600">
-                  <span className="inline-block h-2 w-2 rounded-full bg-yellow-500" />
-                  Phase 1 · State Issue
-                </span>
-                <span className="text-xs font-normal text-muted-foreground">{phase1.length}</span>
-              </CardTitle>
-            </CardHeader>
+            <button type="button" onClick={() => togglePhase("p1")} className="w-full text-left">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-yellow-600">
+                    {openPhases["p1"] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <span className="inline-block h-2 w-2 rounded-full bg-yellow-500" />
+                    Phase 1 · State Issue
+                  </span>
+                  <span className="rounded-full bg-yellow-500/15 px-2 py-0.5 text-xs font-medium text-yellow-600">{phase1.length}</span>
+                </CardTitle>
+              </CardHeader>
+            </button>
+            {openPhases["p1"] && (
             <CardContent className="p-0 pb-2">
               {phase1.length === 0 ? (
                 <p className="px-4 py-2 text-xs text-muted-foreground">Nothing here.</p>
@@ -225,7 +252,7 @@ function MaintenancePage() {
                     const open = expandedId === m.id;
                     return (
                       <li key={m.id} className="border-l-[3px] border-l-yellow-500">
-                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} />
+                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
                             {m.repairRequestNotes && (
@@ -250,19 +277,24 @@ function MaintenancePage() {
                 </ul>
               )}
             </CardContent>
+            )}
           </Card>
 
           {/* Phase 2 — Diagnose */}
           <Card className="border-blue-500/40">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-blue-600">
-                  <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
-                  Phase 2 · Diagnose
-                </span>
-                <span className="text-xs font-normal text-muted-foreground">{phase2.length}</span>
-              </CardTitle>
-            </CardHeader>
+            <button type="button" onClick={() => togglePhase("p2")} className="w-full text-left">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-blue-600">
+                    {openPhases["p2"] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
+                    Phase 2 · Diagnose
+                  </span>
+                  <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-600">{phase2.length}</span>
+                </CardTitle>
+              </CardHeader>
+            </button>
+            {openPhases["p2"] && (
             <CardContent className="p-0 pb-2">
               {phase2.length === 0 ? (
                 <p className="px-4 py-2 text-xs text-muted-foreground">Nothing here.</p>
@@ -276,7 +308,7 @@ function MaintenancePage() {
                     const open = expandedId === m.id;
                     return (
                       <li key={m.id} className="border-l-[3px] border-l-blue-500">
-                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} />
+                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
                       <div>
@@ -314,19 +346,24 @@ function MaintenancePage() {
                 </ul>
               )}
             </CardContent>
+            )}
           </Card>
 
           {/* Phase 3 — Complete */}
           <Card className="border-green-600/40">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-green-600">
-                  <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-                  Phase 3 · Complete
-                </span>
-                <span className="text-xs font-normal text-muted-foreground">{phase3.length}</span>
-              </CardTitle>
-            </CardHeader>
+            <button type="button" onClick={() => togglePhase("p3")} className="w-full text-left">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-green-600">
+                    {openPhases["p3"] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                    Phase 3 · Complete
+                  </span>
+                  <span className="rounded-full bg-green-600/15 px-2 py-0.5 text-xs font-medium text-green-600">{phase3.length}</span>
+                </CardTitle>
+              </CardHeader>
+            </button>
+            {openPhases["p3"] && (
             <CardContent className="p-0 pb-2">
               {phase3.length === 0 ? (
                 <p className="px-4 py-2 text-xs text-muted-foreground">Nothing here.</p>
@@ -339,7 +376,7 @@ function MaintenancePage() {
                     const open = expandedId === m.id;
                     return (
                       <li key={m.id} className="border-l-[3px] border-l-green-600">
-                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} />
+                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
                     {m.diagnosisNotes && (
@@ -374,6 +411,7 @@ function MaintenancePage() {
                 </ul>
               )}
             </CardContent>
+            )}
           </Card>
         </div>
       </section>
@@ -421,6 +459,14 @@ function MaintenancePage() {
                         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setDetailRecord(m)}>
                           Details
                         </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground/60 hover:text-destructive" onClick={() => setDeleteRecord(m)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Delete repair</TooltipContent>
+                        </Tooltip>
                       </div>
                     </li>
                   );
@@ -481,20 +527,50 @@ function MaintenancePage() {
                     <div className="p-6 text-center text-sm text-muted-foreground">Nothing due within 7 days or 100 miles.</div>
                   ) : (
                     <ul className="divide-y divide-border">
-                      {dueSoon.map(it => {
-                        const v = vehicleById(it.vehicleId);
+                      {Object.values(
+                        dueSoon.reduce<Record<string, ScheduledItem[]>>((acc, it) => {
+                          (acc[it.vehicleId] ??= []).push(it);
+                          return acc;
+                        }, {}),
+                      ).map(group => {
+                        const vid = group[0].vehicleId;
+                        const v = vehicleById(vid);
+                        const open = openVehicles[vid];
+                        const hasOverdue = group.some(it => it.status === "overdue");
                         return (
-                          <li key={it.key} className="flex items-center justify-between gap-2 px-4 py-3">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : it.vehicleId}</div>
-                              <div className={`text-xs ${it.status === "overdue" ? "text-destructive" : "text-muted-foreground"}`}>
-                                {it.label} · {scheduledRemainingLabel(it)}
-                                {it.dueDate ? ` · due ${fmtDate(it.dueDate)}` : it.dueMileage ? ` · at ${it.dueMileage.toLocaleString()} mi` : ""}
-                              </div>
-                            </div>
-                            <Button size="sm" variant="outline" className="shrink-0" onClick={() => handleMarkComplete(it)}>
-                              Mark Complete
-                            </Button>
+                          <li key={vid}>
+                            <button
+                              type="button"
+                              onClick={() => toggleVehicle(vid)}
+                              className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-muted/40"
+                            >
+                              {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                              <Car className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                                {v ? `${v.year} ${v.make} ${v.model}` : vid}
+                              </span>
+                              <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${hasOverdue ? "bg-destructive/15 text-destructive" : "bg-amber-500/15 text-amber-600"}`}>
+                                {group.length} item{group.length === 1 ? "" : "s"} due
+                              </span>
+                            </button>
+                            {open && (
+                              <ul className="divide-y divide-border border-t border-border bg-muted/20">
+                                {group.map(it => (
+                                  <li key={it.key} className="flex items-center justify-between gap-2 py-2 pl-12 pr-4">
+                                    <div className="min-w-0">
+                                      <div className="text-sm">{it.label}</div>
+                                      <div className={`text-xs ${it.status === "overdue" ? "text-destructive" : "text-muted-foreground"}`}>
+                                        {scheduledRemainingLabel(it)}
+                                        {it.dueDate ? ` · due ${fmtDate(it.dueDate)}` : it.dueMileage ? ` · at ${it.dueMileage.toLocaleString()} mi` : ""}
+                                      </div>
+                                    </div>
+                                    <Button size="sm" variant="outline" className="shrink-0" onClick={() => handleMarkComplete(it)}>
+                                      Mark Complete
+                                    </Button>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </li>
                         );
                       })}
@@ -588,6 +664,9 @@ function MaintenancePage() {
                                 </Button>
                                 <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setDetailRecord(m)}>
                                   View Details
+                                </Button>
+                                <Button size="sm" variant="ghost" className="ml-2 h-7 px-2 text-xs text-muted-foreground/70 hover:text-destructive" onClick={() => setDeleteRecord(m)}>
+                                  <Trash2 className="mr-1 h-3 w-3" /> Delete
                                 </Button>
                               </td>
                             </tr>
@@ -719,25 +798,68 @@ function MaintenancePage() {
         </DialogContent>
       </Dialog>
 
+      <AlertDialog open={!!deleteRecord} onOpenChange={(o) => { if (!o) setDeleteRecord(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this repair?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>This will permanently remove:</p>
+                <ul className="list-disc pl-5 text-muted-foreground">
+                  <li>The repair record</li>
+                  <li>Any P&amp;L expense entries</li>
+                  <li>Fleet card repair history entry</li>
+                  <li>Scorecard data</li>
+                </ul>
+                <p>Vehicle availability will be restored.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmDeleteRepair}>
+              Yes, Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
+    </TooltipProvider>
   );
 }
 
-function RepairRow({ m, open, onToggle }: { m: Maintenance; open: boolean; onToggle: () => void }) {
+function RepairRow({ m, open, onToggle, onDelete }: { m: Maintenance; open: boolean; onToggle: () => void; onDelete: () => void }) {
   const v = vehicleById(m.vehicleId);
   const name = v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId;
   const issue = m.issueDescription ?? m.serviceType;
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/40"
-    >
-      {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
-      <span className="min-w-0 flex-1 truncate text-sm">
-        <span className="font-medium">{name}</span>
-        <span className="text-muted-foreground"> — {issue}</span>
-      </span>
-    </button>
+    <div className="flex w-full items-center gap-1 pr-1 hover:bg-muted/40">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left"
+      >
+        {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+        <span className="min-w-0 flex-1 truncate text-sm">
+          <span className="font-medium">{name}</span>
+          <span className="text-muted-foreground"> — {issue}</span>
+        </span>
+      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 shrink-0 text-muted-foreground/60 hover:text-destructive"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Delete repair</TooltipContent>
+      </Tooltip>
+    </div>
   );
 }

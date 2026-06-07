@@ -2299,6 +2299,38 @@ export function reverseRepairToDiagnose(id: string) {
   return m;
 }
 
+/**
+ * Permanently delete a repair and all of its derived records:
+ *  - linked P&L expense entries (down payment, payments, completion)
+ *  - fleet-card repair_history rows
+ *  - repair_scorecard rows
+ *  - the maintenance record itself
+ * Vehicle availability is then restored if no other active repair blocks it.
+ */
+export function deleteRepair(id: string) {
+  const idx = maintenance.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  const m = maintenance[idx];
+  const vehicleId = m.vehicleId;
+
+  // 1. Remove every P&L expense linked to this repair (notes reference the id).
+  const needle = `repair ${id}`.toLowerCase();
+  const linkedExpenses = expenses.filter(e => (e.notes ?? "").toLowerCase().includes(needle));
+  for (const e of linkedExpenses) deleteExpense(e.id);
+
+  // 2 & 3. Remove fleet-card history + scorecard rows logged at completion.
+  cloudWrite("repair_history:delete", supabase.from("repair_history").delete().eq("maintenance_id", id));
+  cloudWrite("repair_scorecard:delete", supabase.from("repair_scorecard").delete().eq("maintenance_id", id));
+
+  // 4. Remove the maintenance record.
+  maintenance.splice(idx, 1);
+  cloudWrite("maintenance:delete", supabase.from("maintenance").delete().eq("id", id));
+
+  // 5. Restore vehicle availability if nothing else blocks it.
+  syncVehicleOpenIssues(vehicleId);
+  emit();
+}
+
 // ---------------------------------------------------------------------------
 // Work orders (preventive maintenance scheduling)
 // ---------------------------------------------------------------------------
