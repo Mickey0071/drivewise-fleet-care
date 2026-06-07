@@ -110,7 +110,9 @@ export const getRunnerTaskReport = createServerFn({ method: "GET" })
       ...summarize(row),
       instructions: row.instructions ?? null,
       customerPhone: details.customerPhone ?? null,
-      checklistResults: Array.isArray(row.checklist_results) ? row.checklist_results : [],
+      checklistResults: (Array.isArray(row.checklist_results)
+        ? row.checklist_results
+        : []) as RunnerTaskReport["checklistResults"],
       runnerNotes: row.runner_notes ?? null,
       photoUrls,
     };
