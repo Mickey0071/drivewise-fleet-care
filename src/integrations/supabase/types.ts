@@ -808,6 +808,78 @@ export type Database = {
           },
         ]
       }
+      mechanic_jobs: {
+        Row: {
+          additional_context: string | null
+          checklist_items: Json
+          checklist_results: Json | null
+          created_at: string
+          created_by_admin: string | null
+          estimated_hours: number | null
+          id: string
+          issue_description: string | null
+          labour_cost: number
+          maintenance_id: string
+          mechanic_name: string
+          mechanic_notes: string | null
+          mechanic_phone: string
+          mechanic_shop: string | null
+          parts_list: Json | null
+          sent_at: string
+          status: string
+          submitted_at: string | null
+          token: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          additional_context?: string | null
+          checklist_items?: Json
+          checklist_results?: Json | null
+          created_at?: string
+          created_by_admin?: string | null
+          estimated_hours?: number | null
+          id?: string
+          issue_description?: string | null
+          labour_cost?: number
+          maintenance_id: string
+          mechanic_name: string
+          mechanic_notes?: string | null
+          mechanic_phone: string
+          mechanic_shop?: string | null
+          parts_list?: Json | null
+          sent_at?: string
+          status?: string
+          submitted_at?: string | null
+          token: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          additional_context?: string | null
+          checklist_items?: Json
+          checklist_results?: Json | null
+          created_at?: string
+          created_by_admin?: string | null
+          estimated_hours?: number | null
+          id?: string
+          issue_description?: string | null
+          labour_cost?: number
+          maintenance_id?: string
+          mechanic_name?: string
+          mechanic_notes?: string | null
+          mechanic_phone?: string
+          mechanic_shop?: string | null
+          parts_list?: Json | null
+          sent_at?: string
+          status?: string
+          submitted_at?: string | null
+          token?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           created_at: string
