@@ -469,6 +469,10 @@ function VehicleDetail() {
           </Section>
         </TabsContent>
 
+        <TabsContent value="rm" className="mt-4">
+          <RmHistoryTab vehicleId={v.id} />
+        </TabsContent>
+
         <TabsContent value="other" className="mt-4 grid gap-4 lg:grid-cols-2">
           <Section title="Violations">
             {vViol.length === 0 ? <Empty/> : vViol.map(x => (
