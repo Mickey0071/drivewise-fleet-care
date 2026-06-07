@@ -195,6 +195,7 @@ function MaintenancePage() {
   }
 
   return (
+    <TooltipProvider>
     <div>
       <PageHeader
         title="Maintenance"
