@@ -753,6 +753,10 @@ function MaintenancePage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="mechanics" className="mt-4">
+            <MechanicJobHistory jobs={mechanicJobs} onView={(j) => setViewJob(j)} />
+          </TabsContent>
         </Tabs>
       </section>
 
@@ -761,6 +765,25 @@ function MaintenancePage() {
         open={!!detailRecord}
         onOpenChange={(v) => { if (!v) setDetailRecord(null); }}
       />
+
+      {sendForRecord && (() => {
+        const v = vehicleById(sendForRecord.vehicleId);
+        return (
+          <SendToMechanicDialog
+            open={!!sendForRecord}
+            onOpenChange={(o) => { if (!o) setSendForRecord(null); }}
+            maintenanceId={sendForRecord.id}
+            vehicleId={sendForRecord.vehicleId}
+            vehicleLabel={v ? `${v.year} ${v.make} ${v.model}` : ""}
+            plate={v?.plate}
+            issue={sendForRecord.issueDescription ?? sendForRecord.serviceType ?? ""}
+            adminName={adminName}
+            onSent={refreshJobs}
+          />
+        );
+      })()}
+
+      <ViewDiagnosisDialog job={viewJob} onClose={() => setViewJob(null)} />
 
       <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateTakeOffRental(true); } }}>
         <DialogContent className="sm:max-w-md">
