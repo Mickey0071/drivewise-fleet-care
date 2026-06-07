@@ -838,6 +838,14 @@ function MaintenancePage() {
 
       <ViewDiagnosisDialog job={viewJob} onClose={() => setViewJob(null)} />
 
+      <RmCardDialog
+        vehicleId={rmVehicleId}
+        open={!!rmVehicleId}
+        onOpenChange={(o) => { if (!o) setRmVehicleId(null); }}
+        adminName={adminName}
+        onSubmitted={refreshRmCards}
+      />
+
       <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateTakeOffRental(true); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
