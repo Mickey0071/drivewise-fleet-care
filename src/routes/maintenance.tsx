@@ -10,6 +10,8 @@ import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDet
 import { SendToMechanicDialog } from "@/components/app/SendToMechanicDialog";
 import { ViewDiagnosisDialog } from "@/components/app/ViewDiagnosisDialog";
 import { MechanicJobHistory } from "@/components/app/MechanicJobHistory";
+import { RmCardDialog } from "@/components/app/RmCardDialog";
+import { listRmCards, type RmCardRow } from "@/lib/rm-cards.functions";
 import { useServerFn } from "@tanstack/react-start";
 import {
   listMechanicJobs,
