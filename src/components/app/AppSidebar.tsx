@@ -16,20 +16,20 @@ import logo from "@/assets/camauto-logo.jpeg";
 
 type Item = { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] };
 const adminItems: Item[] = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["admin", "runner"] },
-  { title: "Fleet", url: "/fleet", icon: Car, roles: ["admin", "runner"] },
-  { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["admin", "runner"] },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["admin"] },
+  { title: "Fleet", url: "/fleet", icon: Car, roles: ["admin"] },
+  { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["admin"] },
   { title: "Create Task", url: "/admin/create-task", icon: ClipboardList, roles: ["admin"] },
-  { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ["admin", "runner"] },
-  { title: "Customers", url: "/drivers", icon: Users, roles: ["admin", "runner"] },
-  { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin", "runner"] },
-  { title: "Pending Agreements", url: "/pending-agreements", icon: FileSignature, roles: ["admin", "runner", "va"] },
-  { title: "Calendar", url: "/calendar", icon: Calendar, roles: ["admin", "runner"] },
+  { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ["admin"] },
+  { title: "Customers", url: "/drivers", icon: Users, roles: ["admin"] },
+  { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin"] },
+  { title: "Pending Agreements", url: "/pending-agreements", icon: FileSignature, roles: ["admin", "va"] },
+  { title: "Calendar", url: "/calendar", icon: Calendar, roles: ["admin"] },
   { title: "Payments", url: "/payments", icon: DollarSign, roles: ["admin"] },
-  { title: "Inspections", url: "/inspections", icon: ClipboardCheck, roles: ["admin", "runner"] },
+  { title: "Inspections", url: "/inspections", icon: ClipboardCheck, roles: ["admin"] },
   { title: "Vendors", url: "/vendors", icon: Building2, roles: ["admin"] },
   { title: "Insurance", url: "/insurance", icon: Shield, roles: ["admin"] },
-  { title: "Runner Reports", url: "/runner-reports", icon: ClipboardList, roles: ["admin", "runner"] },
+  { title: "Runner Reports", url: "/runner-reports", icon: ClipboardList, roles: ["admin"] },
   { title: "Rental Agreement", url: "/rental-agreement", icon: ScrollText, roles: ["admin"] },
   { title: "SMS log", url: "/sms-log", icon: MessageSquare, roles: ["admin"] },
   { title: "Analytics", url: "/analytics", icon: BarChart3, roles: ["admin"] },
@@ -43,7 +43,6 @@ const financeItems: Item[] = [
   { title: "Payroll", url: "/payroll", icon: Banknote, roles: ["admin"] },
 ];
 const portalItems: Item[] = [
-  { title: "Runner Portal", url: "/staff-portal", icon: UserCog, roles: ["admin", "runner"] },
   { title: "Renter Portal", url: "/driver-portal", icon: IdCard, roles: ["admin", "driver"] },
 ];
 const settingsItems: Item[] = [
