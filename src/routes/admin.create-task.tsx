@@ -1,30 +1,228 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ClipboardList } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Plus, X, Loader2, Send } from "lucide-react";
+import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app/PageHeader";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { vehicles, drivers } from "@/lib/mock/data";
+import { useStoreVersion } from "@/lib/mock/store";
+import { createRunnerTask } from "@/lib/runner-tasks.functions";
 
 export const Route = createFileRoute("/admin/create-task")({
-  head: () => ({ meta: [{ title: "Create Task — Camauto Rentals" }] }),
+  head: () => ({ meta: [{ title: "Create Runner Task — Camauto Rentals" }] }),
   component: CreateTaskPage,
 });
 
+const TEMPLATES: Record<string, { type: string; items: string[] }> = {
+  "Vehicle Pickup": { type: "transport", items: ["Confirm pickup location & contact", "Inspect exterior for damage", "Photograph all four sides", "Check fuel level & mileage", "Collect keys & documents", "Lock vehicle"] },
+  "Vehicle Drop-off": { type: "transport", items: ["Confirm drop-off location & contact", "Inspect vehicle condition", "Photograph all four sides", "Record fuel level & mileage", "Hand over keys & documents", "Get recipient confirmation"] },
+  "Routine Inspection": { type: "inspection", items: ["Check tire pressure & tread", "Test lights & signals", "Check fluid levels", "Inspect brakes", "Test wipers & horn", "Note any damage"] },
+  "Vehicle Transport": { type: "transport", items: ["Confirm origin & destination", "Inspect before transport", "Photograph condition", "Record mileage", "Confirm safe delivery"] },
+  "Repair Pickup": { type: "parts", items: ["Confirm shop & contact", "Verify completed work order", "Inspect repaired item", "Collect invoice/receipt", "Record mileage", "Return vehicle"] },
+  Custom: { type: "custom", items: [] },
+};
+const TEMPLATE_KEYS = Object.keys(TEMPLATES);
+
+let counter = 0;
+const newItem = (label = "") => ({ id: `i${Date.now()}_${counter++}`, label });
+
+function formatPhone(value: string): string {
+  const d = value.replace(/\D/g, "").slice(0, 10);
+  if (d.length === 0) return "";
+  if (d.length < 4) return `(${d}`;
+  if (d.length < 7) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+}
+
 function CreateTaskPage() {
+  useStoreVersion();
+  const sendFn = useServerFn(createRunnerTask);
+
+  const [runnerName, setRunnerName] = useState("");
+  const [runnerPhone, setRunnerPhone] = useState("");
+  const [title, setTitle] = useState("");
+  const [priority, setPriority] = useState("medium");
+  const [vehicleId, setVehicleId] = useState<string>("none");
+  const [customerId, setCustomerId] = useState<string>("none");
+  const [location, setLocation] = useState("");
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [instructions, setInstructions] = useState("");
+  const [template, setTemplate] = useState<string>("");
+  const [items, setItems] = useState([newItem()]);
+  const [sending, setSending] = useState(false);
+
+  const vehicleOptions = useMemo(
+    () => vehicles.map((v) => ({ id: v.id, label: `${v.year} ${v.make} ${v.model} · ${v.plate}` })),
+    [],
+  );
+  const customerOptions = useMemo(
+    () => drivers.map((d) => ({ id: d.id, label: d.fullName })),
+    [],
+  );
+
+  function applyTemplate(key: string) {
+    setTemplate(key);
+    const t = TEMPLATES[key];
+    if (t && t.items.length) setItems(t.items.map((l) => newItem(l)));
+    else setItems([newItem()]);
+  }
+
+  async function submit() {
+    if (!runnerName.trim()) { toast.error("Runner name is required"); return; }
+    if (runnerPhone.replace(/\D/g, "").length < 10) { toast.error("Enter a valid runner phone"); return; }
+    if (!title.trim()) { toast.error("Task title is required"); return; }
+    const checklist = items.filter((i) => i.label.trim()).map((i) => ({ id: i.id, label: i.label.trim() }));
+    setSending(true);
+    try {
+      const vehicleLabel = vehicleId !== "none"
+        ? vehicleOptions.find((v) => v.id === vehicleId)?.label
+        : undefined;
+      const res = await sendFn({
+        data: {
+          runnerName: runnerName.trim(),
+          runnerPhone: runnerPhone.trim(),
+          title: title.trim(),
+          priority,
+          type: template ? TEMPLATES[template].type : "custom",
+          vehicleId: vehicleId !== "none" ? vehicleId : null,
+          customerId: customerId !== "none" ? customerId : null,
+          location: location.trim() || undefined,
+          scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+          instructions: instructions.trim() || undefined,
+          checklist,
+          vehicleLabel,
+        },
+      });
+      if (res.smsStatus === "sent") toast.success(`✓ Task sent to ${runnerName.trim()}`);
+      else toast.warning("Task created, but the SMS could not be delivered");
+      setRunnerName(""); setRunnerPhone(""); setTitle(""); setPriority("medium");
+      setVehicleId("none"); setCustomerId("none"); setLocation(""); setScheduledAt("");
+      setInstructions(""); setTemplate(""); setItems([newItem()]);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to create task");
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
-    <div className="space-y-6">
-      <PageHeader title="Create Task" subtitle="Assign work to your team" />
+    <div className="mx-auto max-w-2xl space-y-6">
+      <PageHeader title="Create Runner Task" subtitle="Send a task link to a runner by SMS — no login required" />
+
       <Card>
-        <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
-          <ClipboardList className="h-10 w-10 text-muted-foreground/50" />
-          <p className="text-base font-medium text-foreground">
-            The new task system is on the way
-          </p>
-          <p className="max-w-md text-sm text-muted-foreground">
-            The old runner-assignment workflow has been retired. A new link-based
-            task system will be available here shortly — no runner login required.
-          </p>
+        <CardHeader><CardTitle className="text-base">Basic info</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label>Runner name *</Label>
+              <Input className="mt-1" value={runnerName} onChange={(e) => setRunnerName(e.target.value)} placeholder="John Doe" />
+            </div>
+            <div>
+              <Label>Runner phone *</Label>
+              <Input className="mt-1" type="tel" inputMode="tel" value={runnerPhone}
+                onChange={(e) => setRunnerPhone(formatPhone(e.target.value))} placeholder="(267) 555-1234" />
+            </div>
+          </div>
+          <div>
+            <Label>Task title *</Label>
+            <Input className="mt-1" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Pick up vehicle from customer" />
+          </div>
+          <div>
+            <Label>Priority</Label>
+            <RadioGroup value={priority} onValueChange={setPriority} className="mt-2 flex gap-6">
+              {["low", "medium", "high"].map((p) => (
+                <label key={p} className="flex cursor-pointer items-center gap-2 text-sm capitalize">
+                  <RadioGroupItem value={p} /> {p}
+                </label>
+              ))}
+            </RadioGroup>
+          </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Links & schedule</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label>Vehicle (optional)</Label>
+              <Select value={vehicleId} onValueChange={setVehicleId}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {vehicleOptions.map((v) => <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Customer (optional)</Label>
+              <Select value={customerId} onValueChange={setCustomerId}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {customerOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <Label>Location address</Label>
+            <Input className="mt-1" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="123 Main St, Philadelphia, PA" />
+          </div>
+          <div>
+            <Label>Date/time scheduled</Label>
+            <Input className="mt-1" type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Instructions</CardTitle></CardHeader>
+        <CardContent>
+          <Textarea className="min-h-[90px]" value={instructions} onChange={(e) => setInstructions(e.target.value)}
+            placeholder="What the runner needs to do…" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">Checklist items</CardTitle>
+          <Select value={template} onValueChange={applyTemplate}>
+            <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="Use template" /></SelectTrigger>
+            <SelectContent>
+              {TEMPLATE_KEYS.map((k) => <SelectItem key={k} value={k} className="text-xs">{k}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {items.map((it, i) => (
+            <div key={it.id} className="flex gap-2">
+              <Input className="flex-1" placeholder={`Item ${i + 1}`} value={it.label}
+                onChange={(e) => setItems((prev) => prev.map((x) => (x.id === it.id ? { ...x, label: e.target.value } : x)))} />
+              <Button type="button" size="icon" variant="ghost" onClick={() => setItems((prev) => prev.filter((x) => x.id !== it.id))}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          <Button type="button" size="sm" variant="outline" onClick={() => setItems((p) => [...p, newItem()])}>
+            <Plus className="h-4 w-4" /> Add Item
+          </Button>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end pb-10">
+        <Button disabled={sending} onClick={submit} size="lg">
+          {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Create & Send Task</>}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -1725,80 +1725,107 @@ export type Database = {
         Row: {
           assigned_at: string
           assigned_by: string | null
+          checklist: Json
           completed_at: string | null
           completion: Json | null
           created_at: string
+          customer_id: string | null
           details: Json
           due_date: string | null
           forced: boolean
           id: string
+          instructions: string | null
+          location: string | null
           mileage: number | null
           notes: string | null
           photo_urls: string[]
+          priority: string
           review_action: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           runner_id: string | null
           runner_name: string | null
           runner_phone: string | null
+          scheduled_at: string | null
+          sent_at: string | null
           status: string
+          submitted_at: string | null
+          title: string | null
           token: string | null
           token_expires_at: string | null
           type: string
           updated_at: string
-          vehicle_id: string
+          vehicle_id: string | null
         }
         Insert: {
           assigned_at?: string
           assigned_by?: string | null
+          checklist?: Json
           completed_at?: string | null
           completion?: Json | null
           created_at?: string
+          customer_id?: string | null
           details?: Json
           due_date?: string | null
           forced?: boolean
           id?: string
+          instructions?: string | null
+          location?: string | null
           mileage?: number | null
           notes?: string | null
           photo_urls?: string[]
+          priority?: string
           review_action?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           runner_id?: string | null
           runner_name?: string | null
           runner_phone?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
           status?: string
-          token?: string | null
-          token_expires_at?: string | null
-          type: string
-          updated_at?: string
-          vehicle_id: string
-        }
-        Update: {
-          assigned_at?: string
-          assigned_by?: string | null
-          completed_at?: string | null
-          completion?: Json | null
-          created_at?: string
-          details?: Json
-          due_date?: string | null
-          forced?: boolean
-          id?: string
-          mileage?: number | null
-          notes?: string | null
-          photo_urls?: string[]
-          review_action?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          runner_id?: string | null
-          runner_name?: string | null
-          runner_phone?: string | null
-          status?: string
+          submitted_at?: string | null
+          title?: string | null
           token?: string | null
           token_expires_at?: string | null
           type?: string
           updated_at?: string
-          vehicle_id?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          checklist?: Json
+          completed_at?: string | null
+          completion?: Json | null
+          created_at?: string
+          customer_id?: string | null
+          details?: Json
+          due_date?: string | null
+          forced?: boolean
+          id?: string
+          instructions?: string | null
+          location?: string | null
+          mileage?: number | null
+          notes?: string | null
+          photo_urls?: string[]
+          priority?: string
+          review_action?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          runner_id?: string | null
+          runner_name?: string | null
+          runner_phone?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          submitted_at?: string | null
+          title?: string | null
+          token?: string | null
+          token_expires_at?: string | null
+          type?: string
+          updated_at?: string
+          vehicle_id?: string | null
         }
         Relationships: []
       }
