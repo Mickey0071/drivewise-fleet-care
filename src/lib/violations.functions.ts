@@ -33,6 +33,15 @@ export interface ViolationRow {
   signed_at?: string | null;
   signed_pdf_url?: string | null;
   reminder_sent_at?: string | null;
+  signed_name?: string | null;
+  signature_url?: string | null;
+  submitted_to_authority_at?: string | null;
+  submitted_to?: string | null;
+  submission_method?: string | null;
+  confirmation_number?: string | null;
+  resolved_at?: string | null;
+  resolution_reason?: string | null;
+  resolution_notes?: string | null;
 }
 
 export const listViolations = createServerFn({ method: "GET" })
