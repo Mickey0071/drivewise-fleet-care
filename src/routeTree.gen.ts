@@ -49,6 +49,7 @@ import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as PortalSignupRentalIdRouteImport } from './routes/portal-signup.$rentalId'
 import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rentalId'
+import { Route as MechanicJobTokenRouteImport } from './routes/mechanic-job.$token'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
 import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
 import { Route as AutoExtendTokenRouteImport } from './routes/auto-extend.$token'
@@ -272,6 +273,11 @@ const MyRentalsRentalIdRoute = MyRentalsRentalIdRouteImport.update({
   path: '/$rentalId',
   getParentRoute: () => MyRentalsRoute,
 } as any)
+const MechanicJobTokenRoute = MechanicJobTokenRouteImport.update({
+  id: '/mechanic-job/$token',
+  path: '/mechanic-job/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FleetVehicleIdRoute = FleetVehicleIdRouteImport.update({
   id: '/$vehicleId',
   path: '/$vehicleId',
@@ -431,6 +437,7 @@ export interface FileRoutesByFullPath {
   '/auto-extend/$token': typeof AutoExtendTokenRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
+  '/mechanic-job/$token': typeof MechanicJobTokenRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
@@ -495,6 +502,7 @@ export interface FileRoutesByTo {
   '/auto-extend/$token': typeof AutoExtendTokenRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
+  '/mechanic-job/$token': typeof MechanicJobTokenRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
@@ -560,6 +568,7 @@ export interface FileRoutesById {
   '/auto-extend/$token': typeof AutoExtendTokenRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
+  '/mechanic-job/$token': typeof MechanicJobTokenRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
@@ -626,6 +635,7 @@ export interface FileRouteTypes {
     | '/auto-extend/$token'
     | '/extend/$token'
     | '/fleet/$vehicleId'
+    | '/mechanic-job/$token'
     | '/my-rentals/$rentalId'
     | '/portal-signup/$rentalId'
     | '/rent/$token'
@@ -690,6 +700,7 @@ export interface FileRouteTypes {
     | '/auto-extend/$token'
     | '/extend/$token'
     | '/fleet/$vehicleId'
+    | '/mechanic-job/$token'
     | '/my-rentals/$rentalId'
     | '/portal-signup/$rentalId'
     | '/rent/$token'
@@ -754,6 +765,7 @@ export interface FileRouteTypes {
     | '/auto-extend/$token'
     | '/extend/$token'
     | '/fleet/$vehicleId'
+    | '/mechanic-job/$token'
     | '/my-rentals/$rentalId'
     | '/portal-signup/$rentalId'
     | '/rent/$token'
@@ -813,6 +825,7 @@ export interface RootRouteChildren {
   AdminUsersRoute: typeof AdminUsersRoute
   AutoExtendTokenRoute: typeof AutoExtendTokenRoute
   ExtendTokenRoute: typeof ExtendTokenRoute
+  MechanicJobTokenRoute: typeof MechanicJobTokenRoute
   PortalSignupRentalIdRoute: typeof PortalSignupRentalIdRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
@@ -1117,6 +1130,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyRentalsRentalIdRouteImport
       parentRoute: typeof MyRentalsRoute
     }
+    '/mechanic-job/$token': {
+      id: '/mechanic-job/$token'
+      path: '/mechanic-job/$token'
+      fullPath: '/mechanic-job/$token'
+      preLoaderRoute: typeof MechanicJobTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/fleet/$vehicleId': {
       id: '/fleet/$vehicleId'
       path: '/$vehicleId'
@@ -1352,6 +1372,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminUsersRoute: AdminUsersRoute,
   AutoExtendTokenRoute: AutoExtendTokenRoute,
   ExtendTokenRoute: ExtendTokenRoute,
+  MechanicJobTokenRoute: MechanicJobTokenRoute,
   PortalSignupRentalIdRoute: PortalSignupRentalIdRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,

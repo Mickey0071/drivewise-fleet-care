@@ -62,7 +62,7 @@ function MechanicJobPage() {
   const partsTotal = useMemo(() => parts.reduce((s, p) => s + (Number(p.price) || 0), 0), [parts]);
 
   function setItem(id: string, patch: Partial<{ result: ResultState; notes: string }>) {
-    setResults((prev) => ({ ...prev, [id]: { result: "", notes: "", ...prev[id], ...patch } }));
+    setResults((prev) => ({ ...prev, [id]: { result: "", notes: "", ...(prev[id] ?? {}), ...patch } }));
   }
   function addPart() { setParts((p) => [...p, { name: "", price: 0 }]); }
   function removePart(i: number) { setParts((p) => p.filter((_, idx) => idx !== i)); }
