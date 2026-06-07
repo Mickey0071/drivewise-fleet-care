@@ -337,6 +337,8 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
           ],
         });
       }
+      // Clear any duplicate scheduled "late" row for the same period.
+      await reconcileScheduledDuplicate(rentalRow.id, amountDollars, today, paidId);
       await sb.from("subscriptions").insert({
         user_id: userId,
         rental_id: rentalRow.id,
