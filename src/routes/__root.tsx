@@ -40,7 +40,6 @@ function HamburgerTrigger() {
 }
 
 const ROUTE_ROLES: { prefix: string; roles: AppRole[] }[] = [
-  { prefix: "/staff-portal", roles: ["admin", "runner"] },
   { prefix: "/driver-portal", roles: ["admin", "driver"] },
   { prefix: "/runner-reports", roles: ["admin"] },
   { prefix: "/payroll", roles: ["admin"] },
@@ -48,7 +47,6 @@ const ROUTE_ROLES: { prefix: string; roles: AppRole[] }[] = [
   { prefix: "/expenses", roles: ["admin"] },
 ];
 const PUBLIC_ROUTES = ["/login", "/forgot-password", "/reset-password", "/sign", "/rent", "/extend", "/setup", "/inspect", "/verify-payment", "/portal-signup"];
-const RUNNER_ALLOWED = ["/checklist", "/inspections", "/my-rentals", "/profile", "/vendors", "/runner"];
 
 function NotFoundComponent() {
   return (
