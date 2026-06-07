@@ -176,17 +176,16 @@ function AuthGate() {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
   const isPublic = PUBLIC_ROUTES.some(p => path.startsWith(p));
-  const isRunner = role === "runner";
   const isDriver = role === "driver";
 
   useEffect(() => {
-    if (loading || roleLoading || !session || !role || isRunner || isDriver) return;
+    if (loading || roleLoading || !session || !role || isDriver) return;
     setStoreLoadError(null);
     hydrateFromCloud({ force: true }).catch((error) => {
       console.error(error);
       setStoreLoadError(error instanceof Error ? error.message : "Cloud data did not load.");
     });
-  }, [loading, roleLoading, session, role, isRunner, isDriver]);
+  }, [loading, roleLoading, session, role, isDriver]);
 
   useEffect(() => {
     if (loading) return;
@@ -205,13 +204,8 @@ function AuthGate() {
     if (mustResetPassword) return;
     const guard = ROUTE_ROLES.find(g => path.startsWith(g.prefix));
     if (guard && !guard.roles.includes(role)) {
-      const home = isRunner || isDriver ? "/my-rentals" : "/";
+      const home = isDriver ? "/my-rentals" : "/";
       navigate({ to: home });
-    }
-    // Restrict runner-only routes
-    if (isRunner && !isPublic) {
-      const allowed = RUNNER_ALLOWED.some(p => path === p || path.startsWith(p + "/"));
-      if (!allowed) navigate({ to: "/checklist" });
     }
     // Restrict driver (customer portal) routes
     if (isDriver && !isPublic) {
@@ -221,7 +215,7 @@ function AuthGate() {
     }
   }, [loading, roleLoading, session, role, path, navigate]);
 
-  if (loading || roleLoading || (!!session && !isPublic && !isRunner && !isDriver && !storeLoadError && !isStoreHydrated())) {
+  if (loading || roleLoading || (!!session && !isPublic && !isDriver && !storeLoadError && !isStoreHydrated())) {
     return <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
   if (!!session && !isPublic && storeLoadError) {
@@ -261,7 +255,7 @@ function AuthGate() {
     );
   }
 
-  if (isRunner || isDriver) {
+  if (isDriver) {
     return (
       <>
         <RunnerLayout />
