@@ -80,7 +80,6 @@ export const createMechanicJob = createServerFn({ method: "POST" })
       .map((i) => ({ id: String(i.id).slice(0, 40), label: String(i.label ?? "").slice(0, 200) }))
       .filter((i) => i.label.trim().length > 0)
       .slice(0, 40);
-    if (items.length === 0) throw new Error("Add at least one checklist item");
     return {
       maintenanceId,
       vehicleId: d.vehicleId ?? null,
