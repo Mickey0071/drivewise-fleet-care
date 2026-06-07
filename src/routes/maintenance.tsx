@@ -700,6 +700,44 @@ function MaintenancePage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Recent RM Cards */}
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ClipboardCheck className="h-4 w-4 text-primary" />
+                  Recent RM Cards (last 5)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {recentRmCards.length === 0 ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">No routine maintenance cards submitted yet.</div>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {recentRmCards.map(c => {
+                      const v = vehicleById(c.vehicle_id);
+                      const items = Array.isArray(c.items_checked) ? c.items_checked : [];
+                      const passed = items.filter(i => i.status === "Pass").length;
+                      const failed = items.filter(i => i.status === "Fail").length;
+                      return (
+                        <li key={c.id} className="flex items-center justify-between gap-2 px-4 py-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : c.vehicle_id}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {fmtDate((c.submitted_at ?? c.created_at)?.slice(0, 10))} · {c.inspector_name || "—"}
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2 text-xs">
+                            <span className="rounded-full bg-green-500/15 px-2 py-0.5 font-medium text-green-600">{passed} passed</span>
+                            <span className={`rounded-full px-2 py-0.5 font-medium ${failed > 0 ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"}`}>{failed} failed</span>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="completed" className="mt-4">
