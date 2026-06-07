@@ -183,6 +183,44 @@ function MaintenancePage() {
   const phase3 = maintenance.filter(m => m.status === "pending_complete").sort(byNewest);
   const activeCount = phase1.length + phase2.length + phase3.length;
 
+  // --- Mechanic diagnosis jobs ---
+  const loadJobsFn = useServerFn(listMechanicJobs);
+  const resendJobFn = useServerFn(resendMechanicJob);
+  const cancelJobFn = useServerFn(cancelMechanicJob);
+  const [mechanicJobs, setMechanicJobs] = useState<MechanicJobRow[]>([]);
+  const [sendForRecord, setSendForRecord] = useState<Maintenance | null>(null);
+  const [viewJob, setViewJob] = useState<MechanicJobRow | null>(null);
+
+  async function refreshJobs() {
+    try {
+      const r = await loadJobsFn();
+      setMechanicJobs((r.jobs ?? []) as MechanicJobRow[]);
+    } catch { /* ignore */ }
+  }
+  useEffect(() => { refreshJobs(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  const sentJobByMaint = new Map<string, MechanicJobRow>();
+  const submittedJobByMaint = new Map<string, MechanicJobRow>();
+  for (const j of mechanicJobs) {
+    if (j.status === "sent" && !sentJobByMaint.has(j.maintenance_id)) sentJobByMaint.set(j.maintenance_id, j);
+    if (j.status === "submitted" && !submittedJobByMaint.has(j.maintenance_id)) submittedJobByMaint.set(j.maintenance_id, j);
+  }
+
+  async function handleResendJob(j: MechanicJobRow) {
+    const v = vehicleById(j.vehicle_id ?? "");
+    try {
+      await resendJobFn({ data: { id: j.id, vehicleLabel: v ? `${v.year} ${v.make} ${v.model}` : "", plate: v?.plate } });
+      toast.success("Link resent to mechanic");
+    } catch (e: any) { toast.error(e?.message || "Failed to resend"); }
+  }
+  async function handleCancelJob(j: MechanicJobRow) {
+    try {
+      await cancelJobFn({ data: { id: j.id } });
+      toast.success("Request cancelled");
+      refreshJobs();
+    } catch (e: any) { toast.error(e?.message || "Failed to cancel"); }
+  }
+
   const monthKey = new Date().toISOString().slice(0, 7);
   const completedThisMonth = completedRepairs.filter(
     m => (m.completionDate ?? m.dateCompleted ?? "").slice(0, 7) === monthKey,
