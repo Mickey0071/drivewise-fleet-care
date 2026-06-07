@@ -1117,7 +1117,7 @@ function SubmitDisputeDialog({
     enabled: !!violation,
   });
 
-  useMemo(() => {
+  useEffect(() => {
     if (detail) setEmailDraft(detail.emailBody);
   }, [detail]);
 
