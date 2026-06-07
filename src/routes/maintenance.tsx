@@ -526,20 +526,50 @@ function MaintenancePage() {
                     <div className="p-6 text-center text-sm text-muted-foreground">Nothing due within 7 days or 100 miles.</div>
                   ) : (
                     <ul className="divide-y divide-border">
-                      {dueSoon.map(it => {
-                        const v = vehicleById(it.vehicleId);
+                      {Object.values(
+                        dueSoon.reduce<Record<string, ScheduledItem[]>>((acc, it) => {
+                          (acc[it.vehicleId] ??= []).push(it);
+                          return acc;
+                        }, {}),
+                      ).map(group => {
+                        const vid = group[0].vehicleId;
+                        const v = vehicleById(vid);
+                        const open = openVehicles[vid];
+                        const hasOverdue = group.some(it => it.status === "overdue");
                         return (
-                          <li key={it.key} className="flex items-center justify-between gap-2 px-4 py-3">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : it.vehicleId}</div>
-                              <div className={`text-xs ${it.status === "overdue" ? "text-destructive" : "text-muted-foreground"}`}>
-                                {it.label} · {scheduledRemainingLabel(it)}
-                                {it.dueDate ? ` · due ${fmtDate(it.dueDate)}` : it.dueMileage ? ` · at ${it.dueMileage.toLocaleString()} mi` : ""}
-                              </div>
-                            </div>
-                            <Button size="sm" variant="outline" className="shrink-0" onClick={() => handleMarkComplete(it)}>
-                              Mark Complete
-                            </Button>
+                          <li key={vid}>
+                            <button
+                              type="button"
+                              onClick={() => toggleVehicle(vid)}
+                              className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-muted/40"
+                            >
+                              {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                              <Car className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                                {v ? `${v.year} ${v.make} ${v.model}` : vid}
+                              </span>
+                              <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${hasOverdue ? "bg-destructive/15 text-destructive" : "bg-amber-500/15 text-amber-600"}`}>
+                                {group.length} item{group.length === 1 ? "" : "s"} due
+                              </span>
+                            </button>
+                            {open && (
+                              <ul className="divide-y divide-border border-t border-border bg-muted/20">
+                                {group.map(it => (
+                                  <li key={it.key} className="flex items-center justify-between gap-2 py-2 pl-12 pr-4">
+                                    <div className="min-w-0">
+                                      <div className="text-sm">{it.label}</div>
+                                      <div className={`text-xs ${it.status === "overdue" ? "text-destructive" : "text-muted-foreground"}`}>
+                                        {scheduledRemainingLabel(it)}
+                                        {it.dueDate ? ` · due ${fmtDate(it.dueDate)}` : it.dueMileage ? ` · at ${it.dueMileage.toLocaleString()} mi` : ""}
+                                      </div>
+                                    </div>
+                                    <Button size="sm" variant="outline" className="shrink-0" onClick={() => handleMarkComplete(it)}>
+                                      Mark Complete
+                                    </Button>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </li>
                         );
                       })}
