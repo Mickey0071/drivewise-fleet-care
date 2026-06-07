@@ -584,6 +584,9 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         })
         .eq("id", rentalRow.id);
 
+      // Clear any duplicate scheduled "late" row that this extension covers.
+      await reconcileScheduledDuplicate(rentalRow.id, amountDollars, today, paidId);
+
       // Persist the reusable card on the rental + driver for future charges.
       let extPaymentMethodId: string | null = null;
       try {
