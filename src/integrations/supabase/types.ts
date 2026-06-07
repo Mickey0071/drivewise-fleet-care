@@ -1726,6 +1726,7 @@ export type Database = {
           assigned_at: string
           assigned_by: string | null
           checklist: Json
+          checklist_results: Json | null
           completed_at: string | null
           completion: Json | null
           created_at: string
@@ -1739,12 +1740,15 @@ export type Database = {
           mileage: number | null
           notes: string | null
           photo_urls: string[]
+          photos_count_required: number
           priority: string
+          requires_photos: boolean
           review_action: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           runner_id: string | null
           runner_name: string | null
+          runner_notes: string | null
           runner_phone: string | null
           scheduled_at: string | null
           sent_at: string | null
@@ -1761,6 +1765,7 @@ export type Database = {
           assigned_at?: string
           assigned_by?: string | null
           checklist?: Json
+          checklist_results?: Json | null
           completed_at?: string | null
           completion?: Json | null
           created_at?: string
@@ -1774,12 +1779,15 @@ export type Database = {
           mileage?: number | null
           notes?: string | null
           photo_urls?: string[]
+          photos_count_required?: number
           priority?: string
+          requires_photos?: boolean
           review_action?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           runner_id?: string | null
           runner_name?: string | null
+          runner_notes?: string | null
           runner_phone?: string | null
           scheduled_at?: string | null
           sent_at?: string | null
@@ -1796,6 +1804,7 @@ export type Database = {
           assigned_at?: string
           assigned_by?: string | null
           checklist?: Json
+          checklist_results?: Json | null
           completed_at?: string | null
           completion?: Json | null
           created_at?: string
@@ -1809,12 +1818,15 @@ export type Database = {
           mileage?: number | null
           notes?: string | null
           photo_urls?: string[]
+          photos_count_required?: number
           priority?: string
+          requires_photos?: boolean
           review_action?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           runner_id?: string | null
           runner_name?: string | null
+          runner_notes?: string | null
           runner_phone?: string | null
           scheduled_at?: string | null
           sent_at?: string | null

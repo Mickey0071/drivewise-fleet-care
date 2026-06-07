@@ -36,6 +36,10 @@ export const createRunnerTask = createServerFn({ method: "POST" })
     instructions?: string;
     checklist: RunnerChecklistItem[];
     vehicleLabel?: string;
+    customerName?: string;
+    customerPhone?: string;
+    requiresPhotos?: boolean;
+    photosCountRequired?: number;
   }) => {
     const runnerName = (d.runnerName ?? "").trim();
     if (!runnerName || runnerName.length > 120) throw new Error("Runner name is required");
@@ -50,6 +54,10 @@ export const createRunnerTask = createServerFn({ method: "POST" })
       .map((i) => ({ id: String(i.id).slice(0, 40), label: String(i.label ?? "").slice(0, 200) }))
       .filter((i) => i.label.trim().length > 0)
       .slice(0, 60);
+    const requiresPhotos = !!d.requiresPhotos;
+    const photosCountRequired = requiresPhotos
+      ? Math.min(Math.max(Number(d.photosCountRequired) || 1, 1), 20)
+      : 0;
     return {
       runnerName,
       runnerPhone,
@@ -63,6 +71,10 @@ export const createRunnerTask = createServerFn({ method: "POST" })
       instructions: (d.instructions ?? "").slice(0, 4000) || null,
       checklist,
       vehicleLabel: (d.vehicleLabel ?? "").slice(0, 160),
+      customerName: (d.customerName ?? "").slice(0, 160) || null,
+      customerPhone: (d.customerPhone ?? "").slice(0, 40) || null,
+      requiresPhotos,
+      photosCountRequired,
     };
   })
   .handler(async ({ data, context }) => {
@@ -85,6 +97,13 @@ export const createRunnerTask = createServerFn({ method: "POST" })
         scheduled_at: data.scheduledAt,
         instructions: data.instructions,
         checklist: data.checklist as any,
+        requires_photos: data.requiresPhotos,
+        photos_count_required: data.photosCountRequired,
+        details: {
+          vehicleLabel: data.vehicleLabel || null,
+          customerName: data.customerName,
+          customerPhone: data.customerPhone,
+        } as any,
         assigned_by: context.userId,
         status: "sent",
         token,

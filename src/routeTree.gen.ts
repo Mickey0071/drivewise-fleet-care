@@ -43,6 +43,7 @@ import { Route as ViolationTokenRouteImport } from './routes/violation.$token'
 import { Route as VerifyPaymentRentalIdRouteImport } from './routes/verify-payment.$rentalId'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as SetupTokenRouteImport } from './routes/setup.$token'
+import { Route as RunnerTaskTokenRouteImport } from './routes/runner-task.$token'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as PortalSignupRentalIdRouteImport } from './routes/portal-signup.$rentalId'
@@ -240,6 +241,11 @@ const SetupTokenRoute = SetupTokenRouteImport.update({
   path: '/setup/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RunnerTaskTokenRoute = RunnerTaskTokenRouteImport.update({
+  id: '/runner-task/$token',
+  path: '/runner-task/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RentPaidRoute = RentPaidRouteImport.update({
   id: '/rent/paid',
   path: '/rent/paid',
@@ -423,6 +429,7 @@ export interface FileRoutesByFullPath {
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
+  '/runner-task/$token': typeof RunnerTaskTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -485,6 +492,7 @@ export interface FileRoutesByTo {
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
+  '/runner-task/$token': typeof RunnerTaskTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -548,6 +556,7 @@ export interface FileRoutesById {
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
+  '/runner-task/$token': typeof RunnerTaskTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -612,6 +621,7 @@ export interface FileRouteTypes {
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
+    | '/runner-task/$token'
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
@@ -674,6 +684,7 @@ export interface FileRouteTypes {
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
+    | '/runner-task/$token'
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
@@ -736,6 +747,7 @@ export interface FileRouteTypes {
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
+    | '/runner-task/$token'
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
@@ -792,6 +804,7 @@ export interface RootRouteChildren {
   PortalSignupRentalIdRoute: typeof PortalSignupRentalIdRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
+  RunnerTaskTokenRoute: typeof RunnerTaskTokenRoute
   SetupTokenRoute: typeof SetupTokenRoute
   SignTokenRoute: typeof SignTokenRoute
   VerifyPaymentRentalIdRoute: typeof VerifyPaymentRentalIdRoute
@@ -1047,6 +1060,13 @@ declare module '@tanstack/react-router' {
       path: '/setup/$token'
       fullPath: '/setup/$token'
       preLoaderRoute: typeof SetupTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/runner-task/$token': {
+      id: '/runner-task/$token'
+      path: '/runner-task/$token'
+      fullPath: '/runner-task/$token'
+      preLoaderRoute: typeof RunnerTaskTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rent/paid': {
@@ -1315,6 +1335,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortalSignupRentalIdRoute: PortalSignupRentalIdRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
+  RunnerTaskTokenRoute: RunnerTaskTokenRoute,
   SetupTokenRoute: SetupTokenRoute,
   SignTokenRoute: SignTokenRoute,
   VerifyPaymentRentalIdRoute: VerifyPaymentRentalIdRoute,
@@ -1334,13 +1355,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
