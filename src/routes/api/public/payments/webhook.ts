@@ -31,6 +31,47 @@ function fmtAmount(cents: number | null | undefined): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+// After a Stripe payment is recorded for a rental, clear any pre-existing
+// scheduled payment row that covers the same period. The auto-scheduler
+// inserts upcoming weekly rows with status "late"; without this they linger
+// as "due/overdue" on the dashboard even though Stripe already charged the
+// card. Matches an unpaid row of the same amount whose due_date is within a
+// few days of the charge, marking the EARLIEST such row as paid.
+async function reconcileScheduledDuplicate(
+  rentalId: string,
+  amountDollars: number,
+  paidDateIso: string,
+  excludePaymentId: string,
+): Promise<void> {
+  if (!rentalId || !amountDollars) return;
+  const sb = getSupabase();
+  const paid = new Date(paidDateIso);
+  const lo = new Date(paid); lo.setDate(lo.getDate() - 4);
+  const hi = new Date(paid); hi.setDate(hi.getDate() + 4);
+  const { data: candidates } = await sb
+    .from("payments")
+    .select("id, amount, due_date, status")
+    .eq("rental_id", rentalId)
+    .in("status", ["late", "missed"])
+    .is("paid_date", null)
+    .gte("due_date", lo.toISOString().slice(0, 10))
+    .lte("due_date", hi.toISOString().slice(0, 10))
+    .order("due_date", { ascending: true });
+  const match = (candidates || []).find(
+    (c: any) => c.id !== excludePaymentId && Number(c.amount) === Number(amountDollars),
+  );
+  if (!match) return;
+  await sb
+    .from("payments")
+    .update({
+      status: "paid",
+      method: "Stripe",
+      paid_date: paidDateIso,
+      note: "Reconciled with Stripe charge",
+    } as any)
+    .eq("id", match.id);
+}
+
 // Persist the reusable Stripe customer + card on the driver record so the
 // card can be charged later (violations, extensions, etc.).
 async function saveCardToDriver(
