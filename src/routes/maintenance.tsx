@@ -57,6 +57,23 @@ function MaintenancePage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const toggleExpand = (id: string) => setExpandedId(prev => (prev === id ? null : id));
 
+  // Which phase boxes are open (multiple allowed)
+  const [openPhases, setOpenPhases] = useState<Record<string, boolean>>({});
+  const togglePhase = (key: string) => setOpenPhases(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // Which scheduled vehicle groups are open (multiple allowed)
+  const [openVehicles, setOpenVehicles] = useState<Record<string, boolean>>({});
+  const toggleVehicle = (id: string) => setOpenVehicles(prev => ({ ...prev, [id]: !prev[id] }));
+
+  // Delete-repair confirmation
+  const [deleteRecord, setDeleteRecord] = useState<Maintenance | null>(null);
+  function confirmDeleteRepair() {
+    if (!deleteRecord) return;
+    deleteRepair(deleteRecord.id);
+    setDeleteRecord(null);
+    toast.success("✓ Repair deleted — removed from P&L and history");
+  }
+
   function submitCreateRepair() {
     if (!createVehicleId) { toast.error("Select a vehicle"); return; }
     if (!createIssue.trim()) { toast.error("Describe the issue"); return; }
