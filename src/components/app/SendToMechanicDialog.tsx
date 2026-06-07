@@ -6,16 +6,33 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, X, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 
-const TEMPLATES: Record<string, string[]> = {
-  "Won't start": ["Check battery voltage", "Check alternator output", "Check starter motor", "Check fuel level", "Check ignition system"],
-  Brakes: ["Inspect brake pads", "Inspect rotors", "Check brake fluid level", "Test brake lines for leaks", "Check parking brake"],
-  AC: ["Check refrigerant level", "Inspect compressor", "Check cabin air filter", "Test blower motor", "Check for leaks"],
-  Custom: [],
-};
+const COMMON_ITEMS = [
+  "Check battery voltage",
+  "Check alternator output",
+  "Check starter motor",
+  "Check fuel system",
+  "Check ignition system",
+  "Check brakes (front)",
+  "Check brakes (rear)",
+  "Check tires",
+  "Check AC system",
+  "Check heating system",
+  "Check transmission",
+  "Check oil level",
+  "Check oil leak",
+  "Check coolant",
+  "Check belts/hoses",
+  "Check suspension",
+  "Check exhaust",
+  "Check lights",
+  "Check electrical",
+  "Check engine codes",
+] as const;
 
 let counter = 0;
 const newItem = (label = "") => ({ id: `i${Date.now()}_${counter++}`, label });
@@ -46,19 +63,31 @@ export function SendToMechanicDialog({
   const [phone, setPhone] = useState("");
   const [shop, setShop] = useState("");
   const [context, setContext] = useState("");
-  const [items, setItems] = useState([newItem()]);
+  const [includeChecklist, setIncludeChecklist] = useState(false);
+  const [selectedCommon, setSelectedCommon] = useState<string[]>([]);
+  const [customItems, setCustomItems] = useState<{ id: string; label: string }[]>([]);
   const [sending, setSending] = useState(false);
 
-  function applyTemplate(key: string) {
-    const t = TEMPLATES[key] ?? [];
-    if (t.length) setItems(t.map((l) => newItem(l)));
+  function toggleCommon(label: string) {
+    setSelectedCommon((prev) => (prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]));
+  }
+
+  function reset() {
+    setName(""); setPhone(""); setShop(""); setContext("");
+    setIncludeChecklist(false); setSelectedCommon([]); setCustomItems([]);
   }
 
   async function submit() {
     if (!name.trim()) { toast.error("Mechanic name required"); return; }
     if (!phone.trim()) { toast.error("Mechanic phone required"); return; }
-    const checklist = items.filter((i) => i.label.trim()).map((i) => ({ id: i.id, label: i.label.trim() }));
-    if (checklist.length === 0) { toast.error("Add at least one checklist item"); return; }
+    let checklist: { id: string; label: string }[] = [];
+    if (includeChecklist) {
+      checklist = [
+        ...selectedCommon.map((l) => newItem(l)),
+        ...customItems.filter((i) => i.label.trim()).map((i) => ({ id: i.id, label: i.label.trim() })),
+      ];
+      if (checklist.length === 0) { toast.error("Select or add at least one checklist item, or turn off the checklist"); return; }
+    }
     setSending(true);
     try {
       await sendFn({
@@ -77,7 +106,7 @@ export function SendToMechanicDialog({
         },
       });
       toast.success(`✓ Diagnosis request sent to ${name.trim()}`);
-      setName(""); setPhone(""); setShop(""); setContext(""); setItems([newItem()]);
+      reset();
       onOpenChange(false);
       onSent();
     } catch (e: any) {
@@ -116,32 +145,48 @@ export function SendToMechanicDialog({
             <Textarea className="mt-1 min-h-[52px] text-xs" placeholder="What the customer reported, symptoms…"
               value={context} onChange={(e) => setContext(e.target.value)} />
           </div>
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <Label className="text-xs">Items to inspect</Label>
-              <Select onValueChange={applyTemplate}>
-                <SelectTrigger className="h-7 w-36 text-xs"><SelectValue placeholder="Template" /></SelectTrigger>
-                <SelectContent>
-                  {Object.keys(TEMPLATES).map((k) => <SelectItem key={k} value={k} className="text-xs">{k}</SelectItem>)}
-                </SelectContent>
-              </Select>
+          <div className="rounded-md border p-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium">Include checklist for mechanic?</Label>
+              <Switch checked={includeChecklist} onCheckedChange={setIncludeChecklist} />
             </div>
-            <div className="space-y-2">
-              {items.map((it, i) => (
-                <div key={it.id} className="flex gap-2">
-                  <Input className="h-8 flex-1 text-xs" placeholder={`Item ${i + 1}`}
-                    value={it.label}
-                    onChange={(e) => setItems((prev) => prev.map((x) => (x.id === it.id ? { ...x, label: e.target.value } : x)))} />
-                  <Button type="button" size="icon" variant="ghost" className="h-8 w-8"
-                    onClick={() => setItems((prev) => prev.filter((x) => x.id !== it.id))}>
-                    <X className="h-4 w-4" />
+            {includeChecklist ? (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <Label className="text-[11px] uppercase text-muted-foreground">Common items</Label>
+                  <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                    {COMMON_ITEMS.map((label) => (
+                      <label key={label} className="flex cursor-pointer items-center gap-2 text-xs">
+                        <Checkbox
+                          checked={selectedCommon.includes(label)}
+                          onCheckedChange={() => toggleCommon(label)}
+                        />
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-[11px] uppercase text-muted-foreground">Custom items</Label>
+                  <div className="mt-2 space-y-2">
+                    {customItems.map((it, i) => (
+                      <div key={it.id} className="flex gap-2">
+                        <Input className="h-8 flex-1 text-xs" placeholder={`Custom item ${i + 1}`}
+                          value={it.label}
+                          onChange={(e) => setCustomItems((prev) => prev.map((x) => (x.id === it.id ? { ...x, label: e.target.value } : x)))} />
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8"
+                          onClick={() => setCustomItems((prev) => prev.filter((x) => x.id !== it.id))}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => setCustomItems((p) => [...p, newItem()])}>
+                    <Plus className="h-4 w-4" /> Add Custom Item
                   </Button>
                 </div>
-              ))}
-            </div>
-            <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => setItems((p) => [...p, newItem()])}>
-              <Plus className="h-4 w-4" /> Add Item
-            </Button>
+              </div>
+            ) : null}
           </div>
         </div>
         <DialogFooter>
