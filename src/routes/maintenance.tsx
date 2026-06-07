@@ -797,6 +797,32 @@ function MaintenancePage() {
         </DialogContent>
       </Dialog>
 
+      <AlertDialog open={!!deleteRecord} onOpenChange={(o) => { if (!o) setDeleteRecord(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this repair?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>This will permanently remove:</p>
+                <ul className="list-disc pl-5 text-muted-foreground">
+                  <li>The repair record</li>
+                  <li>Any P&amp;L expense entries</li>
+                  <li>Fleet card repair history entry</li>
+                  <li>Scorecard data</li>
+                </ul>
+                <p>Vehicle availability will be restored.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmDeleteRepair}>
+              Yes, Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
