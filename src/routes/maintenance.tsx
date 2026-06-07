@@ -825,6 +825,7 @@ function MaintenancePage() {
       </AlertDialog>
 
     </div>
+    </TooltipProvider>
   );
 }
 
