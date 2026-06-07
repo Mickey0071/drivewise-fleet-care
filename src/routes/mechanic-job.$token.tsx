@@ -163,6 +163,7 @@ function MechanicJobPage() {
           ) : null}
         </Card>
 
+        {items.length > 0 ? (
         <Card className="p-4">
           <h2 className="mb-3 text-sm font-semibold">Inspection Checklist</h2>
           <div className="space-y-3">
@@ -196,6 +197,7 @@ function MechanicJobPage() {
             })}
           </div>
         </Card>
+        ) : null}
 
         <Card className="p-4">
           <div className="mb-3 flex items-center justify-between">
