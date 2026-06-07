@@ -3,13 +3,15 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { maintenance, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
-import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame, RotateCcw, Trash2, Car } from "lucide-react";
+import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame, RotateCcw, Trash2, Car, ClipboardCheck } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 import { SendToMechanicDialog } from "@/components/app/SendToMechanicDialog";
 import { ViewDiagnosisDialog } from "@/components/app/ViewDiagnosisDialog";
 import { MechanicJobHistory } from "@/components/app/MechanicJobHistory";
+import { RmCardDialog } from "@/components/app/RmCardDialog";
+import { listRmCards, type RmCardRow } from "@/lib/rm-cards.functions";
 import { useServerFn } from "@tanstack/react-start";
 import {
   listMechanicJobs,
@@ -241,6 +243,19 @@ function MaintenancePage() {
       toast.error(e instanceof Error ? e.message : "Failed to update");
     }
   }
+
+  // --- Routine Maintenance Cards ---
+  const [rmVehicleId, setRmVehicleId] = useState<string | null>(null);
+  const loadRmCardsFn = useServerFn(listRmCards);
+  const [rmCards, setRmCards] = useState<RmCardRow[]>([]);
+  async function refreshRmCards() {
+    try {
+      const r = await loadRmCardsFn();
+      setRmCards((r.cards ?? []) as RmCardRow[]);
+    } catch { /* ignore */ }
+  }
+  useEffect(() => { refreshRmCards(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  const recentRmCards = rmCards.filter(c => c.status === "submitted").slice(0, 5);
 
   return (
     <TooltipProvider>
@@ -615,10 +630,10 @@ function MaintenancePage() {
                           <li key={vid}>
                             <button
                               type="button"
-                              onClick={() => toggleVehicle(vid)}
+                              onClick={() => setRmVehicleId(vid)}
                               className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-muted/40"
                             >
-                              {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                              <ClipboardCheck className="h-4 w-4 shrink-0 text-primary" />
                               <Car className="h-4 w-4 shrink-0 text-muted-foreground" />
                               <span className="min-w-0 flex-1 truncate text-sm font-medium">
                                 {v ? `${v.year} ${v.make} ${v.model}` : vid}
@@ -627,7 +642,7 @@ function MaintenancePage() {
                                 {group.length} item{group.length === 1 ? "" : "s"} due
                               </span>
                             </button>
-                            {open && (
+                            {false && open && (
                               <ul className="divide-y divide-border border-t border-border bg-muted/20">
                                 {group.map(it => (
                                   <li key={it.key} className="flex items-center justify-between gap-2 py-2 pl-12 pr-4">
@@ -685,6 +700,44 @@ function MaintenancePage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Recent RM Cards */}
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ClipboardCheck className="h-4 w-4 text-primary" />
+                  Recent RM Cards (last 5)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {recentRmCards.length === 0 ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">No routine maintenance cards submitted yet.</div>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {recentRmCards.map(c => {
+                      const v = vehicleById(c.vehicle_id);
+                      const items = Array.isArray(c.items_checked) ? c.items_checked : [];
+                      const passed = items.filter(i => i.status === "Pass").length;
+                      const failed = items.filter(i => i.status === "Fail").length;
+                      return (
+                        <li key={c.id} className="flex items-center justify-between gap-2 px-4 py-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : c.vehicle_id}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {fmtDate((c.submitted_at ?? c.created_at)?.slice(0, 10))} · {c.inspector_name || "—"}
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2 text-xs">
+                            <span className="rounded-full bg-green-500/15 px-2 py-0.5 font-medium text-green-600">{passed} passed</span>
+                            <span className={`rounded-full px-2 py-0.5 font-medium ${failed > 0 ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"}`}>{failed} failed</span>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="completed" className="mt-4">
@@ -784,6 +837,14 @@ function MaintenancePage() {
       })()}
 
       <ViewDiagnosisDialog job={viewJob} onClose={() => setViewJob(null)} />
+
+      <RmCardDialog
+        vehicleId={rmVehicleId}
+        open={!!rmVehicleId}
+        onOpenChange={(o) => { if (!o) setRmVehicleId(null); }}
+        adminName={adminName}
+        onSubmitted={refreshRmCards}
+      />
 
       <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateTakeOffRental(true); } }}>
         <DialogContent className="sm:max-w-md">

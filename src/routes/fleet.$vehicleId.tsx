@@ -25,6 +25,7 @@ import { CreateWorkOrderDialog } from "@/components/app/CreateWorkOrderDialog";
 import { WorkOrderDialog } from "@/components/app/WorkOrderDialog";
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
 import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
+import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 import type { Maintenance, WorkOrder } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { isServiceLogRecord, lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
@@ -317,6 +318,7 @@ function VehicleDetail() {
           <TabsTrigger value="analytics">Analytics / P&amp;L</TabsTrigger>
           <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
           <TabsTrigger value="repairs">Repair History</TabsTrigger>
+          <TabsTrigger value="rm">RM History</TabsTrigger>
           <TabsTrigger value="renters">Renter History ({uniqueRenters.length})</TabsTrigger>
           <TabsTrigger value="other">Violations &amp; Inspections</TabsTrigger>
         </TabsList>
@@ -466,6 +468,10 @@ function VehicleDetail() {
               <Row key={r.id} title={driverById(r.driverId)?.fullName ?? r.driverId} sub={`${fmtDate(r.startDate)} → ${r.endDate ? fmtDate(r.endDate) : "open"} · ${fmtMoney(r.weeklyRate)}/wk`} right={<StatusBadge status={r.paymentStatus} />} />
             ))}
           </Section>
+        </TabsContent>
+
+        <TabsContent value="rm" className="mt-4">
+          <RmHistoryTab vehicleId={v.id} />
         </TabsContent>
 
         <TabsContent value="other" className="mt-4 grid gap-4 lg:grid-cols-2">
