@@ -1738,8 +1738,12 @@ export type Database = {
           review_action: string | null
           reviewed_at: string | null
           reviewed_by: string | null
-          runner_id: string
+          runner_id: string | null
+          runner_name: string | null
+          runner_phone: string | null
           status: string
+          token: string | null
+          token_expires_at: string | null
           type: string
           updated_at: string
           vehicle_id: string
@@ -1760,8 +1764,12 @@ export type Database = {
           review_action?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
-          runner_id: string
+          runner_id?: string | null
+          runner_name?: string | null
+          runner_phone?: string | null
           status?: string
+          token?: string | null
+          token_expires_at?: string | null
           type: string
           updated_at?: string
           vehicle_id: string
@@ -1782,8 +1790,12 @@ export type Database = {
           review_action?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
-          runner_id?: string
+          runner_id?: string | null
+          runner_name?: string | null
+          runner_phone?: string | null
           status?: string
+          token?: string | null
+          token_expires_at?: string | null
           type?: string
           updated_at?: string
           vehicle_id?: string
