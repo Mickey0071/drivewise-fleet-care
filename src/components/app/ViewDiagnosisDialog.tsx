@@ -27,26 +27,27 @@ export function ViewDiagnosisDialog({ job, onClose }: { job: MechanicJobRow | nu
             <div><span className="font-medium">Submitted:</span> {fmt(job.submitted_at)}</div>
           </div>
 
-          <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Checklist Results</h3>
-            <div className="space-y-1.5">
-              {(job.checklist_results ?? []).map((r, i) => (
-                <div key={i} className="rounded border px-2 py-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs">{r.label}</span>
-                    <Badge
-                      variant={r.result === "fail" ? "destructive" : r.result === "pass" ? "default" : "secondary"}
-                      className="text-[10px] capitalize"
-                    >
-                      {r.result === "na" ? "N/A" : r.result}
-                    </Badge>
+          {(job.checklist_results ?? []).length > 0 ? (
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Checklist Results</h3>
+              <div className="space-y-1.5">
+                {(job.checklist_results ?? []).map((r, i) => (
+                  <div key={i} className="rounded border px-2 py-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs">{r.label}</span>
+                      <Badge
+                        variant={r.result === "fail" ? "destructive" : r.result === "pass" ? "default" : "secondary"}
+                        className="text-[10px] capitalize"
+                      >
+                        {r.result === "na" ? "N/A" : r.result}
+                      </Badge>
+                    </div>
+                    {r.notes ? <div className="mt-1 text-[11px] text-muted-foreground">{r.notes}</div> : null}
                   </div>
-                  {r.notes ? <div className="mt-1 text-[11px] text-muted-foreground">{r.notes}</div> : null}
-                </div>
-              ))}
-              {(job.checklist_results ?? []).length === 0 && <p className="text-xs text-muted-foreground">No checklist results.</p>}
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Parts</h3>
