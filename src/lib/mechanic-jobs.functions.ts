@@ -80,7 +80,6 @@ export const createMechanicJob = createServerFn({ method: "POST" })
       .map((i) => ({ id: String(i.id).slice(0, 40), label: String(i.label ?? "").slice(0, 200) }))
       .filter((i) => i.label.trim().length > 0)
       .slice(0, 40);
-    if (items.length === 0) throw new Error("Add at least one checklist item");
     return {
       maintenanceId,
       vehicleId: d.vehicleId ?? null,
@@ -117,11 +116,12 @@ export const createMechanicJob = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const link = `${originFromEnv()}/mechanic-job/${token}`;
+    const action = data.checklistItems.length > 0 ? "Complete the checklist here" : "Submit your diagnosis here";
     const msg =
       `Hi ${data.mechanicName}, Camauto Rentals needs your diagnosis on a vehicle.\n\n` +
       `Vehicle: ${data.vehicleLabel || "—"}${data.plate ? ` (Plate: ${data.plate})` : ""}\n` +
       `Issue: ${data.issueDescription || "—"}\n\n` +
-      `Complete the checklist here: ${link}\n\nReply when done.`;
+      `${action}: ${link}\n\nReply when done.`;
     try {
       await sendSms(data.mechanicPhone, msg, data.mechanicName);
     } catch (e) {
@@ -266,8 +266,6 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
     const hours = d.estimatedHours == null ? null : Number(d.estimatedHours);
     if (hours != null && (!Number.isFinite(hours) || hours < 0 || hours > 1000)) throw new Error("Invalid hours");
     const partsTotal = parts.reduce((s, p) => s + p.price, 0);
-    const completedAny = results.some((r) => r.result === "pass" || r.result === "fail" || (r.notes ?? "").trim().length > 0);
-    if (!completedAny) throw new Error("Complete at least one checklist item");
     if (!(partsTotal > 0) && !(labour > 0)) throw new Error("Add parts or a labour estimate");
     return {
       token: d.token,
