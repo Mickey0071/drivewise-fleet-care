@@ -374,6 +374,16 @@ function MaintenancePage() {
                         <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
+                      {submittedJobByMaint.has(m.id) && (
+                        <div className="flex items-center justify-between rounded-md border bg-blue-500/5 px-2 py-1.5">
+                          <span className="text-[11px] text-muted-foreground">
+                            📋 Submitted by {submittedJobByMaint.get(m.id)!.mechanic_name} · {fmtDate((submittedJobByMaint.get(m.id)!.submitted_at ?? "").slice(0, 10))}
+                          </span>
+                          <Button size="sm" variant="link" className="h-auto p-0 text-[11px]" onClick={() => setViewJob(submittedJobByMaint.get(m.id)!)}>
+                            View Full Diagnosis
+                          </Button>
+                        </div>
+                      )}
                       <div>
                         <Label className="text-[11px]">Parts needed</Label>
                         <Textarea
