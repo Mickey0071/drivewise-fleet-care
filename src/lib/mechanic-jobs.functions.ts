@@ -31,6 +31,29 @@ export interface PartItem {
   price: number;
 }
 
+export interface MechanicJobRow {
+  id: string;
+  maintenance_id: string;
+  vehicle_id: string | null;
+  mechanic_name: string;
+  mechanic_phone: string;
+  mechanic_shop: string | null;
+  issue_description: string | null;
+  additional_context: string | null;
+  checklist_items: ChecklistItem[];
+  checklist_results: ChecklistResult[] | null;
+  parts_list: PartItem[] | null;
+  labour_cost: number;
+  estimated_hours: number | null;
+  mechanic_notes: string | null;
+  token: string;
+  status: "sent" | "submitted" | "cancelled";
+  sent_at: string;
+  submitted_at: string | null;
+  created_by_admin: string | null;
+  created_at: string;
+}
+
 /** Admin (Phase 1): create a mechanic diagnosis request + SMS the mechanic. */
 export const createMechanicJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
