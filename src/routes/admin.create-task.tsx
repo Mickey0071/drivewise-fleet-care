@@ -57,6 +57,8 @@ function CreateTaskPage() {
   const [instructions, setInstructions] = useState("");
   const [template, setTemplate] = useState<string>("");
   const [items, setItems] = useState([newItem()]);
+  const [requiresPhotos, setRequiresPhotos] = useState(false);
+  const [photosCount, setPhotosCount] = useState("2");
   const [sending, setSending] = useState(false);
 
   const vehicleOptions = useMemo(
@@ -64,7 +66,7 @@ function CreateTaskPage() {
     [],
   );
   const customerOptions = useMemo(
-    () => drivers.map((d) => ({ id: d.id, label: d.fullName })),
+    () => drivers.map((d) => ({ id: d.id, label: d.fullName, phone: d.phone })),
     [],
   );
 
@@ -85,6 +87,9 @@ function CreateTaskPage() {
       const vehicleLabel = vehicleId !== "none"
         ? vehicleOptions.find((v) => v.id === vehicleId)?.label
         : undefined;
+      const customer = customerId !== "none"
+        ? customerOptions.find((c) => c.id === customerId)
+        : undefined;
       const res = await sendFn({
         data: {
           runnerName: runnerName.trim(),
@@ -99,6 +104,10 @@ function CreateTaskPage() {
           instructions: instructions.trim() || undefined,
           checklist,
           vehicleLabel,
+          customerName: customer?.label,
+          customerPhone: customer?.phone,
+          requiresPhotos,
+          photosCountRequired: requiresPhotos ? Math.max(1, Number(photosCount) || 1) : 0,
         },
       });
       if (res.smsStatus === "sent") toast.success(`✓ Task sent to ${runnerName.trim()}`);
@@ -106,6 +115,7 @@ function CreateTaskPage() {
       setRunnerName(""); setRunnerPhone(""); setTitle(""); setPriority("medium");
       setVehicleId("none"); setCustomerId("none"); setLocation(""); setScheduledAt("");
       setInstructions(""); setTemplate(""); setItems([newItem()]);
+      setRequiresPhotos(false); setPhotosCount("2");
     } catch (e: any) {
       toast.error(e?.message || "Failed to create task");
     } finally {
