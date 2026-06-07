@@ -583,6 +583,7 @@ function MaintenancePage() {
           <TabsList>
             <TabsTrigger value="scheduled">Scheduled ({dueSoon.length})</TabsTrigger>
             <TabsTrigger value="completed">Completed ({completedRepairs.length})</TabsTrigger>
+            <TabsTrigger value="mechanics">Mechanic Jobs ({mechanicJobs.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="scheduled" className="mt-4">
