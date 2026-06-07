@@ -178,14 +178,26 @@ export const getMechanicJobPublic = createServerFn({ method: "GET" })
       .maybeSingle();
     if (!job) return { found: false as const };
 
-    let vehicle = { year: "", make: "", model: "", plate: "" } as Record<string, unknown>;
+    let vehicle: { year: string | number; make: string; model: string; plate: string } = {
+      year: "",
+      make: "",
+      model: "",
+      plate: "",
+    };
     if (job.vehicle_id) {
       const { data: v } = await supabaseAdmin
         .from("vehicles")
         .select("year, make, model, plate")
         .eq("id", job.vehicle_id)
         .maybeSingle();
-      if (v) vehicle = v;
+      if (v) {
+        vehicle = {
+          year: v.year ?? "",
+          make: v.make ?? "",
+          model: v.model ?? "",
+          plate: v.plate ?? "",
+        };
+      }
     }
     return {
       found: true as const,
@@ -195,7 +207,7 @@ export const getMechanicJobPublic = createServerFn({ method: "GET" })
         mechanicShop: job.mechanic_shop ?? "",
         issueDescription: job.issue_description ?? "",
         additionalContext: job.additional_context ?? "",
-        checklistItems: (job.checklist_items ?? []) as ChecklistItem[],
+        checklistItems: (job.checklist_items ?? []) as unknown as ChecklistItem[],
         status: job.status as "sent" | "submitted" | "cancelled",
         submittedAt: job.submitted_at ?? null,
       },
