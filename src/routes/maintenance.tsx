@@ -194,7 +194,7 @@ function MaintenancePage() {
   async function refreshJobs() {
     try {
       const r = await loadJobsFn();
-      setMechanicJobs((r.jobs ?? []) as MechanicJobRow[]);
+      setMechanicJobs((r.jobs ?? []) as unknown as MechanicJobRow[]);
     } catch { /* ignore */ }
   }
   useEffect(() => { refreshJobs(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
