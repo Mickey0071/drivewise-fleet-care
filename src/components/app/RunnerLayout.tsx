@@ -4,24 +4,17 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/camauto-logo.jpeg";
 
-const runnerTabs = [
-  { to: "/checklist", label: "Task Portal", emoji: "📋" },
-  { to: "/vendors", label: "Vendors", emoji: "📞" },
-  { to: "/inspections", label: "My History", emoji: "📜" },
-  { to: "/profile", label: "Profile", emoji: "👤" },
-] as const;
-
 const driverTabs = [
   { to: "/my-rentals", label: "My Rentals", emoji: "🚗" },
   { to: "/profile", label: "Profile", emoji: "👤" },
 ] as const;
 
+// Customer (driver) bottom-nav portal. The old runner/login portal has been removed.
 export function RunnerLayout() {
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const { signOut, role } = useAuth();
-  const isDriver = role === "driver";
-  const tabs = isDriver ? driverTabs : runnerTabs;
-  const title = isDriver ? "My Account" : "Camauto Runner Hub";
+  const { signOut } = useAuth();
+  const tabs = driverTabs;
+  const title = "My Account";
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
