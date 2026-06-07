@@ -77,11 +77,13 @@ function MechanicJobPage() {
     const labourNum = parseFloat(labour) || 0;
     const cleanParts = parts.filter((p) => p.name.trim() && (Number(p.price) || 0) >= 0).map((p) => ({ name: p.name.trim(), price: Number(p.price) || 0 }));
     const pTotal = cleanParts.reduce((s, p) => s + p.price, 0);
-    const completedAny = items.some((it) => {
-      const r = results[it.id];
-      return r && (r.result === "pass" || r.result === "fail" || (r.notes ?? "").trim());
-    });
-    if (!completedAny) { toast.error("Mark at least one checklist item"); return; }
+    if (items.length > 0) {
+      const completedAny = items.some((it) => {
+        const r = results[it.id];
+        return r && (r.result === "pass" || r.result === "fail" || (r.notes ?? "").trim());
+      });
+      if (!completedAny) { toast.error("Mark at least one checklist item"); return; }
+    }
     if (!(pTotal > 0) && !(labourNum > 0)) { toast.error("Add parts or a labour estimate"); return; }
     setSubmitting(true);
     try {
