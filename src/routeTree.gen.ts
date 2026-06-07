@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as VendorsRouteImport } from './routes/vendors'
-import { Route as StaffPortalRouteImport } from './routes/staff-portal'
 import { Route as SmsLogRouteImport } from './routes/sms-log'
 import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -79,11 +78,6 @@ const ViolationsRoute = ViolationsRouteImport.update({
 const VendorsRoute = VendorsRouteImport.update({
   id: '/vendors',
   path: '/vendors',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StaffPortalRoute = StaffPortalRouteImport.update({
-  id: '/staff-portal',
-  path: '/staff-portal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SmsLogRoute = SmsLogRouteImport.update({
@@ -410,7 +404,6 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
-  '/staff-portal': typeof StaffPortalRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
@@ -473,7 +466,6 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
-  '/staff-portal': typeof StaffPortalRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
@@ -537,7 +529,6 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/sms-log': typeof SmsLogRoute
-  '/staff-portal': typeof StaffPortalRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
@@ -602,7 +593,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/runner-reports'
     | '/sms-log'
-    | '/staff-portal'
     | '/vendors'
     | '/violations'
     | '/admin/create-task'
@@ -665,7 +655,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/runner-reports'
     | '/sms-log'
-    | '/staff-portal'
     | '/vendors'
     | '/violations'
     | '/admin/create-task'
@@ -728,7 +717,6 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/runner-reports'
     | '/sms-log'
-    | '/staff-portal'
     | '/vendors'
     | '/violations'
     | '/admin/create-task'
@@ -792,7 +780,6 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   RunnerReportsRoute: typeof RunnerReportsRoute
   SmsLogRoute: typeof SmsLogRoute
-  StaffPortalRoute: typeof StaffPortalRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
   AdminCreateTaskRoute: typeof AdminCreateTaskRoute
@@ -836,13 +823,6 @@ declare module '@tanstack/react-router' {
       path: '/vendors'
       fullPath: '/vendors'
       preLoaderRoute: typeof VendorsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/staff-portal': {
-      id: '/staff-portal'
-      path: '/staff-portal'
-      fullPath: '/staff-portal'
-      preLoaderRoute: typeof StaffPortalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sms-log': {
@@ -1323,7 +1303,6 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   RunnerReportsRoute: RunnerReportsRoute,
   SmsLogRoute: SmsLogRoute,
-  StaffPortalRoute: StaffPortalRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
   AdminCreateTaskRoute: AdminCreateTaskRoute,
