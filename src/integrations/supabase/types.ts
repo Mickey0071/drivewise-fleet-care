@@ -1721,6 +1721,60 @@ export type Database = {
         }
         Relationships: []
       }
+      rm_cards: {
+        Row: {
+          created_at: string
+          created_by_admin: string | null
+          id: string
+          inspector_name: string | null
+          inspector_phone: string | null
+          inspector_type: string
+          items_checked: Json
+          mileage_at_inspection: number | null
+          overall_notes: string | null
+          status: string
+          submitted_at: string | null
+          token: string | null
+          token_expires_at: string | null
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_admin?: string | null
+          id?: string
+          inspector_name?: string | null
+          inspector_phone?: string | null
+          inspector_type?: string
+          items_checked?: Json
+          mileage_at_inspection?: number | null
+          overall_notes?: string | null
+          status?: string
+          submitted_at?: string | null
+          token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by_admin?: string | null
+          id?: string
+          inspector_name?: string | null
+          inspector_phone?: string | null
+          inspector_type?: string
+          items_checked?: Json
+          mileage_at_inspection?: number | null
+          overall_notes?: string | null
+          status?: string
+          submitted_at?: string | null
+          token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
       runner_tasks: {
         Row: {
           assigned_at: string
@@ -2110,6 +2164,8 @@ export type Database = {
           last_dmv_service_at: string | null
           last_inspection_at: string | null
           last_inspection_mileage: number | null
+          last_rm_date: string | null
+          last_rm_mileage: number | null
           last_transport_at: string | null
           maintenance_settings: Json
           make: string
@@ -2122,6 +2178,7 @@ export type Database = {
           repo_date: string | null
           repo_location: string | null
           risk_tier: string
+          rm_history: Json
           seats: number | null
           shop_dropoff_at: string | null
           shop_est_return: string | null
@@ -2149,6 +2206,8 @@ export type Database = {
           last_dmv_service_at?: string | null
           last_inspection_at?: string | null
           last_inspection_mileage?: number | null
+          last_rm_date?: string | null
+          last_rm_mileage?: number | null
           last_transport_at?: string | null
           maintenance_settings?: Json
           make: string
@@ -2161,6 +2220,7 @@ export type Database = {
           repo_date?: string | null
           repo_location?: string | null
           risk_tier?: string
+          rm_history?: Json
           seats?: number | null
           shop_dropoff_at?: string | null
           shop_est_return?: string | null
@@ -2188,6 +2248,8 @@ export type Database = {
           last_dmv_service_at?: string | null
           last_inspection_at?: string | null
           last_inspection_mileage?: number | null
+          last_rm_date?: string | null
+          last_rm_mileage?: number | null
           last_transport_at?: string | null
           maintenance_settings?: Json
           make?: string
@@ -2200,6 +2262,7 @@ export type Database = {
           repo_date?: string | null
           repo_location?: string | null
           risk_tier?: string
+          rm_history?: Json
           seats?: number | null
           shop_dropoff_at?: string | null
           shop_est_return?: string | null
