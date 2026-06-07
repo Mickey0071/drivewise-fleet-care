@@ -857,6 +857,8 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         } as any,
         { onConflict: "id" },
       );
+      // Clear any duplicate scheduled "late" row for this first period.
+      await reconcileScheduledDuplicate(rental.id, amount, today, paidId);
       // Next scheduled payment (only if none already exists past today).
       const { data: upcoming } = await sb
         .from("payments")
