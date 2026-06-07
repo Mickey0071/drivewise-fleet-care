@@ -2162,8 +2162,11 @@ export type Database = {
       violations: {
         Row: {
           amount: number
+          confirmation_number: string | null
           created_at: string
           created_by: string | null
+          customer_token: string | null
+          customer_token_expires_at: string | null
           date_issued: string
           description: string | null
           driver_id: string | null
@@ -2176,19 +2179,38 @@ export type Database = {
           payment_link_url: string | null
           payment_method: string | null
           photo_url: string | null
+          reminder_sent_at: string | null
           rental_id: string | null
+          resolution_choice: string | null
+          resolution_notes: string | null
+          resolution_reason: string | null
+          resolved_at: string | null
+          sent_to_customer_at: string | null
+          signature_url: string | null
+          signed_at: string | null
+          signed_ip: string | null
+          signed_name: string | null
+          signed_pdf_url: string | null
+          signed_user_agent: string | null
           status: string
           stripe_payment_intent_id: string | null
           stripe_payment_link_id: string | null
+          submission_method: string | null
+          submitted_to: string | null
+          submitted_to_authority_at: string | null
           total_amount: number
           type: string
           updated_at: string
           vehicle_id: string
+          viewed_at: string | null
         }
         Insert: {
           amount?: number
+          confirmation_number?: string | null
           created_at?: string
           created_by?: string | null
+          customer_token?: string | null
+          customer_token_expires_at?: string | null
           date_issued?: string
           description?: string | null
           driver_id?: string | null
@@ -2201,19 +2223,38 @@ export type Database = {
           payment_link_url?: string | null
           payment_method?: string | null
           photo_url?: string | null
+          reminder_sent_at?: string | null
           rental_id?: string | null
+          resolution_choice?: string | null
+          resolution_notes?: string | null
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          sent_to_customer_at?: string | null
+          signature_url?: string | null
+          signed_at?: string | null
+          signed_ip?: string | null
+          signed_name?: string | null
+          signed_pdf_url?: string | null
+          signed_user_agent?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
           stripe_payment_link_id?: string | null
+          submission_method?: string | null
+          submitted_to?: string | null
+          submitted_to_authority_at?: string | null
           total_amount?: number
           type?: string
           updated_at?: string
           vehicle_id: string
+          viewed_at?: string | null
         }
         Update: {
           amount?: number
+          confirmation_number?: string | null
           created_at?: string
           created_by?: string | null
+          customer_token?: string | null
+          customer_token_expires_at?: string | null
           date_issued?: string
           description?: string | null
           driver_id?: string | null
@@ -2226,14 +2267,30 @@ export type Database = {
           payment_link_url?: string | null
           payment_method?: string | null
           photo_url?: string | null
+          reminder_sent_at?: string | null
           rental_id?: string | null
+          resolution_choice?: string | null
+          resolution_notes?: string | null
+          resolution_reason?: string | null
+          resolved_at?: string | null
+          sent_to_customer_at?: string | null
+          signature_url?: string | null
+          signed_at?: string | null
+          signed_ip?: string | null
+          signed_name?: string | null
+          signed_pdf_url?: string | null
+          signed_user_agent?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
           stripe_payment_link_id?: string | null
+          submission_method?: string | null
+          submitted_to?: string | null
+          submitted_to_authority_at?: string | null
           total_amount?: number
           type?: string
           updated_at?: string
           vehicle_id?: string
+          viewed_at?: string | null
         }
         Relationships: []
       }
@@ -2388,6 +2445,29 @@ export type Database = {
           vehicle_model: string
           vehicle_year: number
           weekly_rate: number
+        }[]
+      }
+      get_violation_public: {
+        Args: { _token: string }
+        Returns: {
+          amount: number
+          date_issued: string
+          description: string
+          driver_full_name: string
+          id: string
+          license_plate: string
+          paid_at: string
+          rental_end_date: string
+          rental_start_date: string
+          resolution_choice: string
+          signed_at: string
+          status: string
+          total_amount: number
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_year: number
+          viewed_at: string
         }[]
       }
       has_role: {
