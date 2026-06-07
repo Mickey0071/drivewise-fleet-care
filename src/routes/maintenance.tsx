@@ -630,10 +630,10 @@ function MaintenancePage() {
                           <li key={vid}>
                             <button
                               type="button"
-                              onClick={() => toggleVehicle(vid)}
+                              onClick={() => setRmVehicleId(vid)}
                               className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-muted/40"
                             >
-                              {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                              <ClipboardCheck className="h-4 w-4 shrink-0 text-primary" />
                               <Car className="h-4 w-4 shrink-0 text-muted-foreground" />
                               <span className="min-w-0 flex-1 truncate text-sm font-medium">
                                 {v ? `${v.year} ${v.make} ${v.model}` : vid}
@@ -642,7 +642,7 @@ function MaintenancePage() {
                                 {group.length} item{group.length === 1 ? "" : "s"} due
                               </span>
                             </button>
-                            {open && (
+                            {false && open && (
                               <ul className="divide-y divide-border border-t border-border bg-muted/20">
                                 {group.map(it => (
                                   <li key={it.key} className="flex items-center justify-between gap-2 py-2 pl-12 pr-4">
