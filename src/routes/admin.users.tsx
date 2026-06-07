@@ -256,7 +256,6 @@ function AdminUsersPage() {
                             <SelectContent>
                               <SelectItem value="none">None</SelectItem>
                               <SelectItem value="driver">Driver</SelectItem>
-                              <SelectItem value="runner">Runner</SelectItem>
                             <SelectItem value="va">Virtual Assistant</SelectItem>
                               <SelectItem value="admin">Admin</SelectItem>
                             </SelectContent>
@@ -644,7 +643,6 @@ function AddUserButton({ onCreated }: { onCreated: () => void | Promise<void> })
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="driver">Driver</SelectItem>
-                  <SelectItem value="runner">Runner</SelectItem>
                   <SelectItem value="va">Virtual Assistant</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
@@ -672,13 +670,13 @@ function SendSetupLinkButton({ profile }: { profile: Profile }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [role, setRole] = useState<AppRole>("runner");
+  const [role, setRole] = useState<AppRole>("driver");
   const [busy, setBusy] = useState(false);
 
   function openDialog() {
     setEmail(profile.real_email ?? "");
     setPhone(profile.phone ?? "");
-    setRole("runner");
+    setRole("driver");
     setOpen(true);
   }
 
@@ -730,7 +728,6 @@ function SendSetupLinkButton({ profile }: { profile: Profile }) {
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
                   <SelectItem value="va">Virtual Assistant</SelectItem>
-                  <SelectItem value="runner">Runner</SelectItem>
                   <SelectItem value="driver">Driver</SelectItem>
                 </SelectContent>
               </Select>
