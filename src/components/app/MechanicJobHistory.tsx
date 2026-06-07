@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import type { MechanicJobRow } from "@/lib/mechanic-jobs.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,8 +83,8 @@ export function MechanicJobHistory({ jobs, onView }: { jobs: MechanicJobRow[]; o
               </TableHeader>
               <TableBody>
                 {groups.map((g) => (
-                  <>
-                    <TableRow key={g.key} className="cursor-pointer" onClick={() => setExpanded((p) => (p === g.key ? null : g.key))}>
+                  <Fragment key={g.key}>
+                    <TableRow className="cursor-pointer" onClick={() => setExpanded((p) => (p === g.key ? null : g.key))}>
                       <TableCell className="text-xs">
                         <div className="font-medium">{g.name}</div>
                         <div className="text-muted-foreground">{g.phone}</div>
@@ -123,7 +123,7 @@ export function MechanicJobHistory({ jobs, onView }: { jobs: MechanicJobRow[]; o
                         </TableCell>
                       </TableRow>
                     ))}
-                  </>
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>
