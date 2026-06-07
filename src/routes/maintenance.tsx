@@ -760,21 +760,37 @@ function MaintenancePage() {
   );
 }
 
-function RepairRow({ m, open, onToggle }: { m: Maintenance; open: boolean; onToggle: () => void }) {
+function RepairRow({ m, open, onToggle, onDelete }: { m: Maintenance; open: boolean; onToggle: () => void; onDelete: () => void }) {
   const v = vehicleById(m.vehicleId);
   const name = v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId;
   const issue = m.issueDescription ?? m.serviceType;
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/40"
-    >
-      {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
-      <span className="min-w-0 flex-1 truncate text-sm">
-        <span className="font-medium">{name}</span>
-        <span className="text-muted-foreground"> — {issue}</span>
-      </span>
-    </button>
+    <div className="flex w-full items-center gap-1 pr-1 hover:bg-muted/40">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left"
+      >
+        {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+        <span className="min-w-0 flex-1 truncate text-sm">
+          <span className="font-medium">{name}</span>
+          <span className="text-muted-foreground"> — {issue}</span>
+        </span>
+      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 shrink-0 text-muted-foreground/60 hover:text-destructive"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Delete repair</TooltipContent>
+      </Tooltip>
+    </div>
   );
 }
