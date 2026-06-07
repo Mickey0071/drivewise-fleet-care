@@ -7,6 +7,16 @@ import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame, RotateCcw,
 import { ReportActions } from "@/components/app/ReportActions";
 
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
+import { SendToMechanicDialog } from "@/components/app/SendToMechanicDialog";
+import { ViewDiagnosisDialog } from "@/components/app/ViewDiagnosisDialog";
+import { MechanicJobHistory } from "@/components/app/MechanicJobHistory";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  listMechanicJobs,
+  resendMechanicJob,
+  cancelMechanicJob,
+  type MechanicJobRow,
+} from "@/lib/mechanic-jobs.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
