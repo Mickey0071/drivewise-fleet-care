@@ -458,6 +458,14 @@ function MaintenancePage() {
                         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setDetailRecord(m)}>
                           Details
                         </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground/60 hover:text-destructive" onClick={() => setDeleteRecord(m)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Delete repair</TooltipContent>
+                        </Tooltip>
                       </div>
                     </li>
                   );
@@ -625,6 +633,9 @@ function MaintenancePage() {
                                 </Button>
                                 <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setDetailRecord(m)}>
                                   View Details
+                                </Button>
+                                <Button size="sm" variant="ghost" className="ml-2 h-7 px-2 text-xs text-muted-foreground/70 hover:text-destructive" onClick={() => setDeleteRecord(m)}>
+                                  <Trash2 className="mr-1 h-3 w-3" /> Delete
                                 </Button>
                               </td>
                             </tr>
