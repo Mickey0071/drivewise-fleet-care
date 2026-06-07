@@ -360,6 +360,11 @@ function ViolationsPage() {
           refresh();
         }}
       />
+      <SubmitDisputeDialog
+        violation={submitFor}
+        onClose={() => setSubmitFor(null)}
+        onDone={refresh}
+      />
     </div>
   );
 }
