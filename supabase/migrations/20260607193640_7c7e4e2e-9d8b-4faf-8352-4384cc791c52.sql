@@ -1,0 +1,11 @@
+ALTER TABLE public.runner_tasks ALTER COLUMN vehicle_id DROP NOT NULL;
+ALTER TABLE public.runner_tasks ALTER COLUMN type SET DEFAULT 'custom';
+ALTER TABLE public.runner_tasks ADD COLUMN IF NOT EXISTS title text;
+ALTER TABLE public.runner_tasks ADD COLUMN IF NOT EXISTS priority text NOT NULL DEFAULT 'medium';
+ALTER TABLE public.runner_tasks ADD COLUMN IF NOT EXISTS location text;
+ALTER TABLE public.runner_tasks ADD COLUMN IF NOT EXISTS scheduled_at timestamp with time zone;
+ALTER TABLE public.runner_tasks ADD COLUMN IF NOT EXISTS instructions text;
+ALTER TABLE public.runner_tasks ADD COLUMN IF NOT EXISTS checklist jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.runner_tasks ADD COLUMN IF NOT EXISTS customer_id text;
+ALTER TABLE public.runner_tasks ADD COLUMN IF NOT EXISTS sent_at timestamp with time zone;
+ALTER TABLE public.runner_tasks ADD COLUMN IF NOT EXISTS submitted_at timestamp with time zone;
