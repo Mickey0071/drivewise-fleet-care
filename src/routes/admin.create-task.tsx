@@ -228,6 +228,24 @@ function CreateTaskPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader><CardTitle className="text-base">Photos</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <label className="flex cursor-pointer items-center gap-3 text-sm">
+            <input type="checkbox" checked={requiresPhotos}
+              onChange={(e) => setRequiresPhotos(e.target.checked)} className="h-4 w-4" />
+            Require the runner to upload photos
+          </label>
+          {requiresPhotos && (
+            <div className="max-w-[200px]">
+              <Label>Photos required</Label>
+              <Input className="mt-1" type="number" min={1} max={20} value={photosCount}
+                onChange={(e) => setPhotosCount(e.target.value)} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end pb-10">
         <Button disabled={sending} onClick={submit} size="lg">
           {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Create & Send Task</>}
