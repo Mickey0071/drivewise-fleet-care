@@ -7,6 +7,16 @@ import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame, RotateCcw,
 import { ReportActions } from "@/components/app/ReportActions";
 
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
+import { SendToMechanicDialog } from "@/components/app/SendToMechanicDialog";
+import { ViewDiagnosisDialog } from "@/components/app/ViewDiagnosisDialog";
+import { MechanicJobHistory } from "@/components/app/MechanicJobHistory";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  listMechanicJobs,
+  resendMechanicJob,
+  cancelMechanicJob,
+  type MechanicJobRow,
+} from "@/lib/mechanic-jobs.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -173,6 +183,44 @@ function MaintenancePage() {
   const phase3 = maintenance.filter(m => m.status === "pending_complete").sort(byNewest);
   const activeCount = phase1.length + phase2.length + phase3.length;
 
+  // --- Mechanic diagnosis jobs ---
+  const loadJobsFn = useServerFn(listMechanicJobs);
+  const resendJobFn = useServerFn(resendMechanicJob);
+  const cancelJobFn = useServerFn(cancelMechanicJob);
+  const [mechanicJobs, setMechanicJobs] = useState<MechanicJobRow[]>([]);
+  const [sendForRecord, setSendForRecord] = useState<Maintenance | null>(null);
+  const [viewJob, setViewJob] = useState<MechanicJobRow | null>(null);
+
+  async function refreshJobs() {
+    try {
+      const r = await loadJobsFn();
+      setMechanicJobs((r.jobs ?? []) as unknown as MechanicJobRow[]);
+    } catch { /* ignore */ }
+  }
+  useEffect(() => { refreshJobs(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  const sentJobByMaint = new Map<string, MechanicJobRow>();
+  const submittedJobByMaint = new Map<string, MechanicJobRow>();
+  for (const j of mechanicJobs) {
+    if (j.status === "sent" && !sentJobByMaint.has(j.maintenance_id)) sentJobByMaint.set(j.maintenance_id, j);
+    if (j.status === "submitted" && !submittedJobByMaint.has(j.maintenance_id)) submittedJobByMaint.set(j.maintenance_id, j);
+  }
+
+  async function handleResendJob(j: MechanicJobRow) {
+    const v = vehicleById(j.vehicle_id ?? "");
+    try {
+      await resendJobFn({ data: { id: j.id, vehicleLabel: v ? `${v.year} ${v.make} ${v.model}` : "", plate: v?.plate } });
+      toast.success("Link resent to mechanic");
+    } catch (e: any) { toast.error(e?.message || "Failed to resend"); }
+  }
+  async function handleCancelJob(j: MechanicJobRow) {
+    try {
+      await cancelJobFn({ data: { id: j.id } });
+      toast.success("Request cancelled");
+      refreshJobs();
+    } catch (e: any) { toast.error(e?.message || "Failed to cancel"); }
+  }
+
   const monthKey = new Date().toISOString().slice(0, 7);
   const completedThisMonth = completedRepairs.filter(
     m => (m.completionDate ?? m.dateCompleted ?? "").slice(0, 7) === monthKey,
@@ -266,6 +314,21 @@ function MaintenancePage() {
                               </Badge>
                               <span className="text-[10px] text-muted-foreground">{fmtDate((m.createdAt ?? "").slice(0, 10))}</span>
                             </div>
+                            {sentJobByMaint.has(m.id) ? (
+                              <div className="space-y-2 rounded-md border border-dashed bg-muted/30 p-2">
+                                <Badge variant="secondary" className="text-[10px]">
+                                  📤 Sent to {sentJobByMaint.get(m.id)!.mechanic_name} · {fmtDate((sentJobByMaint.get(m.id)!.sent_at ?? "").slice(0, 10))}
+                                </Badge>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => handleResendJob(sentJobByMaint.get(m.id)!)}>Resend Link</Button>
+                                  <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => handleCancelJob(sentJobByMaint.get(m.id)!)}>Cancel Request</Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button size="sm" variant="outline" className="w-full" onClick={() => setSendForRecord(m)}>
+                                Send Diagnosis to Mechanic
+                              </Button>
+                            )}
                             <Button size="sm" className="w-full" onClick={() => moveRepairToDiagnose(m.id)}>
                               Move to Diagnose →
                             </Button>
@@ -311,6 +374,16 @@ function MaintenancePage() {
                         <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
+                      {submittedJobByMaint.has(m.id) && (
+                        <div className="flex items-center justify-between rounded-md border bg-blue-500/5 px-2 py-1.5">
+                          <span className="text-[11px] text-muted-foreground">
+                            📋 Submitted by {submittedJobByMaint.get(m.id)!.mechanic_name} · {fmtDate((submittedJobByMaint.get(m.id)!.submitted_at ?? "").slice(0, 10))}
+                          </span>
+                          <Button size="sm" variant="link" className="h-auto p-0 text-[11px]" onClick={() => setViewJob(submittedJobByMaint.get(m.id)!)}>
+                            View Full Diagnosis
+                          </Button>
+                        </div>
+                      )}
                       <div>
                         <Label className="text-[11px]">Parts needed</Label>
                         <Textarea
@@ -510,6 +583,7 @@ function MaintenancePage() {
           <TabsList>
             <TabsTrigger value="scheduled">Scheduled ({dueSoon.length})</TabsTrigger>
             <TabsTrigger value="completed">Completed ({completedRepairs.length})</TabsTrigger>
+            <TabsTrigger value="mechanics">Mechanic Jobs ({mechanicJobs.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="scheduled" className="mt-4">
@@ -679,6 +753,10 @@ function MaintenancePage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="mechanics" className="mt-4">
+            <MechanicJobHistory jobs={mechanicJobs} onView={(j) => setViewJob(j)} />
+          </TabsContent>
         </Tabs>
       </section>
 
@@ -687,6 +765,25 @@ function MaintenancePage() {
         open={!!detailRecord}
         onOpenChange={(v) => { if (!v) setDetailRecord(null); }}
       />
+
+      {sendForRecord && (() => {
+        const v = vehicleById(sendForRecord.vehicleId);
+        return (
+          <SendToMechanicDialog
+            open={!!sendForRecord}
+            onOpenChange={(o) => { if (!o) setSendForRecord(null); }}
+            maintenanceId={sendForRecord.id}
+            vehicleId={sendForRecord.vehicleId}
+            vehicleLabel={v ? `${v.year} ${v.make} ${v.model}` : ""}
+            plate={v?.plate}
+            issue={sendForRecord.issueDescription ?? sendForRecord.serviceType ?? ""}
+            adminName={adminName}
+            onSent={refreshJobs}
+          />
+        );
+      })()}
+
+      <ViewDiagnosisDialog job={viewJob} onClose={() => setViewJob(null)} />
 
       <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateTakeOffRental(true); } }}>
         <DialogContent className="sm:max-w-md">
