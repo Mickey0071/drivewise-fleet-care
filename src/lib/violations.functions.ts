@@ -740,3 +740,273 @@ export const sendViolationReminders = createServerFn({ method: "POST" })
     }
     return { ok: true as const, sent };
   });
+
+const VIOLATION_ADMIN_PHONE = "267-221-3977";
+const AUTHORITIES = ["EZPass", "NJ DMV", "NY DMV", "Other"];
+const SUBMIT_METHODS = ["Email", "Mail", "Online Portal"];
+
+/** Admin: full detail for the View & Submit dialog (customer info, affidavit, license, pre-built email). */
+export const getViolationSubmissionDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input.id) throw new Error("id required");
+    return { id: input.id };
+  })
+  .handler(async ({ data }) => {
+    const { data: v, error } = await (supabaseAdmin as any)
+      .from("violations")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error || !v) throw new Error("Violation not found");
+
+    const [{ data: driver }, { data: vehicle }, { data: rental }] = await Promise.all([
+      v.driver_id
+        ? (supabaseAdmin as any)
+            .from("drivers")
+            .select(
+              "full_name, first_name, last_name, phone, email, license_number, dl_state, address, street_address, city, state, zip_code, license_image_url",
+            )
+            .eq("id", v.driver_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      v.vehicle_id
+        ? (supabaseAdmin as any)
+            .from("vehicles")
+            .select("year, make, model, vin, plate")
+            .eq("id", v.vehicle_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      v.rental_id
+        ? (supabaseAdmin as any)
+            .from("rentals")
+            .select("id, start_date, end_date")
+            .eq("id", v.rental_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    // Fresh signed URL for the license image (private bucket) if it is a storage path.
+    let licenseUrl: string | null = driver?.license_image_url ?? null;
+
+    const amt = `$${Number(v.total_amount || v.amount || 0).toFixed(2)}`;
+    const vehLabel = vehicle
+      ? `${vehicle.year ?? ""} ${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim()
+      : "—";
+    const addrParts = [
+      driver?.street_address || driver?.address,
+      [driver?.city, driver?.state, driver?.zip_code].filter(Boolean).join(", "),
+    ].filter(Boolean);
+
+    const emailBody = [
+      `To Whom It May Concern,`,
+      ``,
+      `Camauto Rentals LLC is submitting a signed Liability Transfer Affidavit for the toll/violation referenced below. The vehicle was under a rental agreement at the time of the violation and the responsible operator has accepted liability in writing.`,
+      ``,
+      `VIOLATION DETAILS`,
+      `  Violation ID:      ${v.id}`,
+      `  Date of Violation: ${v.date_issued ?? "—"}`,
+      `  Amount:            ${amt}`,
+      `  License Plate:     ${v.license_plate || vehicle?.plate || "—"}`,
+      `  Vehicle:           ${vehLabel}`,
+      `  VIN:               ${vehicle?.vin || "—"}`,
+      ``,
+      `RESPONSIBLE OPERATOR`,
+      `  Name:              ${driver?.full_name || "—"}`,
+      `  Driver's License:  ${driver?.license_number || "—"}${driver?.dl_state ? ` (${driver.dl_state})` : ""}`,
+      `  Address:           ${addrParts.join(" ") || "—"}`,
+      `  Phone:             ${driver?.phone || "—"}`,
+      `  Email:             ${driver?.email || "—"}`,
+      `  Affidavit Signed:  ${v.signed_at ? new Date(v.signed_at).toLocaleString() : "—"}`,
+      ``,
+      `Attached to this email:`,
+      `  1. Signed Liability Transfer Affidavit (PDF)`,
+      `  2. Copy of the operator's driver's license`,
+      ``,
+      `Please transfer liability for this violation to the operator named above. Contact us at 866-625-5550 if any additional information is required.`,
+      ``,
+      `Sincerely,`,
+      `Camauto Rentals LLC`,
+    ].join("\n");
+
+    return {
+      id: v.id as string,
+      status: v.status as string,
+      amount: Number(v.total_amount || v.amount || 0),
+      dateIssued: (v.date_issued as string) ?? null,
+      plate: (v.license_plate as string) || (vehicle?.plate as string) || null,
+      vehicleLabel: vehLabel,
+      vin: (vehicle?.vin as string) ?? null,
+      signedAt: (v.signed_at as string) ?? null,
+      signedName: (v.signed_name as string) ?? null,
+      signedPdfUrl: (v.signed_pdf_url as string) ?? null,
+      licenseUrl,
+      driver: driver
+        ? {
+            fullName: driver.full_name ?? null,
+            phone: driver.phone ?? null,
+            email: driver.email ?? null,
+            licenseNumber: driver.license_number ?? null,
+            dlState: driver.dl_state ?? null,
+            address: addrParts.join(" ") || null,
+          }
+        : null,
+      rental: rental ? { id: rental.id, start: rental.start_date, end: rental.end_date } : null,
+      submittedTo: (v.submitted_to as string) ?? null,
+      submissionMethod: (v.submission_method as string) ?? null,
+      confirmationNumber: (v.confirmation_number as string) ?? null,
+      submittedAt: (v.submitted_to_authority_at as string) ?? null,
+      resolvedAt: (v.resolved_at as string) ?? null,
+      resolutionReason: (v.resolution_reason as string) ?? null,
+      resolutionNotes: (v.resolution_notes as string) ?? null,
+      emailSubject: `Liability Transfer Affidavit — Violation ${v.id} — Camauto Rentals`,
+      emailBody,
+    };
+  });
+
+/** Admin: record that a signed affidavit was submitted to the authority. */
+export const submitViolationToAuthority = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    id: string;
+    authority: string;
+    method: string;
+    confirmationNumber?: string;
+    notes?: string;
+  }) => {
+    if (!input.id) throw new Error("id required");
+    const authority = (input.authority || "").trim();
+    if (!AUTHORITIES.includes(authority)) throw new Error("Invalid authority");
+    const method = (input.method || "").trim();
+    if (!SUBMIT_METHODS.includes(method)) throw new Error("Invalid submission method");
+    return {
+      id: input.id,
+      authority,
+      method,
+      confirmationNumber: (input.confirmationNumber || "").slice(0, 120) || null,
+      notes: (input.notes || "").slice(0, 1000) || null,
+    };
+  })
+  .handler(async ({ data, context }) => {
+    const { data: current } = await (supabaseAdmin as any)
+      .from("violations")
+      .select("status, total_amount, amount, driver_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!current) throw new Error("Violation not found");
+    const now = new Date().toISOString();
+
+    const { error } = await (supabaseAdmin as any)
+      .from("violations")
+      .update({
+        status: "submitted_to_authority",
+        submitted_to_authority_at: now,
+        submitted_to: data.authority,
+        submission_method: data.method,
+        confirmation_number: data.confirmationNumber,
+        updated_at: now,
+      } as never)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+
+    let changedByName: string | null = null;
+    if (context.userId) {
+      const { data: profile } = await (supabaseAdmin as any)
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", context.userId)
+        .maybeSingle();
+      changedByName = profile?.full_name || profile?.email || null;
+    }
+
+    await (supabaseAdmin as any).from("violation_status_history").insert({
+      violation_id: data.id,
+      from_status: current.status ?? null,
+      to_status: "submitted_to_authority",
+      reason: `Submitted to ${data.authority} via ${data.method}${data.confirmationNumber ? ` (conf# ${data.confirmationNumber})` : ""}${data.notes ? ` — ${data.notes}` : ""}`,
+      changed_by: context.userId ?? null,
+      changed_by_name: changedByName,
+    } as never);
+
+    let customerName = "Customer";
+    if (current.driver_id) {
+      const { data: d } = await (supabaseAdmin as any)
+        .from("drivers")
+        .select("full_name")
+        .eq("id", current.driver_id)
+        .maybeSingle();
+      customerName = d?.full_name || customerName;
+    }
+    const amt = `$${Number(current.total_amount || current.amount || 0).toFixed(2)}`;
+    try {
+      await notifyRenter({
+        phone: VIOLATION_ADMIN_PHONE,
+        email: null,
+        name: "Admin",
+        sms: `✓ Violation submitted to ${data.authority}: ${customerName} ${amt}`,
+        emailSubject: "Violation submitted to authority",
+        emailHeading: "Violation submitted",
+        emailIntro: `Violation ${data.id} was submitted to ${data.authority}.`,
+      });
+    } catch (e) {
+      console.error("[submitViolationToAuthority] admin notify failed", e);
+    }
+
+    return { ok: true as const };
+  });
+
+/** Admin: final closure of a violation. */
+export const markViolationResolved = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; reason: string; notes?: string }) => {
+    if (!input.id) throw new Error("id required");
+    const reason = (input.reason || "").trim();
+    if (!reason) throw new Error("Resolution reason required");
+    return {
+      id: input.id,
+      reason: reason.slice(0, 300),
+      notes: (input.notes || "").slice(0, 1000) || null,
+    };
+  })
+  .handler(async ({ data, context }) => {
+    const { data: current } = await (supabaseAdmin as any)
+      .from("violations")
+      .select("status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!current) throw new Error("Violation not found");
+    const now = new Date().toISOString();
+
+    const { error } = await (supabaseAdmin as any)
+      .from("violations")
+      .update({
+        status: "resolved",
+        resolved_at: now,
+        resolution_reason: data.reason,
+        resolution_notes: data.notes,
+        updated_at: now,
+      } as never)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+
+    let changedByName: string | null = null;
+    if (context.userId) {
+      const { data: profile } = await (supabaseAdmin as any)
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", context.userId)
+        .maybeSingle();
+      changedByName = profile?.full_name || profile?.email || null;
+    }
+
+    await (supabaseAdmin as any).from("violation_status_history").insert({
+      violation_id: data.id,
+      from_status: current.status ?? null,
+      to_status: "resolved",
+      reason: `${data.reason}${data.notes ? ` — ${data.notes}` : ""}`,
+      changed_by: context.userId ?? null,
+      changed_by_name: changedByName,
+    } as never);
+
+    return { ok: true as const };
+  });
