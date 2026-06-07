@@ -90,7 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const roles = data.map(r => r.role as AppRole);
     if (roles.includes("admin")) setRole("admin");
-    else if (roles.includes("runner")) setRole("runner");
     else if (roles.includes("va")) setRole("va");
     else if (roles.includes("driver")) setRole("driver");
     else setRole(null);
