@@ -44,7 +44,6 @@ import { Route as ViolationTokenRouteImport } from './routes/violation.$token'
 import { Route as VerifyPaymentRentalIdRouteImport } from './routes/verify-payment.$rentalId'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as SetupTokenRouteImport } from './routes/setup.$token'
-import { Route as RunnerDashboardRouteImport } from './routes/runner.dashboard'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as PortalSignupRentalIdRouteImport } from './routes/portal-signup.$rentalId'
@@ -63,7 +62,6 @@ import { Route as AdminNotificationsRouteImport } from './routes/admin.notificat
 import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as ViolationTokenAffidavitRouteImport } from './routes/violation.$token_.affidavit'
-import { Route as RunnerTaskTaskIdRouteImport } from './routes/runner.task.$taskId'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
@@ -248,11 +246,6 @@ const SetupTokenRoute = SetupTokenRouteImport.update({
   path: '/setup/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RunnerDashboardRoute = RunnerDashboardRouteImport.update({
-  id: '/runner/dashboard',
-  path: '/runner/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RentPaidRoute = RentPaidRouteImport.update({
   id: '/rent/paid',
   path: '/rent/paid',
@@ -341,11 +334,6 @@ const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
 const ViolationTokenAffidavitRoute = ViolationTokenAffidavitRouteImport.update({
   id: '/violation/$token_/affidavit',
   path: '/violation/$token/affidavit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RunnerTaskTaskIdRoute = RunnerTaskTaskIdRouteImport.update({
-  id: '/runner/task/$taskId',
-  path: '/runner/task/$taskId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RentPortalRentalIdRoute = RentPortalRentalIdRouteImport.update({
@@ -442,7 +430,6 @@ export interface FileRoutesByFullPath {
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
-  '/runner/dashboard': typeof RunnerDashboardRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -451,7 +438,6 @@ export interface FileRoutesByFullPath {
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
-  '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
   '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
@@ -507,7 +493,6 @@ export interface FileRoutesByTo {
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
-  '/runner/dashboard': typeof RunnerDashboardRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -516,7 +501,6 @@ export interface FileRoutesByTo {
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
-  '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
   '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
@@ -573,7 +557,6 @@ export interface FileRoutesById {
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
-  '/runner/dashboard': typeof RunnerDashboardRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -582,7 +565,6 @@ export interface FileRoutesById {
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
-  '/runner/task/$taskId': typeof RunnerTaskTaskIdRoute
   '/violation/$token_/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
@@ -640,7 +622,6 @@ export interface FileRouteTypes {
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
-    | '/runner/dashboard'
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
@@ -649,7 +630,6 @@ export interface FileRouteTypes {
     | '/work-order/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
-    | '/runner/task/$taskId'
     | '/violation/$token/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
@@ -705,7 +685,6 @@ export interface FileRouteTypes {
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
-    | '/runner/dashboard'
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
@@ -714,7 +693,6 @@ export interface FileRouteTypes {
     | '/work-order/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
-    | '/runner/task/$taskId'
     | '/violation/$token/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
@@ -770,7 +748,6 @@ export interface FileRouteTypes {
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
-    | '/runner/dashboard'
     | '/setup/$token'
     | '/sign/$token'
     | '/verify-payment/$rentalId'
@@ -779,7 +756,6 @@ export interface FileRouteTypes {
     | '/work-order/$token'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
-    | '/runner/task/$taskId'
     | '/violation/$token_/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
@@ -829,7 +805,6 @@ export interface RootRouteChildren {
   PortalSignupRentalIdRoute: typeof PortalSignupRentalIdRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
-  RunnerDashboardRoute: typeof RunnerDashboardRoute
   SetupTokenRoute: typeof SetupTokenRoute
   SignTokenRoute: typeof SignTokenRoute
   VerifyPaymentRentalIdRoute: typeof VerifyPaymentRentalIdRoute
@@ -838,7 +813,6 @@ export interface RootRouteChildren {
   WorkOrderTokenRoute: typeof WorkOrderTokenRoute
   InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
-  RunnerTaskTaskIdRoute: typeof RunnerTaskTaskIdRoute
   ViolationTokenAffidavitRoute: typeof ViolationTokenAffidavitRoute
   ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
@@ -1095,13 +1069,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SetupTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/runner/dashboard': {
-      id: '/runner/dashboard'
-      path: '/runner/dashboard'
-      fullPath: '/runner/dashboard'
-      preLoaderRoute: typeof RunnerDashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/rent/paid': {
       id: '/rent/paid'
       path: '/rent/paid'
@@ -1226,13 +1193,6 @@ declare module '@tanstack/react-router' {
       path: '/violation/$token/affidavit'
       fullPath: '/violation/$token/affidavit'
       preLoaderRoute: typeof ViolationTokenAffidavitRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/runner/task/$taskId': {
-      id: '/runner/task/$taskId'
-      path: '/runner/task/$taskId'
-      fullPath: '/runner/task/$taskId'
-      preLoaderRoute: typeof RunnerTaskTaskIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rent/portal/$rentalId': {
@@ -1376,7 +1336,6 @@ const rootRouteChildren: RootRouteChildren = {
   PortalSignupRentalIdRoute: PortalSignupRentalIdRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
-  RunnerDashboardRoute: RunnerDashboardRoute,
   SetupTokenRoute: SetupTokenRoute,
   SignTokenRoute: SignTokenRoute,
   VerifyPaymentRentalIdRoute: VerifyPaymentRentalIdRoute,
@@ -1385,7 +1344,6 @@ const rootRouteChildren: RootRouteChildren = {
   WorkOrderTokenRoute: WorkOrderTokenRoute,
   InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
-  RunnerTaskTaskIdRoute: RunnerTaskTaskIdRoute,
   ViolationTokenAffidavitRoute: ViolationTokenAffidavitRoute,
   ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
@@ -1397,3 +1355,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
