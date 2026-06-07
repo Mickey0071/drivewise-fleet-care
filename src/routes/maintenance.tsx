@@ -225,18 +225,22 @@ function MaintenancePage() {
           <Flame className="h-5 w-5 text-amber-500" />
           Active Repairs ({activeCount})
         </h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="space-y-3">
           {/* Phase 1 — State Issue */}
           <Card className="border-yellow-500/40">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-yellow-600">
-                  <span className="inline-block h-2 w-2 rounded-full bg-yellow-500" />
-                  Phase 1 · State Issue
-                </span>
-                <span className="text-xs font-normal text-muted-foreground">{phase1.length}</span>
-              </CardTitle>
-            </CardHeader>
+            <button type="button" onClick={() => togglePhase("p1")} className="w-full text-left">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-yellow-600">
+                    {openPhases["p1"] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <span className="inline-block h-2 w-2 rounded-full bg-yellow-500" />
+                    Phase 1 · State Issue
+                  </span>
+                  <span className="rounded-full bg-yellow-500/15 px-2 py-0.5 text-xs font-medium text-yellow-600">{phase1.length}</span>
+                </CardTitle>
+              </CardHeader>
+            </button>
+            {openPhases["p1"] && (
             <CardContent className="p-0 pb-2">
               {phase1.length === 0 ? (
                 <p className="px-4 py-2 text-xs text-muted-foreground">Nothing here.</p>
@@ -272,19 +276,24 @@ function MaintenancePage() {
                 </ul>
               )}
             </CardContent>
+            )}
           </Card>
 
           {/* Phase 2 — Diagnose */}
           <Card className="border-blue-500/40">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-blue-600">
-                  <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
-                  Phase 2 · Diagnose
-                </span>
-                <span className="text-xs font-normal text-muted-foreground">{phase2.length}</span>
-              </CardTitle>
-            </CardHeader>
+            <button type="button" onClick={() => togglePhase("p2")} className="w-full text-left">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-blue-600">
+                    {openPhases["p2"] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
+                    Phase 2 · Diagnose
+                  </span>
+                  <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-600">{phase2.length}</span>
+                </CardTitle>
+              </CardHeader>
+            </button>
+            {openPhases["p2"] && (
             <CardContent className="p-0 pb-2">
               {phase2.length === 0 ? (
                 <p className="px-4 py-2 text-xs text-muted-foreground">Nothing here.</p>
@@ -336,19 +345,24 @@ function MaintenancePage() {
                 </ul>
               )}
             </CardContent>
+            )}
           </Card>
 
           {/* Phase 3 — Complete */}
           <Card className="border-green-600/40">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-green-600">
-                  <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-                  Phase 3 · Complete
-                </span>
-                <span className="text-xs font-normal text-muted-foreground">{phase3.length}</span>
-              </CardTitle>
-            </CardHeader>
+            <button type="button" onClick={() => togglePhase("p3")} className="w-full text-left">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2 text-green-600">
+                    {openPhases["p3"] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+                    Phase 3 · Complete
+                  </span>
+                  <span className="rounded-full bg-green-600/15 px-2 py-0.5 text-xs font-medium text-green-600">{phase3.length}</span>
+                </CardTitle>
+              </CardHeader>
+            </button>
+            {openPhases["p3"] && (
             <CardContent className="p-0 pb-2">
               {phase3.length === 0 ? (
                 <p className="px-4 py-2 text-xs text-muted-foreground">Nothing here.</p>
@@ -396,6 +410,7 @@ function MaintenancePage() {
                 </ul>
               )}
             </CardContent>
+            )}
           </Card>
         </div>
       </section>
