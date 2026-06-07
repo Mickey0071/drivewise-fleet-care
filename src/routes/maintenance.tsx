@@ -314,6 +314,21 @@ function MaintenancePage() {
                               </Badge>
                               <span className="text-[10px] text-muted-foreground">{fmtDate((m.createdAt ?? "").slice(0, 10))}</span>
                             </div>
+                            {sentJobByMaint.has(m.id) ? (
+                              <div className="space-y-2 rounded-md border border-dashed bg-muted/30 p-2">
+                                <Badge variant="secondary" className="text-[10px]">
+                                  📤 Sent to {sentJobByMaint.get(m.id)!.mechanic_name} · {fmtDate((sentJobByMaint.get(m.id)!.sent_at ?? "").slice(0, 10))}
+                                </Badge>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => handleResendJob(sentJobByMaint.get(m.id)!)}>Resend Link</Button>
+                                  <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => handleCancelJob(sentJobByMaint.get(m.id)!)}>Cancel Request</Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button size="sm" variant="outline" className="w-full" onClick={() => setSendForRecord(m)}>
+                                Send Diagnosis to Mechanic
+                              </Button>
+                            )}
                             <Button size="sm" className="w-full" onClick={() => moveRepairToDiagnose(m.id)}>
                               Move to Diagnose →
                             </Button>
