@@ -23,7 +23,7 @@ function LoginPage() {
 
   useEffect(() => {
     if (loading || roleLoading || !session || !role) return;
-    nav({ to: role === "admin" ? "/" : "/checklist" });
+    nav({ to: role === "driver" ? "/my-rentals" : "/" });
   }, [loading, roleLoading, session, role, nav]);
 
   async function handleSignIn(e: React.FormEvent) {
