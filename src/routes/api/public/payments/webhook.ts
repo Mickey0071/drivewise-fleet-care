@@ -1180,6 +1180,10 @@ async function handleWebhook(req: Request, env: StripeEnv) {
     case "payment_intent.succeeded":
       await handlePaymentIntentSucceeded(event.data.object, env);
       break;
+    case "charge.refunded":
+    case "refund.created":
+      await handleChargeRefunded(event.data.object, env);
+      break;
     case "customer.subscription.created":
       await handleSubscriptionCreated(event.data.object, env);
       break;
