@@ -158,7 +158,7 @@ export function SendToMechanicDialog({
           <div className="rounded-md border p-3">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium">Include checklist for mechanic?</Label>
-              <Switch checked={includeChecklist} onCheckedChange={setIncludeChecklist} />
+              <Switch checked={includeChecklist} onCheckedChange={(v) => { setIncludeChecklist(v); if (!v) setChecklistError(""); }} />
             </div>
             {includeChecklist ? (
               <div className="mt-3 space-y-3">
