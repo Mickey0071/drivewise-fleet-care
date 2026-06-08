@@ -780,7 +780,7 @@ export const getViolationSubmissionDetail = createServerFn({ method: "GET" })
       v.rental_id
         ? (supabaseAdmin as any)
             .from("rentals")
-            .select("id, start_date, end_date")
+            .select("id, start_date, end_date, agreement_pdf_url")
             .eq("id", v.rental_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
@@ -841,6 +841,8 @@ export const getViolationSubmissionDetail = createServerFn({ method: "GET" })
       signedName: (v.signed_name as string) ?? null,
       signedPdfUrl: (v.signed_pdf_url as string) ?? null,
       licenseUrl,
+      agreementUrl: (rental?.agreement_pdf_url as string) ?? null,
+      viewedAt: (v.viewed_at as string) ?? null,
       driver: driver
         ? {
             fullName: driver.full_name ?? null,
