@@ -257,7 +257,7 @@ async function buildDatasets(period: string): Promise<{ data: Dataset; stats: Ba
     headers: ["ID", "Name", "Phone", "Email", "Address", "License #", "State", "Expiry", "Total Rentals", "Lifetime Value"],
     rows: (drivers ?? []).map((d) => [
       d.id, d.full_name ?? "—", d.phone ?? "—", d.email ?? "—",
-      d.address ?? [d.street_address, d.city, d.state, d.zip_code].filter(Boolean).join(", ") || "—",
+      d.address ?? ([d.street_address, d.city, d.state, d.zip_code].filter(Boolean).join(", ") || "—"),
       d.license_number ?? "—", d.dl_state ?? "—", d.license_expiry ?? "—",
       rentalsByDriver.get(d.id) ?? 0, money(ltvByDriver.get(d.id) ?? 0),
     ]),
