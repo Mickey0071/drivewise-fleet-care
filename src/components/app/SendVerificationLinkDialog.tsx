@@ -106,10 +106,17 @@ export function SendVerificationLinkDialog({
               id="vl-phone"
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => {
+                setPhone(toE164(e.target.value));
+                if (phoneError) setPhoneError(null);
+              }}
               placeholder="(267) 555-1234"
+              className={phoneError ? "border-destructive focus-visible:ring-destructive" : ""}
             />
-            {phoneSource && (
+            {phoneError && (
+              <p className="text-xs text-destructive">{phoneError}</p>
+            )}
+            {phoneSource && !phoneError && (
               <p className="text-xs text-muted-foreground">{phoneSource}</p>
             )}
           </div>
