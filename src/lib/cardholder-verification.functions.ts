@@ -506,3 +506,31 @@ export const listVerificationAlerts = createServerFn({ method: "GET" })
     const refusedCount = items.filter((i) => i.verification_status === "refused").length;
     return { items, pendingCount, refusedCount };
   });
+
+/** Admin: fetch the verification audit timeline for a single rental. */
+export const getVerificationAudit = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { rentalId: string }) => {
+    if (!input?.rentalId || typeof input.rentalId !== "string") throw new Error("rentalId required");
+    return { rentalId: input.rentalId.slice(0, 64) };
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { data: rental } = await supabaseAdmin
+      .from("rentals")
+      .select(
+        "verification_events, verification_link_sent_at, verification_resend_count, verification_reviewed_at, cardholder_verified_at",
+      )
+      .eq("id", data.rentalId)
+      .maybeSingle();
+    const events = Array.isArray((rental as any)?.verification_events)
+      ? ((rental as any).verification_events as VerificationEvent[])
+      : [];
+    return {
+      events,
+      linkSentAt: (rental as any)?.verification_link_sent_at ?? null,
+      resendCount: Number((rental as any)?.verification_resend_count) || 0,
+      reviewedAt: (rental as any)?.verification_reviewed_at ?? null,
+      submittedAt: (rental as any)?.cardholder_verified_at ?? null,
+    };
+  });
