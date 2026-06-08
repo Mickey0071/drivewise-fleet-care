@@ -875,6 +875,15 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
           name_match_score: score || null,
           name_mismatch_flag: decision?.alert === true,
           ...(decision?.alert === true ? { verification_status: "pending" } : {}),
+          ...(decision?.alert === true
+            ? {
+                verification_events: [
+                  { type: "mismatch_detected", at: new Date().toISOString() },
+                  { type: "admin_alert_sent", at: new Date().toISOString() },
+                  { type: "initial_sms_sent", at: new Date().toISOString() },
+                ],
+              }
+            : {}),
           updated_at: new Date().toISOString(),
         })
         .eq("id", rental.id);
