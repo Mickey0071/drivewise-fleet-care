@@ -409,6 +409,11 @@ function MaintenancePage() {
                           onChange={(e) => setDiag(m.id, { partsNeeded: e.target.value })}
                         />
                       </div>
+                      <div>
+                        <Label className="text-[11px]">Mileage</Label>
+                        <Input className="mt-1 h-8" type="number" min="0" step="1"
+                          value={d.mileage} onChange={(e) => setDiag(m.id, { mileage: e.target.value })} />
+                      </div>
                       <div className="flex gap-2">
                         <div className="flex-1">
                           <Label className="text-[11px]">Parts $</Label>
