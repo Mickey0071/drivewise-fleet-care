@@ -52,7 +52,7 @@ function BackupsPage() {
     queryFn: () => fetchBackups(),
   });
 
-  const backups = (data?.backups ?? []) as BackupRow[];
+  const backups = (data?.backups ?? []) as unknown as BackupRow[];
 
   const years = useMemo(() => {
     const set = new Set(backups.map((b) => b.period_month.slice(0, 4)));
@@ -83,7 +83,7 @@ function BackupsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Monthly Backups" description="Download monthly business data backups" />
+      <PageHeader title="Monthly Backups" subtitle="Download monthly business data backups" />
 
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">

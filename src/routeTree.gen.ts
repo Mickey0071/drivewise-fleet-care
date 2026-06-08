@@ -65,6 +65,7 @@ import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
+import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
 import { Route as ViolationTokenAffidavitRouteImport } from './routes/violation.$token_.affidavit'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
@@ -358,6 +359,11 @@ const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
   path: '/admin/create-task',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminBackupsRoute = AdminBackupsRouteImport.update({
+  id: '/admin/backups',
+  path: '/admin/backups',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ViolationTokenAffidavitRoute = ViolationTokenAffidavitRouteImport.update({
   id: '/violation/$token_/affidavit',
   path: '/violation/$token/affidavit',
@@ -457,6 +463,7 @@ export interface FileRoutesByFullPath {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -527,6 +534,7 @@ export interface FileRoutesByTo {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -598,6 +606,7 @@ export interface FileRoutesById {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -670,6 +679,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/admin/backups'
     | '/admin/create-task'
     | '/admin/extensions'
     | '/admin/notifications'
@@ -740,6 +750,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/admin/backups'
     | '/admin/create-task'
     | '/admin/extensions'
     | '/admin/notifications'
@@ -810,6 +821,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/admin/backups'
     | '/admin/create-task'
     | '/admin/extensions'
     | '/admin/notifications'
@@ -881,6 +893,7 @@ export interface RootRouteChildren {
   SmsLogRoute: typeof SmsLogRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
+  AdminBackupsRoute: typeof AdminBackupsRoute
   AdminCreateTaskRoute: typeof AdminCreateTaskRoute
   AdminExtensionsRoute: typeof AdminExtensionsRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
@@ -1310,6 +1323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCreateTaskRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/backups': {
+      id: '/admin/backups'
+      path: '/admin/backups'
+      fullPath: '/admin/backups'
+      preLoaderRoute: typeof AdminBackupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/violation/$token_/affidavit': {
       id: '/violation/$token_/affidavit'
       path: '/violation/$token/affidavit'
@@ -1468,6 +1488,7 @@ const rootRouteChildren: RootRouteChildren = {
   SmsLogRoute: SmsLogRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
+  AdminBackupsRoute: AdminBackupsRoute,
   AdminCreateTaskRoute: AdminCreateTaskRoute,
   AdminExtensionsRoute: AdminExtensionsRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
