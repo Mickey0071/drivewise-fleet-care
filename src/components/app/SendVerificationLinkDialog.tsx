@@ -78,12 +78,12 @@ export function SendVerificationLinkDialog({
       await sendFn({
         data: {
           rentalId,
-          phone: phone.trim(),
+          phone: normalized,
           name: name.trim() || undefined,
           message: message.trim() || undefined,
         },
       });
-      toast.success(`✓ Verification link sent to ${phone.trim()}`);
+      toast.success(`✓ Verification link sent to ${normalized}`);
       onSent?.();
       onOpenChange(false);
     } catch (e) {
