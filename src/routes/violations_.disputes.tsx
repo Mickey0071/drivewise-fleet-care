@@ -19,7 +19,7 @@ export const Route = createFileRoute("/violations_/disputes")({
 
 const fmtMoney = (n: number) => `$${Number(n || 0).toFixed(2)}`;
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "—");
-const fmtDateTime = (s: string | null) => (s ? new Date(s).toLocaleString() : "—");
+const fmtDateTime = (s: string | null | undefined) => (s ? new Date(s).toLocaleString() : "—");
 
 type Filter = "all" | "awaiting" | "submitted" | "resolved";
 
