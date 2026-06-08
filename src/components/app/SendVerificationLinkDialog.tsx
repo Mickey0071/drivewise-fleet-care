@@ -43,7 +43,7 @@ export function SendVerificationLinkDialog({
 
   useEffect(() => {
     if (!open) return;
-    const p = defaultPhone?.trim() || driverPhone?.trim() || "";
+    const p = toE164(defaultPhone?.trim() || driverPhone?.trim() || "");
     const n = defaultName?.trim() || driverName?.trim() || "";
     setPhone(p);
     setName(n);
