@@ -23,7 +23,7 @@ export const listMyRentals = createServerFn({ method: "POST" })
     const { data: rs, error } = await supabaseAdmin
       .from("rentals")
       .select(
-        "id, vehicle_id, start_date, end_date, returned_at, reservation_status, billing_period, rate, weekly_rate, final_charge_amount",
+        "id, vehicle_id, start_date, end_date, returned_at, reservation_status, billing_period, rate, weekly_rate, final_charge_amount, name_mismatch_flag, verification_status",
       )
       .eq("driver_id", driverId)
       .order("start_date", { ascending: false });
