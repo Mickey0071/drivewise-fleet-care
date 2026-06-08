@@ -910,7 +910,12 @@ function RentalsPage() {
               <RentalCardTabs rental={r} />
             )}
             {r.nameMismatchFlag && (
-              <RentalVerificationPanel rental={r} isAdmin={role === "admin"} />
+              <RentalVerificationPanel
+                rental={r}
+                isAdmin={role === "admin"}
+                driverPhone={driverById(r.driverId)?.phone}
+                driverName={driverById(r.driverId)?.fullName}
+              />
             )}
           </div>
         </div>
