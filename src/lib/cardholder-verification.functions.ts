@@ -2,10 +2,21 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { createStripeClient } from "@/lib/stripe.server";
 
 const ADMIN_ALERT_PHONE = "267-221-3977";
 
 const RELATIONSHIPS = ["Parent", "Spouse", "Friend", "Employer", "Self", "Other"] as const;
+
+async function assertAdmin(userId: string) {
+  const { data: roles } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+  const isAdmin = (roles ?? []).some((r: any) => r.role === "admin");
+  if (!isAdmin) throw new Error("Only admins can manage cardholder verifications");
+}
 
 function dataUrlToBuffer(dataUrl: string) {
   const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
