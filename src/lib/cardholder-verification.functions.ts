@@ -198,3 +198,95 @@ export const refuseCardholderVerification = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+/** Admin: list all rentals flagged with a card name mismatch. */
+export const listCardholderReviews = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { data: rentals } = await supabaseAdmin
+      .from("rentals")
+      .select(
+        "id, driver_id, cardholder_name, cardholder_phone, cardholder_relationship, cardholder_license_url, cardholder_verified_at, verification_status, name_match_score, final_charge_amount, weekly_rate, rate, updated_at",
+      )
+      .eq("name_mismatch_flag", true)
+      .order("updated_at", { ascending: false })
+      .limit(200);
+    const driverIds = Array.from(
+      new Set((rentals ?? []).map((r: any) => r.driver_id).filter(Boolean)),
+    );
+    let driverMap: Record<string, string> = {};
+    if (driverIds.length) {
+      const { data: drivers } = await supabaseAdmin
+        .from("drivers")
+        .select("id, full_name")
+        .in("id", driverIds);
+      driverMap = Object.fromEntries((drivers ?? []).map((d: any) => [d.id, d.full_name]));
+    }
+    const items = (rentals ?? []).map((r: any) => ({
+      id: r.id,
+      renter_name: driverMap[r.driver_id] ?? r.driver_id ?? "—",
+      cardholder_name: r.cardholder_name ?? "—",
+      cardholder_phone: r.cardholder_phone ?? null,
+      cardholder_relationship: r.cardholder_relationship ?? null,
+      cardholder_license_url: r.cardholder_license_url ?? null,
+      cardholder_verified_at: r.cardholder_verified_at ?? null,
+      verification_status: (r.verification_status as string) ?? "pending",
+      score: r.name_match_score ?? 0,
+      amount:
+        Number(r.final_charge_amount) || Number(r.weekly_rate) || Number(r.rate) || 0,
+      updated_at: r.updated_at,
+    }));
+    return { items };
+  });
+
+/** Admin: mark a flagged rental as reviewed (verified) or refund it. */
+export const resolveCardholderReview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { rentalId: string; action: "reviewed" | "refund" }) => {
+    if (!d?.rentalId || typeof d.rentalId !== "string") throw new Error("rentalId required");
+    if (d?.action !== "reviewed" && d?.action !== "refund") throw new Error("Invalid action");
+    return { rentalId: d.rentalId.slice(0, 64), action: d.action };
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { data: rental } = await supabaseAdmin
+      .from("rentals")
+      .select("id, driver_id, stripe_customer_id, final_charge_amount, weekly_rate, rate")
+      .eq("id", data.rentalId)
+      .maybeSingle();
+    if (!rental) throw new Error("Rental not found");
+
+    if (data.action === "reviewed") {
+      await supabaseAdmin
+        .from("rentals")
+        .update({ verification_status: "verified", updated_at: new Date().toISOString() })
+        .eq("id", data.rentalId);
+      return { ok: true, status: "verified" as const };
+    }
+
+    // Manual refund.
+    if (!rental.stripe_customer_id) throw new Error("No card on file — cannot refund.");
+    const amount =
+      Number(rental.final_charge_amount) || Number(rental.weekly_rate) || Number(rental.rate) || 0;
+    if (amount <= 0) throw new Error("Could not determine refund amount.");
+    const env = process.env.STRIPE_LIVE_API_KEY ? "live" : "sandbox";
+    const stripe = createStripeClient(env);
+    const amountCents = Math.round(amount * 100);
+    const list = await stripe.paymentIntents.list({
+      customer: rental.stripe_customer_id,
+      limit: 25,
+    });
+    const candidate = list.data.find((pi) => {
+      if (pi.status !== "succeeded") return false;
+      const refundable = (pi.amount_received ?? pi.amount) - ((pi as any).amount_refunded ?? 0);
+      return refundable >= amountCents;
+    });
+    if (!candidate) throw new Error("No matching succeeded payment found to refund in Stripe.");
+    await stripe.refunds.create({ payment_intent: candidate.id, amount: amountCents });
+    await supabaseAdmin
+      .from("rentals")
+      .update({ verification_status: "refunded", updated_at: new Date().toISOString() })
+      .eq("id", data.rentalId);
+    return { ok: true, status: "refunded" as const };
+  });
