@@ -38,6 +38,7 @@ async function alertAdminNameMismatch(opts: {
   cardholderName: string;
   amountCents: number | null | undefined;
   rentalId: string;
+  verification?: string;
 }): Promise<void> {
   const amount = opts.amountCents != null ? (opts.amountCents / 100).toFixed(2) : "—";
   const msg =
@@ -46,6 +47,7 @@ async function alertAdminNameMismatch(opts: {
     `Cardholder: ${opts.cardholderName || "—"}\n` +
     `Amount: $${amount}\n` +
     `Rental: ${opts.rentalId}\n\n` +
+    `Verification: ${opts.verification || "pending"}\n\n` +
     `Payment processed. Review for fraud.`;
   try {
     await sendSms(ADMIN_ALERT_PHONE, msg, "Admin");
