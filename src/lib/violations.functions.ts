@@ -742,8 +742,8 @@ export const sendViolationReminders = createServerFn({ method: "POST" })
   });
 
 const VIOLATION_ADMIN_PHONE = "267-221-3977";
-const AUTHORITIES = ["EZPass", "NJ DMV", "NY DMV", "Other"];
-const SUBMIT_METHODS = ["Email", "Mail", "Online Portal"];
+const AUTHORITIES = ["EZPass", "NJ DMV", "NY DMV", "PA DOT", "Other"];
+const SUBMIT_METHODS = ["Email", "Mail", "Online Portal", "Phone"];
 
 /** Admin: full detail for the View & Submit dialog (customer info, affidavit, license, pre-built email). */
 export const getViolationSubmissionDetail = createServerFn({ method: "GET" })
