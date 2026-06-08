@@ -108,7 +108,7 @@ export interface Rental {
   signedAt?: string;
   signedBy?: string;
   agreementVersion?: string;
-  reservationStatus?: "pending" | "active" | "completed" | "returned";
+  reservationStatus?: "pending" | "active" | "completed" | "returned" | "cancelled";
   pendingCreatedAt?: string;
   paymentReceived?: boolean;
   activatedAt?: string;
