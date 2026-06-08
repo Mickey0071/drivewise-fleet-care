@@ -33,6 +33,13 @@ export const Route = createFileRoute("/api/public/hooks/verification-reminders")
           return new Response("Unauthorized", { status: 401 });
         }
 
+        // Automated cardholder verification reminder loops (1-hour follow-up and
+        // daily reminders) have been retired in favor of in-app alerts and a
+        // manual admin-triggered verification link. The initial mismatch SMS is
+        // still sent once from the payment webhook. This endpoint is now a no-op
+        // so any lingering cron schedule does nothing.
+        return Response.json({ ok: true, disabled: true });
+        // eslint-disable-next-line no-unreachable
         let mode: "hourly" | "daily" = "hourly";
         try {
           const body = (await request.json()) as { mode?: string };
