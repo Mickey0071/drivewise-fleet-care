@@ -404,10 +404,10 @@ export const getVerificationByToken = createServerFn({ method: "GET" })
     return { token: input.token.slice(0, 128) };
   })
   .handler(async ({ data }) => {
-    const { data: rows } = await supabaseAdmin.rpc("get_verification_by_token", {
+    const { data: rows } = await (supabaseAdmin as any).rpc("get_verification_by_token", {
       _token: data.token,
     });
-    const row = Array.isArray(rows) ? rows[0] : rows;
+    const row = (Array.isArray(rows) ? rows[0] : rows) as any;
     if (!row) return { found: false } as const;
     return {
       found: true as const,
