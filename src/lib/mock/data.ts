@@ -125,6 +125,13 @@ export interface Rental {
   staffReviewStatus?: "pending" | "reviewed" | "approved";
   returnedAt?: string;
   portalLinkSends?: { at: string; phone: string | null; email: string | null }[];
+  nameMismatchFlag?: boolean;
+  cardholderName?: string;
+  cardholderPhone?: string;
+  cardholderRelationship?: string;
+  cardholderLicenseUrl?: string;
+  cardholderVerifiedAt?: string;
+  verificationStatus?: string;
 }
 export interface RentalExtension {
   id: string;
