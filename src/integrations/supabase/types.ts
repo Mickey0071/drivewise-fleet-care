@@ -964,6 +964,122 @@ export type Database = {
         }
         Relationships: []
       }
+      part_inquiries: {
+        Row: {
+          created_at: string
+          id: string
+          link_sent_at: string | null
+          make: string | null
+          model: string | null
+          notes: string | null
+          part_name: string
+          plate: string | null
+          quote_availability: string | null
+          quote_notes: string | null
+          quote_price: number | null
+          quoted_at: string | null
+          sent_by: string | null
+          status: string
+          sub_model: string | null
+          supplier_id: string | null
+          supplier_name: string | null
+          supplier_phone: string | null
+          token: string
+          token_expires_at: string | null
+          updated_at: string
+          viewed_at: string | null
+          vin: string | null
+          year: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          link_sent_at?: string | null
+          make?: string | null
+          model?: string | null
+          notes?: string | null
+          part_name: string
+          plate?: string | null
+          quote_availability?: string | null
+          quote_notes?: string | null
+          quote_price?: number | null
+          quoted_at?: string | null
+          sent_by?: string | null
+          status?: string
+          sub_model?: string | null
+          supplier_id?: string | null
+          supplier_name?: string | null
+          supplier_phone?: string | null
+          token: string
+          token_expires_at?: string | null
+          updated_at?: string
+          viewed_at?: string | null
+          vin?: string | null
+          year?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          link_sent_at?: string | null
+          make?: string | null
+          model?: string | null
+          notes?: string | null
+          part_name?: string
+          plate?: string | null
+          quote_availability?: string | null
+          quote_notes?: string | null
+          quote_price?: number | null
+          quoted_at?: string | null
+          sent_by?: string | null
+          status?: string
+          sub_model?: string | null
+          supplier_id?: string | null
+          supplier_name?: string | null
+          supplier_phone?: string | null
+          token?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          viewed_at?: string | null
+          vin?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "part_inquiries_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "parts_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parts_suppliers: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payment_link_logs: {
         Row: {
           amount_cents: number
@@ -2747,6 +2863,26 @@ export type Database = {
           vehicle_plate: string
           vehicle_year: number
           weekly_rate: number
+        }[]
+      }
+      get_part_inquiry_public: {
+        Args: { _token: string }
+        Returns: {
+          expired: boolean
+          make: string
+          model: string
+          notes: string
+          part_name: string
+          plate: string
+          quote_availability: string
+          quote_notes: string
+          quote_price: number
+          status: string
+          sub_model: string
+          supplier_name: string
+          token: string
+          vin: string
+          year: number
         }[]
       }
       get_share_link_public: {

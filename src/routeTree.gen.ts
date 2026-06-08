@@ -50,6 +50,7 @@ import { Route as RmCardTokenRouteImport } from './routes/rm-card.$token'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as PortalSignupRentalIdRouteImport } from './routes/portal-signup.$rentalId'
+import { Route as PartQuoteTokenRouteImport } from './routes/part-quote.$token'
 import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rentalId'
 import { Route as MechanicJobTokenRouteImport } from './routes/mechanic-job.$token'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
@@ -62,6 +63,7 @@ import { Route as AnalyticsCostsRouteImport } from './routes/analytics.costs'
 import { Route as AnalyticsBreakevenRouteImport } from './routes/analytics.breakeven'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
+import { Route as AdminPartsRouteImport } from './routes/admin.parts'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
@@ -284,6 +286,11 @@ const PortalSignupRentalIdRoute = PortalSignupRentalIdRouteImport.update({
   path: '/portal-signup/$rentalId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PartQuoteTokenRoute = PartQuoteTokenRouteImport.update({
+  id: '/part-quote/$token',
+  path: '/part-quote/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MyRentalsRentalIdRoute = MyRentalsRentalIdRouteImport.update({
   id: '/$rentalId',
   path: '/$rentalId',
@@ -342,6 +349,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
 const AdminTasksRoute = AdminTasksRouteImport.update({
   id: '/admin/tasks',
   path: '/admin/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPartsRoute = AdminPartsRouteImport.update({
+  id: '/admin/parts',
+  path: '/admin/parts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
@@ -467,6 +479,7 @@ export interface FileRoutesByFullPath {
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/parts': typeof AdminPartsRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/admin/users': typeof AdminUsersRoute
   '/analytics/breakeven': typeof AnalyticsBreakevenRoute
@@ -479,6 +492,7 @@ export interface FileRoutesByFullPath {
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/mechanic-job/$token': typeof MechanicJobTokenRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
+  '/part-quote/$token': typeof PartQuoteTokenRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -538,6 +552,7 @@ export interface FileRoutesByTo {
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/parts': typeof AdminPartsRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/admin/users': typeof AdminUsersRoute
   '/analytics/breakeven': typeof AnalyticsBreakevenRoute
@@ -550,6 +565,7 @@ export interface FileRoutesByTo {
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/mechanic-job/$token': typeof MechanicJobTokenRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
+  '/part-quote/$token': typeof PartQuoteTokenRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -610,6 +626,7 @@ export interface FileRoutesById {
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/parts': typeof AdminPartsRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/admin/users': typeof AdminUsersRoute
   '/analytics/breakeven': typeof AnalyticsBreakevenRoute
@@ -622,6 +639,7 @@ export interface FileRoutesById {
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/mechanic-job/$token': typeof MechanicJobTokenRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
+  '/part-quote/$token': typeof PartQuoteTokenRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -683,6 +701,7 @@ export interface FileRouteTypes {
     | '/admin/create-task'
     | '/admin/extensions'
     | '/admin/notifications'
+    | '/admin/parts'
     | '/admin/tasks'
     | '/admin/users'
     | '/analytics/breakeven'
@@ -695,6 +714,7 @@ export interface FileRouteTypes {
     | '/fleet/$vehicleId'
     | '/mechanic-job/$token'
     | '/my-rentals/$rentalId'
+    | '/part-quote/$token'
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
@@ -754,6 +774,7 @@ export interface FileRouteTypes {
     | '/admin/create-task'
     | '/admin/extensions'
     | '/admin/notifications'
+    | '/admin/parts'
     | '/admin/tasks'
     | '/admin/users'
     | '/analytics/breakeven'
@@ -766,6 +787,7 @@ export interface FileRouteTypes {
     | '/fleet/$vehicleId'
     | '/mechanic-job/$token'
     | '/my-rentals/$rentalId'
+    | '/part-quote/$token'
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
@@ -825,6 +847,7 @@ export interface FileRouteTypes {
     | '/admin/create-task'
     | '/admin/extensions'
     | '/admin/notifications'
+    | '/admin/parts'
     | '/admin/tasks'
     | '/admin/users'
     | '/analytics/breakeven'
@@ -837,6 +860,7 @@ export interface FileRouteTypes {
     | '/fleet/$vehicleId'
     | '/mechanic-job/$token'
     | '/my-rentals/$rentalId'
+    | '/part-quote/$token'
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
@@ -897,11 +921,13 @@ export interface RootRouteChildren {
   AdminCreateTaskRoute: typeof AdminCreateTaskRoute
   AdminExtensionsRoute: typeof AdminExtensionsRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
+  AdminPartsRoute: typeof AdminPartsRoute
   AdminTasksRoute: typeof AdminTasksRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AutoExtendTokenRoute: typeof AutoExtendTokenRoute
   ExtendTokenRoute: typeof ExtendTokenRoute
   MechanicJobTokenRoute: typeof MechanicJobTokenRoute
+  PartQuoteTokenRoute: typeof PartQuoteTokenRoute
   PortalSignupRentalIdRoute: typeof PortalSignupRentalIdRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
@@ -1218,6 +1244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalSignupRentalIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/part-quote/$token': {
+      id: '/part-quote/$token'
+      path: '/part-quote/$token'
+      fullPath: '/part-quote/$token'
+      preLoaderRoute: typeof PartQuoteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/my-rentals/$rentalId': {
       id: '/my-rentals/$rentalId'
       path: '/$rentalId'
@@ -1300,6 +1333,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/tasks'
       fullPath: '/admin/tasks'
       preLoaderRoute: typeof AdminTasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/parts': {
+      id: '/admin/parts'
+      path: '/admin/parts'
+      fullPath: '/admin/parts'
+      preLoaderRoute: typeof AdminPartsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/notifications': {
@@ -1492,11 +1532,13 @@ const rootRouteChildren: RootRouteChildren = {
   AdminCreateTaskRoute: AdminCreateTaskRoute,
   AdminExtensionsRoute: AdminExtensionsRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
+  AdminPartsRoute: AdminPartsRoute,
   AdminTasksRoute: AdminTasksRoute,
   AdminUsersRoute: AdminUsersRoute,
   AutoExtendTokenRoute: AutoExtendTokenRoute,
   ExtendTokenRoute: ExtendTokenRoute,
   MechanicJobTokenRoute: MechanicJobTokenRoute,
+  PartQuoteTokenRoute: PartQuoteTokenRoute,
   PortalSignupRentalIdRoute: PortalSignupRentalIdRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
@@ -1527,13 +1569,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
