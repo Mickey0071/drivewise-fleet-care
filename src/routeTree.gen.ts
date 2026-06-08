@@ -74,6 +74,7 @@ import { Route as ApiPublicHooksViolationRemindersRouteImport } from './routes/a
 import { Route as ApiPublicHooksVerificationRemindersRouteImport } from './routes/api/public/hooks/verification-reminders'
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
 import { Route as ApiPublicHooksRepairDigestRouteImport } from './routes/api/public/hooks/repair-digest'
+import { Route as ApiPublicHooksMonthlyBackupRouteImport } from './routes/api/public/hooks/monthly-backup'
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
 import { Route as ApiPublicHooksAutoExtensionLinksRouteImport } from './routes/api/public/hooks/auto-extension-links'
 
@@ -408,6 +409,12 @@ const ApiPublicHooksRepairDigestRoute =
     path: '/api/public/hooks/repair-digest',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksMonthlyBackupRoute =
+  ApiPublicHooksMonthlyBackupRouteImport.update({
+    id: '/api/public/hooks/monthly-backup',
+    path: '/api/public/hooks/monthly-backup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDailyReportsRoute =
   ApiPublicHooksDailyReportsRouteImport.update({
     id: '/api/public/hooks/daily-reports',
@@ -484,6 +491,7 @@ export interface FileRoutesByFullPath {
   '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
+  '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/hooks/verification-reminders': typeof ApiPublicHooksVerificationRemindersRoute
@@ -553,6 +561,7 @@ export interface FileRoutesByTo {
   '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
+  '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/hooks/verification-reminders': typeof ApiPublicHooksVerificationRemindersRoute
@@ -623,6 +632,7 @@ export interface FileRoutesById {
   '/violation/$token_/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
+  '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/hooks/verification-reminders': typeof ApiPublicHooksVerificationRemindersRoute
@@ -694,6 +704,7 @@ export interface FileRouteTypes {
     | '/violation/$token/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
+    | '/api/public/hooks/monthly-backup'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
     | '/api/public/hooks/verification-reminders'
@@ -763,6 +774,7 @@ export interface FileRouteTypes {
     | '/violation/$token/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
+    | '/api/public/hooks/monthly-backup'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
     | '/api/public/hooks/verification-reminders'
@@ -832,6 +844,7 @@ export interface FileRouteTypes {
     | '/violation/$token_/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
+    | '/api/public/hooks/monthly-backup'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
     | '/api/public/hooks/verification-reminders'
@@ -895,6 +908,7 @@ export interface RootRouteChildren {
   ViolationTokenAffidavitRoute: typeof ViolationTokenAffidavitRoute
   ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
+  ApiPublicHooksMonthlyBackupRoute: typeof ApiPublicHooksMonthlyBackupRoute
   ApiPublicHooksRepairDigestRoute: typeof ApiPublicHooksRepairDigestRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
   ApiPublicHooksVerificationRemindersRoute: typeof ApiPublicHooksVerificationRemindersRoute
@@ -1359,6 +1373,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksRepairDigestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/monthly-backup': {
+      id: '/api/public/hooks/monthly-backup'
+      path: '/api/public/hooks/monthly-backup'
+      fullPath: '/api/public/hooks/monthly-backup'
+      preLoaderRoute: typeof ApiPublicHooksMonthlyBackupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/daily-reports': {
       id: '/api/public/hooks/daily-reports'
       path: '/api/public/hooks/daily-reports'
@@ -1474,6 +1495,7 @@ const rootRouteChildren: RootRouteChildren = {
   ViolationTokenAffidavitRoute: ViolationTokenAffidavitRoute,
   ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
+  ApiPublicHooksMonthlyBackupRoute: ApiPublicHooksMonthlyBackupRoute,
   ApiPublicHooksRepairDigestRoute: ApiPublicHooksRepairDigestRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,
   ApiPublicHooksVerificationRemindersRoute:
