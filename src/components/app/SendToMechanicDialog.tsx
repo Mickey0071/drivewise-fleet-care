@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, X, Loader2, Send } from "lucide-react";
+import { Plus, X, Loader2, Send, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const COMMON_ITEMS = [
