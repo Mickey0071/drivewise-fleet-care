@@ -71,6 +71,51 @@ export type Database = {
         }
         Relationships: []
       }
+      backups: {
+        Row: {
+          created_at: string
+          email_attempts: number
+          email_sent_at: string | null
+          email_status: string
+          error_message: string | null
+          file_urls: Json
+          generated_at: string
+          id: string
+          period_month: string
+          stats: Json
+          triggered_by: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email_attempts?: number
+          email_sent_at?: string | null
+          email_status?: string
+          error_message?: string | null
+          file_urls?: Json
+          generated_at?: string
+          id?: string
+          period_month: string
+          stats?: Json
+          triggered_by?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email_attempts?: number
+          email_sent_at?: string | null
+          email_status?: string
+          error_message?: string | null
+          file_urls?: Json
+          generated_at?: string
+          id?: string
+          period_month?: string
+          stats?: Json
+          triggered_by?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       drivers: {
         Row: {
           address: string | null

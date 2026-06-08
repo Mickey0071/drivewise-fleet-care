@@ -65,6 +65,7 @@ import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
+import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
 import { Route as ViolationTokenAffidavitRouteImport } from './routes/violation.$token_.affidavit'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
@@ -74,6 +75,7 @@ import { Route as ApiPublicHooksViolationRemindersRouteImport } from './routes/a
 import { Route as ApiPublicHooksVerificationRemindersRouteImport } from './routes/api/public/hooks/verification-reminders'
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
 import { Route as ApiPublicHooksRepairDigestRouteImport } from './routes/api/public/hooks/repair-digest'
+import { Route as ApiPublicHooksMonthlyBackupRouteImport } from './routes/api/public/hooks/monthly-backup'
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
 import { Route as ApiPublicHooksAutoExtensionLinksRouteImport } from './routes/api/public/hooks/auto-extension-links'
 
@@ -357,6 +359,11 @@ const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
   path: '/admin/create-task',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminBackupsRoute = AdminBackupsRouteImport.update({
+  id: '/admin/backups',
+  path: '/admin/backups',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ViolationTokenAffidavitRoute = ViolationTokenAffidavitRouteImport.update({
   id: '/violation/$token_/affidavit',
   path: '/violation/$token/affidavit',
@@ -408,6 +415,12 @@ const ApiPublicHooksRepairDigestRoute =
     path: '/api/public/hooks/repair-digest',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksMonthlyBackupRoute =
+  ApiPublicHooksMonthlyBackupRouteImport.update({
+    id: '/api/public/hooks/monthly-backup',
+    path: '/api/public/hooks/monthly-backup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDailyReportsRoute =
   ApiPublicHooksDailyReportsRouteImport.update({
     id: '/api/public/hooks/daily-reports',
@@ -450,6 +463,7 @@ export interface FileRoutesByFullPath {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -484,6 +498,7 @@ export interface FileRoutesByFullPath {
   '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
+  '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/hooks/verification-reminders': typeof ApiPublicHooksVerificationRemindersRoute
@@ -519,6 +534,7 @@ export interface FileRoutesByTo {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -553,6 +569,7 @@ export interface FileRoutesByTo {
   '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
+  '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/hooks/verification-reminders': typeof ApiPublicHooksVerificationRemindersRoute
@@ -589,6 +606,7 @@ export interface FileRoutesById {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -623,6 +641,7 @@ export interface FileRoutesById {
   '/violation/$token_/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
+  '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/hooks/verification-reminders': typeof ApiPublicHooksVerificationRemindersRoute
@@ -660,6 +679,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/admin/backups'
     | '/admin/create-task'
     | '/admin/extensions'
     | '/admin/notifications'
@@ -694,6 +714,7 @@ export interface FileRouteTypes {
     | '/violation/$token/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
+    | '/api/public/hooks/monthly-backup'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
     | '/api/public/hooks/verification-reminders'
@@ -729,6 +750,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/admin/backups'
     | '/admin/create-task'
     | '/admin/extensions'
     | '/admin/notifications'
@@ -763,6 +785,7 @@ export interface FileRouteTypes {
     | '/violation/$token/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
+    | '/api/public/hooks/monthly-backup'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
     | '/api/public/hooks/verification-reminders'
@@ -798,6 +821,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/admin/backups'
     | '/admin/create-task'
     | '/admin/extensions'
     | '/admin/notifications'
@@ -832,6 +856,7 @@ export interface FileRouteTypes {
     | '/violation/$token_/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
+    | '/api/public/hooks/monthly-backup'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
     | '/api/public/hooks/verification-reminders'
@@ -868,6 +893,7 @@ export interface RootRouteChildren {
   SmsLogRoute: typeof SmsLogRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
+  AdminBackupsRoute: typeof AdminBackupsRoute
   AdminCreateTaskRoute: typeof AdminCreateTaskRoute
   AdminExtensionsRoute: typeof AdminExtensionsRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
@@ -895,6 +921,7 @@ export interface RootRouteChildren {
   ViolationTokenAffidavitRoute: typeof ViolationTokenAffidavitRoute
   ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
+  ApiPublicHooksMonthlyBackupRoute: typeof ApiPublicHooksMonthlyBackupRoute
   ApiPublicHooksRepairDigestRoute: typeof ApiPublicHooksRepairDigestRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
   ApiPublicHooksVerificationRemindersRoute: typeof ApiPublicHooksVerificationRemindersRoute
@@ -1296,6 +1323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCreateTaskRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/backups': {
+      id: '/admin/backups'
+      path: '/admin/backups'
+      fullPath: '/admin/backups'
+      preLoaderRoute: typeof AdminBackupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/violation/$token_/affidavit': {
       id: '/violation/$token_/affidavit'
       path: '/violation/$token/affidavit'
@@ -1357,6 +1391,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/repair-digest'
       fullPath: '/api/public/hooks/repair-digest'
       preLoaderRoute: typeof ApiPublicHooksRepairDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/monthly-backup': {
+      id: '/api/public/hooks/monthly-backup'
+      path: '/api/public/hooks/monthly-backup'
+      fullPath: '/api/public/hooks/monthly-backup'
+      preLoaderRoute: typeof ApiPublicHooksMonthlyBackupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/daily-reports': {
@@ -1447,6 +1488,7 @@ const rootRouteChildren: RootRouteChildren = {
   SmsLogRoute: SmsLogRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
+  AdminBackupsRoute: AdminBackupsRoute,
   AdminCreateTaskRoute: AdminCreateTaskRoute,
   AdminExtensionsRoute: AdminExtensionsRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
@@ -1474,6 +1516,7 @@ const rootRouteChildren: RootRouteChildren = {
   ViolationTokenAffidavitRoute: ViolationTokenAffidavitRoute,
   ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
+  ApiPublicHooksMonthlyBackupRoute: ApiPublicHooksMonthlyBackupRoute,
   ApiPublicHooksRepairDigestRoute: ApiPublicHooksRepairDigestRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,
   ApiPublicHooksVerificationRemindersRoute:
