@@ -744,6 +744,17 @@ export const sendViolationReminders = createServerFn({ method: "POST" })
 const VIOLATION_ADMIN_PHONE = "267-221-3977";
 const AUTHORITIES = ["EZPass", "NJ DMV", "NY DMV", "PA DOT", "Other"];
 const SUBMIT_METHODS = ["Email", "Mail", "Online Portal", "Phone"];
+// Methods where the authority returns a tracking/confirmation number we must record.
+const CONFIRMATION_REQUIRED_METHODS = ["Online Portal", "Phone"];
+// A violation can only be submitted to the authority from one of these states.
+const SUBMITTABLE_STATUSES = [
+  "affidavit_signed",
+  "sent_to_customer",
+  "viewing",
+  "new",
+  "logged",
+  "pending",
+];
 
 /** Admin: full detail for the View & Submit dialog (customer info, affidavit, license, pre-built email). */
 export const getViolationSubmissionDetail = createServerFn({ method: "GET" })
