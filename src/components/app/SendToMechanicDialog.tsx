@@ -67,14 +67,19 @@ export function SendToMechanicDialog({
   const [selectedCommon, setSelectedCommon] = useState<string[]>([]);
   const [customItems, setCustomItems] = useState<{ id: string; label: string }[]>([]);
   const [sending, setSending] = useState(false);
+  const [checklistError, setChecklistError] = useState("");
 
   function toggleCommon(label: string) {
-    setSelectedCommon((prev) => (prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]));
+    setSelectedCommon((prev) => {
+      const next = prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label];
+      if (next.length > 0 || customItems.some((i) => i.label.trim())) setChecklistError("");
+      return next;
+    });
   }
 
   function reset() {
     setName(""); setPhone(""); setShop(""); setContext("");
-    setIncludeChecklist(false); setSelectedCommon([]); setCustomItems([]);
+    setIncludeChecklist(false); setSelectedCommon([]); setCustomItems([]); setChecklistError("");
   }
 
   async function submit() {
