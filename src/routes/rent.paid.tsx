@@ -77,10 +77,10 @@ function PaidPage() {
     const handler = () => {
       if (refusedRef.current || !rental_id) return;
       refusedRef.current = true;
-      const blob = new Blob([JSON.stringify({ data: { rentalId: rental_id } })], {
+      const blob = new Blob([JSON.stringify({ rentalId: rental_id })], {
         type: "application/json",
       });
-      navigator.sendBeacon?.("/_serverFn/refuseCardholderVerification", blob);
+      navigator.sendBeacon?.("/api/public/cardholder-refuse", blob);
     };
     window.addEventListener("pagehide", handler);
     return () => window.removeEventListener("pagehide", handler);
