@@ -998,7 +998,7 @@ export const markViolationResolved = createServerFn({ method: "POST" })
   .inputValidator((input: { id: string; reason: string; notes?: string }) => {
     if (!input.id) throw new Error("id required");
     const reason = (input.reason || "").trim();
-    if (!reason) throw new Error("Resolution reason required");
+    if (!reason) throw new Error("Please provide a reason for resolving this violation.");
     return {
       id: input.id,
       reason: reason.slice(0, 300),
@@ -1012,6 +1012,10 @@ export const markViolationResolved = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .maybeSingle();
     if (!current) throw new Error("Violation not found");
+    const status = (current.status as string) ?? "";
+    if (status === "resolved") {
+      throw new Error("This violation has already been resolved.");
+    }
     const now = new Date().toISOString();
 
     const { error } = await (supabaseAdmin as any)
