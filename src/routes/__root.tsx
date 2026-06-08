@@ -270,6 +270,7 @@ function AuthGate() {
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
         <div className="flex flex-1 flex-col">
+          <PaymentTestModeBanner />
           <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur">
             <HamburgerTrigger />
             <div className="flex items-center gap-2">
