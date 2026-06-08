@@ -53,6 +53,8 @@ import type { Rental } from "@/lib/mock/data";
 const getPublicAppOrigin = () =>
   typeof window !== "undefined" ? window.location.origin : "";
 
+type StatusFilter = "on_rent" | "all" | "pending" | "returned" | "cancelled";
+
 export const Route = createFileRoute("/rentals")({
   head: () => ({ meta: [{ title: "Reservations — Camauto Rentals" }] }),
   validateSearch: (search: Record<string, unknown>) => ({
@@ -60,6 +62,9 @@ export const Route = createFileRoute("/rentals")({
     session_id: typeof search.session_id === "string" ? search.session_id : undefined,
     review: typeof search.review === "string" ? search.review : undefined,
     detail: typeof search.detail === "string" ? search.detail : undefined,
+    status: ["on_rent", "all", "pending", "returned", "cancelled"].includes(search.status as string)
+      ? (search.status as StatusFilter)
+      : "on_rent",
   }),
   component: RentalsPage,
 });
