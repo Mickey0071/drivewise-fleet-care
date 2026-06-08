@@ -21,6 +21,7 @@ import { AuthProvider, useAuth, type AppRole } from "@/hooks/use-auth";
 import { hydrateFromCloud, isStoreHydrated, useStoreVersion } from "@/lib/mock/store";
 import { RunnerLayout } from "@/components/app/RunnerLayout";
 import { PendingAgreementsWatcher } from "@/components/app/PendingAgreementsWatcher";
+import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
