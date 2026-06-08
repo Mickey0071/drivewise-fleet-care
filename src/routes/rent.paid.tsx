@@ -56,16 +56,26 @@ function PaidPage() {
   useEffect(() => {
     if (isCanceled || !rental_id) return;
     let active = true;
-    checkState({ data: { rentalId: rental_id } })
-      .then((res) => {
-        if (!active) return;
-        if (res.needed) {
-          setNeeded(true);
-          setCardholderName(res.cardholderName);
-          setRenterName(res.renterName);
-        }
-      })
-      .catch(() => {});
+    let tries = 0;
+    const poll = () => {
+      checkState({ data: { rentalId: rental_id } })
+        .then((res) => {
+          if (!active) return;
+          if (res.needed) {
+            setNeeded(true);
+            setCardholderName(res.cardholderName);
+            setRenterName(res.renterName);
+            return;
+          }
+          // Webhook may not have processed yet — retry a few times.
+          if (res.status === null && tries < 6) {
+            tries += 1;
+            setTimeout(poll, 2500);
+          }
+        })
+        .catch(() => {});
+    };
+    poll();
     return () => {
       active = false;
     };
