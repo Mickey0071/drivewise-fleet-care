@@ -311,6 +311,7 @@ export function SubmitDisputeDialog({
               <div className="space-y-3">
                 <TimelineRow label="Created" value={violation.created_at} />
                 <TimelineRow label="Sent to customer" value={violation.sent_to_customer_at} />
+                <TimelineRow label="Viewed by customer" value={violation.viewed_at ?? detail.viewedAt} />
                 <TimelineRow label="Signed by customer" value={detail.signedAt} />
                 <TimelineRow label="Submitted to authority" value={detail.submittedAt} />
                 <TimelineRow label="Resolved" value={detail.resolvedAt} />
