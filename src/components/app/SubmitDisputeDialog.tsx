@@ -277,11 +277,14 @@ export function SubmitDisputeDialog({
                 <div className="font-medium">Mark Resolved</div>
                 <div>
                   <Label>Resolution reason</Label>
-                  <Input
-                    value={resReason}
-                    onChange={(e) => setResReason(e.target.value)}
-                    placeholder="Liability transferred / dismissed / paid to authority"
-                  />
+                  <Select value={resReason} onValueChange={setResReason}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {RESOLUTION_REASONS.map((r) => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Notes (optional)</Label>
