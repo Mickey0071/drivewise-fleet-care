@@ -50,6 +50,7 @@ import { Route as RmCardTokenRouteImport } from './routes/rm-card.$token'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as PortalSignupRentalIdRouteImport } from './routes/portal-signup.$rentalId'
+import { Route as PartQuoteTokenRouteImport } from './routes/part-quote.$token'
 import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rentalId'
 import { Route as MechanicJobTokenRouteImport } from './routes/mechanic-job.$token'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
@@ -284,6 +285,11 @@ const PortalSignupRentalIdRoute = PortalSignupRentalIdRouteImport.update({
   path: '/portal-signup/$rentalId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PartQuoteTokenRoute = PartQuoteTokenRouteImport.update({
+  id: '/part-quote/$token',
+  path: '/part-quote/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MyRentalsRentalIdRoute = MyRentalsRentalIdRouteImport.update({
   id: '/$rentalId',
   path: '/$rentalId',
@@ -479,6 +485,7 @@ export interface FileRoutesByFullPath {
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/mechanic-job/$token': typeof MechanicJobTokenRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
+  '/part-quote/$token': typeof PartQuoteTokenRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -550,6 +557,7 @@ export interface FileRoutesByTo {
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/mechanic-job/$token': typeof MechanicJobTokenRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
+  '/part-quote/$token': typeof PartQuoteTokenRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -622,6 +630,7 @@ export interface FileRoutesById {
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
   '/mechanic-job/$token': typeof MechanicJobTokenRoute
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
+  '/part-quote/$token': typeof PartQuoteTokenRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
@@ -695,6 +704,7 @@ export interface FileRouteTypes {
     | '/fleet/$vehicleId'
     | '/mechanic-job/$token'
     | '/my-rentals/$rentalId'
+    | '/part-quote/$token'
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
@@ -766,6 +776,7 @@ export interface FileRouteTypes {
     | '/fleet/$vehicleId'
     | '/mechanic-job/$token'
     | '/my-rentals/$rentalId'
+    | '/part-quote/$token'
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
@@ -837,6 +848,7 @@ export interface FileRouteTypes {
     | '/fleet/$vehicleId'
     | '/mechanic-job/$token'
     | '/my-rentals/$rentalId'
+    | '/part-quote/$token'
     | '/portal-signup/$rentalId'
     | '/rent/$token'
     | '/rent/paid'
@@ -902,6 +914,7 @@ export interface RootRouteChildren {
   AutoExtendTokenRoute: typeof AutoExtendTokenRoute
   ExtendTokenRoute: typeof ExtendTokenRoute
   MechanicJobTokenRoute: typeof MechanicJobTokenRoute
+  PartQuoteTokenRoute: typeof PartQuoteTokenRoute
   PortalSignupRentalIdRoute: typeof PortalSignupRentalIdRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
@@ -1218,6 +1231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalSignupRentalIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/part-quote/$token': {
+      id: '/part-quote/$token'
+      path: '/part-quote/$token'
+      fullPath: '/part-quote/$token'
+      preLoaderRoute: typeof PartQuoteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/my-rentals/$rentalId': {
       id: '/my-rentals/$rentalId'
       path: '/$rentalId'
@@ -1497,6 +1517,7 @@ const rootRouteChildren: RootRouteChildren = {
   AutoExtendTokenRoute: AutoExtendTokenRoute,
   ExtendTokenRoute: ExtendTokenRoute,
   MechanicJobTokenRoute: MechanicJobTokenRoute,
+  PartQuoteTokenRoute: PartQuoteTokenRoute,
   PortalSignupRentalIdRoute: PortalSignupRentalIdRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
