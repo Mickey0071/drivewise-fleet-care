@@ -34,6 +34,17 @@ const COMMON_ITEMS = [
   "Check engine codes",
 ] as const;
 
+const BASIC_INSPECTION_ITEMS = [
+  "Check battery voltage",
+  "Check brakes (front)",
+  "Check brakes (rear)",
+  "Check tires",
+  "Check oil level",
+  "Check coolant",
+  "Check lights",
+  "Check engine codes",
+] as const;
+
 let counter = 0;
 const newItem = (label = "") => ({ id: `i${Date.now()}_${counter++}`, label });
 
@@ -75,6 +86,12 @@ export function SendToMechanicDialog({
       if (next.length > 0 || customItems.some((i) => i.label.trim())) setChecklistError("");
       return next;
     });
+  }
+
+  function loadBasicInspection() {
+    setIncludeChecklist(true);
+    setSelectedCommon((prev) => Array.from(new Set([...prev, ...BASIC_INSPECTION_ITEMS])));
+    setChecklistError("");
   }
 
   function reset() {
@@ -160,6 +177,9 @@ export function SendToMechanicDialog({
               <Label className="text-xs font-medium">Include checklist for mechanic?</Label>
               <Switch checked={includeChecklist} onCheckedChange={(v) => { setIncludeChecklist(v); if (!v) setChecklistError(""); }} />
             </div>
+            <Button type="button" size="sm" variant="outline" className="mt-2 w-full" onClick={loadBasicInspection}>
+              <Plus className="h-4 w-4" /> Send basic inspection checklist
+            </Button>
             {includeChecklist ? (
               <div className="mt-3 space-y-3">
                 <div>
