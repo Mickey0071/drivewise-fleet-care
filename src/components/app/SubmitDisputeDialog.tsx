@@ -187,6 +187,15 @@ export function SubmitDisputeDialog({
               ) : (
                 <Button size="sm" variant="outline" disabled>No license on file</Button>
               )}
+              {detail.agreementUrl ? (
+                <Button size="sm" variant="outline" asChild>
+                  <a href={detail.agreementUrl} target="_blank" rel="noreferrer" download>
+                    📑 Download Rental Agreement
+                  </a>
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" disabled>No rental agreement</Button>
+              )}
             </div>
 
             {/* Email template */}
