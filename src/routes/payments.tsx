@@ -20,6 +20,7 @@ import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { PendingPaymentReviews } from "@/components/app/PendingPaymentReviews";
 import { CardholderVerificationReviews } from "@/components/app/CardholderVerificationReviews";
+import { RefundRecoveryDashboard } from "@/components/app/RefundRecoveryDashboard";
 
 export const Route = createFileRoute("/payments")({
   head: () => ({ meta: [{ title: "Payments — Camauto Rentals" }] }),
@@ -83,6 +84,7 @@ function PaymentsPage() {
       />
       <PendingPaymentReviews />
       <CardholderVerificationReviews />
+      <RefundRecoveryDashboard />
       <Tabs defaultValue="fees-due" className="space-y-4">
         <TabsList>
           <TabsTrigger value="fees-due">Rental Fees Due</TabsTrigger>

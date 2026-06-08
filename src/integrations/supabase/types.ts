@@ -1161,6 +1161,54 @@ export type Database = {
         }
         Relationships: []
       }
+      refund_recovery: {
+        Row: {
+          amount: number
+          created_at: string
+          customer_notified: boolean
+          driver_id: string | null
+          id: string
+          note: string | null
+          refunded_at: string
+          rental_id: string | null
+          source: string
+          status: string
+          stripe_charge_id: string | null
+          stripe_refund_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          customer_notified?: boolean
+          driver_id?: string | null
+          id?: string
+          note?: string | null
+          refunded_at?: string
+          rental_id?: string | null
+          source?: string
+          status?: string
+          stripe_charge_id?: string | null
+          stripe_refund_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          customer_notified?: boolean
+          driver_id?: string | null
+          id?: string
+          note?: string | null
+          refunded_at?: string
+          rental_id?: string | null
+          source?: string
+          status?: string
+          stripe_charge_id?: string | null
+          stripe_refund_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       refund_requests: {
         Row: {
           amount: number
