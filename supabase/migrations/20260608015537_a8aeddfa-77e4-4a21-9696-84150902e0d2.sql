@@ -1,0 +1,1 @@
+ALTER TABLE public.violations ADD COLUMN IF NOT EXISTS submission_notes text;
