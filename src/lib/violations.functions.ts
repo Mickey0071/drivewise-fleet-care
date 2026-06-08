@@ -906,6 +906,7 @@ export const submitViolationToAuthority = createServerFn({ method: "POST" })
         submitted_to: data.authority,
         submission_method: data.method,
         confirmation_number: data.confirmationNumber,
+        submission_notes: data.notes,
         updated_at: now,
       } as never)
       .eq("id", data.id);
