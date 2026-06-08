@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
-  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature, Bell, CalendarPlus, BarChart3,
+  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature, Bell, CalendarPlus, BarChart3, DatabaseBackup,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -37,6 +37,7 @@ const adminItems: Item[] = [
   { title: "Notifications", url: "/admin/notifications", icon: Bell, roles: ["admin"] },
   { title: "Extension Offers", url: "/admin/extensions", icon: CalendarPlus, roles: ["admin"] },
   { title: "Refund Approvals", url: "/refund-approvals", icon: Undo2, roles: ["admin", "va"] },
+  { title: "Backups", url: "/admin/backups", icon: DatabaseBackup, roles: ["admin"] },
 ];
 const financeItems: Item[] = [
   { title: "P&L", url: "/pnl", icon: TrendingUp, roles: ["admin"] },
