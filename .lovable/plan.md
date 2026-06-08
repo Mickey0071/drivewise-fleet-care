@@ -1,39 +1,54 @@
-## Goal
+# Cardholder License Verification on Name Mismatch
 
-Turn the Maintenance page into a true dashboard: a collapsible config section, three summary cards (Scheduled Repairs due soon, Open Repairs, Completed recent), and three tabs (Scheduled Maintenance, Repairs kanban, Completed log). The Scheduled section is wired to the Alert Settings already configured per vehicle in Fleet.
+## Findings recap
+- Auto-refund was app-code only (`decideNameMatch` → `"refund"` → `stripe.refunds.create` in the webhook). It is **already disabled**; mismatches now route to admin review with the payment kept, plus an SMS to 267-221-3977.
+- Reusable assets already exist: `PhotoCapture` UI, license OCR, `rental-signing` storage bucket, third-party-payer columns, and the `PendingPaymentReviews` dashboard.
+- Mismatch is detected post-payment in the Stripe webhook, so the verification UI must live on the post-payment return page, not a live in-payment modal.
 
-## Key architecture decision
+## Part 1 — Database (migration)
+Add to `rentals`:
+- `cardholder_phone` text
+- `cardholder_relationship` text
+- `cardholder_license_url` text
+- `cardholder_verified_at` timestamptz
+- `name_mismatch_flag` boolean default false
+- keep existing `verification_status` text (values used: `pending` | `submitted` | `refused` | `verified` | `refunded`)
 
-The app already has a complete "scheduled maintenance" engine: every vehicle stores `maintenanceSettings` (oil interval, battery, alternator, inspection, custom alerts) set via the Fleet detail's **Alert Settings** dialog, and `computeVehicleAlerts()` derives what's due from current mileage + dates.
+No new table; `cardholder_name`, `name_match_status`, `name_match_score` already exist. GRANTs already exist on `rentals`.
 
-I will **drive the Scheduled cards/tab from this existing engine** instead of creating a separate `scheduled_maintenance` table. A second table would duplicate the source of truth and require constant syncing on every mileage change, fleet edit, and inspection — a maintenance burden with no functional gain. The computed approach already satisfies every Part-9 success criterion (auto-calculated due dates, 7-day / 100-mile alerting, pass/fail clearing).
+## Part 2 — Webhook (mismatch detection + flagging)
+In `src/routes/api/public/payments/webhook.ts` (rental + extension paths), when `decision.alert` is true:
+- Set `name_mismatch_flag = true` and `verification_status = 'pending'` on the rental (in addition to existing `name_match_status`).
+- Keep the existing admin SMS, but extend it to include `Verification: pending` (matches Part 4 format).
+- Remove the now-dead `action === "refund"` branches to eliminate confusion (no behavior change).
 
-## What changes
+## Part 3 — Cardholder verification flow (payer-facing)
+- New server functions in `src/lib/cardholder-verification.functions.ts`:
+  - `getCardholderVerificationState({ rentalId })` — public, returns `{ needed, cardholderName, renterName, status }` so the return page knows whether to prompt.
+  - `submitCardholderVerification({ rentalId, phone, relationship, licenseDataUrl, acks })` — uploads license to `rental-signing`, saves `cardholder_phone`, `cardholder_relationship`, `cardholder_license_url`, `cardholder_verified_at`, sets `verification_status='submitted'`, then sends the admin SMS/email with `Verification: submitted`.
+  - `refuseCardholderVerification({ rentalId })` — sets `verification_status='refused'`, fires HIGH RISK admin alert.
+- Update `/rent/paid` (`src/routes/rent.paid.tsx`): after success, query verification state; if `needed`, render the **Card Verification Required** form (cardholder name auto-filled, phone, relationship dropdown [Parent|Spouse|Friend|Employer|Self|Other], `PhotoCapture` license upload, 3 required acknowledgement checkboxes, Submit). On skip/close → call refuse. Show confirmation on submit. Payment is never affected.
 
-### 1. Scheduling helpers (`src/lib/maintenance-utils.ts`)
-- Add `computeScheduledItems(vehicle, now)` returning structured rows: `{ vehicleId, type ('oil'|'battery'|'alternator'|'inspection'|custom), label, dueDate?, dueMileage?, milesRemaining?, daysRemaining?, status ('overdue'|'due_soon'|'upcoming') }`. Reuses the same interval math already in `computeVehicleAlerts`.
-- "Due soon" threshold for the dashboard = within **7 days OR 100 miles** (overdue always included). Existing red-alert thresholds (500 mi / 15 days) stay as-is for the Fleet badges so I don't change unrelated screens.
-- `markScheduledComplete(vehicleId, type)` helper that updates the vehicle's `maintenanceSettings` (sets `lastDone`/`lastMileage`/`lastDate` to today/current mileage), which automatically clears the alert.
+## Part 4 — Admin alerts
+- SMS to 267-221-3977 in the exact requested format including `Verification: [submitted|pending|refused]`.
+- Email to admin (via existing `notifyRenter`/GHL email path) with rental details, cardholder info, license link, and risk level (refused = HIGH). Admin email/target: reuse existing notification config; if none, send via GHL to a configured admin contact.
 
-### 2. Maintenance dashboard (`src/routes/maintenance.tsx`)
-- **Collapsible config section** (top): "⚙️ Configure Scheduled Repairs Alerts" — summarizes how many vehicles have alerts configured and an **Edit Alert Settings** action that routes to Fleet.
-- **Three summary cards**:
-  - *Scheduled Repairs (due soon)* — count + top 3 most urgent (vehicle, type, miles/days remaining, due date) + buttons to Scheduled tab / Fleet.
-  - *Open Repairs* — count + top 2 recent + total pending cost + button to Repairs tab.
-  - *Completed (recent)* — total count + 3 most recent by completion date + button to Completed tab.
-- **Three tabs**:
-  - *Scheduled Maintenance* — left: Due soon list with **Mark Complete** per row; right: recently completed scheduled services (from the service-log maintenance records).
-  - *Repairs* — existing `RepairsBoard` kanban (unchanged).
-  - *Completed* — existing sortable completed-repairs log table.
+## Part 5 — Persisted on rental
+All cardholder fields written to the `rentals` row (Part 1 columns) — permanent.
 
-### 3. Runner inspection pass/fail (Part 7)
-- The inspection→maintenance flow already exists: a failed inspection auto-creates a repair ticket (DB trigger `inspections_auto_maintenance`) and a passed inspection updates the vehicle. I will add, on inspection **approval**, clearing of the matching scheduled alerts (oil/battery/alternator/inspection) for that vehicle via `markScheduledComplete`, and confirm a failed check keeps the alert red (ticket already created). This is a small addition to the existing approval path, not a new system.
+## Part 6 — Admin review dashboard (Payments page)
+Enhance the existing "Payments Needing Review" section:
+- Columns: Renter | Cardholder | Amount | Rental | Verification status badge (Verified/Pending/Refused/Submitted).
+- Actions: View License (signed URL), View Details, Mark Reviewed (→ `verified`), Process Refund (manual, existing `resolveNameReview` refund path).
+- Filters: All | Pending Review | Verified | Refunded.
 
-## Out of scope / not building
-- No new `scheduled_maintenance` DB table (computed from existing per-vehicle settings instead — see decision above).
-- No changes to the Fleet Alert Settings dialog UI; it already captures all required intervals. The "Fleet add auto-populates Alert Settings" step is the admin opening that dialog after adding a vehicle (existing flow).
+## Part 7 — Rental detail page
+On `src/routes/rentals.tsx` / `my-rentals.$rentalId.tsx` detail, when `name_mismatch_flag = true`, show a **Card Verification** section: cardholder name, relationship, phone, license thumbnail (click to enlarge), verified date, status.
+
+## Part 9/10 — Verification & success criteria
+Manually walk the Joe/Sarah Smith scenario against preview; confirm: mismatch flagged, modal on return page, license upload + acks required, payment unaffected, admin SMS with status, dashboard + rental detail show data, refused = high-risk alert.
 
 ## Technical notes
-- All scheduled data is derived client-side from `vehicles[].maintenanceSettings`; no schema migration required.
-- "Mark Complete" mutates the vehicle via the existing `updateVehicle` store action, so Fleet badges and the dashboard stay in sync automatically through `useStoreVersion`.
-- P&L on repair completion is already wired through `recordRepairPayment` / `completeRepair`; unchanged.
+- License images stay in the private `rental-signing` bucket; surface via short-lived signed URLs from a server function (never public).
+- Admin SMS uses `sendSms` from `@/lib/ghl.server`; email uses the existing notify path.
+- Input validation with zod on all new server functions (phone, relationship enum, data-URL image, required acks).
