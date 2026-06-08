@@ -26,6 +26,34 @@ async function getProfile(
   return data || null;
 }
 
+// Admin phone that receives payment name-mismatch alerts.
+const ADMIN_ALERT_PHONE = "267-221-3977";
+
+/**
+ * Notify the admin that a payment cleared but the cardholder name did not match
+ * the renter/payer name. The payment is kept; an admin reviews it manually.
+ */
+async function alertAdminNameMismatch(opts: {
+  renterName: string;
+  cardholderName: string;
+  amountCents: number | null | undefined;
+  rentalId: string;
+}): Promise<void> {
+  const amount = opts.amountCents != null ? (opts.amountCents / 100).toFixed(2) : "—";
+  const msg =
+    `⚠️ PAYMENT NAME MISMATCH\n\n` +
+    `Renter: ${opts.renterName || "—"}\n` +
+    `Cardholder: ${opts.cardholderName || "—"}\n` +
+    `Amount: $${amount}\n` +
+    `Rental: ${opts.rentalId}\n\n` +
+    `Payment processed. Review for fraud.`;
+  try {
+    await sendSms(ADMIN_ALERT_PHONE, msg, "Admin");
+  } catch (e) {
+    console.error("[webhook] admin name-mismatch SMS failed", e);
+  }
+}
+
 function fmtAmount(cents: number | null | undefined): string {
   if (cents == null) return "";
   return `$${(cents / 100).toFixed(2)}`;
