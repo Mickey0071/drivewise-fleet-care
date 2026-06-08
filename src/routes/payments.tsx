@@ -79,6 +79,7 @@ function PaymentsPage() {
           </div>
         }
       />
+      <PendingPaymentReviews />
       <Tabs defaultValue="fees-due" className="space-y-4">
         <TabsList>
           <TabsTrigger value="fees-due">Rental Fees Due</TabsTrigger>
