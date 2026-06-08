@@ -93,7 +93,9 @@ function statusFilterMatches(r: Rental, filter: StatusFilter): boolean {
 
 function RentalsPage() {
   const navigate = Route.useNavigate();
-  const { paid, review, detail: detailId, status } = Route.useSearch();
+  const searchParams = Route.useSearch();
+  const { paid, review, detail: detailId } = searchParams;
+  const status: StatusFilter = (searchParams.status as StatusFilter) ?? "on_rent";
   const [detail, setDetail] = useState<Rental | null>(null);
   const { user, role } = useAuth();
   const [newOpen, setNewOpen] = useState(false);
