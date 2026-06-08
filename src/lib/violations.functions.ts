@@ -744,6 +744,17 @@ export const sendViolationReminders = createServerFn({ method: "POST" })
 const VIOLATION_ADMIN_PHONE = "267-221-3977";
 const AUTHORITIES = ["EZPass", "NJ DMV", "NY DMV", "PA DOT", "Other"];
 const SUBMIT_METHODS = ["Email", "Mail", "Online Portal", "Phone"];
+// Methods where the authority returns a tracking/confirmation number we must record.
+const CONFIRMATION_REQUIRED_METHODS = ["Online Portal", "Phone"];
+// A violation can only be submitted to the authority from one of these states.
+const SUBMITTABLE_STATUSES = [
+  "affidavit_signed",
+  "sent_to_customer",
+  "viewing",
+  "new",
+  "logged",
+  "pending",
+];
 
 /** Admin: full detail for the View & Submit dialog (customer info, affidavit, license, pre-built email). */
 export const getViolationSubmissionDetail = createServerFn({ method: "GET" })
@@ -878,14 +889,27 @@ export const submitViolationToAuthority = createServerFn({ method: "POST" })
   }) => {
     if (!input.id) throw new Error("id required");
     const authority = (input.authority || "").trim();
-    if (!AUTHORITIES.includes(authority)) throw new Error("Invalid authority");
+    if (!authority) throw new Error("Please select the authority you submitted to.");
+    if (!AUTHORITIES.includes(authority)) {
+      throw new Error(`"${authority}" is not a valid authority. Choose one of: ${AUTHORITIES.join(", ")}.`);
+    }
     const method = (input.method || "").trim();
-    if (!SUBMIT_METHODS.includes(method)) throw new Error("Invalid submission method");
+    if (!method) throw new Error("Please select how the violation was submitted.");
+    if (!SUBMIT_METHODS.includes(method)) {
+      throw new Error(`"${method}" is not a valid submission method. Choose one of: ${SUBMIT_METHODS.join(", ")}.`);
+    }
+    const confirmationNumber = (input.confirmationNumber || "").trim();
+    if (CONFIRMATION_REQUIRED_METHODS.includes(method) && !confirmationNumber) {
+      throw new Error(`A confirmation number is required when submitting via ${method}.`);
+    }
+    if (confirmationNumber.length > 120) {
+      throw new Error("Confirmation number must be 120 characters or fewer.");
+    }
     return {
       id: input.id,
       authority,
       method,
-      confirmationNumber: (input.confirmationNumber || "").slice(0, 120) || null,
+      confirmationNumber: confirmationNumber || null,
       notes: (input.notes || "").slice(0, 1000) || null,
     };
   })
@@ -896,6 +920,16 @@ export const submitViolationToAuthority = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .maybeSingle();
     if (!current) throw new Error("Violation not found");
+    const status = (current.status as string) ?? "";
+    if (status === "submitted_to_authority") {
+      throw new Error("This violation has already been submitted to the authority.");
+    }
+    if (status === "resolved" || status === "paid") {
+      throw new Error("This violation is already resolved and cannot be submitted to an authority.");
+    }
+    if (status && !SUBMITTABLE_STATUSES.includes(status)) {
+      throw new Error(`A violation in "${status}" status cannot be submitted to an authority.`);
+    }
     const now = new Date().toISOString();
 
     const { error } = await (supabaseAdmin as any)
@@ -964,7 +998,7 @@ export const markViolationResolved = createServerFn({ method: "POST" })
   .inputValidator((input: { id: string; reason: string; notes?: string }) => {
     if (!input.id) throw new Error("id required");
     const reason = (input.reason || "").trim();
-    if (!reason) throw new Error("Resolution reason required");
+    if (!reason) throw new Error("Please provide a reason for resolving this violation.");
     return {
       id: input.id,
       reason: reason.slice(0, 300),
@@ -978,6 +1012,10 @@ export const markViolationResolved = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .maybeSingle();
     if (!current) throw new Error("Violation not found");
+    const status = (current.status as string) ?? "";
+    if (status === "resolved") {
+      throw new Error("This violation has already been resolved.");
+    }
     const now = new Date().toISOString();
 
     const { error } = await (supabaseAdmin as any)
