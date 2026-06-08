@@ -60,7 +60,7 @@ export function SubmitDisputeDialog({
   const [method, setMethod] = useState("Email");
   const [confirmation, setConfirmation] = useState("");
   const [subNotes, setSubNotes] = useState("");
-  const [resReason, setResReason] = useState("");
+  const [resReason, setResReason] = useState("Liability transferred");
   const [resNotes, setResNotes] = useState("");
   const [emailDraft, setEmailDraft] = useState("");
   const [busy, setBusy] = useState(false);
