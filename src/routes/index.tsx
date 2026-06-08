@@ -11,6 +11,7 @@ import { computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { AgreementReviewModal } from "@/components/app/AgreementReviewModal";
 import { PendingPaymentReviews } from "@/components/app/PendingPaymentReviews";
 import { ApprovedInspections } from "@/components/app/ApprovedInspections";
+import { VerificationAlertsCard } from "@/components/app/VerificationAlertsCard";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
@@ -200,6 +201,8 @@ function Index() {
       />
 
       {role === "admin" && <PendingPaymentReviews />}
+
+      {role === "admin" && <VerificationAlertsCard />}
 
       {role === "admin" && <ApprovedInspections />}
 
