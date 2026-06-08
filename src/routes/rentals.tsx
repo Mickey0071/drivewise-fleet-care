@@ -987,6 +987,30 @@ function RentalsPage() {
               : pendingReview.map(renderRow)}
           </div>
         ) : (<>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Select
+              value={status}
+              onValueChange={(val: StatusFilter) => {
+                navigate({ to: "/rentals", search: (prev) => ({ ...prev, status: val }), replace: true });
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(["on_rent", "all", "pending", "returned", "cancelled"] as StatusFilter[]).map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {FILTER_LABELS[k]} ({statusCounts[k]})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+              Showing: {FILTER_LABELS[status]} ({statusCounts[status]})
+            </span>
+          </div>
+        </div>
         <div className="relative">
           <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
