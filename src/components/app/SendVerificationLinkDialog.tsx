@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
@@ -21,6 +21,8 @@ export function SendVerificationLinkDialog({
   rentalId,
   defaultPhone,
   defaultName,
+  driverPhone,
+  driverName,
   onSent,
 }: {
   open: boolean;
@@ -28,13 +30,34 @@ export function SendVerificationLinkDialog({
   rentalId: string;
   defaultPhone?: string | null;
   defaultName?: string | null;
+  driverPhone?: string | null;
+  driverName?: string | null;
   onSent?: () => void;
 }) {
   const sendFn = useServerFn(sendVerificationLink);
-  const [phone, setPhone] = useState(defaultPhone ?? "");
-  const [name, setName] = useState(defaultName ?? "");
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const p = defaultPhone?.trim() || driverPhone?.trim() || "";
+    const n = defaultName?.trim() || driverName?.trim() || "";
+    setPhone(p);
+    setName(n);
+  }, [open, defaultPhone, driverPhone, defaultName, driverName]);
+
+  const phoneSource = defaultPhone?.trim()
+    ? "Cardholder phone on file"
+    : driverPhone?.trim()
+      ? "Auto-filled from rental"
+      : null;
+  const nameSource = defaultName?.trim()
+    ? "Cardholder name on file"
+    : driverName?.trim()
+      ? "Auto-filled from rental"
+      : null;
 
   const send = async () => {
     if (!phone.trim()) {
@@ -77,6 +100,9 @@ export function SendVerificationLinkDialog({
               onChange={(e) => setPhone(e.target.value)}
               placeholder="(267) 555-1234"
             />
+            {phoneSource && (
+              <p className="text-xs text-muted-foreground">{phoneSource}</p>
+            )}
           </div>
           <div className="space-y-1">
             <Label htmlFor="vl-name">Recipient name</Label>
@@ -86,6 +112,9 @@ export function SendVerificationLinkDialog({
               onChange={(e) => setName(e.target.value)}
               placeholder="Cardholder name"
             />
+            {nameSource && (
+              <p className="text-xs text-muted-foreground">{nameSource}</p>
+            )}
           </div>
           <div className="space-y-1">
             <Label htmlFor="vl-msg">Custom message (optional)</Label>
