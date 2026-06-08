@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import type { Payment } from "@/lib/mock/data";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
+import { n as PendingPaymentReviews } from "@/components/app/PendingPaymentReviews";
 
 export const Route = createFileRoute("/payments")({
   head: () => ({ meta: [{ title: "Payments — Camauto Rentals" }] }),
