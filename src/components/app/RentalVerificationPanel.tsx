@@ -197,6 +197,8 @@ export function RentalVerificationPanel({
         rentalId={rental.id}
         defaultPhone={rental.cardholderPhone}
         defaultName={rental.cardholderName}
+        driverPhone={driverPhone}
+        driverName={driverName}
         onSent={() => {
           setAudit(null);
           ensureRentalSynced(rental.id);
