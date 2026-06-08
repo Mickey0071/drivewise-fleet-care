@@ -994,7 +994,7 @@ function RentalsPage() {
             <Select
               value={status}
               onValueChange={(val: StatusFilter) => {
-                navigate({ to: "/rentals", search: (prev) => ({ ...prev, status: val }), replace: true });
+                navigate({ to: "/rentals", search: (prev: Record<string, unknown>) => ({ ...prev, status: val }), replace: true });
               }}
             >
               <SelectTrigger className="w-[180px]">
