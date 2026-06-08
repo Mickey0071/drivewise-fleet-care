@@ -179,6 +179,11 @@ function ViolationsPage() {
                 <FileUp className="mr-1 h-4 w-4" /> Bulk Upload EZPass
               </Link>
             </Button>
+            <Button variant="outline" asChild>
+              <Link to="/violations/disputes">
+                <FileSignature className="mr-1 h-4 w-4" /> Disputes
+              </Link>
+            </Button>
             <Button onClick={() => setNewOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="mr-1 h-4 w-4" /> New Violation
             </Button>
