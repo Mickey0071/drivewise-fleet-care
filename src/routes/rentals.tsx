@@ -71,9 +71,29 @@ export const Route = createFileRoute("/rentals")({
 
 const AGREEMENT_VERSION = "v1.0";
 
+const FILTER_LABELS: Record<StatusFilter, string> = {
+  on_rent: "On Rent",
+  all: "All",
+  pending: "Pending",
+  returned: "Returned",
+  cancelled: "Cancelled",
+};
+
+function statusFilterMatches(r: Rental, filter: StatusFilter): boolean {
+  const rs = r.reservationStatus ?? "active";
+  switch (filter) {
+    case "on_rent": return rs === "active";
+    case "pending": return rs === "pending";
+    case "returned": return rs === "returned" || rs === "completed";
+    case "cancelled": return rs === "cancelled";
+    case "all": return true;
+    default: return true;
+  }
+}
+
 function RentalsPage() {
   const navigate = Route.useNavigate();
-  const { paid, review, detail: detailId } = Route.useSearch();
+  const { paid, review, detail: detailId, status } = Route.useSearch();
   const [detail, setDetail] = useState<Rental | null>(null);
   const { user, role } = useAuth();
   const [newOpen, setNewOpen] = useState(false);
