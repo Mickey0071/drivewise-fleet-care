@@ -260,8 +260,17 @@ export const resolveCardholderReview = createServerFn({ method: "POST" })
     if (data.action === "reviewed") {
       await supabaseAdmin
         .from("rentals")
-        .update({ verification_status: "verified", updated_at: new Date().toISOString() })
+        .update({
+          verification_status: "verified",
+          verification_reviewed_by: context.userId,
+          verification_reviewed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as any)
         .eq("id", data.rentalId);
+      await appendVerificationEvent(data.rentalId, {
+        type: "admin_reviewed",
+        by: context.userId,
+      });
       return { ok: true, status: "verified" as const };
     }
 
@@ -288,5 +297,240 @@ export const resolveCardholderReview = createServerFn({ method: "POST" })
       .from("rentals")
       .update({ verification_status: "refunded", updated_at: new Date().toISOString() })
       .eq("id", data.rentalId);
+    await appendVerificationEvent(data.rentalId, {
+      type: "refunded",
+      by: context.userId,
+    });
     return { ok: true, status: "refunded" as const };
+  });
+
+// --- Audit trail + manual verification links --------------------------------
+
+type VerificationEvent = {
+  type: string;
+  at?: string;
+  by?: string | null;
+  note?: string | null;
+};
+
+/** Append an entry to the rental's verification audit timeline. */
+export async function appendVerificationEvent(
+  rentalId: string,
+  event: VerificationEvent,
+): Promise<void> {
+  const { data: rental } = await supabaseAdmin
+    .from("rentals")
+    .select("verification_events")
+    .eq("id", rentalId)
+    .maybeSingle();
+  const existing = Array.isArray((rental as any)?.verification_events)
+    ? ((rental as any).verification_events as VerificationEvent[])
+    : [];
+  const next = [...existing, { ...event, at: event.at ?? new Date().toISOString() }];
+  await supabaseAdmin
+    .from("rentals")
+    .update({ verification_events: next, updated_at: new Date().toISOString() } as any)
+    .eq("id", rentalId);
+}
+
+function verifyCardLink(token: string): string {
+  const origin =
+    process.env.PUBLIC_APP_ORIGIN || "https://camautorentals.lovable.app";
+  return `${origin}/verify-card/${token}`;
+}
+
+/** Admin: generate + send a manual verification link via SMS to the cardholder. */
+export const sendVerificationLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { rentalId: string; phone: string; name?: string; message?: string }) =>
+    z
+      .object({
+        rentalId: z.string().min(1).max(64),
+        phone: z.string().trim().min(7).max(32),
+        name: z.string().trim().max(120).optional(),
+        message: z.string().trim().max(400).optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { data: rental } = await supabaseAdmin
+      .from("rentals")
+      .select("id, verification_resend_count")
+      .eq("id", data.rentalId)
+      .maybeSingle();
+    if (!rental) throw new Error("Rental not found");
+
+    const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replace(/-/g, "");
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    await supabaseAdmin
+      .from("rentals")
+      .update({
+        verification_token: token,
+        verification_token_expires_at: expires,
+        verification_link_sent_at: new Date().toISOString(),
+        verification_link_sent_by: context.userId,
+        verification_resend_count: (Number((rental as any).verification_resend_count) || 0) + 1,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq("id", data.rentalId);
+
+    const link = verifyCardLink(token);
+    const name = data.name?.trim() || "there";
+    const msg =
+      (data.message?.trim()
+        ? `${data.message.trim()}\n\n`
+        : `Hi ${name}, Camauto Rentals needs to verify your card. `) +
+      `Click to upload your license: ${link}`;
+    try {
+      await sendSms(data.phone, msg, data.name ?? null);
+    } catch (e) {
+      console.error("[verify-link] SMS failed", e);
+      throw new Error("Could not send SMS. Check the phone number and try again.");
+    }
+
+    await appendVerificationEvent(data.rentalId, {
+      type: "link_sent",
+      by: context.userId,
+      note: data.phone,
+    });
+    return { ok: true };
+  });
+
+/** Public: resolve a verification token to render the landing page. */
+export const getVerificationByToken = createServerFn({ method: "GET" })
+  .inputValidator((input: { token: string }) => {
+    if (!input?.token || typeof input.token !== "string") throw new Error("token required");
+    return { token: input.token.slice(0, 128) };
+  })
+  .handler(async ({ data }) => {
+    const { data: rows } = await (supabaseAdmin as any).rpc("get_verification_by_token", {
+      _token: data.token,
+    });
+    const row = (Array.isArray(rows) ? rows[0] : rows) as any;
+    if (!row) return { found: false } as const;
+    return {
+      found: true as const,
+      rentalId: row.rental_id as string,
+      cardholderName: (row.cardholder_name as string) || "",
+      renterName: (row.renter_name as string) || "",
+      status: (row.verification_status as string) || "pending",
+      expired: row.expired === true,
+    };
+  });
+
+/** Public: submit verification via a manual token link. */
+export const submitVerificationByToken = createServerFn({ method: "POST" })
+  .inputValidator(
+    (input: {
+      token: string;
+      phone: string;
+      relationship: string;
+      licenseDataUrl: string;
+      ackCardholder: boolean;
+      ackAuthorize: boolean;
+      ackSaved: boolean;
+    }) =>
+      z
+        .object({
+          token: z.string().min(1).max(128),
+          phone: z.string().trim().min(7).max(32),
+          relationship: z.enum(RELATIONSHIPS),
+          licenseDataUrl: z.string().startsWith("data:image/"),
+          ackCardholder: z.literal(true),
+          ackAuthorize: z.literal(true),
+          ackSaved: z.literal(true),
+        })
+        .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { data: rental } = await supabaseAdmin
+      .from("rentals")
+      .select("id, driver_id, cardholder_name, verification_token_expires_at")
+      .eq("verification_token", data.token)
+      .maybeSingle();
+    if (!rental) throw new Error("This verification link is invalid.");
+    const exp = (rental as any).verification_token_expires_at;
+    if (exp && new Date(exp).getTime() < Date.now()) {
+      throw new Error("This verification link has expired. Please request a new one.");
+    }
+
+    const licenseUrl = await uploadCardholderLicense(rental.id, data.licenseDataUrl);
+    await supabaseAdmin
+      .from("rentals")
+      .update({
+        cardholder_phone: data.phone,
+        cardholder_relationship: data.relationship,
+        cardholder_license_url: licenseUrl,
+        cardholder_verified_at: new Date().toISOString(),
+        verification_status: "submitted",
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq("id", rental.id);
+    await appendVerificationEvent(rental.id, { type: "submitted" });
+    return { ok: true };
+  });
+
+/** Admin: dashboard verification alert counts + recent items. */
+export const listVerificationAlerts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { data: rentals } = await supabaseAdmin
+      .from("rentals")
+      .select("id, driver_id, cardholder_name, verification_status, updated_at")
+      .eq("name_mismatch_flag", true)
+      .in("verification_status", ["pending", "submitted", "refused"])
+      .order("updated_at", { ascending: false })
+      .limit(50);
+    const driverIds = Array.from(
+      new Set((rentals ?? []).map((r: any) => r.driver_id).filter(Boolean)),
+    );
+    let driverMap: Record<string, string> = {};
+    if (driverIds.length) {
+      const { data: drivers } = await supabaseAdmin
+        .from("drivers")
+        .select("id, full_name")
+        .in("id", driverIds);
+      driverMap = Object.fromEntries((drivers ?? []).map((d: any) => [d.id, d.full_name]));
+    }
+    const items = (rentals ?? []).map((r: any) => ({
+      id: r.id,
+      renter_name: driverMap[r.driver_id] ?? r.driver_id ?? "—",
+      cardholder_name: r.cardholder_name ?? "—",
+      verification_status: (r.verification_status as string) ?? "pending",
+    }));
+    const pendingCount = items.filter((i) =>
+      ["pending", "submitted"].includes(i.verification_status),
+    ).length;
+    const refusedCount = items.filter((i) => i.verification_status === "refused").length;
+    return { items, pendingCount, refusedCount };
+  });
+
+/** Admin: fetch the verification audit timeline for a single rental. */
+export const getVerificationAudit = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { rentalId: string }) => {
+    if (!input?.rentalId || typeof input.rentalId !== "string") throw new Error("rentalId required");
+    return { rentalId: input.rentalId.slice(0, 64) };
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { data: rental } = await supabaseAdmin
+      .from("rentals")
+      .select(
+        "verification_events, verification_link_sent_at, verification_resend_count, verification_reviewed_at, cardholder_verified_at",
+      )
+      .eq("id", data.rentalId)
+      .maybeSingle();
+    const events = Array.isArray((rental as any)?.verification_events)
+      ? ((rental as any).verification_events as VerificationEvent[])
+      : [];
+    return {
+      events,
+      linkSentAt: (rental as any)?.verification_link_sent_at ?? null,
+      resendCount: Number((rental as any)?.verification_resend_count) || 0,
+      reviewedAt: (rental as any)?.verification_reviewed_at ?? null,
+      submittedAt: (rental as any)?.cardholder_verified_at ?? null,
+    };
   });

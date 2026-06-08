@@ -35,6 +35,7 @@ import { getSavedCard } from "@/lib/card-display";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
 import { ReservationDocuments } from "@/components/app/ReservationDocuments";
+import { RentalVerificationPanel } from "@/components/app/RentalVerificationPanel";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
@@ -909,40 +910,7 @@ function RentalsPage() {
               <RentalCardTabs rental={r} />
             )}
             {r.nameMismatchFlag && (
-              <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
-                <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-amber-700">
-                  <span aria-hidden>🛡️</span> Card Verification
-                  <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs font-medium capitalize text-amber-800">
-                    {r.verificationStatus ?? "pending"}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <span className="text-muted-foreground">Cardholder</span>
-                  <span className="text-right font-medium">{r.cardholderName ?? "—"}</span>
-                  <span className="text-muted-foreground">Relationship</span>
-                  <span className="text-right font-medium">{r.cardholderRelationship ?? "—"}</span>
-                  <span className="text-muted-foreground">Phone</span>
-                  <span className="text-right font-medium">{r.cardholderPhone ?? "—"}</span>
-                  <span className="text-muted-foreground">Verified</span>
-                  <span className="text-right font-medium">
-                    {r.cardholderVerifiedAt
-                      ? new Date(r.cardholderVerifiedAt).toLocaleString()
-                      : "—"}
-                  </span>
-                </div>
-                {r.cardholderLicenseUrl && (
-                  <button
-                    onClick={() => window.open(r.cardholderLicenseUrl!, "_blank", "noopener")}
-                    className="mt-2"
-                  >
-                    <img
-                      src={r.cardholderLicenseUrl}
-                      alt="Cardholder license"
-                      className="h-20 w-auto rounded border border-border object-cover"
-                    />
-                  </button>
-                )}
-              </div>
+              <RentalVerificationPanel rental={r} isAdmin={role === "admin"} />
             )}
           </div>
         </div>

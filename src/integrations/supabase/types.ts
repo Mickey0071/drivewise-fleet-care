@@ -1509,8 +1509,16 @@ export type Database = {
           third_party_payer: boolean
           updated_at: string
           vehicle_id: string
+          verification_events: Json
+          verification_link_sent_at: string | null
+          verification_link_sent_by: string | null
+          verification_resend_count: number
+          verification_reviewed_at: string | null
+          verification_reviewed_by: string | null
           verification_status: string | null
           verification_timestamp: string | null
+          verification_token: string | null
+          verification_token_expires_at: string | null
           weekly_rate: number
         }
         Insert: {
@@ -1576,8 +1584,16 @@ export type Database = {
           third_party_payer?: boolean
           updated_at?: string
           vehicle_id: string
+          verification_events?: Json
+          verification_link_sent_at?: string | null
+          verification_link_sent_by?: string | null
+          verification_resend_count?: number
+          verification_reviewed_at?: string | null
+          verification_reviewed_by?: string | null
           verification_status?: string | null
           verification_timestamp?: string | null
+          verification_token?: string | null
+          verification_token_expires_at?: string | null
           weekly_rate?: number
         }
         Update: {
@@ -1643,8 +1659,16 @@ export type Database = {
           third_party_payer?: boolean
           updated_at?: string
           vehicle_id?: string
+          verification_events?: Json
+          verification_link_sent_at?: string | null
+          verification_link_sent_by?: string | null
+          verification_resend_count?: number
+          verification_reviewed_at?: string | null
+          verification_reviewed_by?: string | null
           verification_status?: string | null
           verification_timestamp?: string | null
+          verification_token?: string | null
+          verification_token_expires_at?: string | null
           weekly_rate?: number
         }
         Relationships: [
@@ -2697,6 +2721,16 @@ export type Database = {
           vehicle_model: string
           vehicle_year: number
           weekly_rate: number
+        }[]
+      }
+      get_verification_by_token: {
+        Args: { _token: string }
+        Returns: {
+          cardholder_name: string
+          expired: boolean
+          rental_id: string
+          renter_name: string
+          verification_status: string
         }[]
       }
       get_violation_public: {
