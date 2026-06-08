@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { sendVerificationLink } from "@/lib/cardholder-verification.functions";
+import { toE164, isValidE164 } from "@/lib/phone";
 
 export function SendVerificationLinkDialog({
   open,
