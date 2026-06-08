@@ -1094,6 +1094,7 @@ function RentalsPage() {
           return `Camauto Rentals — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim();
         })() : ""}
         savedCard={chargeCardRental ? getSavedCard(driverById(chargeCardRental.driverId)) : null}
+        consentOnFile={chargeCardRental ? !!(chargeCardRental.clientSignedAt || chargeCardRental.signedAt) : true}
       />
       <ReturnVehicleDialog
         rental={returnChoiceRental}
