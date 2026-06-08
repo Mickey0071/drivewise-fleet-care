@@ -19,6 +19,7 @@ import type { Payment } from "@/lib/mock/data";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { PendingPaymentReviews } from "@/components/app/PendingPaymentReviews";
+import { CardholderVerificationReviews } from "@/components/app/CardholderVerificationReviews";
 
 export const Route = createFileRoute("/payments")({
   head: () => ({ meta: [{ title: "Payments — Camauto Rentals" }] }),
@@ -81,6 +82,7 @@ function PaymentsPage() {
         }
       />
       <PendingPaymentReviews />
+      <CardholderVerificationReviews />
       <Tabs defaultValue="fees-due" className="space-y-4">
         <TabsList>
           <TabsTrigger value="fees-due">Rental Fees Due</TabsTrigger>
