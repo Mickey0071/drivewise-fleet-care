@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import logo from "@/assets/camauto-logo-full.jpeg";
 import {
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/rent/paid")({
 
 const RELATIONSHIPS = ["Parent", "Spouse", "Friend", "Employer", "Self", "Other"];
 
-const inputStyle: React.CSSProperties = {
+const inputStyle: CSSProperties = {
   width: "100%",
   padding: "0.6rem 0.75rem",
   border: "1px solid #d4d4d8",
@@ -86,7 +86,7 @@ function PaidPage() {
     return () => window.removeEventListener("pagehide", handler);
   }, [needed, done, rental_id]);
 
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) {
