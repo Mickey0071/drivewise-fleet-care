@@ -82,6 +82,11 @@ export function SendToMechanicDialog({
     setIncludeChecklist(false); setSelectedCommon([]); setCustomItems([]); setChecklistError("");
   }
 
+  useEffect(() => {
+    const hasItems = selectedCommon.length > 0 || customItems.some((i) => i.label.trim());
+    if (hasItems) setChecklistError("");
+  }, [selectedCommon, customItems]);
+
   async function submit() {
     if (!name.trim()) { toast.error("Mechanic name required"); return; }
     if (!phone.trim()) { toast.error("Mechanic phone required"); return; }
@@ -91,7 +96,7 @@ export function SendToMechanicDialog({
         ...selectedCommon.map((l) => newItem(l)),
         ...customItems.filter((i) => i.label.trim()).map((i) => ({ id: i.id, label: i.label.trim() })),
       ];
-      if (checklist.length === 0) { toast.error("Select or add at least one checklist item, or turn off the checklist"); return; }
+      if (checklist.length === 0) { setChecklistError("Select or add at least one checklist item, or turn off the checklist"); return; }
     }
     setSending(true);
     try {
