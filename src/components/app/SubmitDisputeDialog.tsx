@@ -18,8 +18,14 @@ import {
 const fmtMoney = (n: number) => `$${Number(n || 0).toFixed(2)}`;
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "—");
 
-export const AUTHORITY_OPTIONS = ["EZPass", "NJ DMV", "NY DMV", "Other"];
-export const METHOD_OPTIONS = ["Email", "Mail", "Online Portal"];
+export const AUTHORITY_OPTIONS = ["EZPass", "NJ DMV", "NY DMV", "PA DOT", "Other"];
+export const METHOD_OPTIONS = ["Email", "Mail", "Online Portal", "Phone"];
+export const RESOLUTION_REASONS = [
+  "Liability transferred",
+  "Customer paid authority directly",
+  "Dismissed",
+  "Other",
+];
 
 function TimelineRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
@@ -54,7 +60,7 @@ export function SubmitDisputeDialog({
   const [method, setMethod] = useState("Email");
   const [confirmation, setConfirmation] = useState("");
   const [subNotes, setSubNotes] = useState("");
-  const [resReason, setResReason] = useState("");
+  const [resReason, setResReason] = useState("Liability transferred");
   const [resNotes, setResNotes] = useState("");
   const [emailDraft, setEmailDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -181,6 +187,15 @@ export function SubmitDisputeDialog({
               ) : (
                 <Button size="sm" variant="outline" disabled>No license on file</Button>
               )}
+              {detail.agreementUrl ? (
+                <Button size="sm" variant="outline" asChild>
+                  <a href={detail.agreementUrl} target="_blank" rel="noreferrer" download>
+                    📑 Download Rental Agreement
+                  </a>
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" disabled>No rental agreement</Button>
+              )}
             </div>
 
             {/* Email template */}
@@ -262,11 +277,14 @@ export function SubmitDisputeDialog({
                 <div className="font-medium">Mark Resolved</div>
                 <div>
                   <Label>Resolution reason</Label>
-                  <Input
-                    value={resReason}
-                    onChange={(e) => setResReason(e.target.value)}
-                    placeholder="Liability transferred / dismissed / paid to authority"
-                  />
+                  <Select value={resReason} onValueChange={setResReason}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {RESOLUTION_REASONS.map((r) => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Notes (optional)</Label>
@@ -293,6 +311,7 @@ export function SubmitDisputeDialog({
               <div className="space-y-3">
                 <TimelineRow label="Created" value={violation.created_at} />
                 <TimelineRow label="Sent to customer" value={violation.sent_to_customer_at} />
+                <TimelineRow label="Viewed by customer" value={violation.viewed_at ?? detail.viewedAt} />
                 <TimelineRow label="Signed by customer" value={detail.signedAt} />
                 <TimelineRow label="Submitted to authority" value={detail.submittedAt} />
                 <TimelineRow label="Resolved" value={detail.resolvedAt} />

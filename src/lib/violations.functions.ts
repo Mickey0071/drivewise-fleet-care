@@ -742,8 +742,8 @@ export const sendViolationReminders = createServerFn({ method: "POST" })
   });
 
 const VIOLATION_ADMIN_PHONE = "267-221-3977";
-const AUTHORITIES = ["EZPass", "NJ DMV", "NY DMV", "Other"];
-const SUBMIT_METHODS = ["Email", "Mail", "Online Portal"];
+const AUTHORITIES = ["EZPass", "NJ DMV", "NY DMV", "PA DOT", "Other"];
+const SUBMIT_METHODS = ["Email", "Mail", "Online Portal", "Phone"];
 
 /** Admin: full detail for the View & Submit dialog (customer info, affidavit, license, pre-built email). */
 export const getViolationSubmissionDetail = createServerFn({ method: "GET" })
@@ -780,7 +780,7 @@ export const getViolationSubmissionDetail = createServerFn({ method: "GET" })
       v.rental_id
         ? (supabaseAdmin as any)
             .from("rentals")
-            .select("id, start_date, end_date")
+            .select("id, start_date, end_date, agreement_pdf_url")
             .eq("id", v.rental_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
@@ -841,6 +841,8 @@ export const getViolationSubmissionDetail = createServerFn({ method: "GET" })
       signedName: (v.signed_name as string) ?? null,
       signedPdfUrl: (v.signed_pdf_url as string) ?? null,
       licenseUrl,
+      agreementUrl: (rental?.agreement_pdf_url as string) ?? null,
+      viewedAt: (v.viewed_at as string) ?? null,
       driver: driver
         ? {
             fullName: driver.full_name ?? null,
@@ -904,6 +906,7 @@ export const submitViolationToAuthority = createServerFn({ method: "POST" })
         submitted_to: data.authority,
         submission_method: data.method,
         confirmation_number: data.confirmationNumber,
+        submission_notes: data.notes,
         updated_at: now,
       } as never)
       .eq("id", data.id);

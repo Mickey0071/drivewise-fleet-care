@@ -2382,6 +2382,7 @@ export type Database = {
           stripe_payment_intent_id: string | null
           stripe_payment_link_id: string | null
           submission_method: string | null
+          submission_notes: string | null
           submitted_to: string | null
           submitted_to_authority_at: string | null
           total_amount: number
@@ -2426,6 +2427,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           stripe_payment_link_id?: string | null
           submission_method?: string | null
+          submission_notes?: string | null
           submitted_to?: string | null
           submitted_to_authority_at?: string | null
           total_amount?: number
@@ -2470,6 +2472,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           stripe_payment_link_id?: string | null
           submission_method?: string | null
+          submission_notes?: string | null
           submitted_to?: string | null
           submitted_to_authority_at?: string | null
           total_amount?: number
