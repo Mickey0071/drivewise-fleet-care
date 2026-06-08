@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { createMechanicJob } from "@/lib/mechanic-jobs.functions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, X, Loader2, Send } from "lucide-react";
+import { Plus, X, Loader2, Send, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const COMMON_ITEMS = [
@@ -67,15 +67,25 @@ export function SendToMechanicDialog({
   const [selectedCommon, setSelectedCommon] = useState<string[]>([]);
   const [customItems, setCustomItems] = useState<{ id: string; label: string }[]>([]);
   const [sending, setSending] = useState(false);
+  const [checklistError, setChecklistError] = useState("");
 
   function toggleCommon(label: string) {
-    setSelectedCommon((prev) => (prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]));
+    setSelectedCommon((prev) => {
+      const next = prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label];
+      if (next.length > 0 || customItems.some((i) => i.label.trim())) setChecklistError("");
+      return next;
+    });
   }
 
   function reset() {
     setName(""); setPhone(""); setShop(""); setContext("");
-    setIncludeChecklist(false); setSelectedCommon([]); setCustomItems([]);
+    setIncludeChecklist(false); setSelectedCommon([]); setCustomItems([]); setChecklistError("");
   }
+
+  useEffect(() => {
+    const hasItems = selectedCommon.length > 0 || customItems.some((i) => i.label.trim());
+    if (hasItems) setChecklistError("");
+  }, [selectedCommon, customItems]);
 
   async function submit() {
     if (!name.trim()) { toast.error("Mechanic name required"); return; }
@@ -86,7 +96,7 @@ export function SendToMechanicDialog({
         ...selectedCommon.map((l) => newItem(l)),
         ...customItems.filter((i) => i.label.trim()).map((i) => ({ id: i.id, label: i.label.trim() })),
       ];
-      if (checklist.length === 0) { toast.error("Select or add at least one checklist item, or turn off the checklist"); return; }
+      if (checklist.length === 0) { setChecklistError("Select or add at least one checklist item, or turn off the checklist"); return; }
     }
     setSending(true);
     try {
@@ -148,7 +158,7 @@ export function SendToMechanicDialog({
           <div className="rounded-md border p-3">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium">Include checklist for mechanic?</Label>
-              <Switch checked={includeChecklist} onCheckedChange={setIncludeChecklist} />
+              <Switch checked={includeChecklist} onCheckedChange={(v) => { setIncludeChecklist(v); if (!v) setChecklistError(""); }} />
             </div>
             {includeChecklist ? (
               <div className="mt-3 space-y-3">
@@ -185,6 +195,12 @@ export function SendToMechanicDialog({
                     <Plus className="h-4 w-4" /> Add Custom Item
                   </Button>
                 </div>
+              </div>
+            ) : null}
+            {checklistError ? (
+              <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600">
+                <AlertCircle className="h-3.5 w-3.5" />
+                <span>{checklistError}</span>
               </div>
             ) : null}
           </div>
