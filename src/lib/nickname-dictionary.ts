@@ -183,8 +183,9 @@ export type NameMatchDecision = {
 /**
  * The single source of truth for the hybrid decision.
  * Dictionary/exact → approve (no alert). Otherwise fuzzy thresholds apply.
- * When either name is missing we cannot verify → treat as review (alert) so
- * payment is never silently refunded on missing data.
+ * Payments are NEVER auto-refunded: any name mismatch is routed to admin
+ * review (alert) so the payment is kept and an admin manually decides whether
+ * to keep it or issue a refund.
  */
 export function decideNameMatch(cardName: string, licenseName: string): NameMatchDecision {
   if (!cardName || !licenseName) {
@@ -197,8 +198,7 @@ export function decideNameMatch(cardName: string, licenseName: string): NameMatc
   if (score >= 0.75) {
     return { action: "approve", status: "approved", score, alert: false };
   }
-  if (score >= 0.5) {
-    return { action: "review", status: "pending_review", score, alert: true };
-  }
-  return { action: "refund", status: "mismatched", score, alert: false };
+  // Previously a score < 0.5 triggered an automatic refund. Auto-refunds are
+  // disabled — all mismatches now go to admin review with the payment kept.
+  return { action: "review", status: "pending_review", score, alert: true };
 }

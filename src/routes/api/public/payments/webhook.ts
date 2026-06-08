@@ -26,6 +26,34 @@ async function getProfile(
   return data || null;
 }
 
+// Admin phone that receives payment name-mismatch alerts.
+const ADMIN_ALERT_PHONE = "267-221-3977";
+
+/**
+ * Notify the admin that a payment cleared but the cardholder name did not match
+ * the renter/payer name. The payment is kept; an admin reviews it manually.
+ */
+async function alertAdminNameMismatch(opts: {
+  renterName: string;
+  cardholderName: string;
+  amountCents: number | null | undefined;
+  rentalId: string;
+}): Promise<void> {
+  const amount = opts.amountCents != null ? (opts.amountCents / 100).toFixed(2) : "—";
+  const msg =
+    `⚠️ PAYMENT NAME MISMATCH\n\n` +
+    `Renter: ${opts.renterName || "—"}\n` +
+    `Cardholder: ${opts.cardholderName || "—"}\n` +
+    `Amount: $${amount}\n` +
+    `Rental: ${opts.rentalId}\n\n` +
+    `Payment processed. Review for fraud.`;
+  try {
+    await sendSms(ADMIN_ALERT_PHONE, msg, "Admin");
+  } catch (e) {
+    console.error("[webhook] admin name-mismatch SMS failed", e);
+  }
+}
+
 function fmtAmount(cents: number | null | undefined): string {
   if (cents == null) return "";
   return `$${(cents / 100).toFixed(2)}`;
@@ -479,6 +507,17 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     }
     // -------- end extension name validation --------
 
+    // Auto-refunds are disabled: alert the admin to review a mismatched
+    // extension payment instead of refunding it.
+    if (extDecision && extDecision.alert) {
+      await alertAdminNameMismatch({
+        renterName: extLicenseName,
+        cardholderName: extCardName,
+        amountCents: session.amount_total,
+        rentalId,
+      });
+    }
+
     // For admin links, look up the request row (carries signature + new_end).
     const extToken = session.metadata?.extension_token as string | undefined;
     let extReqRow: any = null;
@@ -773,6 +812,17 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       return;
     }
     // -------- end name validation --------
+
+    // Auto-refunds are disabled: when the cardholder name does not match the
+    // renter/payer, the payment is kept and the admin is alerted to review it.
+    if (decision && decision.alert) {
+      await alertAdminNameMismatch({
+        renterName: licenseName,
+        cardholderName,
+        amountCents: session.amount_total,
+        rentalId,
+      });
+    }
 
     // Record the payment in the subscriptions ledger for accounting.
     await getSupabase()
