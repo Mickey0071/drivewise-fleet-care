@@ -2237,7 +2237,7 @@ export function moveRepairToDiagnose(id: string) {
 /** Phase 2 → Phase 3: save diagnosis (parts needed + costs) and move to Complete. */
 export function saveRepairDiagnosis(
   id: string,
-  input: { partsNeeded: string; partsCost: number; laborCost: number },
+  input: { partsNeeded: string; partsCost: number; laborCost: number; mileageAtService?: number },
 ) {
   const m = maintenance.find(x => x.id === id);
   if (!m) return;
@@ -2249,6 +2249,9 @@ export function saveRepairDiagnosis(
   m.laborCost = labor;
   m.cost = total;
   m.balance = Math.max(0, total - (m.amountPaid ?? 0));
+  if (typeof input.mileageAtService === "number") {
+    m.mileageAtService = Math.max(0, input.mileageAtService);
+  }
   m.status = "pending_complete";
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   syncVehicleOpenIssues(m.vehicleId);

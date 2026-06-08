@@ -98,14 +98,15 @@ function MaintenancePage() {
   }
 
   // --- Phase 2 (Diagnose) per-record inputs ---
-  const [diagInputs, setDiagInputs] = useState<Record<string, { partsNeeded: string; partsCost: string; laborCost: string }>>({});
+  const [diagInputs, setDiagInputs] = useState<Record<string, { partsNeeded: string; partsCost: string; laborCost: string; mileage: string }>>({});
   const diagFor = (m: Maintenance) =>
     diagInputs[m.id] ?? {
       partsNeeded: m.diagnosisNotes ?? "",
       partsCost: m.partsCost ? String(m.partsCost) : "",
       laborCost: m.laborCost ? String(m.laborCost) : "",
+      mileage: m.mileageAtService ? String(m.mileageAtService) : "",
     };
-  const setDiag = (id: string, patch: Partial<{ partsNeeded: string; partsCost: string; laborCost: string }>) =>
+  const setDiag = (id: string, patch: Partial<{ partsNeeded: string; partsCost: string; laborCost: string; mileage: string }>) =>
     setDiagInputs(prev => ({ ...prev, [id]: { ...diagFor(maintenance.find(x => x.id === id)!), ...prev[id], ...patch } }));
 
   function handleSaveDiagnosis(m: Maintenance) {
@@ -116,7 +117,7 @@ function MaintenancePage() {
       toast.error("Complete parts info to save");
       return;
     }
-    saveRepairDiagnosis(m.id, { partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour });
+    saveRepairDiagnosis(m.id, { partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mileageAtService: parseInt(d.mileage, 10) || 0 });
     toast.success("Diagnosis saved — moved to Complete");
   }
 
@@ -407,6 +408,11 @@ function MaintenancePage() {
                           value={d.partsNeeded}
                           onChange={(e) => setDiag(m.id, { partsNeeded: e.target.value })}
                         />
+                      </div>
+                      <div>
+                        <Label className="text-[11px]">Mileage</Label>
+                        <Input className="mt-1 h-8" type="number" min="0" step="1"
+                          value={d.mileage} onChange={(e) => setDiag(m.id, { mileage: e.target.value })} />
                       </div>
                       <div className="flex gap-2">
                         <div className="flex-1">
