@@ -60,11 +60,19 @@ export function SendVerificationLinkDialog({
       ? "Auto-filled from rental"
       : null;
 
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
   const send = async () => {
-    if (!phone.trim()) {
+    const normalized = toE164(phone);
+    if (!normalized) {
       toast.error("Enter a recipient phone number");
       return;
     }
+    if (!isValidE164(normalized)) {
+      setPhoneError("Enter a valid phone number (e.g. +12675551234)");
+      return;
+    }
+    setPhoneError(null);
     setBusy(true);
     try {
       await sendFn({
