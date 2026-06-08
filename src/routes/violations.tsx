@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -31,14 +31,10 @@ import {
   type ViolationHistoryRow,
 } from "@/lib/violations.functions";
 import { sendViolationToCustomer } from "@/lib/violations.functions";
-import {
-  getViolationSubmissionDetail,
-  submitViolationToAuthority,
-  markViolationResolved,
-} from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
+import { SubmitDisputeDialog } from "@/components/app/SubmitDisputeDialog";
 
 function DownloadPacketButton({ violationId }: { violationId: string }) {
   const dl = useServerFn(downloadViolationPacket);
