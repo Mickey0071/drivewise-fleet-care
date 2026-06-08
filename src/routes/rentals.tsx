@@ -268,9 +268,17 @@ function RentalsPage() {
   };
   const STATUS_ORDER: DisplayStatus[] = ["on_rent", "past_due", "pending", "paid", "returned"];
 
+  const statusCounts: Record<StatusFilter, number> = {
+    on_rent: rentals.filter(r => statusFilterMatches(r, "on_rent")).length,
+    all: rentals.length,
+    pending: rentals.filter(r => statusFilterMatches(r, "pending")).length,
+    returned: rentals.filter(r => statusFilterMatches(r, "returned")).length,
+    cancelled: rentals.filter(r => statusFilterMatches(r, "cancelled")).length,
+  };
+
   const filteredSorted = (() => {
     const q = search.trim().toLowerCase();
-    let rows = rentals.slice();
+    let rows = rentals.slice().filter(r => statusFilterMatches(r, status));
     if (q) {
       rows = rows.filter(r => {
         const v = vehicleById(r.vehicleId);
