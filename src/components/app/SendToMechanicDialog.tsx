@@ -197,6 +197,12 @@ export function SendToMechanicDialog({
                 </div>
               </div>
             ) : null}
+            {checklistError ? (
+              <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600">
+                <AlertCircle className="h-3.5 w-3.5" />
+                <span>{checklistError}</span>
+              </div>
+            ) : null}
           </div>
         </div>
         <DialogFooter>
