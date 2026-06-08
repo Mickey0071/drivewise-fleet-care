@@ -67,6 +67,7 @@ import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as ViolationTokenAffidavitRouteImport } from './routes/violation.$token_.affidavit'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
+import { Route as ApiPublicCardholderRefuseRouteImport } from './routes/api/public/cardholder-refuse'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksViolationRemindersRouteImport } from './routes/api/public/hooks/violation-reminders'
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
@@ -364,6 +365,12 @@ const InspectVehicleIdTokenRoute = InspectVehicleIdTokenRouteImport.update({
   path: '/inspect/$vehicleId/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCardholderRefuseRoute =
+  ApiPublicCardholderRefuseRouteImport.update({
+    id: '/api/public/cardholder-refuse',
+    path: '/api/public/cardholder-refuse',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -457,6 +464,7 @@ export interface FileRoutesByFullPath {
   '/violations/bulk-upload': typeof ViolationsBulkUploadRoute
   '/violations/disputes': typeof ViolationsDisputesRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
+  '/api/public/cardholder-refuse': typeof ApiPublicCardholderRefuseRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
@@ -523,6 +531,7 @@ export interface FileRoutesByTo {
   '/violations/bulk-upload': typeof ViolationsBulkUploadRoute
   '/violations/disputes': typeof ViolationsDisputesRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
+  '/api/public/cardholder-refuse': typeof ApiPublicCardholderRefuseRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
@@ -590,6 +599,7 @@ export interface FileRoutesById {
   '/violations_/bulk-upload': typeof ViolationsBulkUploadRoute
   '/violations_/disputes': typeof ViolationsDisputesRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
+  '/api/public/cardholder-refuse': typeof ApiPublicCardholderRefuseRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/violation/$token_/affidavit': typeof ViolationTokenAffidavitRoute
@@ -658,6 +668,7 @@ export interface FileRouteTypes {
     | '/violations/bulk-upload'
     | '/violations/disputes'
     | '/work-order/$token'
+    | '/api/public/cardholder-refuse'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/violation/$token/affidavit'
@@ -724,6 +735,7 @@ export interface FileRouteTypes {
     | '/violations/bulk-upload'
     | '/violations/disputes'
     | '/work-order/$token'
+    | '/api/public/cardholder-refuse'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/violation/$token/affidavit'
@@ -790,6 +802,7 @@ export interface FileRouteTypes {
     | '/violations_/bulk-upload'
     | '/violations_/disputes'
     | '/work-order/$token'
+    | '/api/public/cardholder-refuse'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/violation/$token_/affidavit'
@@ -850,6 +863,7 @@ export interface RootRouteChildren {
   ViolationsBulkUploadRoute: typeof ViolationsBulkUploadRoute
   ViolationsDisputesRoute: typeof ViolationsDisputesRoute
   WorkOrderTokenRoute: typeof WorkOrderTokenRoute
+  ApiPublicCardholderRefuseRoute: typeof ApiPublicCardholderRefuseRoute
   InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
   ViolationTokenAffidavitRoute: typeof ViolationTokenAffidavitRoute
@@ -1269,6 +1283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InspectVehicleIdTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cardholder-refuse': {
+      id: '/api/public/cardholder-refuse'
+      path: '/api/public/cardholder-refuse'
+      fullPath: '/api/public/cardholder-refuse'
+      preLoaderRoute: typeof ApiPublicCardholderRefuseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -1405,6 +1426,7 @@ const rootRouteChildren: RootRouteChildren = {
   ViolationsBulkUploadRoute: ViolationsBulkUploadRoute,
   ViolationsDisputesRoute: ViolationsDisputesRoute,
   WorkOrderTokenRoute: WorkOrderTokenRoute,
+  ApiPublicCardholderRefuseRoute: ApiPublicCardholderRefuseRoute,
   InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
   ViolationTokenAffidavitRoute: ViolationTokenAffidavitRoute,

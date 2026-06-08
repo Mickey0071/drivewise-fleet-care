@@ -138,6 +138,13 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   staffReviewStatus: r.staff_review_status ?? undefined,
   returnedAt: r.returned_at ?? undefined,
   portalLinkSends: Array.isArray(r.portal_link_sends) ? r.portal_link_sends : [],
+  nameMismatchFlag: !!r.name_mismatch_flag,
+  cardholderName: r.cardholder_name ?? undefined,
+  cardholderPhone: r.cardholder_phone ?? undefined,
+  cardholderRelationship: r.cardholder_relationship ?? undefined,
+  cardholderLicenseUrl: r.cardholder_license_url ?? undefined,
+  cardholderVerifiedAt: r.cardholder_verified_at ?? undefined,
+  verificationStatus: r.verification_status ?? undefined,
   extensions: exts.filter(e => e.rental_id === r.id).map(fromExt),
 });
 const toRental = (r: any) => ({

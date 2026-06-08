@@ -38,6 +38,7 @@ async function alertAdminNameMismatch(opts: {
   cardholderName: string;
   amountCents: number | null | undefined;
   rentalId: string;
+  verification?: string;
 }): Promise<void> {
   const amount = opts.amountCents != null ? (opts.amountCents / 100).toFixed(2) : "—";
   const msg =
@@ -46,6 +47,7 @@ async function alertAdminNameMismatch(opts: {
     `Cardholder: ${opts.cardholderName || "—"}\n` +
     `Amount: $${amount}\n` +
     `Rental: ${opts.rentalId}\n\n` +
+    `Verification: ${opts.verification || "pending"}\n\n` +
     `Payment processed. Review for fraud.`;
   try {
     await sendSms(ADMIN_ALERT_PHONE, msg, "Admin");
@@ -871,6 +873,8 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
           cardholder_name: cardholderName || null,
           name_match_status: decision ? decision.status : "unverified",
           name_match_score: score || null,
+          name_mismatch_flag: decision?.alert === true,
+          ...(decision?.alert === true ? { verification_status: "pending" } : {}),
           updated_at: new Date().toISOString(),
         })
         .eq("id", rental.id);

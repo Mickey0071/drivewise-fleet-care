@@ -1409,7 +1409,11 @@ export type Database = {
           card_owner_id_url: string | null
           card_owner_name: string | null
           card_owner_selfie_url: string | null
+          cardholder_license_url: string | null
           cardholder_name: string | null
+          cardholder_phone: string | null
+          cardholder_relationship: string | null
+          cardholder_verified_at: string | null
           client_signature_url: string | null
           client_signed_at: string | null
           created_at: string
@@ -1427,6 +1431,7 @@ export type Database = {
           mileage_out: number | null
           name_match_score: number | null
           name_match_status: string | null
+          name_mismatch_flag: boolean
           notes: string | null
           payer_id_image_url: string | null
           payer_name_extracted: string | null
@@ -1471,7 +1476,11 @@ export type Database = {
           card_owner_id_url?: string | null
           card_owner_name?: string | null
           card_owner_selfie_url?: string | null
+          cardholder_license_url?: string | null
           cardholder_name?: string | null
+          cardholder_phone?: string | null
+          cardholder_relationship?: string | null
+          cardholder_verified_at?: string | null
           client_signature_url?: string | null
           client_signed_at?: string | null
           created_at?: string
@@ -1489,6 +1498,7 @@ export type Database = {
           mileage_out?: number | null
           name_match_score?: number | null
           name_match_status?: string | null
+          name_mismatch_flag?: boolean
           notes?: string | null
           payer_id_image_url?: string | null
           payer_name_extracted?: string | null
@@ -1533,7 +1543,11 @@ export type Database = {
           card_owner_id_url?: string | null
           card_owner_name?: string | null
           card_owner_selfie_url?: string | null
+          cardholder_license_url?: string | null
           cardholder_name?: string | null
+          cardholder_phone?: string | null
+          cardholder_relationship?: string | null
+          cardholder_verified_at?: string | null
           client_signature_url?: string | null
           client_signed_at?: string | null
           created_at?: string
@@ -1551,6 +1565,7 @@ export type Database = {
           mileage_out?: number | null
           name_match_score?: number | null
           name_match_status?: string | null
+          name_mismatch_flag?: boolean
           notes?: string | null
           payer_id_image_url?: string | null
           payer_name_extracted?: string | null
