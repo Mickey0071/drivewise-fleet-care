@@ -507,6 +507,17 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     }
     // -------- end extension name validation --------
 
+    // Auto-refunds are disabled: alert the admin to review a mismatched
+    // extension payment instead of refunding it.
+    if (extDecision && extDecision.alert) {
+      await alertAdminNameMismatch({
+        renterName: extLicenseName,
+        cardholderName: extCardName,
+        amountCents: session.amount_total,
+        rentalId,
+      });
+    }
+
     // For admin links, look up the request row (carries signature + new_end).
     const extToken = session.metadata?.extension_token as string | undefined;
     let extReqRow: any = null;
