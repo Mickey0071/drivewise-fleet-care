@@ -42,6 +42,7 @@ import { Route as ViolationsDisputesRouteImport } from './routes/violations_.dis
 import { Route as ViolationsBulkUploadRouteImport } from './routes/violations_.bulk-upload'
 import { Route as ViolationTokenRouteImport } from './routes/violation.$token'
 import { Route as VerifyPaymentRentalIdRouteImport } from './routes/verify-payment.$rentalId'
+import { Route as VerifyCardTokenRouteImport } from './routes/verify-card.$token'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
 import { Route as SetupTokenRouteImport } from './routes/setup.$token'
 import { Route as RunnerTaskTokenRouteImport } from './routes/runner-task.$token'
@@ -239,6 +240,11 @@ const ViolationTokenRoute = ViolationTokenRouteImport.update({
 const VerifyPaymentRentalIdRoute = VerifyPaymentRentalIdRouteImport.update({
   id: '/verify-payment/$rentalId',
   path: '/verify-payment/$rentalId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyCardTokenRoute = VerifyCardTokenRouteImport.update({
+  id: '/verify-card/$token',
+  path: '/verify-card/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignTokenRoute = SignTokenRouteImport.update({
@@ -466,6 +472,7 @@ export interface FileRoutesByFullPath {
   '/runner-task/$token': typeof RunnerTaskTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
+  '/verify-card/$token': typeof VerifyCardTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
   '/violation/$token': typeof ViolationTokenRoute
   '/violations/bulk-upload': typeof ViolationsBulkUploadRoute
@@ -534,6 +541,7 @@ export interface FileRoutesByTo {
   '/runner-task/$token': typeof RunnerTaskTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
+  '/verify-card/$token': typeof VerifyCardTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
   '/violation/$token': typeof ViolationTokenRoute
   '/violations/bulk-upload': typeof ViolationsBulkUploadRoute
@@ -603,6 +611,7 @@ export interface FileRoutesById {
   '/runner-task/$token': typeof RunnerTaskTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign/$token': typeof SignTokenRoute
+  '/verify-card/$token': typeof VerifyCardTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
   '/violation/$token': typeof ViolationTokenRoute
   '/violations_/bulk-upload': typeof ViolationsBulkUploadRoute
@@ -673,6 +682,7 @@ export interface FileRouteTypes {
     | '/runner-task/$token'
     | '/setup/$token'
     | '/sign/$token'
+    | '/verify-card/$token'
     | '/verify-payment/$rentalId'
     | '/violation/$token'
     | '/violations/bulk-upload'
@@ -741,6 +751,7 @@ export interface FileRouteTypes {
     | '/runner-task/$token'
     | '/setup/$token'
     | '/sign/$token'
+    | '/verify-card/$token'
     | '/verify-payment/$rentalId'
     | '/violation/$token'
     | '/violations/bulk-upload'
@@ -809,6 +820,7 @@ export interface FileRouteTypes {
     | '/runner-task/$token'
     | '/setup/$token'
     | '/sign/$token'
+    | '/verify-card/$token'
     | '/verify-payment/$rentalId'
     | '/violation/$token'
     | '/violations_/bulk-upload'
@@ -871,6 +883,7 @@ export interface RootRouteChildren {
   RunnerTaskTokenRoute: typeof RunnerTaskTokenRoute
   SetupTokenRoute: typeof SetupTokenRoute
   SignTokenRoute: typeof SignTokenRoute
+  VerifyCardTokenRoute: typeof VerifyCardTokenRoute
   VerifyPaymentRentalIdRoute: typeof VerifyPaymentRentalIdRoute
   ViolationTokenRoute: typeof ViolationTokenRoute
   ViolationsBulkUploadRoute: typeof ViolationsBulkUploadRoute
@@ -1120,6 +1133,13 @@ declare module '@tanstack/react-router' {
       path: '/verify-payment/$rentalId'
       fullPath: '/verify-payment/$rentalId'
       preLoaderRoute: typeof VerifyPaymentRentalIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify-card/$token': {
+      id: '/verify-card/$token'
+      path: '/verify-card/$token'
+      fullPath: '/verify-card/$token'
+      preLoaderRoute: typeof VerifyCardTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign/$token': {
@@ -1442,6 +1462,7 @@ const rootRouteChildren: RootRouteChildren = {
   RunnerTaskTokenRoute: RunnerTaskTokenRoute,
   SetupTokenRoute: SetupTokenRoute,
   SignTokenRoute: SignTokenRoute,
+  VerifyCardTokenRoute: VerifyCardTokenRoute,
   VerifyPaymentRentalIdRoute: VerifyPaymentRentalIdRoute,
   ViolationTokenRoute: ViolationTokenRoute,
   ViolationsBulkUploadRoute: ViolationsBulkUploadRoute,
@@ -1463,3 +1484,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
