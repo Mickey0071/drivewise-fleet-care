@@ -43,6 +43,7 @@ const META: Record<string, { name: string; icon: string; timing: string; schedul
   past_due_payments: { name: "Past Due Payments", icon: "💰", timing: "Daily", scheduled: true },
   auto_extension_links: { name: "Auto-Extension Links (Daily/Weekly)", icon: "📅", timing: "Daily", scheduled: true },
   autopay_reminders: { name: "Auto-Pay Reminders (24hr before charge)", icon: "⏰", timing: "24h before charge", scheduled: false },
+  cardholder_verification: { name: "Cardholder Verification Reminders", icon: "🪪", timing: "1hr + daily until resolved", scheduled: true },
 };
 
 const ORDER = [
@@ -53,6 +54,7 @@ const ORDER = [
   "past_due_payments",
   "auto_extension_links",
   "autopay_reminders",
+  "cardholder_verification",
 ];
 
 function NotificationsPage() {

@@ -885,6 +885,30 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         await sb.from("vehicles").update({ status: "rented" }).eq("id", rental.vehicle_id);
       }
 
+      // Cardholder name mismatch: immediately text the customer a link to
+      // verify their card payment (Part 11A). Honors the admin toggle and
+      // logs the send so the 1h + daily follow-up cron can escalate.
+      if (decision?.alert === true) {
+        try {
+          const { data: drv } = await sb
+            .from("drivers")
+            .select("phone, full_name")
+            .eq("id", rental.driver_id)
+            .maybeSingle();
+          const { sendVerifyReminder } = await import("@/lib/cardholder-reminders.server");
+          await sendVerifyReminder({
+            rentalId: rental.id,
+            type: "cardholder_verify_initial",
+            phone: drv?.phone ?? null,
+            name: drv?.full_name ?? null,
+            dedupeDate: new Date().toISOString().slice(0, 10),
+            globalDedupe: true,
+          });
+        } catch (e) {
+          console.error("[webhook] initial verification SMS failed", e);
+        }
+      }
+
       // Record the first weekly payment as paid; schedule next due one period out.
       const period = (rental.billing_period as string) || "weekly";
       const start = new Date(
