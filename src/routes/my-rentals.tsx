@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { listMyRentals } from "@/lib/my-rentals.functions";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, ChevronRight, Car } from "lucide-react";
+import { Loader2, ChevronRight, Car, ShieldAlert, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/my-rentals")({
   head: () => ({ meta: [{ title: "My rentals — Camauto Rentals" }] }),
@@ -50,6 +50,33 @@ function MyRentalsPage() {
         <p className="text-sm text-muted-foreground">Tap any rental to see documents, billing, and inspection history.</p>
       </div>
 
+      {(() => {
+        const pendingVerify = (data.rentals as any[]).filter(
+          (r) => r.name_mismatch_flag === true && r.verification_status === "pending",
+        );
+        if (pendingVerify.length === 0) return null;
+        const target = pendingVerify[0];
+        return (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+              <div className="flex-1">
+                <p className="font-semibold text-amber-900">Card Verification Required</p>
+                <p className="text-sm text-amber-800">
+                  Your recent payment needs verification. This protects you from disputes.
+                </p>
+                <a
+                  href={`/rent/paid?rental_id=${encodeURIComponent(target.id)}`}
+                  className="mt-3 inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700"
+                >
+                  Verify Now
+                </a>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {data.rentals.length === 0 && (
         <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">
           No rentals on file yet.
@@ -60,6 +87,11 @@ function MyRentalsPage() {
         {data.rentals.map((r: any) => {
           const v = r.vehicle;
           const isReturned = !!r.returned_at || r.reservation_status === "completed";
+          const verifyPending =
+            r.name_mismatch_flag === true && r.verification_status === "pending";
+          const verified =
+            r.name_mismatch_flag === true &&
+            (r.verification_status === "submitted" || r.verification_status === "verified");
           return (
             <Link
               key={r.id}
@@ -84,6 +116,16 @@ function MyRentalsPage() {
                       {fmtDate(r.start_date)} → {r.end_date ? fmtDate(r.end_date) : "—"}
                       {v?.plate ? ` · Plate ${v.plate}` : ""}
                     </div>
+                    {verifyPending && (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                        <ShieldAlert className="h-3 w-3" /> Verify card payment
+                      </span>
+                    )}
+                    {verified && (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                        <ShieldCheck className="h-3 w-3" /> Card Verified
+                      </span>
+                    )}
                   </div>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                     isReturned ? "bg-zinc-100 text-zinc-700" :
