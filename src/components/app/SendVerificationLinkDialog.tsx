@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { sendVerificationLink } from "@/lib/cardholder-verification.functions";
+import { toE164, isValidE164 } from "@/lib/phone";
 
 export function SendVerificationLinkDialog({
   open,
@@ -42,7 +43,7 @@ export function SendVerificationLinkDialog({
 
   useEffect(() => {
     if (!open) return;
-    const p = defaultPhone?.trim() || driverPhone?.trim() || "";
+    const p = toE164(defaultPhone?.trim() || driverPhone?.trim() || "");
     const n = defaultName?.trim() || driverName?.trim() || "";
     setPhone(p);
     setName(n);
@@ -59,22 +60,30 @@ export function SendVerificationLinkDialog({
       ? "Auto-filled from rental"
       : null;
 
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
   const send = async () => {
-    if (!phone.trim()) {
+    const normalized = toE164(phone);
+    if (!normalized) {
       toast.error("Enter a recipient phone number");
       return;
     }
+    if (!isValidE164(normalized)) {
+      setPhoneError("Enter a valid phone number (e.g. +12675551234)");
+      return;
+    }
+    setPhoneError(null);
     setBusy(true);
     try {
       await sendFn({
         data: {
           rentalId,
-          phone: phone.trim(),
+          phone: normalized,
           name: name.trim() || undefined,
           message: message.trim() || undefined,
         },
       });
-      toast.success(`✓ Verification link sent to ${phone.trim()}`);
+      toast.success(`✓ Verification link sent to ${normalized}`);
       onSent?.();
       onOpenChange(false);
     } catch (e) {
@@ -97,10 +106,17 @@ export function SendVerificationLinkDialog({
               id="vl-phone"
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => {
+                setPhone(toE164(e.target.value));
+                if (phoneError) setPhoneError(null);
+              }}
               placeholder="(267) 555-1234"
+              className={phoneError ? "border-destructive focus-visible:ring-destructive" : ""}
             />
-            {phoneSource && (
+            {phoneError && (
+              <p className="text-xs text-destructive">{phoneError}</p>
+            )}
+            {phoneSource && !phoneError && (
               <p className="text-xs text-muted-foreground">{phoneSource}</p>
             )}
           </div>

@@ -346,7 +346,7 @@ export const sendVerificationLink = createServerFn({ method: "POST" })
     z
       .object({
         rentalId: z.string().min(1).max(64),
-        phone: z.string().trim().min(7).max(32),
+        phone: z.string().trim().regex(/^\+[1-9]\d{1,14}$/, "Phone must be a valid E.164 number (e.g. +12675551234)"),
         name: z.string().trim().max(120).optional(),
         message: z.string().trim().max(400).optional(),
       })
