@@ -1172,6 +1172,7 @@ async function handlePaymentIntentSucceeded(pi: any, env: StripeEnv) {
 }
 
 async function handleWebhook(req: Request, env: StripeEnv) {
+  // (handler defined above)
   const event = await verifyWebhook(req, env);
   switch (event.type) {
     case "checkout.session.completed":
