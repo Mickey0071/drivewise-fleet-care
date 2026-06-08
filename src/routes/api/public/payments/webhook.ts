@@ -873,6 +873,8 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
           cardholder_name: cardholderName || null,
           name_match_status: decision ? decision.status : "unverified",
           name_match_score: score || null,
+          name_mismatch_flag: decision?.alert === true,
+          ...(decision?.alert === true ? { verification_status: "pending" } : {}),
           updated_at: new Date().toISOString(),
         })
         .eq("id", rental.id);
