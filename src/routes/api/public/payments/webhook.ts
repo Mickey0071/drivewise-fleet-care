@@ -1171,6 +1171,122 @@ async function handlePaymentIntentSucceeded(pi: any, env: StripeEnv) {
   }
 }
 
+/**
+ * Catch ANY refund (legacy auto-refund code, accidental, or admin-initiated)
+ * and: (a) for system-triggered refunds, alert the customer + admin that an
+ * erroneous refund occurred, and (b) record it into refund_recovery so the
+ * Payments dashboard can drive recovery. Admin-initiated refunds (created via
+ * the refund flow with metadata.source = "va_refund_flow") are tracked but do
+ * NOT trigger the erroneous-refund alerts.
+ */
+async function handleChargeRefunded(obj: any, env: StripeEnv) {
+  const sb = getSupabase();
+  const stripe = createStripeClient(env);
+
+  // Normalize to the newest refund + its charge regardless of event type.
+  let refund: any = null;
+  let charge: any = null;
+  if (obj?.object === "refund") {
+    refund = obj;
+    const chId = typeof obj.charge === "string" ? obj.charge : obj.charge?.id;
+    if (chId) {
+      try { charge = await stripe.charges.retrieve(chId, { expand: ["payment_intent"] }); } catch {}
+    }
+  } else {
+    charge = obj;
+    let refundsList = obj?.refunds?.data;
+    if (!refundsList) {
+      try { refundsList = (await stripe.refunds.list({ charge: obj.id, limit: 10 })).data; } catch { refundsList = []; }
+    }
+    refund = (refundsList || [])[0] || null;
+  }
+  if (!refund) return;
+
+  // Idempotency — never alert/record the same refund twice.
+  const { data: existing } = await sb
+    .from("refund_recovery")
+    .select("id")
+    .eq("stripe_refund_id", refund.id)
+    .maybeSingle();
+  if (existing) return;
+
+  const source = refund.metadata?.source === "va_refund_flow" ? "admin" : "system";
+  const amountDollars = Number(((refund.amount ?? 0) / 100).toFixed(2));
+
+  // Resolve the rental + driver from refund/charge/PI metadata or customer.
+  let rentalId: string | null =
+    refund.metadata?.rental_id || charge?.metadata?.rental_id || null;
+  let driverId: string | null = charge?.metadata?.driver_id || null;
+  if (!rentalId && charge?.payment_intent) {
+    try {
+      const pi =
+        typeof charge.payment_intent === "string"
+          ? await stripe.paymentIntents.retrieve(charge.payment_intent)
+          : charge.payment_intent;
+      rentalId = pi?.metadata?.rental_id || null;
+      driverId = driverId || pi?.metadata?.driver_id || null;
+    } catch {}
+  }
+  let rentalRow: any = null;
+  if (rentalId) {
+    const { data } = await sb.from("rentals").select("id, driver_id").eq("id", rentalId).maybeSingle();
+    rentalRow = data;
+  } else if (charge?.customer) {
+    const { data } = await sb
+      .from("rentals")
+      .select("id, driver_id")
+      .eq("stripe_customer_id", charge.customer)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    rentalRow = data;
+  }
+  driverId = rentalRow?.driver_id || driverId;
+
+  // Alert only for system-triggered (erroneous) refunds.
+  let notified = false;
+  if (source === "system") {
+    const { data: driver } = driverId
+      ? await sb.from("drivers").select("full_name, phone").eq("id", driverId).maybeSingle()
+      : { data: null };
+    const name = driver?.full_name || "Customer";
+    const amt = `$${amountDollars.toFixed(2)}`;
+    if (driver?.phone) {
+      try {
+        await sendSms(
+          driver.phone,
+          `⚠️ A refund of ${amt} was issued in error for your Camauto Rentals rental.\n\nPlease contact us at (866) 625-5550 to re-process payment and keep your rental active.\n\nReply STOP to opt out.`,
+          name,
+        );
+        notified = true;
+      } catch (e) {
+        console.error("[webhook:refund] customer alert failed", e);
+      }
+    }
+    try {
+      await sendSms(
+        ADMIN_ALERT_PHONE,
+        `⚠️ ERRONEOUS REFUND: ${amt} refunded to ${name}.\n\nSystem refund detected - investigate.\n\n[${notified ? "Customer notified" : "Customer NOT notified — no phone"}]`,
+        "Admin",
+      );
+    } catch (e) {
+      console.error("[webhook:refund] admin alert failed", e);
+    }
+  }
+
+  await sb.from("refund_recovery").insert({
+    rental_id: rentalRow?.id || rentalId || null,
+    driver_id: driverId || null,
+    amount: amountDollars,
+    refunded_at: new Date((refund.created ?? Date.now() / 1000) * 1000).toISOString(),
+    stripe_charge_id: charge?.id || null,
+    stripe_refund_id: refund.id,
+    source,
+    status: "needs_recovery",
+    customer_notified: notified,
+  });
+}
+
 async function handleWebhook(req: Request, env: StripeEnv) {
   const event = await verifyWebhook(req, env);
   switch (event.type) {
