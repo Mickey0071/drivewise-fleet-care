@@ -802,6 +802,17 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     }
     // -------- end name validation --------
 
+    // Auto-refunds are disabled: when the cardholder name does not match the
+    // renter/payer, the payment is kept and the admin is alerted to review it.
+    if (decision && decision.alert) {
+      await alertAdminNameMismatch({
+        renterName: licenseName,
+        cardholderName,
+        amountCents: session.amount_total,
+        rentalId,
+      });
+    }
+
     // Record the payment in the subscriptions ledger for accounting.
     await getSupabase()
       .from("subscriptions")
