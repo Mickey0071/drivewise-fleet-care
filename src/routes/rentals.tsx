@@ -53,6 +53,8 @@ import type { Rental } from "@/lib/mock/data";
 const getPublicAppOrigin = () =>
   typeof window !== "undefined" ? window.location.origin : "";
 
+type StatusFilter = "on_rent" | "all" | "pending" | "returned" | "cancelled";
+
 export const Route = createFileRoute("/rentals")({
   head: () => ({ meta: [{ title: "Reservations — Camauto Rentals" }] }),
   validateSearch: (search: Record<string, unknown>) => ({
@@ -60,15 +62,40 @@ export const Route = createFileRoute("/rentals")({
     session_id: typeof search.session_id === "string" ? search.session_id : undefined,
     review: typeof search.review === "string" ? search.review : undefined,
     detail: typeof search.detail === "string" ? search.detail : undefined,
+    status: ["on_rent", "all", "pending", "returned", "cancelled"].includes(search.status as string)
+      ? (search.status as StatusFilter)
+      : "on_rent",
   }),
   component: RentalsPage,
 });
 
 const AGREEMENT_VERSION = "v1.0";
 
+const FILTER_LABELS: Record<StatusFilter, string> = {
+  on_rent: "On Rent",
+  all: "All",
+  pending: "Pending",
+  returned: "Returned",
+  cancelled: "Cancelled",
+};
+
+function statusFilterMatches(r: Rental, filter: StatusFilter): boolean {
+  const rs = r.reservationStatus ?? "active";
+  switch (filter) {
+    case "on_rent": return rs === "active";
+    case "pending": return rs === "pending";
+    case "returned": return rs === "returned" || rs === "completed";
+    case "cancelled": return rs === "cancelled";
+    case "all": return true;
+    default: return true;
+  }
+}
+
 function RentalsPage() {
   const navigate = Route.useNavigate();
-  const { paid, review, detail: detailId } = Route.useSearch();
+  const searchParams = Route.useSearch();
+  const { paid, review, detail: detailId } = searchParams;
+  const status: StatusFilter = (searchParams.status as StatusFilter) ?? "on_rent";
   const [detail, setDetail] = useState<Rental | null>(null);
   const { user, role } = useAuth();
   const [newOpen, setNewOpen] = useState(false);
@@ -243,9 +270,17 @@ function RentalsPage() {
   };
   const STATUS_ORDER: DisplayStatus[] = ["on_rent", "past_due", "pending", "paid", "returned"];
 
+  const statusCounts: Record<StatusFilter, number> = {
+    on_rent: rentals.filter(r => statusFilterMatches(r, "on_rent")).length,
+    all: rentals.length,
+    pending: rentals.filter(r => statusFilterMatches(r, "pending")).length,
+    returned: rentals.filter(r => statusFilterMatches(r, "returned")).length,
+    cancelled: rentals.filter(r => statusFilterMatches(r, "cancelled")).length,
+  };
+
   const filteredSorted = (() => {
     const q = search.trim().toLowerCase();
-    let rows = rentals.slice();
+    let rows = rentals.slice().filter(r => statusFilterMatches(r, status));
     if (q) {
       rows = rows.filter(r => {
         const v = vehicleById(r.vehicleId);
@@ -954,6 +989,30 @@ function RentalsPage() {
               : pendingReview.map(renderRow)}
           </div>
         ) : (<>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Select
+              value={status}
+              onValueChange={(val: StatusFilter) => {
+                navigate({ to: "/rentals", search: (prev: Record<string, unknown>) => ({ ...prev, status: val }), replace: true });
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(["on_rent", "all", "pending", "returned", "cancelled"] as StatusFilter[]).map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {FILTER_LABELS[k]} ({statusCounts[k]})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+              Showing: {FILTER_LABELS[status]} ({statusCounts[status]})
+            </span>
+          </div>
+        </div>
         <div className="relative">
           <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
