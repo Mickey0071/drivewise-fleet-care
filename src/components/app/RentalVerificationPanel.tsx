@@ -34,9 +34,13 @@ const EVENT_LABELS: Record<string, string> = {
 export function RentalVerificationPanel({
   rental,
   isAdmin,
+  driverPhone,
+  driverName,
 }: {
   rental: Rental;
   isAdmin: boolean;
+  driverPhone?: string | null;
+  driverName?: string | null;
 }) {
   const resolveFn = useServerFn(resolveCardholderReview);
   const auditFn = useServerFn(getVerificationAudit);
