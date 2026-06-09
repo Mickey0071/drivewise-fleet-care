@@ -13,11 +13,13 @@ import {
   Search,
   Download,
 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +37,7 @@ import {
   downloadAffidavitsZip,
   type EzpassBatchItem,
 } from "@/lib/ezpass.functions";
+import { createManualEzpassBatch } from "@/lib/ezpass.functions";
 import { loadPdf } from "@/lib/pdf-to-image";
 
 export const Route = createFileRoute("/violations_/bulk-upload")({
