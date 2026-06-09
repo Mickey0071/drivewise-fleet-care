@@ -107,13 +107,37 @@ const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "â
 
 type Filter =
   | "all"
-  | "pending_response"
-  | "paid"
-  | "affidavit_signed"
-  | "submitted"
-  | "resolved";
+  | "awaiting_response"
+  | "signed_affidavit"
+  | "paid_direct"
+  | "transfer_generated"
+  | "packet_printed"
+  | "mailed"
+  | "confirmed";
 
 const PENDING_RESPONSE = ["pending", "failed", "sent_to_customer", "viewing"];
+
+/** Derive the tracking stage for a violation from its timestamps + status. */
+function stageOf(v: ViolationRow): Exclude<Filter, "all"> {
+  if (v.transfer_confirmed_at || v.status === "resolved") return "confirmed";
+  if (v.mailed_at || v.status === "submitted_to_authority") return "mailed";
+  if (v.mail_packet_printed_at) return "packet_printed";
+  if (v.liability_transfer_generated_at) return "transfer_generated";
+  if (v.status === "paid") return "paid_direct";
+  if (v.status === "affidavit_signed" || v.signed_at) return "signed_affidavit";
+  return "awaiting_response";
+}
+
+/** A violation is ready for liability transfer when the customer has had >7 days
+ * with no payment/signature and no transfer has been generated yet. */
+function transferReady(v: ViolationRow): boolean {
+  if (v.liability_transfer_generated_at) return false;
+  if (["paid", "affidavit_signed", "resolved", "submitted_to_authority"].includes(v.status))
+    return false;
+  if (!v.sent_to_customer_at) return false;
+  const days = (Date.now() - new Date(v.sent_to_customer_at).getTime()) / 86400000;
+  return days >= 7;
+}
 
 function ViolationsPage() {
   const list = useServerFn(listViolations);
