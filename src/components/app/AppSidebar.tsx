@@ -50,6 +50,7 @@ const portalItems: Item[] = [
 ];
 const settingsItems: Item[] = [
   { title: "Team & Access", url: "/admin/users", icon: UsersRound, roles: ["admin"] },
+  { title: "Import Data", url: "/admin/import-data", icon: DatabaseBackup, roles: ["admin"] },
   { title: "Import Legacy Rentals", url: "/admin/import-legacy", icon: Upload, roles: ["admin"] },
 ];
 
