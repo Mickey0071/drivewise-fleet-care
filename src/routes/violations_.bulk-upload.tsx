@@ -67,6 +67,7 @@ function BulkUploadPage() {
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState("");
   const [batchId, setBatchId] = useState<string | null>(null);
+  const [tab, setTab] = useState("upload");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const onPick = (f: File | null) => {
@@ -127,6 +128,12 @@ function BulkUploadPage() {
         }
       />
 
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="upload">Upload PDF/Image</TabsTrigger>
+          <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+        </TabsList>
+        <TabsContent value="upload">
       <Card>
         <CardContent className="p-6">
           <div
@@ -198,7 +205,156 @@ function BulkUploadPage() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+        <TabsContent value="manual">
+          <ManualEntry onBatch={setBatchId} />
+        </TabsContent>
+      </Tabs>
     </div>
+  );
+}
+
+interface ManualRow {
+  date: string;
+  time: string;
+  plate: string;
+  location: string;
+  amount: string;
+}
+
+function ManualEntry({ onBatch }: { onBatch: (id: string) => void }) {
+  const qc = useQueryClient();
+  const create = useServerFn(createManualEzpassBatch);
+  const emptyRow = (): ManualRow => ({ date: "", time: "", plate: "", location: "", amount: "" });
+  const [rows, setRows] = useState<ManualRow[]>([emptyRow(), emptyRow(), emptyRow()]);
+  const [busy, setBusy] = useState(false);
+
+  const update = (i: number, key: keyof ManualRow, value: string) =>
+    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, [key]: value } : r)));
+  const addRow = () => setRows((rs) => [...rs, emptyRow()]);
+  const removeRow = (i: number) => setRows((rs) => rs.filter((_, idx) => idx !== i));
+
+  const handleProcess = async () => {
+    const valid = rows
+      .map((r) => ({
+        violation_date: r.date.trim() || null,
+        violation_time: r.time.trim() || null,
+        plate: r.plate.trim() || null,
+        location: r.location.trim() || null,
+        amount: Number(r.amount) || 0,
+      }))
+      .filter((r) => r.plate || r.violation_date || r.amount > 0);
+    if (valid.length === 0) {
+      toast.error("Add at least one row with a plate, date, or amount");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await create({ data: { rows: valid } });
+      toast.success(`Created ${res.found} violation${res.found === 1 ? "" : "s"}`);
+      qc.invalidateQueries({ queryKey: ["ezpass-batch", res.batchId] });
+      onBatch(res.batchId);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create batch");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <p className="mb-4 text-sm text-muted-foreground">
+          Paste or type a list of violations. Empty rows are ignored. We'll auto-match each by plate
+          and date.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b text-left text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="p-2">Date</th>
+                <th className="p-2">Time</th>
+                <th className="p-2">Plate</th>
+                <th className="p-2">Location</th>
+                <th className="p-2">Amount</th>
+                <th className="p-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} className="border-b last:border-0">
+                  <td className="p-1">
+                    <Input
+                      type="date"
+                      value={r.date}
+                      onChange={(e) => update(i, "date", e.target.value)}
+                    />
+                  </td>
+                  <td className="p-1">
+                    <Input
+                      placeholder="08:30 AM"
+                      value={r.time}
+                      onChange={(e) => update(i, "time", e.target.value)}
+                    />
+                  </td>
+                  <td className="p-1">
+                    <Input
+                      placeholder="ABC1234"
+                      value={r.plate}
+                      onChange={(e) => update(i, "plate", e.target.value)}
+                    />
+                  </td>
+                  <td className="p-1">
+                    <Input
+                      placeholder="Toll plaza / location"
+                      value={r.location}
+                      onChange={(e) => update(i, "location", e.target.value)}
+                    />
+                  </td>
+                  <td className="p-1">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={r.amount}
+                      onChange={(e) => update(i, "amount", e.target.value)}
+                    />
+                  </td>
+                  <td className="p-1 text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeRow(i)}
+                      disabled={rows.length === 1}
+                    >
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-4 flex items-center justify-between">
+          <Button variant="outline" size="sm" onClick={addRow}>
+            <Plus className="mr-1 h-4 w-4" /> Add Row
+          </Button>
+          <Button
+            onClick={handleProcess}
+            disabled={busy}
+            className="bg-emerald-600 hover:bg-emerald-700"
+          >
+            {busy ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing…
+              </>
+            ) : (
+              "Process All"
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
