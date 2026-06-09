@@ -118,7 +118,7 @@ async function loadViolationCtx(violationId: string): Promise<ViolationCtx> {
       ? supabaseAdmin
           .from("rentals")
           .select(
-            "id, start_date, end_date, agreement_pdf_url, license_image_url, license_back_image_url",
+            "id, start_date, end_date, agreement_pdf_url, license_image_url",
           )
           .eq("id", v.rental_id)
           .maybeSingle()
