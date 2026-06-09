@@ -797,6 +797,60 @@ export type Database = {
         }
         Relationships: []
       }
+      legacy_rentals: {
+        Row: {
+          agreement_pdf_url: string | null
+          color: string | null
+          created_at: string
+          end_datetime: string | null
+          id: string
+          notes: string | null
+          order_number: string | null
+          pickup_location: string | null
+          plate: string | null
+          renter_name: string | null
+          source: string | null
+          start_datetime: string | null
+          status: string | null
+          vehicle: string | null
+          year: string | null
+        }
+        Insert: {
+          agreement_pdf_url?: string | null
+          color?: string | null
+          created_at?: string
+          end_datetime?: string | null
+          id?: string
+          notes?: string | null
+          order_number?: string | null
+          pickup_location?: string | null
+          plate?: string | null
+          renter_name?: string | null
+          source?: string | null
+          start_datetime?: string | null
+          status?: string | null
+          vehicle?: string | null
+          year?: string | null
+        }
+        Update: {
+          agreement_pdf_url?: string | null
+          color?: string | null
+          created_at?: string
+          end_datetime?: string | null
+          id?: string
+          notes?: string | null
+          order_number?: string | null
+          pickup_location?: string | null
+          plate?: string | null
+          renter_name?: string | null
+          source?: string | null
+          start_datetime?: string | null
+          status?: string | null
+          vehicle?: string | null
+          year?: string | null
+        }
+        Relationships: []
+      }
       maintenance: {
         Row: {
           accept_token: string | null
