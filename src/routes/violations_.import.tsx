@@ -102,7 +102,7 @@ function ImportPage() {
     if (!mappedRows.length) return;
     setImporting(true);
     try {
-      const res = await importFn({ data: { rows: mappedRows } });
+      const res = await importFn({ data: { rows: mappedRows, fileName } });
       setResult(res);
       toast.success(
         `Imported: ${res.driversCreated} new renters, ${res.rentalsCreated} rentals`,
