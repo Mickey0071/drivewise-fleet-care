@@ -8,7 +8,7 @@ import {
   type MatchCandidate,
 } from "@/lib/ezpass.server";
 import type { ExtractedToll } from "@/lib/ezpass.server";
-import { buildAffidavitPdf } from "@/lib/ezpass-affidavit.server";
+import { generateAndStoreLiabilityTransfer } from "@/lib/liability-transfer.server";
 
 export interface EzpassBatchItem {
   id: string;
