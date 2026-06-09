@@ -377,6 +377,12 @@ function ViolationsPage() {
             <Button variant="outline" asChild>
               <Link to="/violations/import">Import CSV</Link>
             </Button>
+            <Button variant="outline" asChild>
+              <Link to="/violations/imports">Import History</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/violations/exports">Export Data</Link>
+            </Button>
             <Button variant="outline" onClick={exportCsv}>
               Export CSV
             </Button>
