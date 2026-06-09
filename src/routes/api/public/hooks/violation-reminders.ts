@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/public/hooks/violation-reminders")({
         }
 
         const origin = process.env.PUBLIC_APP_ORIGIN ?? "https://camautorentals.lovable.app";
-        // Anything sent to customer 3+ days ago and still unresolved.
+        // Anything sent to customer 3+ days ago and not yet followed up.
         const { data: rows } = await (supabaseAdmin as any)
           .from("violations")
           .select("*")
@@ -39,10 +39,8 @@ export const Route = createFileRoute("/api/public/hooks/violation-reminders")({
         let sent = 0;
         for (const v of rows ?? []) {
           const age = daysSince(v.sent_to_customer_at);
-          // Stage gating: day 3 reminder, day 6 final warning (also covers day 7).
-          const needsFinal = age >= 6 && !v.final_warning_sent_at;
-          const needsReminder = age >= 3 && age < 6 && !v.reminder_sent_at;
-          if (!needsFinal && !needsReminder) continue;
+          // Single informational follow-up at day 3+ (no pay/sign pressure).
+          if (age < 3 || v.reminder_sent_at) continue;
           const { data: driver } = v.driver_id
             ? await (supabaseAdmin as any)
                 .from("drivers")
@@ -53,37 +51,20 @@ export const Route = createFileRoute("/api/public/hooks/violation-reminders")({
           if (!driver?.phone && !driver?.email) continue;
           const url = `${origin}/violation/${encodeURIComponent(v.customer_token)}`;
           const amt = `$${Number(v.total_amount || v.amount || 0).toFixed(2)}`;
-          if (needsFinal) {
-            await notifyRenter({
-              phone: driver.phone ?? null,
-              email: driver.email ?? null,
-              name: driver.full_name ?? null,
-              sms: `FINAL NOTICE from Camauto Rentals: Your EZPass violation (${amt}) is unresolved. If we don't hear from you, liability will be transferred to you with the issuing authority. ${url}`,
-              emailSubject: "Final Notice: EZPass Violation — Camauto Rentals",
-              emailHeading: "Final Notice: Unresolved Violation",
-              emailIntro: `This is your final notice. Your EZPass violation of <strong>${amt}</strong> remains unresolved. If no action is taken, liability will be transferred directly to you with the issuing authority.`,
-              emailCta: { label: "Resolve Now", url },
-            });
-            await (supabaseAdmin as any)
-              .from("violations")
-              .update({ final_warning_sent_at: new Date().toISOString() })
-              .eq("id", v.id);
-          } else {
-            await notifyRenter({
-              phone: driver.phone ?? null,
-              email: driver.email ?? null,
-              name: driver.full_name ?? null,
-              sms: `Reminder from Camauto Rentals: Your EZPass violation (${amt}) is still unresolved. ${url}`,
-              emailSubject: "Reminder: EZPass Violation — Camauto Rentals",
-              emailHeading: "Reminder: Unresolved Violation",
-              emailIntro: `This is a reminder that your EZPass violation of <strong>${amt}</strong> is still unresolved. Please pay or sign the affidavit.`,
-              emailCta: { label: "Resolve Now", url },
-            });
-            await (supabaseAdmin as any)
-              .from("violations")
-              .update({ reminder_sent_at: new Date().toISOString() })
-              .eq("id", v.id);
-          }
+          await notifyRenter({
+            phone: driver.phone ?? null,
+            email: driver.email ?? null,
+            name: driver.full_name ?? null,
+            sms: `Camauto Rentals: A toll violation (${amt}) on your rental has been transferred to you per your rental agreement. The issuing authority will contact you directly. Details: ${url}`,
+            emailSubject: "Toll Violation Transferred — Camauto Rentals",
+            emailHeading: "Toll Violation Transferred to You",
+            emailIntro: `A toll violation of <strong>${amt}</strong> incurred during your rental has been transferred to you as the operator, per your signed rental agreement and N.J.S.A. 39:4-138.1. The issuing authority will contact you directly to resolve it. No action is required through Camauto Rentals.`,
+            emailCta: { label: "View Details", url },
+          });
+          await (supabaseAdmin as any)
+            .from("violations")
+            .update({ reminder_sent_at: new Date().toISOString() })
+            .eq("id", v.id);
           sent++;
         }
         return Response.json({ ok: true, sent });
