@@ -709,6 +709,10 @@ export type Database = {
       }
       maintenance: {
         Row: {
+          accept_token: string | null
+          accepted_at: string | null
+          accepted_by: string | null
+          action_taken: string
           amount_paid: number
           approval_date: string | null
           approval_status: string | null
@@ -721,6 +725,11 @@ export type Database = {
           created_from_issue: boolean
           customer_notes: string | null
           date_completed: string | null
+          decline_notes: string | null
+          decline_reason: string | null
+          decline_token: string | null
+          declined_at: string | null
+          declined_by: string | null
           deposit_amount: number | null
           deposit_date: string | null
           deposit_processed: boolean | null
@@ -754,6 +763,10 @@ export type Database = {
           vendor: string
         }
         Insert: {
+          accept_token?: string | null
+          accepted_at?: string | null
+          accepted_by?: string | null
+          action_taken?: string
           amount_paid?: number
           approval_date?: string | null
           approval_status?: string | null
@@ -766,6 +779,11 @@ export type Database = {
           created_from_issue?: boolean
           customer_notes?: string | null
           date_completed?: string | null
+          decline_notes?: string | null
+          decline_reason?: string | null
+          decline_token?: string | null
+          declined_at?: string | null
+          declined_by?: string | null
           deposit_amount?: number | null
           deposit_date?: string | null
           deposit_processed?: boolean | null
@@ -799,6 +817,10 @@ export type Database = {
           vendor: string
         }
         Update: {
+          accept_token?: string | null
+          accepted_at?: string | null
+          accepted_by?: string | null
+          action_taken?: string
           amount_paid?: number
           approval_date?: string | null
           approval_status?: string | null
@@ -811,6 +833,11 @@ export type Database = {
           created_from_issue?: boolean
           customer_notes?: string | null
           date_completed?: string | null
+          decline_notes?: string | null
+          decline_reason?: string | null
+          decline_token?: string | null
+          declined_at?: string | null
+          declined_by?: string | null
           deposit_amount?: number | null
           deposit_date?: string | null
           deposit_processed?: boolean | null
@@ -2883,6 +2910,27 @@ export type Database = {
           token: string
           vin: string
           year: number
+        }[]
+      }
+      get_repair_action_public: {
+        Args: { _token: string }
+        Returns: {
+          action_taken: string
+          cost: number
+          id: string
+          is_accept: boolean
+          is_decline: boolean
+          issue_description: string
+          labor_cost: number
+          mechanic_name: string
+          mechanic_phone: string
+          parts_cost: number
+          parts_list: Json
+          status: string
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_year: number
         }[]
       }
       get_share_link_public: {
