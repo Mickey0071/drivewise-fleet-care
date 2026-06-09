@@ -133,6 +133,94 @@ export const processEzpassDocument = createServerFn({ method: "POST" })
     return { batchId, found: tolls.length };
   });
 
+/** Create a batch from manually-typed violation rows, then auto-match. */
+export const createManualEzpassBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        rows: z
+          .array(
+            z.object({
+              violation_date: z.string().max(20).nullable().optional(),
+              violation_time: z.string().max(20).nullable().optional(),
+              plate: z.string().max(20).nullable().optional(),
+              location: z.string().max(200).nullable().optional(),
+              amount: z.number().min(0).max(100000),
+            }),
+          )
+          .min(1)
+          .max(200),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }): Promise<{ batchId: string; found: number }> => {
+    const normDate = (v: string | null | undefined): string | null => {
+      const s = (v || "").trim();
+      if (!s) return null;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      const m = /^(\d{1,2})[/\-](\d{1,2})[/\-](\d{2,4})$/.exec(s);
+      if (m) {
+        let [, mo, d, y] = m;
+        if (y.length === 2) y = (Number(y) > 50 ? "19" : "20") + y;
+        return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+      }
+      return null;
+    };
+
+    const tolls: ExtractedToll[] = data.rows.map((r) => ({
+      violation_date: normDate(r.violation_date),
+      violation_time: r.violation_time?.trim() || null,
+      plate: r.plate?.trim().toUpperCase() || null,
+      location: r.location?.trim() || null,
+      amount: Number(r.amount || 0),
+    }));
+
+    const batchId = genId("EZ");
+    const matched = await Promise.all(tolls.map((t) => autoMatchToll(t)));
+
+    let matchedCount = 0;
+    let totalAmount = 0;
+    const itemsToInsert = tolls.map((t, i) => {
+      const mr = matched[i];
+      if (mr.match_status === "matched") matchedCount++;
+      totalAmount += Number(t.amount || 0);
+      return {
+        batch_id: batchId,
+        violation_date: t.violation_date,
+        violation_time: t.violation_time,
+        plate: t.plate,
+        location: t.location,
+        amount: t.amount,
+        match_status: mr.match_status,
+        rental_id: mr.rental_id,
+        driver_id: mr.driver_id,
+        vehicle_id: mr.vehicle_id,
+        driver_name: mr.driver_name,
+        candidates: mr.candidates as unknown,
+      };
+    });
+
+    const { error: bErr } = await supabaseAdmin.from("ezpass_batches").insert({
+      id: batchId,
+      source_filename: "Manual entry",
+      file_url: null,
+      status: "reviewing",
+      total_count: tolls.length,
+      matched_count: matchedCount,
+      total_amount: Number(totalAmount.toFixed(2)),
+      created_by: context.userId ?? null,
+    } as never);
+    if (bErr) throw new Error(bErr.message);
+
+    const { error: iErr } = await supabaseAdmin
+      .from("ezpass_batch_items")
+      .insert(itemsToInsert as never);
+    if (iErr) throw new Error(iErr.message);
+
+    return { batchId, found: tolls.length };
+  });
+
 /** Fetch a batch and its items for the review screen. */
 export const getEzpassBatch = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
