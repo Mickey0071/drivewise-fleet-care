@@ -42,6 +42,16 @@ export interface ViolationRow {
   resolved_at?: string | null;
   resolution_reason?: string | null;
   resolution_notes?: string | null;
+  liability_transfer_generated_at?: string | null;
+  liability_transfer_pdf_url?: string | null;
+  mail_packet_printed_at?: string | null;
+  mailed_at?: string | null;
+  transfer_confirmed_at?: string | null;
+  authority_key?: string | null;
+  final_warning_sent_at?: string | null;
+  violation_time?: string | null;
+  location?: string | null;
+  reference_number?: string | null;
 }
 
 export const listViolations = createServerFn({ method: "GET" })

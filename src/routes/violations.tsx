@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -32,6 +32,11 @@ import {
 } from "@/lib/violations.functions";
 import { sendViolationToCustomer } from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
+import {
+  generateLiabilityTransfer,
+  generateMailPacket,
+  markViolationStage,
+} from "@/lib/liability-transfer.functions";
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
 import { SubmitDisputeDialog } from "@/components/app/SubmitDisputeDialog";
@@ -102,18 +107,178 @@ export const Route = createFileRoute("/violations")({
   component: ViolationsPage,
 });
 
+function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }) {
+  const genTransfer = useServerFn(generateLiabilityTransfer);
+  const genPacket = useServerFn(generateMailPacket);
+  const mark = useServerFn(markViolationStage);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const doTransfer = async () => {
+    setBusy("transfer");
+    try {
+      const res = await genTransfer({ data: { violationId: v.id } });
+      if (res.pdfUrl) window.open(res.pdfUrl, "_blank");
+      toast.success("Liability transfer letter generated");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const doPacket = async () => {
+    setBusy("packet");
+    try {
+      const res = await genPacket({ data: { violationId: v.id } });
+      const bin = atob(res.base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      await mark({ data: { violationId: v.id, stage: "printed" } });
+      if (res.missing.length) {
+        toast.message(`Mail packet ready — ${res.missing.length} item(s) missing`, {
+          description: res.missing.join(", "),
+        });
+      } else {
+        toast.success("Mail packet ready to print");
+      }
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const doMark = async (stage: "mailed" | "confirmed") => {
+    setBusy(stage);
+    try {
+      await mark({ data: { violationId: v.id, stage } });
+      toast.success(stage === "mailed" ? "Marked mailed" : "Marked confirmed");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const transferred = !!v.liability_transfer_generated_at;
+  const eligible = !["paid", "affidavit_signed", "resolved"].includes(v.status);
+
+  if (!eligible && !transferred) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap justify-end gap-1">
+      {!transferred && eligible && (
+        <Button size="sm" variant="outline" onClick={doTransfer} disabled={busy === "transfer"}>
+          {busy === "transfer" ? "…" : "⚖️ Liability Transfer"}
+        </Button>
+      )}
+      {transferred && (
+        <>
+          {v.liability_transfer_pdf_url && (
+            <a
+              href={v.liability_transfer_pdf_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-primary underline self-center"
+            >
+              Letter
+            </a>
+          )}
+          <Button size="sm" variant="outline" onClick={doPacket} disabled={busy === "packet"}>
+            {busy === "packet" ? "Building…" : "🖨️ Mail Packet"}
+          </Button>
+          {!v.mailed_at && (
+            <Button size="sm" variant="ghost" onClick={() => doMark("mailed")} disabled={busy === "mailed"}>
+              ✉️ Mark Mailed
+            </Button>
+          )}
+          {v.mailed_at && !v.transfer_confirmed_at && (
+            <Button size="sm" variant="ghost" onClick={() => doMark("confirmed")} disabled={busy === "confirmed"}>
+              ✅ Confirm
+            </Button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function V1Timeline({ v }: { v: ViolationRow }) {
+  const f = (s: string | null | undefined) =>
+    s ? new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
+  const events: { icon: string; label: string; date: string | null }[] = [
+    { icon: "📅", label: "Violation received", date: f(v.created_at) },
+    { icon: "📨", label: "Sent to customer", date: f(v.sent_to_customer_at) },
+    { icon: "👁️", label: "Customer viewed", date: f(v.viewed_at) },
+    { icon: "⏰", label: "Reminder sent", date: f(v.reminder_sent_at) },
+    { icon: "⚠️", label: "Final warning", date: f(v.final_warning_sent_at) },
+    { icon: "💳", label: "Paid directly", date: v.status === "paid" ? f(v.paid_at) : null },
+    { icon: "📝", label: "Affidavit signed", date: f(v.signed_at) },
+    { icon: "📋", label: "Liability transfer generated", date: f(v.liability_transfer_generated_at) },
+    { icon: "🖨️", label: "Mail packet printed", date: f(v.mail_packet_printed_at) },
+    { icon: "✉️", label: "Mailed to authority", date: f(v.mailed_at) },
+    { icon: "✅", label: "Confirmed transferred", date: f(v.transfer_confirmed_at) },
+  ].filter((e) => e.date);
+  return (
+    <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+      {events.map((e, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span>{e.icon}</span>
+          <span className="font-medium text-foreground">{e.label}</span>
+          <span>· {e.date}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const fmtMoney = (n: number) => `$${Number(n || 0).toFixed(2)}`;
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "—");
 
 type Filter =
   | "all"
-  | "pending_response"
-  | "paid"
-  | "affidavit_signed"
-  | "submitted"
-  | "resolved";
+  | "awaiting_response"
+  | "signed_affidavit"
+  | "paid_direct"
+  | "transfer_generated"
+  | "packet_printed"
+  | "mailed"
+  | "confirmed";
 
 const PENDING_RESPONSE = ["pending", "failed", "sent_to_customer", "viewing"];
+
+/** Derive the tracking stage for a violation from its timestamps + status. */
+function stageOf(v: ViolationRow): Exclude<Filter, "all"> {
+  if (v.transfer_confirmed_at || v.status === "resolved") return "confirmed";
+  if (v.mailed_at || v.status === "submitted_to_authority") return "mailed";
+  if (v.mail_packet_printed_at) return "packet_printed";
+  if (v.liability_transfer_generated_at) return "transfer_generated";
+  if (v.status === "paid") return "paid_direct";
+  if (v.status === "affidavit_signed" || v.signed_at) return "signed_affidavit";
+  return "awaiting_response";
+}
+
+/** A violation is ready for liability transfer when the customer has had >7 days
+ * with no payment/signature and no transfer has been generated yet. */
+function transferReady(v: ViolationRow): boolean {
+  if (v.liability_transfer_generated_at) return false;
+  if (["paid", "affidavit_signed", "resolved", "submitted_to_authority"].includes(v.status))
+    return false;
+  if (!v.sent_to_customer_at) return false;
+  const days = (Date.now() - new Date(v.sent_to_customer_at).getTime()) / 86400000;
+  return days >= 7;
+}
 
 function ViolationsPage() {
   const list = useServerFn(listViolations);
@@ -129,15 +294,12 @@ function ViolationsPage() {
   const [chargeFor, setChargeFor] = useState<ViolationRow | null>(null);
   const [statusFor, setStatusFor] = useState<ViolationRow | null>(null);
   const [submitFor, setSubmitFor] = useState<ViolationRow | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (filter === "pending_response" && !PENDING_RESPONSE.includes(r.status)) return false;
-      if (filter === "paid" && r.status !== "paid") return false;
-      if (filter === "affidavit_signed" && r.status !== "affidavit_signed") return false;
-      if (filter === "submitted" && r.status !== "submitted_to_authority") return false;
-      if (filter === "resolved" && r.status !== "resolved") return false;
+      if (filter !== "all" && stageOf(r) !== filter) return false;
       if (!q) return true;
       const hay = [
         r.id,
@@ -159,6 +321,8 @@ function ViolationsPage() {
   const unpaidTotal = rows
     .filter((r) => r.status === "pending" || r.status === "failed")
     .reduce((s, r) => s + Number(r.total_amount || r.amount || 0), 0);
+
+  const readyForTransfer = rows.filter(transferReady);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["violations"] });
 
@@ -184,6 +348,9 @@ function ViolationsPage() {
                 <FileSignature className="mr-1 h-4 w-4" /> Disputes
               </Link>
             </Button>
+            <Button variant="outline" asChild>
+              <Link to="/violations/authorities">Authorities</Link>
+            </Button>
             <Button onClick={() => setNewOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="mr-1 h-4 w-4" /> New Violation
             </Button>
@@ -191,16 +358,41 @@ function ViolationsPage() {
         }
       />
 
+      {readyForTransfer.length > 0 && (
+        <Card className="mb-4 border-amber-300 bg-amber-50">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="flex items-center gap-2 text-sm text-amber-900">
+              <AlertTriangle className="h-4 w-4" />
+              <span>
+                <strong>{readyForTransfer.length}</strong> violation
+                {readyForTransfer.length === 1 ? "" : "s"} past 7 days with no customer response —
+                ready for liability transfer.
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setFilter("awaiting_response")}
+              className="border-amber-400"
+            >
+              Review
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="mb-4">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
           <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
             <TabsList>
               <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="pending_response">Pending Response</TabsTrigger>
-              <TabsTrigger value="paid">Paid</TabsTrigger>
-              <TabsTrigger value="affidavit_signed">Affidavit Signed</TabsTrigger>
-              <TabsTrigger value="submitted">Submitted</TabsTrigger>
-              <TabsTrigger value="resolved">Resolved</TabsTrigger>
+              <TabsTrigger value="awaiting_response">Awaiting Response</TabsTrigger>
+              <TabsTrigger value="signed_affidavit">Signed Affidavit</TabsTrigger>
+              <TabsTrigger value="paid_direct">Paid Directly</TabsTrigger>
+              <TabsTrigger value="transfer_generated">Auto-Transfer</TabsTrigger>
+              <TabsTrigger value="packet_printed">Packet Printed</TabsTrigger>
+              <TabsTrigger value="mailed">Mailed</TabsTrigger>
+              <TabsTrigger value="confirmed">Confirmed</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="relative w-full max-w-sm">
@@ -241,7 +433,8 @@ function ViolationsPage() {
                 </thead>
                 <tbody>
                   {filtered.map((v) => (
-                    <tr key={v.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <Fragment key={v.id}>
+                    <tr className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-3 font-mono text-xs">{v.id}</td>
                       <td className="p-3">{fmtDate(v.date_issued)}</td>
                       <td className="p-3 capitalize">{v.type}</td>
@@ -329,8 +522,25 @@ function ViolationsPage() {
                           Change Status
                         </Button>
                         <DownloadPacketButton violationId={v.id} />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="ml-2"
+                          onClick={() => setExpanded(expanded === v.id ? null : v.id)}
+                        >
+                          {expanded === v.id ? "Hide" : "Timeline"}
+                        </Button>
+                        <LiabilityActions v={v} onDone={refresh} />
                       </td>
                     </tr>
+                    {expanded === v.id && (
+                      <tr key={`${v.id}-tl`} className="border-b bg-muted/20 last:border-0">
+                        <td colSpan={8} className="p-4">
+                          <V1Timeline v={v} />
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
