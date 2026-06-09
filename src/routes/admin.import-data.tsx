@@ -186,7 +186,7 @@ function RentalsTab() {
 function ImportDataPage() {
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <PageHeader title="Import Data" description="Bulk import vehicles and historical rentals from CSV. Preview before committing." />
+      <PageHeader title="Import Data" subtitle="Bulk import vehicles and historical rentals from CSV. Preview before committing." />
       <Tabs defaultValue="vehicles">
         <TabsList>
           <TabsTrigger value="vehicles">Import Vehicles</TabsTrigger>

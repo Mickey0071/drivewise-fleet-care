@@ -70,6 +70,7 @@ import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminPartsRouteImport } from './routes/admin.parts'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminImportLegacyRouteImport } from './routes/admin.import-legacy'
+import { Route as AdminImportDataRouteImport } from './routes/admin.import-data'
 import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
@@ -392,6 +393,11 @@ const AdminImportLegacyRoute = AdminImportLegacyRouteImport.update({
   path: '/admin/import-legacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminImportDataRoute = AdminImportDataRouteImport.update({
+  id: '/admin/import-data',
+  path: '/admin/import-data',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminExtensionsRoute = AdminExtensionsRouteImport.update({
   id: '/admin/extensions',
   path: '/admin/extensions',
@@ -514,6 +520,7 @@ export interface FileRoutesByFullPath {
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/extensions': typeof AdminExtensionsRoute
+  '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
@@ -593,6 +600,7 @@ export interface FileRoutesByTo {
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/extensions': typeof AdminExtensionsRoute
+  '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
@@ -673,6 +681,7 @@ export interface FileRoutesById {
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/extensions': typeof AdminExtensionsRoute
+  '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
@@ -754,6 +763,7 @@ export interface FileRouteTypes {
     | '/admin/backups'
     | '/admin/create-task'
     | '/admin/extensions'
+    | '/admin/import-data'
     | '/admin/import-legacy'
     | '/admin/notifications'
     | '/admin/parts'
@@ -833,6 +843,7 @@ export interface FileRouteTypes {
     | '/admin/backups'
     | '/admin/create-task'
     | '/admin/extensions'
+    | '/admin/import-data'
     | '/admin/import-legacy'
     | '/admin/notifications'
     | '/admin/parts'
@@ -912,6 +923,7 @@ export interface FileRouteTypes {
     | '/admin/backups'
     | '/admin/create-task'
     | '/admin/extensions'
+    | '/admin/import-data'
     | '/admin/import-legacy'
     | '/admin/notifications'
     | '/admin/parts'
@@ -992,6 +1004,7 @@ export interface RootRouteChildren {
   AdminBackupsRoute: typeof AdminBackupsRoute
   AdminCreateTaskRoute: typeof AdminCreateTaskRoute
   AdminExtensionsRoute: typeof AdminExtensionsRoute
+  AdminImportDataRoute: typeof AdminImportDataRoute
   AdminImportLegacyRoute: typeof AdminImportLegacyRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminPartsRoute: typeof AdminPartsRoute
@@ -1462,6 +1475,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminImportLegacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/import-data': {
+      id: '/admin/import-data'
+      path: '/admin/import-data'
+      fullPath: '/admin/import-data'
+      preLoaderRoute: typeof AdminImportDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/extensions': {
       id: '/admin/extensions'
       path: '/admin/extensions'
@@ -1651,6 +1671,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminBackupsRoute: AdminBackupsRoute,
   AdminCreateTaskRoute: AdminCreateTaskRoute,
   AdminExtensionsRoute: AdminExtensionsRoute,
+  AdminImportDataRoute: AdminImportDataRoute,
   AdminImportLegacyRoute: AdminImportLegacyRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminPartsRoute: AdminPartsRoute,
