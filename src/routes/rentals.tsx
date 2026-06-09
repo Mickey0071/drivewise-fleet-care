@@ -48,6 +48,7 @@ import { downloadClientPacket } from "@/lib/client-packet.functions";
 import { sendPortalLink } from "@/lib/portal-link.functions";
 import { closeoutRental } from "@/lib/return.functions";
 import { createExtensionLink } from "@/lib/extension-link.functions";
+import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
