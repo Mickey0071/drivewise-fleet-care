@@ -324,6 +324,31 @@ function ViolationsPage() {
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["violations"] });
 
+  const exportCsv = () => {
+    const headers = [
+      "ID", "Date Issued", "Type", "Plate", "Vehicle", "Customer", "Rental",
+      "Amount", "Fee", "Total", "Status", "Stage", "Sent", "Mailed", "Confirmed",
+    ];
+    const data = filtered.map((v) => [
+      v.id,
+      v.date_issued,
+      v.type,
+      v.license_plate ?? "",
+      v.vehicle_label ?? "",
+      v.driver_name ?? "",
+      v.rental_id ?? "",
+      v.amount,
+      v.fee,
+      v.total_amount,
+      v.status,
+      stageOf(v),
+      v.sent_to_customer_at ?? "",
+      v.mailed_at ?? "",
+      v.transfer_confirmed_at ?? "",
+    ]);
+    downloadCSV(`violations-${new Date().toISOString().slice(0, 10)}.csv`, headers, data);
+  };
+
   return (
     <div>
       <PageHeader
