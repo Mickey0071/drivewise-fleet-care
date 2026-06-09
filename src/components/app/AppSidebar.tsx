@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
-  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature, Bell, CalendarPlus, BarChart3, DatabaseBackup, Package,
+  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature, Bell, CalendarPlus, BarChart3, DatabaseBackup, Package, Upload,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -50,6 +50,7 @@ const portalItems: Item[] = [
 ];
 const settingsItems: Item[] = [
   { title: "Team & Access", url: "/admin/users", icon: UsersRound, roles: ["admin"] },
+  { title: "Import Legacy Rentals", url: "/admin/import-legacy", icon: Upload, roles: ["admin"] },
 ];
 
 export function AppSidebar() {
