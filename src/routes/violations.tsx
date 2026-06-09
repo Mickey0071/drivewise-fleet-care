@@ -224,7 +224,6 @@ function V1Timeline({ v }: { v: ViolationRow }) {
     { icon: "⏰", label: "Reminder sent", date: f(v.reminder_sent_at) },
     { icon: "⚠️", label: "Final warning", date: f(v.final_warning_sent_at) },
     { icon: "💳", label: "Paid directly", date: v.status === "paid" ? f(v.paid_at) : null },
-    { icon: "📝", label: "Affidavit signed", date: f(v.signed_at) },
     { icon: "📋", label: "Liability transfer generated", date: f(v.liability_transfer_generated_at) },
     { icon: "🖨️", label: "Mail packet printed", date: f(v.mail_packet_printed_at) },
     { icon: "✉️", label: "Mailed to authority", date: f(v.mailed_at) },
