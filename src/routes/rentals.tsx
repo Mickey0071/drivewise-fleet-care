@@ -1884,6 +1884,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
             </div>
           </div>
         )}
+        {!sentInfo && <SendLinkPreview route="/extend/[token]" />}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>{sentInfo ? "Done" : "Cancel"}</Button>
           {!sentInfo && (
