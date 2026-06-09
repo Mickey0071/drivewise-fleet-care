@@ -69,6 +69,8 @@ import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
 import { Route as ViolationTokenAffidavitRouteImport } from './routes/violation.$token_.affidavit'
+import { Route as RepairDeclineTokenRouteImport } from './routes/repair.decline.$token'
+import { Route as RepairAcceptTokenRouteImport } from './routes/repair.accept.$token'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
 import { Route as ApiPublicCardholderRefuseRouteImport } from './routes/api/public/cardholder-refuse'
@@ -381,6 +383,16 @@ const ViolationTokenAffidavitRoute = ViolationTokenAffidavitRouteImport.update({
   path: '/violation/$token/affidavit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RepairDeclineTokenRoute = RepairDeclineTokenRouteImport.update({
+  id: '/repair/decline/$token',
+  path: '/repair/decline/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepairAcceptTokenRoute = RepairAcceptTokenRouteImport.update({
+  id: '/repair/accept/$token',
+  path: '/repair/accept/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RentPortalRentalIdRoute = RentPortalRentalIdRouteImport.update({
   id: '/rent/portal/$rentalId',
   path: '/rent/portal/$rentalId',
@@ -509,6 +521,8 @@ export interface FileRoutesByFullPath {
   '/api/public/cardholder-refuse': typeof ApiPublicCardholderRefuseRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
+  '/repair/accept/$token': typeof RepairAcceptTokenRoute
+  '/repair/decline/$token': typeof RepairDeclineTokenRoute
   '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
@@ -582,6 +596,8 @@ export interface FileRoutesByTo {
   '/api/public/cardholder-refuse': typeof ApiPublicCardholderRefuseRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
+  '/repair/accept/$token': typeof RepairAcceptTokenRoute
+  '/repair/decline/$token': typeof RepairDeclineTokenRoute
   '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
@@ -656,6 +672,8 @@ export interface FileRoutesById {
   '/api/public/cardholder-refuse': typeof ApiPublicCardholderRefuseRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
+  '/repair/accept/$token': typeof RepairAcceptTokenRoute
+  '/repair/decline/$token': typeof RepairDeclineTokenRoute
   '/violation/$token_/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
@@ -731,6 +749,8 @@ export interface FileRouteTypes {
     | '/api/public/cardholder-refuse'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
+    | '/repair/accept/$token'
+    | '/repair/decline/$token'
     | '/violation/$token/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
@@ -804,6 +824,8 @@ export interface FileRouteTypes {
     | '/api/public/cardholder-refuse'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
+    | '/repair/accept/$token'
+    | '/repair/decline/$token'
     | '/violation/$token/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
@@ -877,6 +899,8 @@ export interface FileRouteTypes {
     | '/api/public/cardholder-refuse'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
+    | '/repair/accept/$token'
+    | '/repair/decline/$token'
     | '/violation/$token_/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
@@ -944,6 +968,8 @@ export interface RootRouteChildren {
   ApiPublicCardholderRefuseRoute: typeof ApiPublicCardholderRefuseRoute
   InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
+  RepairAcceptTokenRoute: typeof RepairAcceptTokenRoute
+  RepairDeclineTokenRoute: typeof RepairDeclineTokenRoute
   ViolationTokenAffidavitRoute: typeof ViolationTokenAffidavitRoute
   ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
@@ -1377,6 +1403,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ViolationTokenAffidavitRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/repair/decline/$token': {
+      id: '/repair/decline/$token'
+      path: '/repair/decline/$token'
+      fullPath: '/repair/decline/$token'
+      preLoaderRoute: typeof RepairDeclineTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/repair/accept/$token': {
+      id: '/repair/accept/$token'
+      path: '/repair/accept/$token'
+      fullPath: '/repair/accept/$token'
+      preLoaderRoute: typeof RepairAcceptTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rent/portal/$rentalId': {
       id: '/rent/portal/$rentalId'
       path: '/rent/portal/$rentalId'
@@ -1555,6 +1595,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCardholderRefuseRoute: ApiPublicCardholderRefuseRoute,
   InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
+  RepairAcceptTokenRoute: RepairAcceptTokenRoute,
+  RepairDeclineTokenRoute: RepairDeclineTokenRoute,
   ViolationTokenAffidavitRoute: ViolationTokenAffidavitRoute,
   ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
