@@ -374,6 +374,9 @@ function ViolationsPage() {
             <Button variant="outline" asChild>
               <Link to="/violations/authorities">Authorities</Link>
             </Button>
+            <Button variant="outline" onClick={exportCsv}>
+              Export CSV
+            </Button>
             <Button onClick={() => setNewOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="mr-1 h-4 w-4" /> New Violation
             </Button>
