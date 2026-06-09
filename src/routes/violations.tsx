@@ -453,14 +453,9 @@ function ViolationsPage() {
                             ✓ {new Date(v.paid_at).toLocaleString()}
                           </div>
                         )}
-                        {v.status === "affidavit_signed" && v.signed_at && (
+                        {v.resolution_choice && v.status !== "paid" && (
                           <div className="mt-1 text-xs text-muted-foreground">
-                            📝 Signed {new Date(v.signed_at).toLocaleString()}
-                          </div>
-                        )}
-                        {v.resolution_choice && v.status !== "paid" && v.status !== "affidavit_signed" && (
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            Choice: {v.resolution_choice === "pay" ? "Paid" : "Affidavit"}
+                            Choice: {v.resolution_choice === "pay" ? "Paid" : v.resolution_choice}
                           </div>
                         )}
                         {PENDING_RESPONSE.includes(v.status) && v.sent_to_customer_at && (
@@ -475,16 +470,6 @@ function ViolationsPage() {
                           <Button size="sm" variant="outline" onClick={() => setChargeFor(v)}>
                             Charge
                           </Button>
-                        )}
-                        {v.signed_pdf_url && (
-                          <a
-                            href={v.signed_pdf_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="ml-2 text-xs text-primary underline"
-                          >
-                            Affidavit
-                          </a>
                         )}
                         {v.payment_link_url && v.status === "pending" && (
                           <a
