@@ -175,6 +175,7 @@ export type Database = {
           first_name: string | null
           full_name: string
           id: string
+          import_source: string | null
           insurance_on_file: boolean
           last_name: string | null
           license_expiry: string
@@ -188,6 +189,7 @@ export type Database = {
           street_address: string | null
           stripe_customer_id: string | null
           stripe_payment_method_id: string | null
+          tags: string | null
           updated_at: string
           zip_code: string | null
         }
@@ -216,6 +218,7 @@ export type Database = {
           first_name?: string | null
           full_name: string
           id: string
+          import_source?: string | null
           insurance_on_file?: boolean
           last_name?: string | null
           license_expiry: string
@@ -229,6 +232,7 @@ export type Database = {
           street_address?: string | null
           stripe_customer_id?: string | null
           stripe_payment_method_id?: string | null
+          tags?: string | null
           updated_at?: string
           zip_code?: string | null
         }
@@ -257,6 +261,7 @@ export type Database = {
           first_name?: string | null
           full_name?: string
           id?: string
+          import_source?: string | null
           insurance_on_file?: boolean
           last_name?: string | null
           license_expiry?: string
@@ -270,6 +275,7 @@ export type Database = {
           street_address?: string | null
           stripe_customer_id?: string | null
           stripe_payment_method_id?: string | null
+          tags?: string | null
           updated_at?: string
           zip_code?: string | null
         }
@@ -1695,6 +1701,7 @@ export type Database = {
           final_charge_amount: number | null
           final_charge_breakdown: Json | null
           id: string
+          import_source: string | null
           license_image_url: string | null
           mileage_in: number | null
           mileage_out: number | null
@@ -1727,6 +1734,7 @@ export type Database = {
           start_date: string
           stripe_customer_id: string | null
           stripe_payment_method_id: string | null
+          tags: string | null
           third_party_payer: boolean
           updated_at: string
           vehicle_id: string
@@ -1770,6 +1778,7 @@ export type Database = {
           final_charge_amount?: number | null
           final_charge_breakdown?: Json | null
           id: string
+          import_source?: string | null
           license_image_url?: string | null
           mileage_in?: number | null
           mileage_out?: number | null
@@ -1802,6 +1811,7 @@ export type Database = {
           start_date: string
           stripe_customer_id?: string | null
           stripe_payment_method_id?: string | null
+          tags?: string | null
           third_party_payer?: boolean
           updated_at?: string
           vehicle_id: string
@@ -1845,6 +1855,7 @@ export type Database = {
           final_charge_amount?: number | null
           final_charge_breakdown?: Json | null
           id?: string
+          import_source?: string | null
           license_image_url?: string | null
           mileage_in?: number | null
           mileage_out?: number | null
@@ -1877,6 +1888,7 @@ export type Database = {
           start_date?: string
           stripe_customer_id?: string | null
           stripe_payment_method_id?: string | null
+          tags?: string | null
           third_party_payer?: boolean
           updated_at?: string
           vehicle_id?: string
