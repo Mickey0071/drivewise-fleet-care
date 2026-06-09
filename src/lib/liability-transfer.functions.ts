@@ -366,7 +366,6 @@ export const generateMailPacket = createServerFn({ method: "POST" })
     // Supporting documents
     await addUrl(ctx.v.photo_url as string | null, "Original violation notice");
     await addUrl((ctx.rental?.license_image_url as string) ?? null, "Driver's license (front)");
-    await addUrl((ctx.rental?.license_back_image_url as string) ?? null, "Driver's license (back)");
     await addUrl((ctx.rental?.agreement_pdf_url as string) ?? null, "Rental agreement");
     await addUrl((ctx.v.signed_pdf_url as string) ?? null, "Signed affidavit");
 
