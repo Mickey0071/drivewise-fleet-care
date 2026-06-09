@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { PageHeader } from "@/components/app/PageHeader";
+import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -158,6 +159,7 @@ function NewInquiry() {
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything else for the supplier…" />
         </div>
 
+        <SendLinkPreview route="/part-quote/[token]" />
         <Button className="w-full" disabled={!canSend || create.isPending} onClick={() => create.mutate()}>
           <Send className="mr-2 h-4 w-4" /> {create.isPending ? "Sending…" : "Send to Supplier"}
         </Button>

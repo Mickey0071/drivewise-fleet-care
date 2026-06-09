@@ -12,6 +12,7 @@ import { getStripeEnvironment } from "@/lib/stripe";
 import { toast } from "sonner";
 import { Smartphone, Loader2 } from "lucide-react";
 import type { SavedCard } from "@/lib/card-display";
+import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 
 const REASONS = [
   { value: "stripe_error", label: "Stripe error (re-attempt)" },
@@ -234,6 +235,7 @@ export function SendPaymentLinkDialog({
             </div>
           )}
         </div>
+        <SendLinkPreview note="Payment is processed via a secure Stripe checkout link. The confirmation redirect uses your current site." />
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending}>
             Cancel

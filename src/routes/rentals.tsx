@@ -48,6 +48,7 @@ import { downloadClientPacket } from "@/lib/client-packet.functions";
 import { sendPortalLink } from "@/lib/portal-link.functions";
 import { closeoutRental } from "@/lib/return.functions";
 import { createExtensionLink } from "@/lib/extension-link.functions";
+import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 import { toast } from "sonner";
 import type { Rental } from "@/lib/mock/data";
 
@@ -1884,6 +1885,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
             </div>
           </div>
         )}
+        {!sentInfo && <SendLinkPreview route="/extend/[token]" />}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>{sentInfo ? "Done" : "Cancel"}</Button>
           {!sentInfo && (

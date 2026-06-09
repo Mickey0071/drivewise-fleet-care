@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Copy, MessageSquare, Mail, Link2, Loader2 } from "lucide-react";
 import { createShareLink, sendShareLinkSms } from "@/lib/share-rental.functions";
 import type { Vehicle } from "@/lib/mock/data";
+import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 
 const getPublicAppOrigin = () =>
   typeof window !== "undefined" ? window.location.origin : "";
@@ -191,11 +192,14 @@ export function ShareRentalDialog({
           </div>
 
           {!token ? (
+            <>
+            <SendLinkPreview route="/rent/[token]" />
             <Button type="button" onClick={handleCreate} disabled={creating} className="w-full">
               {creating ? <><Loader2 className="h-4 w-4 animate-spin" /> Working…</> : phone.trim().length >= 7
                 ? <><MessageSquare className="h-4 w-4" /> Generate & text link</>
                 : <><Link2 className="h-4 w-4" /> Generate share link</>}
             </Button>
+            </>
           ) : (
             <>
               <div>

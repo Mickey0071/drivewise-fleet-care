@@ -13,6 +13,7 @@ import { refreshStoreFromCloud } from "@/lib/mock/store";
 import { supabase } from "@/integrations/supabase/client";
 import { submitRmCardAdmin, createRmCardLink } from "@/lib/rm-cards.functions";
 import { RmCardForm, type RmFormItem } from "@/components/app/RmCardForm";
+import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 
 function dueText(it: ReturnType<typeof computeScheduledItems>[number]): string {
   const rem = scheduledRemainingLabel(it);
@@ -206,6 +207,7 @@ export function RmCardDialog({
                 </SelectContent>
               </Select>
             </div>
+            <SendLinkPreview route="/rm-card/[token]" />
             <Button className="w-full" disabled={busy} onClick={handleSendLink}>
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Send Link</>}
             </Button>

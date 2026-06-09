@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { sendVerificationLink } from "@/lib/cardholder-verification.functions";
 import { toE164, isValidE164 } from "@/lib/phone";
+import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 
 export function SendVerificationLinkDialog({
   open,
@@ -142,6 +143,7 @@ export function SendVerificationLinkDialog({
               placeholder="Leave blank to use the default message."
             />
           </div>
+          <SendLinkPreview route="/verify-card/[token]" />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
