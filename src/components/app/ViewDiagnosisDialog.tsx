@@ -49,17 +49,18 @@ export function ViewDiagnosisDialog({ job, onClose }: { job: MechanicJobRow | nu
             </div>
           ) : null}
 
-          <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Parts</h3>
-            <div className="space-y-1">
-              {(job.parts_list ?? []).map((p, i) => (
-                <div key={i} className="flex justify-between text-xs">
-                  <span>{p.name}</span><span>{money(p.price)}</span>
-                </div>
-              ))}
-              {(job.parts_list ?? []).length === 0 && <p className="text-xs text-muted-foreground">No parts listed.</p>}
+          {(job.parts_list ?? []).length > 0 ? (
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Parts</h3>
+              <div className="space-y-1">
+                {(job.parts_list ?? []).map((p, i) => (
+                  <div key={i} className="flex justify-between text-xs">
+                    <span>{p.name}</span><span>{money(p.price)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div className="space-y-1 border-t pt-2 text-xs">
             <div className="flex justify-between"><span>Parts total</span><span>{money(partsTotal)}</span></div>
