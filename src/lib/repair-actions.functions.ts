@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const ADMIN_REPAIR_PHONE = "267-221-3977";
 const MECHANIC_CALLBACK = "(866) 625-5550";
@@ -160,6 +161,7 @@ export const declineRepairAction = createServerFn({ method: "POST" })
 
 /** Admin: list repairs awaiting approval > 4 hours (dashboard alert). */
 export const listPendingApprovals = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .handler(async () => {
     const cutoff = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
     const { data } = await db
