@@ -248,7 +248,6 @@ const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "â
 type Filter =
   | "all"
   | "awaiting_response"
-  | "signed_affidavit"
   | "paid_direct"
   | "transfer_generated"
   | "packet_printed"
@@ -264,7 +263,6 @@ function stageOf(v: ViolationRow): Exclude<Filter, "all"> {
   if (v.mail_packet_printed_at) return "packet_printed";
   if (v.liability_transfer_generated_at) return "transfer_generated";
   if (v.status === "paid") return "paid_direct";
-  if (v.status === "affidavit_signed" || v.signed_at) return "signed_affidavit";
   return "awaiting_response";
 }
 
