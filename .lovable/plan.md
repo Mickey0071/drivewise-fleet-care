@@ -1,38 +1,39 @@
-## Violations Workflow + NJ Auto Liability Transfer
+## Simplified Violations Workflow + CSV Tools
 
-Builds on the existing pipeline (OCR bulk upload, auto-match, affidavit generation in `ezpass.functions.ts` / `violations.functions.ts`, and the ZIP packet in `violation-packet.functions.ts`). Parts 2–4 already work and stay intact. Per your answers: **manual trigger only** (no background cron), signer = "Rentalprise LLC Admin", seed NJ E-ZPass at P.O. Box 4971, Trenton, NJ 08650.
+Per your spec: remove the customer affidavit step entirely, rely on the already-signed rental agreement, auto-generate the liability-transfer packet, send the customer an info-only notice, and let the admin print/mail/track. Plus CSV import (Fleet Finesse) and CSV export.
 
-### 1. Database (one migration)
-- New `authority_addresses` table: `key`, `name`, `address_lines` (text), `region`, `is_active`, timestamps. Seeded with NJ E-ZPass (P.O. Box 4971, Trenton, NJ 08650) plus editable placeholder rows for NJ Turnpike Authority, NY E-ZPass, PA Turnpike, NJ MVC (you fill addresses in-app).
-- Add columns to `violations`: `liability_transfer_generated_at`, `liability_transfer_pdf_url`, `mail_packet_printed_at`, `mailed_at`, `transfer_confirmed_at`, `authority_key`, `final_warning_sent_at`. Existing `reminder_sent_at`, `submitted_*`, `resolved_*` are reused for the timeline.
-- GRANTs + RLS: authenticated full access on `authority_addresses` (admin app, no anon).
+### Part 1 — Remove affidavit flow
+- Delete the customer affidavit page `src/routes/violation.$token_.affidavit.tsx`.
+- In `violation-resolution.functions.ts`: remove `signViolationAffidavit`, `getAffidavitPdfUrl`, `buildAndStoreAffidavit`, and the `ezpass-affidavit.server` import. Keep `getViolationForCustomer` and `createViolationCustomerPayment` (so "Pay Now" still works if you want it).
+- `src/routes/violation.$token.tsx`: drop the "Sign Affidavit (Recommended)" card and the affidavit confirmation copy. Becomes an **informational notice** ("This violation has been transferred to you per N.J.S.A. 39:4-138.1; the authority will contact you directly") with an optional Pay Now button.
+- `violations.tsx`: remove the "Signed Affidavit" filter tab, the affidavit timeline row, and affidavit-related UI.
+- Delete `src/lib/ezpass-affidavit.server.ts` (and `ezpass.functions.ts` affidavit pieces if unused elsewhere — I'll verify before deleting).
 
-### 2. Part 1 — Manual entry on /violations/bulk-upload
-- Convert the page top into two tabs: **Upload PDF/Image** (existing, unchanged) and **Manual Entry** (new).
-- Manual table: rows of Date · Time · Plate · Location · Amount · delete; `+ Add Row`; `Process All`.
-- New server fn `createManualEzpassBatch` builds the same batch/items the OCR path produces, then runs the existing auto-match, so it flows into the identical review screen (Parts 2–4).
+### Part 2 — New processing workflow
+- On match (in the bulk-upload review / `createViolation`), auto-call `generateLiabilityTransfer` so the packet PDF exists immediately, set status to `transfer_generated`.
+- Customer notification becomes informational only (no pay-or-sign choice, no action link required).
+- Admin reviews → Generate Mail Packet → Mark Mailed → Confirm (these already exist in `LiabilityActions`, kept intact).
 
-### 3. Parts 5–7 — Liability transfer (no signature)
-- New `liability-transfer.functions.ts`:
-  - `getAuthorityAddresses` / `upsertAuthorityAddress` (admin edit).
-  - `generateLiabilityTransfer(violationId)` — manual button. Builds the NJ N.J.S.A. 39:4-138.1 cover letter (your exact text, signer "Rentalprise LLC Admin", owner Rentalprise LLC d/b/a Camauto Rentals, 416 Sicklerville Rd) pulling vehicle/renter/rental data, picks the authority address by `authority_key`, renders a PDF, stores it, and stamps `liability_transfer_generated_at`. Works with no customer signature.
-  - `generateMailPacket(violationId)` — single combined PDF: cover letter → original violation notice → DL front/back → rental agreement → signed affidavit (each included only if on file). Reuses the fetch/merge approach from `violation-packet.functions.ts` but outputs one PDF (via pdf-lib) instead of a ZIP.
-- Cover-letter and packet PDFs built with the same jsPDF/pdf-lib libs already in the project.
+### Part 3 — Liability transfer packet
+- Cover letter already built in `liability-transfer.functions.ts` and matches your statute text. I'll update the "ATTACHED DOCUMENTS" list to drop "Signed affidavit" and the packet builder to stop appending the affidavit PDF.
+- Authority selected by `authority_key` (NJ E-ZPass seeded; others editable on /violations/authorities).
 
-### 4. Part 8 — Tracking dashboard on /violations
-- Add status filter tabs: All · Awaiting Response · Signed Affidavit · Paid Directly · Auto-Transfer Generated · Mail Packet Printed · Mailed · Confirmed Resolved (derived from existing + new timestamp columns).
-- Per-violation expandable **timeline** rendering the day-stamped events from the stored timestamps.
-- Row actions: `Generate Liability Transfer` (enabled once >7 days since `sent_to_customer_at` with no pay/sign), `Generate Mail Packet`, and mark buttons for Printed / Mailed / Confirmed (call a small `markViolationStage` server fn).
-- A dashboard banner/count of violations past 7 days with no response, ready for transfer (your manual flag, since no cron).
+### Part 4 — Reminders
+- `violation-reminders.ts`: remove pay/sign reminder cadence. Replace with optional informational follow-up only, or disable entirely (your call — see question below).
 
-### 5. Part 9 — Reminders (toggle-aware, manual/triggered)
-- Add `send_reminders` handling for violation stages in the existing notifications framework so Day-3 reminder / Day-6 final warning / Day-7 last-chance and the "transfer ready" admin text (267-221-3977) all respect Notification Tab toggles. Because you chose manual-only, these fire from the existing `/api/public/hooks/violation-reminders` endpoint logic (extended for the 3/6/7 cadence and `final_warning_sent_at`) rather than new always-on cron — you keep control of scheduling.
+### Part 5 — CSV import (Fleet Finesse)  ⚠ needs your input
+The spec for column mapping was cut off. I need the CSV headers / sample to map fields into `rentals` / `drivers` / `vehicles`. Plan: a new `/violations/bulk-upload` or `/import` tab with file picker → parse client-side → preview table → server fn `importFleetFinesseCsv` that upserts rows.
 
-### Out of scope / your input later
-- Real addresses for NJ Turnpike, NY E-ZPass, PA Turnpike, NJ MVC (seeded as editable blanks).
-- No new automatic background cron is added (per your choice); the day-8 auto-generation is exposed as the manual button + dashboard flag.
+### Part 6 — CSV export
+- Add an "Export CSV" button (reusing `src/lib/exports.ts`) on the violations page and/or rentals page to download current data.
+
+### Questions before I build
+1. Keep the customer "Pay Now" option, or make the customer page purely informational (no payment)?
+2. Reminders: remove entirely, or keep one informational follow-up?
+3. CSV import: please share the Fleet Finesse CSV headers (or a sample row) and which table(s) it should populate (rentals, drivers, vehicles?).
+4. CSV export: which dataset(s) — violations, rentals, or both?
 
 ### Technical notes
-- Reuses `drivers`, `vehicles`, `rentals` joins already used by the packet builder for renter name/address/DL/DOB/expiry.
-- New server fns live in `*.functions.ts` (client-safe), admin Supabase access via `supabaseAdmin` imported inside handlers.
-- No changes to auto-generated files; `routeTree.gen.ts` updates itself.
+- No DB schema changes required (columns already exist from the prior migration).
+- All server logic stays in `*.functions.ts` with `supabaseAdmin` imported in handlers.
+- `routeTree.gen.ts` regenerates automatically when routes are added/removed.
