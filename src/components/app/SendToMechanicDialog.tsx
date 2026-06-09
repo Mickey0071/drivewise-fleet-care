@@ -225,6 +225,7 @@ export function SendToMechanicDialog({
             ) : null}
           </div>
         </div>
+        <SendLinkPreview route="/mechanic-job/[token]" />
         <DialogFooter>
           <Button disabled={sending} onClick={submit}>
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Send to Mechanic</>}
