@@ -518,8 +518,24 @@ function ViolationsPage() {
                           Change Status
                         </Button>
                         <DownloadPacketButton violationId={v.id} />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="ml-2"
+                          onClick={() => setExpanded(expanded === v.id ? null : v.id)}
+                        >
+                          {expanded === v.id ? "Hide" : "Timeline"}
+                        </Button>
+                        <LiabilityActions v={v} onDone={refresh} />
                       </td>
                     </tr>
+                    {expanded === v.id && (
+                      <tr key={`${v.id}-tl`} className="border-b bg-muted/20 last:border-0">
+                        <td colSpan={8} className="p-4">
+                          <V1Timeline v={v} />
+                        </td>
+                      </tr>
+                    )}
                   ))}
                 </tbody>
               </table>
