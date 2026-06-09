@@ -118,7 +118,7 @@ function BulkUploadPage() {
     <div>
       <PageHeader
         title="EZPass Bulk Upload"
-        subtitle="Upload statement → System extracts → Match renters → Generate affidavits"
+        subtitle="Upload statement → System extracts → Match renters → Generate liability transfers"
         action={
           <Button variant="outline" asChild>
             <Link to="/violations">
@@ -389,7 +389,7 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
     setApproving(true);
     try {
       const res = await approve({ data: { batchId } });
-      toast.success(`Generated ${res.generated} affidavit PDF${res.generated === 1 ? "" : "s"}`);
+      toast.success(`Generated ${res.generated} liability-transfer letter${res.generated === 1 ? "" : "s"}`);
       setConfirmOpen(false);
       refresh();
     } catch (e) {
@@ -481,7 +481,7 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                         {approved && it.affidavit_pdf_url ? (
                           <Button size="sm" variant="ghost" asChild>
                             <a href={it.affidavit_pdf_url} target="_blank" rel="noreferrer">
-                              Affidavit
+                              Letter
                             </a>
                           </Button>
                         ) : (
@@ -507,7 +507,7 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
       <div className="mt-6 flex items-center justify-end gap-3">
         {approved ? (
           <Button onClick={handleZip} className="bg-emerald-600 hover:bg-emerald-700">
-            <Download className="mr-2 h-4 w-4" /> Download All Affidavits
+            <Download className="mr-2 h-4 w-4" /> Download All Letters
           </Button>
         ) : (
           <>
@@ -542,9 +542,9 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Generate affidavit PDFs?</DialogTitle>
+            <DialogTitle>Generate liability-transfer letters?</DialogTitle>
             <DialogDescription>
-              You're about to generate {items.length} affidavit PDF{items.length === 1 ? "" : "s"} and
+              You're about to generate {items.length} liability-transfer letter{items.length === 1 ? "" : "s"} and
               prepare them for review. Each PDF will be pre-filled with customer and violation details.
               Continue?
             </DialogDescription>
