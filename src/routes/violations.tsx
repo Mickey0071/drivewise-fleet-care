@@ -484,14 +484,14 @@ function ViolationsPage() {
                         {!["paid", "resolved", "submitted_to_authority"].includes(v.status) && (
                           <SendCustomerButton violation={v} onDone={refresh} />
                         )}
-                        {["affidavit_signed", "submitted_to_authority", "resolved"].includes(v.status) && (
+                        {["submitted_to_authority", "resolved"].includes(v.status) && (
                           <Button
                             size="sm"
                             variant="outline"
                             className="ml-2"
                             onClick={() => setSubmitFor(v)}
                           >
-                            {v.status === "affidavit_signed" ? "View & Submit" : "View Dispute"}
+                            View Dispute
                           </Button>
                         )}
                         <Button
