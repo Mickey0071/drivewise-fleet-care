@@ -65,9 +65,14 @@ export interface FleetImportResult {
 export const importFleetFinesse = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
-    z.object({ rows: z.array(rowSchema).min(1).max(5000) }).parse(input),
+    z
+      .object({
+        rows: z.array(rowSchema).min(1).max(5000),
+        fileName: z.string().trim().max(255).optional().nullable(),
+      })
+      .parse(input),
   )
-  .handler(async ({ data }): Promise<FleetImportResult> => {
+  .handler(async ({ data, context }): Promise<FleetImportResult> => {
     const result: FleetImportResult = {
       driversCreated: 0,
       driversMatched: 0,
@@ -223,5 +228,26 @@ export const importFleetFinesse = createServerFn({ method: "POST" })
     }
 
     result.unmatchedVehicles = Array.from(new Set(result.unmatchedVehicles)).slice(0, 50);
+
+    // Log this import to history (best-effort).
+    try {
+      await supabaseAdmin.from("import_logs").insert({
+        imported_by: context.userId ?? null,
+        source: "fleet_finesse",
+        file_name: data.fileName ?? null,
+        rows_total: data.rows.length,
+        drivers_created: result.driversCreated,
+        drivers_matched: result.driversMatched,
+        rentals_created: result.rentalsCreated,
+        rentals_skipped: result.rentalsSkipped,
+        error_count: result.errors.length,
+        unmatched_plates: result.unmatchedVehicles,
+        errors: result.errors.slice(0, 100),
+        status: "completed",
+      } as never);
+    } catch {
+      // ignore logging failures
+    }
+
     return result;
   });
