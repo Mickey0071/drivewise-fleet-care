@@ -158,6 +158,7 @@ function NewInquiry() {
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything else for the supplier…" />
         </div>
 
+        <SendLinkPreview route="/part-quote/[token]" />
         <Button className="w-full" disabled={!canSend || create.isPending} onClick={() => create.mutate()}>
           <Send className="mr-2 h-4 w-4" /> {create.isPending ? "Sending…" : "Send to Supplier"}
         </Button>
