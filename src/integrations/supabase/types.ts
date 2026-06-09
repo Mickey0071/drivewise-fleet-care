@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      authority_addresses: {
+        Row: {
+          address_lines: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          key: string
+          name: string
+          region: string | null
+          updated_at: string
+        }
+        Insert: {
+          address_lines?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key: string
+          name: string
+          region?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address_lines?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          name?: string
+          region?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       auto_extension_offers: {
         Row: {
           auto_pay_enabled: boolean
@@ -2623,6 +2656,7 @@ export type Database = {
       violations: {
         Row: {
           amount: number
+          authority_key: string | null
           confirmation_number: string | null
           created_at: string
           created_by: string | null
@@ -2633,13 +2667,20 @@ export type Database = {
           driver_id: string | null
           extracted_confidence: number | null
           fee: number
+          final_warning_sent_at: string | null
           id: string
+          liability_transfer_generated_at: string | null
+          liability_transfer_pdf_url: string | null
           license_plate: string | null
+          location: string | null
+          mail_packet_printed_at: string | null
+          mailed_at: string | null
           notes: string | null
           paid_at: string | null
           payment_link_url: string | null
           payment_method: string | null
           photo_url: string | null
+          reference_number: string | null
           reminder_sent_at: string | null
           rental_id: string | null
           resolution_choice: string | null
@@ -2661,13 +2702,16 @@ export type Database = {
           submitted_to: string | null
           submitted_to_authority_at: string | null
           total_amount: number
+          transfer_confirmed_at: string | null
           type: string
           updated_at: string
           vehicle_id: string
           viewed_at: string | null
+          violation_time: string | null
         }
         Insert: {
           amount?: number
+          authority_key?: string | null
           confirmation_number?: string | null
           created_at?: string
           created_by?: string | null
@@ -2678,13 +2722,20 @@ export type Database = {
           driver_id?: string | null
           extracted_confidence?: number | null
           fee?: number
+          final_warning_sent_at?: string | null
           id: string
+          liability_transfer_generated_at?: string | null
+          liability_transfer_pdf_url?: string | null
           license_plate?: string | null
+          location?: string | null
+          mail_packet_printed_at?: string | null
+          mailed_at?: string | null
           notes?: string | null
           paid_at?: string | null
           payment_link_url?: string | null
           payment_method?: string | null
           photo_url?: string | null
+          reference_number?: string | null
           reminder_sent_at?: string | null
           rental_id?: string | null
           resolution_choice?: string | null
@@ -2706,13 +2757,16 @@ export type Database = {
           submitted_to?: string | null
           submitted_to_authority_at?: string | null
           total_amount?: number
+          transfer_confirmed_at?: string | null
           type?: string
           updated_at?: string
           vehicle_id: string
           viewed_at?: string | null
+          violation_time?: string | null
         }
         Update: {
           amount?: number
+          authority_key?: string | null
           confirmation_number?: string | null
           created_at?: string
           created_by?: string | null
@@ -2723,13 +2777,20 @@ export type Database = {
           driver_id?: string | null
           extracted_confidence?: number | null
           fee?: number
+          final_warning_sent_at?: string | null
           id?: string
+          liability_transfer_generated_at?: string | null
+          liability_transfer_pdf_url?: string | null
           license_plate?: string | null
+          location?: string | null
+          mail_packet_printed_at?: string | null
+          mailed_at?: string | null
           notes?: string | null
           paid_at?: string | null
           payment_link_url?: string | null
           payment_method?: string | null
           photo_url?: string | null
+          reference_number?: string | null
           reminder_sent_at?: string | null
           rental_id?: string | null
           resolution_choice?: string | null
@@ -2751,10 +2812,12 @@ export type Database = {
           submitted_to?: string | null
           submitted_to_authority_at?: string | null
           total_amount?: number
+          transfer_confirmed_at?: string | null
           type?: string
           updated_at?: string
           vehicle_id?: string
           viewed_at?: string | null
+          violation_time?: string | null
         }
         Relationships: []
       }
