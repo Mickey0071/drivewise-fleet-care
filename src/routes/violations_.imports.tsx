@@ -27,7 +27,7 @@ function ImportsPage() {
         action={
           <div className="flex gap-2">
             <Button variant="outline" asChild>
-              <Link to="/violations_/import">
+              <Link to="/violations/import">
                 <Upload className="mr-1 h-4 w-4" /> New Import
               </Link>
             </Button>
