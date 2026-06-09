@@ -370,7 +370,7 @@ async function recomputeBatchCounts(batchId: string) {
     .eq("id", batchId);
 }
 
-/** Approve a fully-matched batch: create violation records + affidavit PDFs. */
+/** Approve a fully-matched batch: create violation records + liability-transfer PDFs. */
 export const approveEzpassBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ batchId: z.string().min(1).max(64) }).parse(input))
@@ -393,33 +393,6 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
         generated++;
         continue;
       }
-      // Load rental/vehicle/driver context
-      const [{ data: rental }, { data: driver }, { data: vehicle }] = await Promise.all([
-        item.rental_id
-          ? supabaseAdmin
-              .from("rentals")
-              .select("id, start_date, end_date, vehicle_id, driver_id")
-              .eq("id", item.rental_id)
-              .maybeSingle()
-          : Promise.resolve({ data: null }),
-        item.driver_id
-          ? supabaseAdmin
-              .from("drivers")
-              .select(
-                "full_name, first_name, last_name, phone, email, license_number, dl_state, address, street_address, city, state, zip_code",
-              )
-              .eq("id", item.driver_id)
-              .maybeSingle()
-          : Promise.resolve({ data: null }),
-        item.vehicle_id
-          ? supabaseAdmin
-              .from("vehicles")
-              .select("year, make, model, vin, plate")
-              .eq("id", item.vehicle_id)
-              .maybeSingle()
-          : Promise.resolve({ data: null }),
-      ]);
-
       const violationId = item.violation_id || genId("VIO");
       // Create the violation record if it doesn't exist yet
       if (!item.violation_id) {
@@ -435,43 +408,26 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
           fee: 0,
           total_amount: item.amount,
           description: `EZPass toll — ${item.location ?? ""}`.trim(),
+          location: item.location,
+          violation_time: item.violation_time,
           notes: `Imported from EZPass batch ${data.batchId}`,
           status: "pending",
           created_by: context.userId ?? null,
         } as never);
       }
 
-      // Generate affidavit PDF
-      let affidavitUrl: string | null = item.affidavit_pdf_url;
+      // Auto-generate the liability-transfer cover letter (no signature needed)
+      let transferUrl: string | null = item.affidavit_pdf_url;
       try {
-        const pdf = await buildAffidavitPdf({
-          violationId,
-          violationDate: item.violation_date,
-          violationTime: item.violation_time,
-          location: item.location,
-          amount: Number(item.amount || 0),
-          plate: item.plate,
-          vehicle: vehicle ?? null,
-          driver: driver ?? null,
-          rental: rental ?? null,
-        });
-        const path = `ezpass/${data.batchId}/affidavit-${violationId}.pdf`;
-        const { error: upErr } = await supabaseAdmin.storage
-          .from("violation-photos")
-          .upload(path, pdf, { contentType: "application/pdf", upsert: true });
-        if (!upErr) {
-          const { data: signed } = await supabaseAdmin.storage
-            .from("violation-photos")
-            .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
-          affidavitUrl = signed?.signedUrl ?? null;
-        }
+        const res = await generateAndStoreLiabilityTransfer(violationId);
+        transferUrl = res.pdfUrl;
       } catch (e) {
-        console.error("[ezpass] affidavit gen failed:", e);
+        console.error("[ezpass] liability transfer gen failed:", e);
       }
 
       await supabaseAdmin
         .from("ezpass_batch_items")
-        .update({ violation_id: violationId, affidavit_pdf_url: affidavitUrl } as never)
+        .update({ violation_id: violationId, affidavit_pdf_url: transferUrl } as never)
         .eq("id", item.id);
       generated++;
     }
