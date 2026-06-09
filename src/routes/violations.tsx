@@ -107,6 +107,142 @@ export const Route = createFileRoute("/violations")({
   component: ViolationsPage,
 });
 
+function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }) {
+  const genTransfer = useServerFn(generateLiabilityTransfer);
+  const genPacket = useServerFn(generateMailPacket);
+  const mark = useServerFn(markViolationStage);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const doTransfer = async () => {
+    setBusy("transfer");
+    try {
+      const res = await genTransfer({ data: { violationId: v.id } });
+      if (res.pdfUrl) window.open(res.pdfUrl, "_blank");
+      toast.success("Liability transfer letter generated");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const doPacket = async () => {
+    setBusy("packet");
+    try {
+      const res = await genPacket({ data: { violationId: v.id } });
+      const bin = atob(res.base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      await mark({ data: { violationId: v.id, stage: "printed" } });
+      if (res.missing.length) {
+        toast.message(`Mail packet ready — ${res.missing.length} item(s) missing`, {
+          description: res.missing.join(", "),
+        });
+      } else {
+        toast.success("Mail packet ready to print");
+      }
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const doMark = async (stage: "mailed" | "confirmed") => {
+    setBusy(stage);
+    try {
+      await mark({ data: { violationId: v.id, stage } });
+      toast.success(stage === "mailed" ? "Marked mailed" : "Marked confirmed");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const transferred = !!v.liability_transfer_generated_at;
+  const eligible = !["paid", "affidavit_signed", "resolved"].includes(v.status);
+
+  if (!eligible && !transferred) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap justify-end gap-1">
+      {!transferred && eligible && (
+        <Button size="sm" variant="outline" onClick={doTransfer} disabled={busy === "transfer"}>
+          {busy === "transfer" ? "…" : "⚖️ Liability Transfer"}
+        </Button>
+      )}
+      {transferred && (
+        <>
+          {v.liability_transfer_pdf_url && (
+            <a
+              href={v.liability_transfer_pdf_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-primary underline self-center"
+            >
+              Letter
+            </a>
+          )}
+          <Button size="sm" variant="outline" onClick={doPacket} disabled={busy === "packet"}>
+            {busy === "packet" ? "Building…" : "🖨️ Mail Packet"}
+          </Button>
+          {!v.mailed_at && (
+            <Button size="sm" variant="ghost" onClick={() => doMark("mailed")} disabled={busy === "mailed"}>
+              ✉️ Mark Mailed
+            </Button>
+          )}
+          {v.mailed_at && !v.transfer_confirmed_at && (
+            <Button size="sm" variant="ghost" onClick={() => doMark("confirmed")} disabled={busy === "confirmed"}>
+              ✅ Confirm
+            </Button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function V1Timeline({ v }: { v: ViolationRow }) {
+  const f = (s: string | null | undefined) =>
+    s ? new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null;
+  const events: { icon: string; label: string; date: string | null }[] = [
+    { icon: "📅", label: "Violation received", date: f(v.created_at) },
+    { icon: "📨", label: "Sent to customer", date: f(v.sent_to_customer_at) },
+    { icon: "👁️", label: "Customer viewed", date: f(v.viewed_at) },
+    { icon: "⏰", label: "Reminder sent", date: f(v.reminder_sent_at) },
+    { icon: "⚠️", label: "Final warning", date: f(v.final_warning_sent_at) },
+    { icon: "💳", label: "Paid directly", date: v.status === "paid" ? f(v.paid_at) : null },
+    { icon: "📝", label: "Affidavit signed", date: f(v.signed_at) },
+    { icon: "📋", label: "Liability transfer generated", date: f(v.liability_transfer_generated_at) },
+    { icon: "🖨️", label: "Mail packet printed", date: f(v.mail_packet_printed_at) },
+    { icon: "✉️", label: "Mailed to authority", date: f(v.mailed_at) },
+    { icon: "✅", label: "Confirmed transferred", date: f(v.transfer_confirmed_at) },
+  ].filter((e) => e.date);
+  return (
+    <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+      {events.map((e, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <span>{e.icon}</span>
+          <span className="font-medium text-foreground">{e.label}</span>
+          <span>· {e.date}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const fmtMoney = (n: number) => `$${Number(n || 0).toFixed(2)}`;
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "—");
 
