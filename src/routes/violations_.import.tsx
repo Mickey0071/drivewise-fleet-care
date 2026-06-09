@@ -46,12 +46,6 @@ const FIELDS: { key: TargetKey; label: string; aliases: string[] }[] = [
 
 const NONE = "__none__";
 
-function autoMatch(header: string, columns: string[]): string {
-  const h = header.toLowerCase();
-  const field = FIELDS.find((f) => f.key === header);
-  return NONE;
-}
-
 function ImportPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const importFn = useServerFn(importFleetFinesse);
