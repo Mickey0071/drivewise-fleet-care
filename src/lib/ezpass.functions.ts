@@ -7,6 +7,7 @@ import {
   autoMatchToll,
   type MatchCandidate,
 } from "@/lib/ezpass.server";
+import type { ExtractedToll } from "@/lib/ezpass.server";
 import { buildAffidavitPdf } from "@/lib/ezpass-affidavit.server";
 
 export interface EzpassBatchItem {
