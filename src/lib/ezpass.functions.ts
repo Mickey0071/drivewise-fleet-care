@@ -138,6 +138,15 @@ export const getEzpassBatch = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ batchId: z.string().min(1).max(64) }).parse(input))
   .handler(async ({ data }): Promise<{ batch: EzpassBatch; items: EzpassBatchItem[] }> => {
+    return getBatchInternal(data.batchId);
+  });
+
+async function getBatchInternal(
+  batchId: string,
+): Promise<{ batch: EzpassBatch; items: EzpassBatchItem[] }> {
+  void batchId;
+  throw new Error("placeholder");
+}
     const { data: batch, error: bErr } = await supabaseAdmin
       .from("ezpass_batches")
       .select("*")
