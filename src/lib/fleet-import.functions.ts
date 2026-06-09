@@ -193,7 +193,7 @@ export const importFleetFinesse = createServerFn({ method: "POST" })
           continue;
         }
 
-        const rentalId = rentalSeq
+        const rentalId: string = rentalSeq
           ? bump(rentalSeq, "R", 500)!
           : await nextId("rentals", "R", 500);
         rentalSeq = rentalId;
