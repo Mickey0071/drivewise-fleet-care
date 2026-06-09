@@ -38,6 +38,7 @@ import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkOrderTokenRouteImport } from './routes/work-order.$token'
+import { Route as ViolationsImportsRouteImport } from './routes/violations_.imports'
 import { Route as ViolationsImportRouteImport } from './routes/violations_.import'
 import { Route as ViolationsExportsRouteImport } from './routes/violations_.exports'
 import { Route as ViolationsDisputesRouteImport } from './routes/violations_.disputes'
@@ -228,6 +229,11 @@ const IndexRoute = IndexRouteImport.update({
 const WorkOrderTokenRoute = WorkOrderTokenRouteImport.update({
   id: '/work-order/$token',
   path: '/work-order/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ViolationsImportsRoute = ViolationsImportsRouteImport.update({
+  id: '/violations_/imports',
+  path: '/violations/imports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ViolationsImportRoute = ViolationsImportRouteImport.update({
@@ -532,6 +538,7 @@ export interface FileRoutesByFullPath {
   '/violations/disputes': typeof ViolationsDisputesRoute
   '/violations/exports': typeof ViolationsExportsRoute
   '/violations/import': typeof ViolationsImportRoute
+  '/violations/imports': typeof ViolationsImportsRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/api/public/cardholder-refuse': typeof ApiPublicCardholderRefuseRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
@@ -609,6 +616,7 @@ export interface FileRoutesByTo {
   '/violations/disputes': typeof ViolationsDisputesRoute
   '/violations/exports': typeof ViolationsExportsRoute
   '/violations/import': typeof ViolationsImportRoute
+  '/violations/imports': typeof ViolationsImportsRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/api/public/cardholder-refuse': typeof ApiPublicCardholderRefuseRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
@@ -687,6 +695,7 @@ export interface FileRoutesById {
   '/violations_/disputes': typeof ViolationsDisputesRoute
   '/violations_/exports': typeof ViolationsExportsRoute
   '/violations_/import': typeof ViolationsImportRoute
+  '/violations_/imports': typeof ViolationsImportsRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/api/public/cardholder-refuse': typeof ApiPublicCardholderRefuseRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
@@ -766,6 +775,7 @@ export interface FileRouteTypes {
     | '/violations/disputes'
     | '/violations/exports'
     | '/violations/import'
+    | '/violations/imports'
     | '/work-order/$token'
     | '/api/public/cardholder-refuse'
     | '/inspect/$vehicleId/$token'
@@ -843,6 +853,7 @@ export interface FileRouteTypes {
     | '/violations/disputes'
     | '/violations/exports'
     | '/violations/import'
+    | '/violations/imports'
     | '/work-order/$token'
     | '/api/public/cardholder-refuse'
     | '/inspect/$vehicleId/$token'
@@ -920,6 +931,7 @@ export interface FileRouteTypes {
     | '/violations_/disputes'
     | '/violations_/exports'
     | '/violations_/import'
+    | '/violations_/imports'
     | '/work-order/$token'
     | '/api/public/cardholder-refuse'
     | '/inspect/$vehicleId/$token'
@@ -991,6 +1003,7 @@ export interface RootRouteChildren {
   ViolationsDisputesRoute: typeof ViolationsDisputesRoute
   ViolationsExportsRoute: typeof ViolationsExportsRoute
   ViolationsImportRoute: typeof ViolationsImportRoute
+  ViolationsImportsRoute: typeof ViolationsImportsRoute
   WorkOrderTokenRoute: typeof WorkOrderTokenRoute
   ApiPublicCardholderRefuseRoute: typeof ApiPublicCardholderRefuseRoute
   InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
@@ -1210,6 +1223,13 @@ declare module '@tanstack/react-router' {
       path: '/work-order/$token'
       fullPath: '/work-order/$token'
       preLoaderRoute: typeof WorkOrderTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/violations_/imports': {
+      id: '/violations_/imports'
+      path: '/violations/imports'
+      fullPath: '/violations/imports'
+      preLoaderRoute: typeof ViolationsImportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/violations_/import': {
@@ -1634,6 +1654,7 @@ const rootRouteChildren: RootRouteChildren = {
   ViolationsDisputesRoute: ViolationsDisputesRoute,
   ViolationsExportsRoute: ViolationsExportsRoute,
   ViolationsImportRoute: ViolationsImportRoute,
+  ViolationsImportsRoute: ViolationsImportsRoute,
   WorkOrderTokenRoute: WorkOrderTokenRoute,
   ApiPublicCardholderRefuseRoute: ApiPublicCardholderRefuseRoute,
   InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
