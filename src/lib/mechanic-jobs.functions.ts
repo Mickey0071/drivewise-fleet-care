@@ -319,6 +319,8 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
       .select("id, amount_paid, vehicle_id")
       .eq("id", job.maintenance_id)
       .maybeSingle();
+    const acceptToken = genToken();
+    const declineToken = genToken();
     if (mnt) {
       const amountPaid = Number(mnt.amount_paid ?? 0);
       await supabaseAdmin
@@ -331,26 +333,43 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
           cost: total,
           balance: Math.max(0, total - amountPaid),
           mechanic_name: job.mechanic_name,
+          mechanic_phone: job.mechanic_phone,
+          issue_description: job.issue_description,
+          parts_list: data.partsList,
+          accept_token: acceptToken,
+          decline_token: declineToken,
+          action_taken: "pending",
         })
         .eq("id", job.maintenance_id);
     }
 
     // SMS the admin.
     let vehicleLabel = "vehicle";
+    let vehiclePlate = "";
     if (job.vehicle_id) {
       const { data: v } = await supabaseAdmin
         .from("vehicles")
         .select("year, make, model, plate")
         .eq("id", job.vehicle_id)
         .maybeSingle();
-      if (v) vehicleLabel = `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}`.trim() || vehicleLabel;
+      if (v) {
+        vehicleLabel = `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}`.trim() || vehicleLabel;
+        vehiclePlate = v.plate ?? "";
+      }
     }
+    const origin = originFromEnv();
+    const partsLinesSms =
+      data.partsList.length > 0
+        ? `\nParts:\n${data.partsList.map((p) => `• ${p.name} — $${p.price.toFixed(2)}`).join("\n")}\nParts total: $${data.partsTotal.toFixed(2)}`
+        : "";
+    const adminMsg =
+      `✓ ${job.mechanic_name} submitted diagnosis for ${vehicleLabel}${vehiclePlate ? ` (Plate: ${vehiclePlate})` : ""}.\n` +
+      `Issue: ${job.issue_description || "repair"}${partsLinesSms}\n` +
+      `Labour: $${data.labourCost.toFixed(2)}\nTotal: $${total.toFixed(2)}\n\n` +
+      `✅ Accept: ${origin}/repair/accept/${acceptToken}\n` +
+      `❌ Decline: ${origin}/repair/decline/${declineToken}`;
     try {
-      await sendSms(
-        ADMIN_REPAIR_PHONE,
-        `✓ ${job.mechanic_name} submitted diagnosis for ${vehicleLabel} — ${job.issue_description || "repair"}. Total est: $${total.toFixed(2)}`,
-        "Admin",
-      );
+      await sendSms(ADMIN_REPAIR_PHONE, adminMsg, "Admin");
     } catch (e) {
       console.error("admin SMS failed", e);
     }
