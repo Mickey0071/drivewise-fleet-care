@@ -440,7 +440,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
     return { generated };
   });
 
-/** Download all affidavit PDFs for a batch as a ZIP. */
+/** Download all liability-transfer letters for a batch as a ZIP. */
 export const downloadAffidavitsZip = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ batchId: z.string().min(1).max(64) }).parse(input))
@@ -451,7 +451,7 @@ export const downloadAffidavitsZip = createServerFn({ method: "POST" })
       .select("violation_id, affidavit_pdf_url, plate")
       .eq("batch_id", data.batchId);
     const rows = (items ?? []).filter((r) => r.affidavit_pdf_url);
-    if (rows.length === 0) throw new Error("No affidavits generated yet");
+    if (rows.length === 0) throw new Error("No liability-transfer letters generated yet");
     const zip = new JSZip();
     await Promise.all(
       rows.map(async (r) => {
@@ -460,7 +460,7 @@ export const downloadAffidavitsZip = createServerFn({ method: "POST" })
           if (!res.ok) return;
           const buf = new Uint8Array(await res.arrayBuffer());
           const plate = (r.plate || "NOPLATE").toString().replace(/[^a-z0-9]+/gi, "").toUpperCase();
-          zip.file(`AFFIDAVIT_${r.violation_id}_${plate}.pdf`, buf);
+          zip.file(`LIABILITY_TRANSFER_${r.violation_id}_${plate}.pdf`, buf);
         } catch {
           /* skip */
         }
@@ -472,5 +472,5 @@ export const downloadAffidavitsZip = createServerFn({ method: "POST" })
     for (let i = 0; i < buf.length; i += chunk) {
       bin += String.fromCharCode(...buf.subarray(i, i + chunk));
     }
-    return { filename: `EZPASS_AFFIDAVITS_${data.batchId}.zip`, base64: btoa(bin) };
+    return { filename: `EZPASS_LIABILITY_TRANSFERS_${data.batchId}.zip`, base64: btoa(bin) };
   });
