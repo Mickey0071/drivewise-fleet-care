@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { vehicles, drivers } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { createRunnerTask } from "@/lib/runner-tasks.functions";
+import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 
 export const Route = createFileRoute("/admin/create-task")({
   head: () => ({ meta: [{ title: "Create Runner Task — Camauto Rentals" }] }),
@@ -262,9 +263,12 @@ function CreateTaskPage() {
       </Card>
 
       <div className="flex justify-end pb-10">
-        <Button disabled={sending} onClick={submit} size="lg">
-          {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Create & Send Task</>}
-        </Button>
+        <div className="w-full max-w-md space-y-2">
+          <SendLinkPreview route="/runner/task/[id]" />
+          <Button disabled={sending} onClick={submit} size="lg" className="w-full">
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Create & Send Task</>}
+          </Button>
+        </div>
       </div>
     </div>
   );
