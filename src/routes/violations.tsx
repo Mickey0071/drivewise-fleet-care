@@ -180,6 +180,8 @@ function ViolationsPage() {
     .filter((r) => r.status === "pending" || r.status === "failed")
     .reduce((s, r) => s + Number(r.total_amount || r.amount || 0), 0);
 
+  const readyForTransfer = rows.filter(transferReady);
+
   const refresh = () => qc.invalidateQueries({ queryKey: ["violations"] });
 
   return (
@@ -210,6 +212,29 @@ function ViolationsPage() {
           </div>
         }
       />
+
+      {readyForTransfer.length > 0 && (
+        <Card className="mb-4 border-amber-300 bg-amber-50">
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="flex items-center gap-2 text-sm text-amber-900">
+              <AlertTriangle className="h-4 w-4" />
+              <span>
+                <strong>{readyForTransfer.length}</strong> violation
+                {readyForTransfer.length === 1 ? "" : "s"} past 7 days with no customer response —
+                ready for liability transfer.
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setFilter("awaiting_response")}
+              className="border-amber-400"
+            >
+              Review
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mb-4">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
