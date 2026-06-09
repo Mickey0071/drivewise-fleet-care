@@ -384,7 +384,6 @@ function ViolationsPage() {
             <TabsList>
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="awaiting_response">Awaiting Response</TabsTrigger>
-              <TabsTrigger value="signed_affidavit">Signed Affidavit</TabsTrigger>
               <TabsTrigger value="paid_direct">Paid Directly</TabsTrigger>
               <TabsTrigger value="transfer_generated">Auto-Transfer</TabsTrigger>
               <TabsTrigger value="packet_printed">Packet Printed</TabsTrigger>
