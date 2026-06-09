@@ -546,6 +546,57 @@ export type Database = {
         }
         Relationships: []
       }
+      import_logs: {
+        Row: {
+          created_at: string
+          drivers_created: number
+          drivers_matched: number
+          error_count: number
+          errors: string[] | null
+          file_name: string | null
+          id: string
+          imported_by: string | null
+          rentals_created: number
+          rentals_skipped: number
+          rows_total: number
+          source: string
+          status: string
+          unmatched_plates: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          drivers_created?: number
+          drivers_matched?: number
+          error_count?: number
+          errors?: string[] | null
+          file_name?: string | null
+          id?: string
+          imported_by?: string | null
+          rentals_created?: number
+          rentals_skipped?: number
+          rows_total?: number
+          source?: string
+          status?: string
+          unmatched_plates?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          drivers_created?: number
+          drivers_matched?: number
+          error_count?: number
+          errors?: string[] | null
+          file_name?: string | null
+          id?: string
+          imported_by?: string | null
+          rentals_created?: number
+          rentals_skipped?: number
+          rows_total?: number
+          source?: string
+          status?: string
+          unmatched_plates?: string[] | null
+        }
+        Relationships: []
+      }
       inspections: {
         Row: {
           checklist_data: Json | null
