@@ -40,6 +40,7 @@ import {
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
 import { SubmitDisputeDialog } from "@/components/app/SubmitDisputeDialog";
+import { downloadCSV } from "@/lib/exports";
 
 function DownloadPacketButton({ violationId }: { violationId: string }) {
   const dl = useServerFn(downloadViolationPacket);
@@ -224,7 +225,6 @@ function V1Timeline({ v }: { v: ViolationRow }) {
     { icon: "⏰", label: "Reminder sent", date: f(v.reminder_sent_at) },
     { icon: "⚠️", label: "Final warning", date: f(v.final_warning_sent_at) },
     { icon: "💳", label: "Paid directly", date: v.status === "paid" ? f(v.paid_at) : null },
-    { icon: "📝", label: "Affidavit signed", date: f(v.signed_at) },
     { icon: "📋", label: "Liability transfer generated", date: f(v.liability_transfer_generated_at) },
     { icon: "🖨️", label: "Mail packet printed", date: f(v.mail_packet_printed_at) },
     { icon: "✉️", label: "Mailed to authority", date: f(v.mailed_at) },
@@ -249,7 +249,6 @@ const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "�
 type Filter =
   | "all"
   | "awaiting_response"
-  | "signed_affidavit"
   | "paid_direct"
   | "transfer_generated"
   | "packet_printed"
@@ -265,7 +264,6 @@ function stageOf(v: ViolationRow): Exclude<Filter, "all"> {
   if (v.mail_packet_printed_at) return "packet_printed";
   if (v.liability_transfer_generated_at) return "transfer_generated";
   if (v.status === "paid") return "paid_direct";
-  if (v.status === "affidavit_signed" || v.signed_at) return "signed_affidavit";
   return "awaiting_response";
 }
 
@@ -326,6 +324,31 @@ function ViolationsPage() {
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["violations"] });
 
+  const exportCsv = () => {
+    const headers = [
+      "ID", "Date Issued", "Type", "Plate", "Vehicle", "Customer", "Rental",
+      "Amount", "Fee", "Total", "Status", "Stage", "Sent", "Mailed", "Confirmed",
+    ];
+    const data = filtered.map((v) => [
+      v.id,
+      v.date_issued,
+      v.type,
+      v.license_plate ?? "",
+      v.vehicle_label ?? "",
+      v.driver_name ?? "",
+      v.rental_id ?? "",
+      v.amount,
+      v.fee,
+      v.total_amount,
+      v.status,
+      stageOf(v),
+      v.sent_to_customer_at ?? "",
+      v.mailed_at ?? "",
+      v.transfer_confirmed_at ?? "",
+    ]);
+    downloadCSV(`violations-${new Date().toISOString().slice(0, 10)}.csv`, headers, data);
+  };
+
   return (
     <div>
       <PageHeader
@@ -350,6 +373,9 @@ function ViolationsPage() {
             </Button>
             <Button variant="outline" asChild>
               <Link to="/violations/authorities">Authorities</Link>
+            </Button>
+            <Button variant="outline" onClick={exportCsv}>
+              Export CSV
             </Button>
             <Button onClick={() => setNewOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="mr-1 h-4 w-4" /> New Violation
@@ -387,7 +413,6 @@ function ViolationsPage() {
             <TabsList>
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="awaiting_response">Awaiting Response</TabsTrigger>
-              <TabsTrigger value="signed_affidavit">Signed Affidavit</TabsTrigger>
               <TabsTrigger value="paid_direct">Paid Directly</TabsTrigger>
               <TabsTrigger value="transfer_generated">Auto-Transfer</TabsTrigger>
               <TabsTrigger value="packet_printed">Packet Printed</TabsTrigger>
@@ -457,14 +482,9 @@ function ViolationsPage() {
                             ✓ {new Date(v.paid_at).toLocaleString()}
                           </div>
                         )}
-                        {v.status === "affidavit_signed" && v.signed_at && (
+                        {v.resolution_choice && v.status !== "paid" && (
                           <div className="mt-1 text-xs text-muted-foreground">
-                            📝 Signed {new Date(v.signed_at).toLocaleString()}
-                          </div>
-                        )}
-                        {v.resolution_choice && v.status !== "paid" && v.status !== "affidavit_signed" && (
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            Choice: {v.resolution_choice === "pay" ? "Paid" : "Affidavit"}
+                            Choice: {v.resolution_choice === "pay" ? "Paid" : v.resolution_choice}
                           </div>
                         )}
                         {PENDING_RESPONSE.includes(v.status) && v.sent_to_customer_at && (
@@ -480,16 +500,6 @@ function ViolationsPage() {
                             Charge
                           </Button>
                         )}
-                        {v.signed_pdf_url && (
-                          <a
-                            href={v.signed_pdf_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="ml-2 text-xs text-primary underline"
-                          >
-                            Affidavit
-                          </a>
-                        )}
                         {v.payment_link_url && v.status === "pending" && (
                           <a
                             href={v.payment_link_url}
@@ -503,14 +513,14 @@ function ViolationsPage() {
                         {!["paid", "resolved", "submitted_to_authority"].includes(v.status) && (
                           <SendCustomerButton violation={v} onDone={refresh} />
                         )}
-                        {["affidavit_signed", "submitted_to_authority", "resolved"].includes(v.status) && (
+                        {["submitted_to_authority", "resolved"].includes(v.status) && (
                           <Button
                             size="sm"
                             variant="outline"
                             className="ml-2"
                             onClick={() => setSubmitFor(v)}
                           >
-                            {v.status === "affidavit_signed" ? "View & Submit" : "View Dispute"}
+                            View Dispute
                           </Button>
                         )}
                         <Button

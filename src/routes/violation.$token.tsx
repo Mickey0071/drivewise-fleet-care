@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -7,14 +7,7 @@ import {
 } from "@/lib/violation-resolution.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  CheckCircle2,
-  Loader2,
-  CreditCard,
-  FileSignature,
-  AlertTriangle,
-  Phone,
-} from "lucide-react";
+import { CheckCircle2, Loader2, CreditCard, AlertTriangle, Phone, ScrollText } from "lucide-react";
 import { toast } from "sonner";
 import logoUrl from "@/assets/camauto-logo-full.jpeg";
 
@@ -22,7 +15,6 @@ export const Route = createFileRoute("/violation/$token")({
   head: () => ({ meta: [{ title: "EZPass Violation Notice — Camauto Rentals" }] }),
   validateSearch: (s: Record<string, unknown>) => ({
     paid: s.paid === "1" || s.paid === 1 ? "1" : undefined,
-    signed: s.signed === "1" || s.signed === 1 ? "1" : undefined,
   }),
   component: ViolationPage,
 });
@@ -65,7 +57,6 @@ function Shell({ children }: { children: React.ReactNode }) {
 function ViolationPage() {
   const { token } = Route.useParams();
   const search = Route.useSearch();
-  const navigate = useNavigate();
   const fetchFn = useServerFn(getViolationForCustomer);
   const payFn = useServerFn(createViolationCustomerPayment);
 
@@ -128,28 +119,25 @@ function ViolationPage() {
   }
 
   const justPaid = search.paid === "1";
-  const justSigned = search.signed === "1";
 
-  // Confirmation page (after pay/sign or already resolved)
-  if (justPaid || justSigned || data.resolved) {
+  // Confirmation page (after pay or already resolved)
+  if (justPaid || data.resolved) {
     const paid = justPaid || data.status === "paid";
     return (
       <Shell>
         <Card className="p-8 text-center space-y-3">
           <CheckCircle2 className="mx-auto h-10 w-10 text-green-600" />
-          <div className="text-xl font-bold">✓ Submitted</div>
+          <div className="text-xl font-bold">✓ Received</div>
           {paid ? (
             <div className="space-y-1 text-sm text-muted-foreground">
               <p>Thank you for your payment of {fmtMoney(data.amount)}.</p>
-              <p>We'll resolve this violation with EZPass on your behalf.</p>
+              <p>We'll resolve this violation with the issuing authority on your behalf.</p>
               <p>You'll receive a receipt by email.</p>
             </div>
           ) : (
             <div className="space-y-1 text-sm text-muted-foreground">
-              <p>Thank you for signing the affidavit.</p>
-              <p>Camauto will submit your information to EZPass.</p>
-              <p>You'll be contacted by EZPass directly to resolve.</p>
-              <p className="font-medium text-foreground">Estimated processing: 5–10 business days.</p>
+              <p>This violation has been handled.</p>
+              <p>No further action is needed on your part.</p>
             </div>
           )}
         </Card>
@@ -163,7 +151,7 @@ function ViolationPage() {
         <div className="text-center">
           <h1 className="text-xl font-bold">EZPass Violation Notice</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Choose how you'd like to resolve this
+            Notice of liability transfer
           </p>
         </div>
 
@@ -185,50 +173,39 @@ function ViolationPage() {
             </div>
           )}
           <div className="pt-2 flex items-baseline justify-between border-t mt-2">
-            <span className="text-xs uppercase text-muted-foreground">Amount Due</span>
+            <span className="text-xs uppercase text-muted-foreground">Amount</span>
             <span className="text-2xl font-bold">{fmtMoney(data.amount)}</span>
           </div>
         </div>
 
-        {/* Recommended: Sign Affidavit */}
-        <div className="rounded-lg border-2 border-primary bg-primary/5 p-5 space-y-3">
+        {/* Informational: liability transferred */}
+        <div className="rounded-lg border bg-muted/40 p-5 space-y-2">
           <div className="flex items-center gap-2">
-            <FileSignature className="h-5 w-5 text-primary" />
-            <span className="font-semibold">📝 Sign Affidavit</span>
-            <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase text-primary-foreground">
-              Recommended
-            </span>
+            <ScrollText className="h-5 w-5 text-primary" />
+            <span className="font-semibold">Liability Transferred to You</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Admit responsibility and handle this directly with EZPass. We'll transfer liability to
-            you with a legal affidavit.
+            Under the rental agreement you signed and pursuant to N.J.S.A. 39:4-138.1, this toll
+            violation has been transferred to you as the operator of the vehicle at the time it
+            occurred. The issuing authority will contact you directly to resolve the balance owed.
           </p>
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={() => navigate({ to: "/violation/$token/affidavit", params: { token } })}
-          >
-            <FileSignature className="mr-2 h-4 w-4" /> Review &amp; Sign Affidavit
-          </Button>
+          <p className="text-sm text-muted-foreground">
+            <strong>No action is required through Camauto Rentals.</strong> If you'd prefer, you may
+            settle this amount now and we'll handle it with the authority on your behalf.
+          </p>
         </div>
 
-        {/* Pay Now */}
+        {/* Optional: Pay Now */}
         <div className="rounded-lg border p-5 space-y-3">
           <div className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            <span className="font-semibold">💳 Pay Now</span>
+            <span className="font-semibold">💳 Pay Now (Optional)</span>
             <span className="ml-auto font-semibold">{fmtMoney(data.amount)}</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Settle this violation directly through Camauto. We'll handle the rest with EZPass.
+            Settle this violation directly through Camauto and we'll resolve it for you.
           </p>
-          <Button
-            variant="outline"
-            className="w-full"
-            size="lg"
-            onClick={onPay}
-            disabled={paying}
-          >
+          <Button variant="outline" className="w-full" size="lg" onClick={onPay} disabled={paying}>
             {paying ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecting to payment…

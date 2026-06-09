@@ -69,7 +69,6 @@ import { Route as AdminNotificationsRouteImport } from './routes/admin.notificat
 import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
-import { Route as ViolationTokenAffidavitRouteImport } from './routes/violation.$token_.affidavit'
 import { Route as RepairDeclineTokenRouteImport } from './routes/repair.decline.$token'
 import { Route as RepairAcceptTokenRouteImport } from './routes/repair.accept.$token'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
@@ -384,11 +383,6 @@ const AdminBackupsRoute = AdminBackupsRouteImport.update({
   path: '/admin/backups',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ViolationTokenAffidavitRoute = ViolationTokenAffidavitRouteImport.update({
-  id: '/violation/$token_/affidavit',
-  path: '/violation/$token/affidavit',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RepairDeclineTokenRoute = RepairDeclineTokenRouteImport.update({
   id: '/repair/decline/$token',
   path: '/repair/decline/$token',
@@ -530,7 +524,6 @@ export interface FileRoutesByFullPath {
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
-  '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
@@ -606,7 +599,6 @@ export interface FileRoutesByTo {
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
-  '/violation/$token/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
@@ -683,7 +675,6 @@ export interface FileRoutesById {
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
-  '/violation/$token_/affidavit': typeof ViolationTokenAffidavitRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
@@ -761,7 +752,6 @@ export interface FileRouteTypes {
     | '/rent/portal/$rentalId'
     | '/repair/accept/$token'
     | '/repair/decline/$token'
-    | '/violation/$token/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/monthly-backup'
@@ -837,7 +827,6 @@ export interface FileRouteTypes {
     | '/rent/portal/$rentalId'
     | '/repair/accept/$token'
     | '/repair/decline/$token'
-    | '/violation/$token/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/monthly-backup'
@@ -913,7 +902,6 @@ export interface FileRouteTypes {
     | '/rent/portal/$rentalId'
     | '/repair/accept/$token'
     | '/repair/decline/$token'
-    | '/violation/$token_/affidavit'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/monthly-backup'
@@ -983,7 +971,6 @@ export interface RootRouteChildren {
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
   RepairAcceptTokenRoute: typeof RepairAcceptTokenRoute
   RepairDeclineTokenRoute: typeof RepairDeclineTokenRoute
-  ViolationTokenAffidavitRoute: typeof ViolationTokenAffidavitRoute
   ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
   ApiPublicHooksMonthlyBackupRoute: typeof ApiPublicHooksMonthlyBackupRoute
@@ -1416,13 +1403,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBackupsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/violation/$token_/affidavit': {
-      id: '/violation/$token_/affidavit'
-      path: '/violation/$token/affidavit'
-      fullPath: '/violation/$token/affidavit'
-      preLoaderRoute: typeof ViolationTokenAffidavitRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/repair/decline/$token': {
       id: '/repair/decline/$token'
       path: '/repair/decline/$token'
@@ -1618,7 +1598,6 @@ const rootRouteChildren: RootRouteChildren = {
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
   RepairAcceptTokenRoute: RepairAcceptTokenRoute,
   RepairDeclineTokenRoute: RepairDeclineTokenRoute,
-  ViolationTokenAffidavitRoute: ViolationTokenAffidavitRoute,
   ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
   ApiPublicHooksMonthlyBackupRoute: ApiPublicHooksMonthlyBackupRoute,
@@ -1632,13 +1611,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
