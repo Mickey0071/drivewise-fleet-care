@@ -430,7 +430,8 @@ function ViolationsPage() {
                 </thead>
                 <tbody>
                   {filtered.map((v) => (
-                    <tr key={v.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <Fragment key={v.id}>
+                    <tr className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-3 font-mono text-xs">{v.id}</td>
                       <td className="p-3">{fmtDate(v.date_issued)}</td>
                       <td className="p-3 capitalize">{v.type}</td>
@@ -536,6 +537,7 @@ function ViolationsPage() {
                         </td>
                       </tr>
                     )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
