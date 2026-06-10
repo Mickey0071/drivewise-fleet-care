@@ -1156,12 +1156,88 @@ function RentalsPage() {
           setPayLinkRental(r);
         }}
       />
+      <DiscountDialog
+        rental={discountRental}
+        balance={discountRental ? rentalBalance(discountRental) : 0}
+        renterName={discountRental ? (driverById(discountRental.driverId)?.fullName ?? "") : ""}
+        onClose={() => setDiscountRental(null)}
+      />
     </div>
   );
 }
 
 function EmptyState({ label }: { label: string }) {
   return <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">{label}</div>;
+}
+
+function DiscountDialog({
+  rental, balance, renterName, onClose,
+}: { rental: Rental | null; balance: number; renterName: string; onClose: () => void }) {
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  useEffect(() => {
+    if (rental) { setAmount(""); setNote(""); }
+  }, [rental]);
+  const amt = Number(amount) || 0;
+  const newBalance = Math.max(0, balance - amt);
+  return (
+    <Dialog open={!!rental} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Apply Discount / Adjust Balance</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Reduce the balance owed by {renterName || "this renter"}. Current balance{" "}
+            <span className="font-semibold text-foreground">{fmtMoney(balance)}</span>.
+          </p>
+          <div className="space-y-1">
+            <Label htmlFor="discount-amount">Discount amount ($)</Label>
+            <Input
+              id="discount-amount"
+              type="number"
+              min="0"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+            />
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button type="button" size="sm" variant="outline" onClick={() => setAmount(String(balance))}>
+                Waive full balance
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="discount-note">Reason (optional)</Label>
+            <Input
+              id="discount-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="e.g. goodwill, loyalty discount"
+            />
+          </div>
+          <div className="rounded-md border border-border bg-muted/30 p-2 text-sm">
+            New balance: <span className="font-semibold">{fmtMoney(newBalance)}</span>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button
+            disabled={!(amt > 0)}
+            onClick={() => {
+              if (!rental || !(amt > 0)) return;
+              const res = applyDiscount(rental.id, Math.min(amt, balance), note.trim() || undefined);
+              toast.success(`Discount of ${fmtMoney(res.discounted)} applied`);
+              onClose();
+            }}
+          >
+            Apply Discount
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function ChargeRentalDialog({
