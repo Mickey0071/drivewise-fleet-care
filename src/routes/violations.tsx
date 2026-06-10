@@ -619,6 +619,7 @@ function NewViolationDialog({
     enabled: open,
   });
   const [selectedRentalId, setSelectedRentalId] = useState<string>("");
+  const [manualOverride, setManualOverride] = useState(false);
 
   const [type, setType] = useState<"toll" | "parking" | "damage" | "traffic" | "other">("toll");
   const [plate, setPlate] = useState("");
@@ -656,6 +657,7 @@ function NewViolationDialog({
     setConfidence(null);
     setPdfPages(null);
     setSelectedRentalId("");
+    setManualOverride(false);
   };
 
   const analyzeDataUrl = async (dataUrl: string) => {
@@ -1021,95 +1023,121 @@ function NewViolationDialog({
                     : `Low confidence — ${lookupResult.confidenceLabel}. Verify renter.`}
               </div>
             )}
-            <Select
-              value={selectedRentalId}
-              onValueChange={(v) => {
-                setSelectedRentalId(v);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a rental…" />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                {(() => {
-                  // When the lookup found overlapping rentals, narrow the list to those.
-                  const liveIds = lookupResult?.matches?.map((m) => m.rental.id) ?? [];
-                  const legacyIds =
-                    lookupResult?.legacyMatches?.map((m) => `LEGACY:${m.id}`) ?? [];
-                  const matchIds = [...liveIds, ...legacyIds];
-                  const opts =
-                    matchIds.length > 0
-                      ? rentalOptions.filter((r) => matchIds.includes(r.id))
-                      : rentalOptions;
-                  if (opts.length === 0) {
-                    return (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">No rentals found</div>
-                    );
-                  }
-                  return opts.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.source === "migrated" ? "📋 " : ""}
-                      {r.id.startsWith("LEGACY:") ? "Migrated" : r.id}: {r.driver_name ?? "Unknown"}
-                      {r.plate ? ` — ${r.plate}` : ""}
-                    </SelectItem>
-                  ));
-                })()}
-              </SelectContent>
-            </Select>
-            {selectedRentalId && (() => {
-              const picked = rentalOptions.find((r) => r.id === selectedRentalId);
-              if (!picked) return null;
+            {(() => {
+              // Candidates that actually overlap the plate + violation date.
+              const liveIds = lookupResult?.matches?.map((m) => m.rental.id) ?? [];
+              const legacyIds = lookupResult?.legacyMatches?.map((m) => `LEGACY:${m.id}`) ?? [];
+              const matchIds = [...liveIds, ...legacyIds];
+              const candidates = rentalOptions.filter((r) => matchIds.includes(r.id));
+              const picked = selectedRentalId
+                ? rentalOptions.find((r) => r.id === selectedRentalId) ?? null
+                : null;
+
               return (
-                <div className="mt-2 text-sm text-emerald-700 dark:text-emerald-400">
-                  Selected <strong>{picked.id}</strong> — {picked.driver_name ?? "Unknown driver"}
-                  <div className="text-xs text-muted-foreground">
-                    {picked.vehicle_label ?? picked.plate ?? ""} · {picked.start_date} → {picked.end_date || "ongoing"}
+                <>
+                  {/* Auto-matched renter — shown front and center, no big list */}
+                  {picked && !manualOverride && (
+                    <div className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-800 dark:bg-emerald-950/30">
+                      <div className="font-semibold text-emerald-800 dark:text-emerald-300">
+                        {picked.source === "migrated" ? "📋 " : ""}
+                        {picked.driver_name ?? "Unknown renter"}
+                      </div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        {picked.id.startsWith("LEGACY:") ? "Migrated reservation" : picked.id}
+                        {picked.plate ? ` · ${picked.plate}` : ""}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {picked.vehicle_label ?? ""}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {picked.start_date} → {picked.end_date || "ongoing"}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ambiguous: a few candidates overlap — let admin pick the right one */}
+                  {!manualOverride && candidates.length > 1 && (
+                    <div className="mt-2 space-y-1">
+                      <div className="text-xs font-medium text-muted-foreground">
+                        {candidates.length} renters overlap this date — pick the right one:
+                      </div>
+                      {candidates.map((r) => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => setSelectedRentalId(r.id)}
+                          className={`flex w-full flex-col items-start rounded border p-2 text-left text-xs hover:bg-accent ${
+                            selectedRentalId === r.id ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30" : ""
+                          }`}
+                        >
+                          <span className="font-medium">
+                            {r.source === "migrated" ? "📋 " : ""}
+                            {r.driver_name ?? "Unknown"}
+                          </span>
+                          <span className="text-muted-foreground">
+                            {r.plate ?? ""} · {r.start_date} → {r.end_date || "ongoing"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* No automatic match found */}
+                  {!manualOverride &&
+                    lookupResult &&
+                    candidates.length === 0 && (
+                      <div className="rounded-md p-2 text-sm text-amber-600">
+                        {lookupResult.reason ||
+                          "No renter matched this plate + date. Choose manually below."}
+                      </div>
+                    )}
+
+                  {/* Manual override: full searchable list of every renter/reservation */}
+                  {manualOverride && (
+                    <Select value={selectedRentalId} onValueChange={(v) => setSelectedRentalId(v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose any renter…" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60">
+                        {rentalOptions.length === 0 ? (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">No rentals found</div>
+                        ) : (
+                          rentalOptions.map((r) => (
+                            <SelectItem key={r.id} value={r.id}>
+                              {r.source === "migrated" ? "📋 " : ""}
+                              {r.id.startsWith("LEGACY:") ? "Migrated" : r.id}: {r.driver_name ?? "Unknown"}
+                              {r.plate ? ` — ${r.plate}` : ""}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  <div className="my-3 border-t" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void doLookup()}
+                      disabled={!plate || !date || lookingUp}
+                    >
+                      {lookingUp ? "Looking up…" : "Re-match plate + date"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setManualOverride((m) => !m);
+                        if (!manualOverride) setSelectedRentalId("");
+                      }}
+                    >
+                      {manualOverride ? "Use auto match" : "Choose manually"}
+                    </Button>
                   </div>
-                </div>
+                </>
               );
             })()}
-            <div className="my-3 border-t" />
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => void doLookup()}
-                disabled={!plate || !date || lookingUp}
-              >
-                {lookingUp ? "Looking up…" : "Lookup Rental"}
-              </Button>
-              <span className="text-xs text-muted-foreground">Match plate + date automatically</span>
-            </div>
-            {lookupResult && lookupResult.vehicleFound && !lookupResult.found && (
-              <div className="mt-2 text-sm text-amber-600">
-                {lookupResult.reason || "No rental matched. Violation will be unlinked."}
-              </div>
-            )}
-            {lookupResult && (lookupResult.legacyMatches?.length ?? 0) > 0 && (
-              <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-2">
-                <div className="mb-1 text-xs font-medium text-muted-foreground">
-                  Migrated reservation match (old system — lookup only)
-                </div>
-                <div className="space-y-1">
-                  {lookupResult.legacyMatches!.map((m) => (
-                    <div key={m.id} className="rounded border bg-background/50 p-2 text-xs">
-                      <div>
-                        <span className="font-medium">{m.renter_name ?? "Unknown"}</span>
-                        {m.plate ? ` — ${m.plate}` : ""}
-                        {m.vehicle ? ` · ${m.vehicle}` : ""}
-                        {(m.start_datetime || m.end_datetime)
-                          ? ` · ${(m.start_datetime ?? "").slice(0, 10)} → ${(m.end_datetime ?? "ongoing").slice(0, 10)}`
-                          : ""}
-                      </div>
-                      {m.dl_number ? <div className="text-muted-foreground">DL: {m.dl_number}</div> : null}
-                      {m.address ? <div className="text-muted-foreground">Address: {m.address}</div> : null}
-                      {m.pickup_location ? <div className="text-muted-foreground">Pickup: {m.pickup_location}</div> : null}
-                      {m.notes ? <div className="text-muted-foreground">Notes: {m.notes}</div> : null}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
         <DialogFooter>
