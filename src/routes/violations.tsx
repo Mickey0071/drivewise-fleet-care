@@ -814,6 +814,7 @@ function NewViolationDialog({
           driverId: picked && !isLegacyPick ? picked.driver_id : null,
           legacyRentalId: isLegacyPick ? picked!.id.replace(/^LEGACY:/, "") : null,
           extractedConfidence: confidence,
+          citationNumber: citationNumber || null,
         },
       });
       toast.success(`Created ${r.violation.id}`);
