@@ -15,6 +15,7 @@ import {
   createMigratedReservation,
   deleteMigratedReservation,
   parseReservationText,
+  bulkImportReservations,
   type MigratedReservation,
 } from "@/lib/migrated-reservations.functions";
 
@@ -39,15 +40,40 @@ function MigratedReservationsPage() {
   const create = useServerFn(createMigratedReservation);
   const remove = useServerFn(deleteMigratedReservation);
   const parse = useServerFn(parseReservationText);
+  const bulk = useServerFn(bulkImportReservations);
 
   const [rows, setRows] = useState<MigratedReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [parsing, setParsing] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [f, setF] = useState<Form>(EMPTY);
 
   const set = (k: keyof Form, v: string) => setF((p) => ({ ...p, [k]: v }));
+
+  const bulkImport = async () => {
+    if (!bulkText.trim()) { toast.error("Paste your reservations first"); return; }
+    setBulkBusy(true);
+    try {
+      const r = await bulk({ data: { text: bulkText } });
+      if (r.saved === 0) {
+        toast.error("No reservations found in that text");
+      } else {
+        toast.success(
+          `Imported ${r.saved} reservation${r.saved === 1 ? "" : "s"}` +
+            (r.withoutPlate ? ` — ${r.withoutPlate} missing a plate (add it so violations match)` : ""),
+        );
+        setBulkText("");
+        await refresh();
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not import");
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const parsePaste = async () => {
     if (!pasteText.trim()) { toast.error("Paste a reservation first"); return; }
