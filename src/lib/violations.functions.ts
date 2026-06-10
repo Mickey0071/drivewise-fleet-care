@@ -241,6 +241,7 @@ export const createViolation = createServerFn({ method: "POST" })
       description?: string;
       photoUrl?: string | null;
       extractedConfidence?: number | null;
+      citationNumber?: string | null;
     }) => {
       const type = (input.type || "").toLowerCase();
       if (!["toll", "parking", "damage", "traffic", "other"].includes(type)) {
@@ -268,15 +269,33 @@ export const createViolation = createServerFn({ method: "POST" })
           input.extractedConfidence != null && Number.isFinite(Number(input.extractedConfidence))
             ? Math.max(0, Math.min(100, Math.round(Number(input.extractedConfidence))))
             : null,
+        citationNumber:
+          (input.citationNumber || "")
+            .toUpperCase()
+            .replace(/[^A-Z0-9-]/g, "")
+            .slice(0, 40) || null,
       };
     },
   )
   .handler(async ({ data, context }) => {
     const total = Number((data.amount + data.fee).toFixed(2));
-    const newId =
+    // Use the actual citation / violation number as the system ID when provided
+    // so the record matches the uploaded notice. Fall back to a generated ID.
+    let newId =
+      data.citationNumber ||
       "VIO-" +
-      Math.random().toString(36).slice(2, 8).toUpperCase() +
-      Date.now().toString(36).slice(-3).toUpperCase();
+        Math.random().toString(36).slice(2, 8).toUpperCase() +
+        Date.now().toString(36).slice(-3).toUpperCase();
+    if (data.citationNumber) {
+      const { data: existing } = await supabaseAdmin
+        .from("violations")
+        .select("id")
+        .eq("id", data.citationNumber)
+        .maybeSingle();
+      if (existing) {
+        throw new Error(`A violation with number ${data.citationNumber} already exists`);
+      }
+    }
     const { data: row, error } = await supabaseAdmin
       .from("violations")
       .insert({
@@ -297,6 +316,7 @@ export const createViolation = createServerFn({ method: "POST" })
         status: "pending",
         created_by: context.userId,
         extracted_confidence: data.extractedConfidence,
+        reference_number: data.citationNumber,
       } as never)
       .select("*")
       .single();
