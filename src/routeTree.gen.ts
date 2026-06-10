@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as VendorsRouteImport } from './routes/vendors'
 import { Route as SmsLogRouteImport } from './routes/sms-log'
+import { Route as SelfAgreementRouteImport } from './routes/self-agreement'
 import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RentalsRouteImport } from './routes/rentals'
@@ -101,6 +102,11 @@ const VendorsRoute = VendorsRouteImport.update({
 const SmsLogRoute = SmsLogRouteImport.update({
   id: '/sms-log',
   path: '/sms-log',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SelfAgreementRoute = SelfAgreementRouteImport.update({
+  id: '/self-agreement',
+  path: '/self-agreement',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RunnerReportsRoute = RunnerReportsRouteImport.update({
@@ -514,6 +520,7 @@ export interface FileRoutesByFullPath {
   '/rentals': typeof RentalsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
+  '/self-agreement': typeof SelfAgreementRoute
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
@@ -594,6 +601,7 @@ export interface FileRoutesByTo {
   '/rentals': typeof RentalsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
+  '/self-agreement': typeof SelfAgreementRoute
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
@@ -675,6 +683,7 @@ export interface FileRoutesById {
   '/rentals': typeof RentalsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
+  '/self-agreement': typeof SelfAgreementRoute
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
@@ -757,6 +766,7 @@ export interface FileRouteTypes {
     | '/rentals'
     | '/reset-password'
     | '/runner-reports'
+    | '/self-agreement'
     | '/sms-log'
     | '/vendors'
     | '/violations'
@@ -837,6 +847,7 @@ export interface FileRouteTypes {
     | '/rentals'
     | '/reset-password'
     | '/runner-reports'
+    | '/self-agreement'
     | '/sms-log'
     | '/vendors'
     | '/violations'
@@ -917,6 +928,7 @@ export interface FileRouteTypes {
     | '/rentals'
     | '/reset-password'
     | '/runner-reports'
+    | '/self-agreement'
     | '/sms-log'
     | '/vendors'
     | '/violations'
@@ -998,6 +1010,7 @@ export interface RootRouteChildren {
   RentalsRoute: typeof RentalsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RunnerReportsRoute: typeof RunnerReportsRoute
+  SelfAgreementRoute: typeof SelfAgreementRoute
   SmsLogRoute: typeof SmsLogRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
@@ -1067,6 +1080,13 @@ declare module '@tanstack/react-router' {
       path: '/sms-log'
       fullPath: '/sms-log'
       preLoaderRoute: typeof SmsLogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/self-agreement': {
+      id: '/self-agreement'
+      path: '/self-agreement'
+      fullPath: '/self-agreement'
+      preLoaderRoute: typeof SelfAgreementRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/runner-reports': {
@@ -1665,6 +1685,7 @@ const rootRouteChildren: RootRouteChildren = {
   RentalsRoute: RentalsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RunnerReportsRoute: RunnerReportsRoute,
+  SelfAgreementRoute: SelfAgreementRoute,
   SmsLogRoute: SmsLogRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
