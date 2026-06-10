@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Trash2, Database } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Plus, Trash2, Database, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   listMigratedReservations,
   createMigratedReservation,
   deleteMigratedReservation,
+  updateMigratedReservation,
   parseReservationText,
   bulkImportReservations,
   type MigratedReservation,
@@ -39,6 +41,7 @@ function MigratedReservationsPage() {
   const list = useServerFn(listMigratedReservations);
   const create = useServerFn(createMigratedReservation);
   const remove = useServerFn(deleteMigratedReservation);
+  const update = useServerFn(updateMigratedReservation);
   const parse = useServerFn(parseReservationText);
   const bulk = useServerFn(bulkImportReservations);
 
@@ -50,8 +53,46 @@ function MigratedReservationsPage() {
   const [bulkText, setBulkText] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
   const [f, setF] = useState<Form>(EMPTY);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [ef, setEf] = useState<Form>(EMPTY);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const set = (k: keyof Form, v: string) => setF((p) => ({ ...p, [k]: v }));
+  const setE = (k: keyof Form, v: string) => setEf((p) => ({ ...p, [k]: v }));
+
+  const toLocal = (s: string | null) => {
+    if (!s) return "";
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return "";
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+
+  const openEdit = (r: MigratedReservation) => {
+    setEditId(r.id);
+    setEf({
+      renter_name: r.renter_name ?? "", plate: r.plate ?? "", vehicle: r.vehicle ?? "",
+      year: r.year ?? "", color: r.color ?? "", order_number: r.order_number ?? "",
+      pickup_location: r.pickup_location ?? "", start_datetime: toLocal(r.start_datetime),
+      end_datetime: toLocal(r.end_datetime), address: r.address ?? "",
+      dl_number: r.dl_number ?? "", notes: r.notes ?? "",
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editId) return;
+    setSavingEdit(true);
+    try {
+      const updated = await update({ data: { id: editId, ...ef } });
+      setRows((p) => p.map((r) => (r.id === editId ? updated : r)));
+      toast.success("Updated — regenerate the violation packet to use the new info");
+      setEditId(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const bulkImport = async () => {
     if (!bulkText.trim()) { toast.error("Paste your reservations first"); return; }
