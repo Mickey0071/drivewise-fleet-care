@@ -300,9 +300,14 @@ function MigratedReservationsPage() {
                       <TableCell className="text-xs">{fmt(r.end_datetime)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{r.source ?? "—"}</TableCell>
                       <TableCell>
-                        <Button size="icon" variant="ghost" onClick={() => void del(r.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(r)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => void del(r.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
