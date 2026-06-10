@@ -1139,6 +1139,54 @@ export function recordManualPayment(
 }
 
 /**
+ * Apply a discount / balance adjustment to a reservation by reducing the
+ * outstanding (unpaid) scheduled payments. Reduces oldest-due unpaid records
+ * first. Returns the amount actually discounted. Use this for goodwill
+ * discounts on past-due balances or to manually lower the balance owed.
+ */
+export function applyDiscount(
+  rentalId: string,
+  amount: number,
+  note?: string,
+): { discounted: number; fullyPaid: boolean } {
+  const r = rentals.find(r => r.id === rentalId);
+  if (!r || !(amount > 0)) return { discounted: 0, fullyPaid: false };
+  const date = new Date().toISOString().slice(0, 10);
+
+  let remaining = amount;
+  const unpaid = payments
+    .filter(p => p.rentalId === r.id && p.status !== "paid")
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+  for (const p of unpaid) {
+    if (remaining <= 0) break;
+    const owed = Number(p.amount || 0);
+    if (remaining >= owed) {
+      // Fully discount this record -> mark as a $0 paid line (waived).
+      p.amount = 0;
+      p.status = "paid";
+      p.paidDate = date;
+      cloudWrite("payment:update", supabase.from("payments").update(toPayment(p)).eq("id", p.id));
+      remaining -= owed;
+    } else {
+      p.amount = owed - remaining;
+      cloudWrite("payment:update", supabase.from("payments").update(toPayment(p)).eq("id", p.id));
+      remaining = 0;
+    }
+  }
+
+  const discounted = amount - remaining;
+  if (discounted > 0 && note) {
+    r.notes = `${r.notes ? `${r.notes}\n` : ""}[${date}] Discount $${discounted.toFixed(2)}: ${note}`;
+    cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
+  }
+
+  emit();
+  const fullyPaid = !payments.some(p => p.rentalId === r.id && p.status !== "paid");
+  return { discounted, fullyPaid };
+}
+
+/**
  * Has the renter paid for the current billing period?
  * - Pending reservations: true once paymentReceived flag is set (first-week capture).
  * - Active reservations: true when no unpaid payment has a due date BEFORE today
