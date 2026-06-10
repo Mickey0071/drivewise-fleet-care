@@ -229,7 +229,49 @@ export const submitPartQuote = createServerFn({ method: "POST" })
       })
       .eq("id", inquiry.id);
     if (error) throw new Error(error.message);
+
+    // Real-time alert: text admin that a part price came back.
+    try {
+      const { isNotificationEnabled } = await import("@/lib/notifications.server");
+      if (await isNotificationEnabled("new_issue_alerts")) {
+        const { data: full } = await db
+          .from("part_inquiries")
+          .select("supplier_name, part_name, year, make, model")
+          .eq("id", inquiry.id)
+          .maybeSingle();
+        const vehicle = [full?.year, full?.make, full?.model].filter(Boolean).join(" ");
+        const avail =
+          data.availability === "in_stock"
+            ? "In stock"
+            : data.availability === "order"
+              ? "Can order"
+              : "Unavailable";
+        const msg =
+          `💲 Part price in\n` +
+          `• ${full?.part_name ?? "Part"}` +
+          (vehicle ? ` (${vehicle})` : "") +
+          `\n• ${full?.supplier_name ?? "Supplier"}: $${price.toFixed(2)} — ${avail}`;
+        await sendSms("267-221-3977", msg, "Admin");
+      }
+    } catch (e) {
+      console.error("[parts] price-in SMS failed", e);
+    }
+
     return { ok: true };
+  });
+
+/** Admin: list parts whose price came back (quoted, not yet closed) for the front-page alert. */
+export const listQuotedPartInquiries = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { data } = await db
+      .from("part_inquiries")
+      .select("id, supplier_name, part_name, year, make, model, quote_price, quote_availability, quoted_at")
+      .eq("status", "quoted")
+      .order("quoted_at", { ascending: false })
+      .limit(50);
+    return { items: (data ?? []) as any[] };
   });
 
 /** Admin: close an inquiry once handled. */
