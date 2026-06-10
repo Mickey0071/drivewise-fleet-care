@@ -1066,13 +1066,19 @@ function NewViolationDialog({
                 </div>
                 <div className="space-y-1">
                   {lookupResult.legacyMatches!.map((m) => (
-                    <div key={m.id} className="text-xs">
-                      <span className="font-medium">{m.renter_name ?? "Unknown"}</span>
-                      {m.plate ? ` — ${m.plate}` : ""}
-                      {m.vehicle ? ` · ${m.vehicle}` : ""}
-                      {(m.start_datetime || m.end_datetime)
-                        ? ` · ${(m.start_datetime ?? "").slice(0, 10)} → ${(m.end_datetime ?? "ongoing").slice(0, 10)}`
-                        : ""}
+                    <div key={m.id} className="rounded border bg-background/50 p-2 text-xs">
+                      <div>
+                        <span className="font-medium">{m.renter_name ?? "Unknown"}</span>
+                        {m.plate ? ` — ${m.plate}` : ""}
+                        {m.vehicle ? ` · ${m.vehicle}` : ""}
+                        {(m.start_datetime || m.end_datetime)
+                          ? ` · ${(m.start_datetime ?? "").slice(0, 10)} → ${(m.end_datetime ?? "ongoing").slice(0, 10)}`
+                          : ""}
+                      </div>
+                      {m.dl_number ? <div className="text-muted-foreground">DL: {m.dl_number}</div> : null}
+                      {m.address ? <div className="text-muted-foreground">Address: {m.address}</div> : null}
+                      {m.pickup_location ? <div className="text-muted-foreground">Pickup: {m.pickup_location}</div> : null}
+                      {m.notes ? <div className="text-muted-foreground">Notes: {m.notes}</div> : null}
                     </div>
                   ))}
                 </div>
