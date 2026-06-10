@@ -787,9 +787,16 @@ function NewViolationDialog({
     const picked = selectedRentalId
       ? rentalOptions.find((r) => r.id === selectedRentalId) ?? null
       : null;
+    const isLegacyPick = !!picked && picked.source === "migrated";
     const fallbackVehicleId = lookupResult?.vehicle?.id ?? null;
     setSaving(true);
     try {
+      const baseDesc =
+        description ||
+        `${type} violation${plate ? ` on ${plate.toUpperCase()}` : ""}${location ? ` at ${location}` : ""}`;
+      const finalDesc = isLegacyPick
+        ? `${baseDesc} — Renter (migrated): ${picked!.driver_name ?? "Unknown"}`
+        : baseDesc;
       const r = await create({
         data: {
           type,
@@ -797,13 +804,11 @@ function NewViolationDialog({
           licensePlate: plate || null,
           amount: amt,
           fee,
-          description:
-            description ||
-            `${type} violation${plate ? ` on ${plate.toUpperCase()}` : ""}${location ? ` at ${location}` : ""}`,
+          description: finalDesc,
           photoUrl: photoUrl || null,
-          rentalId: picked ? picked.id : null,
-          vehicleId: picked ? picked.vehicle_id : fallbackVehicleId,
-          driverId: picked ? picked.driver_id : null,
+          rentalId: picked && !isLegacyPick ? picked.id : null,
+          vehicleId: picked && !isLegacyPick ? picked.vehicle_id : fallbackVehicleId,
+          driverId: picked && !isLegacyPick ? picked.driver_id : null,
           extractedConfidence: confidence,
         },
       });
@@ -1011,7 +1016,10 @@ function NewViolationDialog({
               <SelectContent>
                 {(() => {
                   // When the lookup found overlapping rentals, narrow the list to those.
-                  const matchIds = lookupResult?.matches?.map((m) => m.rental.id) ?? [];
+                  const liveIds = lookupResult?.matches?.map((m) => m.rental.id) ?? [];
+                  const legacyIds =
+                    lookupResult?.legacyMatches?.map((m) => `LEGACY:${m.id}`) ?? [];
+                  const matchIds = [...liveIds, ...legacyIds];
                   const opts =
                     matchIds.length > 0
                       ? rentalOptions.filter((r) => matchIds.includes(r.id))
@@ -1023,7 +1031,8 @@ function NewViolationDialog({
                   }
                   return opts.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
-                      {r.id}: {r.driver_name ?? "Unknown"}
+                      {r.source === "migrated" ? "📋 " : ""}
+                      {r.id.startsWith("LEGACY:") ? "Migrated" : r.id}: {r.driver_name ?? "Unknown"}
                       {r.plate ? ` — ${r.plate}` : ""}
                     </SelectItem>
                   ));
