@@ -25,6 +25,7 @@ import { Route as PayrollReturnRouteImport } from './routes/payroll-return'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as MyRentalsRouteImport } from './routes/my-rentals'
+import { Route as MigratedReservationsRouteImport } from './routes/migrated-reservations'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InsuranceRouteImport } from './routes/insurance'
@@ -167,6 +168,11 @@ const PaymentsRoute = PaymentsRouteImport.update({
 const MyRentalsRoute = MyRentalsRouteImport.update({
   id: '/my-rentals',
   path: '/my-rentals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MigratedReservationsRoute = MigratedReservationsRouteImport.update({
+  id: '/migrated-reservations',
+  path: '/migrated-reservations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MaintenanceRoute = MaintenanceRouteImport.update({
@@ -508,6 +514,7 @@ export interface FileRoutesByFullPath {
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/migrated-reservations': typeof MigratedReservationsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
@@ -589,6 +596,7 @@ export interface FileRoutesByTo {
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/migrated-reservations': typeof MigratedReservationsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
@@ -671,6 +679,7 @@ export interface FileRoutesById {
   '/insurance': typeof InsuranceRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/migrated-reservations': typeof MigratedReservationsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
@@ -754,6 +763,7 @@ export interface FileRouteTypes {
     | '/insurance'
     | '/login'
     | '/maintenance'
+    | '/migrated-reservations'
     | '/my-rentals'
     | '/payments'
     | '/payroll'
@@ -835,6 +845,7 @@ export interface FileRouteTypes {
     | '/insurance'
     | '/login'
     | '/maintenance'
+    | '/migrated-reservations'
     | '/my-rentals'
     | '/payments'
     | '/payroll'
@@ -916,6 +927,7 @@ export interface FileRouteTypes {
     | '/insurance'
     | '/login'
     | '/maintenance'
+    | '/migrated-reservations'
     | '/my-rentals'
     | '/payments'
     | '/payroll'
@@ -998,6 +1010,7 @@ export interface RootRouteChildren {
   InsuranceRoute: typeof InsuranceRoute
   LoginRoute: typeof LoginRoute
   MaintenanceRoute: typeof MaintenanceRoute
+  MigratedReservationsRoute: typeof MigratedReservationsRoute
   MyRentalsRoute: typeof MyRentalsRouteWithChildren
   PaymentsRoute: typeof PaymentsRoute
   PayrollRoute: typeof PayrollRoute
@@ -1171,6 +1184,13 @@ declare module '@tanstack/react-router' {
       path: '/my-rentals'
       fullPath: '/my-rentals'
       preLoaderRoute: typeof MyRentalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/migrated-reservations': {
+      id: '/migrated-reservations'
+      path: '/migrated-reservations'
+      fullPath: '/migrated-reservations'
+      preLoaderRoute: typeof MigratedReservationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/maintenance': {
@@ -1673,6 +1693,7 @@ const rootRouteChildren: RootRouteChildren = {
   InsuranceRoute: InsuranceRoute,
   LoginRoute: LoginRoute,
   MaintenanceRoute: MaintenanceRoute,
+  MigratedReservationsRoute: MigratedReservationsRoute,
   MyRentalsRoute: MyRentalsRouteWithChildren,
   PaymentsRoute: PaymentsRoute,
   PayrollRoute: PayrollRoute,
