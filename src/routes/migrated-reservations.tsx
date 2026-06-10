@@ -14,6 +14,7 @@ import {
   listMigratedReservations,
   createMigratedReservation,
   deleteMigratedReservation,
+  parseReservationText,
   type MigratedReservation,
 } from "@/lib/migrated-reservations.functions";
 
@@ -37,13 +38,43 @@ function MigratedReservationsPage() {
   const list = useServerFn(listMigratedReservations);
   const create = useServerFn(createMigratedReservation);
   const remove = useServerFn(deleteMigratedReservation);
+  const parse = useServerFn(parseReservationText);
 
   const [rows, setRows] = useState<MigratedReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [parsing, setParsing] = useState(false);
   const [f, setF] = useState<Form>(EMPTY);
 
   const set = (k: keyof Form, v: string) => setF((p) => ({ ...p, [k]: v }));
+
+  const parsePaste = async () => {
+    if (!pasteText.trim()) { toast.error("Paste a reservation first"); return; }
+    setParsing(true);
+    try {
+      const p = await parse({ data: { text: pasteText } });
+      setF((prev) => ({
+        renter_name: p.renter_name || prev.renter_name,
+        plate: p.plate || prev.plate,
+        vehicle: p.vehicle || prev.vehicle,
+        year: p.year || prev.year,
+        color: p.color || prev.color,
+        order_number: p.order_number || prev.order_number,
+        pickup_location: p.pickup_location || prev.pickup_location,
+        start_datetime: p.start_datetime || prev.start_datetime,
+        end_datetime: p.end_datetime || prev.end_datetime,
+        address: p.address || prev.address,
+        dl_number: p.dl_number || prev.dl_number,
+        notes: p.notes || prev.notes,
+      }));
+      toast.success(p.plate ? "Filled — review and save" : "Filled — add the plate/tag, then save");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not parse");
+    } finally {
+      setParsing(false);
+    }
+  };
 
   const refresh = async () => {
     setLoading(true);
@@ -99,6 +130,19 @@ function MigratedReservationsPage() {
       <Card className="mb-6">
         <CardHeader><CardTitle className="text-base">Add a migrated reservation</CardTitle></CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-1 sm:col-span-2 lg:col-span-3 rounded-lg border border-dashed p-3">
+            <Label className="text-xs font-medium">Paste reservation (Fleet Finesse) — auto-fills the fields below</Label>
+            <Textarea
+              rows={4}
+              placeholder={"Paste the whole reservation here, e.g.\nHyundai Elantra\n2013\nNicole Campbell\n416 Sicklerville Road\n05/24/2026 9:00 AM\n05/31/2026 9:00 AM\n\nTip: include the license plate/tag so violations can be matched."}
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+            />
+            <Button type="button" variant="secondary" size="sm" onClick={parsePaste} disabled={parsing}>
+              {parsing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+              Parse &amp; fill
+            </Button>
+          </div>
           <F label="Renter name *" v={f.renter_name} on={(v) => set("renter_name", v)} />
           <F label="License plate" v={f.plate} on={(v) => set("plate", v.toUpperCase())} />
           <F label="Vehicle (make/model)" v={f.vehicle} on={(v) => set("vehicle", v)} />
