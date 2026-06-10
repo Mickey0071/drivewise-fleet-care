@@ -381,82 +381,17 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       await supabaseAdmin.from("drivers").update(driverUpdate).eq("id", rental.driver_id);
     }
 
-    // After signing: AUTO-SEND the Stripe payment link to the renter
-    // immediately (no staff approval step). The renter gets a text + email
-    // with a secure single-use payment link the moment they finish
-    // uploading their license and selfie.
+    // After signing: do NOT auto-send a payment link. The signed agreement
+    // goes into the Pending Agreements review queue, where a staff member
+    // reviews it and manually approves + sends the Stripe payment link.
+    // The renter just gets a reassuring "received" message.
     try {
-      const [{ data: driver }, { data: vehicle }] = await Promise.all([
-        supabaseAdmin
-          .from("drivers")
-          .select("phone, full_name, email")
-          .eq("id", rental.driver_id)
-          .single(),
-        supabaseAdmin
-          .from("vehicles")
-          .select("year, make, model")
-          .eq("id", rental.vehicle_id ?? "")
-          .maybeSingle(),
-      ]);
-
-      // First payment = the rental's weekly/period rate.
-      const rate = Number(rental.rate ?? rental.weekly_rate ?? 0);
-      const amountCents = Math.round(rate * 100);
-      const vehicleInfo = vehicle
-        ? `${vehicle.year ?? ""} ${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim()
-        : "";
-      const period = rental.billing_period === "monthly" ? "monthly" : "weekly";
-      const description = vehicleInfo
-        ? `Camauto Rentals — ${period} rental (${vehicleInfo})`
-        : `Camauto Rentals — ${period} rental`;
-
-      if (driver?.phone && amountCents >= 50) {
-        const origin = process.env.PUBLIC_APP_ORIGIN || "";
-        try {
-          const result = await sendPaymentLinkInternal({
-            phone: driver.phone,
-            name: driver.full_name ?? undefined,
-            email: driver.email ?? null,
-            amountCents,
-            description: description.slice(0, 200),
-            environment: "live",
-            rentalId: rental.id,
-            origin,
-            sendSms: true,
-            sendEmail: !!driver.email,
-          });
-          // Log + clear the review badge since the link auto-sent.
-          await Promise.all([
-            supabaseAdmin.from("payment_link_logs").insert({
-              rental_id: rental.id,
-              amount_cents: amountCents,
-              reason: "Auto-sent after signing",
-              channels: driver.email ? ["sms", "email"] : ["sms"],
-              link_url: result.url,
-              custom_message: null,
-            }),
-            supabaseAdmin
-              .from("rentals")
-              .update({ staff_review_status: "reviewed" })
-              .eq("id", rental.id),
-          ]);
-          console.log(`[sign] auto-sent payment link for ${rental.id}: ${result.url}`);
-        } catch (linkErr) {
-          console.error(`[sign] auto payment link failed for ${rental.id}:`, linkErr);
-          // Fall back to a reassuring message so the renter isn't left hanging.
-          await notifyRenter({
-            phone: driver.phone,
-            email: driver.email ?? null,
-            name: driver.full_name ?? null,
-            sms: "Thank you for choosing Camauto. Your signed agreement and ID have been received. We'll text you your payment link shortly.",
-            emailSubject: "Agreement Received — Camauto Rentals",
-            emailHeading: "Thank You for Choosing Camauto",
-            emailIntro:
-              "Your signed agreement and ID have been received. We'll send you a secure payment link by text and email shortly.",
-          });
-        }
-      } else if (driver?.phone) {
-        // No rate on file — can't auto-create a link; reassure the renter.
+      const { data: driver } = await supabaseAdmin
+        .from("drivers")
+        .select("phone, full_name, email")
+        .eq("id", rental.driver_id)
+        .single();
+      if (driver?.phone) {
         await notifyRenter({
           phone: driver.phone,
           email: driver.email ?? null,
@@ -469,7 +404,7 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
         });
       }
     } catch (e) {
-      console.error("post-sign auto payment link failed", e);
+      console.error("post-sign renter notification failed", e);
     }
 
     // If signing flipped the reservation to ON RENT (payment already received),
