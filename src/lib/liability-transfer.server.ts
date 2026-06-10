@@ -33,6 +33,8 @@ export interface ViolationCtx {
   driver: Record<string, unknown> | null;
   rental: Record<string, unknown> | null;
   authority: AuthorityAddress | null;
+  /** True when renter/rental data came from a migrated (legacy) reservation. */
+  fromLegacy?: boolean;
 }
 
 export async function loadViolationCtx(violationId: string): Promise<ViolationCtx> {
@@ -76,12 +78,55 @@ export async function loadViolationCtx(violationId: string): Promise<ViolationCt
     .eq("key", authKey)
     .maybeSingle();
 
+  // Migrated reservation fallback: when the violation was matched to a legacy
+  // reservation (no live driver/rental), pull renter + rental details from it
+  // so the mail packet is populated instead of empty.
+  let legacyDriver: Record<string, unknown> | null = null;
+  let legacyRental: Record<string, unknown> | null = null;
+  let legacyVehicle: Record<string, unknown> | null = null;
+  let fromLegacy = false;
+  const legacyId = v.legacy_rental_id as string | null;
+  if (legacyId && !driverRes.data && !rentalRes.data) {
+    const { data: lr } = await supabaseAdmin
+      .from("legacy_rentals")
+      .select(
+        "id, renter_name, address, dl_number, plate, vehicle, year, color, start_datetime, end_datetime, agreement_pdf_url",
+      )
+      .eq("id", legacyId)
+      .maybeSingle();
+    if (lr) {
+      fromLegacy = true;
+      legacyDriver = {
+        full_name: lr.renter_name ?? null,
+        address: lr.address ?? null,
+        license_number: lr.dl_number ?? null,
+      };
+      legacyRental = {
+        id: lr.id,
+        start_date: lr.start_datetime ?? null,
+        end_date: lr.end_datetime ?? null,
+        agreement_pdf_url: lr.agreement_pdf_url ?? null,
+        license_image_url: null,
+      };
+      if (!vehicleRes.data) {
+        legacyVehicle = {
+          plate: lr.plate ?? null,
+          make: lr.vehicle ?? null,
+          model: null,
+          year: lr.year ?? null,
+          vin: null,
+        };
+      }
+    }
+  }
+
   return {
     v: v as Record<string, unknown>,
-    vehicle: vehicleRes.data as Record<string, unknown> | null,
-    driver: driverRes.data as Record<string, unknown> | null,
-    rental: rentalRes.data as Record<string, unknown> | null,
+    vehicle: (vehicleRes.data as Record<string, unknown> | null) ?? legacyVehicle,
+    driver: (driverRes.data as Record<string, unknown> | null) ?? legacyDriver,
+    rental: (rentalRes.data as Record<string, unknown> | null) ?? legacyRental,
     authority: (auth as AuthorityAddress | null) ?? null,
+    fromLegacy,
   };
 }
 
