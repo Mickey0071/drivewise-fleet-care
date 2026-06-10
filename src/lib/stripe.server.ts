@@ -24,10 +24,17 @@ export function createStripeClient(env: StripeEnv): Stripe {
     apiVersion: '2026-03-25.dahlia' as any,
     httpClient: Stripe.createFetchHttpClient(((input: any, init?: RequestInit) => {
       const gatewayUrl = input.toString().replace('https://api.stripe.com', GATEWAY_STRIPE_BASE);
+      // The Stripe SDK auto-attaches its own `Authorization: Bearer <key>` header.
+      // The connector gateway rejects requests that carry BOTH that and the
+      // Lovable auth headers ("Multiple auth schemes provided"). Strip the SDK's
+      // Authorization so only the gateway's auth headers remain.
+      const forwardedHeaders = Object.fromEntries(new Headers(init?.headers).entries());
+      delete forwardedHeaders.authorization;
+      delete forwardedHeaders.Authorization;
       return fetch(gatewayUrl, {
         ...init,
         headers: {
-          ...Object.fromEntries(new Headers(init?.headers).entries()),
+          ...forwardedHeaders,
           'X-Connection-Api-Key': connectionApiKey,
           'Lovable-API-Key': lovableApiKey,
         },
