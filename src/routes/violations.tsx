@@ -626,6 +626,7 @@ function NewViolationDialog({
   const [tollAmount, setTollAmount] = useState("");
   const [tollFee, setTollFee] = useState("");
   const [description, setDescription] = useState("");
+  const [citationNumber, setCitationNumber] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
   const [location, setLocation] = useState("");
   const [lookupResult, setLookupResult] = useState<Awaited<ReturnType<typeof lookup>> | null>(null);
