@@ -192,9 +192,11 @@ function ImportDataPage() {
       <Tabs defaultValue="vehicles">
         <TabsList>
           <TabsTrigger value="vehicles">Import Vehicles</TabsTrigger>
+          <TabsTrigger value="customers">Import Customers</TabsTrigger>
           <TabsTrigger value="rentals">Import Rentals</TabsTrigger>
         </TabsList>
         <TabsContent value="vehicles"><VehiclesTab /></TabsContent>
+        <TabsContent value="customers"><CustomersTab /></TabsContent>
         <TabsContent value="rentals"><RentalsTab /></TabsContent>
       </Tabs>
     </div>
