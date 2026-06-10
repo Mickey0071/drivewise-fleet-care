@@ -215,20 +215,32 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
     [driver?.street_address, driver?.city, driver?.state, driver?.zip_code]
       .filter(Boolean)
       .join(", ");
+  // Track required renter fields that are blank so the admin knows to fill
+  // them in (especially for migrated reservations) before mailing.
+  const missing: string[] = [];
+  const TODO = "[ ADD BEFORE MAILING ]";
+  const req = (val: unknown, label: string): string => {
+    const s = typeof val === "string" ? val.trim() : val != null ? String(val) : "";
+    if (!s) {
+      missing.push(label);
+      return TODO;
+    }
+    return s;
+  };
   line("RENTER INFORMATION (at time of violation):", { bold: true });
-  line(`- Full Name: ${(driver?.full_name as string) ?? "—"}`);
-  line(`- Address: ${addr || "—"}`);
-  line(`- Driver's License: ${(driver?.license_number as string) ?? "—"}`);
-  line(`- License State: ${(driver?.dl_state as string) ?? "—"}`);
+  line(`- Full Name: ${req(driver?.full_name, "Full Name")}`);
+  line(`- Address: ${req(addr, "Address")}`);
+  line(`- Driver's License: ${req(driver?.license_number, "Driver's License #")}`);
+  line(`- License State: ${(driver?.dl_state as string) || "—"}`);
   line(`- License Expiration: ${fmtDate(driver?.license_expiry as string)}`);
-  line(`- Phone: ${(driver?.phone as string) ?? "—"}`);
-  line(`- Email: ${(driver?.email as string) ?? "—"}`);
+  line(`- Phone: ${(driver?.phone as string) || "—"}`);
+  line(`- Email: ${(driver?.email as string) || "—"}`);
   line(`- Date of Birth: ${fmtDate(driver?.date_of_birth as string)}`);
-  line(`- Rental Agreement #: ${(rental?.id as string) ?? "—"}`);
+  line(`- Rental Agreement #: ${(rental?.id as string) || "—"}`);
   line(
-    `- Rental Period: ${fmtDate(rental?.start_date as string)} to ${
-      rental?.end_date ? fmtDate(rental?.end_date as string) : "ongoing"
-    }`,
+    `- Rental Period: ${
+      rental?.start_date ? fmtDate(rental?.start_date as string) : req("", "Rental start date")
+    } to ${rental?.end_date ? fmtDate(rental?.end_date as string) : "ongoing"}`,
   );
   blank();
 
