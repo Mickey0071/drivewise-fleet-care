@@ -4,9 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { extractNameFromIdImage, extractAddressFromIdImage, extractLicenseFieldsFromImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
-import { sendEmail } from "@/lib/ghl.server";
-
-const MANAGEMENT_EMAIL = "info@camautorentals.com";
+import { sendPaymentLinkInternal } from "@/lib/payment-link.functions";
 
 function genToken() {
   const bytes = new Uint8Array(16);
@@ -243,7 +241,7 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { data: rental, error } = await supabaseAdmin
       .from("rentals")
-      .select("id, driver_id, vehicle_id, sign_token, payment_received, reservation_status, client_signature_url")
+      .select("id, driver_id, vehicle_id, sign_token, payment_received, reservation_status, client_signature_url, rate, weekly_rate, billing_period")
       .eq("sign_token", data.token)
       .maybeSingle();
     if (error || !rental) throw new Error("Invalid signing link");
@@ -383,50 +381,95 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       await supabaseAdmin.from("drivers").update(driverUpdate).eq("id", rental.driver_id);
     }
 
-    // After signing: thank the renter and let them know staff will review
-    // the submitted agreement + ID before sending a payment link manually.
+    // After signing: AUTO-SEND the Stripe payment link to the renter
+    // immediately (no staff approval step). The renter gets a text + email
+    // with a secure single-use payment link the moment they finish
+    // uploading their license and selfie.
     try {
-      const { data: driver } = await supabaseAdmin
-        .from("drivers")
-        .select("phone, full_name, email")
-        .eq("id", rental.driver_id)
-        .single();
-      if (driver?.phone) {
+      const [{ data: driver }, { data: vehicle }] = await Promise.all([
+        supabaseAdmin
+          .from("drivers")
+          .select("phone, full_name, email")
+          .eq("id", rental.driver_id)
+          .single(),
+        supabaseAdmin
+          .from("vehicles")
+          .select("year, make, model")
+          .eq("id", rental.vehicle_id ?? "")
+          .maybeSingle(),
+      ]);
+
+      // First payment = the rental's weekly/period rate.
+      const rate = Number(rental.rate ?? rental.weekly_rate ?? 0);
+      const amountCents = Math.round(rate * 100);
+      const vehicleInfo = vehicle
+        ? `${vehicle.year ?? ""} ${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim()
+        : "";
+      const period = rental.billing_period === "monthly" ? "monthly" : "weekly";
+      const description = vehicleInfo
+        ? `Camauto Rentals — ${period} rental (${vehicleInfo})`
+        : `Camauto Rentals — ${period} rental`;
+
+      if (driver?.phone && amountCents >= 50) {
+        const origin = process.env.PUBLIC_APP_ORIGIN || "";
+        try {
+          const result = await sendPaymentLinkInternal({
+            phone: driver.phone,
+            name: driver.full_name ?? undefined,
+            email: driver.email ?? null,
+            amountCents,
+            description: description.slice(0, 200),
+            environment: "live",
+            rentalId: rental.id,
+            origin,
+            sendSms: true,
+            sendEmail: !!driver.email,
+          });
+          // Log + clear the review badge since the link auto-sent.
+          await Promise.all([
+            supabaseAdmin.from("payment_link_logs").insert({
+              rental_id: rental.id,
+              amount_cents: amountCents,
+              reason: "Auto-sent after signing",
+              channels: driver.email ? ["sms", "email"] : ["sms"],
+              link_url: result.url,
+              custom_message: null,
+            }),
+            supabaseAdmin
+              .from("rentals")
+              .update({ staff_review_status: "reviewed" })
+              .eq("id", rental.id),
+          ]);
+          console.log(`[sign] auto-sent payment link for ${rental.id}: ${result.url}`);
+        } catch (linkErr) {
+          console.error(`[sign] auto payment link failed for ${rental.id}:`, linkErr);
+          // Fall back to a reassuring message so the renter isn't left hanging.
+          await notifyRenter({
+            phone: driver.phone,
+            email: driver.email ?? null,
+            name: driver.full_name ?? null,
+            sms: "Thank you for choosing Camauto. Your signed agreement and ID have been received. We'll text you your payment link shortly.",
+            emailSubject: "Agreement Received — Camauto Rentals",
+            emailHeading: "Thank You for Choosing Camauto",
+            emailIntro:
+              "Your signed agreement and ID have been received. We'll send you a secure payment link by text and email shortly.",
+          });
+        }
+      } else if (driver?.phone) {
+        // No rate on file — can't auto-create a link; reassure the renter.
         await notifyRenter({
           phone: driver.phone,
           email: driver.email ?? null,
           name: driver.full_name ?? null,
-          sms: "Thank you for choosing Camauto. Your signed agreement and ID have been received and are under review by our team. We'll text you a payment link once your reservation is approved.",
+          sms: "Thank you for choosing Camauto. Your signed agreement and ID have been received. We'll text you your payment link shortly.",
           emailSubject: "Agreement Received — Camauto Rentals",
           emailHeading: "Thank You for Choosing Camauto",
           emailIntro:
-            "Your signed agreement and ID have been received and are now under review by our team. Once approved, we'll send you a payment link by text and email so you can complete your reservation.",
+            "Your signed agreement and ID have been received. We'll send you a secure payment link by text and email shortly.",
         });
       }
-      // Notify management (SMS + email) that a new signed agreement is
-      // awaiting review, in addition to the in-app dashboard badge /
-      // auto-open modal driven by staff_review_status = 'pending'.
-      try {
-        const origin = process.env.PUBLIC_APP_ORIGIN || "";
-        const reviewLink = origin ? `${origin}/pending-agreements` : null;
-        const renterLabel = driver?.full_name || rental.driver_id;
-        await sendEmail(
-          MANAGEMENT_EMAIL,
-          `New Agreement Awaiting Review — ${renterLabel}`,
-          `<div style="font-family:Arial,Helvetica,sans-serif;color:#111;line-height:1.5;max-width:600px;">
-            <h2 style="margin:0 0 12px;">New signed agreement awaiting review</h2>
-            <p><strong>Renter:</strong> ${renterLabel}</p>
-            <p><strong>Rental:</strong> ${rental.id}</p>
-            <p>Open the Pending Agreements queue to review the signed PDF, license, and selfie, then approve and send the payment link.</p>
-            ${reviewLink ? `<p><a href="${reviewLink}" style="background:#2db84b;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block;">Review Now</a></p>` : ""}
-          </div>`,
-          { name: "Camauto Management" },
-        );
-      } catch (mgmtErr) {
-        console.error("[sign] management notify failed", mgmtErr);
-      }
     } catch (e) {
-      console.error("post-sign notify failed", e);
+      console.error("post-sign auto payment link failed", e);
     }
 
     // If signing flipped the reservation to ON RENT (payment already received),
