@@ -52,6 +52,7 @@ export interface ViolationRow {
   violation_time?: string | null;
   location?: string | null;
   reference_number?: string | null;
+  legacy_rental_id?: string | null;
 }
 
 export const listViolations = createServerFn({ method: "GET" })
@@ -231,6 +232,7 @@ export const createViolation = createServerFn({ method: "POST" })
       rentalId?: string | null;
       vehicleId?: string | null;
       driverId?: string | null;
+      legacyRentalId?: string | null;
       type: string;
       date: string;
       licensePlate?: string | null;
@@ -254,6 +256,7 @@ export const createViolation = createServerFn({ method: "POST" })
         rentalId: input.rentalId || null,
         vehicleId: input.vehicleId || null,
         driverId: input.driverId || null,
+        legacyRentalId: input.legacyRentalId || null,
         type,
         date: input.date,
         licensePlate: (input.licensePlate || "").toUpperCase() || null,
@@ -281,6 +284,7 @@ export const createViolation = createServerFn({ method: "POST" })
         rental_id: data.rentalId,
         vehicle_id: data.vehicleId ?? "UNKNOWN",
         driver_id: data.driverId,
+        legacy_rental_id: data.legacyRentalId,
         type: data.type,
         date_issued: data.date,
         license_plate: data.licensePlate,

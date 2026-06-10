@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Trash2, Database } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, Plus, Trash2, Database, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   listMigratedReservations,
   createMigratedReservation,
   deleteMigratedReservation,
+  updateMigratedReservation,
   parseReservationText,
   bulkImportReservations,
   type MigratedReservation,
@@ -39,6 +41,7 @@ function MigratedReservationsPage() {
   const list = useServerFn(listMigratedReservations);
   const create = useServerFn(createMigratedReservation);
   const remove = useServerFn(deleteMigratedReservation);
+  const update = useServerFn(updateMigratedReservation);
   const parse = useServerFn(parseReservationText);
   const bulk = useServerFn(bulkImportReservations);
 
@@ -50,8 +53,46 @@ function MigratedReservationsPage() {
   const [bulkText, setBulkText] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
   const [f, setF] = useState<Form>(EMPTY);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [ef, setEf] = useState<Form>(EMPTY);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const set = (k: keyof Form, v: string) => setF((p) => ({ ...p, [k]: v }));
+  const setE = (k: keyof Form, v: string) => setEf((p) => ({ ...p, [k]: v }));
+
+  const toLocal = (s: string | null) => {
+    if (!s) return "";
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return "";
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+
+  const openEdit = (r: MigratedReservation) => {
+    setEditId(r.id);
+    setEf({
+      renter_name: r.renter_name ?? "", plate: r.plate ?? "", vehicle: r.vehicle ?? "",
+      year: r.year ?? "", color: r.color ?? "", order_number: r.order_number ?? "",
+      pickup_location: r.pickup_location ?? "", start_datetime: toLocal(r.start_datetime),
+      end_datetime: toLocal(r.end_datetime), address: r.address ?? "",
+      dl_number: r.dl_number ?? "", notes: r.notes ?? "",
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editId) return;
+    setSavingEdit(true);
+    try {
+      const updated = await update({ data: { id: editId, ...ef } });
+      setRows((p) => p.map((r) => (r.id === editId ? updated : r)));
+      toast.success("Updated — regenerate the violation packet to use the new info");
+      setEditId(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const bulkImport = async () => {
     if (!bulkText.trim()) { toast.error("Paste your reservations first"); return; }
@@ -259,9 +300,14 @@ function MigratedReservationsPage() {
                       <TableCell className="text-xs">{fmt(r.end_datetime)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{r.source ?? "—"}</TableCell>
                       <TableCell>
-                        <Button size="icon" variant="ghost" onClick={() => void del(r.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(r)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => void del(r.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -271,6 +317,45 @@ function MigratedReservationsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editId} onOpenChange={(o) => { if (!o) setEditId(null); }}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit migrated reservation</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Fill in any missing renter details (address, DL number, etc.) so the violation
+            liability packet is complete. After saving, regenerate the packet on the violation.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <F label="Renter name *" v={ef.renter_name} on={(v) => setE("renter_name", v)} />
+            <F label="License plate" v={ef.plate} on={(v) => setE("plate", v.toUpperCase())} />
+            <F label="Vehicle (make/model)" v={ef.vehicle} on={(v) => setE("vehicle", v)} />
+            <F label="Year" v={ef.year} on={(v) => setE("year", v)} />
+            <F label="Color" v={ef.color} on={(v) => setE("color", v)} />
+            <F label="Order # (old system)" v={ef.order_number} on={(v) => setE("order_number", v)} />
+            <F label="Pickup location" v={ef.pickup_location} on={(v) => setE("pickup_location", v)} />
+            <F label="DL / License number" v={ef.dl_number} on={(v) => setE("dl_number", v)} />
+            <F label="Start" type="datetime-local" v={ef.start_datetime} on={(v) => setE("start_datetime", v)} />
+            <F label="End" type="datetime-local" v={ef.end_datetime} on={(v) => setE("end_datetime", v)} />
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs">Address</Label>
+              <Textarea rows={2} value={ef.address} onChange={(e) => setE("address", e.target.value)} />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs">Notes</Label>
+              <Textarea rows={2} value={ef.notes} onChange={(e) => setE("notes", e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditId(null)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={savingEdit}>
+              {savingEdit ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Save changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

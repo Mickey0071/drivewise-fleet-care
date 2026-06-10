@@ -2852,6 +2852,7 @@ export type Database = {
           fee: number
           final_warning_sent_at: string | null
           id: string
+          legacy_rental_id: string | null
           liability_transfer_generated_at: string | null
           liability_transfer_pdf_url: string | null
           license_plate: string | null
@@ -2907,6 +2908,7 @@ export type Database = {
           fee?: number
           final_warning_sent_at?: string | null
           id: string
+          legacy_rental_id?: string | null
           liability_transfer_generated_at?: string | null
           liability_transfer_pdf_url?: string | null
           license_plate?: string | null
@@ -2962,6 +2964,7 @@ export type Database = {
           fee?: number
           final_warning_sent_at?: string | null
           id?: string
+          legacy_rental_id?: string | null
           liability_transfer_generated_at?: string | null
           liability_transfer_pdf_url?: string | null
           license_plate?: string | null

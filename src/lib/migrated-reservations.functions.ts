@@ -102,6 +102,52 @@ export const deleteMigratedReservation = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+type UpdateInput = { id: string } & Partial<CreateInput>;
+
+export const updateMigratedReservation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: UpdateInput) => {
+    const id = (input.id || "").trim();
+    if (!id) throw new Error("id required");
+    const clean = (v?: string | null) => {
+      const s = (v ?? "").toString().trim();
+      return s === "" ? null : s;
+    };
+    return {
+      id,
+      renter_name: (input.renter_name ?? "").trim() || null,
+      plate: clean(input.plate),
+      vehicle: clean(input.vehicle),
+      year: clean(input.year),
+      color: clean(input.color),
+      order_number: clean(input.order_number),
+      pickup_location: clean(input.pickup_location),
+      start_datetime: clean(input.start_datetime),
+      end_datetime: clean(input.end_datetime),
+      address: clean(input.address),
+      dl_number: clean(input.dl_number),
+      notes: clean(input.notes),
+    };
+  })
+  .handler(async ({ data }): Promise<MigratedReservation> => {
+    const { id, ...rest } = data;
+    const patch: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(rest)) {
+      if (k === "renter_name" && !val) continue; // never blank out the name
+      patch[k] = val;
+    }
+    const { data: row, error } = await supabaseAdmin
+      .from("legacy_rentals")
+      .update(patch as never)
+      .eq("id", id)
+      .select(
+        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
+      )
+      .single();
+    if (error) throw new Error(error.message);
+    return row as MigratedReservation;
+  });
+
 export interface ParsedReservation {
   renter_name: string;
   plate: string;

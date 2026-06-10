@@ -33,6 +33,8 @@ export interface ViolationCtx {
   driver: Record<string, unknown> | null;
   rental: Record<string, unknown> | null;
   authority: AuthorityAddress | null;
+  /** True when renter/rental data came from a migrated (legacy) reservation. */
+  fromLegacy?: boolean;
 }
 
 export async function loadViolationCtx(violationId: string): Promise<ViolationCtx> {
@@ -76,12 +78,55 @@ export async function loadViolationCtx(violationId: string): Promise<ViolationCt
     .eq("key", authKey)
     .maybeSingle();
 
+  // Migrated reservation fallback: when the violation was matched to a legacy
+  // reservation (no live driver/rental), pull renter + rental details from it
+  // so the mail packet is populated instead of empty.
+  let legacyDriver: Record<string, unknown> | null = null;
+  let legacyRental: Record<string, unknown> | null = null;
+  let legacyVehicle: Record<string, unknown> | null = null;
+  let fromLegacy = false;
+  const legacyId = v.legacy_rental_id as string | null;
+  if (legacyId && !driverRes.data && !rentalRes.data) {
+    const { data: lr } = await supabaseAdmin
+      .from("legacy_rentals")
+      .select(
+        "id, renter_name, address, dl_number, plate, vehicle, year, color, start_datetime, end_datetime, agreement_pdf_url",
+      )
+      .eq("id", legacyId)
+      .maybeSingle();
+    if (lr) {
+      fromLegacy = true;
+      legacyDriver = {
+        full_name: lr.renter_name ?? null,
+        address: lr.address ?? null,
+        license_number: lr.dl_number ?? null,
+      };
+      legacyRental = {
+        id: lr.id,
+        start_date: lr.start_datetime ?? null,
+        end_date: lr.end_datetime ?? null,
+        agreement_pdf_url: lr.agreement_pdf_url ?? null,
+        license_image_url: null,
+      };
+      if (!vehicleRes.data) {
+        legacyVehicle = {
+          plate: lr.plate ?? null,
+          make: lr.vehicle ?? null,
+          model: null,
+          year: lr.year ?? null,
+          vin: null,
+        };
+      }
+    }
+  }
+
   return {
     v: v as Record<string, unknown>,
-    vehicle: vehicleRes.data as Record<string, unknown> | null,
-    driver: driverRes.data as Record<string, unknown> | null,
-    rental: rentalRes.data as Record<string, unknown> | null,
+    vehicle: (vehicleRes.data as Record<string, unknown> | null) ?? legacyVehicle,
+    driver: (driverRes.data as Record<string, unknown> | null) ?? legacyDriver,
+    rental: (rentalRes.data as Record<string, unknown> | null) ?? legacyRental,
     authority: (auth as AuthorityAddress | null) ?? null,
+    fromLegacy,
   };
 }
 
@@ -170,22 +215,50 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
     [driver?.street_address, driver?.city, driver?.state, driver?.zip_code]
       .filter(Boolean)
       .join(", ");
+  // Track required renter fields that are blank so the admin knows to fill
+  // them in (especially for migrated reservations) before mailing.
+  const missing: string[] = [];
+  const TODO = "[ ADD BEFORE MAILING ]";
+  const req = (val: unknown, label: string): string => {
+    const s = typeof val === "string" ? val.trim() : val != null ? String(val) : "";
+    if (!s) {
+      missing.push(label);
+      return TODO;
+    }
+    return s;
+  };
   line("RENTER INFORMATION (at time of violation):", { bold: true });
-  line(`- Full Name: ${(driver?.full_name as string) ?? "—"}`);
-  line(`- Address: ${addr || "—"}`);
-  line(`- Driver's License: ${(driver?.license_number as string) ?? "—"}`);
-  line(`- License State: ${(driver?.dl_state as string) ?? "—"}`);
+  line(`- Full Name: ${req(driver?.full_name, "Full Name")}`);
+  line(`- Address: ${req(addr, "Address")}`);
+  line(`- Driver's License: ${req(driver?.license_number, "Driver's License #")}`);
+  line(`- License State: ${(driver?.dl_state as string) || "—"}`);
   line(`- License Expiration: ${fmtDate(driver?.license_expiry as string)}`);
-  line(`- Phone: ${(driver?.phone as string) ?? "—"}`);
-  line(`- Email: ${(driver?.email as string) ?? "—"}`);
+  line(`- Phone: ${(driver?.phone as string) || "—"}`);
+  line(`- Email: ${(driver?.email as string) || "—"}`);
   line(`- Date of Birth: ${fmtDate(driver?.date_of_birth as string)}`);
-  line(`- Rental Agreement #: ${(rental?.id as string) ?? "—"}`);
+  line(`- Rental Agreement #: ${(rental?.id as string) || "—"}`);
   line(
-    `- Rental Period: ${fmtDate(rental?.start_date as string)} to ${
-      rental?.end_date ? fmtDate(rental?.end_date as string) : "ongoing"
-    }`,
+    `- Rental Period: ${
+      rental?.start_date ? fmtDate(rental?.start_date as string) : req("", "Rental start date")
+    } to ${rental?.end_date ? fmtDate(rental?.end_date as string) : "ongoing"}`,
   );
   blank();
+
+  if (missing.length > 0) {
+    ensure(40);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(176, 0, 32);
+    const warn = doc.splitTextToSize(
+      `ACTION REQUIRED — missing renter information: ${missing.join(", ")}. ` +
+        `Add these details to the migrated reservation, then regenerate this packet before mailing.`,
+      right - left,
+    );
+    doc.text(warn, left, y);
+    y += 14 * (Array.isArray(warn) ? warn.length : 1);
+    doc.setTextColor(20, 20, 20);
+    blank();
+  }
 
   line("ATTACHED DOCUMENTS:", { bold: true });
   line("- Copy of signed rental agreement");

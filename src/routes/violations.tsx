@@ -809,6 +809,7 @@ function NewViolationDialog({
           rentalId: picked && !isLegacyPick ? picked.id : null,
           vehicleId: picked && !isLegacyPick ? picked.vehicle_id : fallbackVehicleId,
           driverId: picked && !isLegacyPick ? picked.driver_id : null,
+          legacyRentalId: isLegacyPick ? picked!.id.replace(/^LEGACY:/, "") : null,
           extractedConfidence: confidence,
         },
       });
