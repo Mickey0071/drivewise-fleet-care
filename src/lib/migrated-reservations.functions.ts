@@ -185,3 +185,101 @@ export const parseReservationText = createServerFn({ method: "POST" })
       notes: s(p.notes),
     };
   });
+
+export interface BulkImportResult {
+  saved: number;
+  skipped: number;
+  withoutPlate: number;
+  names: string[];
+}
+
+// Parse a paste that may contain MANY reservations at once and save them all.
+// Lookup-only data — never linked to any live report. Matching for violations
+// is done by plate + date, so reservations without a plate are still saved but
+// flagged (they won't match a toll/ticket until the plate is filled in).
+export const bulkImportReservations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { text: string }) => {
+    const text = (input.text || "").trim();
+    if (!text) throw new Error("Paste your reservations first");
+    if (text.length > 60000) throw new Error("Too much text — paste in smaller batches");
+    return { text };
+  })
+  .handler(async ({ data }): Promise<BulkImportResult> => {
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) throw new Error("AI is not configured");
+
+    const toIso = (s: string) => {
+      const t = (s || "").trim();
+      if (!t) return null;
+      const d = new Date(t);
+      if (Number.isNaN(d.getTime())) return null;
+      const p = (n: number) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00`;
+    };
+
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content:
+              'You extract one OR MORE rental reservations from pasted text (e.g. Fleet Finesse). The paste may contain many reservations. Return ONLY a JSON array, each item in this exact shape: {"renter_name":string,"plate":string,"vehicle":string,"year":string,"color":string,"order_number":string,"pickup_location":string,"start_datetime":string,"end_datetime":string,"address":string,"dl_number":string,"notes":string}. "vehicle" is make+model (e.g. "Hyundai Elantra"). "plate" is the license plate/tag. Keep start_datetime/end_datetime in their original human format (e.g. "05/24/2026 9:00 AM"). If a field is not present, use an empty string. Do not invent a plate if none is given. Return one array item per distinct reservation. No prose, no code fences.',
+          },
+          { role: "user", content: data.text },
+        ],
+      }),
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      if (res.status === 429) throw new Error("Rate limit hit — try again in a moment");
+      if (res.status === 402) throw new Error("AI credits exhausted");
+      console.error(`[bulk-import] gateway ${res.status}: ${t.slice(0, 200)}`);
+      throw new Error("Could not parse the reservations");
+    }
+    const json = (await res.json().catch(() => null)) as any;
+    let raw = json?.choices?.[0]?.message?.content;
+    if (typeof raw !== "string") throw new Error("Could not parse the reservations");
+    raw = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+    let arr: any = null;
+    try { arr = JSON.parse(raw); } catch { throw new Error("Could not parse the reservations"); }
+    if (!Array.isArray(arr)) arr = [arr];
+
+    const s = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    const rows = (arr as any[])
+      .map((p) => ({
+        source: "migrated",
+        renter_name: s(p.renter_name),
+        plate: s(p.plate).toUpperCase() || null,
+        vehicle: s(p.vehicle) || null,
+        year: s(p.year) || null,
+        color: s(p.color) || null,
+        order_number: s(p.order_number) || null,
+        pickup_location: s(p.pickup_location) || null,
+        start_datetime: toIso(s(p.start_datetime)),
+        end_datetime: toIso(s(p.end_datetime)),
+        status: "migrated",
+        address: s(p.address) || null,
+        dl_number: s(p.dl_number) || null,
+        notes: s(p.notes) || null,
+      }))
+      .filter((r) => r.renter_name);
+
+    const skipped = (Array.isArray(arr) ? arr.length : 0) - rows.length;
+    if (rows.length === 0) {
+      return { saved: 0, skipped, withoutPlate: 0, names: [] };
+    }
+
+    const { error } = await supabaseAdmin.from("legacy_rentals").insert(rows as never);
+    if (error) throw new Error(error.message);
+
+    return {
+      saved: rows.length,
+      skipped: Math.max(0, skipped),
+      withoutPlate: rows.filter((r) => !r.plate).length,
+      names: rows.map((r) => r.renter_name),
+    };
+  });

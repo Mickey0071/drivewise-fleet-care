@@ -15,6 +15,7 @@ import {
   createMigratedReservation,
   deleteMigratedReservation,
   parseReservationText,
+  bulkImportReservations,
   type MigratedReservation,
 } from "@/lib/migrated-reservations.functions";
 
@@ -39,15 +40,40 @@ function MigratedReservationsPage() {
   const create = useServerFn(createMigratedReservation);
   const remove = useServerFn(deleteMigratedReservation);
   const parse = useServerFn(parseReservationText);
+  const bulk = useServerFn(bulkImportReservations);
 
   const [rows, setRows] = useState<MigratedReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [parsing, setParsing] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [f, setF] = useState<Form>(EMPTY);
 
   const set = (k: keyof Form, v: string) => setF((p) => ({ ...p, [k]: v }));
+
+  const bulkImport = async () => {
+    if (!bulkText.trim()) { toast.error("Paste your reservations first"); return; }
+    setBulkBusy(true);
+    try {
+      const r = await bulk({ data: { text: bulkText } });
+      if (r.saved === 0) {
+        toast.error("No reservations found in that text");
+      } else {
+        toast.success(
+          `Imported ${r.saved} reservation${r.saved === 1 ? "" : "s"}` +
+            (r.withoutPlate ? ` — ${r.withoutPlate} missing a plate (add it so violations match)` : ""),
+        );
+        setBulkText("");
+        await refresh();
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not import");
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const parsePaste = async () => {
     if (!pasteText.trim()) { toast.error("Paste a reservation first"); return; }
@@ -127,8 +153,34 @@ function MigratedReservationsPage() {
         subtitle="Records migrated from the old system. Used only for looking up violations — never counted in P&L, reservations, or any live reports."
       />
 
+      <Card className="mb-6 border-primary/40">
+        <CardHeader>
+          <CardTitle className="text-base">Bulk paste reservations (Fleet Finesse)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Paste <strong>all</strong> your old reservations here — one after another, the same way
+            Nicole's looked. Each gets saved automatically. Violations are matched by{" "}
+            <strong>plate (tag) + date</strong>, so make sure each reservation includes the license
+            plate. Anything missing a plate is still saved and flagged so you can add it later.
+          </p>
+          <Textarea
+            rows={10}
+            placeholder={
+              "Paste many reservations here, e.g.\n\nHyundai Elantra\n2013\nNicole Campbell\nABC1234\n416 Sicklerville Road\n05/24/2026 9:00 AM\n05/31/2026 9:00 AM\nReturned\n\nToyota Camry\n2018\nJohn Smith\nXYZ7890\n...\n"
+            }
+            value={bulkText}
+            onChange={(e) => setBulkText(e.target.value)}
+          />
+          <Button onClick={bulkImport} disabled={bulkBusy}>
+            {bulkBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+            Import all reservations
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card className="mb-6">
-        <CardHeader><CardTitle className="text-base">Add a migrated reservation</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Or add one reservation manually</CardTitle></CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-1 sm:col-span-2 lg:col-span-3 rounded-lg border border-dashed p-3">
             <Label className="text-xs font-medium">Paste reservation (Fleet Finesse) — auto-fills the fields below</Label>
