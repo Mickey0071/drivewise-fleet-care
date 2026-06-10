@@ -1011,7 +1011,10 @@ function NewViolationDialog({
               <SelectContent>
                 {(() => {
                   // When the lookup found overlapping rentals, narrow the list to those.
-                  const matchIds = lookupResult?.matches?.map((m) => m.rental.id) ?? [];
+                  const liveIds = lookupResult?.matches?.map((m) => m.rental.id) ?? [];
+                  const legacyIds =
+                    lookupResult?.legacyMatches?.map((m) => `LEGACY:${m.id}`) ?? [];
+                  const matchIds = [...liveIds, ...legacyIds];
                   const opts =
                     matchIds.length > 0
                       ? rentalOptions.filter((r) => matchIds.includes(r.id))
@@ -1023,7 +1026,8 @@ function NewViolationDialog({
                   }
                   return opts.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
-                      {r.id}: {r.driver_name ?? "Unknown"}
+                      {r.source === "migrated" ? "📋 " : ""}
+                      {r.id.startsWith("LEGACY:") ? "Migrated" : r.id}: {r.driver_name ?? "Unknown"}
                       {r.plate ? ` — ${r.plate}` : ""}
                     </SelectItem>
                   ));
