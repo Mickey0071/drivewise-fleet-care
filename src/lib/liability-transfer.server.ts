@@ -244,6 +244,22 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
   );
   blank();
 
+  if (missing.length > 0) {
+    ensure(40);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(176, 0, 32);
+    const warn = doc.splitTextToSize(
+      `ACTION REQUIRED — missing renter information: ${missing.join(", ")}. ` +
+        `Add these details to the migrated reservation, then regenerate this packet before mailing.`,
+      right - left,
+    );
+    doc.text(warn, left, y);
+    y += 14 * (Array.isArray(warn) ? warn.length : 1);
+    doc.setTextColor(20, 20, 20);
+    blank();
+  }
+
   line("ATTACHED DOCUMENTS:", { bold: true });
   line("- Copy of signed rental agreement");
   line("- Copy of renter's driver's license (front)");
