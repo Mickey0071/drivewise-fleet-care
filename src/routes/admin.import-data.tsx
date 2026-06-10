@@ -12,8 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   importVehicles,
   importRentals,
+  importCustomers,
   type VehicleImportResult,
   type RentalImportResult,
+  type CustomerImportResult,
 } from "@/lib/data-import.functions";
 
 export const Route = createFileRoute("/admin/import-data")({
@@ -183,6 +185,78 @@ function RentalsTab() {
   );
 }
 
+function CustomersTab() {
+  const run = useServerFn(importCustomers);
+  const [rows, setRows] = useState<Record<string, string>[]>([]);
+  const [fileName, setFileName] = useState("");
+  const [result, setResult] = useState<CustomerImportResult | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const preview = async () => {
+    if (!rows.length) return toast.error("Upload a CSV first");
+    setBusy(true);
+    try { setResult(await run({ data: { rows: rows as never, commit: false } })); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Preview failed"); }
+    finally { setBusy(false); }
+  };
+  const commit = async () => {
+    setBusy(true);
+    try {
+      const r = await run({ data: { rows: rows as never, commit: true } });
+      setResult(r);
+      toast.success(`Imported: ${r.created} new, ${r.enriched} enriched`);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Import failed"); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card><CardContent className="space-y-4 pt-6">
+        <FileDrop expected="any of: full_name (or first_name/last_name), phone, email, license_number, license_expiry, date_of_birth, dl_state, address, city, state, zip — columns auto-detected" onRows={(r, n) => { setRows(r); setFileName(n); setResult(null); }} />
+        {fileName && <p className="text-sm">{fileName} — <strong>{rows.length}</strong> rows</p>}
+        <p className="text-xs text-muted-foreground">Matches by name to enrich existing customers (fills empty fields only). Differences are flagged as conflicts and never overwritten.</p>
+        <div className="flex gap-2">
+          <Button onClick={preview} disabled={busy || !rows.length} variant="secondary">{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}Preview</Button>
+          <Button onClick={commit} disabled={busy || !result || result.committed}>{result?.committed ? <CheckCircle2 className="mr-2 h-4 w-4" /> : null}Commit Import</Button>
+        </div>
+      </CardContent></Card>
+      {result && (
+        <Card><CardContent className="space-y-3 pt-6">
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Badge variant="default">New: {result.created}</Badge>
+            <Badge variant="secondary">Enriched: {result.enriched}</Badge>
+            <Badge variant="outline">Skip: {result.skipped}</Badge>
+            {result.conflicts > 0 && <Badge className="bg-amber-500 text-white">Conflicts: {result.conflicts}</Badge>}
+            {result.committed && <Badge className="bg-green-600 text-white">Committed</Badge>}
+          </div>
+          {result.conflicts > 0 && (
+            <div className="flex items-start gap-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>Some CSV values differ from existing records. These are <strong>not</strong> overwritten — review the conflicts column and update manually if the CSV is correct.</div>
+            </div>
+          )}
+          <div className="max-h-96 overflow-auto rounded border">
+            <table className="w-full text-left text-xs">
+              <thead className="sticky top-0 bg-muted"><tr><th className="p-2">#</th><th className="p-2">Action</th><th className="p-2">Name</th><th className="p-2">Fills</th><th className="p-2">Conflicts</th></tr></thead>
+              <tbody>
+                {result.plans.map((p) => (
+                  <tr key={p.row} className="border-t">
+                    <td className="p-2">{p.row}</td>
+                    <td className="p-2"><Badge variant={p.action === "create" ? "default" : p.action === "enrich" ? "secondary" : "outline"}>{p.action}</Badge></td>
+                    <td className="p-2">{p.name || "—"}{p.note && <span className="ml-1 text-[10px] text-muted-foreground">({p.note})</span>}</td>
+                    <td className="p-2 text-muted-foreground">{p.fills.map((f) => `${f.field}: ${f.value}`).join(", ")}</td>
+                    <td className="p-2 text-amber-700">{p.conflicts.map((c) => `${c.field}: "${c.existing}"≠"${c.csv}"`).join("; ")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent></Card>
+      )}
+    </div>
+  );
+}
+
 function ImportDataPage() {
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -190,9 +264,11 @@ function ImportDataPage() {
       <Tabs defaultValue="vehicles">
         <TabsList>
           <TabsTrigger value="vehicles">Import Vehicles</TabsTrigger>
+          <TabsTrigger value="customers">Import Customers</TabsTrigger>
           <TabsTrigger value="rentals">Import Rentals</TabsTrigger>
         </TabsList>
         <TabsContent value="vehicles"><VehiclesTab /></TabsContent>
+        <TabsContent value="customers"><CustomersTab /></TabsContent>
         <TabsContent value="rentals"><RentalsTab /></TabsContent>
       </Tabs>
     </div>
