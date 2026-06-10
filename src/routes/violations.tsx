@@ -787,9 +787,16 @@ function NewViolationDialog({
     const picked = selectedRentalId
       ? rentalOptions.find((r) => r.id === selectedRentalId) ?? null
       : null;
+    const isLegacyPick = !!picked && picked.source === "migrated";
     const fallbackVehicleId = lookupResult?.vehicle?.id ?? null;
     setSaving(true);
     try {
+      const baseDesc =
+        description ||
+        `${type} violation${plate ? ` on ${plate.toUpperCase()}` : ""}${location ? ` at ${location}` : ""}`;
+      const finalDesc = isLegacyPick
+        ? `${baseDesc} — Renter (migrated): ${picked!.driver_name ?? "Unknown"}`
+        : baseDesc;
       const r = await create({
         data: {
           type,
@@ -797,13 +804,11 @@ function NewViolationDialog({
           licensePlate: plate || null,
           amount: amt,
           fee,
-          description:
-            description ||
-            `${type} violation${plate ? ` on ${plate.toUpperCase()}` : ""}${location ? ` at ${location}` : ""}`,
+          description: finalDesc,
           photoUrl: photoUrl || null,
-          rentalId: picked ? picked.id : null,
-          vehicleId: picked ? picked.vehicle_id : fallbackVehicleId,
-          driverId: picked ? picked.driver_id : null,
+          rentalId: picked && !isLegacyPick ? picked.id : null,
+          vehicleId: picked && !isLegacyPick ? picked.vehicle_id : fallbackVehicleId,
+          driverId: picked && !isLegacyPick ? picked.driver_id : null,
           extractedConfidence: confidence,
         },
       });
