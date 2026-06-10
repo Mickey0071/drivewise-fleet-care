@@ -497,6 +497,11 @@ function RentalsPage() {
                   <Button size="sm" onClick={() => setCashRental(r)}>
                     <DollarSign className="mr-1 h-4 w-4" /> Record Cash Payment
                   </Button>
+                  {rentalBalance(r) > 0 && (
+                    <Button size="sm" variant="outline" onClick={() => setDiscountRental(r)}>
+                      <Percent className="mr-1 h-4 w-4" /> Apply Discount
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
