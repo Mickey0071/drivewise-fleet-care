@@ -160,6 +160,16 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
     y += h;
   };
 
+  const ref = (v.reference_number as string | null) || (v.id as string);
+
+  // Violation number banner (top of document)
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(176, 0, 32);
+  doc.text(`VIOLATION #: ${ref.toUpperCase()}`, left, y);
+  y += 16;
+  doc.setTextColor(20, 20, 20);
+
   // Letterhead
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
@@ -172,9 +182,8 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
   doc.text(`${OWNER.legal} · ${OWNER.address} · ${OWNER.phone}`, left, y);
   y += 22;
 
-  const ref = (v.reference_number as string | null) || (v.id as string);
   line(`Date: ${fmtDate(new Date().toISOString())}`);
-  line(`Reference #: ${v.id as string}`);
+  line(`Reference #: ${ref}`);
   blank();
 
   const authName = authority?.name ?? "Violation Processing Authority";

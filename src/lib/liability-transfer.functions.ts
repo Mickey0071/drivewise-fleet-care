@@ -79,17 +79,32 @@ export const generateMailPacket = createServerFn({ method: "POST" })
     z.object({ violationId: z.string().min(1).max(64) }).parse(input),
   )
   .handler(async ({ data }): Promise<{ filename: string; base64: string; missing: string[] }> => {
-    const { PDFDocument } = await import("pdf-lib");
+    const { PDFDocument, rgb } = await import("pdf-lib");
     const ctx = await loadViolationCtx(data.violationId);
     const cover = await buildCoverLetterPdf(ctx);
 
     const out = await PDFDocument.create();
     const missing: string[] = [];
+    const ref =
+      (ctx.v.reference_number as string | null) ||
+      (ctx.v.id as string);
+    const violationStamp = `VIOLATION #: ${ref.toUpperCase()}`;
 
-    async function appendPdf(bytes: Uint8Array) {
+    async function appendPdf(bytes: Uint8Array, opts?: { stamp?: string }) {
       const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
       const pages = await out.copyPages(src, src.getPageIndices());
-      pages.forEach((p) => out.addPage(p));
+      for (const p of pages) {
+        if (opts?.stamp) {
+          const size = p.getSize();
+          p.drawText(opts.stamp, {
+            x: 36,
+            y: size.height - 28,
+            size: 10,
+            color: rgb(0.69, 0, 0.125),
+          });
+        }
+        out.addPage(p);
+      }
     }
     async function appendImage(bytes: Uint8Array, contentType: string) {
       const img = contentType.includes("png")
@@ -104,7 +119,7 @@ export const generateMailPacket = createServerFn({ method: "POST" })
       const h = img.height * scale;
       page.drawImage(img, { x: (612 - w) / 2, y: (792 - h) / 2, width: w, height: h });
     }
-    async function addUrl(url: string | null | undefined, label: string) {
+    async function addUrl(url: string | null | undefined, label: string, opts?: { stamp?: string }) {
       if (!url) {
         missing.push(label);
         return;
@@ -118,7 +133,7 @@ export const generateMailPacket = createServerFn({ method: "POST" })
         const ct = (res.headers.get("content-type") ?? "").toLowerCase();
         const bytes = new Uint8Array(await res.arrayBuffer());
         const isPdf = ct.includes("pdf") || /\.pdf(\?|$)/i.test(url);
-        if (isPdf) await appendPdf(bytes);
+        if (isPdf) await appendPdf(bytes, opts);
         else await appendImage(bytes, ct || (/\.png(\?|$)/i.test(url) ? "image/png" : "image/jpeg"));
       } catch (e) {
         missing.push(`${label} (${e instanceof Error ? e.message : "fetch failed"})`);
@@ -130,7 +145,7 @@ export const generateMailPacket = createServerFn({ method: "POST" })
     // Supporting documents (rely on the signed rental agreement — no affidavit)
     await addUrl(ctx.v.photo_url as string | null, "Original violation notice");
     await addUrl((ctx.rental?.license_image_url as string) ?? null, "Driver's license (front)");
-    await addUrl((ctx.rental?.agreement_pdf_url as string) ?? null, "Signed rental agreement");
+    await addUrl((ctx.rental?.agreement_pdf_url as string) ?? null, "Signed rental agreement", { stamp: violationStamp });
 
     const buf = await out.save();
     let bin = "";
