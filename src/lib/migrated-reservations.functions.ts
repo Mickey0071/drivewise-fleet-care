@@ -16,6 +16,8 @@ export interface MigratedReservation {
   end_datetime: string | null;
   status: string | null;
   notes: string | null;
+  address: string | null;
+  dl_number: string | null;
   created_at: string;
 }
 
@@ -25,7 +27,7 @@ export const listMigratedReservations = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin
       .from("legacy_rentals")
       .select(
-        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, start_datetime, end_datetime, status, notes, created_at",
+        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
       )
       .order("start_datetime", { ascending: false, nullsFirst: false })
       .limit(1000);
@@ -45,6 +47,8 @@ type CreateInput = {
   end_datetime?: string | null;
   status?: string | null;
   notes?: string | null;
+  address?: string | null;
+  dl_number?: string | null;
 };
 
 export const createMigratedReservation = createServerFn({ method: "POST" })
@@ -69,6 +73,8 @@ export const createMigratedReservation = createServerFn({ method: "POST" })
       end_datetime: clean(input.end_datetime),
       status: clean(input.status) ?? "migrated",
       notes: clean(input.notes),
+      address: clean(input.address),
+      dl_number: clean(input.dl_number),
     };
   })
   .handler(async ({ data }): Promise<MigratedReservation> => {
@@ -76,7 +82,7 @@ export const createMigratedReservation = createServerFn({ method: "POST" })
       .from("legacy_rentals")
       .insert(data as never)
       .select(
-        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, start_datetime, end_datetime, status, notes, created_at",
+        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
       )
       .single();
     if (error) throw new Error(error.message);

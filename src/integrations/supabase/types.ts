@@ -859,9 +859,11 @@ export type Database = {
       }
       legacy_rentals: {
         Row: {
+          address: string | null
           agreement_pdf_url: string | null
           color: string | null
           created_at: string
+          dl_number: string | null
           end_datetime: string | null
           id: string
           notes: string | null
@@ -876,9 +878,11 @@ export type Database = {
           year: string | null
         }
         Insert: {
+          address?: string | null
           agreement_pdf_url?: string | null
           color?: string | null
           created_at?: string
+          dl_number?: string | null
           end_datetime?: string | null
           id?: string
           notes?: string | null
@@ -893,9 +897,11 @@ export type Database = {
           year?: string | null
         }
         Update: {
+          address?: string | null
           agreement_pdf_url?: string | null
           color?: string | null
           created_at?: string
+          dl_number?: string | null
           end_datetime?: string | null
           id?: string
           notes?: string | null

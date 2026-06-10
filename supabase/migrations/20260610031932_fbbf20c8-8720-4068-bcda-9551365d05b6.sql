@@ -1,0 +1,1 @@
+ALTER TABLE public.legacy_rentals ADD COLUMN IF NOT EXISTS address text, ADD COLUMN IF NOT EXISTS dl_number text;
