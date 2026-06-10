@@ -1,0 +1,1 @@
+ALTER TABLE public.violations ADD COLUMN IF NOT EXISTS legacy_rental_id uuid;
