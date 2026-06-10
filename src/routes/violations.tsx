@@ -1013,7 +1013,7 @@ function NewViolationDialog({
               <SelectTrigger>
                 <SelectValue placeholder="Choose a rental…" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-60">
                 {(() => {
                   // When the lookup found overlapping rentals, narrow the list to those.
                   const liveIds = lookupResult?.matches?.map((m) => m.rental.id) ?? [];
