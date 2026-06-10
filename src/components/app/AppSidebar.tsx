@@ -33,6 +33,7 @@ const adminItems: Item[] = [
   { title: "Insurance", url: "/insurance", icon: Shield, roles: ["admin"] },
   { title: "Runner Reports", url: "/runner-reports", icon: ClipboardList, roles: ["admin"] },
   { title: "Rental Agreement", url: "/rental-agreement", icon: ScrollText, roles: ["admin"] },
+  { title: "Rental Agreement Violation", url: "/self-agreement", icon: FileSignature, roles: ["admin"] },
   { title: "SMS log", url: "/sms-log", icon: MessageSquare, roles: ["admin"] },
   { title: "Analytics", url: "/analytics", icon: BarChart3, roles: ["admin"] },
   { title: "Notifications", url: "/admin/notifications", icon: Bell, roles: ["admin"] },
