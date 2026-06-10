@@ -1059,6 +1059,25 @@ function NewViolationDialog({
                 {lookupResult.reason || "No rental matched. Violation will be unlinked."}
               </div>
             )}
+            {lookupResult && (lookupResult.legacyMatches?.length ?? 0) > 0 && (
+              <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-2">
+                <div className="mb-1 text-xs font-medium text-muted-foreground">
+                  Migrated reservation match (old system — lookup only)
+                </div>
+                <div className="space-y-1">
+                  {lookupResult.legacyMatches!.map((m) => (
+                    <div key={m.id} className="text-xs">
+                      <span className="font-medium">{m.renter_name ?? "Unknown"}</span>
+                      {m.plate ? ` — ${m.plate}` : ""}
+                      {m.vehicle ? ` · ${m.vehicle}` : ""}
+                      {(m.start_datetime || m.end_datetime)
+                        ? ` · ${(m.start_datetime ?? "").slice(0, 10)} → ${(m.end_datetime ?? "ongoing").slice(0, 10)}`
+                        : ""}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <DialogFooter>

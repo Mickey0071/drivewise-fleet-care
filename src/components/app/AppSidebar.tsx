@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
-  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature, Bell, CalendarPlus, BarChart3, DatabaseBackup, Package, Upload,
+  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature, Bell, CalendarPlus, BarChart3, DatabaseBackup, Package, Upload, Database,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -53,6 +53,7 @@ const settingsItems: Item[] = [
   { title: "Team & Access", url: "/admin/users", icon: UsersRound, roles: ["admin"] },
   { title: "Import Data", url: "/admin/import-data", icon: DatabaseBackup, roles: ["admin"] },
   { title: "Import Legacy Rentals", url: "/admin/import-legacy", icon: Upload, roles: ["admin"] },
+  { title: "Migrated Reservations", url: "/migrated-reservations", icon: Database, roles: ["admin"] },
 ];
 
 export function AppSidebar() {

@@ -1,0 +1,190 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { PageHeader } from "@/components/app/PageHeader";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Loader2, Plus, Trash2, Database } from "lucide-react";
+import { toast } from "sonner";
+import {
+  listMigratedReservations,
+  createMigratedReservation,
+  deleteMigratedReservation,
+  type MigratedReservation,
+} from "@/lib/migrated-reservations.functions";
+
+export const Route = createFileRoute("/migrated-reservations")({
+  head: () => ({ meta: [{ title: "Migrated Reservations — Camauto Rentals" }] }),
+  component: MigratedReservationsPage,
+});
+
+type Form = {
+  renter_name: string; plate: string; vehicle: string; year: string; color: string;
+  order_number: string; pickup_location: string; start_datetime: string; end_datetime: string; notes: string;
+};
+const EMPTY: Form = {
+  renter_name: "", plate: "", vehicle: "", year: "", color: "",
+  order_number: "", pickup_location: "", start_datetime: "", end_datetime: "", notes: "",
+};
+
+function MigratedReservationsPage() {
+  const list = useServerFn(listMigratedReservations);
+  const create = useServerFn(createMigratedReservation);
+  const remove = useServerFn(deleteMigratedReservation);
+
+  const [rows, setRows] = useState<MigratedReservation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [f, setF] = useState<Form>(EMPTY);
+
+  const set = (k: keyof Form, v: string) => setF((p) => ({ ...p, [k]: v }));
+
+  const refresh = async () => {
+    setLoading(true);
+    try {
+      setRows(await list());
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void refresh(); }, []);
+
+  const add = async () => {
+    if (!f.renter_name.trim()) { toast.error("Renter name is required"); return; }
+    setSaving(true);
+    try {
+      await create({ data: {
+        renter_name: f.renter_name, plate: f.plate, vehicle: f.vehicle, year: f.year, color: f.color,
+        order_number: f.order_number, pickup_location: f.pickup_location,
+        start_datetime: f.start_datetime || null, end_datetime: f.end_datetime || null, notes: f.notes,
+      } });
+      toast.success("Migrated reservation saved");
+      setF(EMPTY);
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const del = async (id: string) => {
+    if (!window.confirm("Delete this migrated reservation?")) return;
+    try {
+      await remove({ data: { id } });
+      setRows((p) => p.filter((r) => r.id !== id));
+      toast.success("Deleted");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete");
+    }
+  };
+
+  return (
+    <div>
+      <PageHeader
+        title="Migrated Reservations"
+        subtitle="Records migrated from the old system. Used only for looking up violations — never counted in P&L, reservations, or any live reports."
+      />
+
+      <Card className="mb-6">
+        <CardHeader><CardTitle className="text-base">Add a migrated reservation</CardTitle></CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <F label="Renter name *" v={f.renter_name} on={(v) => set("renter_name", v)} />
+          <F label="License plate" v={f.plate} on={(v) => set("plate", v.toUpperCase())} />
+          <F label="Vehicle (make/model)" v={f.vehicle} on={(v) => set("vehicle", v)} />
+          <F label="Year" v={f.year} on={(v) => set("year", v)} />
+          <F label="Color" v={f.color} on={(v) => set("color", v)} />
+          <F label="Order # (old system)" v={f.order_number} on={(v) => set("order_number", v)} />
+          <F label="Pickup location" v={f.pickup_location} on={(v) => set("pickup_location", v)} />
+          <F label="Start" type="datetime-local" v={f.start_datetime} on={(v) => set("start_datetime", v)} />
+          <F label="End" type="datetime-local" v={f.end_datetime} on={(v) => set("end_datetime", v)} />
+          <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+            <Label className="text-xs">Notes</Label>
+            <Textarea rows={2} value={f.notes} onChange={(e) => set("notes", e.target.value)} />
+          </div>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <Button onClick={add} disabled={saving}>
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+              Save migrated reservation
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Database className="h-4 w-4" /> Migrated reservations ({rows.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+            </div>
+          ) : rows.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No migrated reservations yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Renter</TableHead>
+                    <TableHead>Plate</TableHead>
+                    <TableHead>Vehicle</TableHead>
+                    <TableHead>Start</TableHead>
+                    <TableHead>End</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead className="w-10" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-medium">{r.renter_name ?? "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">{r.plate ?? "—"}</TableCell>
+                      <TableCell className="text-sm">{[r.year, r.color, r.vehicle].filter(Boolean).join(" ") || "—"}</TableCell>
+                      <TableCell className="text-xs">{fmt(r.start_datetime)}</TableCell>
+                      <TableCell className="text-xs">{fmt(r.end_datetime)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{r.source ?? "—"}</TableCell>
+                      <TableCell>
+                        <Button size="icon" variant="ghost" onClick={() => void del(r.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function fmt(s: string | null) {
+  if (!s) return "—";
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toLocaleDateString();
+}
+
+function F({
+  label, v, on, type = "text",
+}: { label: string; v: string; on: (v: string) => void; type?: string }) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      <Input type={type} value={v} onChange={(e) => on(e.target.value)} />
+    </div>
+  );
+}

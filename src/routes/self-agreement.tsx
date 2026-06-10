@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download } from "lucide-react";
+import { Download, Database } from "lucide-react";
 import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import type { Driver, Rental, Vehicle } from "@/lib/mock/data";
@@ -98,9 +98,16 @@ function SelfAgreementPage() {
           title="Rental Agreement Violation"
           subtitle="Fill in all details as the renter, sign, and download a signed agreement."
           action={
-            <Button onClick={download}>
-              <Download className="mr-1 h-4 w-4" /> Download signed PDF
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link to="/migrated-reservations">
+                  <Database className="mr-1 h-4 w-4" /> Migrated Reservations
+                </Link>
+              </Button>
+              <Button onClick={download}>
+                <Download className="mr-1 h-4 w-4" /> Download signed PDF
+              </Button>
+            </div>
           }
         />
       </div>

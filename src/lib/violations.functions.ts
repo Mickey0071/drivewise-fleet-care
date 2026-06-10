@@ -104,6 +104,14 @@ export interface PlateLookupResult {
   matchConfidence: number;
   confidenceLabel: string;
   reason?: string;
+  legacyMatches?: {
+    id: string;
+    renter_name: string | null;
+    plate: string | null;
+    vehicle: string | null;
+    start_datetime: string | null;
+    end_datetime: string | null;
+  }[];
 }
 
 export const lookupRentalByPlate = createServerFn({ method: "POST" })
@@ -117,6 +125,21 @@ export const lookupRentalByPlate = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<PlateLookupResult> => {
     const { plate, date } = data;
+    // Migrated (legacy) reservations matching this plate around the violation date.
+    // These are lookup-only — never linked to a violation or counted in any report.
+    const { data: legacyRows } = await supabaseAdmin
+      .from("legacy_rentals")
+      .select("id, renter_name, plate, vehicle, start_datetime, end_datetime")
+      .ilike("plate", plate)
+      .limit(50);
+    const legacyMatches = (legacyRows ?? []).filter((r) => {
+      const start = r.start_datetime ? r.start_datetime.slice(0, 10) : null;
+      const end = r.end_datetime ? r.end_datetime.slice(0, 10) : null;
+      if (start && start > date) return false;
+      if (end && end < date) return false;
+      return true;
+    });
+
     // 1) Find vehicle in fleet by plate
     const { data: vehicle } = await supabaseAdmin
       .from("vehicles")
@@ -133,6 +156,7 @@ export const lookupRentalByPlate = createServerFn({ method: "POST" })
         matchConfidence: 0,
         confidenceLabel: "Vehicle not in fleet or OCR failed",
         reason: `No vehicle with plate ${plate}`,
+        legacyMatches,
       };
     }
 
@@ -156,6 +180,7 @@ export const lookupRentalByPlate = createServerFn({ method: "POST" })
         matchConfidence: 40,
         confidenceLabel: "Plate matched, but no rental covers this date — select renter manually",
         reason: `No rental covers ${date} on plate ${plate}`,
+        legacyMatches,
       };
     }
 
@@ -191,6 +216,7 @@ export const lookupRentalByPlate = createServerFn({ method: "POST" })
       confidenceLabel: ambiguous
         ? `${matches.length} rentals overlap this date — choose the renter`
         : "Plate + date match",
+      legacyMatches,
     };
   });
 
