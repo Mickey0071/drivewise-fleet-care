@@ -797,6 +797,66 @@ export type Database = {
         }
         Relationships: []
       }
+      legacy_customers: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          date_created: string | null
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          name: string | null
+          notes: string | null
+          phone: string | null
+          sn: string | null
+          source: string
+          state: string | null
+          status: string | null
+          updated_at: string
+          zip_code: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          date_created?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          name?: string | null
+          notes?: string | null
+          phone?: string | null
+          sn?: string | null
+          source?: string
+          state?: string | null
+          status?: string | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          date_created?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          name?: string | null
+          notes?: string | null
+          phone?: string | null
+          sn?: string | null
+          source?: string
+          state?: string | null
+          status?: string | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
       legacy_rentals: {
         Row: {
           agreement_pdf_url: string | null
