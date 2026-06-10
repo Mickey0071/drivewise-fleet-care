@@ -938,6 +938,18 @@ function NewViolationDialog({
             </Select>
           </div>
 
+          <div>
+            <Label>Violation / Citation #</Label>
+            <Input
+              value={citationNumber}
+              onChange={(e) => setCitationNumber(e.target.value.toUpperCase())}
+              placeholder="As printed on the notice (used as the record ID)"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Leave blank to auto-generate. When entered, this becomes the violation's ID so it matches the uploaded notice.
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>License Plate</Label>
