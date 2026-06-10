@@ -1060,7 +1060,16 @@ function RentalsPage() {
       <Dialog open={!!detail} onOpenChange={(o) => {
         if (!o) {
           setDetail(null);
-          navigate({ to: "/rentals", search: { paid, review } });
+          // Only touch the URL when the detail was opened via a ?detail= param.
+          // Use replace so closing doesn't stack a history entry that would
+          // re-open the dialog when the user presses Back.
+          if (detailId) {
+            navigate({
+              to: "/rentals",
+              search: (prev: Record<string, unknown>) => ({ ...prev, detail: undefined }),
+              replace: true,
+            });
+          }
         }
       }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
