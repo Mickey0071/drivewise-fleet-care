@@ -648,6 +648,7 @@ function NewViolationDialog({
     setTollAmount("");
     setTollFee("");
     setDescription("");
+    setCitationNumber("");
     setPhotoUrl("");
     setLocation("");
     setLookupResult(null);
