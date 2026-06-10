@@ -4,7 +4,6 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { extractNameFromIdImage, extractAddressFromIdImage, extractLicenseFieldsFromImage, uploadPayerIdImage } from "@/lib/payer-id-ocr.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
-import { sendPaymentLinkInternal } from "@/lib/payment-link.functions";
 
 function genToken() {
   const bytes = new Uint8Array(16);
