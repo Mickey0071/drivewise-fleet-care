@@ -111,6 +111,10 @@ export interface PlateLookupResult {
     vehicle: string | null;
     start_datetime: string | null;
     end_datetime: string | null;
+    address: string | null;
+    dl_number: string | null;
+    pickup_location: string | null;
+    notes: string | null;
   }[];
 }
 
@@ -129,7 +133,7 @@ export const lookupRentalByPlate = createServerFn({ method: "POST" })
     // These are lookup-only — never linked to a violation or counted in any report.
     const { data: legacyRows } = await supabaseAdmin
       .from("legacy_rentals")
-      .select("id, renter_name, plate, vehicle, start_datetime, end_datetime")
+      .select("id, renter_name, plate, vehicle, start_datetime, end_datetime, address, dl_number, pickup_location, notes")
       .ilike("plate", plate)
       .limit(50);
     const legacyMatches = (legacyRows ?? []).filter((r) => {
