@@ -12,8 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   importVehicles,
   importRentals,
+  importCustomers,
   type VehicleImportResult,
   type RentalImportResult,
+  type CustomerImportResult,
 } from "@/lib/data-import.functions";
 
 export const Route = createFileRoute("/admin/import-data")({
