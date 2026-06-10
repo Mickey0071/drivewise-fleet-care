@@ -626,6 +626,7 @@ function NewViolationDialog({
   const [tollAmount, setTollAmount] = useState("");
   const [tollFee, setTollFee] = useState("");
   const [description, setDescription] = useState("");
+  const [citationNumber, setCitationNumber] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
   const [location, setLocation] = useState("");
   const [lookupResult, setLookupResult] = useState<Awaited<ReturnType<typeof lookup>> | null>(null);
@@ -647,6 +648,7 @@ function NewViolationDialog({
     setTollAmount("");
     setTollFee("");
     setDescription("");
+    setCitationNumber("");
     setPhotoUrl("");
     setLocation("");
     setLookupResult(null);
@@ -683,6 +685,7 @@ function NewViolationDialog({
           }
         }
         if (ex.location) setLocation(ex.location);
+        if (ex.citation_number) setCitationNumber(ex.citation_number.toUpperCase());
         if (ex.toll_amount != null) setTollAmount(String(ex.toll_amount));
         if (ex.fee_amount != null) setTollFee(String(ex.fee_amount));
         if (ex.violation_type) setType(ex.violation_type);
@@ -811,6 +814,7 @@ function NewViolationDialog({
           driverId: picked && !isLegacyPick ? picked.driver_id : null,
           legacyRentalId: isLegacyPick ? picked!.id.replace(/^LEGACY:/, "") : null,
           extractedConfidence: confidence,
+          citationNumber: citationNumber || null,
         },
       });
       toast.success(`Created ${r.violation.id}`);
@@ -933,6 +937,18 @@ function NewViolationDialog({
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div>
+            <Label>Violation / Citation #</Label>
+            <Input
+              value={citationNumber}
+              onChange={(e) => setCitationNumber(e.target.value.toUpperCase())}
+              placeholder="As printed on the notice (used as the record ID)"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Leave blank to auto-generate. When entered, this becomes the violation's ID so it matches the uploaded notice.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
