@@ -685,6 +685,7 @@ function NewViolationDialog({
           }
         }
         if (ex.location) setLocation(ex.location);
+        if (ex.citation_number) setCitationNumber(ex.citation_number.toUpperCase());
         if (ex.toll_amount != null) setTollAmount(String(ex.toll_amount));
         if (ex.fee_amount != null) setTollFee(String(ex.fee_amount));
         if (ex.violation_type) setType(ex.violation_type);
