@@ -24,11 +24,13 @@ export const Route = createFileRoute("/migrated-reservations")({
 
 type Form = {
   renter_name: string; plate: string; vehicle: string; year: string; color: string;
-  order_number: string; pickup_location: string; start_datetime: string; end_datetime: string; notes: string;
+  order_number: string; pickup_location: string; start_datetime: string; end_datetime: string;
+  address: string; dl_number: string; notes: string;
 };
 const EMPTY: Form = {
   renter_name: "", plate: "", vehicle: "", year: "", color: "",
-  order_number: "", pickup_location: "", start_datetime: "", end_datetime: "", notes: "",
+  order_number: "", pickup_location: "", start_datetime: "", end_datetime: "",
+  address: "", dl_number: "", notes: "",
 };
 
 function MigratedReservationsPage() {
@@ -63,7 +65,8 @@ function MigratedReservationsPage() {
       await create({ data: {
         renter_name: f.renter_name, plate: f.plate, vehicle: f.vehicle, year: f.year, color: f.color,
         order_number: f.order_number, pickup_location: f.pickup_location,
-        start_datetime: f.start_datetime || null, end_datetime: f.end_datetime || null, notes: f.notes,
+        start_datetime: f.start_datetime || null, end_datetime: f.end_datetime || null,
+        address: f.address, dl_number: f.dl_number, notes: f.notes,
       } });
       toast.success("Migrated reservation saved");
       setF(EMPTY);
@@ -103,8 +106,13 @@ function MigratedReservationsPage() {
           <F label="Color" v={f.color} on={(v) => set("color", v)} />
           <F label="Order # (old system)" v={f.order_number} on={(v) => set("order_number", v)} />
           <F label="Pickup location" v={f.pickup_location} on={(v) => set("pickup_location", v)} />
+          <F label="DL / License number" v={f.dl_number} on={(v) => set("dl_number", v)} />
           <F label="Start" type="datetime-local" v={f.start_datetime} on={(v) => set("start_datetime", v)} />
           <F label="End" type="datetime-local" v={f.end_datetime} on={(v) => set("end_datetime", v)} />
+          <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+            <Label className="text-xs">Address</Label>
+            <Textarea rows={2} value={f.address} onChange={(e) => set("address", e.target.value)} />
+          </div>
           <div className="space-y-1 sm:col-span-2 lg:col-span-3">
             <Label className="text-xs">Notes</Label>
             <Textarea rows={2} value={f.notes} onChange={(e) => set("notes", e.target.value)} />
