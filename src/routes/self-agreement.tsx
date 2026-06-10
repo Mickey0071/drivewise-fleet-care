@@ -47,7 +47,7 @@ function SelfAgreementPage() {
   const [f, setF] = useState<FormState>(EMPTY);
   const [signature, setSignature] = useState<string | null>(null);
 
-  const set = (k: keyof FormState, v: string) => setF((prev) => ({ ...prev, [k]: v }));
+  const set = (k: keyof FormState, v: string) => setF((prev) => ({ ...prev, [k]: v }) as FormState);
 
   const composedName = [f.firstName, f.middleInitial ? `${f.middleInitial}.` : "", f.lastName]
     .filter(Boolean).join(" ").trim();
