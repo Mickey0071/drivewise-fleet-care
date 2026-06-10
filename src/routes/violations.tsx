@@ -619,6 +619,7 @@ function NewViolationDialog({
     enabled: open,
   });
   const [selectedRentalId, setSelectedRentalId] = useState<string>("");
+  const [manualOverride, setManualOverride] = useState(false);
 
   const [type, setType] = useState<"toll" | "parking" | "damage" | "traffic" | "other">("toll");
   const [plate, setPlate] = useState("");
@@ -656,6 +657,7 @@ function NewViolationDialog({
     setConfidence(null);
     setPdfPages(null);
     setSelectedRentalId("");
+    setManualOverride(false);
   };
 
   const analyzeDataUrl = async (dataUrl: string) => {
