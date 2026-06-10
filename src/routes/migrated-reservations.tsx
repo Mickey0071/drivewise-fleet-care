@@ -317,6 +317,45 @@ function MigratedReservationsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editId} onOpenChange={(o) => { if (!o) setEditId(null); }}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit migrated reservation</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Fill in any missing renter details (address, DL number, etc.) so the violation
+            liability packet is complete. After saving, regenerate the packet on the violation.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <F label="Renter name *" v={ef.renter_name} on={(v) => setE("renter_name", v)} />
+            <F label="License plate" v={ef.plate} on={(v) => setE("plate", v.toUpperCase())} />
+            <F label="Vehicle (make/model)" v={ef.vehicle} on={(v) => setE("vehicle", v)} />
+            <F label="Year" v={ef.year} on={(v) => setE("year", v)} />
+            <F label="Color" v={ef.color} on={(v) => setE("color", v)} />
+            <F label="Order # (old system)" v={ef.order_number} on={(v) => setE("order_number", v)} />
+            <F label="Pickup location" v={ef.pickup_location} on={(v) => setE("pickup_location", v)} />
+            <F label="DL / License number" v={ef.dl_number} on={(v) => setE("dl_number", v)} />
+            <F label="Start" type="datetime-local" v={ef.start_datetime} on={(v) => setE("start_datetime", v)} />
+            <F label="End" type="datetime-local" v={ef.end_datetime} on={(v) => setE("end_datetime", v)} />
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs">Address</Label>
+              <Textarea rows={2} value={ef.address} onChange={(e) => setE("address", e.target.value)} />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs">Notes</Label>
+              <Textarea rows={2} value={ef.notes} onChange={(e) => setE("notes", e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditId(null)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={savingEdit}>
+              {savingEdit ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Save changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
