@@ -52,6 +52,7 @@ export interface ViolationRow {
   violation_time?: string | null;
   location?: string | null;
   reference_number?: string | null;
+  legacy_rental_id?: string | null;
 }
 
 export const listViolations = createServerFn({ method: "GET" })
