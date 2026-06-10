@@ -93,15 +93,17 @@ function SelfAgreementPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Rental Agreement Violation"
-        subtitle="Fill in all details as the renter, sign, and download a signed agreement."
-        action={
-          <Button onClick={download} className="print:hidden">
-            <Download className="mr-1 h-4 w-4" /> Download signed PDF
-          </Button>
-        }
-      />
+      <div className="print:hidden">
+        <PageHeader
+          title="Rental Agreement Violation"
+          subtitle="Fill in all details as the renter, sign, and download a signed agreement."
+          action={
+            <Button onClick={download}>
+              <Download className="mr-1 h-4 w-4" /> Download signed PDF
+            </Button>
+          }
+        />
+      </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
         <div className="space-y-6 print:hidden">
