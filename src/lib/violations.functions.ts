@@ -310,6 +310,7 @@ export interface RentalOption {
   start_date: string;
   end_date: string | null;
   reservation_status: string | null;
+  source?: "live" | "migrated";
 }
 
 export const listRentalsForViolation = createServerFn({ method: "GET" })
@@ -334,7 +335,7 @@ export const listRentalsForViolation = createServerFn({ method: "GET" })
     ]);
     const dMap = new Map((drivers ?? []).map((d) => [d.id, d.full_name]));
     const vMap = new Map((vehicles ?? []).map((v) => [v.id, v]));
-    return rows.map((r) => {
+    const liveOptions: RentalOption[] = rows.map((r) => {
       const v = r.vehicle_id ? vMap.get(r.vehicle_id) : undefined;
       return {
         id: r.id,
@@ -346,8 +347,30 @@ export const listRentalsForViolation = createServerFn({ method: "GET" })
         start_date: r.start_date,
         end_date: r.end_date ?? null,
         reservation_status: r.reservation_status ?? null,
+        source: "live",
       };
     });
+
+    // Also include migrated/legacy reservations so manual match can pick them.
+    const { data: legacyRows } = await supabaseAdmin
+      .from("legacy_rentals")
+      .select("id, renter_name, plate, vehicle, start_datetime, end_datetime")
+      .order("start_datetime", { ascending: false, nullsFirst: false })
+      .limit(1000);
+    const legacyOptions: RentalOption[] = (legacyRows ?? []).map((r) => ({
+      id: `LEGACY:${r.id}`,
+      driver_id: null,
+      vehicle_id: null,
+      driver_name: r.renter_name ?? null,
+      vehicle_label: r.vehicle ?? null,
+      plate: r.plate ?? null,
+      start_date: r.start_datetime ? r.start_datetime.slice(0, 10) : "",
+      end_date: r.end_datetime ? r.end_datetime.slice(0, 10) : null,
+      reservation_status: "migrated",
+      source: "migrated",
+    }));
+
+    return [...liveOptions, ...legacyOptions];
   });
 
 export const markViolationDisputed = createServerFn({ method: "POST" })
