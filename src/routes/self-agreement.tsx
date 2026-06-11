@@ -87,7 +87,6 @@ function SelfAgreementPage() {
   const download = () => {
     if (!composedName) { toast.error("Enter the renter's name first"); return; }
     if (!signature) { toast.error("Please sign the agreement first"); return; }
-    toast.info("Choose \u201cSave as PDF\u201d in the print dialog to download the signed agreement.");
     setTimeout(() => window.print(), 300);
   };
 
