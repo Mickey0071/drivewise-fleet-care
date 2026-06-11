@@ -143,7 +143,7 @@ function MigratedReservationsPage() {
         color: p.color || prev.color,
         order_number: p.order_number || prev.order_number,
         pickup_location: p.pickup_location || prev.pickup_location,
-        phone: prev.phone,
+        phone: p.phone || prev.phone,
         start_datetime: p.start_datetime || prev.start_datetime,
         end_datetime: p.end_datetime || prev.end_datetime,
         address: p.address || prev.address,
