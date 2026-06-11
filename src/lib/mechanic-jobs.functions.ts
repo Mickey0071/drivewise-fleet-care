@@ -29,6 +29,7 @@ export interface ChecklistResult {
 export interface PartItem {
   name: string;
   price: number;
+  labor?: number;
 }
 
 export interface MechanicJobRow {
