@@ -12,6 +12,7 @@ export interface MigratedReservation {
   plate: string | null;
   renter_name: string | null;
   pickup_location: string | null;
+  phone: string | null;
   start_datetime: string | null;
   end_datetime: string | null;
   status: string | null;
@@ -27,7 +28,7 @@ export const listMigratedReservations = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin
       .from("legacy_rentals")
       .select(
-        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
+        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, phone, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
       )
       .order("start_datetime", { ascending: false, nullsFirst: false })
       .limit(1000);
@@ -43,6 +44,7 @@ type CreateInput = {
   color?: string | null;
   order_number?: string | null;
   pickup_location?: string | null;
+  phone?: string | null;
   start_datetime?: string | null;
   end_datetime?: string | null;
   status?: string | null;
@@ -69,6 +71,7 @@ export const createMigratedReservation = createServerFn({ method: "POST" })
       color: clean(input.color),
       order_number: clean(input.order_number),
       pickup_location: clean(input.pickup_location),
+      phone: clean(input.phone),
       start_datetime: clean(input.start_datetime),
       end_datetime: clean(input.end_datetime),
       status: clean(input.status) ?? "migrated",
@@ -82,7 +85,7 @@ export const createMigratedReservation = createServerFn({ method: "POST" })
       .from("legacy_rentals")
       .insert(data as never)
       .select(
-        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
+        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, phone, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
       )
       .single();
     if (error) throw new Error(error.message);
@@ -122,6 +125,7 @@ export const updateMigratedReservation = createServerFn({ method: "POST" })
       color: clean(input.color),
       order_number: clean(input.order_number),
       pickup_location: clean(input.pickup_location),
+      phone: clean(input.phone),
       start_datetime: clean(input.start_datetime),
       end_datetime: clean(input.end_datetime),
       address: clean(input.address),
@@ -141,7 +145,7 @@ export const updateMigratedReservation = createServerFn({ method: "POST" })
       .update(patch as never)
       .eq("id", id)
       .select(
-        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
+        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, phone, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
       )
       .single();
     if (error) throw new Error(error.message);
