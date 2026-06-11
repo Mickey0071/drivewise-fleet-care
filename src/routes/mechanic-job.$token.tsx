@@ -36,8 +36,7 @@ function MechanicJobPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [results, setResults] = useState<Record<string, { result: ResultState; notes: string }>>({});
-  const [parts, setParts] = useState<PartItem[]>([{ name: "", price: 0 }]);
-  const [labour, setLabour] = useState("");
+  const [parts, setParts] = useState<PartItem[]>([{ name: "", price: 0, labor: 0 }]);
   const [hours, setHours] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -60,6 +59,7 @@ function MechanicJobPage() {
 
   const items: ChecklistItem[] = data?.found ? data.job.checklistItems : [];
   const partsTotal = useMemo(() => parts.reduce((s, p) => s + (Number(p.price) || 0), 0), [parts]);
+  const laborTotal = useMemo(() => parts.reduce((s, p) => s + (Number(p.labor) || 0), 0), [parts]);
 
   function setItem(id: string, patch: Partial<{ result: ResultState; notes: string }>) {
     setResults((prev) => {
@@ -67,16 +67,16 @@ function MechanicJobPage() {
       return { ...prev, [id]: { ...base, ...patch } };
     });
   }
-  function addPart() { setParts((p) => [...p, { name: "", price: 0 }]); }
+  function addPart() { setParts((p) => [...p, { name: "", price: 0, labor: 0 }]); }
   function removePart(i: number) { setParts((p) => p.filter((_, idx) => idx !== i)); }
   function setPart(i: number, patch: Partial<PartItem>) {
     setParts((p) => p.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
   }
 
   async function handleSubmit() {
-    const labourNum = parseFloat(labour) || 0;
-    const cleanParts = parts.filter((p) => p.name.trim() && (Number(p.price) || 0) >= 0).map((p) => ({ name: p.name.trim(), price: Number(p.price) || 0 }));
+    const cleanParts = parts.filter((p) => p.name.trim() && (Number(p.price) || 0) >= 0).map((p) => ({ name: p.name.trim(), price: Number(p.price) || 0, labor: Number(p.labor) || 0 }));
     const pTotal = cleanParts.reduce((s, p) => s + p.price, 0);
+    const lTotal = cleanParts.reduce((s, p) => s + (p.labor || 0), 0);
     if (items.length > 0) {
       const completedAny = items.some((it) => {
         const r = results[it.id];
@@ -84,7 +84,7 @@ function MechanicJobPage() {
       });
       if (!completedAny) { toast.error("Mark at least one checklist item"); return; }
     }
-    if (!(pTotal > 0) && !(labourNum > 0)) { toast.error("Add parts or a labour estimate"); return; }
+    if (!(pTotal > 0) && !(lTotal > 0)) { toast.error("Add parts or a labour estimate"); return; }
     setSubmitting(true);
     try {
       await submitFn({
@@ -97,7 +97,7 @@ function MechanicJobPage() {
             notes: results[it.id]?.notes ?? "",
           })),
           partsList: cleanParts,
-          labourCost: labourNum,
+          labourCost: 0,
           estimatedHours: hours ? parseFloat(hours) : null,
           mechanicNotes: notes,
         },
