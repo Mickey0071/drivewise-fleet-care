@@ -73,7 +73,7 @@ function MigratedReservationsPage() {
     setEf({
       renter_name: r.renter_name ?? "", plate: r.plate ?? "", vehicle: r.vehicle ?? "",
       year: r.year ?? "", color: r.color ?? "", order_number: r.order_number ?? "",
-      pickup_location: r.pickup_location ?? "", start_datetime: toLocal(r.start_datetime),
+      pickup_location: r.pickup_location ?? "", phone: r.phone ?? "", start_datetime: toLocal(r.start_datetime),
       end_datetime: toLocal(r.end_datetime), address: r.address ?? "",
       dl_number: r.dl_number ?? "", notes: r.notes ?? "",
     });
@@ -129,6 +129,7 @@ function MigratedReservationsPage() {
         color: p.color || prev.color,
         order_number: p.order_number || prev.order_number,
         pickup_location: p.pickup_location || prev.pickup_location,
+        phone: prev.phone,
         start_datetime: p.start_datetime || prev.start_datetime,
         end_datetime: p.end_datetime || prev.end_datetime,
         address: p.address || prev.address,
