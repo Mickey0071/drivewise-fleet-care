@@ -163,7 +163,7 @@ function MigratedReservationsPage() {
     try {
       await create({ data: {
         renter_name: f.renter_name, plate: f.plate, vehicle: f.vehicle, year: f.year, color: f.color,
-        order_number: f.order_number, pickup_location: f.pickup_location,
+        order_number: f.order_number, pickup_location: f.pickup_location, phone: f.phone,
         start_datetime: f.start_datetime || null, end_datetime: f.end_datetime || null,
         address: f.address, dl_number: f.dl_number, notes: f.notes,
       } });
