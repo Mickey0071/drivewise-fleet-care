@@ -28,12 +28,12 @@ export const Route = createFileRoute("/migrated-reservations")({
 
 type Form = {
   renter_name: string; plate: string; vehicle: string; year: string; color: string;
-  order_number: string; pickup_location: string; start_datetime: string; end_datetime: string;
+  order_number: string; pickup_location: string; phone: string; start_datetime: string; end_datetime: string;
   address: string; dl_number: string; notes: string;
 };
 const EMPTY: Form = {
   renter_name: "", plate: "", vehicle: "", year: "", color: "",
-  order_number: "", pickup_location: "", start_datetime: "", end_datetime: "",
+  order_number: "", pickup_location: "", phone: "", start_datetime: "", end_datetime: "",
   address: "", dl_number: "", notes: "",
 };
 
