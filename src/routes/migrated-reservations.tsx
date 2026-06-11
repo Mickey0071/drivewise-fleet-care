@@ -281,9 +281,18 @@ function MigratedReservationsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Database className="h-4 w-4" /> Migrated reservations ({rows.length})
-          </CardTitle>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Database className="h-4 w-4" /> Migrated reservations ({filtered.length}
+              {q && filtered.length !== rows.length ? ` of ${rows.length}` : ""})
+            </CardTitle>
+            <Input
+              className="sm:max-w-xs"
+              placeholder="Search plate, date, vehicle, name, phone…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -292,6 +301,8 @@ function MigratedReservationsPage() {
             </div>
           ) : rows.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No migrated reservations yet.</p>
+          ) : filtered.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No reservations match “{query}”.</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -300,6 +311,7 @@ function MigratedReservationsPage() {
                     <TableHead>Renter</TableHead>
                     <TableHead>Plate</TableHead>
                     <TableHead>Vehicle</TableHead>
+                    <TableHead>Phone</TableHead>
                     <TableHead>Start</TableHead>
                     <TableHead>End</TableHead>
                     <TableHead>Source</TableHead>
@@ -307,11 +319,12 @@ function MigratedReservationsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((r) => (
+                  {filtered.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell className="font-medium">{r.renter_name ?? "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{r.plate ?? "—"}</TableCell>
                       <TableCell className="text-sm">{[r.year, r.color, r.vehicle].filter(Boolean).join(" ") || "—"}</TableCell>
+                      <TableCell className="text-xs">{r.phone ?? "—"}</TableCell>
                       <TableCell className="text-xs">{fmt(r.start_datetime)}</TableCell>
                       <TableCell className="text-xs">{fmt(r.end_datetime)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{r.source ?? "—"}</TableCell>
