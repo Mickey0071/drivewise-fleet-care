@@ -258,6 +258,7 @@ function MigratedReservationsPage() {
           <F label="Color" v={f.color} on={(v) => set("color", v)} />
           <F label="Order # (old system)" v={f.order_number} on={(v) => set("order_number", v)} />
           <F label="Pickup location" v={f.pickup_location} on={(v) => set("pickup_location", v)} />
+          <F label="Phone number" v={f.phone} on={(v) => set("phone", v)} />
           <F label="DL / License number" v={f.dl_number} on={(v) => set("dl_number", v)} />
           <F label="Start" type="datetime-local" v={f.start_datetime} on={(v) => set("start_datetime", v)} />
           <F label="End" type="datetime-local" v={f.end_datetime} on={(v) => set("end_datetime", v)} />
@@ -350,6 +351,7 @@ function MigratedReservationsPage() {
             <F label="Color" v={ef.color} on={(v) => setE("color", v)} />
             <F label="Order # (old system)" v={ef.order_number} on={(v) => setE("order_number", v)} />
             <F label="Pickup location" v={ef.pickup_location} on={(v) => setE("pickup_location", v)} />
+          <F label="Phone number" v={ef.phone} on={(v) => setE("phone", v)} />
             <F label="DL / License number" v={ef.dl_number} on={(v) => setE("dl_number", v)} />
             <F label="Start" type="datetime-local" v={ef.start_datetime} on={(v) => setE("start_datetime", v)} />
             <F label="End" type="datetime-local" v={ef.end_datetime} on={(v) => setE("end_datetime", v)} />
