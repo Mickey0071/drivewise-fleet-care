@@ -52,19 +52,31 @@ export function ViewDiagnosisDialog({ job, onClose }: { job: MechanicJobRow | nu
           {(job.parts_list ?? []).length > 0 ? (
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Parts</h3>
+              <div className="flex gap-2 px-0.5 text-[10px] font-medium uppercase text-muted-foreground">
+                <span className="flex-1">Part</span>
+                <span className="w-16 text-right">Part</span>
+                <span className="w-16 text-right">Labor</span>
+                <span className="w-16 text-right">Total</span>
+              </div>
               <div className="space-y-1">
-                {(job.parts_list ?? []).map((p, i) => (
-                  <div key={i} className="flex justify-between text-xs">
-                    <span>{p.name}</span><span>{money(p.price)}</span>
-                  </div>
-                ))}
+                {(job.parts_list ?? []).map((p, i) => {
+                  const labor = Number((p as any).labor) || 0;
+                  return (
+                    <div key={i} className="flex gap-2 text-xs">
+                      <span className="flex-1">{p.name}</span>
+                      <span className="w-16 text-right tabular-nums">{money(p.price)}</span>
+                      <span className="w-16 text-right tabular-nums">{money(labor)}</span>
+                      <span className="w-16 text-right font-medium tabular-nums">{money((Number(p.price) || 0) + labor)}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ) : null}
 
           <div className="space-y-1 border-t pt-2 text-xs">
             <div className="flex justify-between"><span>Parts total</span><span>{money(partsTotal)}</span></div>
-            <div className="flex justify-between"><span>Labour{job.estimated_hours ? ` (${job.estimated_hours} hrs)` : ""}</span><span>{money(job.labour_cost)}</span></div>
+            <div className="flex justify-between"><span>Labor total{job.estimated_hours ? ` (${job.estimated_hours} hrs)` : ""}</span><span>{money(job.labour_cost)}</span></div>
             <div className="flex justify-between font-semibold"><span>Total estimate</span><span>{money(total)}</span></div>
           </div>
 

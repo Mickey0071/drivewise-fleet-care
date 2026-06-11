@@ -36,8 +36,7 @@ function MechanicJobPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [results, setResults] = useState<Record<string, { result: ResultState; notes: string }>>({});
-  const [parts, setParts] = useState<PartItem[]>([{ name: "", price: 0 }]);
-  const [labour, setLabour] = useState("");
+  const [parts, setParts] = useState<PartItem[]>([{ name: "", price: 0, labor: 0 }]);
   const [hours, setHours] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -60,6 +59,7 @@ function MechanicJobPage() {
 
   const items: ChecklistItem[] = data?.found ? data.job.checklistItems : [];
   const partsTotal = useMemo(() => parts.reduce((s, p) => s + (Number(p.price) || 0), 0), [parts]);
+  const laborTotal = useMemo(() => parts.reduce((s, p) => s + (Number(p.labor) || 0), 0), [parts]);
 
   function setItem(id: string, patch: Partial<{ result: ResultState; notes: string }>) {
     setResults((prev) => {
@@ -67,16 +67,16 @@ function MechanicJobPage() {
       return { ...prev, [id]: { ...base, ...patch } };
     });
   }
-  function addPart() { setParts((p) => [...p, { name: "", price: 0 }]); }
+  function addPart() { setParts((p) => [...p, { name: "", price: 0, labor: 0 }]); }
   function removePart(i: number) { setParts((p) => p.filter((_, idx) => idx !== i)); }
   function setPart(i: number, patch: Partial<PartItem>) {
     setParts((p) => p.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
   }
 
   async function handleSubmit() {
-    const labourNum = parseFloat(labour) || 0;
-    const cleanParts = parts.filter((p) => p.name.trim() && (Number(p.price) || 0) >= 0).map((p) => ({ name: p.name.trim(), price: Number(p.price) || 0 }));
+    const cleanParts = parts.filter((p) => p.name.trim() && (Number(p.price) || 0) >= 0).map((p) => ({ name: p.name.trim(), price: Number(p.price) || 0, labor: Number(p.labor) || 0 }));
     const pTotal = cleanParts.reduce((s, p) => s + p.price, 0);
+    const lTotal = cleanParts.reduce((s, p) => s + (p.labor || 0), 0);
     if (items.length > 0) {
       const completedAny = items.some((it) => {
         const r = results[it.id];
@@ -84,7 +84,7 @@ function MechanicJobPage() {
       });
       if (!completedAny) { toast.error("Mark at least one checklist item"); return; }
     }
-    if (!(pTotal > 0) && !(labourNum > 0)) { toast.error("Add parts or a labour estimate"); return; }
+    if (!(pTotal > 0) && !(lTotal > 0)) { toast.error("Add parts or a labour estimate"); return; }
     setSubmitting(true);
     try {
       await submitFn({
@@ -97,7 +97,7 @@ function MechanicJobPage() {
             notes: results[it.id]?.notes ?? "",
           })),
           partsList: cleanParts,
-          labourCost: labourNum,
+          labourCost: 0,
           estimatedHours: hours ? parseFloat(hours) : null,
           mechanicNotes: notes,
         },
@@ -202,15 +202,25 @@ function MechanicJobPage() {
         <Card className="p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold">Parts Needed</h2>
-            <Badge variant="secondary" className="text-xs">Total {money(partsTotal)}</Badge>
+            <Badge variant="secondary" className="text-xs">Total {money(partsTotal + laborTotal)}</Badge>
+          </div>
+          <div className="mb-1 flex gap-2 px-1 text-[10px] font-medium uppercase text-muted-foreground">
+            <span className="flex-1">Part</span>
+            <span className="w-20 text-right">Part $</span>
+            <span className="w-20 text-right">Labor $</span>
+            <span className="w-20 text-right">Line total</span>
+            <span className="w-8" />
           </div>
           <div className="space-y-2">
             {parts.map((p, i) => (
-              <div key={i} className="flex gap-2">
-                <Input className="h-8 flex-1 text-xs" placeholder="Part name"
+              <div key={i} className="flex items-center gap-2">
+                <Input className="h-8 flex-1 text-xs" placeholder="Part name (e.g. Drive shaft)"
                   value={p.name} onChange={(e) => setPart(i, { name: e.target.value })} />
-                <Input className="h-8 w-24 text-xs" type="number" min="0" step="0.01" placeholder="Price"
+                <Input className="h-8 w-20 text-right text-xs" type="number" min="0" step="0.01" placeholder="0"
                   value={p.price ? String(p.price) : ""} onChange={(e) => setPart(i, { price: parseFloat(e.target.value) || 0 })} />
+                <Input className="h-8 w-20 text-right text-xs" type="number" min="0" step="0.01" placeholder="0"
+                  value={p.labor ? String(p.labor) : ""} onChange={(e) => setPart(i, { labor: parseFloat(e.target.value) || 0 })} />
+                <span className="w-20 text-right text-xs font-medium tabular-nums">{money((Number(p.price) || 0) + (Number(p.labor) || 0))}</span>
                 <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => removePart(i)}>
                   <X className="h-4 w-4" />
                 </Button>
@@ -220,17 +230,17 @@ function MechanicJobPage() {
           <Button type="button" size="sm" variant="outline" className="mt-2" onClick={addPart}>
             <Plus className="h-4 w-4" /> Add Part
           </Button>
+          <div className="mt-3 space-y-1 border-t pt-2 text-xs">
+            <div className="flex justify-between"><span className="text-muted-foreground">Parts total</span><span className="font-medium tabular-nums">{money(partsTotal)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Labor total</span><span className="font-medium tabular-nums">{money(laborTotal)}</span></div>
+          </div>
         </Card>
 
         <Card className="space-y-3 p-4">
-          <h2 className="text-sm font-semibold">Labour Estimate</h2>
+          <h2 className="text-sm font-semibold">Estimated Hours</h2>
           <div className="flex gap-2">
             <div className="flex-1">
-              <Label className="text-[11px]">Labour cost $</Label>
-              <Input className="mt-1 h-8" type="number" min="0" step="0.01" value={labour} onChange={(e) => setLabour(e.target.value)} />
-            </div>
-            <div className="flex-1">
-              <Label className="text-[11px]">Estimated hours</Label>
+              <Label className="text-[11px]">Total estimated hours</Label>
               <Input className="mt-1 h-8" type="number" min="0" step="0.5" value={hours} onChange={(e) => setHours(e.target.value)} />
             </div>
           </div>
@@ -244,7 +254,7 @@ function MechanicJobPage() {
 
         <div className="flex justify-between rounded-md bg-background px-3 py-2 text-sm font-medium shadow-sm">
           <span>Total estimate</span>
-          <span>{money(partsTotal + (parseFloat(labour) || 0))}</span>
+          <span>{money(partsTotal + laborTotal)}</span>
         </div>
 
         <Button className="w-full" disabled={submitting} onClick={handleSubmit}>
