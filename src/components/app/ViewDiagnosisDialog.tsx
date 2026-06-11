@@ -14,7 +14,6 @@ function fmt(d: string | null | undefined) {
 export function ViewDiagnosisDialog({ job, onClose }: { job: MechanicJobRow | null; onClose: () => void }) {
   if (!job) return null;
   const partsTotal = (job.parts_list ?? []).reduce((s, p) => s + (Number(p.price) || 0), 0);
-  const partsLaborTotal = (job.parts_list ?? []).reduce((s, p) => s + (Number((p as any).labor) || 0), 0);
   const total = partsTotal + (Number(job.labour_cost) || 0);
   return (
     <Dialog open={!!job} onOpenChange={(o) => { if (!o) onClose(); }}>
