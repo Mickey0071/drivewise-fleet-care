@@ -998,7 +998,7 @@ function RentalsPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, reservation #, or date…"
+            placeholder="Search by name, plate, vehicle, reservation #, or date…"
             className="pl-9"
           />
         </div>
