@@ -10,6 +10,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import type { Driver, Rental, Vehicle } from "@/lib/mock/data";
 import { toast } from "sonner";
+import { generateSelfAgreementPdf } from "@/lib/self-agreement-pdf.functions";
 
 export const Route = createFileRoute("/self-agreement")({
   head: () => ({ meta: [{ title: "Rental Agreement Violation — Camauto Rentals" }] }),
@@ -46,6 +47,7 @@ const EMPTY: FormState = {
 function SelfAgreementPage() {
   const [f, setF] = useState<FormState>(EMPTY);
   const [signature, setSignature] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   const set = (k: keyof FormState, v: string) => setF((prev) => ({ ...prev, [k]: v }) as FormState);
 
@@ -84,10 +86,45 @@ function SelfAgreementPage() {
     signedAt: signature ? new Date().toISOString() : undefined,
   }), [f, signature, composedName]);
 
-  const download = () => {
+  const download = async () => {
     if (!composedName) { toast.error("Enter the renter's name first"); return; }
     if (!signature) { toast.error("Please sign the agreement first"); return; }
-    setTimeout(() => window.print(), 300);
+    setDownloading(true);
+    try {
+      const { base64 } = await generateSelfAgreementPdf({
+        data: {
+          firstName: f.firstName, middleInitial: f.middleInitial, lastName: f.lastName,
+          fullName: composedName,
+          dateOfBirth: f.dateOfBirth, licenseNumber: f.licenseNumber, dlState: f.dlState, licenseExpiry: f.licenseExpiry,
+          phone: f.phone, email: f.email,
+          streetAddress: f.streetAddress, aptUnit: f.aptUnit, city: f.city, state: f.state, zipCode: f.zipCode,
+          altContactName: f.altContactName, altContactPhone: f.altContactPhone,
+          year: f.year, make: f.make, model: f.model, color: f.color, plate: f.plate, vin: f.vin,
+          fuelLevelPickup: f.fuelLevelPickup, ezPassTag: f.ezPassTag,
+          billingPeriod: f.billingPeriod,
+          rate: f.rate, depositPaid: f.depositPaid, startDate: f.startDate, endDate: f.endDate,
+          signedAt: new Date().toISOString(),
+          signatureDataUrl: signature,
+        },
+      });
+      const bin = atob(base64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      const blob = new Blob([arr], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `rental-agreement-${composedName.replace(/\s+/g, "-").toLowerCase()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("[self-agreement] download failed", e);
+      toast.error("Could not generate the agreement PDF. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
   };
 
   return (
@@ -103,8 +140,8 @@ function SelfAgreementPage() {
                   <Database className="mr-1 h-4 w-4" /> Migrated Reservations
                 </Link>
               </Button>
-              <Button onClick={download}>
-                <Download className="mr-1 h-4 w-4" /> Download signed PDF
+              <Button onClick={download} disabled={downloading}>
+                <Download className="mr-1 h-4 w-4" /> {downloading ? "Generating…" : "Download signed PDF"}
               </Button>
             </div>
           }
