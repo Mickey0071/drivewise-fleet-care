@@ -259,10 +259,11 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
       }))
       .slice(0, 40);
     const parts = (Array.isArray(d.partsList) ? d.partsList : [])
-      .map((p) => ({ name: String(p.name ?? "").slice(0, 200), price: Number(p.price) || 0 }))
+      .map((p) => ({ name: String(p.name ?? "").slice(0, 200), price: Number(p.price) || 0, labor: Number(p.labor) || 0 }))
       .filter((p) => p.name.trim().length > 0 && p.price >= 0)
       .slice(0, 50);
-    const labour = d.labourCost == null ? 0 : Number(d.labourCost);
+    const partsLaborTotal = parts.reduce((s, p) => s + (Number(p.labor) || 0), 0);
+    const labour = (d.labourCost == null ? 0 : Number(d.labourCost)) + partsLaborTotal;
     if (!Number.isFinite(labour) || labour < 0 || labour > 1000000) throw new Error("Invalid labour cost");
     const hours = d.estimatedHours == null ? null : Number(d.estimatedHours);
     if (hours != null && (!Number.isFinite(hours) || hours < 0 || hours > 1000)) throw new Error("Invalid hours");
