@@ -868,6 +868,7 @@ export type Database = {
           id: string
           notes: string | null
           order_number: string | null
+          phone: string | null
           pickup_location: string | null
           plate: string | null
           renter_name: string | null
@@ -887,6 +888,7 @@ export type Database = {
           id?: string
           notes?: string | null
           order_number?: string | null
+          phone?: string | null
           pickup_location?: string | null
           plate?: string | null
           renter_name?: string | null
@@ -906,6 +908,7 @@ export type Database = {
           id?: string
           notes?: string | null
           order_number?: string | null
+          phone?: string | null
           pickup_location?: string | null
           plate?: string | null
           renter_name?: string | null

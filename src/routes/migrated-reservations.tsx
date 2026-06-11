@@ -28,12 +28,12 @@ export const Route = createFileRoute("/migrated-reservations")({
 
 type Form = {
   renter_name: string; plate: string; vehicle: string; year: string; color: string;
-  order_number: string; pickup_location: string; start_datetime: string; end_datetime: string;
+  order_number: string; pickup_location: string; phone: string; start_datetime: string; end_datetime: string;
   address: string; dl_number: string; notes: string;
 };
 const EMPTY: Form = {
   renter_name: "", plate: "", vehicle: "", year: "", color: "",
-  order_number: "", pickup_location: "", start_datetime: "", end_datetime: "",
+  order_number: "", pickup_location: "", phone: "", start_datetime: "", end_datetime: "",
   address: "", dl_number: "", notes: "",
 };
 
@@ -56,9 +56,23 @@ function MigratedReservationsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [ef, setEf] = useState<Form>(EMPTY);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [query, setQuery] = useState("");
 
   const set = (k: keyof Form, v: string) => setF((p) => ({ ...p, [k]: v }));
   const setE = (k: keyof Form, v: string) => setEf((p) => ({ ...p, [k]: v }));
+
+  const q = query.trim().toLowerCase();
+  const filtered = !q
+    ? rows
+    : rows.filter((r) =>
+        [
+          r.renter_name, r.plate, r.vehicle, r.year, r.color, r.phone,
+          r.order_number, r.dl_number, r.pickup_location, r.address, r.notes,
+          fmt(r.start_datetime), fmt(r.end_datetime),
+        ]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q)),
+      );
 
   const toLocal = (s: string | null) => {
     if (!s) return "";
@@ -73,7 +87,7 @@ function MigratedReservationsPage() {
     setEf({
       renter_name: r.renter_name ?? "", plate: r.plate ?? "", vehicle: r.vehicle ?? "",
       year: r.year ?? "", color: r.color ?? "", order_number: r.order_number ?? "",
-      pickup_location: r.pickup_location ?? "", start_datetime: toLocal(r.start_datetime),
+      pickup_location: r.pickup_location ?? "", phone: r.phone ?? "", start_datetime: toLocal(r.start_datetime),
       end_datetime: toLocal(r.end_datetime), address: r.address ?? "",
       dl_number: r.dl_number ?? "", notes: r.notes ?? "",
     });
@@ -129,6 +143,7 @@ function MigratedReservationsPage() {
         color: p.color || prev.color,
         order_number: p.order_number || prev.order_number,
         pickup_location: p.pickup_location || prev.pickup_location,
+        phone: p.phone || prev.phone,
         start_datetime: p.start_datetime || prev.start_datetime,
         end_datetime: p.end_datetime || prev.end_datetime,
         address: p.address || prev.address,
@@ -162,7 +177,7 @@ function MigratedReservationsPage() {
     try {
       await create({ data: {
         renter_name: f.renter_name, plate: f.plate, vehicle: f.vehicle, year: f.year, color: f.color,
-        order_number: f.order_number, pickup_location: f.pickup_location,
+        order_number: f.order_number, pickup_location: f.pickup_location, phone: f.phone,
         start_datetime: f.start_datetime || null, end_datetime: f.end_datetime || null,
         address: f.address, dl_number: f.dl_number, notes: f.notes,
       } });
@@ -243,6 +258,7 @@ function MigratedReservationsPage() {
           <F label="Color" v={f.color} on={(v) => set("color", v)} />
           <F label="Order # (old system)" v={f.order_number} on={(v) => set("order_number", v)} />
           <F label="Pickup location" v={f.pickup_location} on={(v) => set("pickup_location", v)} />
+          <F label="Phone number" v={f.phone} on={(v) => set("phone", v)} />
           <F label="DL / License number" v={f.dl_number} on={(v) => set("dl_number", v)} />
           <F label="Start" type="datetime-local" v={f.start_datetime} on={(v) => set("start_datetime", v)} />
           <F label="End" type="datetime-local" v={f.end_datetime} on={(v) => set("end_datetime", v)} />
@@ -265,9 +281,18 @@ function MigratedReservationsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Database className="h-4 w-4" /> Migrated reservations ({rows.length})
-          </CardTitle>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Database className="h-4 w-4" /> Migrated reservations ({filtered.length}
+              {q && filtered.length !== rows.length ? ` of ${rows.length}` : ""})
+            </CardTitle>
+            <Input
+              className="sm:max-w-xs"
+              placeholder="Search plate, date, vehicle, name, phone…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -276,6 +301,8 @@ function MigratedReservationsPage() {
             </div>
           ) : rows.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">No migrated reservations yet.</p>
+          ) : filtered.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">No reservations match “{query}”.</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -284,6 +311,7 @@ function MigratedReservationsPage() {
                     <TableHead>Renter</TableHead>
                     <TableHead>Plate</TableHead>
                     <TableHead>Vehicle</TableHead>
+                    <TableHead>Phone</TableHead>
                     <TableHead>Start</TableHead>
                     <TableHead>End</TableHead>
                     <TableHead>Source</TableHead>
@@ -291,11 +319,12 @@ function MigratedReservationsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((r) => (
+                  {filtered.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell className="font-medium">{r.renter_name ?? "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{r.plate ?? "—"}</TableCell>
                       <TableCell className="text-sm">{[r.year, r.color, r.vehicle].filter(Boolean).join(" ") || "—"}</TableCell>
+                      <TableCell className="text-xs">{r.phone ?? "—"}</TableCell>
                       <TableCell className="text-xs">{fmt(r.start_datetime)}</TableCell>
                       <TableCell className="text-xs">{fmt(r.end_datetime)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{r.source ?? "—"}</TableCell>
@@ -335,6 +364,7 @@ function MigratedReservationsPage() {
             <F label="Color" v={ef.color} on={(v) => setE("color", v)} />
             <F label="Order # (old system)" v={ef.order_number} on={(v) => setE("order_number", v)} />
             <F label="Pickup location" v={ef.pickup_location} on={(v) => setE("pickup_location", v)} />
+          <F label="Phone number" v={ef.phone} on={(v) => setE("phone", v)} />
             <F label="DL / License number" v={ef.dl_number} on={(v) => setE("dl_number", v)} />
             <F label="Start" type="datetime-local" v={ef.start_datetime} on={(v) => setE("start_datetime", v)} />
             <F label="End" type="datetime-local" v={ef.end_datetime} on={(v) => setE("end_datetime", v)} />

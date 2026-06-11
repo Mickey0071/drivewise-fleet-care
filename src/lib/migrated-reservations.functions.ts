@@ -12,6 +12,7 @@ export interface MigratedReservation {
   plate: string | null;
   renter_name: string | null;
   pickup_location: string | null;
+  phone: string | null;
   start_datetime: string | null;
   end_datetime: string | null;
   status: string | null;
@@ -27,7 +28,7 @@ export const listMigratedReservations = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin
       .from("legacy_rentals")
       .select(
-        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
+        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, phone, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
       )
       .order("start_datetime", { ascending: false, nullsFirst: false })
       .limit(1000);
@@ -43,6 +44,7 @@ type CreateInput = {
   color?: string | null;
   order_number?: string | null;
   pickup_location?: string | null;
+  phone?: string | null;
   start_datetime?: string | null;
   end_datetime?: string | null;
   status?: string | null;
@@ -69,6 +71,7 @@ export const createMigratedReservation = createServerFn({ method: "POST" })
       color: clean(input.color),
       order_number: clean(input.order_number),
       pickup_location: clean(input.pickup_location),
+      phone: clean(input.phone),
       start_datetime: clean(input.start_datetime),
       end_datetime: clean(input.end_datetime),
       status: clean(input.status) ?? "migrated",
@@ -82,7 +85,7 @@ export const createMigratedReservation = createServerFn({ method: "POST" })
       .from("legacy_rentals")
       .insert(data as never)
       .select(
-        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
+        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, phone, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
       )
       .single();
     if (error) throw new Error(error.message);
@@ -122,6 +125,7 @@ export const updateMigratedReservation = createServerFn({ method: "POST" })
       color: clean(input.color),
       order_number: clean(input.order_number),
       pickup_location: clean(input.pickup_location),
+      phone: clean(input.phone),
       start_datetime: clean(input.start_datetime),
       end_datetime: clean(input.end_datetime),
       address: clean(input.address),
@@ -141,7 +145,7 @@ export const updateMigratedReservation = createServerFn({ method: "POST" })
       .update(patch as never)
       .eq("id", id)
       .select(
-        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
+        "id, source, order_number, vehicle, year, color, plate, renter_name, pickup_location, phone, start_datetime, end_datetime, status, notes, address, dl_number, created_at",
       )
       .single();
     if (error) throw new Error(error.message);
@@ -156,6 +160,7 @@ export interface ParsedReservation {
   color: string;
   order_number: string;
   pickup_location: string;
+  phone: string;
   start_datetime: string;
   end_datetime: string;
   address: string;
@@ -196,7 +201,7 @@ export const parseReservationText = createServerFn({ method: "POST" })
           {
             role: "system",
             content:
-              'You extract rental reservation data from pasted text (e.g. Fleet Finesse). Return ONLY a compact JSON object in this exact shape: {"renter_name":string,"plate":string,"vehicle":string,"year":string,"color":string,"order_number":string,"pickup_location":string,"start_datetime":string,"end_datetime":string,"address":string,"dl_number":string,"notes":string}. "vehicle" is make+model (e.g. "Hyundai Elantra"). "plate" is the license plate/tag. Keep start_datetime/end_datetime in their original human format (e.g. "05/24/2026 9:00 AM"). If a field is not present, use an empty string. Do not invent a plate if none is given. No prose, no code fences.',
+              'You extract rental reservation data from pasted text (e.g. Fleet Finesse). Return ONLY a compact JSON object in this exact shape: {"renter_name":string,"plate":string,"vehicle":string,"year":string,"color":string,"order_number":string,"pickup_location":string,"phone":string,"start_datetime":string,"end_datetime":string,"address":string,"dl_number":string,"notes":string}. "vehicle" is make+model (e.g. "Hyundai Elantra"). "plate" is the license plate/tag. "phone" is the renter phone number. Keep start_datetime/end_datetime in their original human format (e.g. "05/24/2026 9:00 AM"). If a field is not present, use an empty string. Do not invent a plate if none is given. No prose, no code fences.',
           },
           { role: "user", content: data.text },
         ],
@@ -224,6 +229,7 @@ export const parseReservationText = createServerFn({ method: "POST" })
       color: s(p.color),
       order_number: s(p.order_number),
       pickup_location: s(p.pickup_location),
+      phone: s(p.phone),
       start_datetime: toLocalDt(s(p.start_datetime)),
       end_datetime: toLocalDt(s(p.end_datetime)),
       address: s(p.address),
@@ -273,7 +279,7 @@ export const bulkImportReservations = createServerFn({ method: "POST" })
           {
             role: "system",
             content:
-              'You extract one OR MORE rental reservations from pasted text (e.g. Fleet Finesse). The paste may contain many reservations. Return ONLY a JSON array, each item in this exact shape: {"renter_name":string,"plate":string,"vehicle":string,"year":string,"color":string,"order_number":string,"pickup_location":string,"start_datetime":string,"end_datetime":string,"address":string,"dl_number":string,"notes":string}. "vehicle" is make+model (e.g. "Hyundai Elantra"). "plate" is the license plate/tag. Keep start_datetime/end_datetime in their original human format (e.g. "05/24/2026 9:00 AM"). If a field is not present, use an empty string. Do not invent a plate if none is given. Return one array item per distinct reservation. No prose, no code fences.',
+              'You extract one OR MORE rental reservations from pasted text (e.g. Fleet Finesse). The paste may contain many reservations. Return ONLY a JSON array, each item in this exact shape: {"renter_name":string,"plate":string,"vehicle":string,"year":string,"color":string,"order_number":string,"pickup_location":string,"phone":string,"start_datetime":string,"end_datetime":string,"address":string,"dl_number":string,"notes":string}. "vehicle" is make+model (e.g. "Hyundai Elantra"). "plate" is the license plate/tag. "phone" is the renter phone number. Keep start_datetime/end_datetime in their original human format (e.g. "05/24/2026 9:00 AM"). If a field is not present, use an empty string. Do not invent a plate if none is given. Return one array item per distinct reservation. No prose, no code fences.',
           },
           { role: "user", content: data.text },
         ],
@@ -305,6 +311,7 @@ export const bulkImportReservations = createServerFn({ method: "POST" })
         color: s(p.color) || null,
         order_number: s(p.order_number) || null,
         pickup_location: s(p.pickup_location) || null,
+        phone: s(p.phone) || null,
         start_datetime: toIso(s(p.start_datetime)),
         end_datetime: toIso(s(p.end_datetime)),
         status: "migrated",
