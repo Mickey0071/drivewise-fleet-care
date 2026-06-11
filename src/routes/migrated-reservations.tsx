@@ -56,9 +56,23 @@ function MigratedReservationsPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [ef, setEf] = useState<Form>(EMPTY);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [query, setQuery] = useState("");
 
   const set = (k: keyof Form, v: string) => setF((p) => ({ ...p, [k]: v }));
   const setE = (k: keyof Form, v: string) => setEf((p) => ({ ...p, [k]: v }));
+
+  const q = query.trim().toLowerCase();
+  const filtered = !q
+    ? rows
+    : rows.filter((r) =>
+        [
+          r.renter_name, r.plate, r.vehicle, r.year, r.color, r.phone,
+          r.order_number, r.dl_number, r.pickup_location, r.address, r.notes,
+          fmt(r.start_datetime), fmt(r.end_datetime),
+        ]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q)),
+      );
 
   const toLocal = (s: string | null) => {
     if (!s) return "";
