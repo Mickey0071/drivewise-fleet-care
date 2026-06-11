@@ -160,6 +160,7 @@ export interface ParsedReservation {
   color: string;
   order_number: string;
   pickup_location: string;
+  phone: string;
   start_datetime: string;
   end_datetime: string;
   address: string;
@@ -200,7 +201,7 @@ export const parseReservationText = createServerFn({ method: "POST" })
           {
             role: "system",
             content:
-              'You extract rental reservation data from pasted text (e.g. Fleet Finesse). Return ONLY a compact JSON object in this exact shape: {"renter_name":string,"plate":string,"vehicle":string,"year":string,"color":string,"order_number":string,"pickup_location":string,"start_datetime":string,"end_datetime":string,"address":string,"dl_number":string,"notes":string}. "vehicle" is make+model (e.g. "Hyundai Elantra"). "plate" is the license plate/tag. Keep start_datetime/end_datetime in their original human format (e.g. "05/24/2026 9:00 AM"). If a field is not present, use an empty string. Do not invent a plate if none is given. No prose, no code fences.',
+              'You extract rental reservation data from pasted text (e.g. Fleet Finesse). Return ONLY a compact JSON object in this exact shape: {"renter_name":string,"plate":string,"vehicle":string,"year":string,"color":string,"order_number":string,"pickup_location":string,"phone":string,"start_datetime":string,"end_datetime":string,"address":string,"dl_number":string,"notes":string}. "vehicle" is make+model (e.g. "Hyundai Elantra"). "plate" is the license plate/tag. "phone" is the renter phone number. Keep start_datetime/end_datetime in their original human format (e.g. "05/24/2026 9:00 AM"). If a field is not present, use an empty string. Do not invent a plate if none is given. No prose, no code fences.',
           },
           { role: "user", content: data.text },
         ],
@@ -228,6 +229,7 @@ export const parseReservationText = createServerFn({ method: "POST" })
       color: s(p.color),
       order_number: s(p.order_number),
       pickup_location: s(p.pickup_location),
+      phone: s(p.phone),
       start_datetime: toLocalDt(s(p.start_datetime)),
       end_datetime: toLocalDt(s(p.end_datetime)),
       address: s(p.address),
@@ -277,7 +279,7 @@ export const bulkImportReservations = createServerFn({ method: "POST" })
           {
             role: "system",
             content:
-              'You extract one OR MORE rental reservations from pasted text (e.g. Fleet Finesse). The paste may contain many reservations. Return ONLY a JSON array, each item in this exact shape: {"renter_name":string,"plate":string,"vehicle":string,"year":string,"color":string,"order_number":string,"pickup_location":string,"start_datetime":string,"end_datetime":string,"address":string,"dl_number":string,"notes":string}. "vehicle" is make+model (e.g. "Hyundai Elantra"). "plate" is the license plate/tag. Keep start_datetime/end_datetime in their original human format (e.g. "05/24/2026 9:00 AM"). If a field is not present, use an empty string. Do not invent a plate if none is given. Return one array item per distinct reservation. No prose, no code fences.',
+              'You extract one OR MORE rental reservations from pasted text (e.g. Fleet Finesse). The paste may contain many reservations. Return ONLY a JSON array, each item in this exact shape: {"renter_name":string,"plate":string,"vehicle":string,"year":string,"color":string,"order_number":string,"pickup_location":string,"phone":string,"start_datetime":string,"end_datetime":string,"address":string,"dl_number":string,"notes":string}. "vehicle" is make+model (e.g. "Hyundai Elantra"). "plate" is the license plate/tag. "phone" is the renter phone number. Keep start_datetime/end_datetime in their original human format (e.g. "05/24/2026 9:00 AM"). If a field is not present, use an empty string. Do not invent a plate if none is given. Return one array item per distinct reservation. No prose, no code fences.',
           },
           { role: "user", content: data.text },
         ],
@@ -309,6 +311,7 @@ export const bulkImportReservations = createServerFn({ method: "POST" })
         color: s(p.color) || null,
         order_number: s(p.order_number) || null,
         pickup_location: s(p.pickup_location) || null,
+        phone: s(p.phone) || null,
         start_datetime: toIso(s(p.start_datetime)),
         end_datetime: toIso(s(p.end_datetime)),
         status: "migrated",
