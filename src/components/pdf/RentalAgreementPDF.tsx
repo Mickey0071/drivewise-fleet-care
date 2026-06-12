@@ -227,27 +227,27 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   const drawFieldsRow = (
     fields: Array<{ label: string; value: string; widthPct: number }>,
   ) => {
-    ensureSpace(22);
+    ensureSpace(17);
     let x = left;
     fields.forEach((f) => {
       const w = (contentW * f.widthPct) / 100;
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.5);
+      doc.setFontSize(6);
       doc.setTextColor(...RGB_MUTED);
-      doc.text(f.label.toUpperCase(), x + 2, y + 5);
+      doc.text(f.label.toUpperCase(), x + 2, y + 4);
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
+      doc.setFontSize(7.5);
       doc.setTextColor(...RGB_TEXT);
       const v = f.value || " ";
       const wrapped = doc.splitTextToSize(v, w - 4);
-      doc.text(wrapped, x + 2, y + 13);
+      doc.text(wrapped, x + 2, y + 11);
       // bottom underline
       doc.setDrawColor(68, 68, 68);
       doc.setLineWidth(0.4);
-      doc.line(x + 2, y + 14, x + w - 2, y + 14);
+      doc.line(x + 2, y + 12, x + w - 2, y + 12);
       x += w;
     });
-    y += 15;
+    y += 12;
   };
 
   // ---- RENTER ----
