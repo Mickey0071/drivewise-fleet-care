@@ -472,6 +472,8 @@ function ViolationsPage() {
 
       <ViolationSearchSection onCreated={refresh} />
 
+      <BureauContactsCard />
+
       {readyForTransfer.length > 0 && (
         <Card className="mb-4 border-amber-300 bg-amber-50">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
