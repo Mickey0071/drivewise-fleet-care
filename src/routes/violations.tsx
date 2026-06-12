@@ -772,9 +772,13 @@ function NewViolationDialog({
     try {
       const r = await lookup({ data: { plate: p, date: d } });
       setLookupResult(r);
-      if (r.found && !r.ambiguous) {
-        // Exactly one rental → auto-select renter
-        setSelectedRentalId(r.matches[0].rental.id);
+      // Combined pool of overlapping candidates (live + migrated/legacy).
+      const liveIds = r.matches.map((m) => m.rental.id);
+      const legacyIds = (r.legacyMatches ?? []).map((m) => `LEGACY:${m.id}`);
+      const allIds = [...liveIds, ...legacyIds];
+      if (allIds.length === 1) {
+        // Exactly one rental/reservation covers this plate + date → auto-select.
+        setSelectedRentalId(allIds[0]);
       } else {
         setSelectedRentalId("");
       }
