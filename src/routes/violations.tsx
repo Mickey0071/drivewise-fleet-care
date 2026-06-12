@@ -727,6 +727,15 @@ function ViolationsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <EditViolationDialog
+        violation={editFor}
+        onClose={() => setEditFor(null)}
+        onDone={() => {
+          refresh();
+          setEditFor(null);
+        }}
+      />
     </div>
   );
 }
