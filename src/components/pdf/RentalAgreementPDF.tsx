@@ -507,9 +507,9 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
   doc.setTextColor(...RGB_MUTED);
-  doc.text("RENTER SIGNATURE", left, sigTop + sigBoxH + 10);
+  doc.text("RENTER SIGNATURE", left, sigTop + sigBoxH + 9);
 
-  y = sigTop + sigBoxH + 18;
+  y = sigTop + sigBoxH + 15;
 
   // Print name / date rows
   drawFieldsRow([
