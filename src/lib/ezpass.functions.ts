@@ -445,6 +445,12 @@ export const downloadAffidavitsZip = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ batchId: z.string().min(1).max(64) }).parse(input))
   .handler(async ({ data }): Promise<{ filename: string; base64: string }> => {
+    return downloadAffidavitsZipImpl(data.batchId);
+  });
+
+async function downloadAffidavitsZipImpl(batchId: string): Promise<{ filename: string; base64: string }> {
+  const data = { batchId };
+  {
     const JSZip = (await import("jszip")).default;
     const { data: items } = await supabaseAdmin
       .from("ezpass_batch_items")
