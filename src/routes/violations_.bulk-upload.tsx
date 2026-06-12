@@ -20,6 +20,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +39,7 @@ import {
   downloadAffidavitsZip,
   type EzpassBatchItem,
 } from "@/lib/ezpass.functions";
+import { debugEzpassMatch } from "@/lib/ezpass.functions";
 import { createManualEzpassBatch } from "@/lib/ezpass.functions";
 import { loadPdf } from "@/lib/pdf-to-image";
 
