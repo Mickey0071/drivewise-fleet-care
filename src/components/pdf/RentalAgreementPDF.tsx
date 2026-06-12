@@ -342,8 +342,8 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     const gutter = 14;
     const colW = (contentW - gutter) / 2;
     const titleSize = 7;
-    const bodySize = 6.1;
-    const lhFactor = 1.12;
+    const bodySize = 5.7;
+    const lhFactor = 1.1;
     const titleLH = titleSize * lhFactor;
     const bodyLH = bodySize * lhFactor;
     doc.setLineHeightFactor(lhFactor);
