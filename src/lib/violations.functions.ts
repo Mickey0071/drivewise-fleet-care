@@ -69,19 +69,21 @@ export const listViolations = createServerFn({ method: "GET" })
     const vehicleIds = Array.from(new Set(rows.map((r) => r.vehicle_id).filter(Boolean))) as string[];
     const [{ data: drivers }, { data: vehicles }] = await Promise.all([
       driverIds.length
-        ? supabaseAdmin.from("drivers").select("id, full_name").in("id", driverIds)
-        : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
+        ? supabaseAdmin.from("drivers").select("id, full_name, phone").in("id", driverIds)
+        : Promise.resolve({ data: [] as { id: string; full_name: string; phone: string }[] }),
       vehicleIds.length
         ? supabaseAdmin.from("vehicles").select("id, plate, make, model, year").in("id", vehicleIds)
         : Promise.resolve({ data: [] as { id: string; plate: string; make: string; model: string; year: number }[] }),
     ]);
     const dMap = new Map((drivers ?? []).map((d) => [d.id, d.full_name]));
+    const dPhone = new Map((drivers ?? []).map((d) => [d.id, (d as any).phone ?? null]));
     const vMap = new Map(
       (vehicles ?? []).map((v) => [v.id, `${v.year} ${v.make} ${v.model} (${v.plate})`]),
     );
     return rows.map((r) => ({
       ...r,
       driver_name: r.driver_id ? dMap.get(r.driver_id) ?? null : null,
+      driver_phone: r.driver_id ? dPhone.get(r.driver_id) ?? null : null,
       vehicle_label: r.vehicle_id ? vMap.get(r.vehicle_id) ?? null : null,
     }));
   });
