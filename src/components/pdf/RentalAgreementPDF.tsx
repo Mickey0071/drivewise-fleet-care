@@ -467,21 +467,16 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
 
   // ---- SIGNATURE ----
   sectionBar("Signature");
-  ensureSpace(10);
+  ensureSpace(50);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(...RGB_TEXT);
+  doc.setFontSize(6.5);
+  doc.setTextColor(...RGB_MUTED);
   doc.text(
-    doc.splitTextToSize(
-      "By signing below, Renter acknowledges having read, understood, and agreed to all terms of this Vehicle Rental Agreement.",
-      contentW,
-    ),
+    "By signing below, Renter acknowledges having read, understood, and agreed to all terms of this Agreement.",
     left,
-    y + 7,
+    y + 6,
   );
   y += 9;
-
-  ensureSpace(56);
   const sigTop = y;
   const sigBoxH = 24;
 
