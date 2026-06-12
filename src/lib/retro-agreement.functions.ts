@@ -692,11 +692,20 @@ export const submitRetroAgreement = createServerFn({ method: "POST" })
     try {
       await sendSms(
         ADMIN_SMS,
-        `✓ ${data.fullName} signed retroactive agreement for rental ${lr.order_number || lr.id}`,
+        `✓ ${data.fullName} signed retroactive agreement for rental ${lr.order_number || lr.id}` +
+          (promotion
+            ? ` · Promoted → driver ${promotion.driverId}${promotion.rentalId ? `, rental ${promotion.rentalId}` : " (no vehicle match)"}`
+            : ""),
       );
     } catch (e) {
       console.warn("[retro] admin sms failed", e);
     }
 
-    return { ok: true as const };
+    return {
+      ok: true as const,
+      promoted: Boolean(promotion),
+      driverId: promotion?.driverId ?? null,
+      rentalId: promotion?.rentalId ?? null,
+      vehicleId: promotion?.vehicleId ?? null,
+    };
   });
