@@ -187,7 +187,7 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
           )}
           {v.mailed_at && !v.transfer_confirmed_at && (
             <Button size="sm" variant="ghost" onClick={() => doMark("confirmed")} disabled={busy === "confirmed"}>
-              ✅ Confirm
+              ✅ Mark Disputed Successfully
             </Button>
           )}
         </>
