@@ -64,11 +64,7 @@ const AUTHORITIES = [
 export function ViolationSearchSection({ onCreated }: { onCreated: () => void }) {
   const qc = useQueryClient();
   const runSearch = useServerFn(searchRentalsForViolation);
-  const sendLink = useServerFn(sendRetroAgreementLink);
   const cancelLink = useServerFn(cancelRetroAgreementLink);
-  const create = useServerFn(createViolation);
-  const dlPacket = useServerFn(downloadViolationPacket);
-  const analyze = useServerFn(analyzeViolationPhoto);
 
   const [term, setTerm] = useState("");
   const [searched, setSearched] = useState<{ date: string | null; plate: string | null } | null>(null);
@@ -204,7 +200,7 @@ export function ViolationSearchSection({ onCreated }: { onCreated: () => void })
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <ResendButton legacyId={a.id} phone={a.phone} email={a.email} name={a.customerName} startDate={a.startDate} onDone={() => qc.invalidateQueries({ queryKey: ["awaiting-retro"] })} sendLink={sendLink} />
+                      <ResendButton legacyId={a.id} phone={a.phone} email={a.email} name={a.customerName} onDone={() => qc.invalidateQueries({ queryKey: ["awaiting-retro"] })} />
                       <Button
                         size="sm"
                         variant="ghost"
@@ -243,7 +239,6 @@ export function ViolationSearchSection({ onCreated }: { onCreated: () => void })
           qc.invalidateQueries({ queryKey: ["awaiting-retro"] });
           if (searched) doSearch();
         }}
-        sendLink={sendLink}
       />
 
       {/* Create Violation modal */}
@@ -255,9 +250,6 @@ export function ViolationSearchSection({ onCreated }: { onCreated: () => void })
           setCreateFor(null);
           onCreated();
         }}
-        create={create}
-        dlPacket={dlPacket}
-        analyze={analyze}
       />
     </div>
   );
@@ -268,18 +260,15 @@ function ResendButton({
   phone,
   email,
   name,
-  startDate,
   onDone,
-  sendLink,
 }: {
   legacyId: string;
   phone: string | null;
   email: string | null;
   name: string;
-  startDate: string | null;
   onDone: () => void;
-  sendLink: (args: { data: { legacyId: string; phone: string; email?: string | null; message?: string | null } }) => Promise<unknown>;
 }) {
+  const sendLink = useServerFn(sendRetroAgreementLink);
   const [busy, setBusy] = useState(false);
   return (
     <Button
@@ -312,13 +301,12 @@ function SendLinkModal({
   card,
   onClose,
   onSent,
-  sendLink,
 }: {
   card: ViolationSearchCard | null;
   onClose: () => void;
   onSent: () => void;
-  sendLink: (args: { data: { legacyId: string; phone: string; email?: string | null; message?: string | null } }) => Promise<unknown>;
 }) {
+  const sendLink = useServerFn(sendRetroAgreementLink);
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -406,18 +394,15 @@ function CreateViolationModal({
   defaultDate,
   onClose,
   onCreated,
-  create,
-  dlPacket,
-  analyze,
 }: {
   card: ViolationSearchCard | null;
   defaultDate: string | null;
   onClose: () => void;
   onCreated: () => void;
-  create: (args: { data: Record<string, unknown> }) => Promise<{ ok: true; violation: { id: string } }>;
-  dlPacket: (args: { data: { violationId: string } }) => Promise<{ filename: string; base64: string; missing: string[] }>;
-  analyze: (args: { data: { dataUrl: string } }) => Promise<{ photoUrl: string }>;
 }) {
+  const create = useServerFn(createViolation);
+  const dlPacket = useServerFn(downloadViolationPacket);
+  const analyze = useServerFn(analyzeViolationPhoto);
   const [citation, setCitation] = useState("");
   const [date, setDate] = useState(defaultDate ?? "");
   const [time, setTime] = useState("");
