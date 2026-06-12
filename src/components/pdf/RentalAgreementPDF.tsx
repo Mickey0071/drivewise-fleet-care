@@ -392,7 +392,6 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     });
     y = maxY + 2;
     doc.setLineHeightFactor(1.15);
-    console.warn("YTERMS", y, "bottomLimit", bottomLimit, "pageH", pageH);
   }
 
   // ---- VIOLATIONS + COVERAGE (two columns) ----
