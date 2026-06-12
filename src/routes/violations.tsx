@@ -40,6 +40,7 @@ import {
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
 import { SubmitDisputeDialog } from "@/components/app/SubmitDisputeDialog";
+import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
 import { downloadCSV } from "@/lib/exports";
 
 function DownloadPacketButton({ violationId }: { violationId: string }) {
@@ -392,6 +393,8 @@ function ViolationsPage() {
           </div>
         }
       />
+
+      <ViolationSearchSection onCreated={refresh} />
 
       {readyForTransfer.length > 0 && (
         <Card className="mb-4 border-amber-300 bg-amber-50">

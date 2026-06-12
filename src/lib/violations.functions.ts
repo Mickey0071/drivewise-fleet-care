@@ -242,6 +242,9 @@ export const createViolation = createServerFn({ method: "POST" })
       photoUrl?: string | null;
       extractedConfidence?: number | null;
       citationNumber?: string | null;
+      location?: string | null;
+      time?: string | null;
+      authorityKey?: string | null;
     }) => {
       const type = (input.type || "").toLowerCase();
       if (!["toll", "parking", "damage", "traffic", "other"].includes(type)) {
@@ -274,6 +277,9 @@ export const createViolation = createServerFn({ method: "POST" })
             .toUpperCase()
             .replace(/[^A-Z0-9-]/g, "")
             .slice(0, 40) || null,
+        location: (input.location || "").slice(0, 200) || null,
+        time: (input.time || "").slice(0, 20) || null,
+        authorityKey: (input.authorityKey || "").slice(0, 40) || null,
       };
     },
   )
@@ -317,6 +323,9 @@ export const createViolation = createServerFn({ method: "POST" })
         created_by: context.userId,
         extracted_confidence: data.extractedConfidence,
         reference_number: data.citationNumber,
+        location: data.location,
+        violation_time: data.time,
+        authority_key: data.authorityKey,
       } as never)
       .select("*")
       .single();
