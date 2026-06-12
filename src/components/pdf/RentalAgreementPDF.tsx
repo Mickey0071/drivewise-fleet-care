@@ -130,11 +130,11 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const left = 36;
-  const right = pageW - 36;
+  const left = 32;
+  const right = pageW - 32;
   const contentW = right - left;
-  const bottomLimit = pageH - 48;
-  let y = 40;
+  const bottomLimit = pageH - 34;
+  let y = 28;
 
   const periodLabel =
     rental.billingCadence === "daily" || rental.billingPeriod === "daily"
@@ -174,35 +174,35 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   };
 
   // ---- HEADER (first page) ----
-  const logoW = 140;
-  const logoH = 90;
+  const logoW = 78;
+  const logoH = 50;
   doc.addImage(CAMAUTO_LOGO_BASE64, "JPEG", (pageW - logoW) / 2, y, logoW, logoH);
-  y += logoH + 4;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(...RGB_GREEN);
-  doc.text(c.dba, left, y + 12);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...RGB_MUTED);
-  doc.text(c.legalName, left, y + 22);
-  [c.address, `Phone: ${c.phone}`, c.website].forEach((line, i) => {
-    doc.text(line, right, y + 10 + i * 10, { align: "right" });
-  });
-  y += 32;
-  doc.setDrawColor(...RGB_GREEN);
-  doc.setLineWidth(2);
-  doc.line(left, y, right, y);
-  y += 18;
+  y += logoH + 2;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
+  doc.setTextColor(...RGB_GREEN);
+  doc.text(c.dba, left, y + 10);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(...RGB_MUTED);
+  doc.text(c.legalName, left, y + 19);
+  [c.address, `Phone: ${c.phone}`, c.website].forEach((line, i) => {
+    doc.text(line, right, y + 8 + i * 8, { align: "right" });
+  });
+  y += 26;
+  doc.setDrawColor(...RGB_GREEN);
+  doc.setLineWidth(1.5);
+  doc.line(left, y, right, y);
+  y += 13;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
   doc.setTextColor(...RGB_TEXT);
   doc.text("VEHICLE RENTAL AGREEMENT", pageW / 2, y, { align: "center" });
-  y += 12;
+  y += 10;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(...RGB_MUTED);
   doc.text(
     "Please read this agreement carefully before signing. All terms are binding upon execution.",
@@ -210,44 +210,44 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     y,
     { align: "center" },
   );
-  y += 10;
+  y += 8;
 
   const sectionBar = (label: string) => {
-    ensureSpace(28);
-    y += 6;
+    ensureSpace(22);
+    y += 4;
     doc.setFillColor(...RGB_GREEN);
-    doc.rect(left, y, contentW, 14, "F");
+    doc.rect(left, y, contentW, 11, "F");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setTextColor(255, 255, 255);
-    doc.text(label.toUpperCase(), left + 6, y + 10);
-    y += 20;
+    doc.text(label.toUpperCase(), left + 5, y + 8);
+    y += 15;
   };
 
   const drawFieldsRow = (
     fields: Array<{ label: string; value: string; widthPct: number }>,
   ) => {
-    ensureSpace(28);
+    ensureSpace(22);
     let x = left;
     fields.forEach((f) => {
       const w = (contentW * f.widthPct) / 100;
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
+      doc.setFontSize(6.5);
       doc.setTextColor(...RGB_MUTED);
-      doc.text(f.label.toUpperCase(), x + 2, y + 8);
+      doc.text(f.label.toUpperCase(), x + 2, y + 6);
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setTextColor(...RGB_TEXT);
       const v = f.value || " ";
       const wrapped = doc.splitTextToSize(v, w - 4);
-      doc.text(wrapped, x + 2, y + 20);
+      doc.text(wrapped, x + 2, y + 15);
       // bottom underline
       doc.setDrawColor(68, 68, 68);
       doc.setLineWidth(0.4);
-      doc.line(x + 2, y + 24, x + w - 2, y + 24);
+      doc.line(x + 2, y + 18, x + w - 2, y + 18);
       x += w;
     });
-    y += 30;
+    y += 23;
   };
 
   // ---- RENTER ----
