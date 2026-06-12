@@ -130,11 +130,11 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const left = 36;
-  const right = pageW - 36;
+  const left = 32;
+  const right = pageW - 32;
   const contentW = right - left;
-  const bottomLimit = pageH - 48;
-  let y = 40;
+  const bottomLimit = pageH - 34;
+  let y = 28;
 
   const periodLabel =
     rental.billingCadence === "daily" || rental.billingPeriod === "daily"
@@ -174,35 +174,35 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   };
 
   // ---- HEADER (first page) ----
-  const logoW = 140;
-  const logoH = 90;
+  const logoW = 78;
+  const logoH = 50;
   doc.addImage(CAMAUTO_LOGO_BASE64, "JPEG", (pageW - logoW) / 2, y, logoW, logoH);
-  y += logoH + 4;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(...RGB_GREEN);
-  doc.text(c.dba, left, y + 12);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...RGB_MUTED);
-  doc.text(c.legalName, left, y + 22);
-  [c.address, `Phone: ${c.phone}`, c.website].forEach((line, i) => {
-    doc.text(line, right, y + 10 + i * 10, { align: "right" });
-  });
-  y += 32;
-  doc.setDrawColor(...RGB_GREEN);
-  doc.setLineWidth(2);
-  doc.line(left, y, right, y);
-  y += 18;
+  y += logoH + 2;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
+  doc.setTextColor(...RGB_GREEN);
+  doc.text(c.dba, left, y + 10);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(...RGB_MUTED);
+  doc.text(c.legalName, left, y + 19);
+  [c.address, `Phone: ${c.phone}`, c.website].forEach((line, i) => {
+    doc.text(line, right, y + 8 + i * 8, { align: "right" });
+  });
+  y += 26;
+  doc.setDrawColor(...RGB_GREEN);
+  doc.setLineWidth(1.5);
+  doc.line(left, y, right, y);
+  y += 13;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
   doc.setTextColor(...RGB_TEXT);
   doc.text("VEHICLE RENTAL AGREEMENT", pageW / 2, y, { align: "center" });
-  y += 12;
+  y += 10;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(...RGB_MUTED);
   doc.text(
     "Please read this agreement carefully before signing. All terms are binding upon execution.",
@@ -210,44 +210,44 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     y,
     { align: "center" },
   );
-  y += 10;
+  y += 8;
 
   const sectionBar = (label: string) => {
-    ensureSpace(28);
-    y += 6;
+    ensureSpace(22);
+    y += 4;
     doc.setFillColor(...RGB_GREEN);
-    doc.rect(left, y, contentW, 14, "F");
+    doc.rect(left, y, contentW, 11, "F");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setTextColor(255, 255, 255);
-    doc.text(label.toUpperCase(), left + 6, y + 10);
-    y += 20;
+    doc.text(label.toUpperCase(), left + 5, y + 8);
+    y += 15;
   };
 
   const drawFieldsRow = (
     fields: Array<{ label: string; value: string; widthPct: number }>,
   ) => {
-    ensureSpace(28);
+    ensureSpace(22);
     let x = left;
     fields.forEach((f) => {
       const w = (contentW * f.widthPct) / 100;
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
+      doc.setFontSize(6.5);
       doc.setTextColor(...RGB_MUTED);
-      doc.text(f.label.toUpperCase(), x + 2, y + 8);
+      doc.text(f.label.toUpperCase(), x + 2, y + 6);
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setTextColor(...RGB_TEXT);
       const v = f.value || " ";
       const wrapped = doc.splitTextToSize(v, w - 4);
-      doc.text(wrapped, x + 2, y + 20);
+      doc.text(wrapped, x + 2, y + 15);
       // bottom underline
       doc.setDrawColor(68, 68, 68);
       doc.setLineWidth(0.4);
-      doc.line(x + 2, y + 24, x + w - 2, y + 24);
+      doc.line(x + 2, y + 18, x + w - 2, y + 18);
       x += w;
     });
-    y += 30;
+    y += 23;
   };
 
   // ---- RENTER ----
@@ -338,34 +338,34 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     const titleLine = `${i + 1}. ${clause.title}`;
     const bodyText = renderClauseText(clause.body, settings);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(7.5);
     doc.setTextColor(...RGB_TEXT);
     const titleLines = doc.splitTextToSize(titleLine, contentW);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
+    doc.setFontSize(7);
     const bodyLines = doc.splitTextToSize(bodyText, contentW);
-    const needed = titleLines.length * 11 + bodyLines.length * 11 + 4;
+    const needed = titleLines.length * 8 + bodyLines.length * 8 + 3;
     ensureSpace(needed);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(7.5);
     doc.setTextColor(...RGB_TEXT);
-    doc.text(titleLines, left, y + 9);
-    y += titleLines.length * 11 + 2;
+    doc.text(titleLines, left, y + 7);
+    y += titleLines.length * 8 + 1;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
+    doc.setFontSize(7);
     doc.setTextColor(34, 34, 34);
-    doc.text(bodyLines, left, y + 9);
-    y += bodyLines.length * 11 + 4;
+    doc.text(bodyLines, left, y + 7);
+    y += bodyLines.length * 8 + 3;
   });
 
   // ---- VIOLATIONS ----
   sectionBar("Violations & Incidentals");
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(7);
   doc.setTextColor(...RGB_TEXT);
-  ensureSpace(14);
-  doc.text("Your card on file will be charged for any of the following:", left, y + 9);
-  y += 14;
+  ensureSpace(11);
+  doc.text("Your card on file will be charged for any of the following:", left, y + 7);
+  y += 11;
   const bullets = [
     "Parking tickets or traffic violations: actual fine amount",
     `Late return fees: ${settings.fees.dailyLateFee} per day`,
@@ -374,83 +374,83 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     "Other violations or damages: actual cost",
   ];
   bullets.forEach((b) => {
-    ensureSpace(12);
-    doc.text(`• ${b}`, left + 10, y + 9);
-    y += 12;
+    ensureSpace(9);
+    doc.text(`• ${b}`, left + 10, y + 7);
+    y += 9;
   });
-  ensureSpace(16);
+  ensureSpace(12);
   doc.text(
     doc.splitTextToSize(
       `You authorize ${c.dba} to charge your card without further notice for any of these charges.`,
       contentW,
     ),
     left,
-    y + 9,
+    y + 7,
   );
-  y += 16;
+  y += 12;
 
   // ---- SERVICE COVERAGE AREA ----
   sectionBar("Service Coverage Area");
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(7);
   doc.setTextColor(...RGB_TEXT);
-  ensureSpace(14);
+  ensureSpace(12);
   doc.text(
     doc.splitTextToSize(
       `${c.dba} provides mechanical failure and vehicle replacement coverage within a 30-mile radius of our main location (416 Sicklerville Road, Sicklerville, NJ 08081).`,
       contentW,
     ),
     left,
-    y + 9,
+    y + 7,
   );
-  y += 18;
-
-  ensureSpace(14);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(...RGB_TEXT);
-  doc.text("WITHIN 30-MILE RADIUS:", left, y + 9);
   y += 14;
 
+  ensureSpace(11);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(...RGB_TEXT);
+  doc.text("WITHIN 30-MILE RADIUS:", left, y + 7);
+  y += 11;
+
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(7);
   const withinBullets = [
     "In the event of mechanical failure, Camauto will provide roadside assistance and arrange a replacement vehicle at no charge to you",
     "You are not responsible for towing or repair costs",
   ];
   withinBullets.forEach((b) => {
-    ensureSpace(12);
-    doc.text(`• ${b}`, left + 10, y + 9);
-    y += 12;
+    ensureSpace(9);
+    doc.text(`• ${b}`, left + 10, y + 7);
+    y += 9;
   });
 
-  ensureSpace(14);
+  ensureSpace(11);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
+  doc.setFontSize(7.5);
   doc.setTextColor(...RGB_TEXT);
-  doc.text("OUTSIDE 30-MILE RADIUS:", left, y + 9);
-  y += 14;
+  doc.text("OUTSIDE 30-MILE RADIUS:", left, y + 7);
+  y += 11;
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(7);
   const outsideBullets = [
     "If you experience mechanical failure beyond the 30-mile radius, you are responsible for arranging and paying for towing to the nearest service facility",
     "Contact Camauto immediately at 1-866-625-5550 for guidance on authorized repair shops",
     "You may be reimbursed for towing costs if the failure is determined to be a manufacturing defect (review required)",
   ];
   outsideBullets.forEach((b) => {
-    ensureSpace(12);
-    doc.text(`• ${b}`, left + 10, y + 9);
-    y += 12;
+    ensureSpace(9);
+    doc.text(`• ${b}`, left + 10, y + 7);
+    y += 9;
   });
-  ensureSpace(8);
-  y += 4;
+  ensureSpace(6);
+  y += 3;
 
   // ---- SIGNATURE ----
   sectionBar("Signature");
-  ensureSpace(20);
+  ensureSpace(16);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(7);
   doc.setTextColor(...RGB_TEXT);
   doc.text(
     doc.splitTextToSize(
@@ -458,13 +458,13 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
       contentW,
     ),
     left,
-    y + 9,
+    y + 7,
   );
-  y += 18;
+  y += 13;
 
-  ensureSpace(110);
+  ensureSpace(80);
   const sigTop = y;
-  const sigBoxH = 50;
+  const sigBoxH = 36;
 
   // Renter signature box
   if (signaturePng) {
