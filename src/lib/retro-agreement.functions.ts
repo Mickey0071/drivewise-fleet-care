@@ -614,7 +614,7 @@ export const submitRetroAgreement = createServerFn({ method: "POST" })
 
     // ---- Promote legacy rental into real drivers + rentals rows ----
     let promotion: LegacyPromotionResult | null = null;
-    const alreadyPromoted = Boolean(lr.promoted_at);
+    const alreadyPromoted = Boolean((lr as { promoted_at?: string | null }).promoted_at);
     if (!alreadyPromoted) {
       try {
         promotion = await promoteLegacyRental(
