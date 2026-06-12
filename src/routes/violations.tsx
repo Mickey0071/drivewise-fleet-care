@@ -3,7 +3,7 @@ import { useState, useMemo, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Search, AlertTriangle, FileUp, FileSignature } from "lucide-react";
+import { Plus, Search, AlertTriangle, FileUp, FileSignature, MoreHorizontal, Trash2, Phone, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,23 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   listViolations,
   lookupRentalByPlate,
@@ -31,6 +48,7 @@ import {
   type ViolationHistoryRow,
 } from "@/lib/violations.functions";
 import { sendViolationToCustomer } from "@/lib/violations.functions";
+import { deleteViolation } from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
 import {
   generateLiabilityTransfer,
