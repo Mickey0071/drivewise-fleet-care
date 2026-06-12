@@ -1188,3 +1188,23 @@ export const markViolationResolved = createServerFn({ method: "POST" })
 
     return { ok: true as const };
   });
+
+/** Admin: permanently delete a violation and its history. */
+export const deleteViolation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input.id) throw new Error("id required");
+    return { id: input.id };
+  })
+  .handler(async ({ data }) => {
+    await (supabaseAdmin as any)
+      .from("violation_status_history")
+      .delete()
+      .eq("violation_id", data.id);
+    const { error } = await (supabaseAdmin as any)
+      .from("violations")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
