@@ -443,26 +443,32 @@ function ViolationsPage() {
                 <FileUp className="mr-1 h-4 w-4" /> Bulk Upload EZPass
               </Link>
             </Button>
-            <Button variant="outline" asChild>
-              <Link to="/violations/disputes">
-                <FileSignature className="mr-1 h-4 w-4" /> Disputes
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/violations/authorities">Authorities</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/violations/import">Import CSV</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/violations/imports">Import History</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/violations/exports">Export Data</Link>
-            </Button>
-            <Button variant="outline" onClick={exportCsv}>
-              Export CSV
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  More <ChevronDown className="ml-1 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link to="/violations/disputes">Disputes</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/violations/authorities">Authorities</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/violations/import">Import CSV</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/violations/imports">Import History</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/violations/exports">Export Data</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportCsv}>Export CSV</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={() => setNewOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="mr-1 h-4 w-4" /> New Violation
             </Button>
