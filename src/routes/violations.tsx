@@ -1197,6 +1197,7 @@ function NewViolationDialog({
                       onClick={() => {
                         setManualOverride((m) => !m);
                         if (!manualOverride) setSelectedRentalId("");
+                        setManualQuery("");
                       }}
                     >
                       {manualOverride ? "Use auto match" : "Choose manually"}
