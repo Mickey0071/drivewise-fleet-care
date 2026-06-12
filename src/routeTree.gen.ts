@@ -50,6 +50,7 @@ import { Route as ViolationTokenRouteImport } from './routes/violation.$token'
 import { Route as VerifyPaymentRentalIdRouteImport } from './routes/verify-payment.$rentalId'
 import { Route as VerifyCardTokenRouteImport } from './routes/verify-card.$token'
 import { Route as SignTokenRouteImport } from './routes/sign.$token'
+import { Route as SignAgreementRetroTokenRouteImport } from './routes/sign-agreement-retro.$token'
 import { Route as SetupTokenRouteImport } from './routes/setup.$token'
 import { Route as RunnerTaskTokenRouteImport } from './routes/runner-task.$token'
 import { Route as RmCardTokenRouteImport } from './routes/rm-card.$token'
@@ -293,6 +294,11 @@ const VerifyCardTokenRoute = VerifyCardTokenRouteImport.update({
 const SignTokenRoute = SignTokenRouteImport.update({
   id: '/sign/$token',
   path: '/sign/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignAgreementRetroTokenRoute = SignAgreementRetroTokenRouteImport.update({
+  id: '/sign-agreement-retro/$token',
+  path: '/sign-agreement-retro/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SetupTokenRoute = SetupTokenRouteImport.update({
@@ -557,6 +563,7 @@ export interface FileRoutesByFullPath {
   '/rm-card/$token': typeof RmCardTokenRoute
   '/runner-task/$token': typeof RunnerTaskTokenRoute
   '/setup/$token': typeof SetupTokenRoute
+  '/sign-agreement-retro/$token': typeof SignAgreementRetroTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-card/$token': typeof VerifyCardTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -639,6 +646,7 @@ export interface FileRoutesByTo {
   '/rm-card/$token': typeof RmCardTokenRoute
   '/runner-task/$token': typeof RunnerTaskTokenRoute
   '/setup/$token': typeof SetupTokenRoute
+  '/sign-agreement-retro/$token': typeof SignAgreementRetroTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-card/$token': typeof VerifyCardTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -722,6 +730,7 @@ export interface FileRoutesById {
   '/rm-card/$token': typeof RmCardTokenRoute
   '/runner-task/$token': typeof RunnerTaskTokenRoute
   '/setup/$token': typeof SetupTokenRoute
+  '/sign-agreement-retro/$token': typeof SignAgreementRetroTokenRoute
   '/sign/$token': typeof SignTokenRoute
   '/verify-card/$token': typeof VerifyCardTokenRoute
   '/verify-payment/$rentalId': typeof VerifyPaymentRentalIdRoute
@@ -806,6 +815,7 @@ export interface FileRouteTypes {
     | '/rm-card/$token'
     | '/runner-task/$token'
     | '/setup/$token'
+    | '/sign-agreement-retro/$token'
     | '/sign/$token'
     | '/verify-card/$token'
     | '/verify-payment/$rentalId'
@@ -888,6 +898,7 @@ export interface FileRouteTypes {
     | '/rm-card/$token'
     | '/runner-task/$token'
     | '/setup/$token'
+    | '/sign-agreement-retro/$token'
     | '/sign/$token'
     | '/verify-card/$token'
     | '/verify-payment/$rentalId'
@@ -970,6 +981,7 @@ export interface FileRouteTypes {
     | '/rm-card/$token'
     | '/runner-task/$token'
     | '/setup/$token'
+    | '/sign-agreement-retro/$token'
     | '/sign/$token'
     | '/verify-card/$token'
     | '/verify-payment/$rentalId'
@@ -1046,6 +1058,7 @@ export interface RootRouteChildren {
   RmCardTokenRoute: typeof RmCardTokenRoute
   RunnerTaskTokenRoute: typeof RunnerTaskTokenRoute
   SetupTokenRoute: typeof SetupTokenRoute
+  SignAgreementRetroTokenRoute: typeof SignAgreementRetroTokenRoute
   SignTokenRoute: typeof SignTokenRoute
   VerifyCardTokenRoute: typeof VerifyCardTokenRoute
   VerifyPaymentRentalIdRoute: typeof VerifyPaymentRentalIdRoute
@@ -1359,6 +1372,13 @@ declare module '@tanstack/react-router' {
       path: '/sign/$token'
       fullPath: '/sign/$token'
       preLoaderRoute: typeof SignTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-agreement-retro/$token': {
+      id: '/sign-agreement-retro/$token'
+      path: '/sign-agreement-retro/$token'
+      fullPath: '/sign-agreement-retro/$token'
+      preLoaderRoute: typeof SignAgreementRetroTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/setup/$token': {
@@ -1729,6 +1749,7 @@ const rootRouteChildren: RootRouteChildren = {
   RmCardTokenRoute: RmCardTokenRoute,
   RunnerTaskTokenRoute: RunnerTaskTokenRoute,
   SetupTokenRoute: SetupTokenRoute,
+  SignAgreementRetroTokenRoute: SignAgreementRetroTokenRoute,
   SignTokenRoute: SignTokenRoute,
   VerifyCardTokenRoute: VerifyCardTokenRoute,
   VerifyPaymentRentalIdRoute: VerifyPaymentRentalIdRoute,
