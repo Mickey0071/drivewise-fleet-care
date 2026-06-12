@@ -247,7 +247,7 @@ function V1Timeline({ v }: { v: ViolationRow }) {
     { icon: "📋", label: "Liability transfer generated", date: f(v.liability_transfer_generated_at) },
     { icon: "🖨️", label: "Mail packet printed", date: f(v.mail_packet_printed_at) },
     { icon: "✉️", label: "Mailed to authority", date: f(v.mailed_at) },
-    { icon: "✅", label: "Confirmed transferred", date: f(v.transfer_confirmed_at) },
+    { icon: "✅", label: "Disputed successfully", date: f(v.transfer_confirmed_at) },
   ].filter((e) => e.date);
   return (
     <div className="flex flex-col gap-1 text-xs text-muted-foreground">
