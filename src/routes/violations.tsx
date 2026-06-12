@@ -662,10 +662,9 @@ function NewViolationDialog({
     setPdfPages(null);
     setSelectedRentalId("");
     setManualOverride(false);
+    setManualQuery("");
   };
   const analyzeDataUrl = async (dataUrl: string) => {
-    setManualQuery("");
-    void 0;
     setThumbnail(dataUrl);
     setAnalyzing(true);
     setConfidence(null);
