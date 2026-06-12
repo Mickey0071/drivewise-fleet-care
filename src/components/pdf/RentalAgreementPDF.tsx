@@ -338,34 +338,34 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     const titleLine = `${i + 1}. ${clause.title}`;
     const bodyText = renderClauseText(clause.body, settings);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(7.5);
     doc.setTextColor(...RGB_TEXT);
     const titleLines = doc.splitTextToSize(titleLine, contentW);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
+    doc.setFontSize(7);
     const bodyLines = doc.splitTextToSize(bodyText, contentW);
-    const needed = titleLines.length * 11 + bodyLines.length * 11 + 4;
+    const needed = titleLines.length * 8 + bodyLines.length * 8 + 3;
     ensureSpace(needed);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(7.5);
     doc.setTextColor(...RGB_TEXT);
-    doc.text(titleLines, left, y + 9);
-    y += titleLines.length * 11 + 2;
+    doc.text(titleLines, left, y + 7);
+    y += titleLines.length * 8 + 1;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
+    doc.setFontSize(7);
     doc.setTextColor(34, 34, 34);
-    doc.text(bodyLines, left, y + 9);
-    y += bodyLines.length * 11 + 4;
+    doc.text(bodyLines, left, y + 7);
+    y += bodyLines.length * 8 + 3;
   });
 
   // ---- VIOLATIONS ----
   sectionBar("Violations & Incidentals");
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(7);
   doc.setTextColor(...RGB_TEXT);
-  ensureSpace(14);
-  doc.text("Your card on file will be charged for any of the following:", left, y + 9);
-  y += 14;
+  ensureSpace(11);
+  doc.text("Your card on file will be charged for any of the following:", left, y + 7);
+  y += 11;
   const bullets = [
     "Parking tickets or traffic violations: actual fine amount",
     `Late return fees: ${settings.fees.dailyLateFee} per day`,
@@ -374,83 +374,83 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     "Other violations or damages: actual cost",
   ];
   bullets.forEach((b) => {
-    ensureSpace(12);
-    doc.text(`• ${b}`, left + 10, y + 9);
-    y += 12;
+    ensureSpace(9);
+    doc.text(`• ${b}`, left + 10, y + 7);
+    y += 9;
   });
-  ensureSpace(16);
+  ensureSpace(12);
   doc.text(
     doc.splitTextToSize(
       `You authorize ${c.dba} to charge your card without further notice for any of these charges.`,
       contentW,
     ),
     left,
-    y + 9,
+    y + 7,
   );
-  y += 16;
+  y += 12;
 
   // ---- SERVICE COVERAGE AREA ----
   sectionBar("Service Coverage Area");
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(7);
   doc.setTextColor(...RGB_TEXT);
-  ensureSpace(14);
+  ensureSpace(12);
   doc.text(
     doc.splitTextToSize(
       `${c.dba} provides mechanical failure and vehicle replacement coverage within a 30-mile radius of our main location (416 Sicklerville Road, Sicklerville, NJ 08081).`,
       contentW,
     ),
     left,
-    y + 9,
+    y + 7,
   );
-  y += 18;
-
-  ensureSpace(14);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(...RGB_TEXT);
-  doc.text("WITHIN 30-MILE RADIUS:", left, y + 9);
   y += 14;
 
+  ensureSpace(11);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(...RGB_TEXT);
+  doc.text("WITHIN 30-MILE RADIUS:", left, y + 7);
+  y += 11;
+
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(7);
   const withinBullets = [
     "In the event of mechanical failure, Camauto will provide roadside assistance and arrange a replacement vehicle at no charge to you",
     "You are not responsible for towing or repair costs",
   ];
   withinBullets.forEach((b) => {
-    ensureSpace(12);
-    doc.text(`• ${b}`, left + 10, y + 9);
-    y += 12;
+    ensureSpace(9);
+    doc.text(`• ${b}`, left + 10, y + 7);
+    y += 9;
   });
 
-  ensureSpace(14);
+  ensureSpace(11);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
+  doc.setFontSize(7.5);
   doc.setTextColor(...RGB_TEXT);
-  doc.text("OUTSIDE 30-MILE RADIUS:", left, y + 9);
-  y += 14;
+  doc.text("OUTSIDE 30-MILE RADIUS:", left, y + 7);
+  y += 11;
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(7);
   const outsideBullets = [
     "If you experience mechanical failure beyond the 30-mile radius, you are responsible for arranging and paying for towing to the nearest service facility",
     "Contact Camauto immediately at 1-866-625-5550 for guidance on authorized repair shops",
     "You may be reimbursed for towing costs if the failure is determined to be a manufacturing defect (review required)",
   ];
   outsideBullets.forEach((b) => {
-    ensureSpace(12);
-    doc.text(`• ${b}`, left + 10, y + 9);
-    y += 12;
+    ensureSpace(9);
+    doc.text(`• ${b}`, left + 10, y + 7);
+    y += 9;
   });
-  ensureSpace(8);
-  y += 4;
+  ensureSpace(6);
+  y += 3;
 
   // ---- SIGNATURE ----
   sectionBar("Signature");
-  ensureSpace(20);
+  ensureSpace(16);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(7);
   doc.setTextColor(...RGB_TEXT);
   doc.text(
     doc.splitTextToSize(
@@ -458,13 +458,13 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
       contentW,
     ),
     left,
-    y + 9,
+    y + 7,
   );
-  y += 18;
+  y += 13;
 
-  ensureSpace(110);
+  ensureSpace(80);
   const sigTop = y;
-  const sigBoxH = 50;
+  const sigBoxH = 36;
 
   // Renter signature box
   if (signaturePng) {
