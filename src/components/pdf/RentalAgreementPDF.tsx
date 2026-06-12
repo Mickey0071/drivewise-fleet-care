@@ -338,29 +338,57 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
 
   // ---- TERMS & CONDITIONS ----
   sectionBar("Terms & Conditions");
-  settings.clauses.forEach((clause, i) => {
-    const titleLine = `${i + 1}. ${clause.title}`;
-    const bodyText = renderClauseText(clause.body, settings);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
-    doc.setTextColor(...RGB_TEXT);
-    const titleLines = doc.splitTextToSize(titleLine, contentW);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    const bodyLines = doc.splitTextToSize(bodyText, contentW);
-    const needed = titleLines.length * 8 + bodyLines.length * 8 + 3;
-    ensureSpace(needed);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
-    doc.setTextColor(...RGB_TEXT);
-    doc.text(titleLines, left, y + 7);
-    y += titleLines.length * 8 + 1;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(34, 34, 34);
-    doc.text(bodyLines, left, y + 7);
-    y += bodyLines.length * 8 + 3;
-  });
+  {
+    const gutter = 14;
+    const colW = (contentW - gutter) / 2;
+    const lineH = 6.6;
+    const titleSize = 7;
+    const bodySize = 6.4;
+    // Pre-measure each clause's wrapped lines + height for this column width.
+    const items = settings.clauses.map((clause, i) => {
+      const titleLine = `${i + 1}. ${clause.title}`;
+      const bodyText = renderClauseText(clause.body, settings);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(titleSize);
+      const titleLines = doc.splitTextToSize(titleLine, colW) as string[];
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(bodySize);
+      const bodyLines = doc.splitTextToSize(bodyText, colW) as string[];
+      const h = titleLines.length * lineH + bodyLines.length * lineH + 4;
+      return { titleLines, bodyLines, h };
+    });
+    const total = items.reduce((s, it) => s + it.h, 0);
+    const target = total / 2;
+    // Greedily split into two balanced columns.
+    const colA: typeof items = [];
+    const colB: typeof items = [];
+    let acc = 0;
+    items.forEach((it) => {
+      if (acc < target) { colA.push(it); acc += it.h; }
+      else colB.push(it);
+    });
+    const colX = [left, left + colW + gutter];
+    const startY = y;
+    let maxY = y;
+    [colA, colB].forEach((col, ci) => {
+      let cy = startY;
+      const x = colX[ci];
+      col.forEach((it) => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(titleSize);
+        doc.setTextColor(...RGB_TEXT);
+        doc.text(it.titleLines, x, cy + 6);
+        cy += it.titleLines.length * lineH + 1;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(bodySize);
+        doc.setTextColor(34, 34, 34);
+        doc.text(it.bodyLines, x, cy + 6);
+        cy += it.bodyLines.length * lineH + 4;
+      });
+      if (cy > maxY) maxY = cy;
+    });
+    y = maxY + 2;
+  }
 
   // ---- VIOLATIONS ----
   sectionBar("Violations & Incidentals");
