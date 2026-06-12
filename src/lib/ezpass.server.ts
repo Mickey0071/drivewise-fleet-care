@@ -149,12 +149,14 @@ export async function autoMatchToll(toll: ExtractedToll): Promise<MatchResult> {
   const date = toll.violation_date;
   const candidates: MatchCandidate[] = [];
 
-  // 1) Live rentals — match by vehicle plate + rental window
-  const { data: vehicles } = await supabaseAdmin
-    .from("vehicles")
-    .select("id, plate")
-    .ilike("plate", toll.plate);
-  const vehicleIds = (vehicles ?? []).map((v) => v.id);
+  const target = normalizePlate(toll.plate);
+
+  // 1) Live rentals — match by vehicle plate + rental window.
+  // Normalize on BOTH sides: fetch vehicles and compare normalized plates.
+  const { data: vehicles } = await supabaseAdmin.from("vehicles").select("id, plate");
+  const vehicleIds = (vehicles ?? [])
+    .filter((v) => target && normalizePlate(v.plate) === target)
+    .map((v) => v.id);
   if (vehicleIds.length > 0) {
     const { data: rentals } = await supabaseAdmin
       .from("rentals")
@@ -184,19 +186,15 @@ export async function autoMatchToll(toll: ExtractedToll): Promise<MatchResult> {
   }
 
   // 2) Migrated / legacy reservations — match by plate + rental window
-  const normPlate = (p: string | null | undefined) =>
-    (p || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
-  const target = normPlate(toll.plate);
   if (target) {
     const { data: legacy } = await supabaseAdmin
       .from("legacy_rentals")
       .select(
         "id, plate, renter_name, start_datetime, end_datetime, promoted_rental_id, promoted_driver_id",
       )
-      .ilike("plate", `%${toll.plate.slice(0, 6)}%`)
-      .limit(100);
+      .limit(5000);
     for (const lr of legacy ?? []) {
-      if (normPlate(lr.plate) !== target) continue;
+      if (normalizePlate(lr.plate) !== target) continue;
       const start = lr.start_datetime ? lr.start_datetime.slice(0, 10) : null;
       const end = lr.end_datetime ? lr.end_datetime.slice(0, 10) : null;
       if (start && start > date) continue;
