@@ -52,17 +52,29 @@ export const searchRentalsForViolation = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { date, plate } = data;
     const cards: ViolationSearchCard[] = [];
+    const plateKey = plate ? normPlate(plate) : null;
+    const today = new Date().toISOString().slice(0, 10);
+    // Inclusive date-range test: searched date must be on/after start and
+    // on/before end. Open-ended rentals (no end) are active through today.
+    const covers = (start: string | null, end: string | null): boolean => {
+      if (!date) return true;
+      if (start && start > date) return false;
+      const effectiveEnd = end || today;
+      if (effectiveEnd < date) return false;
+      return true;
+    };
 
     // ---- Live rentals ----
     let vehicleIds: string[] | null = null;
     let vMap = new Map<string, { plate: string; make: string; model: string; year: number }>();
-    if (plate) {
+    if (plateKey) {
+      // Normalized plate match (ignores spaces/dashes/case).
       const { data: vehicles } = await supabaseAdmin
         .from("vehicles")
-        .select("id, plate, make, model, year")
-        .ilike("plate", plate);
-      vehicleIds = (vehicles ?? []).map((v) => v.id);
-      vMap = new Map((vehicles ?? []).map((v) => [v.id, v]));
+        .select("id, plate, make, model, year");
+      const matched = (vehicles ?? []).filter((v) => normPlate(v.plate) === plateKey);
+      vehicleIds = matched.map((v) => v.id);
+      vMap = new Map(matched.map((v) => [v.id, v]));
     }
 
     if (!plate || (vehicleIds && vehicleIds.length > 0)) {
@@ -72,12 +84,12 @@ export const searchRentalsForViolation = createServerFn({ method: "POST" })
           "id, driver_id, vehicle_id, start_date, end_date, agreement_pdf_url, client_signature_url, reservation_status",
         )
         .order("start_date", { ascending: false })
-        .limit(100);
+        .limit(500);
       if (vehicleIds) q = q.in("vehicle_id", vehicleIds);
       if (date) q = q.lte("start_date", date);
       const { data: rentals } = await q;
       let live = rentals ?? [];
-      if (date) live = live.filter((r) => !r.end_date || r.end_date >= date);
+      if (date) live = live.filter((r) => covers(r.start_date ?? null, r.end_date ?? null));
 
       const needVehicleIds = Array.from(
         new Set(live.map((r) => r.vehicle_id).filter((id) => id && !vMap.has(id))),
@@ -120,24 +132,25 @@ export const searchRentalsForViolation = createServerFn({ method: "POST" })
     }
 
     // ---- Migrated (legacy) rentals ----
-    let lq = supabaseAdmin
+    const lq = supabaseAdmin
       .from("legacy_rentals")
       .select(
         "id, renter_name, vehicle, year, plate, start_datetime, end_datetime, phone, email, agreement_pdf_url, retro_sent_at, retro_signed_at",
       )
+      .not("start_datetime", "is", null)
       .order("start_datetime", { ascending: false, nullsFirst: false })
-      .limit(200);
-    if (plate) lq = lq.ilike("plate", plate);
+      .limit(2000);
     const { data: legacyRows } = await lq;
     let legacy = legacyRows ?? [];
+    // Normalized plate filter (in JS so spaces/dashes don't break matching).
+    if (plateKey) legacy = legacy.filter((r) => normPlate(r.plate) === plateKey);
     if (date) {
-      legacy = legacy.filter((r) => {
-        const start = r.start_datetime ? r.start_datetime.slice(0, 10) : null;
-        const end = r.end_datetime ? r.end_datetime.slice(0, 10) : null;
-        if (start && start > date) return false;
-        if (end && end < date) return false;
-        return true;
-      });
+      legacy = legacy.filter((r) =>
+        covers(
+          r.start_datetime ? r.start_datetime.slice(0, 10) : null,
+          r.end_datetime ? r.end_datetime.slice(0, 10) : null,
+        ),
+      );
     }
     for (const r of legacy) {
       cards.push({
