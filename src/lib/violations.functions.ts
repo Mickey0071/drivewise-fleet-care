@@ -136,7 +136,12 @@ export const lookupRentalByPlate = createServerFn({ method: "POST" })
     // Normalized plate key (ignores spaces/dashes/case) — same logic as the
     // main rental lookup so the violation matcher behaves identically.
     const normPlate = (s: string | null | undefined) =>
-      (s ?? "").replace(/[^a-z0-9]/gi, "").toUpperCase();
+      (s ?? "")
+        .replace(/[^a-z0-9]/gi, "")
+        .toUpperCase()
+        // Strip a leading two-letter state code (e.g. "NJ") that some sources
+        // prepend to the plate — it confuses the matcher.
+        .replace(/^NJ(?=[A-Z0-9]{4,})/, "");
     const plateKey = normPlate(plate);
     const today = new Date().toISOString().slice(0, 10);
     // Calendar-date inclusive range test: cast start/end to date (slice off the
