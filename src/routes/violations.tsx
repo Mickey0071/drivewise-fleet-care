@@ -839,86 +839,30 @@ function NewViolationDialog({
 
   return (
     <Dialog open={open} onOpenChange={(b) => { if (!b) reset(); onOpenChange(b); }}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>New Violation</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <div className="rounded-md border bg-muted/30 p-3">
-            <p className="mb-2 text-xs text-muted-foreground">
-              Photo, scan, or PDF of a toll bill, parking ticket, or violation notice
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                type="button"
-                size="lg"
-                className="flex-1"
-                onClick={() => setCameraOpen(true)}
-              >
-                📱 Take Photo with Camera
-              </Button>
-              <label className="flex-1">
-                <span className="inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent">
-                  📤 Upload from Files
-                </span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,application/pdf,.pdf"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void handlePhoto(f);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-            </div>
-            <CameraCaptureDialog
-              open={cameraOpen}
-              onOpenChange={setCameraOpen}
-              onCapture={(f) => void handlePhoto(f)}
-            />
-            {pdfPages && (
-              <div className="mt-3 rounded-md border bg-background p-3 text-xs">
-                <div className="mb-2 font-medium">
-                  This is a multi-page document ({pdfPages.pageCount} pages). Use the first page?
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" size="sm" disabled={analyzing} onClick={() => void usePdfPage(1)}>
-                    Use First Page
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <div className="space-y-3">
+              <div className="rounded-md border bg-muted/30 p-3">
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Photo, scan, or PDF of a toll bill, parking ticket, or violation notice
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="flex-1"
+                    onClick={() => setCameraOpen(true)}
+                  >
+                    📱 Take Photo with Camera
                   </Button>
-                  <span className="text-muted-foreground">or choose a page:</span>
-                  <Select onValueChange={(v) => void usePdfPage(Number(v))}>
-                    <SelectTrigger className="h-8 w-28"><SelectValue placeholder="Page…" /></SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: pdfPages.pageCount }, (_, i) => i + 1).map((n) => (
-                        <SelectItem key={n} value={String(n)}>Page {n}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-            {thumbnail && (
-              <div className="mt-3 flex items-start gap-3">
-                <img src={thumbnail} alt="Violation" className="h-20 w-20 rounded border object-cover" />
-                <div className="flex-1 text-xs">
-                  {analyzing && <div className="text-muted-foreground">Analyzing photo…</div>}
-                  {!analyzing && confidence !== null && confidence >= 70 && (
-                    <div className="text-emerald-700 dark:text-emerald-400">
-                      ✓ Extracted with {confidence}% confidence
-                    </div>
-                  )}
-                  {!analyzing && confidence !== null && confidence < 70 && (
-                    <div className="text-amber-600">
-                      ⚠️ Could not read clearly ({confidence}%). Please enter manually or try a different photo.
-                    </div>
-                  )}
-                  {!analyzing && confidence === null && (
-                    <div className="text-emerald-700 dark:text-emerald-400">✓ File ready.</div>
-                  )}
-                  <label className="mt-1 inline-block">
-                    <span className="cursor-pointer text-primary underline-offset-2 hover:underline">Change file</span>
+                  <label className="flex-1">
+                    <span className="inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-md border bg-background px-3 text-sm font-medium hover:bg-accent">
+                      📤 Upload from Files
+                    </span>
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp,application/pdf,.pdf"
@@ -931,284 +875,346 @@ function NewViolationDialog({
                     />
                   </label>
                 </div>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <Label>Type</Label>
-            <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="toll">Toll Plate</SelectItem>
-                <SelectItem value="parking">Parking</SelectItem>
-                <SelectItem value="damage">Damage</SelectItem>
-                <SelectItem value="traffic">Traffic</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label>Violation / Citation #</Label>
-            <Input
-              value={citationNumber}
-              onChange={(e) => setCitationNumber(e.target.value.toUpperCase())}
-              placeholder="As printed on the notice (used as the record ID)"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Leave blank to auto-generate. When entered, this becomes the violation's ID so it matches the uploaded notice.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>License Plate</Label>
-              <Input value={plate} onChange={(e) => setPlate(e.target.value.toUpperCase())} placeholder="ABC1234" />
-            </div>
-            <div>
-              <Label>Violation Date</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>{type === "toll" ? "Toll Amount" : "Amount"} ($)</Label>
-              <Input type="number" step="0.01" value={tollAmount} onChange={(e) => setTollAmount(e.target.value)} />
-            </div>
-            <div>
-              <Label>Fee ($)</Label>
-              <Input type="number" step="0.01" value={tollFee} onChange={(e) => setTollFee(e.target.value)} />
-            </div>
-          </div>
-
-          <div>
-            <Label>Description / Notes</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-          </div>
-
-          <div>
-            <Label>Location</Label>
-            <Input
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Toll plaza, street, or place of violation"
-            />
-          </div>
-
-          <div>
-            <Label>Photo URL (optional)</Label>
-            <Input value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://…" />
-          </div>
-
-          <div className="rounded-md border bg-muted/30 p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <Label>Renter Match</Label>
-              {lookupResult && (
-                <Badge
-                  variant={lookupResult.matchConfidence >= 90 ? "default" : "secondary"}
-                  className="text-xs"
-                >
-                  Match confidence: {lookupResult.matchConfidence}%
-                </Badge>
-              )}
-            </div>
-            {lookupResult && (
-              <div
-                className={`mb-3 rounded-md p-2 text-xs ${
-                  !lookupResult.vehicleFound
-                    ? "bg-destructive/10 text-destructive"
-                    : lookupResult.matchConfidence >= 90
-                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                      : "bg-amber-500/10 text-amber-700 dark:text-amber-500"
-                }`}
-              >
-                {!lookupResult.vehicleFound
-                  ? "Vehicle not in fleet or OCR failed — enter plate / select renter manually."
-                  : lookupResult.matchConfidence >= 90
-                    ? `${lookupResult.confidenceLabel} — renter auto-selected.`
-                    : `Low confidence — ${lookupResult.confidenceLabel}. Verify renter.`}
-              </div>
-            )}
-            {(() => {
-              // Candidates that actually overlap the plate + violation date.
-              const liveIds = lookupResult?.matches?.map((m) => m.rental.id) ?? [];
-              const legacyIds = lookupResult?.legacyMatches?.map((m) => `LEGACY:${m.id}`) ?? [];
-              const matchIds = [...liveIds, ...legacyIds];
-              const candidates = rentalOptions.filter((r) => matchIds.includes(r.id));
-              const picked = selectedRentalId
-                ? rentalOptions.find((r) => r.id === selectedRentalId) ?? null
-                : null;
-
-              return (
-                <>
-                  {/* Auto-matched renter — shown front and center, no big list */}
-                  {picked && !manualOverride && (
-                    <div className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-800 dark:bg-emerald-950/30">
-                      <div className="font-semibold text-emerald-800 dark:text-emerald-300">
-                        {picked.source === "migrated" ? "📋 " : ""}
-                        {picked.driver_name ?? "Unknown renter"}
-                      </div>
-                      <div className="mt-0.5 text-xs text-muted-foreground">
-                        {picked.id.startsWith("LEGACY:") ? "Migrated reservation" : picked.id}
-                        {picked.plate ? ` · ${picked.plate}` : ""}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {picked.vehicle_label ?? ""}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {picked.start_date} → {picked.end_date || "ongoing"}
-                      </div>
+                <CameraCaptureDialog
+                  open={cameraOpen}
+                  onOpenChange={setCameraOpen}
+                  onCapture={(f) => void handlePhoto(f)}
+                />
+                {pdfPages && (
+                  <div className="mt-3 rounded-md border bg-background p-3 text-xs">
+                    <div className="mb-2 font-medium">
+                      This is a multi-page document ({pdfPages.pageCount} pages). Use the first page?
                     </div>
-                  )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button type="button" size="sm" disabled={analyzing} onClick={() => void usePdfPage(1)}>
+                        Use First Page
+                      </Button>
+                      <span className="text-muted-foreground">or choose a page:</span>
+                      <Select onValueChange={(v) => void usePdfPage(Number(v))}>
+                        <SelectTrigger className="h-8 w-28"><SelectValue placeholder="Page…" /></SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: pdfPages.pageCount }, (_, i) => i + 1).map((n) => (
+                            <SelectItem key={n} value={String(n)}>Page {n}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+                {thumbnail && (
+                  <div className="mt-3 flex items-start gap-3">
+                    <img src={thumbnail} alt="Violation" className="h-20 w-20 rounded border object-cover" />
+                    <div className="flex-1 text-xs">
+                      {analyzing && <div className="text-muted-foreground">Analyzing photo…</div>}
+                      {!analyzing && confidence !== null && confidence >= 70 && (
+                        <div className="text-emerald-700 dark:text-emerald-400">
+                          ✓ Extracted with {confidence}% confidence
+                        </div>
+                      )}
+                      {!analyzing && confidence !== null && confidence < 70 && (
+                        <div className="text-amber-600">
+                          ⚠️ Could not read clearly ({confidence}%). Please enter manually or try a different photo.
+                        </div>
+                      )}
+                      {!analyzing && confidence === null && (
+                        <div className="text-emerald-700 dark:text-emerald-400">✓ File ready.</div>
+                      )}
+                      <label className="mt-1 inline-block">
+                        <span className="cursor-pointer text-primary underline-offset-2 hover:underline">Change file</span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,application/pdf,.pdf"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) void handlePhoto(f);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                  {/* Ambiguous: a few candidates overlap — let admin pick the right one */}
-                  {!manualOverride && candidates.length > 1 && (
-                    <div className="mt-2 space-y-1">
-                      <div className="text-xs font-medium text-muted-foreground">
-                        {candidates.length} renters overlap this date — pick the right one:
-                      </div>
-                      {candidates.map((r) => (
+              <div>
+                <Label>Type</Label>
+                <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="toll">Toll Plate</SelectItem>
+                    <SelectItem value="parking">Parking</SelectItem>
+                    <SelectItem value="damage">Damage</SelectItem>
+                    <SelectItem value="traffic">Traffic</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Violation / Citation #</Label>
+                <Input
+                  value={citationNumber}
+                  onChange={(e) => setCitationNumber(e.target.value.toUpperCase())}
+                  placeholder="As printed on the notice (used as the record ID)"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Leave blank to auto-generate. When entered, this becomes the violation's ID so it matches the uploaded notice.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>License Plate</Label>
+                  <Input value={plate} onChange={(e) => setPlate(e.target.value.toUpperCase())} placeholder="ABC1234" />
+                </div>
+                <div>
+                  <Label>Violation Date</Label>
+                  <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>{type === "toll" ? "Toll Amount" : "Amount"} ($)</Label>
+                  <Input type="number" step="0.01" value={tollAmount} onChange={(e) => setTollAmount(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Fee ($)</Label>
+                  <Input type="number" step="0.01" value={tollFee} onChange={(e) => setTollFee(e.target.value)} />
+                </div>
+              </div>
+
+              <div>
+                <Label>Description / Notes</Label>
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+              </div>
+
+              <div>
+                <Label>Location</Label>
+                <Input
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Toll plaza, street, or place of violation"
+                />
+              </div>
+
+              <div>
+                <Label>Photo URL (optional)</Label>
+                <Input value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="https://…" />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="rounded-md border bg-muted/30 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <Label>Renter Match</Label>
+                  {lookupResult && (
+                    <Badge
+                      variant={lookupResult.matchConfidence >= 90 ? "default" : "secondary"}
+                      className="text-xs"
+                    >
+                      Match confidence: {lookupResult.matchConfidence}%
+                    </Badge>
+                  )}
+                </div>
+                {lookupResult && (
+                  <div
+                    className={`mb-3 rounded-md p-2 text-xs ${
+                      !lookupResult.vehicleFound
+                        ? "bg-destructive/10 text-destructive"
+                        : lookupResult.matchConfidence >= 90
+                          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                          : "bg-amber-500/10 text-amber-700 dark:text-amber-500"
+                    }`}
+                  >
+                    {!lookupResult.vehicleFound
+                      ? "Vehicle not in fleet or OCR failed — enter plate / select renter manually."
+                      : lookupResult.matchConfidence >= 90
+                        ? `${lookupResult.confidenceLabel} — renter auto-selected.`
+                        : `Low confidence — ${lookupResult.confidenceLabel}. Verify renter.`}
+                  </div>
+                )}
+                {(() => {
+                  // Candidates that actually overlap the plate + violation date.
+                  const liveIds = lookupResult?.matches?.map((m) => m.rental.id) ?? [];
+                  const legacyIds = lookupResult?.legacyMatches?.map((m) => `LEGACY:${m.id}`) ?? [];
+                  const matchIds = [...liveIds, ...legacyIds];
+                  const candidates = rentalOptions.filter((r) => matchIds.includes(r.id));
+                  const picked = selectedRentalId
+                    ? rentalOptions.find((r) => r.id === selectedRentalId) ?? null
+                    : null;
+
+                  return (
+                    <>
+                      {/* Auto-matched renter — shown front and center, no big list */}
+                      {picked && !manualOverride && (
+                        <div className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-800 dark:bg-emerald-950/30">
+                          <div className="font-semibold text-emerald-800 dark:text-emerald-300">
+                            {picked.source === "migrated" ? "📋 " : ""}
+                            {picked.driver_name ?? "Unknown renter"}
+                          </div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {picked.id.startsWith("LEGACY:") ? "Migrated reservation" : picked.id}
+                            {picked.plate ? ` · ${picked.plate}` : ""}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {picked.vehicle_label ?? ""}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {picked.start_date} → {picked.end_date || "ongoing"}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Ambiguous: a few candidates overlap — let admin pick the right one */}
+                      {!manualOverride && candidates.length > 1 && (
+                        <div className="mt-2 space-y-1">
+                          <div className="text-xs font-medium text-muted-foreground">
+                            {candidates.length} renters overlap this date — pick the right one:
+                          </div>
+                          {candidates.map((r) => (
+                            <button
+                              key={r.id}
+                              type="button"
+                              onClick={() => setSelectedRentalId(r.id)}
+                              className={`flex w-full flex-col items-start rounded border p-2 text-left text-xs hover:bg-accent ${
+                                selectedRentalId === r.id ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30" : ""
+                              }`}
+                            >
+                              <span className="font-medium">
+                                {r.source === "migrated" ? "📋 " : ""}
+                                {r.driver_name ?? "Unknown"}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {r.plate ?? ""} · {r.start_date} → {r.end_date || "ongoing"}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Exactly one overlapping reservation that wasn't auto-selected
+                          (e.g. a migrated reservation with no live rental) */}
+                      {!manualOverride && candidates.length === 1 && !picked && (
                         <button
-                          key={r.id}
                           type="button"
-                          onClick={() => setSelectedRentalId(r.id)}
-                          className={`flex w-full flex-col items-start rounded border p-2 text-left text-xs hover:bg-accent ${
-                            selectedRentalId === r.id ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30" : ""
-                          }`}
+                          onClick={() => setSelectedRentalId(candidates[0].id)}
+                          className="flex w-full flex-col items-start rounded-md border border-emerald-300 bg-emerald-50 p-3 text-left text-sm hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/30"
                         >
-                          <span className="font-medium">
-                            {r.source === "migrated" ? "📋 " : ""}
-                            {r.driver_name ?? "Unknown"}
+                          <span className="font-semibold text-emerald-800 dark:text-emerald-300">
+                            {candidates[0].source === "migrated" ? "📋 " : ""}
+                            {candidates[0].driver_name ?? "Unknown renter"}
                           </span>
-                          <span className="text-muted-foreground">
-                            {r.plate ?? ""} · {r.start_date} → {r.end_date || "ongoing"}
+                          <span className="text-xs text-muted-foreground">
+                            {candidates[0].plate ?? ""}
+                            {candidates[0].start_date
+                              ? ` · ${candidates[0].start_date} → ${candidates[0].end_date || "ongoing"}`
+                              : ""}
+                          </span>
+                          <span className="text-xs text-emerald-700 dark:text-emerald-400">
+                            Tap to use this renter
                           </span>
                         </button>
-                      ))}
-                    </div>
-                  )}
+                      )}
 
-                  {/* Exactly one overlapping reservation that wasn't auto-selected
-                      (e.g. a migrated reservation with no live rental) */}
-                  {!manualOverride && candidates.length === 1 && !picked && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedRentalId(candidates[0].id)}
-                      className="flex w-full flex-col items-start rounded-md border border-emerald-300 bg-emerald-50 p-3 text-left text-sm hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/30"
-                    >
-                      <span className="font-semibold text-emerald-800 dark:text-emerald-300">
-                        {candidates[0].source === "migrated" ? "📋 " : ""}
-                        {candidates[0].driver_name ?? "Unknown renter"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {candidates[0].plate ?? ""}
-                        {candidates[0].start_date
-                          ? ` · ${candidates[0].start_date} → ${candidates[0].end_date || "ongoing"}`
-                          : ""}
-                      </span>
-                      <span className="text-xs text-emerald-700 dark:text-emerald-400">
-                        Tap to use this renter
-                      </span>
-                    </button>
-                  )}
-
-                  {/* No automatic match found */}
-                  {!manualOverride &&
-                    lookupResult &&
-                    candidates.length === 0 && (
-                      <div className="rounded-md p-2 text-sm text-amber-600">
-                        {lookupResult.reason ||
-                          "No renter matched this plate + date. Choose manually below."}
-                      </div>
-                    )}
-
-                  {/* Manual override: full searchable list of every renter/reservation */}
-                  {manualOverride && (() => {
-                    const q = manualQuery.trim().toLowerCase();
-                    const filtered = q
-                      ? rentalOptions.filter((r) =>
-                          [r.driver_name, r.plate, r.id, r.vehicle_label]
-                            .filter(Boolean)
-                            .some((field) => String(field).toLowerCase().includes(q)),
-                        )
-                      : rentalOptions;
-                    return (
-                      <div className="space-y-2">
-                        <Input
-                          autoFocus
-                          value={manualQuery}
-                          onChange={(e) => setManualQuery(e.target.value)}
-                          placeholder="Search renters by name, plate, or ID…"
-                        />
-                        <div className="max-h-60 space-y-1 overflow-auto rounded-md border p-1">
-                          {filtered.length === 0 ? (
-                            <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                              No renters match “{manualQuery}”
-                            </div>
-                          ) : (
-                            filtered.slice(0, 100).map((r) => (
-                              <button
-                                key={r.id}
-                                type="button"
-                                onClick={() => setSelectedRentalId(r.id)}
-                                className={`flex w-full flex-col items-start rounded p-2 text-left text-xs hover:bg-accent ${
-                                  selectedRentalId === r.id
-                                    ? "border border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30"
-                                    : ""
-                                }`}
-                              >
-                                <span className="font-medium">
-                                  {r.source === "migrated" ? "📋 " : ""}
-                                  {r.driver_name ?? "Unknown"}
-                                </span>
-                                <span className="text-muted-foreground">
-                                  {r.id.startsWith("LEGACY:") ? "Migrated" : r.id}
-                                  {r.plate ? ` · ${r.plate}` : ""}
-                                  {r.start_date ? ` · ${r.start_date} → ${r.end_date || "ongoing"}` : ""}
-                                </span>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                        {filtered.length > 100 && (
-                          <p className="text-xs text-muted-foreground">
-                            Showing first 100 — refine your search to narrow results.
-                          </p>
+                      {/* No automatic match found */}
+                      {!manualOverride &&
+                        lookupResult &&
+                        candidates.length === 0 && (
+                          <div className="rounded-md p-2 text-sm text-amber-600">
+                            {lookupResult.reason ||
+                              "No renter matched this plate + date. Choose manually below."}
+                          </div>
                         )}
-                      </div>
-                    );
-                  })()}
 
-                  <div className="my-3 border-t" />
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void doLookup()}
-                      disabled={!plate || !date || lookingUp}
-                    >
-                      {lookingUp ? "Looking up…" : "Re-match plate + date"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setManualOverride((m) => !m);
-                        if (!manualOverride) setSelectedRentalId("");
-                        setManualQuery("");
-                      }}
-                    >
-                      {manualOverride ? "Use auto match" : "Choose manually"}
-                    </Button>
-                  </div>
-                </>
-              );
-            })()}
+                      {/* Manual override: full searchable list of every renter/reservation */}
+                      {manualOverride && (() => {
+                        const q = manualQuery.trim().toLowerCase();
+                        const filtered = q
+                          ? rentalOptions.filter((r) =>
+                              [r.driver_name, r.plate, r.id, r.vehicle_label]
+                                .filter(Boolean)
+                                .some((field) => String(field).toLowerCase().includes(q)),
+                            )
+                          : rentalOptions;
+                        return (
+                          <div className="space-y-2">
+                            <Input
+                              autoFocus
+                              value={manualQuery}
+                              onChange={(e) => setManualQuery(e.target.value)}
+                              placeholder="Search renters by name, plate, or ID…"
+                            />
+                            <div className="max-h-60 space-y-1 overflow-auto rounded-md border p-1">
+                              {filtered.length === 0 ? (
+                                <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                  No renters match “{manualQuery}”
+                                </div>
+                              ) : (
+                                filtered.slice(0, 100).map((r) => (
+                                  <button
+                                    key={r.id}
+                                    type="button"
+                                    onClick={() => setSelectedRentalId(r.id)}
+                                    className={`flex w-full flex-col items-start rounded p-2 text-left text-xs hover:bg-accent ${
+                                      selectedRentalId === r.id
+                                        ? "border border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30"
+                                        : ""
+                                    }`}
+                                  >
+                                    <span className="font-medium">
+                                      {r.source === "migrated" ? "📋 " : ""}
+                                      {r.driver_name ?? "Unknown"}
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                      {r.id.startsWith("LEGACY:") ? "Migrated" : r.id}
+                                      {r.plate ? ` · ${r.plate}` : ""}
+                                      {r.start_date ? ` · ${r.start_date} → ${r.end_date || "ongoing"}` : ""}
+                                    </span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                            {filtered.length > 100 && (
+                              <p className="text-xs text-muted-foreground">
+                                Showing first 100 — refine your search to narrow results.
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
+
+                      <div className="my-3 border-t" />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => void doLookup()}
+                          disabled={!plate || !date || lookingUp}
+                        >
+                          {lookingUp ? "Looking up…" : "Re-match plate + date"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setManualOverride((m) => !m);
+                            if (!manualOverride) setSelectedRentalId("");
+                            setManualQuery("");
+                          }}
+                        >
+                          {manualOverride ? "Use auto match" : "Choose manually"}
+                        </Button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 bg-muted/30 border-t flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={submit} disabled={saving}>
             {saving ? "Saving…" : "Add Violation"}
