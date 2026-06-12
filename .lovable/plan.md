@@ -1,39 +1,56 @@
-## Simplified Violations Workflow + CSV Tools
+## Goal
 
-Per your spec: remove the customer affidavit step entirely, rely on the already-signed rental agreement, auto-generate the liability-transfer packet, send the customer an info-only notice, and let the admin print/mail/track. Plus CSV import (Fleet Finesse) and CSV export.
+On the Violations page, reservations that show **"⚠️ No Agreement on File"** currently only offer **Send Agreement Link** (texts the renter a link to sign on their own phone). You want to also be able to **create and sign the agreement in office right now**: open an editable agreement, auto-populate everything already on file, fill in the missing pieces, capture a signature on a signature pad, and save it. Once saved, the reservation flips to "Agreement Signed" and the **Create Violation** button becomes available.
 
-### Part 1 — Remove affidavit flow
-- Delete the customer affidavit page `src/routes/violation.$token_.affidavit.tsx`.
-- In `violation-resolution.functions.ts`: remove `signViolationAffidavit`, `getAffidavitPdfUrl`, `buildAndStoreAffidavit`, and the `ezpass-affidavit.server` import. Keep `getViolationForCustomer` and `createViolationCustomerPayment` (so "Pay Now" still works if you want it).
-- `src/routes/violation.$token.tsx`: drop the "Sign Affidavit (Recommended)" card and the affidavit confirmation copy. Becomes an **informational notice** ("This violation has been transferred to you per N.J.S.A. 39:4-138.1; the authority will contact you directly") with an optional Pay Now button.
-- `violations.tsx`: remove the "Signed Affidavit" filter tab, the affidavit timeline row, and affidavit-related UI.
-- Delete `src/lib/ezpass-affidavit.server.ts` (and `ezpass.functions.ts` affidavit pieces if unused elsewhere — I'll verify before deleting).
+These no-agreement rows are the migrated ("Fleet Finesse Migration") reservations, so the new button applies to those.
 
-### Part 2 — New processing workflow
-- On match (in the bulk-upload review / `createViolation`), auto-call `generateLiabilityTransfer` so the packet PDF exists immediately, set status to `transfer_generated`.
-- Customer notification becomes informational only (no pay-or-sign choice, no action link required).
-- Admin reviews → Generate Mail Packet → Mark Mailed → Confirm (these already exist in `LiabilityActions`, kept intact).
+## What you'll see
 
-### Part 3 — Liability transfer packet
-- Cover letter already built in `liability-transfer.functions.ts` and matches your statute text. I'll update the "ATTACHED DOCUMENTS" list to drop "Signed affidavit" and the packet builder to stop appending the affidavit PDF.
-- Authority selected by `authority_key` (NJ E-ZPass seeded; others editable on /violations/authorities).
+For each reservation with no agreement on file, a new green **Create Rental Agreement** button appears next to **Send Agreement Link**.
 
-### Part 4 — Reminders
-- `violation-reminders.ts`: remove pay/sign reminder cadence. Replace with optional informational follow-up only, or disable entirely (your call — see question below).
+Clicking it opens a dialog that mirrors the renter signing page, but for in-office use:
 
-### Part 5 — CSV import (Fleet Finesse)  ⚠ needs your input
-The spec for column mapping was cut off. I need the CSV headers / sample to map fields into `rentals` / `drivers` / `vehicles`. Plan: a new `/violations/bulk-upload` or `/import` tab with file picker → parse client-side → preview table → server fn `importFleetFinesseCsv` that upserts rows.
+- Header showing the customer, vehicle, plate, and rental dates.
+- **Your Information** fields (Full Name, DOB, Address, Driver's License #, License State, Phone, Email) — pre-filled with whatever is already on the reservation; you type in the rest.
+- The scrollable **Rental Agreement Terms**.
+- A **signature pad** the renter signs on your device.
+- The four acknowledgement checkboxes.
+- A **Save Signed Agreement** button.
 
-### Part 6 — CSV export
-- Add an "Export CSV" button (reusing `src/lib/exports.ts`) on the violations page and/or rentals page to download current data.
+On save, the system generates the signed agreement PDF (same template as every other agreement), stores it on the reservation, and — exactly like the texted-link flow — promotes the migrated reservation into a real driver + rental record and links any existing violations to it.
 
-### Questions before I build
-1. Keep the customer "Pay Now" option, or make the customer page purely informational (no payment)?
-2. Reminders: remove entirely, or keep one informational follow-up?
-3. CSV import: please share the Fleet Finesse CSV headers (or a sample row) and which table(s) it should populate (rentals, drivers, vehicles?).
-4. CSV export: which dataset(s) — violations, rentals, or both?
+The dialog then closes and the search refreshes: the card now shows **✓ Rental Agreement Signed** with a **Create Violation** button, so you can immediately log the violation.
 
-### Technical notes
-- No DB schema changes required (columns already exist from the prior migration).
-- All server logic stays in `*.functions.ts` with `supabaseAdmin` imported in handlers.
-- `routeTree.gen.ts` regenerates automatically when routes are added/removed.
+```text
+Nicole Campbell                         [No Agreement on File]
+2013 Hyundai Elantra
+Rental Period: 5/24/2026 to 5/31/2026
+[ Create Rental Agreement ]  [ Send Agreement Link ]
+        │
+        ▼ (fill + sign in office, Save)
+Nicole Campbell                         [✓ Rental Agreement Signed]
+2013 Hyundai Elantra
+[ Create Violation ]
+```
+
+## Technical details
+
+**1. New server function — `signRetroAgreementInOffice`** (in `src/lib/retro-agreement.functions.ts`)
+- Admin-authenticated (`.middleware([requireSupabaseAuth])`), keyed by `legacyId` (UUID) instead of a public token.
+- Input: `legacyId`, `fullName`, `address`, `licenseNumber`, `dlState`, `dateOfBirth`, `phone`, `email`, `signatureDataUrl`, plus the four `ack` flags.
+- Reuses the existing internal helpers: `signatureToJpeg`, `renderRentalAgreementPdf`, and `promoteLegacyRental`. The body is essentially `submitRetroAgreement` with the lookup changed from `.eq("retro_token", token)` to `.eq("id", legacyId)` and no token expiry/clearing logic. It uploads the signature + PDF to the `legacy-agreements` bucket, updates the `legacy_rentals` row (`retro_signed_at`, `retro_signature_url`, `agreement_pdf_url`, captured fields), promotes to real driver/rental, and relinks violations.
+- To avoid duplication, extract the shared "build PDF + promote + persist" steps that `submitRetroAgreement` already runs into a small internal helper both functions call.
+- Returns `{ ok, promoted, driverId, rentalId, vehicleId }`.
+
+**2. New in-office dialog component** (in `src/components/app/ViolationSearchSection.tsx`)
+- A `CreateAgreementModal` modeled on the `sign-agreement-retro` route body, but rendered inside a `Dialog` and calling `signRetroAgreementInOffice` with `legacyId: card.id`.
+- Seeds its fields from the `ViolationSearchCard` (`customerName`, `phone`, `email`) and, for the richer fields (address/DL/DOB) not present on the card, leaves them blank for entry. Uses the existing `SignaturePad`, `DEFAULT_SETTINGS`/`renderClauseBody` for terms, and the same acknowledgement checklist.
+- On success: toast, close, and re-run the current search (`doSearch()`) so the card refreshes to the agreement-signed state.
+
+**3. Wire the button into the card** (in `ViolationSearchSection.tsx`)
+- In the no-agreement branch (currently only `Send Agreement Link`), add a `Create Rental Agreement` button before it that opens the new modal. Add `createAgrFor` state alongside the existing `linkFor`/`createFor` state.
+
+**Notes / scope**
+- The new "editable agreement" reuses the existing auto-filled form + signature approach (consistent with every other agreement in the app) rather than a free-form PDF-overlay editor — same auto-populate + fill-the-rest + signature-pad outcome you described.
+- No database schema changes are required; this reuses existing `legacy_rentals` columns, storage bucket, and promotion logic.
+- Applies to migrated reservations (the rows that show "No Agreement on File"). If you also want this for live rentals that are missing an agreement, that's a small follow-on once this is in.

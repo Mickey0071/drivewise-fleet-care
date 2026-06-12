@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { SignaturePad } from "@/components/app/SignaturePad";
 import {
   Dialog,
   DialogContent,
@@ -28,11 +31,13 @@ import {
   sendRetroAgreementLink,
   cancelRetroAgreementLink,
   listAwaitingRetroAgreements,
+  signRetroAgreementInOffice,
   type ViolationSearchCard,
 } from "@/lib/retro-agreement.functions";
 import { createViolation } from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
+import { DEFAULT_SETTINGS, renderClauseBody } from "@/lib/agreementSettings";
 
 /** Parse a free-form search term into a date (YYYY-MM-DD) and/or plate. */
 function parseTerm(raw: string): { date: string | null; plate: string | null } {
@@ -80,6 +85,8 @@ export function ViolationSearchSection({ onCreated }: { onCreated: () => void })
   const [createFor, setCreateFor] = useState<ViolationSearchCard | null>(null);
   // Send-link modal state
   const [linkFor, setLinkFor] = useState<ViolationSearchCard | null>(null);
+  // Create-agreement (in-office) modal state
+  const [createAgrFor, setCreateAgrFor] = useState<ViolationSearchCard | null>(null);
 
   const doSearch = async () => {
     const parsed = parseTerm(term);
@@ -171,9 +178,18 @@ export function ViolationSearchSection({ onCreated }: { onCreated: () => void })
                       <FilePlus2 className="mr-1 h-4 w-4" /> Create Violation
                     </Button>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={() => setLinkFor(r)}>
-                      <FileSignature className="mr-1 h-4 w-4" /> Send Agreement Link
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() => setCreateAgrFor(r)}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        <FileSignature className="mr-1 h-4 w-4" /> Create Rental Agreement
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setLinkFor(r)}>
+                        <FileSignature className="mr-1 h-4 w-4" /> Send Agreement Link
+                      </Button>
+                    </>
                   )}
                 </div>
               </CardContent>
@@ -249,6 +265,17 @@ export function ViolationSearchSection({ onCreated }: { onCreated: () => void })
         onCreated={() => {
           setCreateFor(null);
           onCreated();
+        }}
+      />
+
+      {/* Create Rental Agreement (in-office) modal */}
+      <CreateAgreementModal
+        card={createAgrFor}
+        onClose={() => setCreateAgrFor(null)}
+        onSigned={() => {
+          setCreateAgrFor(null);
+          qc.invalidateQueries({ queryKey: ["awaiting-retro"] });
+          if (searched) doSearch();
         }}
       />
     </div>
@@ -382,6 +409,185 @@ function SendLinkModal({
           >
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Send Agreement Link
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CreateAgreementModal({
+  card,
+  onClose,
+  onSigned,
+}: {
+  card: ViolationSearchCard | null;
+  onClose: () => void;
+  onSigned: () => void;
+}) {
+  const sign = useServerFn(signRetroAgreementInOffice);
+  const open = Boolean(card);
+
+  const [fullName, setFullName] = useState("");
+  const [address, setAddress] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [dlState, setDlState] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [sig, setSig] = useState<string | null>(null);
+  const [ack1, setAck1] = useState(false);
+  const [ack2, setAck2] = useState(false);
+  const [ack3, setAck3] = useState(false);
+  const [ack4, setAck4] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [seededId, setSeededId] = useState<string | null>(null);
+
+  // Seed fields from the card once per opened card.
+  if (card && seededId !== card.id) {
+    setSeededId(card.id);
+    setFullName(card.customerName === "Unknown renter" ? "" : card.customerName);
+    setAddress("");
+    setLicenseNumber("");
+    setDlState("");
+    setDateOfBirth("");
+    setPhone(card.phone ?? "");
+    setEmail(card.email ?? "");
+    setSig(null);
+    setAck1(false); setAck2(false); setAck3(false); setAck4(false);
+  }
+
+  const reset = () => {
+    setSeededId(null);
+  };
+
+  const allAck = ack1 && ack2 && ack3 && ack4;
+  const canSubmit = fullName.trim().length > 1 && Boolean(sig) && allAck && !busy;
+
+  const handleSubmit = async () => {
+    if (!card) return;
+    if (!sig) { toast.error("Please capture a signature"); return; }
+    if (!allAck) { toast.error("Please check all acknowledgements"); return; }
+    setBusy(true);
+    try {
+      await sign({
+        data: {
+          legacyId: card.id,
+          fullName: fullName.trim(),
+          address,
+          licenseNumber,
+          dlState,
+          dateOfBirth,
+          phone,
+          email,
+          signatureDataUrl: sig,
+          ack1: true, ack2: true, ack3: true, ack4: true,
+        },
+      });
+      toast.success("Agreement signed");
+      reset();
+      onSigned();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save agreement");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Create Rental Agreement</DialogTitle>
+        </DialogHeader>
+        {card && (
+          <div className="grid gap-4">
+            <Card>
+              <CardContent className="grid gap-1 p-4 text-sm">
+                <div><span className="text-muted-foreground">Customer: </span>{card.customerName}</div>
+                <div>
+                  <span className="text-muted-foreground">Vehicle: </span>
+                  {card.vehicleLabel}{card.plate ? ` — Plate ${card.plate}` : ""}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Rental period: </span>
+                  {fmt(card.startDate)} to {fmt(card.endDate)}
+                </div>
+              </CardContent>
+            </Card>
+
+            <div>
+              <h3 className="mb-2 font-semibold">Rental Agreement Terms</h3>
+              <ScrollArea className="h-48 rounded-md border p-3 text-xs leading-relaxed">
+                {DEFAULT_SETTINGS.clauses.map((c) => (
+                  <div key={c.title} className="mb-3">
+                    <p className="font-semibold">{c.title}</p>
+                    <p className="text-muted-foreground">{renderClauseBody(c.body, DEFAULT_SETTINGS)}</p>
+                  </div>
+                ))}
+              </ScrollArea>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-1">
+                <Label>Full Name</Label>
+                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <Label>Date of Birth</Label>
+                <Input value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} placeholder="MM/DD/YYYY" />
+              </div>
+              <div className="grid gap-1 sm:col-span-2">
+                <Label>Address</Label>
+                <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <Label>Driver's License #</Label>
+                <Input value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <Label>License State</Label>
+                <Input value={dlState} onChange={(e) => setDlState(e.target.value.toUpperCase().slice(0, 2))} placeholder="NJ" />
+              </div>
+              <div className="grid gap-1">
+                <Label>Phone</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </div>
+              <div className="grid gap-1">
+                <Label>Email</Label>
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Signature</Label>
+              <SignaturePad value={sig ?? undefined} onChange={setSig} />
+            </div>
+
+            <div className="grid gap-2 text-sm">
+              {[
+                { c: ack1, set: setAck1, label: "Renter confirms they rented this vehicle on the dates shown" },
+                { c: ack2, set: setAck2, label: "Renter accepts all terms of this rental agreement" },
+                { c: ack3, set: setAck3, label: "Renter authorizes charges for any violations during this rental period" },
+                { c: ack4, set: setAck4, label: "Renter understands this electronic signature is legally binding" },
+              ].map((row, i) => (
+                <label key={i} className="flex items-start gap-2">
+                  <Checkbox checked={row.c} onCheckedChange={(v) => row.set(Boolean(v))} className="mt-0.5" />
+                  <span>{row.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
+          <Button
+            disabled={!canSubmit}
+            className="bg-emerald-600 hover:bg-emerald-700"
+            onClick={handleSubmit}
+          >
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Save Signed Agreement
           </Button>
         </DialogFooter>
       </DialogContent>

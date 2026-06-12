@@ -722,3 +722,218 @@ export const submitRetroAgreement = createServerFn({ method: "POST" })
       vehicleId: promotion?.vehicleId ?? null,
     };
   });
+
+/**
+ * In-office version of submitRetroAgreement. Admin-authenticated and keyed by
+ * the legacy rental id (not a public token). Builds + stores the signed PDF,
+ * promotes the legacy rental into real driver/rental records, and relinks any
+ * existing violations — so the reservation immediately shows "Agreement Signed"
+ * and "Create Violation" becomes available.
+ */
+export const signRetroAgreementInOffice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        legacyId: z.string().uuid(),
+        fullName: z.string().min(2).max(120),
+        address: z.string().max(300).optional().default(""),
+        licenseNumber: z.string().max(40).optional().default(""),
+        dlState: z.string().max(4).optional().default(""),
+        dateOfBirth: z.string().max(20).optional().default(""),
+        phone: z.string().max(30).optional().default(""),
+        email: z.string().max(120).optional().default(""),
+        signatureDataUrl: z.string().min(20),
+        ack1: z.literal(true),
+        ack2: z.literal(true),
+        ack3: z.literal(true),
+        ack4: z.literal(true),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { sendSms } = await import("@/lib/ghl.server");
+
+    const { data: lr, error } = await supabaseAdmin
+      .from("legacy_rentals")
+      .select("*")
+      .eq("id", data.legacyId)
+      .maybeSingle();
+    if (error || !lr) throw new Error("Migration rental not found");
+
+    const ip =
+      getRequestHeader("cf-connecting-ip") ||
+      (getRequestHeader("x-forwarded-for") || "").split(",")[0].trim() ||
+      null;
+    const nowIso = new Date().toISOString();
+
+    // Upload signature image
+    let signatureUrl: string | null = null;
+    const sigJpeg = await signatureToJpeg(data.signatureDataUrl);
+    if (sigJpeg) {
+      const path = `retro/${lr.id}/signature-${Date.now()}.jpg`;
+      const { error: sErr } = await supabaseAdmin.storage
+        .from("legacy-agreements")
+        .upload(path, sigJpeg, { contentType: "image/jpeg", upsert: true });
+      if (!sErr) {
+        const { data: signed } = await supabaseAdmin.storage
+          .from("legacy-agreements")
+          .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
+        signatureUrl = signed?.signedUrl ?? null;
+      }
+    }
+
+    // Build the signed agreement PDF
+    const vehText = (lr.vehicle || "").trim();
+    const [makeGuess, ...modelGuess] = vehText.split(/\s+/);
+    const pdfData: RentalAgreementPDFData = {
+      rental: {
+        id: lr.order_number || lr.id,
+        startDate: lr.start_datetime ? lr.start_datetime.slice(0, 10) : "",
+        endDate: lr.end_datetime ? lr.end_datetime.slice(0, 10) : null,
+        billingCadence: null,
+        billingPeriod: null,
+        rateAmount: null,
+        rate: 0,
+        weeklyRate: 0,
+        depositPaid: 0,
+        signedBy: data.fullName,
+        signedAt: nowIso,
+        clientSignedAt: nowIso,
+        agreementVersion: DEFAULT_SETTINGS.agreementVersion,
+      },
+      driver: {
+        fullName: data.fullName,
+        firstName: null,
+        lastName: null,
+        middleInitial: null,
+        dateOfBirth: data.dateOfBirth || lr.dob || null,
+        licenseNumber: data.licenseNumber || lr.dl_number || "",
+        licenseExpiry: null,
+        dlState: data.dlState || lr.dl_state || null,
+        phone: data.phone || lr.phone || "",
+        email: data.email || lr.email || "",
+        streetAddress: null,
+        aptUnit: null,
+        city: null,
+        state: null,
+        zipCode: null,
+        address: data.address || lr.address || null,
+        altContactName: null,
+        altContactPhone: null,
+      },
+      vehicle: {
+        year: lr.year || "",
+        make: makeGuess || vehText || "",
+        model: modelGuess.join(" "),
+        color: lr.color || null,
+        plate: lr.plate || "",
+        vin: "",
+        mileage: 0,
+        fuelLevelPickup: null,
+        ezPassTag: null,
+      },
+      extensions: [],
+      settings: DEFAULT_SETTINGS,
+      signaturePng: sigJpeg,
+    };
+    const bytes = await renderRentalAgreementPdf(pdfData);
+    const pdfPath = `retro/${lr.id}/agreement-${Date.now()}.pdf`;
+    const { error: pErr } = await supabaseAdmin.storage
+      .from("legacy-agreements")
+      .upload(pdfPath, Buffer.from(bytes), { contentType: "application/pdf", upsert: true });
+    if (pErr) throw new Error(pErr.message);
+    const { data: signedPdf } = await supabaseAdmin.storage
+      .from("legacy-agreements")
+      .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 5);
+    const agreementUrl = signedPdf?.signedUrl ?? null;
+
+    // ---- Promote legacy rental into real drivers + rentals rows ----
+    let promotion: LegacyPromotionResult | null = null;
+    const alreadyPromoted = Boolean((lr as { promoted_at?: string | null }).promoted_at);
+    if (!alreadyPromoted) {
+      try {
+        promotion = await promoteLegacyRental(
+          supabaseAdmin,
+          lr,
+          {
+            fullName: data.fullName,
+            address: data.address,
+            licenseNumber: data.licenseNumber,
+            dlState: data.dlState,
+            dateOfBirth: data.dateOfBirth,
+            phone: data.phone,
+            email: data.email,
+          },
+          agreementUrl,
+          nowIso,
+        );
+      } catch (e) {
+        console.error("[retro-inoffice] legacy promotion failed", e);
+      }
+    }
+
+    const { error: upErr } = await supabaseAdmin
+      .from("legacy_rentals")
+      .update({
+        retro_signed_at: nowIso,
+        retro_signed_ip: ip,
+        retro_signature_url: signatureUrl,
+        agreement_pdf_url: agreementUrl,
+        address: data.address || lr.address || null,
+        dl_number: data.licenseNumber || lr.dl_number || null,
+        dl_state: data.dlState || lr.dl_state || null,
+        dob: data.dateOfBirth || lr.dob || null,
+        phone: data.phone || lr.phone || null,
+        email: data.email || lr.email || null,
+        retro_token: null,
+        retro_token_expires_at: null,
+        ...(promotion
+          ? {
+              status: "promoted",
+              promoted_at: nowIso,
+              promoted_driver_id: promotion.driverId,
+              promoted_rental_id: promotion.rentalId,
+              promotion_note: promotion.note,
+            }
+          : {}),
+      } as never)
+      .eq("id", lr.id);
+    if (upErr) throw new Error(upErr.message);
+
+    // Link any violations already attached to this legacy rental to the real ids.
+    if (promotion) {
+      try {
+        const patch: Record<string, unknown> = { driver_id: promotion.driverId };
+        if (promotion.rentalId) patch.rental_id = promotion.rentalId;
+        if (promotion.vehicleId) patch.vehicle_id = promotion.vehicleId;
+        await supabaseAdmin
+          .from("violations")
+          .update(patch as never)
+          .eq("legacy_rental_id", lr.id);
+      } catch (e) {
+        console.warn("[retro-inoffice] linking violations to promoted ids failed", e);
+      }
+    }
+
+    try {
+      await sendSms(
+        ADMIN_SMS,
+        `✓ ${data.fullName} signed an in-office agreement for rental ${lr.order_number || lr.id}` +
+          (promotion
+            ? ` · Promoted → driver ${promotion.driverId}${promotion.rentalId ? `, rental ${promotion.rentalId}` : " (no vehicle match)"}`
+            : ""),
+      );
+    } catch (e) {
+      console.warn("[retro-inoffice] admin sms failed", e);
+    }
+
+    return {
+      ok: true as const,
+      promoted: Boolean(promotion),
+      driverId: promotion?.driverId ?? null,
+      rentalId: promotion?.rentalId ?? null,
+      vehicleId: promotion?.vehicleId ?? null,
+    };
+  });
