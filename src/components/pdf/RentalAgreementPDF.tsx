@@ -194,13 +194,13 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   doc.setDrawColor(...RGB_GREEN);
   doc.setLineWidth(1.5);
   doc.line(left, y, right, y);
-  y += 13;
+  y += 11;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(...RGB_TEXT);
   doc.text("VEHICLE RENTAL AGREEMENT", pageW / 2, y, { align: "center" });
-  y += 10;
+  y += 9;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(...RGB_MUTED);
@@ -210,7 +210,7 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     y,
     { align: "center" },
   );
-  y += 8;
+  y += 6;
 
   const sectionBar = (label: string) => {
     ensureSpace(20);
