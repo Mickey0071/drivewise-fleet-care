@@ -557,7 +557,7 @@ export interface ViolationHistoryRow {
   created_at: string;
 }
 
-const VALID_STATUSES = ["pending", "paid", "disputed", "failed"] as const;
+const VALID_STATUSES = ["pending", "paid", "disputed", "failed", "mailed_pending_review"] as const;
 type ViolationStatus = (typeof VALID_STATUSES)[number];
 
 export const listViolationHistory = createServerFn({ method: "GET" })
