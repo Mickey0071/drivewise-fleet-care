@@ -89,7 +89,7 @@ function BulkUploadPage() {
       if (file.type === "application/pdf") {
         setProgress("Rendering PDF pages…");
         const pdf = await loadPdf(file);
-        const pageCount = Math.min(pdf.pageCount, 20);
+        const pageCount = Math.min(pdf.pageCount, 30);
         for (let p = 1; p <= pageCount; p++) {
           setProgress(`Rendering page ${p} of ${pageCount}…`);
           images.push(await pdf.renderPage(p));
