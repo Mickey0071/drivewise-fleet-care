@@ -509,7 +509,7 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     : rental.clientSignedAt
       ? fmtDate(rental.clientSignedAt.slice(0, 10))
       : "";
-  const pnY = sigTop + sigBoxH + 24;
+  const pnY = sigTop + sigBoxH + 19;
   const halfW = contentW / 2;
   ([
     { label: "Print Name", value: rental.signedBy ?? fullName, x: left },
