@@ -557,7 +557,15 @@ function ViolationsPage() {
                         {v.vehicle_label || v.license_plate || "—"}
                       </td>
                       <td className="p-3">
-                        {v.driver_name || "—"}
+                        <div className="font-medium">{v.driver_name || "Unknown renter"}</div>
+                        {v.driver_phone && (
+                          <a
+                            href={`tel:${v.driver_phone.replace(/[^\d]/g, "")}`}
+                            className="flex items-center gap-1 text-xs text-primary hover:underline"
+                          >
+                            <Phone className="h-3 w-3" /> {v.driver_phone}
+                          </a>
+                        )}
                         {v.rental_id && (
                           <div className="text-xs text-muted-foreground">{v.rental_id}</div>
                         )}
@@ -585,51 +593,53 @@ function ViolationsPage() {
                         )}
                       </td>
                       <td className="p-3 text-right">
-                        {(v.status === "pending" || v.status === "failed") && v.rental_id && (
-                          <Button size="sm" variant="outline" onClick={() => setChargeFor(v)}>
-                            Charge
-                          </Button>
-                        )}
-                        {v.payment_link_url && v.status === "pending" && (
-                          <a
-                            href={v.payment_link_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="ml-2 text-xs text-primary underline"
-                          >
-                            Link
-                          </a>
-                        )}
-                        {!["paid", "resolved", "submitted_to_authority"].includes(v.status) && (
-                          <SendCustomerButton violation={v} onDone={refresh} />
-                        )}
-                        {["submitted_to_authority", "resolved"].includes(v.status) && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="ml-2"
-                            onClick={() => setSubmitFor(v)}
-                          >
-                            View Dispute
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="ml-2"
-                          onClick={() => setStatusFor(v)}
-                        >
-                          Change Status
-                        </Button>
-                        <DownloadPacketButton violationId={v.id} />
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="ml-2"
-                          onClick={() => setExpanded(expanded === v.id ? null : v.id)}
-                        >
-                          {expanded === v.id ? "Hide" : "Timeline"}
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          {(v.status === "pending" || v.status === "failed") && v.rental_id && (
+                            <Button size="sm" variant="outline" onClick={() => setChargeFor(v)}>
+                              Charge
+                            </Button>
+                          )}
+                          {!["paid", "resolved", "submitted_to_authority"].includes(v.status) && (
+                            <SendCustomerButton violation={v} onDone={refresh} />
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              {v.payment_link_url && v.status === "pending" && (
+                                <DropdownMenuItem asChild>
+                                  <a href={v.payment_link_url} target="_blank" rel="noreferrer">
+                                    Open payment link
+                                  </a>
+                                </DropdownMenuItem>
+                              )}
+                              {["submitted_to_authority", "resolved"].includes(v.status) && (
+                                <DropdownMenuItem onClick={() => setSubmitFor(v)}>
+                                  View dispute
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onClick={() => setStatusFor(v)}>
+                                Change status
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setExpanded(expanded === v.id ? null : v.id)}
+                              >
+                                {expanded === v.id ? "Hide timeline" : "View timeline"}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setDeleteFor(v)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete violation
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <DownloadPacketButton violationId={v.id} />
+                        </div>
                         <LiabilityActions v={v} onDone={refresh} />
                       </td>
                     </tr>
