@@ -686,6 +686,37 @@ function ViolationsPage() {
         onClose={() => setSubmitFor(null)}
         onDone={refresh}
       />
+
+      <AlertDialog open={!!deleteFor} onOpenChange={(o) => !o && setDeleteFor(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this violation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteFor && (
+                <>
+                  This permanently removes the violation for{" "}
+                  <strong>{deleteFor.driver_name || "this renter"}</strong>
+                  {deleteFor.license_plate ? ` (${deleteFor.license_plate})` : ""} and its history.
+                  This cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={delMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={delMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteFor) delMutation.mutate(deleteFor.id);
+              }}
+            >
+              {delMutation.isPending ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
