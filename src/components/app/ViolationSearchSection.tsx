@@ -85,6 +85,8 @@ export function ViolationSearchSection({ onCreated }: { onCreated: () => void })
   const [createFor, setCreateFor] = useState<ViolationSearchCard | null>(null);
   // Send-link modal state
   const [linkFor, setLinkFor] = useState<ViolationSearchCard | null>(null);
+  // Create-agreement (in-office) modal state
+  const [createAgrFor, setCreateAgrFor] = useState<ViolationSearchCard | null>(null);
 
   const doSearch = async () => {
     const parsed = parseTerm(term);
@@ -176,9 +178,18 @@ export function ViolationSearchSection({ onCreated }: { onCreated: () => void })
                       <FilePlus2 className="mr-1 h-4 w-4" /> Create Violation
                     </Button>
                   ) : (
-                    <Button size="sm" variant="outline" onClick={() => setLinkFor(r)}>
-                      <FileSignature className="mr-1 h-4 w-4" /> Send Agreement Link
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        onClick={() => setCreateAgrFor(r)}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        <FileSignature className="mr-1 h-4 w-4" /> Create Rental Agreement
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setLinkFor(r)}>
+                        <FileSignature className="mr-1 h-4 w-4" /> Send Agreement Link
+                      </Button>
+                    </>
                   )}
                 </div>
               </CardContent>
