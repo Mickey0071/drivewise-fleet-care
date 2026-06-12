@@ -25,6 +25,7 @@ export interface ViolationRow {
   created_at: string;
   notes: string | null;
   driver_name?: string | null;
+  driver_phone?: string | null;
   vehicle_label?: string | null;
   customer_token?: string | null;
   sent_to_customer_at?: string | null;
@@ -69,19 +70,21 @@ export const listViolations = createServerFn({ method: "GET" })
     const vehicleIds = Array.from(new Set(rows.map((r) => r.vehicle_id).filter(Boolean))) as string[];
     const [{ data: drivers }, { data: vehicles }] = await Promise.all([
       driverIds.length
-        ? supabaseAdmin.from("drivers").select("id, full_name").in("id", driverIds)
-        : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
+        ? supabaseAdmin.from("drivers").select("id, full_name, phone").in("id", driverIds)
+        : Promise.resolve({ data: [] as { id: string; full_name: string; phone: string }[] }),
       vehicleIds.length
         ? supabaseAdmin.from("vehicles").select("id, plate, make, model, year").in("id", vehicleIds)
         : Promise.resolve({ data: [] as { id: string; plate: string; make: string; model: string; year: number }[] }),
     ]);
     const dMap = new Map((drivers ?? []).map((d) => [d.id, d.full_name]));
+    const dPhone = new Map((drivers ?? []).map((d) => [d.id, (d as any).phone ?? null]));
     const vMap = new Map(
       (vehicles ?? []).map((v) => [v.id, `${v.year} ${v.make} ${v.model} (${v.plate})`]),
     );
     return rows.map((r) => ({
       ...r,
       driver_name: r.driver_id ? dMap.get(r.driver_id) ?? null : null,
+      driver_phone: r.driver_id ? dPhone.get(r.driver_id) ?? null : null,
       vehicle_label: r.vehicle_id ? vMap.get(r.vehicle_id) ?? null : null,
     }));
   });
@@ -1186,5 +1189,25 @@ export const markViolationResolved = createServerFn({ method: "POST" })
       changed_by_name: changedByName,
     } as never);
 
+    return { ok: true as const };
+  });
+
+/** Admin: permanently delete a violation and its history. */
+export const deleteViolation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input.id) throw new Error("id required");
+    return { id: input.id };
+  })
+  .handler(async ({ data }) => {
+    await (supabaseAdmin as any)
+      .from("violation_status_history")
+      .delete()
+      .eq("violation_id", data.id);
+    const { error } = await (supabaseAdmin as any)
+      .from("violations")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
     return { ok: true as const };
   });

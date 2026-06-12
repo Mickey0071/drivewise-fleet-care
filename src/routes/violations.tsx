@@ -3,7 +3,7 @@ import { useState, useMemo, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Search, AlertTriangle, FileUp, FileSignature } from "lucide-react";
+import { Plus, Search, AlertTriangle, FileUp, MoreHorizontal, Trash2, Phone, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,23 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   listViolations,
   lookupRentalByPlate,
@@ -31,6 +48,7 @@ import {
   type ViolationHistoryRow,
 } from "@/lib/violations.functions";
 import { sendViolationToCustomer } from "@/lib/violations.functions";
+import { deleteViolation } from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
 import {
   generateLiabilityTransfer,
@@ -247,6 +265,52 @@ function V1Timeline({ v }: { v: ViolationRow }) {
 const fmtMoney = (n: number) => `$${Number(n || 0).toFixed(2)}`;
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "—");
 
+/** Direct phone numbers to violation / toll bureaus for status follow-up calls. */
+const BUREAU_CONTACTS: { name: string; phone: string; note: string }[] = [
+  { name: "NJ E-ZPass Customer Service", phone: "(888) 288-6865", note: "Toll violations & account status" },
+  { name: "NJ Turnpike Authority Violations", phone: "(732) 750-5300", note: "Turnpike / Parkway tolls" },
+  { name: "NJ MVC (DMV)", phone: "(609) 292-6500", note: "Title, registration & surcharges" },
+  { name: "NY E-ZPass Violations", phone: "(800) 333-8655", note: "NY toll violations" },
+  { name: "NY DMV", phone: "(518) 486-9786", note: "Tickets & registration" },
+  { name: "PA Turnpike Toll By Plate", phone: "(877) 736-6727", note: "PA toll bills" },
+];
+
+function BureauContactsCard() {
+  const [open, setOpen] = useState(false);
+  return (
+    <Card className="mb-4">
+      <CardContent className="p-3">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex w-full items-center justify-between text-sm font-medium"
+        >
+          <span className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-emerald-600" />
+            Violations Bureau Direct Lines
+          </span>
+          <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+        {open && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {BUREAU_CONTACTS.map((b) => (
+              <a
+                key={b.name}
+                href={`tel:${b.phone.replace(/[^\d]/g, "")}`}
+                className="rounded-md border p-3 transition-colors hover:bg-muted/50"
+              >
+                <div className="font-medium">{b.name}</div>
+                <div className="text-base font-semibold text-emerald-700">{b.phone}</div>
+                <div className="text-xs text-muted-foreground">{b.note}</div>
+              </a>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 type Filter =
   | "all"
   | "awaiting_response"
@@ -294,6 +358,18 @@ function ViolationsPage() {
   const [statusFor, setStatusFor] = useState<ViolationRow | null>(null);
   const [submitFor, setSubmitFor] = useState<ViolationRow | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [deleteFor, setDeleteFor] = useState<ViolationRow | null>(null);
+
+  const delFn = useServerFn(deleteViolation);
+  const delMutation = useMutation({
+    mutationFn: (id: string) => delFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Violation deleted");
+      setDeleteFor(null);
+      qc.invalidateQueries({ queryKey: ["violations"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Delete failed"),
+  });
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -367,26 +443,32 @@ function ViolationsPage() {
                 <FileUp className="mr-1 h-4 w-4" /> Bulk Upload EZPass
               </Link>
             </Button>
-            <Button variant="outline" asChild>
-              <Link to="/violations/disputes">
-                <FileSignature className="mr-1 h-4 w-4" /> Disputes
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/violations/authorities">Authorities</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/violations/import">Import CSV</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/violations/imports">Import History</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/violations/exports">Export Data</Link>
-            </Button>
-            <Button variant="outline" onClick={exportCsv}>
-              Export CSV
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  More <ChevronDown className="ml-1 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link to="/violations/disputes">Disputes</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/violations/authorities">Authorities</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/violations/import">Import CSV</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/violations/imports">Import History</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/violations/exports">Export Data</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportCsv}>Export CSV</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={() => setNewOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="mr-1 h-4 w-4" /> New Violation
             </Button>
@@ -395,6 +477,8 @@ function ViolationsPage() {
       />
 
       <ViolationSearchSection onCreated={refresh} />
+
+      <BureauContactsCard />
 
       {readyForTransfer.length > 0 && (
         <Card className="mb-4 border-amber-300 bg-amber-50">
@@ -479,7 +563,15 @@ function ViolationsPage() {
                         {v.vehicle_label || v.license_plate || "—"}
                       </td>
                       <td className="p-3">
-                        {v.driver_name || "—"}
+                        <div className="font-medium">{v.driver_name || "Unknown renter"}</div>
+                        {v.driver_phone && (
+                          <a
+                            href={`tel:${v.driver_phone.replace(/[^\d]/g, "")}`}
+                            className="flex items-center gap-1 text-xs text-primary hover:underline"
+                          >
+                            <Phone className="h-3 w-3" /> {v.driver_phone}
+                          </a>
+                        )}
                         {v.rental_id && (
                           <div className="text-xs text-muted-foreground">{v.rental_id}</div>
                         )}
@@ -507,51 +599,53 @@ function ViolationsPage() {
                         )}
                       </td>
                       <td className="p-3 text-right">
-                        {(v.status === "pending" || v.status === "failed") && v.rental_id && (
-                          <Button size="sm" variant="outline" onClick={() => setChargeFor(v)}>
-                            Charge
-                          </Button>
-                        )}
-                        {v.payment_link_url && v.status === "pending" && (
-                          <a
-                            href={v.payment_link_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="ml-2 text-xs text-primary underline"
-                          >
-                            Link
-                          </a>
-                        )}
-                        {!["paid", "resolved", "submitted_to_authority"].includes(v.status) && (
-                          <SendCustomerButton violation={v} onDone={refresh} />
-                        )}
-                        {["submitted_to_authority", "resolved"].includes(v.status) && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="ml-2"
-                            onClick={() => setSubmitFor(v)}
-                          >
-                            View Dispute
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="ml-2"
-                          onClick={() => setStatusFor(v)}
-                        >
-                          Change Status
-                        </Button>
-                        <DownloadPacketButton violationId={v.id} />
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="ml-2"
-                          onClick={() => setExpanded(expanded === v.id ? null : v.id)}
-                        >
-                          {expanded === v.id ? "Hide" : "Timeline"}
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          {(v.status === "pending" || v.status === "failed") && v.rental_id && (
+                            <Button size="sm" variant="outline" onClick={() => setChargeFor(v)}>
+                              Charge
+                            </Button>
+                          )}
+                          {!["paid", "resolved", "submitted_to_authority"].includes(v.status) && (
+                            <SendCustomerButton violation={v} onDone={refresh} />
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              {v.payment_link_url && v.status === "pending" && (
+                                <DropdownMenuItem asChild>
+                                  <a href={v.payment_link_url} target="_blank" rel="noreferrer">
+                                    Open payment link
+                                  </a>
+                                </DropdownMenuItem>
+                              )}
+                              {["submitted_to_authority", "resolved"].includes(v.status) && (
+                                <DropdownMenuItem onClick={() => setSubmitFor(v)}>
+                                  View dispute
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem onClick={() => setStatusFor(v)}>
+                                Change status
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setExpanded(expanded === v.id ? null : v.id)}
+                              >
+                                {expanded === v.id ? "Hide timeline" : "View timeline"}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setDeleteFor(v)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete violation
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <DownloadPacketButton violationId={v.id} />
+                        </div>
                         <LiabilityActions v={v} onDone={refresh} />
                       </td>
                     </tr>
@@ -598,6 +692,37 @@ function ViolationsPage() {
         onClose={() => setSubmitFor(null)}
         onDone={refresh}
       />
+
+      <AlertDialog open={!!deleteFor} onOpenChange={(o) => !o && setDeleteFor(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this violation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteFor && (
+                <>
+                  This permanently removes the violation for{" "}
+                  <strong>{deleteFor.driver_name || "this renter"}</strong>
+                  {deleteFor.license_plate ? ` (${deleteFor.license_plate})` : ""} and its history.
+                  This cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={delMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={delMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteFor) delMutation.mutate(deleteFor.id);
+              }}
+            >
+              {delMutation.isPending ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
