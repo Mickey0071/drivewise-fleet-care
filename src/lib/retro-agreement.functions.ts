@@ -171,6 +171,156 @@ function makeToken(): string {
   ).slice(0, 40);
 }
 
+/** Next sequential text id like "D-101" / "R-501" for drivers / rentals. */
+async function nextSeqId(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  table: "rentals" | "drivers",
+  prefix: "R" | "D",
+  floor: number,
+): Promise<string> {
+  const { data } = await admin.from(table).select("id");
+  const n = (data ?? []).reduce((m: number, row: { id: string }) => {
+    const k = parseInt(String(row.id).replace(/\D/g, "")) || 0;
+    return Math.max(m, k);
+  }, floor);
+  return `${prefix}-${n + 1}`;
+}
+
+function normPlate(s: string | null | undefined): string {
+  return (s ?? "").replace(/[^a-z0-9]/gi, "").toUpperCase();
+}
+
+export interface LegacyPromotionResult {
+  driverId: string;
+  driverCreated: boolean;
+  rentalId: string | null;
+  vehicleId: string | null;
+  note: string;
+}
+
+/**
+ * Promote a signed legacy rental into real drivers + rentals rows.
+ * - Matches an existing driver by license number or phone, else creates one.
+ * - Matches the vehicle by plate; if found, creates a real "Returned" rental.
+ * Returns the resolved ids. Idempotent-ish: if the legacy row was already
+ * promoted, the caller should skip.
+ */
+async function promoteLegacyRental(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  lr: any,
+  submitted: {
+    fullName: string;
+    address?: string;
+    licenseNumber?: string;
+    dlState?: string;
+    dateOfBirth?: string;
+    phone?: string;
+    email?: string;
+  },
+  agreementUrl: string | null,
+  signedAtIso: string,
+): Promise<LegacyPromotionResult> {
+  const fullName = (submitted.fullName || lr.renter_name || "").trim();
+  const license = (submitted.licenseNumber || lr.dl_number || "").trim().toUpperCase();
+  const phone = (submitted.phone || lr.phone || "").trim();
+  const phoneDigits = phone.replace(/\D/g, "");
+  const email = (submitted.email || lr.email || "").trim();
+
+  // 1) MATCH / CREATE DRIVER
+  let driverId: string | null = null;
+  let driverCreated = false;
+  if (license) {
+    const { data: byLic } = await admin
+      .from("drivers")
+      .select("id")
+      .ilike("license_number", license)
+      .limit(1);
+    if (byLic && byLic[0]) driverId = byLic[0].id;
+  }
+  if (!driverId && phoneDigits.length >= 7) {
+    const { data: drivers } = await admin.from("drivers").select("id, phone");
+    const match = (drivers ?? []).find(
+      (d: { id: string; phone: string | null }) =>
+        (d.phone ?? "").replace(/\D/g, "") === phoneDigits,
+    );
+    if (match) driverId = match.id;
+  }
+  if (!driverId) {
+    driverId = await nextSeqId(admin, "drivers", "D", 100);
+    const { error: dErr } = await admin.from("drivers").insert({
+      id: driverId,
+      full_name: fullName || "Unknown renter",
+      phone: phone || "",
+      email: email || "",
+      license_number: license || "",
+      license_expiry: "2099-12-31",
+      dl_state: submitted.dlState || lr.dl_state || null,
+      date_of_birth: submitted.dateOfBirth || lr.dob || null,
+      address: submitted.address || lr.address || null,
+      insurance_on_file: false,
+      rideshare: "Uber",
+      status: "active",
+      date_added: new Date().toISOString().slice(0, 10),
+      import_source: "fleet_finesse_promoted",
+    } as never);
+    if (dErr) throw new Error(`Driver create failed: ${dErr.message}`);
+    driverCreated = true;
+  }
+
+  // 2) MATCH VEHICLE BY PLATE + CREATE RENTAL
+  let vehicleId: string | null = null;
+  let rentalId: string | null = null;
+  const plateKey = normPlate(lr.plate);
+  if (plateKey) {
+    const { data: vehicles } = await admin.from("vehicles").select("id, plate");
+    const v = (vehicles ?? []).find(
+      (row: { id: string; plate: string | null }) => normPlate(row.plate) === plateKey,
+    );
+    if (v) vehicleId = v.id;
+  }
+  const startISO = lr.start_datetime ? String(lr.start_datetime).slice(0, 10) : null;
+  if (vehicleId && startISO) {
+    // Avoid creating a duplicate if one already exists for this triple.
+    const { data: existing } = await admin
+      .from("rentals")
+      .select("id")
+      .eq("driver_id", driverId)
+      .eq("vehicle_id", vehicleId)
+      .eq("start_date", startISO)
+      .limit(1);
+    if (existing && existing[0]) {
+      rentalId = existing[0].id;
+    } else {
+      rentalId = await nextSeqId(admin, "rentals", "R", 500);
+      const { error: rErr } = await admin.from("rentals").insert({
+        id: rentalId,
+        vehicle_id: vehicleId,
+        driver_id: driverId,
+        start_date: startISO,
+        end_date: lr.end_datetime ? String(lr.end_datetime).slice(0, 10) : null,
+        weekly_rate: 0,
+        deposit_paid: 0,
+        payment_status: "current",
+        payment_received: false,
+        reservation_status: "returned",
+        agreement_pdf_url: agreementUrl,
+        agreement_pdf_generated_at: signedAtIso,
+        client_signed_at: signedAtIso,
+        signed_by: fullName || null,
+        notes: `Fleet Finesse Migration - Promoted from legacy rental ${lr.order_number || lr.id}`,
+        import_source: "fleet_finesse_promoted",
+      } as never);
+      if (rErr) throw new Error(`Rental create failed: ${rErr.message}`);
+    }
+  }
+
+  const note = `Promoted from legacy rental ${lr.order_number || lr.id} on ${signedAtIso.slice(0, 10)} — driver ${driverId}${rentalId ? `, rental ${rentalId}` : " (no vehicle match — rental not created)"}`;
+  return { driverId, driverCreated, rentalId, vehicleId, note };
+}
+
 function appOrigin(): string {
   return (
     process.env.PUBLIC_APP_ORIGIN ||
@@ -462,6 +612,31 @@ export const submitRetroAgreement = createServerFn({ method: "POST" })
       .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 5);
     const agreementUrl = signedPdf?.signedUrl ?? null;
 
+    // ---- Promote legacy rental into real drivers + rentals rows ----
+    let promotion: LegacyPromotionResult | null = null;
+    const alreadyPromoted = Boolean((lr as { promoted_at?: string | null }).promoted_at);
+    if (!alreadyPromoted) {
+      try {
+        promotion = await promoteLegacyRental(
+          supabaseAdmin,
+          lr,
+          {
+            fullName: data.fullName,
+            address: data.address,
+            licenseNumber: data.licenseNumber,
+            dlState: data.dlState,
+            dateOfBirth: data.dateOfBirth,
+            phone: data.phone,
+            email: data.email,
+          },
+          agreementUrl,
+          nowIso,
+        );
+      } catch (e) {
+        console.error("[retro] legacy promotion failed", e);
+      }
+    }
+
     const { error: upErr } = await supabaseAdmin
       .from("legacy_rentals")
       .update({
@@ -477,9 +652,33 @@ export const submitRetroAgreement = createServerFn({ method: "POST" })
         email: data.email || lr.email || null,
         retro_token: null,
         retro_token_expires_at: null,
+        ...(promotion
+          ? {
+              status: "promoted",
+              promoted_at: nowIso,
+              promoted_driver_id: promotion.driverId,
+              promoted_rental_id: promotion.rentalId,
+              promotion_note: promotion.note,
+            }
+          : {}),
       } as never)
       .eq("id", lr.id);
     if (upErr) throw new Error(upErr.message);
+
+    // Link any violations already attached to this legacy rental to the real ids.
+    if (promotion) {
+      try {
+        const patch: Record<string, unknown> = { driver_id: promotion.driverId };
+        if (promotion.rentalId) patch.rental_id = promotion.rentalId;
+        if (promotion.vehicleId) patch.vehicle_id = promotion.vehicleId;
+        await supabaseAdmin
+          .from("violations")
+          .update(patch as never)
+          .eq("legacy_rental_id", lr.id);
+      } catch (e) {
+        console.warn("[retro] linking violations to promoted ids failed", e);
+      }
+    }
 
     // Notify renter + admin
     const renterPhone = data.phone || lr.phone;
@@ -493,11 +692,20 @@ export const submitRetroAgreement = createServerFn({ method: "POST" })
     try {
       await sendSms(
         ADMIN_SMS,
-        `✓ ${data.fullName} signed retroactive agreement for rental ${lr.order_number || lr.id}`,
+        `✓ ${data.fullName} signed retroactive agreement for rental ${lr.order_number || lr.id}` +
+          (promotion
+            ? ` · Promoted → driver ${promotion.driverId}${promotion.rentalId ? `, rental ${promotion.rentalId}` : " (no vehicle match)"}`
+            : ""),
       );
     } catch (e) {
       console.warn("[retro] admin sms failed", e);
     }
 
-    return { ok: true as const };
+    return {
+      ok: true as const,
+      promoted: Boolean(promotion),
+      driverId: promotion?.driverId ?? null,
+      rentalId: promotion?.rentalId ?? null,
+      vehicleId: promotion?.vehicleId ?? null,
+    };
   });

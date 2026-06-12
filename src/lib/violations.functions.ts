@@ -285,6 +285,33 @@ export const createViolation = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const total = Number((data.amount + data.fee).toFixed(2));
+    // If this violation is being attached to a migrated (legacy) rental that has
+    // already been promoted into real records, link the real driver/rental/vehicle.
+    let rentalId = data.rentalId;
+    let vehicleId = data.vehicleId;
+    let driverId = data.driverId;
+    if (data.legacyRentalId) {
+      const { data: lrRaw } = await supabaseAdmin
+        .from("legacy_rentals")
+        .select("*")
+        .eq("id", data.legacyRentalId)
+        .maybeSingle();
+      const lr = lrRaw as
+        | { promoted_rental_id?: string | null; promoted_driver_id?: string | null }
+        | null;
+      if (lr?.promoted_driver_id) {
+        driverId = driverId || lr.promoted_driver_id;
+        if (lr.promoted_rental_id && !rentalId) {
+          rentalId = lr.promoted_rental_id;
+          const { data: rr } = await supabaseAdmin
+            .from("rentals")
+            .select("vehicle_id")
+            .eq("id", lr.promoted_rental_id)
+            .maybeSingle();
+          if (rr?.vehicle_id && !vehicleId) vehicleId = rr.vehicle_id;
+        }
+      }
+    }
     // Use the actual citation / violation number as the system ID when provided
     // so the record matches the uploaded notice. Fall back to a generated ID.
     let newId =
@@ -306,9 +333,9 @@ export const createViolation = createServerFn({ method: "POST" })
       .from("violations")
       .insert({
         id: newId,
-        rental_id: data.rentalId,
-        vehicle_id: data.vehicleId ?? "UNKNOWN",
-        driver_id: data.driverId,
+        rental_id: rentalId,
+        vehicle_id: vehicleId ?? "UNKNOWN",
+        driver_id: driverId,
         legacy_rental_id: data.legacyRentalId,
         type: data.type,
         date_issued: data.date,
