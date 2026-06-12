@@ -265,6 +265,52 @@ function V1Timeline({ v }: { v: ViolationRow }) {
 const fmtMoney = (n: number) => `$${Number(n || 0).toFixed(2)}`;
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "—");
 
+/** Direct phone numbers to violation / toll bureaus for status follow-up calls. */
+const BUREAU_CONTACTS: { name: string; phone: string; note: string }[] = [
+  { name: "NJ E-ZPass Customer Service", phone: "(888) 288-6865", note: "Toll violations & account status" },
+  { name: "NJ Turnpike Authority Violations", phone: "(732) 750-5300", note: "Turnpike / Parkway tolls" },
+  { name: "NJ MVC (DMV)", phone: "(609) 292-6500", note: "Title, registration & surcharges" },
+  { name: "NY E-ZPass Violations", phone: "(800) 333-8655", note: "NY toll violations" },
+  { name: "NY DMV", phone: "(518) 486-9786", note: "Tickets & registration" },
+  { name: "PA Turnpike Toll By Plate", phone: "(877) 736-6727", note: "PA toll bills" },
+];
+
+function BureauContactsCard() {
+  const [open, setOpen] = useState(false);
+  return (
+    <Card className="mb-4">
+      <CardContent className="p-3">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex w-full items-center justify-between text-sm font-medium"
+        >
+          <span className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-emerald-600" />
+            Violations Bureau Direct Lines
+          </span>
+          <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+        {open && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {BUREAU_CONTACTS.map((b) => (
+              <a
+                key={b.name}
+                href={`tel:${b.phone.replace(/[^\d]/g, "")}`}
+                className="rounded-md border p-3 transition-colors hover:bg-muted/50"
+              >
+                <div className="font-medium">{b.name}</div>
+                <div className="text-base font-semibold text-emerald-700">{b.phone}</div>
+                <div className="text-xs text-muted-foreground">{b.note}</div>
+              </a>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 type Filter =
   | "all"
   | "awaiting_response"
