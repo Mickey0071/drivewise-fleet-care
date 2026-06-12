@@ -359,6 +359,7 @@ function ViolationsPage() {
   const [submitFor, setSubmitFor] = useState<ViolationRow | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [deleteFor, setDeleteFor] = useState<ViolationRow | null>(null);
+  const [editFor, setEditFor] = useState<ViolationRow | null>(null);
 
   const delFn = useServerFn(deleteViolation);
   const delMutation = useMutation({
