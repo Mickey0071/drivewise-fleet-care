@@ -542,7 +542,7 @@ function ViolationsPage() {
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <tr>
-                    <th className="p-3">ID</th>
+                    <th className="p-3">Violation #</th>
                     <th className="p-3">Date</th>
                     <th className="p-3">Type</th>
                     <th className="p-3">Vehicle</th>
@@ -556,7 +556,7 @@ function ViolationsPage() {
                   {filtered.map((v) => (
                     <Fragment key={v.id}>
                     <tr className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="p-3 font-mono text-xs">{v.id}</td>
+                      <td className="p-3 font-mono text-xs">{v.reference_number || v.id}</td>
                       <td className="p-3">{fmtDate(v.date_issued)}</td>
                       <td className="p-3 capitalize">{v.type}</td>
                       <td className="p-3">
@@ -615,6 +615,9 @@ function ViolationsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => setEditFor(v)}>
+                                Edit / fill missing info
+                              </DropdownMenuItem>
                               {v.payment_link_url && v.status === "pending" && (
                                 <DropdownMenuItem asChild>
                                   <a href={v.payment_link_url} target="_blank" rel="noreferrer">
@@ -644,7 +647,6 @@ function ViolationsPage() {
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <DownloadPacketButton violationId={v.id} />
                         </div>
                         <LiabilityActions v={v} onDone={refresh} />
                       </td>
