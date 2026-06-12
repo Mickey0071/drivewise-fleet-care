@@ -507,6 +507,8 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
         </CardContent>
       </Card>
 
+      <DebugMatchPanel batchId={batchId} />
+
       <div className="mt-6 flex items-center justify-end gap-3">
         {approved ? (
           <Button onClick={handleZip} className="bg-emerald-600 hover:bg-emerald-700">
