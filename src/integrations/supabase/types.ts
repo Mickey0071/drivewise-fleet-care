@@ -864,6 +864,9 @@ export type Database = {
           color: string | null
           created_at: string
           dl_number: string | null
+          dl_state: string | null
+          dob: string | null
+          email: string | null
           end_datetime: string | null
           id: string
           notes: string | null
@@ -872,6 +875,12 @@ export type Database = {
           pickup_location: string | null
           plate: string | null
           renter_name: string | null
+          retro_sent_at: string | null
+          retro_signature_url: string | null
+          retro_signed_at: string | null
+          retro_signed_ip: string | null
+          retro_token: string | null
+          retro_token_expires_at: string | null
           source: string | null
           start_datetime: string | null
           status: string | null
@@ -884,6 +893,9 @@ export type Database = {
           color?: string | null
           created_at?: string
           dl_number?: string | null
+          dl_state?: string | null
+          dob?: string | null
+          email?: string | null
           end_datetime?: string | null
           id?: string
           notes?: string | null
@@ -892,6 +904,12 @@ export type Database = {
           pickup_location?: string | null
           plate?: string | null
           renter_name?: string | null
+          retro_sent_at?: string | null
+          retro_signature_url?: string | null
+          retro_signed_at?: string | null
+          retro_signed_ip?: string | null
+          retro_token?: string | null
+          retro_token_expires_at?: string | null
           source?: string | null
           start_datetime?: string | null
           status?: string | null
@@ -904,6 +922,9 @@ export type Database = {
           color?: string | null
           created_at?: string
           dl_number?: string | null
+          dl_state?: string | null
+          dob?: string | null
+          email?: string | null
           end_datetime?: string | null
           id?: string
           notes?: string | null
@@ -912,6 +933,12 @@ export type Database = {
           pickup_location?: string | null
           plate?: string | null
           renter_name?: string | null
+          retro_sent_at?: string | null
+          retro_signature_url?: string | null
+          retro_signed_at?: string | null
+          retro_signed_ip?: string | null
+          retro_token?: string | null
+          retro_token_expires_at?: string | null
           source?: string | null
           start_datetime?: string | null
           status?: string | null
@@ -3183,6 +3210,27 @@ export type Database = {
           vehicle_model: string
           vehicle_plate: string
           vehicle_year: number
+        }[]
+      }
+      get_retro_agreement_public: {
+        Args: { _token: string }
+        Returns: {
+          address: string
+          color: string
+          dl_number: string
+          dl_state: string
+          dob: string
+          email: string
+          end_datetime: string
+          expired: boolean
+          id: string
+          phone: string
+          plate: string
+          renter_name: string
+          retro_signed_at: string
+          start_datetime: string
+          vehicle: string
+          year: string
         }[]
       }
       get_share_link_public: {
