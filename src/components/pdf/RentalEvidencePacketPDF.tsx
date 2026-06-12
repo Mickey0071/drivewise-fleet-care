@@ -84,27 +84,27 @@ export async function renderEvidencePacketPdf(data: EvidencePacketData): Promise
     }
   }
   function sectionBar(label: string) {
-    ensure(28);
+    ensure(22);
     doc.setFillColor(...RGB_GREEN);
-    doc.rect(left, y, right - left, 16, "F");
+    doc.rect(left, y, right - left, 13, "F");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setTextColor(255, 255, 255);
-    doc.text(label.toUpperCase(), left + 6, y + 11);
-    y += 22;
+    doc.text(label.toUpperCase(), left + 6, y + 9);
+    y += 17;
   }
   function field(label: string, value: string) {
-    ensure(16);
+    ensure(12);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setTextColor(...COLOR_MUTED);
     doc.text(label, left, y);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setTextColor(...COLOR_TEXT);
     const wrapped = doc.splitTextToSize(value || "—", right - left - 140);
     doc.text(wrapped, left + 140, y);
-    y += 14 * (Array.isArray(wrapped) ? wrapped.length : 1);
+    y += 11 * (Array.isArray(wrapped) ? wrapped.length : 1);
   }
 
   // ---- Header ----
