@@ -8,6 +8,23 @@ export interface ExtractedToll {
   amount: number;
 }
 
+/**
+ * Normalize a license plate for matching. Order matters:
+ * 1. Uppercase + trim leading/trailing whitespace and newlines.
+ * 2. Strip a leading state prefix (optional parens, 2 letters, optional
+ *    close paren) followed by one or more separators (space, slash, dash,
+ *    dot) — done BEFORE stripping punctuation so the delimiter anchors it.
+ *    e.g. "NJ/XPSD76" -> "XPSD76", "(NJ) S80WST" -> "S80WST", but
+ *    "N90VCG" and "AB1234" are left intact.
+ * 3. Remove all remaining spaces, dashes, dots, and slashes.
+ */
+export function normalizePlate(p: string | null | undefined): string {
+  let s = (p ?? "").toUpperCase().trim();
+  s = s.replace(/^\(?[A-Z]{2}\)?[\s/.\-]+/, "");
+  s = s.replace(/[\s/.\-]/g, "");
+  return s;
+}
+
 function normDate(v: string): string | null {
   const s = (v || "").trim();
   if (!s) return null;
