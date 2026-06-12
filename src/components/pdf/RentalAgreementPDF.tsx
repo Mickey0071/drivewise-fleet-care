@@ -213,15 +213,15 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   y += 8;
 
   const sectionBar = (label: string) => {
-    ensureSpace(22);
-    y += 4;
+    ensureSpace(20);
+    y += 3;
     doc.setFillColor(...RGB_GREEN);
     doc.rect(left, y, contentW, 11, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(255, 255, 255);
     doc.text(label.toUpperCase(), left + 5, y + 8);
-    y += 15;
+    y += 14;
   };
 
   const drawFieldsRow = (
@@ -234,20 +234,20 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
       doc.setFont("helvetica", "bold");
       doc.setFontSize(6.5);
       doc.setTextColor(...RGB_MUTED);
-      doc.text(f.label.toUpperCase(), x + 2, y + 6);
+      doc.text(f.label.toUpperCase(), x + 2, y + 5);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(...RGB_TEXT);
       const v = f.value || " ";
       const wrapped = doc.splitTextToSize(v, w - 4);
-      doc.text(wrapped, x + 2, y + 15);
+      doc.text(wrapped, x + 2, y + 13);
       // bottom underline
       doc.setDrawColor(68, 68, 68);
       doc.setLineWidth(0.4);
-      doc.line(x + 2, y + 16, x + w - 2, y + 16);
+      doc.line(x + 2, y + 14, x + w - 2, y + 14);
       x += w;
     });
-    y += 18;
+    y += 15;
   };
 
   // ---- RENTER ----
