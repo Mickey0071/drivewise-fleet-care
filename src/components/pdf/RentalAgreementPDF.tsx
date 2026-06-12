@@ -244,10 +244,10 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
       // bottom underline
       doc.setDrawColor(68, 68, 68);
       doc.setLineWidth(0.4);
-      doc.line(x + 2, y + 18, x + w - 2, y + 18);
+      doc.line(x + 2, y + 17, x + w - 2, y + 17);
       x += w;
     });
-    y += 23;
+    y += 21;
   };
 
   // ---- RENTER ----
