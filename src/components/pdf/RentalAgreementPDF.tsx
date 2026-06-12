@@ -260,6 +260,10 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     { label: "Phone", value: driver.phone, widthPct: 50 },
     { label: "Email", value: driver.email, widthPct: 50 },
   ]);
+  drawFieldsRow([
+    { label: "Driver's License #", value: driver.licenseNumber || "", widthPct: 50 },
+    { label: "License State / Exp", value: dlStateExp, widthPct: 50 },
+  ]);
   drawFieldsRow([{ label: "Address", value: fullAddress, widthPct: 100 }]);
   if (driver.altContactName || driver.altContactPhone) {
     drawFieldsRow([
