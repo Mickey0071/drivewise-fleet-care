@@ -16,6 +16,7 @@ import { updateDriver } from "@/lib/mock/store";
 import type { Driver } from "@/lib/mock/data";
 import { toast } from "sonner";
 import { US_STATES, formatAddressBlock, formatFullName } from "@/lib/us-states";
+import { RenterDetailDialog } from "@/components/app/RenterDetailDialog";
 
 export const Route = createFileRoute("/drivers")({
   head: () => ({ meta: [{ title: "Renters — Camauto Rentals" }] }),
@@ -27,6 +28,7 @@ function DriversPage() {
   const [open, setOpen] = useState(false);
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
   const [blockDriver, setBlockDriver] = useState<Driver | null>(null);
+  const [detailDriver, setDetailDriver] = useState<Driver | null>(null);
   const today = new Date();
   const soon = new Date(today); soon.setDate(today.getDate() + 60);
 
@@ -49,7 +51,14 @@ function DriversPage() {
               <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <div className="font-semibold">{d.fullName}</div>
+                    <button
+                      type="button"
+                      onClick={() => setDetailDriver(d)}
+                      className="rounded font-semibold text-primary underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      title="View renter details"
+                    >
+                      {d.fullName}
+                    </button>
                     <StatusBadge status={d.status} />
                     {d.blocked && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
@@ -89,6 +98,7 @@ function DriversPage() {
       <AddRenterDialog open={open} onClose={() => setOpen(false)} />
       <EditRenterDialog driver={editDriver} onClose={() => setEditDriver(null)} />
       <BlockRenterDialog driver={blockDriver} onClose={() => setBlockDriver(null)} />
+      <RenterDetailDialog driver={detailDriver} onClose={() => setDetailDriver(null)} />
     </div>
   );
 }
