@@ -663,8 +663,9 @@ function NewViolationDialog({
     setSelectedRentalId("");
     setManualOverride(false);
   };
-
   const analyzeDataUrl = async (dataUrl: string) => {
+    setManualQuery("");
+    void 0;
     setThumbnail(dataUrl);
     setAnalyzing(true);
     setConfidence(null);
