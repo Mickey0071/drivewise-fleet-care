@@ -623,6 +623,7 @@ function NewViolationDialog({
   });
   const [selectedRentalId, setSelectedRentalId] = useState<string>("");
   const [manualOverride, setManualOverride] = useState(false);
+  const [manualQuery, setManualQuery] = useState("");
 
   const [type, setType] = useState<"toll" | "parking" | "damage" | "traffic" | "other">("toll");
   const [plate, setPlate] = useState("");
