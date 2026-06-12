@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo, useEffect, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -49,7 +49,7 @@ import {
 } from "@/lib/violations.functions";
 import { sendViolationToCustomer } from "@/lib/violations.functions";
 import { deleteViolation } from "@/lib/violations.functions";
-import { downloadViolationPacket } from "@/lib/violation-packet.functions";
+import { updateViolation } from "@/lib/violations.functions";
 import {
   generateLiabilityTransfer,
   generateMailPacket,
@@ -60,44 +60,6 @@ import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
 import { SubmitDisputeDialog } from "@/components/app/SubmitDisputeDialog";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
 import { downloadCSV } from "@/lib/exports";
-
-function DownloadPacketButton({ violationId }: { violationId: string }) {
-  const dl = useServerFn(downloadViolationPacket);
-  const [busy, setBusy] = useState(false);
-  const handle = async () => {
-    setBusy(true);
-    try {
-      const res = await dl({ data: { violationId } });
-      const bin = atob(res.base64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const url = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = res.filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      if (res.missing.length) {
-        toast.message(`Packet downloaded — ${res.missing.length} item(s) missing`, {
-          description: res.missing.join(", "),
-        });
-      } else {
-        toast.success("Packet downloaded");
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Download failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <Button size="sm" variant="ghost" onClick={handle} disabled={busy} className="ml-2">
-      {busy ? "Building…" : "📥 Packet"}
-    </Button>
-  );
-}
 
 function SendCustomerButton({ violation, onDone }: { violation: ViolationRow; onDone: () => void }) {
   const send = useServerFn(sendViolationToCustomer);
@@ -182,7 +144,7 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
     setBusy(stage);
     try {
       await mark({ data: { violationId: v.id, stage } });
-      toast.success(stage === "mailed" ? "Marked mailed" : "Marked confirmed");
+      toast.success(stage === "mailed" ? "Marked mailed" : "Marked disputed successfully");
       onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -225,7 +187,7 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
           )}
           {v.mailed_at && !v.transfer_confirmed_at && (
             <Button size="sm" variant="ghost" onClick={() => doMark("confirmed")} disabled={busy === "confirmed"}>
-              ✅ Confirm
+              ✅ Mark Disputed Successfully
             </Button>
           )}
         </>
@@ -247,7 +209,7 @@ function V1Timeline({ v }: { v: ViolationRow }) {
     { icon: "📋", label: "Liability transfer generated", date: f(v.liability_transfer_generated_at) },
     { icon: "🖨️", label: "Mail packet printed", date: f(v.mail_packet_printed_at) },
     { icon: "✉️", label: "Mailed to authority", date: f(v.mailed_at) },
-    { icon: "✅", label: "Confirmed transferred", date: f(v.transfer_confirmed_at) },
+    { icon: "✅", label: "Disputed successfully", date: f(v.transfer_confirmed_at) },
   ].filter((e) => e.date);
   return (
     <div className="flex flex-col gap-1 text-xs text-muted-foreground">
@@ -359,6 +321,7 @@ function ViolationsPage() {
   const [submitFor, setSubmitFor] = useState<ViolationRow | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [deleteFor, setDeleteFor] = useState<ViolationRow | null>(null);
+  const [editFor, setEditFor] = useState<ViolationRow | null>(null);
 
   const delFn = useServerFn(deleteViolation);
   const delMutation = useMutation({
@@ -378,6 +341,7 @@ function ViolationsPage() {
       if (!q) return true;
       const hay = [
         r.id,
+        r.reference_number,
         r.license_plate,
         r.rental_id,
         r.driver_name,
@@ -513,7 +477,7 @@ function ViolationsPage() {
               <TabsTrigger value="transfer_generated">Auto-Transfer</TabsTrigger>
               <TabsTrigger value="packet_printed">Packet Printed</TabsTrigger>
               <TabsTrigger value="mailed">Mailed</TabsTrigger>
-              <TabsTrigger value="confirmed">Confirmed</TabsTrigger>
+              <TabsTrigger value="confirmed">Disputed Successfully</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="relative w-full max-w-sm">
@@ -542,7 +506,7 @@ function ViolationsPage() {
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <tr>
-                    <th className="p-3">ID</th>
+                    <th className="p-3">Violation #</th>
                     <th className="p-3">Date</th>
                     <th className="p-3">Type</th>
                     <th className="p-3">Vehicle</th>
@@ -556,7 +520,7 @@ function ViolationsPage() {
                   {filtered.map((v) => (
                     <Fragment key={v.id}>
                     <tr className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="p-3 font-mono text-xs">{v.id}</td>
+                      <td className="p-3 font-mono text-xs">{v.reference_number || v.id}</td>
                       <td className="p-3">{fmtDate(v.date_issued)}</td>
                       <td className="p-3 capitalize">{v.type}</td>
                       <td className="p-3">
@@ -615,6 +579,9 @@ function ViolationsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => setEditFor(v)}>
+                                Edit / fill missing info
+                              </DropdownMenuItem>
                               {v.payment_link_url && v.status === "pending" && (
                                 <DropdownMenuItem asChild>
                                   <a href={v.payment_link_url} target="_blank" rel="noreferrer">
@@ -644,7 +611,6 @@ function ViolationsPage() {
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <DownloadPacketButton violationId={v.id} />
                         </div>
                         <LiabilityActions v={v} onDone={refresh} />
                       </td>
@@ -723,7 +689,166 @@ function ViolationsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <EditViolationDialog
+        violation={editFor}
+        onClose={() => setEditFor(null)}
+        onDone={() => {
+          refresh();
+          setEditFor(null);
+        }}
+      />
     </div>
+  );
+}
+
+function EditViolationDialog({
+  violation,
+  onClose,
+  onDone,
+}: {
+  violation: ViolationRow | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const update = useServerFn(updateViolation);
+  const analyze = useServerFn(analyzeViolationPhoto);
+  const [violationNumber, setViolationNumber] = useState("");
+  const [plate, setPlate] = useState("");
+  const [date, setDate] = useState("");
+  const [amount, setAmount] = useState("");
+  const [fee, setFee] = useState("");
+  const [location, setLocation] = useState("");
+  const [time, setTime] = useState("");
+  const [description, setDescription] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!violation) return;
+    setViolationNumber(violation.reference_number || violation.id || "");
+    setPlate(violation.license_plate || "");
+    setDate((violation.date_issued || "").slice(0, 10));
+    setAmount(violation.amount != null ? String(violation.amount) : "");
+    setFee(violation.fee != null ? String(violation.fee) : "");
+    setLocation(violation.location || "");
+    setTime(violation.violation_time || "");
+    setDescription(violation.description || "");
+    setPhotoUrl(violation.photo_url || "");
+  }, [violation]);
+
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await analyze({ data: { dataUrl } });
+      setPhotoUrl(res.photoUrl);
+      toast.success("Notice uploaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const save = async () => {
+    if (!violation) return;
+    setSaving(true);
+    try {
+      await update({
+        data: {
+          id: violation.id,
+          violationNumber: violationNumber || null,
+          licensePlate: plate || null,
+          date: date || null,
+          amount: amount === "" ? null : Number(amount),
+          fee: fee === "" ? null : Number(fee),
+          location: location || null,
+          time: time || null,
+          description: description || null,
+          photoUrl: photoUrl || null,
+        },
+      });
+      toast.success("Violation updated");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!violation} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Violation — fill in missing info</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid gap-1">
+            <Label>Violation / Ticket #</Label>
+            <Input value={violationNumber} onChange={(e) => setViolationNumber(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1">
+              <Label>License Plate</Label>
+              <Input value={plate} onChange={(e) => setPlate(e.target.value)} />
+            </div>
+            <div className="grid gap-1">
+              <Label>Date</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1">
+              <Label>Amount ($)</Label>
+              <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <div className="grid gap-1">
+              <Label>Fee ($)</Label>
+              <Input type="number" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1">
+              <Label>Location</Label>
+              <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+            </div>
+            <div className="grid gap-1">
+              <Label>Time</Label>
+              <Input value={time} onChange={(e) => setTime(e.target.value)} placeholder="e.g. 14:32" />
+            </div>
+          </div>
+          <div className="grid gap-1">
+            <Label>Notes / Description</Label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+          </div>
+          <div className="grid gap-1">
+            <Label>Violation notice image</Label>
+            <Input
+              type="file"
+              accept="image/*"
+              disabled={uploading}
+              onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+            />
+            {uploading && <span className="text-xs text-muted-foreground">Uploading…</span>}
+            {photoUrl && !uploading && <span className="text-xs text-emerald-600">✓ Notice on file</span>}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={save} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+            {saving ? "Saving…" : "Save Changes"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

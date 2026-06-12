@@ -465,6 +465,83 @@ export const markViolationDisputed = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** Admin: edit core fields of a violation (fill in missing info). */
+export const updateViolation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: {
+      id: string;
+      violationNumber?: string | null;
+      licensePlate?: string | null;
+      date?: string | null;
+      amount?: number | null;
+      fee?: number | null;
+      location?: string | null;
+      time?: string | null;
+      description?: string | null;
+      photoUrl?: string | null;
+    }) => {
+      if (!input.id) throw new Error("id required");
+      if (input.date && !/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
+        throw new Error("Date must be YYYY-MM-DD");
+      }
+      const amount = input.amount == null ? null : Number(input.amount);
+      const fee = input.fee == null ? null : Number(input.fee);
+      if (amount != null && (!Number.isFinite(amount) || amount < 0)) throw new Error("Amount invalid");
+      if (fee != null && (!Number.isFinite(fee) || fee < 0)) throw new Error("Fee invalid");
+      return {
+        id: input.id,
+        violationNumber:
+          input.violationNumber == null
+            ? undefined
+            : input.violationNumber.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 40) || null,
+        licensePlate:
+          input.licensePlate == null ? undefined : (input.licensePlate.toUpperCase() || null),
+        date: input.date ?? undefined,
+        amount: amount ?? undefined,
+        fee: fee ?? undefined,
+        location: input.location == null ? undefined : (input.location.slice(0, 200) || null),
+        time: input.time == null ? undefined : (input.time.slice(0, 20) || null),
+        description: input.description == null ? undefined : (input.description.slice(0, 500) || null),
+        photoUrl: input.photoUrl == null ? undefined : (input.photoUrl || null),
+      };
+    },
+  )
+  .handler(async ({ data }) => {
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (data.violationNumber !== undefined) patch.reference_number = data.violationNumber;
+    if (data.licensePlate !== undefined) patch.license_plate = data.licensePlate;
+    if (data.date !== undefined) patch.date_issued = data.date;
+    if (data.location !== undefined) patch.location = data.location;
+    if (data.time !== undefined) patch.violation_time = data.time;
+    if (data.description !== undefined) {
+      patch.description = data.description;
+      patch.notes = data.description;
+    }
+    if (data.photoUrl !== undefined) patch.photo_url = data.photoUrl;
+
+    // Recompute total when amount/fee change.
+    if (data.amount !== undefined || data.fee !== undefined) {
+      const { data: current } = await (supabaseAdmin as any)
+        .from("violations")
+        .select("amount, fee")
+        .eq("id", data.id)
+        .maybeSingle();
+      const amount = data.amount !== undefined ? data.amount : Number(current?.amount ?? 0);
+      const fee = data.fee !== undefined ? data.fee : Number(current?.fee ?? 0);
+      patch.amount = amount;
+      patch.fee = fee;
+      patch.total_amount = amount + fee;
+    }
+
+    const { error } = await (supabaseAdmin as any)
+      .from("violations")
+      .update(patch as never)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export interface ViolationHistoryRow {
   id: string;
   violation_id: string;

@@ -296,7 +296,7 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
   line(OWNER.signer, { bold: true });
   line("Camauto Rentals");
   line(`Date: ${fmtDate(new Date().toISOString())}`);
-  line(`Reference #: ${v.id as string}`);
+  line(`Reference #: ${ref}`);
 
   return new Uint8Array(doc.output("arraybuffer"));
 }
