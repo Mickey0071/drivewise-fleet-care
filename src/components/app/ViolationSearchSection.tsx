@@ -267,6 +267,17 @@ export function ViolationSearchSection({ onCreated }: { onCreated: () => void })
           onCreated();
         }}
       />
+
+      {/* Create Rental Agreement (in-office) modal */}
+      <CreateAgreementModal
+        card={createAgrFor}
+        onClose={() => setCreateAgrFor(null)}
+        onSigned={() => {
+          setCreateAgrFor(null);
+          qc.invalidateQueries({ queryKey: ["awaiting-retro"] });
+          if (searched) doSearch();
+        }}
+      />
     </div>
   );
 }
