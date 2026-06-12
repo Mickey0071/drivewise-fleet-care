@@ -130,27 +130,42 @@ export const lookupRentalByPlate = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<PlateLookupResult> => {
     const { plate, date } = data;
-    // Migrated (legacy) reservations matching this plate around the violation date.
-    // These are lookup-only — never linked to a violation or counted in any report.
+    // Normalized plate key (ignores spaces/dashes/case) — same logic as the
+    // main rental lookup so the violation matcher behaves identically.
+    const normPlate = (s: string | null | undefined) =>
+      (s ?? "").replace(/[^a-z0-9]/gi, "").toUpperCase();
+    const plateKey = normPlate(plate);
+    const today = new Date().toISOString().slice(0, 10);
+    // Calendar-date inclusive range test: cast start/end to date (slice off the
+    // time-of-day) and count both the start day and end day as full days.
+    // Open-ended rentals (no end) are treated as active through today.
+    const covers = (start: string | null, end: string | null): boolean => {
+      if (start && start > date) return false;
+      const effectiveEnd = end || today;
+      if (effectiveEnd < date) return false;
+      return true;
+    };
+
+    // Migrated (legacy) reservations matching this plate around the violation
+    // date. Searched as part of the same combined pool as live rentals.
     const { data: legacyRows } = await supabaseAdmin
       .from("legacy_rentals")
       .select("id, renter_name, plate, vehicle, start_datetime, end_datetime, address, dl_number, pickup_location, notes")
-      .ilike("plate", plate)
-      .limit(50);
-    const legacyMatches = (legacyRows ?? []).filter((r) => {
-      const start = r.start_datetime ? r.start_datetime.slice(0, 10) : null;
-      const end = r.end_datetime ? r.end_datetime.slice(0, 10) : null;
-      if (start && start > date) return false;
-      if (end && end < date) return false;
-      return true;
-    });
+      .limit(2000);
+    const legacyMatches = (legacyRows ?? [])
+      .filter((r) => normPlate(r.plate) === plateKey)
+      .filter((r) =>
+        covers(
+          r.start_datetime ? r.start_datetime.slice(0, 10) : null,
+          r.end_datetime ? r.end_datetime.slice(0, 10) : null,
+        ),
+      );
 
-    // 1) Find vehicle in fleet by plate
-    const { data: vehicle } = await supabaseAdmin
+    // 1) Find vehicle in fleet by normalized plate
+    const { data: vehicles } = await supabaseAdmin
       .from("vehicles")
-      .select("id, plate, make, model, year")
-      .ilike("plate", plate)
-      .maybeSingle();
+      .select("id, plate, make, model, year");
+    const vehicle = (vehicles ?? []).find((v) => normPlate(v.plate) === plateKey) ?? null;
     if (!vehicle) {
       return {
         vehicleFound: false,
@@ -165,15 +180,14 @@ export const lookupRentalByPlate = createServerFn({ method: "POST" })
       };
     }
 
-    // 2) Find all rentals of that vehicle active on the violation date
+    // 2) Find all rentals of that vehicle, then date-cast range match in JS
     const { data: rentals } = await supabaseAdmin
       .from("rentals")
       .select("id, driver_id, start_date, end_date, returned_at")
       .eq("vehicle_id", vehicle.id)
-      .lte("start_date", date)
       .order("start_date", { ascending: false })
       .limit(50);
-    const active = (rentals ?? []).filter((r) => !r.end_date || r.end_date >= date);
+    const active = (rentals ?? []).filter((r) => covers(r.start_date ?? null, r.end_date ?? null));
 
     if (active.length === 0) {
       return {
