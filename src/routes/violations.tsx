@@ -379,6 +379,7 @@ function ViolationsPage() {
       if (!q) return true;
       const hay = [
         r.id,
+        r.reference_number,
         r.license_plate,
         r.rental_id,
         r.driver_name,
