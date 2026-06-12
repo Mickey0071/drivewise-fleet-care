@@ -1389,13 +1389,21 @@ function NewViolationDialog({
 
                       {/* Manual override: full searchable list of every renter/reservation */}
                       {manualOverride && (() => {
-                        const q = manualQuery.trim().toLowerCase();
-                        const filtered = q
-                          ? rentalOptions.filter((r) =>
-                              [r.driver_name, r.plate, r.id, r.vehicle_label]
+                        const norm = (s: unknown) =>
+                          String(s ?? "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
+                        const qRaw = manualQuery.trim().toLowerCase();
+                        const qPlate = norm(manualQuery);
+                        const filtered = qRaw
+                          ? rentalOptions.filter((r) => {
+                              const text = [r.driver_name, r.vehicle_label, r.id]
                                 .filter(Boolean)
-                                .some((field) => String(field).toLowerCase().includes(q)),
-                            )
+                                .some((field) => String(field).toLowerCase().includes(qRaw));
+                              const plate =
+                                !!qPlate &&
+                                (norm(r.plate).includes(qPlate) ||
+                                  norm(r.vehicle_label).includes(qPlate));
+                              return text || plate;
+                            })
                           : rentalOptions;
                         return (
                           <div className="space-y-2">
@@ -1403,7 +1411,7 @@ function NewViolationDialog({
                               autoFocus
                               value={manualQuery}
                               onChange={(e) => setManualQuery(e.target.value)}
-                              placeholder="Search renters by name, plate, or ID…"
+                              placeholder="Search by name, plate/tag, or vehicle…"
                             />
                             <div className="max-h-60 space-y-1 overflow-auto rounded-md border p-1">
                               {filtered.length === 0 ? (
