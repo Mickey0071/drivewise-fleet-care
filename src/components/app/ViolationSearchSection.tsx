@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { SignaturePad } from "@/components/app/SignaturePad";
 import {
   Dialog,
   DialogContent,
@@ -28,11 +31,13 @@ import {
   sendRetroAgreementLink,
   cancelRetroAgreementLink,
   listAwaitingRetroAgreements,
+  signRetroAgreementInOffice,
   type ViolationSearchCard,
 } from "@/lib/retro-agreement.functions";
 import { createViolation } from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
+import { DEFAULT_SETTINGS, renderClauseBody } from "@/lib/agreementSettings";
 
 /** Parse a free-form search term into a date (YYYY-MM-DD) and/or plate. */
 function parseTerm(raw: string): { date: string | null; plate: string | null } {
