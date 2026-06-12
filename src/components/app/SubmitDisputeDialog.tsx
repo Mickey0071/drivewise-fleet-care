@@ -19,7 +19,15 @@ const fmtMoney = (n: number) => `$${Number(n || 0).toFixed(2)}`;
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "—");
 
 export const AUTHORITY_OPTIONS = ["EZPass", "NJ DMV", "NY DMV", "PA DOT", "Other"];
-export const METHOD_OPTIONS = ["Email", "Mail", "Online Portal", "Phone"];
+export const METHOD_OPTIONS = [
+  "Disputed In Office",
+  "Disputed Online",
+  "Disputed by Mail",
+  "Email",
+  "Mail",
+  "Online Portal",
+  "Phone",
+];
 export const RESOLUTION_REASONS = [
   "Liability transferred",
   "Customer paid authority directly",
