@@ -358,6 +358,18 @@ function ViolationsPage() {
   const [statusFor, setStatusFor] = useState<ViolationRow | null>(null);
   const [submitFor, setSubmitFor] = useState<ViolationRow | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [deleteFor, setDeleteFor] = useState<ViolationRow | null>(null);
+
+  const delFn = useServerFn(deleteViolation);
+  const delMutation = useMutation({
+    mutationFn: (id: string) => delFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Violation deleted");
+      setDeleteFor(null);
+      qc.invalidateQueries({ queryKey: ["violations"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Delete failed"),
+  });
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
