@@ -400,7 +400,7 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     const gutter = 14;
     const colW = (contentW - gutter) / 2;
     const colX = [left, left + colW + gutter];
-    const lineH = 6.8;
+    const lineH = 6.2;
 
     // Two half-width section bars side by side.
     const halfBar = (label: string, x: number, by: number) => {
@@ -421,7 +421,7 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     // helper: render a wrapped paragraph or bullet into a column, return new cy
     const writePara = (text: string, x: number, cy: number, bold = false, bullet = false) => {
       doc.setFont("helvetica", bold ? "bold" : "normal");
-      doc.setFontSize(bold ? 7 : 6.8);
+      doc.setFontSize(bold ? 6.8 : 6.3);
       doc.setTextColor(...RGB_TEXT);
       const indent = bullet ? 9 : 0;
       const lines = doc.splitTextToSize((bullet ? "• " : "") + text, colW - indent) as string[];
