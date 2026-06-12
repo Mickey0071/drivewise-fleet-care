@@ -144,7 +144,7 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
     setBusy(stage);
     try {
       await mark({ data: { violationId: v.id, stage } });
-      toast.success(stage === "mailed" ? "Marked mailed" : "Marked confirmed");
+      toast.success(stage === "mailed" ? "Marked mailed" : "Marked disputed successfully");
       onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
