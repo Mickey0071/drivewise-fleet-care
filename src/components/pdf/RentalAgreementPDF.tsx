@@ -399,7 +399,7 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     const gutter = 14;
     const colW = (contentW - gutter) / 2;
     const colX = [left, left + colW + gutter];
-    const lineH = 7.4;
+    const lineH = 6.8;
 
     // Two half-width section bars side by side.
     const halfBar = (label: string, x: number, by: number) => {
@@ -410,8 +410,8 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
       doc.setTextColor(255, 255, 255);
       doc.text(label.toUpperCase(), x + 5, by + 8);
     };
-    ensureSpace(140);
-    y += 4;
+    ensureSpace(120);
+    y += 3;
     const barY = y;
     halfBar("Violations & Incidentals", colX[0], barY);
     halfBar("Service Coverage Area", colX[1], barY);
