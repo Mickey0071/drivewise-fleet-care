@@ -513,7 +513,7 @@ function ViolationsPage() {
               <TabsTrigger value="transfer_generated">Auto-Transfer</TabsTrigger>
               <TabsTrigger value="packet_printed">Packet Printed</TabsTrigger>
               <TabsTrigger value="mailed">Mailed</TabsTrigger>
-              <TabsTrigger value="confirmed">Confirmed</TabsTrigger>
+              <TabsTrigger value="confirmed">Disputed Successfully</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="relative w-full max-w-sm">
