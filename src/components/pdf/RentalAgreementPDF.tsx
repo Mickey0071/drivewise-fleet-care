@@ -174,10 +174,10 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   };
 
   // ---- HEADER (first page) ----
-  const logoW = 78;
-  const logoH = 50;
+  const logoW = 64;
+  const logoH = 41;
   doc.addImage(CAMAUTO_LOGO_BASE64, "JPEG", (pageW - logoW) / 2, y, logoW, logoH);
-  y += logoH + 2;
+  y += logoH + 1;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
@@ -194,13 +194,13 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   doc.setDrawColor(...RGB_GREEN);
   doc.setLineWidth(1.5);
   doc.line(left, y, right, y);
-  y += 13;
+  y += 11;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(...RGB_TEXT);
   doc.text("VEHICLE RENTAL AGREEMENT", pageW / 2, y, { align: "center" });
-  y += 10;
+  y += 9;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(...RGB_MUTED);
@@ -210,18 +210,18 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     y,
     { align: "center" },
   );
-  y += 8;
+  y += 6;
 
   const sectionBar = (label: string) => {
-    ensureSpace(22);
-    y += 4;
+    ensureSpace(20);
+    y += 2;
     doc.setFillColor(...RGB_GREEN);
     doc.rect(left, y, contentW, 11, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(255, 255, 255);
     doc.text(label.toUpperCase(), left + 5, y + 8);
-    y += 15;
+    y += 14;
   };
 
   const drawFieldsRow = (
@@ -234,20 +234,20 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
       doc.setFont("helvetica", "bold");
       doc.setFontSize(6.5);
       doc.setTextColor(...RGB_MUTED);
-      doc.text(f.label.toUpperCase(), x + 2, y + 6);
+      doc.text(f.label.toUpperCase(), x + 2, y + 5);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.setTextColor(...RGB_TEXT);
       const v = f.value || " ";
       const wrapped = doc.splitTextToSize(v, w - 4);
-      doc.text(wrapped, x + 2, y + 15);
+      doc.text(wrapped, x + 2, y + 13);
       // bottom underline
       doc.setDrawColor(68, 68, 68);
       doc.setLineWidth(0.4);
-      doc.line(x + 2, y + 18, x + w - 2, y + 18);
+      doc.line(x + 2, y + 14, x + w - 2, y + 14);
       x += w;
     });
-    y += 23;
+    y += 15;
   };
 
   // ---- RENTER ----
@@ -259,6 +259,10 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   drawFieldsRow([
     { label: "Phone", value: driver.phone, widthPct: 50 },
     { label: "Email", value: driver.email, widthPct: 50 },
+  ]);
+  drawFieldsRow([
+    { label: "Driver's License #", value: driver.licenseNumber || "", widthPct: 50 },
+    { label: "License State / Exp", value: dlStateExp, widthPct: 50 },
   ]);
   drawFieldsRow([{ label: "Address", value: fullAddress, widthPct: 100 }]);
   if (driver.altContactName || driver.altContactPhone) {
@@ -334,137 +338,146 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
 
   // ---- TERMS & CONDITIONS ----
   sectionBar("Terms & Conditions");
-  settings.clauses.forEach((clause, i) => {
-    const titleLine = `${i + 1}. ${clause.title}`;
-    const bodyText = renderClauseText(clause.body, settings);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
-    doc.setTextColor(...RGB_TEXT);
-    const titleLines = doc.splitTextToSize(titleLine, contentW);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    const bodyLines = doc.splitTextToSize(bodyText, contentW);
-    const needed = titleLines.length * 8 + bodyLines.length * 8 + 3;
-    ensureSpace(needed);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
-    doc.setTextColor(...RGB_TEXT);
-    doc.text(titleLines, left, y + 7);
-    y += titleLines.length * 8 + 1;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(34, 34, 34);
-    doc.text(bodyLines, left, y + 7);
-    y += bodyLines.length * 8 + 3;
-  });
+  {
+    const gutter = 14;
+    const colW = (contentW - gutter) / 2;
+    const titleSize = 7;
+    const bodySize = 5.7;
+    const lhFactor = 1.1;
+    const titleLH = titleSize * lhFactor;
+    const bodyLH = bodySize * lhFactor;
+    doc.setLineHeightFactor(lhFactor);
+    // Pre-measure each clause's wrapped lines + height for this column width.
+    const items = settings.clauses.map((clause, i) => {
+      const titleLine = `${i + 1}. ${clause.title}`;
+      const bodyText = renderClauseText(clause.body, settings);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(titleSize);
+      const titleLines = doc.splitTextToSize(titleLine, colW) as string[];
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(bodySize);
+      const bodyLines = doc.splitTextToSize(bodyText, colW) as string[];
+      const h = titleLines.length * titleLH + bodyLines.length * bodyLH + 5;
+      return { titleLines, bodyLines, h };
+    });
+    const total = items.reduce((s, it) => s + it.h, 0);
+    const target = total / 2;
+    // Greedily split into two balanced columns.
+    const colA: typeof items = [];
+    const colB: typeof items = [];
+    let acc = 0;
+    items.forEach((it) => {
+      if (acc < target) { colA.push(it); acc += it.h; }
+      else colB.push(it);
+    });
+    const colX = [left, left + colW + gutter];
+    const startY = y;
+    let maxY = y;
+    [colA, colB].forEach((col, ci) => {
+      let cy = startY;
+      const x = colX[ci];
+      col.forEach((it) => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(titleSize);
+        doc.setTextColor(...RGB_TEXT);
+        doc.text(it.titleLines, x, cy + 6);
+        cy += it.titleLines.length * titleLH + 1;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(bodySize);
+        doc.setTextColor(34, 34, 34);
+        doc.text(it.bodyLines, x, cy + 6);
+        cy += it.bodyLines.length * bodyLH + 4;
+      });
+      if (cy > maxY) maxY = cy;
+    });
+    y = maxY + 2;
+    doc.setLineHeightFactor(1.15);
+  }
 
-  // ---- VIOLATIONS ----
-  sectionBar("Violations & Incidentals");
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(...RGB_TEXT);
-  ensureSpace(11);
-  doc.text("Your card on file will be charged for any of the following:", left, y + 7);
-  y += 11;
-  const bullets = [
-    "Parking tickets or traffic violations: actual fine amount",
-    `Late return fees: ${settings.fees.dailyLateFee} per day`,
-    "Damage to vehicle: repair cost",
-    `Cleaning fees: ${settings.fees.cleaningFeeRange} if excessively soiled`,
-    "Other violations or damages: actual cost",
-  ];
-  bullets.forEach((b) => {
-    ensureSpace(9);
-    doc.text(`• ${b}`, left + 10, y + 7);
-    y += 9;
-  });
-  ensureSpace(12);
-  doc.text(
-    doc.splitTextToSize(
+  // ---- VIOLATIONS + COVERAGE (two columns) ----
+  {
+    const gutter = 14;
+    const colW = (contentW - gutter) / 2;
+    const colX = [left, left + colW + gutter];
+    const lineH = 6.2;
+
+    // Two half-width section bars side by side.
+    const halfBar = (label: string, x: number, by: number) => {
+      doc.setFillColor(...RGB_GREEN);
+      doc.rect(x, by, colW, 11, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      doc.text(label.toUpperCase(), x + 5, by + 8);
+    };
+    ensureSpace(120);
+    y += 3;
+    const barY = y;
+    halfBar("Violations & Incidentals", colX[0], barY);
+    halfBar("Service Coverage Area", colX[1], barY);
+    const bodyTop = barY + 15;
+
+    // helper: render a wrapped paragraph or bullet into a column, return new cy
+    const writePara = (text: string, x: number, cy: number, bold = false, bullet = false) => {
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.setFontSize(bold ? 6.8 : 6.3);
+      doc.setTextColor(...RGB_TEXT);
+      const indent = bullet ? 9 : 0;
+      const lines = doc.splitTextToSize((bullet ? "• " : "") + text, colW - indent) as string[];
+      doc.text(lines, x + indent, cy + 6);
+      return cy + lines.length * lineH + 1;
+    };
+
+    // Left column: violations
+    let ly = bodyTop;
+    ly = writePara("Your card on file will be charged for any of the following:", colX[0], ly);
+    [
+      "Parking tickets or traffic violations: actual fine amount",
+      `Late return fees: ${settings.fees.dailyLateFee} per day`,
+      "Damage to vehicle: repair cost",
+      `Cleaning fees: ${settings.fees.cleaningFeeRange} if excessively soiled`,
+      "Other violations or damages: actual cost",
+    ].forEach((b) => { ly = writePara(b, colX[0], ly, false, true); });
+    ly = writePara(
       `You authorize ${c.dba} to charge your card without further notice for any of these charges.`,
-      contentW,
-    ),
-    left,
-    y + 7,
-  );
-  y += 12;
+      colX[0], ly + 1,
+    );
 
-  // ---- SERVICE COVERAGE AREA ----
-  sectionBar("Service Coverage Area");
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(...RGB_TEXT);
-  ensureSpace(12);
-  doc.text(
-    doc.splitTextToSize(
+    // Right column: service coverage
+    let ry = bodyTop;
+    ry = writePara(
       `${c.dba} provides mechanical failure and vehicle replacement coverage within a 30-mile radius of our main location (416 Sicklerville Road, Sicklerville, NJ 08081).`,
-      contentW,
-    ),
-    left,
-    y + 7,
-  );
-  y += 14;
+      colX[1], ry,
+    );
+    ry = writePara("WITHIN 30-MILE RADIUS:", colX[1], ry + 1, true);
+    [
+      "In the event of mechanical failure, Camauto will provide roadside assistance and arrange a replacement vehicle at no charge to you",
+      "You are not responsible for towing or repair costs",
+    ].forEach((b) => { ry = writePara(b, colX[1], ry, false, true); });
+    ry = writePara("OUTSIDE 30-MILE RADIUS:", colX[1], ry + 1, true);
+    [
+      "If you experience mechanical failure beyond the 30-mile radius, you are responsible for arranging and paying for towing to the nearest service facility",
+      "Contact Camauto immediately at 1-866-625-5550 for guidance on authorized repair shops",
+      "You may be reimbursed for towing costs if the failure is determined to be a manufacturing defect (review required)",
+    ].forEach((b) => { ry = writePara(b, colX[1], ry, false, true); });
 
-  ensureSpace(11);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(...RGB_TEXT);
-  doc.text("WITHIN 30-MILE RADIUS:", left, y + 7);
-  y += 11;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  const withinBullets = [
-    "In the event of mechanical failure, Camauto will provide roadside assistance and arrange a replacement vehicle at no charge to you",
-    "You are not responsible for towing or repair costs",
-  ];
-  withinBullets.forEach((b) => {
-    ensureSpace(9);
-    doc.text(`• ${b}`, left + 10, y + 7);
-    y += 9;
-  });
-
-  ensureSpace(11);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(...RGB_TEXT);
-  doc.text("OUTSIDE 30-MILE RADIUS:", left, y + 7);
-  y += 11;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  const outsideBullets = [
-    "If you experience mechanical failure beyond the 30-mile radius, you are responsible for arranging and paying for towing to the nearest service facility",
-    "Contact Camauto immediately at 1-866-625-5550 for guidance on authorized repair shops",
-    "You may be reimbursed for towing costs if the failure is determined to be a manufacturing defect (review required)",
-  ];
-  outsideBullets.forEach((b) => {
-    ensureSpace(9);
-    doc.text(`• ${b}`, left + 10, y + 7);
-    y += 9;
-  });
-  ensureSpace(6);
-  y += 3;
+    y = Math.max(ly, ry) + 3;
+  }
 
   // ---- SIGNATURE ----
   sectionBar("Signature");
-  ensureSpace(16);
+  ensureSpace(50);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(...RGB_TEXT);
+  doc.setFontSize(6.5);
+  doc.setTextColor(...RGB_MUTED);
   doc.text(
-    doc.splitTextToSize(
-      "By signing below, Renter acknowledges having read, understood, and agreed to all terms of this Vehicle Rental Agreement.",
-      contentW,
-    ),
+    "By signing below, Renter acknowledges having read, understood, and agreed to all terms of this Agreement.",
     left,
-    y + 7,
+    y + 6,
   );
-  y += 13;
-
-  ensureSpace(80);
+  y += 9;
   const sigTop = y;
-  const sigBoxH = 36;
+  const sigBoxH = 20;
 
   // Renter signature box
   if (signaturePng) {
@@ -488,23 +501,33 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
   doc.setTextColor(...RGB_MUTED);
-  doc.text("RENTER SIGNATURE", left, sigTop + sigBoxH + 10);
+  doc.text("RENTER SIGNATURE", left, sigTop + sigBoxH + 9);
 
-  y = sigTop + sigBoxH + 18;
-
-  // Print name / date rows
-  drawFieldsRow([
-    { label: "Print Name", value: rental.signedBy ?? fullName, widthPct: 50 },
-    {
-      label: "Date",
-      value: rental.signedAt
-        ? fmtDate(rental.signedAt.slice(0, 10))
-        : rental.clientSignedAt
-          ? fmtDate(rental.clientSignedAt.slice(0, 10))
-          : "",
-      widthPct: 50,
-    },
-  ]);
+  // Print name / date (compact, no page-break check so it stays on this page)
+  const dateVal = rental.signedAt
+    ? fmtDate(rental.signedAt.slice(0, 10))
+    : rental.clientSignedAt
+      ? fmtDate(rental.clientSignedAt.slice(0, 10))
+      : "";
+  const pnY = sigTop + sigBoxH + 19;
+  const halfW = contentW / 2;
+  ([
+    { label: "Print Name", value: rental.signedBy ?? fullName, x: left },
+    { label: "Date", value: dateVal, x: left + halfW },
+  ] as const).forEach((f) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(...RGB_MUTED);
+    doc.text(f.label.toUpperCase(), f.x + 2, pnY);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...RGB_TEXT);
+    doc.text(f.value || " ", f.x + 2, pnY + 8);
+    doc.setDrawColor(68, 68, 68);
+    doc.setLineWidth(0.4);
+    doc.line(f.x + 2, pnY + 10, f.x + halfW - 2, pnY + 10);
+  });
+  y = pnY + 12;
 
   drawFooter();
 
