@@ -62,44 +62,6 @@ import { SubmitDisputeDialog } from "@/components/app/SubmitDisputeDialog";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
 import { downloadCSV } from "@/lib/exports";
 
-function DownloadPacketButton({ violationId }: { violationId: string }) {
-  const dl = useServerFn(downloadViolationPacket);
-  const [busy, setBusy] = useState(false);
-  const handle = async () => {
-    setBusy(true);
-    try {
-      const res = await dl({ data: { violationId } });
-      const bin = atob(res.base64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const url = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = res.filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      if (res.missing.length) {
-        toast.message(`Packet downloaded — ${res.missing.length} item(s) missing`, {
-          description: res.missing.join(", "),
-        });
-      } else {
-        toast.success("Packet downloaded");
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Download failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <Button size="sm" variant="ghost" onClick={handle} disabled={busy} className="ml-2">
-      {busy ? "Building…" : "📥 Packet"}
-    </Button>
-  );
-}
-
 function SendCustomerButton({ violation, onDone }: { violation: ViolationRow; onDone: () => void }) {
   const send = useServerFn(sendViolationToCustomer);
   const [busy, setBusy] = useState(false);
