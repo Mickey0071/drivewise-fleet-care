@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   extractTollsFromImages,
   autoMatchToll,
+  normalizePlate,
   type MatchCandidate,
 } from "@/lib/ezpass.server";
 import type { ExtractedToll } from "@/lib/ezpass.server";
