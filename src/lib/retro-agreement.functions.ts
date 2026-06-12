@@ -612,6 +612,31 @@ export const submitRetroAgreement = createServerFn({ method: "POST" })
       .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 5);
     const agreementUrl = signedPdf?.signedUrl ?? null;
 
+    // ---- Promote legacy rental into real drivers + rentals rows ----
+    let promotion: LegacyPromotionResult | null = null;
+    const alreadyPromoted = Boolean(lr.promoted_at);
+    if (!alreadyPromoted) {
+      try {
+        promotion = await promoteLegacyRental(
+          supabaseAdmin,
+          lr,
+          {
+            fullName: data.fullName,
+            address: data.address,
+            licenseNumber: data.licenseNumber,
+            dlState: data.dlState,
+            dateOfBirth: data.dateOfBirth,
+            phone: data.phone,
+            email: data.email,
+          },
+          agreementUrl,
+          nowIso,
+        );
+      } catch (e) {
+        console.error("[retro] legacy promotion failed", e);
+      }
+    }
+
     const { error: upErr } = await supabaseAdmin
       .from("legacy_rentals")
       .update({
@@ -627,9 +652,33 @@ export const submitRetroAgreement = createServerFn({ method: "POST" })
         email: data.email || lr.email || null,
         retro_token: null,
         retro_token_expires_at: null,
+        ...(promotion
+          ? {
+              status: "promoted",
+              promoted_at: nowIso,
+              promoted_driver_id: promotion.driverId,
+              promoted_rental_id: promotion.rentalId,
+              promotion_note: promotion.note,
+            }
+          : {}),
       } as never)
       .eq("id", lr.id);
     if (upErr) throw new Error(upErr.message);
+
+    // Link any violations already attached to this legacy rental to the real ids.
+    if (promotion) {
+      try {
+        const patch: Record<string, unknown> = { driver_id: promotion.driverId };
+        if (promotion.rentalId) patch.rental_id = promotion.rentalId;
+        if (promotion.vehicleId) patch.vehicle_id = promotion.vehicleId;
+        await supabaseAdmin
+          .from("violations")
+          .update(patch as never)
+          .eq("legacy_rental_id", lr.id);
+      } catch (e) {
+        console.warn("[retro] linking violations to promoted ids failed", e);
+      }
+    }
 
     // Notify renter + admin
     const renterPhone = data.phone || lr.phone;
