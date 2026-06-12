@@ -1597,6 +1597,7 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "paid", label: "Paid" },
   { value: "disputed", label: "Disputed" },
   { value: "failed", label: "Failed" },
+  { value: "mailed_pending_review", label: "Mailed (Pending Review)" },
 ];
 
 const statusLabel = (s: string | null) =>

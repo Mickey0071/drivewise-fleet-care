@@ -15,11 +15,12 @@ const map: Record<string, Tone> = {
   rented: "info", "check-in": "info", "check-out": "info",
   maintenance: "warning", late: "warning", pending: "warning", contested: "warning", draft: "warning", inspection: "warning",
   impound: "danger", missed: "danger", defaulted: "danger", suspended: "danger", failed: "danger",
-  inactive: "muted", approved: "info",
+  inactive: "muted", approved: "info", mailed_pending_review: "info",
 };
 
 const labelOverrides: Record<string, string> = {
   inspection: "Inspection Pending",
+  mailed_pending_review: "Mailed (Pending Review)",
 };
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
