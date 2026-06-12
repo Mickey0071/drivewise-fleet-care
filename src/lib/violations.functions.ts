@@ -25,6 +25,7 @@ export interface ViolationRow {
   created_at: string;
   notes: string | null;
   driver_name?: string | null;
+  driver_phone?: string | null;
   vehicle_label?: string | null;
   customer_token?: string | null;
   sent_to_customer_at?: string | null;
