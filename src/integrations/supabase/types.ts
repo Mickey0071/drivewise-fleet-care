@@ -874,6 +874,10 @@ export type Database = {
           phone: string | null
           pickup_location: string | null
           plate: string | null
+          promoted_at: string | null
+          promoted_driver_id: string | null
+          promoted_rental_id: string | null
+          promotion_note: string | null
           renter_name: string | null
           retro_sent_at: string | null
           retro_signature_url: string | null
@@ -903,6 +907,10 @@ export type Database = {
           phone?: string | null
           pickup_location?: string | null
           plate?: string | null
+          promoted_at?: string | null
+          promoted_driver_id?: string | null
+          promoted_rental_id?: string | null
+          promotion_note?: string | null
           renter_name?: string | null
           retro_sent_at?: string | null
           retro_signature_url?: string | null
@@ -932,6 +940,10 @@ export type Database = {
           phone?: string | null
           pickup_location?: string | null
           plate?: string | null
+          promoted_at?: string | null
+          promoted_driver_id?: string | null
+          promoted_rental_id?: string | null
+          promotion_note?: string | null
           renter_name?: string | null
           retro_sent_at?: string | null
           retro_signature_url?: string | null
