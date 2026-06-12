@@ -49,6 +49,7 @@ import {
 } from "@/lib/violations.functions";
 import { sendViolationToCustomer } from "@/lib/violations.functions";
 import { deleteViolation } from "@/lib/violations.functions";
+import { updateViolation } from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
 import {
   generateLiabilityTransfer,
