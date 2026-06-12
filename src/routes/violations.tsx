@@ -572,6 +572,15 @@ function ViolationsPage() {
                           {!["paid", "resolved", "submitted_to_authority"].includes(v.status) && (
                             <SendCustomerButton violation={v} onDone={refresh} />
                           )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            title="Delete violation"
+                            onClick={() => setDeleteFor(v)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button size="sm" variant="ghost" className="h-8 w-8 p-0">

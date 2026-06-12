@@ -129,38 +129,75 @@ export async function autoMatchToll(toll: ExtractedToll): Promise<MatchResult> {
   };
   if (!toll.plate || !toll.violation_date) return empty;
 
+  const date = toll.violation_date;
+  const candidates: MatchCandidate[] = [];
+
+  // 1) Live rentals — match by vehicle plate + rental window
   const { data: vehicles } = await supabaseAdmin
     .from("vehicles")
     .select("id, plate")
     .ilike("plate", toll.plate);
   const vehicleIds = (vehicles ?? []).map((v) => v.id);
-  if (vehicleIds.length === 0) return empty;
+  if (vehicleIds.length > 0) {
+    const { data: rentals } = await supabaseAdmin
+      .from("rentals")
+      .select("id, driver_id, vehicle_id, start_date, end_date")
+      .in("vehicle_id", vehicleIds)
+      .lte("start_date", date)
+      .order("start_date", { ascending: false })
+      .limit(50);
+    const active = (rentals ?? []).filter((r) => !r.end_date || r.end_date >= date);
+    const driverIds = Array.from(
+      new Set(active.map((r) => r.driver_id).filter(Boolean)),
+    ) as string[];
+    const { data: drivers } = driverIds.length
+      ? await supabaseAdmin.from("drivers").select("id, full_name").in("id", driverIds)
+      : { data: [] as { id: string; full_name: string }[] };
+    const dMap = new Map((drivers ?? []).map((d) => [d.id, d.full_name]));
+    for (const r of active) {
+      candidates.push({
+        rental_id: r.id,
+        driver_id: r.driver_id ?? null,
+        driver_name: r.driver_id ? dMap.get(r.driver_id) ?? null : null,
+        vehicle_id: r.vehicle_id ?? null,
+        start_date: r.start_date,
+        end_date: r.end_date ?? null,
+      });
+    }
+  }
 
-  const date = toll.violation_date;
-  const { data: rentals } = await supabaseAdmin
-    .from("rentals")
-    .select("id, driver_id, vehicle_id, start_date, end_date")
-    .in("vehicle_id", vehicleIds)
-    .lte("start_date", date)
-    .order("start_date", { ascending: false })
-    .limit(50);
-  const active = (rentals ?? []).filter((r) => !r.end_date || r.end_date >= date);
-  if (active.length === 0) return empty;
+  // 2) Migrated / legacy reservations — match by plate + rental window
+  const normPlate = (p: string | null | undefined) =>
+    (p || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
+  const target = normPlate(toll.plate);
+  if (target) {
+    const { data: legacy } = await supabaseAdmin
+      .from("legacy_rentals")
+      .select(
+        "id, plate, renter_name, start_datetime, end_datetime, promoted_rental_id, promoted_driver_id",
+      )
+      .ilike("plate", `%${toll.plate.slice(0, 6)}%`)
+      .limit(100);
+    for (const lr of legacy ?? []) {
+      if (normPlate(lr.plate) !== target) continue;
+      const start = lr.start_datetime ? lr.start_datetime.slice(0, 10) : null;
+      const end = lr.end_datetime ? lr.end_datetime.slice(0, 10) : null;
+      if (start && start > date) continue;
+      if (end && end < date) continue;
+      const rentalId = lr.promoted_rental_id || lr.id;
+      if (candidates.some((c) => c.rental_id === rentalId)) continue;
+      candidates.push({
+        rental_id: rentalId,
+        driver_id: lr.promoted_driver_id ?? null,
+        driver_name: lr.renter_name ?? null,
+        vehicle_id: null,
+        start_date: start ?? date,
+        end_date: end,
+      });
+    }
+  }
 
-  const driverIds = Array.from(new Set(active.map((r) => r.driver_id).filter(Boolean))) as string[];
-  const { data: drivers } = driverIds.length
-    ? await supabaseAdmin.from("drivers").select("id, full_name").in("id", driverIds)
-    : { data: [] as { id: string; full_name: string }[] };
-  const dMap = new Map((drivers ?? []).map((d) => [d.id, d.full_name]));
-
-  const candidates: MatchCandidate[] = active.map((r) => ({
-    rental_id: r.id,
-    driver_id: r.driver_id ?? null,
-    driver_name: r.driver_id ? dMap.get(r.driver_id) ?? null : null,
-    vehicle_id: r.vehicle_id ?? null,
-    start_date: r.start_date,
-    end_date: r.end_date ?? null,
-  }));
+  if (candidates.length === 0) return empty;
 
   if (candidates.length === 1) {
     const c = candidates[0];
