@@ -477,7 +477,7 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   );
   y += 9;
   const sigTop = y;
-  const sigBoxH = 24;
+  const sigBoxH = 20;
 
   // Renter signature box
   if (signaturePng) {
@@ -503,21 +503,31 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   doc.setTextColor(...RGB_MUTED);
   doc.text("RENTER SIGNATURE", left, sigTop + sigBoxH + 9);
 
-  y = sigTop + sigBoxH + 15;
-
-  // Print name / date rows
-  drawFieldsRow([
-    { label: "Print Name", value: rental.signedBy ?? fullName, widthPct: 50 },
-    {
-      label: "Date",
-      value: rental.signedAt
-        ? fmtDate(rental.signedAt.slice(0, 10))
-        : rental.clientSignedAt
-          ? fmtDate(rental.clientSignedAt.slice(0, 10))
-          : "",
-      widthPct: 50,
-    },
-  ]);
+  // Print name / date (compact, no page-break check so it stays on this page)
+  const dateVal = rental.signedAt
+    ? fmtDate(rental.signedAt.slice(0, 10))
+    : rental.clientSignedAt
+      ? fmtDate(rental.clientSignedAt.slice(0, 10))
+      : "";
+  const pnY = sigTop + sigBoxH + 13;
+  const halfW = contentW / 2;
+  ([
+    { label: "Print Name", value: rental.signedBy ?? fullName, x: left },
+    { label: "Date", value: dateVal, x: left + halfW },
+  ] as const).forEach((f) => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(...RGB_MUTED);
+    doc.text(f.label.toUpperCase(), f.x + 2, pnY);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...RGB_TEXT);
+    doc.text(f.value || " ", f.x + 2, pnY + 8);
+    doc.setDrawColor(68, 68, 68);
+    doc.setLineWidth(0.4);
+    doc.line(f.x + 2, pnY + 10, f.x + halfW - 2, pnY + 10);
+  });
+  y = pnY + 12;
 
   drawFooter();
 
