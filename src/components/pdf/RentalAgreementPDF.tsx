@@ -214,7 +214,7 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
 
   const sectionBar = (label: string) => {
     ensureSpace(20);
-    y += 3;
+    y += 2;
     doc.setFillColor(...RGB_GREEN);
     doc.rect(left, y, contentW, 11, "F");
     doc.setFont("helvetica", "bold");
