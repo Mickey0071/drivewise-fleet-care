@@ -1,32 +1,36 @@
-## Goal
-Make the "Choose manually" search in the Add Violation dialog reliably match by **plate/tag** and **customer name** (and keep vehicle matching).
+# Toll Match DEBUG Panel
 
-## Problem
-In `src/routes/violations.tsx` (the manual-override block ~lines 1391-1399), results are filtered with a plain lowercase substring check across `[driver_name, plate, id, vehicle_label]`. Plate search breaks when the typed plate differs from the stored one by spaces, dashes, or a state prefix (e.g. typing `ABC123` won't find `NJ ABC-123`). Customer-name search already works but feels unreliable when mixed with a failing plate term.
+Add a collapsible, **admin-only**, read-only diagnostics panel to the bulk-upload review screen so you can see exactly what the matcher is working with for each extracted toll — without changing any matching logic.
 
-## Change (frontend only)
-Edit the manual filter logic in `src/routes/violations.tsx`:
+## What it shows (per toll row)
 
-1. Add a small `normPlate` helper (strip everything except `A-Z0-9`, uppercase) — mirrors the matcher logic already used in `violations.functions.ts`.
-2. When filtering each rental option, match if ANY of these is true:
-   - `driver_name` contains the typed text (case-insensitive) — customer name.
-   - `vehicle_label` contains the typed text — vehicle make/model/year.
-   - `id` contains the typed text.
-   - **Normalized plate match**: `normPlate(option.plate)` includes `normPlate(query)`, and also check the plate embedded in `vehicle_label`. This makes `abc123`, `ABC-123`, and `NJ ABC123` all match the same vehicle.
-3. Update the input placeholder to `Search by name, plate/tag, or vehicle…` so the supported fields are clear.
+- **Raw stored plate** — the plate string saved on the batch item, shown wrapped in quotes (`"…"`) so trailing/leading whitespace is visible.
+- **Normalized plate** — result of stripping all non-alphanumerics + uppercasing (`replace(/[^A-Z0-9]/gi,"").toUpperCase()`), the exact value the matcher compares against.
+- **Raw violation date** + **parsed date used for window comparison** — the value the code actually compares to reservation start/end.
+- **LIVE plate matches (ignoring date)** — count of `rentals` (via `vehicles` whose plate matches) regardless of the date window.
+- **LIVE plate + date matches** — count that ALSO pass the start/end date-window filter.
+- **LEGACY plate matches (ignoring date)** — same count against `legacy_rentals`.
+- **LEGACY plate + date matches** — count that ALSO pass the date window.
 
-No backend, schema, or server-function changes are needed — `listRentalsForViolation` already returns `driver_name`, `plate`, and `vehicle_label` for both live and migrated reservations.
+This makes it obvious whether the failure is (a) plate extraction/normalization, (b) the date comparison, or (c) no reservation data present.
 
-## Technical detail
-```text
-const norm = (s) => (s || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
-const qRaw = manualQuery.trim().toLowerCase();
-const qPlate = norm(manualQuery);
-filtered = rentalOptions.filter((r) => {
-  if (!qRaw) return true;
-  const text = [r.driver_name, r.vehicle_label, r.id].filter(Boolean)
-    .some((f) => String(f).toLowerCase().includes(qRaw));
-  const plate = qPlate && (norm(r.plate).includes(qPlate) || norm(r.vehicle_label).includes(qPlate));
-  return text || plate;
-});
-```
+## Important note on "raw OCR plate"
+
+The OCR plate is **not** stored byte-for-byte today: extraction in `ezpass.server.ts` already runs `.trim().toUpperCase()` before persisting, so the truly-raw OCR string (with newlines/odd casing) no longer exists on saved batches. The panel will show the stored value verbatim in quotes (catching whitespace that survives), and label it "stored plate" rather than implying it's pre-trim OCR output. If you also want the genuinely raw OCR text preserved going forward, that's a separate change to the extraction step — out of scope here unless you want it added.
+
+## Technical details
+
+**New server function** — `debugEzpassMatch` in `src/lib/ezpass.functions.ts`:
+- `createServerFn({ method: "GET" })` with `.middleware([requireSupabaseAuth])`.
+- Input: `{ batchId }` (zod-validated).
+- Authorize admin: call `has_role(userId, 'admin')` via `supabaseAdmin.rpc`; throw if not admin (panel is admin-only on the server, not just hidden in UI).
+- Loads the batch items, then for each item **re-runs the same read queries the matcher uses** (`vehicles` by plate → `rentals` by vehicle window; `legacy_rentals` by plate prefix) but only to COUNT, computing each count both with and without the date-window filter. Uses the identical `normPlate` and date-slice logic from `autoMatchToll` so the diagnostics reflect real behavior. No writes, no changes to `autoMatchToll`.
+- Returns an array of `{ itemId, rawPlate, normPlate, rawDate, parsedDate, liveByPlate, liveByPlateAndDate, legacyByPlate, legacyByPlateAndDate }`.
+
+**UI** — in `ReviewBatch` (`src/routes/violations_.bulk-upload.tsx`):
+- Read `role` from `useAuth()`; render the panel only when `role === "admin"`.
+- A `Collapsible` (default closed) titled "DEBUG: matcher diagnostics", placed below the existing results table.
+- Fetch via `useQuery` keyed `["ezpass-debug", batchId]`, enabled only for admins, calling the new server fn.
+- Render a compact monospace table, one row per toll, with the fields above. Counts that are zero where you'd expect a match are easy to spot.
+
+No matching logic, schema, or extraction behavior is modified — this is purely additive, read-only diagnostics.

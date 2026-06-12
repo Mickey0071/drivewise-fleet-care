@@ -20,6 +20,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +39,7 @@ import {
   downloadAffidavitsZip,
   type EzpassBatchItem,
 } from "@/lib/ezpass.functions";
+import { debugEzpassMatch } from "@/lib/ezpass.functions";
 import { createManualEzpassBatch } from "@/lib/ezpass.functions";
 import { loadPdf } from "@/lib/pdf-to-image";
 
@@ -504,6 +507,8 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
         </CardContent>
       </Card>
 
+      <DebugMatchPanel batchId={batchId} />
+
       <div className="mt-6 flex items-center justify-end gap-3">
         {approved ? (
           <Button onClick={handleZip} className="bg-emerald-600 hover:bg-emerald-700">
@@ -593,6 +598,84 @@ function SummaryCard({
         >
           {value}
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DebugMatchPanel({ batchId }: { batchId: string }) {
+  const { role } = useAuth();
+  const debug = useServerFn(debugEzpassMatch);
+  const [open, setOpen] = useState(false);
+
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["ezpass-debug", batchId],
+    queryFn: () => debug({ data: { batchId } }),
+    enabled: role === "admin" && open,
+  });
+
+  if (role !== "admin") return null;
+
+  return (
+    <Card className="mt-6 border-amber-400/60">
+      <CardContent className="p-0">
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="flex w-full items-center justify-between p-4 text-left">
+              <span className="font-mono text-xs font-semibold uppercase tracking-wide text-amber-600">
+                DEBUG: matcher diagnostics (admin only)
+              </span>
+              <Badge variant="secondary">{open ? "Hide" : "Show"}</Badge>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="overflow-x-auto border-t p-4">
+              {isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading diagnostics…</p>
+              ) : isError ? (
+                <p className="text-sm text-destructive">
+                  {error instanceof Error ? error.message : "Failed to load diagnostics"}
+                </p>
+              ) : (
+                <table className="w-full font-mono text-xs">
+                  <thead className="border-b text-left text-muted-foreground">
+                    <tr>
+                      <th className="p-2">Stored plate (quoted)</th>
+                      <th className="p-2">Normalized</th>
+                      <th className="p-2">Raw date</th>
+                      <th className="p-2">Parsed date</th>
+                      <th className="p-2 text-right">Live by plate</th>
+                      <th className="p-2 text-right">Live + date</th>
+                      <th className="p-2 text-right">Legacy by plate</th>
+                      <th className="p-2 text-right">Legacy + date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data ?? []).map((row) => (
+                      <tr key={row.itemId} className="border-b last:border-0">
+                        <td className="p-2 whitespace-pre">{`"${row.rawPlate ?? ""}"`}</td>
+                        <td className="p-2">{row.normPlate || "—"}</td>
+                        <td className="p-2">{row.rawDate ?? "null"}</td>
+                        <td className="p-2">{row.parsedDate ?? "null"}</td>
+                        <td className="p-2 text-right">{row.liveByPlate}</td>
+                        <td className={`p-2 text-right ${row.liveByPlateAndDate === 0 && row.liveByPlate > 0 ? "text-amber-600 font-bold" : ""}`}>{row.liveByPlateAndDate}</td>
+                        <td className="p-2 text-right">{row.legacyByPlate}</td>
+                        <td className={`p-2 text-right ${row.legacyByPlateAndDate === 0 && row.legacyByPlate > 0 ? "text-amber-600 font-bold" : ""}`}>{row.legacyByPlateAndDate}</td>
+                      </tr>
+                    ))}
+                    {(data ?? []).length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="p-3 text-center text-muted-foreground">
+                          No items.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </CardContent>
     </Card>
   );

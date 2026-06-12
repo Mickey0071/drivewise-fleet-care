@@ -474,3 +474,110 @@ export const downloadAffidavitsZip = createServerFn({ method: "POST" })
     }
     return { filename: `EZPASS_LIABILITY_TRANSFERS_${data.batchId}.zip`, base64: btoa(bin) };
   });
+
+export interface EzpassDebugRow {
+  itemId: string;
+  rawPlate: string | null;
+  normPlate: string;
+  rawDate: string | null;
+  parsedDate: string | null;
+  liveByPlate: number;
+  liveByPlateAndDate: number;
+  legacyByPlate: number;
+  legacyByPlateAndDate: number;
+}
+
+/**
+ * Read-only matcher diagnostics for a batch. Admin-only. Re-runs the same
+ * read queries autoMatchToll uses, but only to COUNT candidates — both with
+ * and without the date-window filter. Does NOT change any matching logic.
+ */
+export const debugEzpassMatch = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ batchId: z.string().min(1).max(64) }).parse(input))
+  .handler(async ({ data, context }): Promise<EzpassDebugRow[]> => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Forbidden");
+
+    const { data: items } = await supabaseAdmin
+      .from("ezpass_batch_items")
+      .select("id, plate, violation_date")
+      .eq("batch_id", data.batchId)
+      .order("violation_date", { ascending: true });
+
+    const normPlate = (p: string | null | undefined) =>
+      (p || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
+
+    const out: EzpassDebugRow[] = [];
+    for (const it of items ?? []) {
+      const rawPlate = (it.plate as string | null) ?? null;
+      const np = normPlate(rawPlate);
+      const date = (it.violation_date as string | null) ?? null;
+
+      let liveByPlate = 0;
+      let liveByPlateAndDate = 0;
+      let legacyByPlate = 0;
+      let legacyByPlateAndDate = 0;
+
+      if (rawPlate) {
+        // LIVE: vehicles whose plate matches -> rentals on those vehicles
+        const { data: vehicles } = await supabaseAdmin
+          .from("vehicles")
+          .select("id, plate")
+          .ilike("plate", rawPlate);
+        const vehicleIds = (vehicles ?? [])
+          .filter((v) => normPlate(v.plate) === np)
+          .map((v) => v.id);
+        if (vehicleIds.length > 0) {
+          const { data: rentals } = await supabaseAdmin
+            .from("rentals")
+            .select("id, start_date, end_date")
+            .in("vehicle_id", vehicleIds)
+            .limit(200);
+          const rows = rentals ?? [];
+          liveByPlate = rows.length;
+          if (date) {
+            liveByPlateAndDate = rows.filter(
+              (r) =>
+                (!r.start_date || r.start_date <= date) &&
+                (!r.end_date || r.end_date >= date),
+            ).length;
+          }
+        }
+
+        // LEGACY: legacy_rentals by plate prefix, then exact normalized match
+        const { data: legacy } = await supabaseAdmin
+          .from("legacy_rentals")
+          .select("id, plate, start_datetime, end_datetime")
+          .ilike("plate", `%${rawPlate.slice(0, 6)}%`)
+          .limit(200);
+        const lrows = (legacy ?? []).filter((lr) => normPlate(lr.plate) === np);
+        legacyByPlate = lrows.length;
+        if (date) {
+          legacyByPlateAndDate = lrows.filter((lr) => {
+            const start = lr.start_datetime ? lr.start_datetime.slice(0, 10) : null;
+            const end = lr.end_datetime ? lr.end_datetime.slice(0, 10) : null;
+            if (start && start > date) return false;
+            if (end && end < date) return false;
+            return true;
+          }).length;
+        }
+      }
+
+      out.push({
+        itemId: it.id as string,
+        rawPlate,
+        normPlate: np,
+        rawDate: date,
+        parsedDate: date,
+        liveByPlate,
+        liveByPlateAndDate,
+        legacyByPlate,
+        legacyByPlateAndDate,
+      });
+    }
+    return out;
+  });
