@@ -467,7 +467,7 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
 
   // ---- SIGNATURE ----
   sectionBar("Signature");
-  ensureSpace(12);
+  ensureSpace(10);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(...RGB_TEXT);
@@ -479,11 +479,11 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     left,
     y + 7,
   );
-  y += 11;
+  y += 9;
 
-  ensureSpace(64);
+  ensureSpace(56);
   const sigTop = y;
-  const sigBoxH = 30;
+  const sigBoxH = 24;
 
   // Renter signature box
   if (signaturePng) {
