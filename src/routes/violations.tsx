@@ -1090,6 +1090,30 @@ function NewViolationDialog({
                     </div>
                   )}
 
+                  {/* Exactly one overlapping reservation that wasn't auto-selected
+                      (e.g. a migrated reservation with no live rental) */}
+                  {!manualOverride && candidates.length === 1 && !picked && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRentalId(candidates[0].id)}
+                      className="flex w-full flex-col items-start rounded-md border border-emerald-300 bg-emerald-50 p-3 text-left text-sm hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/30"
+                    >
+                      <span className="font-semibold text-emerald-800 dark:text-emerald-300">
+                        {candidates[0].source === "migrated" ? "📋 " : ""}
+                        {candidates[0].driver_name ?? "Unknown renter"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {candidates[0].plate ?? ""}
+                        {candidates[0].start_date
+                          ? ` · ${candidates[0].start_date} → ${candidates[0].end_date || "ongoing"}`
+                          : ""}
+                      </span>
+                      <span className="text-xs text-emerald-700 dark:text-emerald-400">
+                        Tap to use this renter
+                      </span>
+                    </button>
+                  )}
+
                   {/* No automatic match found */}
                   {!manualOverride &&
                     lookupResult &&
@@ -1101,26 +1125,61 @@ function NewViolationDialog({
                     )}
 
                   {/* Manual override: full searchable list of every renter/reservation */}
-                  {manualOverride && (
-                    <Select value={selectedRentalId} onValueChange={(v) => setSelectedRentalId(v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose any renter…" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {rentalOptions.length === 0 ? (
-                          <div className="px-2 py-1.5 text-sm text-muted-foreground">No rentals found</div>
-                        ) : (
-                          rentalOptions.map((r) => (
-                            <SelectItem key={r.id} value={r.id}>
-                              {r.source === "migrated" ? "📋 " : ""}
-                              {r.id.startsWith("LEGACY:") ? "Migrated" : r.id}: {r.driver_name ?? "Unknown"}
-                              {r.plate ? ` — ${r.plate}` : ""}
-                            </SelectItem>
-                          ))
+                  {manualOverride && (() => {
+                    const q = manualQuery.trim().toLowerCase();
+                    const filtered = q
+                      ? rentalOptions.filter((r) =>
+                          [r.driver_name, r.plate, r.id, r.vehicle_label]
+                            .filter(Boolean)
+                            .some((field) => String(field).toLowerCase().includes(q)),
+                        )
+                      : rentalOptions;
+                    return (
+                      <div className="space-y-2">
+                        <Input
+                          autoFocus
+                          value={manualQuery}
+                          onChange={(e) => setManualQuery(e.target.value)}
+                          placeholder="Search renters by name, plate, or ID…"
+                        />
+                        <div className="max-h-60 space-y-1 overflow-auto rounded-md border p-1">
+                          {filtered.length === 0 ? (
+                            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                              No renters match “{manualQuery}”
+                            </div>
+                          ) : (
+                            filtered.slice(0, 100).map((r) => (
+                              <button
+                                key={r.id}
+                                type="button"
+                                onClick={() => setSelectedRentalId(r.id)}
+                                className={`flex w-full flex-col items-start rounded p-2 text-left text-xs hover:bg-accent ${
+                                  selectedRentalId === r.id
+                                    ? "border border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30"
+                                    : ""
+                                }`}
+                              >
+                                <span className="font-medium">
+                                  {r.source === "migrated" ? "📋 " : ""}
+                                  {r.driver_name ?? "Unknown"}
+                                </span>
+                                <span className="text-muted-foreground">
+                                  {r.id.startsWith("LEGACY:") ? "Migrated" : r.id}
+                                  {r.plate ? ` · ${r.plate}` : ""}
+                                  {r.start_date ? ` · ${r.start_date} → ${r.end_date || "ongoing"}` : ""}
+                                </span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                        {filtered.length > 100 && (
+                          <p className="text-xs text-muted-foreground">
+                            Showing first 100 — refine your search to narrow results.
+                          </p>
                         )}
-                      </SelectContent>
-                    </Select>
-                  )}
+                      </div>
+                    );
+                  })()}
 
                   <div className="my-3 border-t" />
                   <div className="flex flex-wrap items-center gap-2">
