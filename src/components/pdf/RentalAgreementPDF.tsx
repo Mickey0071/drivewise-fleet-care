@@ -394,93 +394,75 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     doc.setLineHeightFactor(1.15);
   }
 
-  // ---- VIOLATIONS ----
-  sectionBar("Violations & Incidentals");
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(...RGB_TEXT);
-  ensureSpace(11);
-  doc.text("Your card on file will be charged for any of the following:", left, y + 7);
-  y += 11;
-  const bullets = [
-    "Parking tickets or traffic violations: actual fine amount",
-    `Late return fees: ${settings.fees.dailyLateFee} per day`,
-    "Damage to vehicle: repair cost",
-    `Cleaning fees: ${settings.fees.cleaningFeeRange} if excessively soiled`,
-    "Other violations or damages: actual cost",
-  ];
-  bullets.forEach((b) => {
-    ensureSpace(9);
-    doc.text(`• ${b}`, left + 10, y + 7);
-    y += 9;
-  });
-  ensureSpace(12);
-  doc.text(
-    doc.splitTextToSize(
+  // ---- VIOLATIONS + COVERAGE (two columns) ----
+  {
+    const gutter = 14;
+    const colW = (contentW - gutter) / 2;
+    const colX = [left, left + colW + gutter];
+    const lineH = 7.4;
+
+    // Two half-width section bars side by side.
+    const halfBar = (label: string, x: number, by: number) => {
+      doc.setFillColor(...RGB_GREEN);
+      doc.rect(x, by, colW, 11, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      doc.text(label.toUpperCase(), x + 5, by + 8);
+    };
+    ensureSpace(140);
+    y += 4;
+    const barY = y;
+    halfBar("Violations & Incidentals", colX[0], barY);
+    halfBar("Service Coverage Area", colX[1], barY);
+    const bodyTop = barY + 15;
+
+    // helper: render a wrapped paragraph or bullet into a column, return new cy
+    const writePara = (text: string, x: number, cy: number, bold = false, bullet = false) => {
+      doc.setFont("helvetica", bold ? "bold" : "normal");
+      doc.setFontSize(bold ? 7 : 6.8);
+      doc.setTextColor(...RGB_TEXT);
+      const indent = bullet ? 9 : 0;
+      const lines = doc.splitTextToSize((bullet ? "• " : "") + text, colW - indent) as string[];
+      doc.text(lines, x + indent, cy + 6);
+      return cy + lines.length * lineH + 1;
+    };
+
+    // Left column: violations
+    let ly = bodyTop;
+    ly = writePara("Your card on file will be charged for any of the following:", colX[0], ly);
+    [
+      "Parking tickets or traffic violations: actual fine amount",
+      `Late return fees: ${settings.fees.dailyLateFee} per day`,
+      "Damage to vehicle: repair cost",
+      `Cleaning fees: ${settings.fees.cleaningFeeRange} if excessively soiled`,
+      "Other violations or damages: actual cost",
+    ].forEach((b) => { ly = writePara(b, colX[0], ly, false, true); });
+    ly = writePara(
       `You authorize ${c.dba} to charge your card without further notice for any of these charges.`,
-      contentW,
-    ),
-    left,
-    y + 7,
-  );
-  y += 12;
+      colX[0], ly + 1,
+    );
 
-  // ---- SERVICE COVERAGE AREA ----
-  sectionBar("Service Coverage Area");
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(...RGB_TEXT);
-  ensureSpace(12);
-  doc.text(
-    doc.splitTextToSize(
+    // Right column: service coverage
+    let ry = bodyTop;
+    ry = writePara(
       `${c.dba} provides mechanical failure and vehicle replacement coverage within a 30-mile radius of our main location (416 Sicklerville Road, Sicklerville, NJ 08081).`,
-      contentW,
-    ),
-    left,
-    y + 7,
-  );
-  y += 14;
+      colX[1], ry,
+    );
+    ry = writePara("WITHIN 30-MILE RADIUS:", colX[1], ry + 1, true);
+    [
+      "In the event of mechanical failure, Camauto will provide roadside assistance and arrange a replacement vehicle at no charge to you",
+      "You are not responsible for towing or repair costs",
+    ].forEach((b) => { ry = writePara(b, colX[1], ry, false, true); });
+    ry = writePara("OUTSIDE 30-MILE RADIUS:", colX[1], ry + 1, true);
+    [
+      "If you experience mechanical failure beyond the 30-mile radius, you are responsible for arranging and paying for towing to the nearest service facility",
+      "Contact Camauto immediately at 1-866-625-5550 for guidance on authorized repair shops",
+      "You may be reimbursed for towing costs if the failure is determined to be a manufacturing defect (review required)",
+    ].forEach((b) => { ry = writePara(b, colX[1], ry, false, true); });
 
-  ensureSpace(11);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(...RGB_TEXT);
-  doc.text("WITHIN 30-MILE RADIUS:", left, y + 7);
-  y += 11;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  const withinBullets = [
-    "In the event of mechanical failure, Camauto will provide roadside assistance and arrange a replacement vehicle at no charge to you",
-    "You are not responsible for towing or repair costs",
-  ];
-  withinBullets.forEach((b) => {
-    ensureSpace(9);
-    doc.text(`• ${b}`, left + 10, y + 7);
-    y += 9;
-  });
-
-  ensureSpace(11);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(...RGB_TEXT);
-  doc.text("OUTSIDE 30-MILE RADIUS:", left, y + 7);
-  y += 11;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  const outsideBullets = [
-    "If you experience mechanical failure beyond the 30-mile radius, you are responsible for arranging and paying for towing to the nearest service facility",
-    "Contact Camauto immediately at 1-866-625-5550 for guidance on authorized repair shops",
-    "You may be reimbursed for towing costs if the failure is determined to be a manufacturing defect (review required)",
-  ];
-  outsideBullets.forEach((b) => {
-    ensureSpace(9);
-    doc.text(`• ${b}`, left + 10, y + 7);
-    y += 9;
-  });
-  ensureSpace(6);
-  y += 3;
+    y = Math.max(ly, ry) + 3;
+  }
 
   // ---- SIGNATURE ----
   sectionBar("Signature");
