@@ -291,11 +291,14 @@ export const createViolation = createServerFn({ method: "POST" })
     let vehicleId = data.vehicleId;
     let driverId = data.driverId;
     if (data.legacyRentalId) {
-      const { data: lr } = await supabaseAdmin
+      const { data: lrRaw } = await supabaseAdmin
         .from("legacy_rentals")
-        .select("promoted_rental_id, promoted_driver_id, plate")
+        .select("*")
         .eq("id", data.legacyRentalId)
         .maybeSingle();
+      const lr = lrRaw as
+        | { promoted_rental_id?: string | null; promoted_driver_id?: string | null }
+        | null;
       if (lr?.promoted_driver_id) {
         driverId = driverId || lr.promoted_driver_id;
         if (lr.promoted_rental_id && !rentalId) {
