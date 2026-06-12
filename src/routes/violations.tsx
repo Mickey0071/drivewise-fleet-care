@@ -741,6 +741,156 @@ function ViolationsPage() {
   );
 }
 
+function EditViolationDialog({
+  violation,
+  onClose,
+  onDone,
+}: {
+  violation: ViolationRow | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const update = useServerFn(updateViolation);
+  const analyze = useServerFn(analyzeViolationPhoto);
+  const [violationNumber, setViolationNumber] = useState("");
+  const [plate, setPlate] = useState("");
+  const [date, setDate] = useState("");
+  const [amount, setAmount] = useState("");
+  const [fee, setFee] = useState("");
+  const [location, setLocation] = useState("");
+  const [time, setTime] = useState("");
+  const [description, setDescription] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!violation) return;
+    setViolationNumber(violation.reference_number || violation.id || "");
+    setPlate(violation.license_plate || "");
+    setDate((violation.date_issued || "").slice(0, 10));
+    setAmount(violation.amount != null ? String(violation.amount) : "");
+    setFee(violation.fee != null ? String(violation.fee) : "");
+    setLocation(violation.location || "");
+    setTime(violation.violation_time || "");
+    setDescription(violation.description || "");
+    setPhotoUrl(violation.photo_url || "");
+  }, [violation]);
+
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await analyze({ data: { dataUrl } });
+      setPhotoUrl(res.photoUrl);
+      toast.success("Notice uploaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const save = async () => {
+    if (!violation) return;
+    setSaving(true);
+    try {
+      await update({
+        data: {
+          id: violation.id,
+          violationNumber: violationNumber || null,
+          licensePlate: plate || null,
+          date: date || null,
+          amount: amount === "" ? null : Number(amount),
+          fee: fee === "" ? null : Number(fee),
+          location: location || null,
+          time: time || null,
+          description: description || null,
+          photoUrl: photoUrl || null,
+        },
+      });
+      toast.success("Violation updated");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!violation} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Violation — fill in missing info</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid gap-1">
+            <Label>Violation / Ticket #</Label>
+            <Input value={violationNumber} onChange={(e) => setViolationNumber(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1">
+              <Label>License Plate</Label>
+              <Input value={plate} onChange={(e) => setPlate(e.target.value)} />
+            </div>
+            <div className="grid gap-1">
+              <Label>Date</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1">
+              <Label>Amount ($)</Label>
+              <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <div className="grid gap-1">
+              <Label>Fee ($)</Label>
+              <Input type="number" step="0.01" value={fee} onChange={(e) => setFee(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1">
+              <Label>Location</Label>
+              <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+            </div>
+            <div className="grid gap-1">
+              <Label>Time</Label>
+              <Input value={time} onChange={(e) => setTime(e.target.value)} placeholder="e.g. 14:32" />
+            </div>
+          </div>
+          <div className="grid gap-1">
+            <Label>Notes / Description</Label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+          </div>
+          <div className="grid gap-1">
+            <Label>Violation notice image</Label>
+            <Input
+              type="file"
+              accept="image/*"
+              disabled={uploading}
+              onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+            />
+            {uploading && <span className="text-xs text-muted-foreground">Uploading…</span>}
+            {photoUrl && !uploading && <span className="text-xs text-emerald-600">✓ Notice on file</span>}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={save} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+            {saving ? "Saving…" : "Save Changes"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function NewViolationDialog({
   open,
   onOpenChange,
