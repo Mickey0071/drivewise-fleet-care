@@ -341,9 +341,12 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   {
     const gutter = 14;
     const colW = (contentW - gutter) / 2;
-    const lineH = 6.6;
     const titleSize = 7;
     const bodySize = 6.4;
+    const lhFactor = 1.15;
+    const titleLH = titleSize * lhFactor;
+    const bodyLH = bodySize * lhFactor;
+    doc.setLineHeightFactor(lhFactor);
     // Pre-measure each clause's wrapped lines + height for this column width.
     const items = settings.clauses.map((clause, i) => {
       const titleLine = `${i + 1}. ${clause.title}`;
@@ -354,7 +357,7 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
       doc.setFont("helvetica", "normal");
       doc.setFontSize(bodySize);
       const bodyLines = doc.splitTextToSize(bodyText, colW) as string[];
-      const h = titleLines.length * lineH + bodyLines.length * lineH + 4;
+      const h = titleLines.length * titleLH + bodyLines.length * bodyLH + 5;
       return { titleLines, bodyLines, h };
     });
     const total = items.reduce((s, it) => s + it.h, 0);
@@ -378,16 +381,17 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
         doc.setFontSize(titleSize);
         doc.setTextColor(...RGB_TEXT);
         doc.text(it.titleLines, x, cy + 6);
-        cy += it.titleLines.length * lineH + 1;
+        cy += it.titleLines.length * titleLH + 1;
         doc.setFont("helvetica", "normal");
         doc.setFontSize(bodySize);
         doc.setTextColor(34, 34, 34);
         doc.text(it.bodyLines, x, cy + 6);
-        cy += it.bodyLines.length * lineH + 4;
+        cy += it.bodyLines.length * bodyLH + 4;
       });
       if (cy > maxY) maxY = cy;
     });
     y = maxY + 2;
+    doc.setLineHeightFactor(1.15);
   }
 
   // ---- VIOLATIONS ----
