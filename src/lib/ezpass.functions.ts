@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   extractTollsFromImages,
   autoMatchToll,
+  normalizePlate,
   type MatchCandidate,
 } from "@/lib/ezpass.server";
 import type { ExtractedToll } from "@/lib/ezpass.server";
@@ -508,13 +509,10 @@ export const debugEzpassMatch = createServerFn({ method: "GET" })
       .eq("batch_id", data.batchId)
       .order("violation_date", { ascending: true });
 
-    const normPlate = (p: string | null | undefined) =>
-      (p || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
-
     const out: EzpassDebugRow[] = [];
     for (const it of items ?? []) {
       const rawPlate = (it.plate as string | null) ?? null;
-      const np = normPlate(rawPlate);
+      const np = normalizePlate(rawPlate);
       const date = (it.violation_date as string | null) ?? null;
 
       let liveByPlate = 0;
@@ -523,13 +521,10 @@ export const debugEzpassMatch = createServerFn({ method: "GET" })
       let legacyByPlateAndDate = 0;
 
       if (rawPlate) {
-        // LIVE: vehicles whose plate matches -> rentals on those vehicles
-        const { data: vehicles } = await supabaseAdmin
-          .from("vehicles")
-          .select("id, plate")
-          .ilike("plate", rawPlate);
+        // LIVE: vehicles whose normalized plate matches -> rentals on them
+        const { data: vehicles } = await supabaseAdmin.from("vehicles").select("id, plate");
         const vehicleIds = (vehicles ?? [])
-          .filter((v) => normPlate(v.plate) === np)
+          .filter((v) => np && normalizePlate(v.plate) === np)
           .map((v) => v.id);
         if (vehicleIds.length > 0) {
           const { data: rentals } = await supabaseAdmin
@@ -548,13 +543,12 @@ export const debugEzpassMatch = createServerFn({ method: "GET" })
           }
         }
 
-        // LEGACY: legacy_rentals by plate prefix, then exact normalized match
+        // LEGACY: legacy_rentals matched by normalized plate on both sides
         const { data: legacy } = await supabaseAdmin
           .from("legacy_rentals")
           .select("id, plate, start_datetime, end_datetime")
-          .ilike("plate", `%${rawPlate.slice(0, 6)}%`)
-          .limit(200);
-        const lrows = (legacy ?? []).filter((lr) => normPlate(lr.plate) === np);
+          .limit(5000);
+        const lrows = (legacy ?? []).filter((lr) => np && normalizePlate(lr.plate) === np);
         legacyByPlate = lrows.length;
         if (date) {
           legacyByPlateAndDate = lrows.filter((lr) => {
