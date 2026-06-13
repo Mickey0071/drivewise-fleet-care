@@ -295,11 +295,27 @@ const fromExpense = (r: any): Expense => ({
   id: r.id, category: r.category, amount: Number(r.amount), date: r.date,
   vendor: r.vendor ?? undefined, vehicleId: r.vehicle_id ?? undefined,
   notes: r.notes ?? undefined, receiptUrl: r.receipt_url ?? undefined,
+  maintenanceId: r.maintenance_id ?? undefined,
+  paymentMethod: r.payment_method ?? undefined,
+  referenceNumber: r.reference_number ?? undefined,
+  payrollEmployee: r.payroll_employee ?? undefined,
+  payrollPeriodStart: r.payroll_period_start ?? undefined,
+  payrollPeriodEnd: r.payroll_period_end ?? undefined,
+  payrollHours: r.payroll_hours == null ? undefined : Number(r.payroll_hours),
+  payrollRate: r.payroll_rate == null ? undefined : Number(r.payroll_rate),
 });
 const toExpense = (e: Expense) => ({
   id: e.id, category: e.category, amount: e.amount, date: e.date,
   vendor: e.vendor ?? null, vehicle_id: e.vehicleId ?? null,
   notes: e.notes ?? null, receipt_url: e.receiptUrl ?? null,
+  maintenance_id: e.maintenanceId ?? null,
+  payment_method: e.paymentMethod ?? null,
+  reference_number: e.referenceNumber ?? null,
+  payroll_employee: e.payrollEmployee ?? null,
+  payroll_period_start: e.payrollPeriodStart ?? null,
+  payroll_period_end: e.payrollPeriodEnd ?? null,
+  payroll_hours: e.payrollHours ?? null,
+  payroll_rate: e.payrollRate ?? null,
 });
 const fromVehiclePhoto = (r: any): VehiclePhoto => ({
   id: r.id, vehicleId: r.vehicle_id, url: r.url,
