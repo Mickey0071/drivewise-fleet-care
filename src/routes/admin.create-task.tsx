@@ -93,9 +93,12 @@ function CreateTaskPage() {
   const [instructions, setInstructions] = useState("");
   const [template, setTemplate] = useState<string>("");
   const [items, setItems] = useState([newItem()]);
+  const [rmItems, setRmItems] = useState<any[]>([]);
   const [requiresPhotos, setRequiresPhotos] = useState(false);
   const [photosCount, setPhotosCount] = useState("2");
   const [sending, setSending] = useState(false);
+
+  const isRm = template ? TEMPLATES[template]?.type === "routine_maintenance" : false;
 
   const vehicleOptions = useMemo(
     () => vehicles.map((v) => ({ id: v.id, label: `${v.year} ${v.make} ${v.model} · ${v.plate}` })),
@@ -109,8 +112,31 @@ function CreateTaskPage() {
   function applyTemplate(key: string) {
     setTemplate(key);
     const t = TEMPLATES[key];
-    if (t && t.items.length) setItems(t.items.map((l) => newItem(l)));
-    else setItems([newItem()]);
+    if (t?.type === "routine_maintenance") {
+      if (vehicleId !== "none") {
+        const meta = rmMetaForVehicle(vehicleId);
+        setItems(meta.items.length ? meta.items : [newItem()]);
+        setRmItems(meta.rm);
+      } else {
+        setItems([]);
+        setRmItems([]);
+      }
+    } else if (t && t.items.length) {
+      setItems(t.items.map((l) => newItem(l)));
+      setRmItems([]);
+    } else {
+      setItems([newItem()]);
+      setRmItems([]);
+    }
+  }
+
+  function handleVehicleChange(id: string) {
+    setVehicleId(id);
+    if (isRm && id !== "none") {
+      const meta = rmMetaForVehicle(id);
+      setItems(meta.items.length ? meta.items : [newItem()]);
+      setRmItems(meta.rm);
+    }
   }
 
   async function submit() {
