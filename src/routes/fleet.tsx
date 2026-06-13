@@ -300,6 +300,11 @@ function FleetPage() {
         onOpenChange={(o) => { if (!o) setExpenseVehicleId(null); }}
         defaultVehicleId={expenseVehicleId ?? undefined}
       />
+      <SendRmTaskDialog
+        open={!!rmVehicleId}
+        onOpenChange={(o) => { if (!o) setRmVehicleId(null); }}
+        vehicle={rmVehicleId ? vehicles.find(v => v.id === rmVehicleId) ?? null : null}
+      />
     </div>
   );
 }
