@@ -143,7 +143,9 @@ function CreateTaskPage() {
     if (!runnerName.trim()) { toast.error("Runner name is required"); return; }
     if (runnerPhone.replace(/\D/g, "").length < 10) { toast.error("Enter a valid runner phone"); return; }
     if (!title.trim()) { toast.error("Task title is required"); return; }
+    if (isRm && vehicleId === "none") { toast.error("Select a vehicle for routine maintenance"); return; }
     const checklist = items.filter((i) => i.label.trim()).map((i) => ({ id: i.id, label: i.label.trim() }));
+    if (isRm && checklist.length === 0) { toast.error("This vehicle has no scheduled maintenance items"); return; }
     setSending(true);
     try {
       const vehicleLabel = vehicleId !== "none"
@@ -152,6 +154,7 @@ function CreateTaskPage() {
       const customer = customerId !== "none"
         ? customerOptions.find((c) => c.id === customerId)
         : undefined;
+      const rmMeta = isRm ? rmMetaForVehicle(vehicleId) : null;
       const res = await sendFn({
         data: {
           runnerName: runnerName.trim(),
@@ -170,6 +173,9 @@ function CreateTaskPage() {
           customerPhone: customer?.phone,
           requiresPhotos,
           photosCountRequired: requiresPhotos ? Math.max(1, Number(photosCount) || 1) : 0,
+          rmVehicleId: isRm ? vehicleId : null,
+          rmMileage: rmMeta?.mileage ?? null,
+          rmItems: rmMeta?.rm ?? [],
         },
       });
       if (res.smsStatus === "sent") toast.success(`✓ Task sent to ${runnerName.trim()}`);
@@ -177,7 +183,7 @@ function CreateTaskPage() {
       setRunnerName(""); setRunnerPhone(""); setTitle(""); setPriority("medium");
       setVehicleId("none"); setCustomerId("none"); setLocation(""); setScheduledAt("");
       setInstructions(""); setTemplate(""); setItems([newItem()]);
-      setRequiresPhotos(false); setPhotosCount("2");
+      setRequiresPhotos(false); setPhotosCount("2"); setRmItems([]);
     } catch (e: any) {
       toast.error(e?.message || "Failed to create task");
     } finally {
