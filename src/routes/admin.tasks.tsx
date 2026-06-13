@@ -124,8 +124,14 @@ function TasksList() {
 function ReportDialog({ id, onClose }: { id: string | null; onClose: () => void }) {
   const fetchReport = useServerFn(getRunnerTaskReport);
   const markReviewed = useServerFn(markRunnerTaskReviewed);
+  const approveFn = useServerFn(approveRmTask);
+  const rejectFn = useServerFn(rejectRmTask);
   const qc = useQueryClient();
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [override, setOverride] = useState(false);
+  const [overrideItems, setOverrideItems] = useState<
+    { type: string; customId?: string | null; label: string; status: "Pass" | "Fail" | ""; notes: string }[]
+  >([]);
 
   const { data: report, isLoading } = useQuery({
     queryKey: ["runner-task-report", id],
@@ -141,6 +147,57 @@ function ReportDialog({ id, onClose }: { id: string | null; onClose: () => void 
     },
   });
 
+  function invalidateAll() {
+    qc.invalidateQueries({ queryKey: ["runner-task-report", id] });
+    qc.invalidateQueries({ queryKey: ["runner-tasks"] });
+    qc.invalidateQueries({ queryKey: ["runner-history"] });
+  }
+
+  const approveMut = useMutation({
+    mutationFn: (vars: { override?: boolean; items?: any[] }) =>
+      approveFn({ data: { id: id!, override: vars.override, items: vars.items } }),
+    onSuccess: (res: any) => {
+      toast.success(`Maintenance applied · ${res.passed} passed, ${res.failed} failed`);
+      setOverride(false);
+      invalidateAll();
+    },
+    onError: (e: any) => toast.error(e?.message || "Could not apply maintenance"),
+  });
+
+  const rejectMut = useMutation({
+    mutationFn: () => rejectFn({ data: { id: id! } }),
+    onSuccess: () => {
+      toast.success("Task rejected — vehicle not updated");
+      invalidateAll();
+    },
+    onError: (e: any) => toast.error(e?.message || "Could not reject task"),
+  });
+
+  function startOverride() {
+    if (!report?.rm) return;
+    const resultByLabel = new Map(
+      report.checklistResults.map((r) => [r.item.trim(), r]),
+    );
+    setOverrideItems(
+      report.rm.items.map((m) => {
+        const r = resultByLabel.get(m.label.trim());
+        const raw = String(r?.status ?? "").toLowerCase();
+        return {
+          type: m.type,
+          customId: m.customId ?? null,
+          label: m.label,
+          status: raw === "pass" || raw === "done" ? "Pass" : raw === "fail" || raw === "issue" ? "Fail" : "",
+          notes: r?.notes ?? "",
+        };
+      }),
+    );
+    setOverride(true);
+  }
+
+  const isRm = !!report?.rm;
+  const rmApplied = !!report?.rm?.applied;
+  const rmDecided = report?.status === "approved" || report?.status === "rejected";
+
   return (
     <Dialog open={!!id} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto print:max-w-none print:overflow-visible">
@@ -150,14 +207,79 @@ function ReportDialog({ id, onClose }: { id: string | null; onClose: () => void 
         {isLoading || !report ? (
           <div className="py-8 text-center text-muted-foreground">Loading report…</div>
         ) : (
-          <ReportBody report={report} onPhoto={setLightbox} />
+          <>
+            <ReportBody report={report} onPhoto={setLightbox} />
+            {override && (
+              <section className="space-y-3 rounded-md border bg-muted/30 p-3 print:hidden">
+                <h4 className="text-xs font-semibold uppercase text-muted-foreground">
+                  Administrative Override — edit and apply
+                </h4>
+                {overrideItems.map((it, i) => (
+                  <div key={i} className="space-y-1.5">
+                    <div className="text-sm font-medium">{it.label}</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["Pass", "Fail"] as const).map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() =>
+                            setOverrideItems((prev) =>
+                              prev.map((x, idx) => (idx === i ? { ...x, status: s } : x)),
+                            )
+                          }
+                          className={`flex h-9 items-center justify-center gap-1 rounded-md border text-sm font-medium ${
+                            it.status === s
+                              ? s === "Pass"
+                                ? "border-success bg-success text-success-foreground"
+                                : "border-destructive bg-destructive text-destructive-foreground"
+                              : "bg-background"
+                          }`}
+                        >
+                          {s === "Pass" ? <Check className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />} {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </section>
+            )}
+          </>
         )}
         <DialogFooter className="gap-2 print:hidden">
           <Button variant="outline" onClick={onClose}>Close</Button>
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="mr-1 h-4 w-4" /> Print Report
           </Button>
-          {report && !report.reviewedAt && (
+          {report && isRm && !rmApplied && report.status === "submitted" && !override && (
+            <>
+              <Button variant="outline" onClick={() => rejectMut.mutate()} disabled={rejectMut.isPending}>
+                <ThumbsDown className="mr-1 h-4 w-4" /> Reject
+              </Button>
+              <Button variant="outline" onClick={startOverride}>
+                <Wrench className="mr-1 h-4 w-4" /> Override
+              </Button>
+              <Button onClick={() => approveMut.mutate({})} disabled={approveMut.isPending}>
+                <ThumbsUp className="mr-1 h-4 w-4" /> Approve & Apply
+              </Button>
+            </>
+          )}
+          {report && isRm && override && (
+            <>
+              <Button variant="outline" onClick={() => setOverride(false)}>Cancel</Button>
+              <Button
+                onClick={() => approveMut.mutate({ override: true, items: overrideItems })}
+                disabled={approveMut.isPending}
+              >
+                <Wrench className="mr-1 h-4 w-4" /> Apply Override
+              </Button>
+            </>
+          )}
+          {report && isRm && rmApplied && (
+            <Badge variant="outline" className="gap-1 text-success">
+              <BadgeCheck className="h-3 w-3" /> Maintenance applied
+            </Badge>
+          )}
+          {report && !isRm && !report.reviewedAt && (
             <Button onClick={() => reviewMut.mutate()} disabled={reviewMut.isPending}>
               <BadgeCheck className="mr-1 h-4 w-4" /> Mark Reviewed
             </Button>
