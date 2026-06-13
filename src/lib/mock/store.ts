@@ -2699,6 +2699,14 @@ export function addExpense(input: Omit<Expense, "id"> & { id?: string }) {
     vehicleId: input.vehicleId,
     notes: input.notes,
     receiptUrl: input.receiptUrl,
+    maintenanceId: input.maintenanceId,
+    paymentMethod: input.paymentMethod,
+    referenceNumber: input.referenceNumber,
+    payrollEmployee: input.payrollEmployee,
+    payrollPeriodStart: input.payrollPeriodStart,
+    payrollPeriodEnd: input.payrollPeriodEnd,
+    payrollHours: input.payrollHours,
+    payrollRate: input.payrollRate,
   };
   expenses.push(exp);
   const cloudReady = cloudWrite("expense:insert", supabase.from("expenses").insert(toExpense(exp))).catch((error) => {
@@ -2706,6 +2714,7 @@ export function addExpense(input: Omit<Expense, "id"> & { id?: string }) {
     if (idx >= 0) { expenses.splice(idx, 1); emit(); }
     throw error;
   });
+  logExpenseAudit(exp.id, "create", { after: toExpense(exp) });
   emit();
   return Object.assign(exp, { cloudReady });
 }
@@ -2713,17 +2722,33 @@ export function addExpense(input: Omit<Expense, "id"> & { id?: string }) {
 export function updateExpense(id: string, patch: Partial<Expense>) {
   const e = expenses.find(x => x.id === id);
   if (!e) return;
+  const before = toExpense(e);
   Object.assign(e, patch);
   cloudWrite("expense:update", supabase.from("expenses").update(toExpense(e)).eq("id", id));
+  logExpenseAudit(id, "update", { before, after: toExpense(e) });
   emit();
 }
 
 export function deleteExpense(id: string) {
   const idx = expenses.findIndex(x => x.id === id);
   if (idx < 0) return;
+  const before = toExpense(expenses[idx]);
   expenses.splice(idx, 1);
   cloudWrite("expense:delete", supabase.from("expenses").delete().eq("id", id));
+  logExpenseAudit(id, "delete", { before });
   emit();
+}
+
+/** Best-effort audit trail write; never blocks the optimistic UI. */
+function logExpenseAudit(expenseId: string, action: string, diff: unknown) {
+  supabase.auth.getUser().then(({ data }) => {
+    void supabase.from("expense_audit_log").insert({
+      expense_id: expenseId,
+      action,
+      diff: diff as any,
+      changed_by: data.user?.id ?? null,
+    });
+  }).catch(() => { /* audit is non-critical */ });
 }
 
 /** Upload a receipt file to private storage and return its signed download URL. */
