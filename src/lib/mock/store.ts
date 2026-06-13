@@ -1954,14 +1954,30 @@ export function completeRepair(
 
   // Post the remaining (not-yet-expensed) cost to P&L so the total lands once.
   const remaining = Math.max(0, total - alreadyExpensed);
+  const mechanic = m.mechanicName || (m.vendor && m.vendor !== "Pending assignment" ? m.vendor : undefined) || m.completedBy;
+  const repairNote = `Repair ${m.id} completed — ${m.serviceType}`;
   if (remaining > 0) {
-    addExpense({
-      category: "Repair & Maintenance",
-      amount: remaining,
-      date: today,
-      vehicleId: m.vehicleId,
-      notes: `Repair ${m.id} completed — ${m.serviceType} (parts $${parts.toFixed(2)} + labor $${labor.toFixed(2)})`,
-    });
+    if (alreadyExpensed <= 0 && parts > 0 && labor > 0) {
+      // No prior payments posted: split into Parts and Labour for clean P&L breakdown.
+      addExpense({
+        category: "Parts", amount: parts, date: today, vehicleId: m.vehicleId,
+        maintenanceId: m.id, vendor: mechanic, notes: `${repairNote} (parts)`,
+      });
+      addExpense({
+        category: "Labour", amount: labor, date: today, vehicleId: m.vehicleId,
+        maintenanceId: m.id, vendor: mechanic, notes: `${repairNote} (labour)`,
+      });
+    } else {
+      addExpense({
+        category: "Repair & Maintenance",
+        amount: remaining,
+        date: today,
+        vehicleId: m.vehicleId,
+        maintenanceId: m.id,
+        vendor: mechanic,
+        notes: `${repairNote} (parts $${parts.toFixed(2)} + labor $${labor.toFixed(2)})`,
+      });
+    }
   }
 
   // --- Log the completed repair to the vehicle's fleet-card repair history,
