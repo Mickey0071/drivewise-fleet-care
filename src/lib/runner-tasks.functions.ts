@@ -20,6 +20,13 @@ export interface RunnerChecklistItem {
   label: string;
 }
 
+export interface RmTaskItem {
+  type: string;
+  customId?: string | null;
+  label: string;
+  due?: string | null;
+}
+
 /** Admin: create a link-based runner task, generate a token, and SMS the runner. */
 export const createRunnerTask = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -40,6 +47,9 @@ export const createRunnerTask = createServerFn({ method: "POST" })
     customerPhone?: string;
     requiresPhotos?: boolean;
     photosCountRequired?: number;
+    rmVehicleId?: string | null;
+    rmMileage?: number | null;
+    rmItems?: RmTaskItem[];
   }) => {
     const runnerName = (d.runnerName ?? "").trim();
     if (!runnerName || runnerName.length > 120) throw new Error("Runner name is required");
@@ -58,6 +68,15 @@ export const createRunnerTask = createServerFn({ method: "POST" })
     const photosCountRequired = requiresPhotos
       ? Math.min(Math.max(Number(d.photosCountRequired) || 1, 1), 20)
       : 0;
+    const rmItems = (Array.isArray(d.rmItems) ? d.rmItems : [])
+      .map((i) => ({
+        type: String(i.type ?? "").slice(0, 40),
+        customId: i.customId ? String(i.customId).slice(0, 80) : null,
+        label: String(i.label ?? "").slice(0, 200),
+        due: i.due ? String(i.due).slice(0, 40) : null,
+      }))
+      .filter((i) => i.label.trim().length > 0)
+      .slice(0, 60);
     return {
       runnerName,
       runnerPhone,
@@ -75,6 +94,9 @@ export const createRunnerTask = createServerFn({ method: "POST" })
       customerPhone: (d.customerPhone ?? "").slice(0, 40) || null,
       requiresPhotos,
       photosCountRequired,
+      rmVehicleId: d.rmVehicleId ? String(d.rmVehicleId).slice(0, 80) : null,
+      rmMileage: d.rmMileage != null ? Number(d.rmMileage) : null,
+      rmItems,
     };
   })
   .handler(async ({ data, context }) => {
@@ -103,6 +125,14 @@ export const createRunnerTask = createServerFn({ method: "POST" })
           vehicleLabel: data.vehicleLabel || null,
           customerName: data.customerName,
           customerPhone: data.customerPhone,
+          rm: data.rmVehicleId
+            ? {
+                vehicleId: data.rmVehicleId,
+                mileage: data.rmMileage,
+                items: data.rmItems,
+                applied: false,
+              }
+            : null,
         } as any,
         assigned_by: context.userId,
         status: "sent",
