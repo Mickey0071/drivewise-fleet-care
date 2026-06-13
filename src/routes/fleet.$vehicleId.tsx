@@ -359,10 +359,11 @@ function VehicleDetail() {
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4 space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-4">
             <Stat label="Income (paid)" value={fmtMoney(incomeTotal)} />
             <Stat label="Expenses" value={fmtMoney(expenseTotal)} />
             <Stat label="Net P&L" value={fmtMoney(netTotal)} />
+            <Stat label="ROI" value={roiPct == null ? "—" : `${roiPct.toFixed(0)}%`} />
           </div>
           <Section title="Income (payments collected)">
             {vPayments.length === 0 ? <Empty/> : vPayments.map(p => (
