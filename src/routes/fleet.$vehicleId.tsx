@@ -105,8 +105,19 @@ function VehicleDetail() {
   const incomeTotal = vPayments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
   const maintenanceTotal = vMx.reduce((s, m) => s + m.cost, 0);
   const violationTotal = vViol.reduce((s, x) => s + x.amount, 0);
-  const expenseTotal = maintenanceTotal + violationTotal;
+  // Expense ledger is the canonical source for vehicle-tied spend (parts, labour,
+  // fuel, etc.). Completed repairs auto-post here, so we don't add maintenance.cost
+  // on top (that would double-count).
+  const vehExpenses = expenses
+    .filter(e => e.vehicleId === v.id)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const vehExpenseTotal = vehExpenses.reduce((s, e) => s + e.amount, 0);
+  const vehExpenseByCat = vehExpenses.reduce<Record<string, number>>((acc, e) => {
+    acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc;
+  }, {});
+  const expenseTotal = vehExpenseTotal + violationTotal;
   const netTotal = incomeTotal - expenseTotal;
+  const roiPct = expenseTotal > 0 ? (netTotal / expenseTotal) * 100 : null;
   const activeRental = vRentals.find(r => !r.endDate && ((r.reservationStatus ?? "active") === "active" || r.reservationStatus === "pending")) ?? vRentals[0];
   const bookable = isVehicleBookable(v.id);
   const activeDriver = activeRental ? driverById(activeRental.driverId) : null;
