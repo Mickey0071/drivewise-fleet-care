@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { vehicles, fmtMoney } from "@/lib/mock/data";
 import { maintenance as maintenanceList } from "@/lib/mock/data";
-import { fmtDate, rentals } from "@/lib/mock/data";
+import { fmtDate, rentals, payments, expenses } from "@/lib/mock/data";
 import { lastServiceFor } from "@/lib/maintenance-utils";
 import { computeVehicleAlerts, isScheduleConfigured } from "@/lib/maintenance-utils";
 import { carImage } from "@/lib/mock/carImages";
@@ -17,10 +17,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { addVehicle, isVehicleBookable, awaitingPostReturnInspection, updateVehicleImage, uploadVehiclePhoto, useStoreVersion, openRepairsForVehicle } from "@/lib/mock/store";
 import { toast } from "sonner";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
+import { ExpenseDialog } from "@/components/app/ExpenseDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehiclePhotosDialog } from "@/components/app/VehiclePhotosDialog";
-import { Share2, Camera, Pencil, Images } from "lucide-react";
+import { Share2, Camera, Pencil, Images, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 
@@ -39,6 +40,7 @@ function FleetPage() {
   const [shareVehicleId, setShareVehicleId] = useState<string | null>(null);
   const [editVehicleId, setEditVehicleId] = useState<string | null>(null);
   const [photosVehicleId, setPhotosVehicleId] = useState<string | null>(null);
+  const [expenseVehicleId, setExpenseVehicleId] = useState<string | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { status } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -73,6 +75,13 @@ function FleetPage() {
             r => r.vehicleId === v.id && (r.reservationStatus ?? "active") === "active" && !r.returnedAt,
           );
           const openEnded = !!onRent && !onRent.endDate;
+          const rentalIds = new Set(rentals.filter(r => r.vehicleId === v.id).map(r => r.id));
+          const revenue = payments.filter(p => rentalIds.has(p.rentalId) && p.status === "paid").reduce((s, p) => s + p.amount, 0);
+          const vehExpenses = expenses.filter(e => e.vehicleId === v.id);
+          const expenseTotal = vehExpenses.reduce((s, e) => s + e.amount, 0);
+          const byCat = vehExpenses.reduce<Record<string, number>>((acc, e) => { acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc; }, {});
+          const netProfit = revenue - expenseTotal;
+          const roiPct = expenseTotal > 0 ? (netProfit / expenseTotal) * 100 : null;
           return (
           <Card
             key={v.id}
@@ -184,10 +193,29 @@ function FleetPage() {
                     🟡 Scheduled maintenance not fully configured — click to set up
                   </button>
                 )}
+                <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border pt-2 text-xs">
+                  <div><div className="text-muted-foreground">Revenue</div><div className="font-semibold">{fmtMoney(revenue)}</div></div>
+                  <div><div className="text-muted-foreground">Expenses</div><div className="font-semibold">{fmtMoney(expenseTotal)}</div></div>
+                  <div><div className="text-muted-foreground">Net Profit</div><div className={`font-semibold ${netProfit < 0 ? "text-destructive" : ""}`}>{fmtMoney(netProfit)}</div></div>
+                  <div><div className="text-muted-foreground">ROI</div><div className="font-semibold">{roiPct == null ? "—" : `${roiPct.toFixed(0)}%`}</div></div>
+                </div>
+                {expenseTotal > 0 && (
+                  <div className="mt-1 text-[11px] text-muted-foreground">
+                    Parts {fmtMoney(byCat["Parts"] ?? 0)} · Labour {fmtMoney(byCat["Labour"] ?? 0)} · Other {fmtMoney(expenseTotal - (byCat["Parts"] ?? 0) - (byCat["Labour"] ?? 0))}
+                  </div>
+                )}
               </CardContent>
             </div>
             <div className="flex flex-wrap gap-2 border-t border-border bg-muted/30 p-2" onClick={(e) => e.stopPropagation()}>
               <VehiclePhotoButton vehicleId={v.id} hasPhoto={!!v.imageUrl} />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setExpenseVehicleId(v.id)}
+                title="Add an expense for this vehicle"
+              >
+                <Plus className="mr-1 h-4 w-4" /> Add Expense
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -256,6 +284,11 @@ function FleetPage() {
         open={!!photosVehicleId}
         onOpenChange={(o) => { if (!o) setPhotosVehicleId(null); }}
         vehicle={photosVehicleId ? vehicles.find(v => v.id === photosVehicleId) ?? null : null}
+      />
+      <ExpenseDialog
+        open={!!expenseVehicleId}
+        onOpenChange={(o) => { if (!o) setExpenseVehicleId(null); }}
+        defaultVehicleId={expenseVehicleId ?? undefined}
       />
     </div>
   );
