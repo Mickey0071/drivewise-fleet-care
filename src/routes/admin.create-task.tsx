@@ -136,6 +136,8 @@ function CreateTaskPage() {
       const meta = rmMetaForVehicle(id);
       setItems(meta.items.length ? meta.items : [newItem()]);
       setRmItems(meta.rm);
+      const v = vehicles.find((x) => x.id === id);
+      if (v && !title.trim()) setTitle(`Routine Maintenance — ${v.year} ${v.make} ${v.model}`);
     }
   }
 
