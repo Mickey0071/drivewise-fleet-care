@@ -532,7 +532,7 @@ function PnLPage() {
             {totalExpenses === 0 && (
               <p className="text-xs text-muted-foreground">No expenses logged yet. Add some in the Expenses tab.</p>
             )}
-            {Object.entries(byCat).map(([cat, amt]) => (
+            {Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => (
               <Bar key={cat} label={cat.replace("_", " ")} value={amt} total={totalExpenses} tone="bg-destructive/70" />
             ))}
           </CardContent>
