@@ -569,6 +569,11 @@ function VehicleDetail() {
         onOpenChange={setReportOpen}
         vehicle={v}
       />
+      <ExpenseDialog
+        open={expenseOpen}
+        onOpenChange={setExpenseOpen}
+        defaultVehicleId={v.id}
+      />
       <CreateWorkOrderDialog
         open={createWoOpen}
         onOpenChange={setCreateWoOpen}
