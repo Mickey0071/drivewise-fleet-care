@@ -264,7 +264,7 @@ function RunnerTaskPage() {
             {checklist.map((c) => (
               <div key={c.id} className="space-y-2">
                 <p className="text-sm font-medium">{c.label}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className={`grid gap-2 ${isRm ? "grid-cols-2" : "grid-cols-3"}`}>
                   {statusBtns.map((b) => (
                     <button
                       key={b.key}
@@ -278,7 +278,7 @@ function RunnerTaskPage() {
                     </button>
                   ))}
                 </div>
-                {statuses[c.id] === "Issue" && (
+                {(statuses[c.id] === "Issue" || statuses[c.id] === "Fail") && (
                   <Input
                     placeholder="Describe the issue…"
                     value={notes[c.id] || ""}
