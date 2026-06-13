@@ -232,7 +232,7 @@ function CreateTaskPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label>Vehicle (optional)</Label>
-              <Select value={vehicleId} onValueChange={setVehicleId}>
+              <Select value={vehicleId} onValueChange={handleVehicleChange}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
