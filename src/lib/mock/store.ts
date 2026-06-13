@@ -295,11 +295,27 @@ const fromExpense = (r: any): Expense => ({
   id: r.id, category: r.category, amount: Number(r.amount), date: r.date,
   vendor: r.vendor ?? undefined, vehicleId: r.vehicle_id ?? undefined,
   notes: r.notes ?? undefined, receiptUrl: r.receipt_url ?? undefined,
+  maintenanceId: r.maintenance_id ?? undefined,
+  paymentMethod: r.payment_method ?? undefined,
+  referenceNumber: r.reference_number ?? undefined,
+  payrollEmployee: r.payroll_employee ?? undefined,
+  payrollPeriodStart: r.payroll_period_start ?? undefined,
+  payrollPeriodEnd: r.payroll_period_end ?? undefined,
+  payrollHours: r.payroll_hours == null ? undefined : Number(r.payroll_hours),
+  payrollRate: r.payroll_rate == null ? undefined : Number(r.payroll_rate),
 });
 const toExpense = (e: Expense) => ({
   id: e.id, category: e.category, amount: e.amount, date: e.date,
   vendor: e.vendor ?? null, vehicle_id: e.vehicleId ?? null,
   notes: e.notes ?? null, receipt_url: e.receiptUrl ?? null,
+  maintenance_id: e.maintenanceId ?? null,
+  payment_method: e.paymentMethod ?? null,
+  reference_number: e.referenceNumber ?? null,
+  payroll_employee: e.payrollEmployee ?? null,
+  payroll_period_start: e.payrollPeriodStart ?? null,
+  payroll_period_end: e.payrollPeriodEnd ?? null,
+  payroll_hours: e.payrollHours ?? null,
+  payroll_rate: e.payrollRate ?? null,
 });
 const fromVehiclePhoto = (r: any): VehiclePhoto => ({
   id: r.id, vehicleId: r.vehicle_id, url: r.url,
@@ -1938,14 +1954,30 @@ export function completeRepair(
 
   // Post the remaining (not-yet-expensed) cost to P&L so the total lands once.
   const remaining = Math.max(0, total - alreadyExpensed);
+  const mechanic = m.mechanicName || (m.vendor && m.vendor !== "Pending assignment" ? m.vendor : undefined) || m.completedBy;
+  const repairNote = `Repair ${m.id} completed — ${m.serviceType}`;
   if (remaining > 0) {
-    addExpense({
-      category: "Repair & Maintenance",
-      amount: remaining,
-      date: today,
-      vehicleId: m.vehicleId,
-      notes: `Repair ${m.id} completed — ${m.serviceType} (parts $${parts.toFixed(2)} + labor $${labor.toFixed(2)})`,
-    });
+    if (alreadyExpensed <= 0 && parts > 0 && labor > 0) {
+      // No prior payments posted: split into Parts and Labour for clean P&L breakdown.
+      addExpense({
+        category: "Parts", amount: parts, date: today, vehicleId: m.vehicleId,
+        maintenanceId: m.id, vendor: mechanic, notes: `${repairNote} (parts)`,
+      });
+      addExpense({
+        category: "Labour", amount: labor, date: today, vehicleId: m.vehicleId,
+        maintenanceId: m.id, vendor: mechanic, notes: `${repairNote} (labour)`,
+      });
+    } else {
+      addExpense({
+        category: "Repair & Maintenance",
+        amount: remaining,
+        date: today,
+        vehicleId: m.vehicleId,
+        maintenanceId: m.id,
+        vendor: mechanic,
+        notes: `${repairNote} (parts $${parts.toFixed(2)} + labor $${labor.toFixed(2)})`,
+      });
+    }
   }
 
   // --- Log the completed repair to the vehicle's fleet-card repair history,
@@ -2683,6 +2715,14 @@ export function addExpense(input: Omit<Expense, "id"> & { id?: string }) {
     vehicleId: input.vehicleId,
     notes: input.notes,
     receiptUrl: input.receiptUrl,
+    maintenanceId: input.maintenanceId,
+    paymentMethod: input.paymentMethod,
+    referenceNumber: input.referenceNumber,
+    payrollEmployee: input.payrollEmployee,
+    payrollPeriodStart: input.payrollPeriodStart,
+    payrollPeriodEnd: input.payrollPeriodEnd,
+    payrollHours: input.payrollHours,
+    payrollRate: input.payrollRate,
   };
   expenses.push(exp);
   const cloudReady = cloudWrite("expense:insert", supabase.from("expenses").insert(toExpense(exp))).catch((error) => {
@@ -2690,6 +2730,7 @@ export function addExpense(input: Omit<Expense, "id"> & { id?: string }) {
     if (idx >= 0) { expenses.splice(idx, 1); emit(); }
     throw error;
   });
+  logExpenseAudit(exp.id, "create", { after: toExpense(exp) });
   emit();
   return Object.assign(exp, { cloudReady });
 }
@@ -2697,17 +2738,33 @@ export function addExpense(input: Omit<Expense, "id"> & { id?: string }) {
 export function updateExpense(id: string, patch: Partial<Expense>) {
   const e = expenses.find(x => x.id === id);
   if (!e) return;
+  const before = toExpense(e);
   Object.assign(e, patch);
   cloudWrite("expense:update", supabase.from("expenses").update(toExpense(e)).eq("id", id));
+  logExpenseAudit(id, "update", { before, after: toExpense(e) });
   emit();
 }
 
 export function deleteExpense(id: string) {
   const idx = expenses.findIndex(x => x.id === id);
   if (idx < 0) return;
+  const before = toExpense(expenses[idx]);
   expenses.splice(idx, 1);
   cloudWrite("expense:delete", supabase.from("expenses").delete().eq("id", id));
+  logExpenseAudit(id, "delete", { before });
   emit();
+}
+
+/** Best-effort audit trail write; never blocks the optimistic UI. */
+function logExpenseAudit(expenseId: string, action: string, diff: unknown) {
+  supabase.auth.getUser().then(({ data }) => {
+    void supabase.from("expense_audit_log").insert({
+      expense_id: expenseId,
+      action,
+      diff: diff as any,
+      changed_by: data.user?.id ?? null,
+    });
+  }).catch(() => { /* audit is non-critical */ });
 }
 
 /** Upload a receipt file to private storage and return its signed download URL. */

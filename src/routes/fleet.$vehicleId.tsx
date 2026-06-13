@@ -4,7 +4,7 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { vehicleById, rentals, maintenance, violations, inspections, payments, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
+import { vehicleById, rentals, maintenance, violations, inspections, payments, expenses, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
 import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, useStoreVersion } from "@/lib/mock/store";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
@@ -24,6 +24,7 @@ import { ServiceHistoryReportDialog } from "@/components/app/ServiceHistoryRepor
 import { CreateWorkOrderDialog } from "@/components/app/CreateWorkOrderDialog";
 import { WorkOrderDialog } from "@/components/app/WorkOrderDialog";
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
+import { ExpenseDialog } from "@/components/app/ExpenseDialog";
 import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 import type { Maintenance, WorkOrder } from "@/lib/mock/data";
@@ -57,6 +58,7 @@ function VehicleDetail() {
   const [completedRepair, setCompletedRepair] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [expenseOpen, setExpenseOpen] = useState(false);
   // Live last-inspection data (reflects approved runner inspections from the backend).
   const [liveInsp, setLiveInsp] = useState<{ at: string | null; mileage: number | null; status: string | null } | null>(null);
   useEffect(() => {
@@ -105,8 +107,19 @@ function VehicleDetail() {
   const incomeTotal = vPayments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
   const maintenanceTotal = vMx.reduce((s, m) => s + m.cost, 0);
   const violationTotal = vViol.reduce((s, x) => s + x.amount, 0);
-  const expenseTotal = maintenanceTotal + violationTotal;
+  // Expense ledger is the canonical source for vehicle-tied spend (parts, labour,
+  // fuel, etc.). Completed repairs auto-post here, so we don't add maintenance.cost
+  // on top (that would double-count).
+  const vehExpenses = expenses
+    .filter(e => e.vehicleId === v.id)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const vehExpenseTotal = vehExpenses.reduce((s, e) => s + e.amount, 0);
+  const vehExpenseByCat = vehExpenses.reduce<Record<string, number>>((acc, e) => {
+    acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc;
+  }, {});
+  const expenseTotal = vehExpenseTotal + violationTotal;
   const netTotal = incomeTotal - expenseTotal;
+  const roiPct = expenseTotal > 0 ? (netTotal / expenseTotal) * 100 : null;
   const activeRental = vRentals.find(r => !r.endDate && ((r.reservationStatus ?? "active") === "active" || r.reservationStatus === "pending")) ?? vRentals[0];
   const bookable = isVehicleBookable(v.id);
   const activeDriver = activeRental ? driverById(activeRental.driverId) : null;
@@ -317,6 +330,7 @@ function VehicleDetail() {
           <TabsTrigger value="block">Block Vehicle</TabsTrigger>
           <TabsTrigger value="analytics">Analytics / P&amp;L</TabsTrigger>
           <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+          <TabsTrigger value="expenses">Expenses</TabsTrigger>
           <TabsTrigger value="repairs">Repair History</TabsTrigger>
           <TabsTrigger value="rm">RM History</TabsTrigger>
           <TabsTrigger value="renters">Renter History ({uniqueRenters.length})</TabsTrigger>
@@ -345,10 +359,11 @@ function VehicleDetail() {
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4 space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-4">
             <Stat label="Income (paid)" value={fmtMoney(incomeTotal)} />
             <Stat label="Expenses" value={fmtMoney(expenseTotal)} />
             <Stat label="Net P&L" value={fmtMoney(netTotal)} />
+            <Stat label="ROI" value={roiPct == null ? "—" : `${roiPct.toFixed(0)}%`} />
           </div>
           <Section title="Income (payments collected)">
             {vPayments.length === 0 ? <Empty/> : vPayments.map(p => (
@@ -404,6 +419,33 @@ function VehicleDetail() {
             ))}
           </Section>
           <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/maintenance">Open maintenance log →</Link></Button>
+        </TabsContent>
+
+        <TabsContent value="expenses" className="mt-4 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-xs text-muted-foreground">Total spent on this vehicle</div>
+              <div className="text-2xl font-bold">{fmtMoney(vehExpenseTotal)}</div>
+            </div>
+            <Button size="sm" onClick={() => setExpenseOpen(true)}>Add expense</Button>
+          </div>
+          {Object.keys(vehExpenseByCat).length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(vehExpenseByCat).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => (
+                <span key={cat} className="rounded-full bg-muted px-2.5 py-1 text-xs">
+                  {cat}: <span className="font-semibold">{fmtMoney(amt)}</span>
+                </span>
+              ))}
+            </div>
+          )}
+          <Section title={`Expenses (${vehExpenses.length})`}>
+            {vehExpenses.length === 0 ? <Empty/> : vehExpenses.map(e => (
+              <Row key={e.id}
+                title={e.category}
+                sub={`${fmtDate(e.date)}${e.vendor ? ` · ${e.vendor}` : ""}${e.notes ? ` · ${e.notes}` : ""}`}
+                right={<span className="font-medium">{fmtMoney(e.amount)}</span>} />
+            ))}
+          </Section>
         </TabsContent>
 
         <TabsContent value="repairs" className="mt-4 space-y-4">
@@ -526,6 +568,11 @@ function VehicleDetail() {
         open={reportOpen}
         onOpenChange={setReportOpen}
         vehicle={v}
+      />
+      <ExpenseDialog
+        open={expenseOpen}
+        onOpenChange={setExpenseOpen}
+        defaultVehicleId={v.id}
       />
       <CreateWorkOrderDialog
         open={createWoOpen}

@@ -43,7 +43,7 @@ const adminItems: Item[] = [
 ];
 const financeItems: Item[] = [
   { title: "P&L", url: "/pnl", icon: TrendingUp, roles: ["admin"] },
-  { title: "Expenses", url: "/expenses", icon: Receipt, roles: ["admin"] },
+  { title: "Expenses", url: "/admin/expenses", icon: Receipt, roles: ["admin"] },
   { title: "Payroll", url: "/payroll", icon: Banknote, roles: ["admin"] },
 ];
 const portalItems: Item[] = [

@@ -281,23 +281,53 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_audit_log: {
+        Row: {
+          action: string
+          changed_by: string | null
+          created_at: string
+          diff: Json | null
+          expense_id: string
+          id: string
+        }
+        Insert: {
+          action: string
+          changed_by?: string | null
+          created_at?: string
+          diff?: Json | null
+          expense_id: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string | null
+          created_at?: string
+          diff?: Json | null
+          expense_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       expense_categories: {
         Row: {
           created_at: string
           created_by: string | null
           id: string
+          is_default: boolean
           name: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_default?: boolean
           name: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
           id?: string
+          is_default?: boolean
           name?: string
         }
         Relationships: []
@@ -310,8 +340,16 @@ export type Database = {
           created_by: string | null
           date: string
           id: string
+          maintenance_id: string | null
           notes: string | null
+          payment_method: string | null
+          payroll_employee: string | null
+          payroll_hours: number | null
+          payroll_period_end: string | null
+          payroll_period_start: string | null
+          payroll_rate: number | null
           receipt_url: string | null
+          reference_number: string | null
           updated_at: string
           vehicle_id: string | null
           vendor: string | null
@@ -323,8 +361,16 @@ export type Database = {
           created_by?: string | null
           date?: string
           id?: string
+          maintenance_id?: string | null
           notes?: string | null
+          payment_method?: string | null
+          payroll_employee?: string | null
+          payroll_hours?: number | null
+          payroll_period_end?: string | null
+          payroll_period_start?: string | null
+          payroll_rate?: number | null
           receipt_url?: string | null
+          reference_number?: string | null
           updated_at?: string
           vehicle_id?: string | null
           vendor?: string | null
@@ -336,8 +382,16 @@ export type Database = {
           created_by?: string | null
           date?: string
           id?: string
+          maintenance_id?: string | null
           notes?: string | null
+          payment_method?: string | null
+          payroll_employee?: string | null
+          payroll_hours?: number | null
+          payroll_period_end?: string | null
+          payroll_period_start?: string | null
+          payroll_rate?: number | null
           receipt_url?: string | null
+          reference_number?: string | null
           updated_at?: string
           vehicle_id?: string | null
           vendor?: string | null

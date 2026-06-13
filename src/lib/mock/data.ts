@@ -275,6 +275,14 @@ export interface Expense {
   id: string; category: string; amount: number; date: string;
   vendor?: string; vehicleId?: string; staffId?: string; notes?: string;
   receiptUrl?: string;
+  maintenanceId?: string;
+  paymentMethod?: string;
+  referenceNumber?: string;
+  payrollEmployee?: string;
+  payrollPeriodStart?: string;
+  payrollPeriodEnd?: string;
+  payrollHours?: number;
+  payrollRate?: number;
 }
 export interface PayrollRun {
   id: string; periodStart: string; periodEnd: string; runDate: string;
