@@ -15,10 +15,11 @@ import {
 } from "@/components/ui/collapsible";
 import {
   CheckCircle2, MinusCircle, AlertTriangle, ClipboardList, Printer, BadgeCheck,
-  Phone, MapPin, ChevronDown, X,
+  Phone, MapPin, ChevronDown, X, ThumbsUp, ThumbsDown, Wrench, Check,
 } from "lucide-react";
 import {
   listRunnerTasks, getRunnerTaskReport, markRunnerTaskReviewed, getRunnerHistory,
+  approveRmTask, rejectRmTask,
   type RunnerTaskReport,
 } from "@/lib/runner-tasks-admin.functions";
 
@@ -35,6 +36,8 @@ function statusBadge(status: string) {
   const map: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
     submitted: { label: "Submitted", variant: "default" },
     sent: { label: "Sent", variant: "secondary" },
+    approved: { label: "Approved", variant: "default" },
+    rejected: { label: "Rejected", variant: "destructive" },
     cancelled: { label: "Cancelled", variant: "destructive" },
     archived: { label: "Archived", variant: "outline" },
   };
