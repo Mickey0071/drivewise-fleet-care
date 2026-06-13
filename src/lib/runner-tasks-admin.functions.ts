@@ -37,6 +37,12 @@ export interface RunnerTaskReport extends RunnerTaskSummary {
   checklistResults: { item: string; status: string; notes?: string }[];
   runnerNotes: string | null;
   photoUrls: string[];
+  rm: {
+    vehicleId: string;
+    mileage: number | null;
+    items: { type: string; customId?: string | null; label: string; due?: string | null }[];
+    applied: boolean;
+  } | null;
 }
 
 function summarize(row: any): RunnerTaskSummary {
@@ -115,6 +121,14 @@ export const getRunnerTaskReport = createServerFn({ method: "GET" })
         : []) as RunnerTaskReport["checklistResults"],
       runnerNotes: row.runner_notes ?? null,
       photoUrls,
+      rm: details.rm?.vehicleId
+        ? {
+            vehicleId: details.rm.vehicleId,
+            mileage: details.rm.mileage ?? null,
+            items: Array.isArray(details.rm.items) ? details.rm.items : [],
+            applied: !!details.rm.applied,
+          }
+        : null,
     };
   });
 
