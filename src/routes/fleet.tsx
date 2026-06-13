@@ -221,6 +221,14 @@ function FleetPage() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setRmVehicleId(v.id)}
+                title="Send routine maintenance list to a runner"
+              >
+                <Wrench className="mr-1 h-4 w-4" /> Send RM
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setPhotosVehicleId(v.id)}
                 title="Manage & share photos"
               >
