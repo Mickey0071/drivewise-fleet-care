@@ -137,6 +137,123 @@ export const markRunnerTaskReviewed = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** Map runner checklist results (Pass/Fail) onto stored RM item metadata. */
+function buildRmItems(rmMeta: any, checklistResults: any[]) {
+  const metaItems: any[] = Array.isArray(rmMeta?.items) ? rmMeta.items : [];
+  const results: any[] = Array.isArray(checklistResults) ? checklistResults : [];
+  return metaItems.map((m, i) => {
+    const r =
+      results.find((x) => String(x.item ?? "").trim() === String(m.label ?? "").trim()) ??
+      results[i];
+    const raw = String(r?.status ?? "").toLowerCase();
+    const status: "Pass" | "Fail" | "" =
+      raw === "pass" || raw === "done" ? "Pass" : raw === "fail" || raw === "issue" ? "Fail" : "";
+    return {
+      type: m.type,
+      customId: m.customId ?? undefined,
+      label: m.label,
+      due: m.due ?? undefined,
+      status,
+      notes: r?.notes ?? undefined,
+    };
+  });
+}
+
+/**
+ * Admin: approve a routine-maintenance runner task. Applies the submitted
+ * (or admin-overridden) results to the vehicle's scheduled maintenance.
+ */
+export const approveRmTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: {
+    id: string;
+    override?: boolean;
+    items?: { type: string; customId?: string | null; label: string; status?: string; notes?: string }[];
+    mileage?: number | null;
+  }) => {
+    const id = String(d?.id ?? "").trim();
+    if (!id || id.length > 80) throw new Error("Invalid task id");
+    return {
+      id,
+      override: !!d.override,
+      items: Array.isArray(d.items) ? d.items.slice(0, 60) : null,
+      mileage: d.mileage != null ? Number(d.mileage) : null,
+    };
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+
+    const { data: row, error } = await supabase
+      .from("runner_tasks")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Task not found");
+
+    const details = (row.details ?? {}) as Record<string, any>;
+    const rmMeta = details.rm;
+    if (!rmMeta?.vehicleId) throw new Error("This task is not a routine-maintenance task");
+    if (rmMeta.applied) throw new Error("This task's maintenance has already been applied");
+
+    const items =
+      data.override && data.items
+        ? data.items.map((it) => ({
+            type: it.type,
+            customId: it.customId ?? undefined,
+            label: it.label,
+            status: (it.status === "Pass" || it.status === "Fail" ? it.status : "") as "Pass" | "Fail" | "",
+            notes: it.notes ?? undefined,
+          }))
+        : buildRmItems(rmMeta, row.checklist_results as any[]);
+
+    const mileage = data.mileage != null ? data.mileage : rmMeta.mileage ?? null;
+
+    const { applyRmSubmission } = await import("@/lib/rm-cards.server");
+    const result = await applyRmSubmission({
+      vehicleId: rmMeta.vehicleId,
+      items,
+      inspectorName: data.override ? "Admin (override)" : row.runner_name || "Runner",
+      inspectorType: "runner",
+      mileage,
+      overallNotes: row.runner_notes || undefined,
+    });
+
+    const nowIso = new Date().toISOString();
+    const { error: updErr } = await supabase
+      .from("runner_tasks")
+      .update({
+        status: "approved",
+        reviewed_at: nowIso,
+        reviewed_by: userId,
+        details: { ...details, rm: { ...rmMeta, applied: true, appliedAt: nowIso, override: !!data.override } } as any,
+      })
+      .eq("id", data.id);
+    if (updErr) throw new Error(updErr.message);
+
+    return { ok: true as const, passed: result.passed.length, failed: result.failed.length };
+  });
+
+/** Admin: reject a routine-maintenance task without touching the vehicle. */
+export const rejectRmTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => {
+    const id = String(d?.id ?? "").trim();
+    if (!id || id.length > 80) throw new Error("Invalid task id");
+    return { id };
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const { error } = await supabase
+      .from("runner_tasks")
+      .update({ status: "rejected", reviewed_at: new Date().toISOString(), reviewed_by: userId })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export interface RunnerHistoryEntry {
   phone: string;
   name: string;
