@@ -75,6 +75,7 @@ import { Route as AdminNotificationsRouteImport } from './routes/admin.notificat
 import { Route as AdminImportLegacyRouteImport } from './routes/admin.import-legacy'
 import { Route as AdminImportDataRouteImport } from './routes/admin.import-data'
 import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
+import { Route as AdminExpensesRouteImport } from './routes/admin.expenses'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
 import { Route as RepairDeclineTokenRouteImport } from './routes/repair.decline.$token'
@@ -421,6 +422,11 @@ const AdminExtensionsRoute = AdminExtensionsRouteImport.update({
   path: '/admin/extensions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminExpensesRoute = AdminExpensesRouteImport.update({
+  id: '/admin/expenses',
+  path: '/admin/expenses',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
   id: '/admin/create-task',
   path: '/admin/create-task',
@@ -539,6 +545,7 @@ export interface FileRoutesByFullPath {
   '/violations': typeof ViolationsRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/expenses': typeof AdminExpensesRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
@@ -622,6 +629,7 @@ export interface FileRoutesByTo {
   '/violations': typeof ViolationsRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/expenses': typeof AdminExpensesRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
@@ -706,6 +714,7 @@ export interface FileRoutesById {
   '/violations': typeof ViolationsRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/expenses': typeof AdminExpensesRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
@@ -791,6 +800,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/admin/backups'
     | '/admin/create-task'
+    | '/admin/expenses'
     | '/admin/extensions'
     | '/admin/import-data'
     | '/admin/import-legacy'
@@ -874,6 +884,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/admin/backups'
     | '/admin/create-task'
+    | '/admin/expenses'
     | '/admin/extensions'
     | '/admin/import-data'
     | '/admin/import-legacy'
@@ -957,6 +968,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/admin/backups'
     | '/admin/create-task'
+    | '/admin/expenses'
     | '/admin/extensions'
     | '/admin/import-data'
     | '/admin/import-legacy'
@@ -1041,6 +1053,7 @@ export interface RootRouteChildren {
   ViolationsRoute: typeof ViolationsRoute
   AdminBackupsRoute: typeof AdminBackupsRoute
   AdminCreateTaskRoute: typeof AdminCreateTaskRoute
+  AdminExpensesRoute: typeof AdminExpensesRoute
   AdminExtensionsRoute: typeof AdminExtensionsRoute
   AdminImportDataRoute: typeof AdminImportDataRoute
   AdminImportLegacyRoute: typeof AdminImportLegacyRoute
@@ -1549,6 +1562,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminExtensionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/expenses': {
+      id: '/admin/expenses'
+      path: '/admin/expenses'
+      fullPath: '/admin/expenses'
+      preLoaderRoute: typeof AdminExpensesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/create-task': {
       id: '/admin/create-task'
       path: '/admin/create-task'
@@ -1732,6 +1752,7 @@ const rootRouteChildren: RootRouteChildren = {
   ViolationsRoute: ViolationsRoute,
   AdminBackupsRoute: AdminBackupsRoute,
   AdminCreateTaskRoute: AdminCreateTaskRoute,
+  AdminExpensesRoute: AdminExpensesRoute,
   AdminExtensionsRoute: AdminExtensionsRoute,
   AdminImportDataRoute: AdminImportDataRoute,
   AdminImportLegacyRoute: AdminImportLegacyRoute,
