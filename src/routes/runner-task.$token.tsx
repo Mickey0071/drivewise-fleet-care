@@ -27,7 +27,7 @@ export const Route = createFileRoute("/runner-task/$token")({
 const SUPPORT_PHONE = "(866) 625-5550";
 
 type CL = { id: string; label: string };
-type Status = "Done" | "Skipped" | "Issue";
+type Status = "Done" | "Skipped" | "Issue" | "Pass" | "Fail";
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
