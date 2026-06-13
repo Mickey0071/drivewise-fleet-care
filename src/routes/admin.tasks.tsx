@@ -196,7 +196,6 @@ function ReportDialog({ id, onClose }: { id: string | null; onClose: () => void 
 
   const isRm = !!report?.rm;
   const rmApplied = !!report?.rm?.applied;
-  const rmDecided = report?.status === "approved" || report?.status === "rejected";
 
   return (
     <Dialog open={!!id} onOpenChange={(o) => !o && onClose()}>
