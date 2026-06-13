@@ -421,6 +421,33 @@ function VehicleDetail() {
           <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/maintenance">Open maintenance log →</Link></Button>
         </TabsContent>
 
+        <TabsContent value="expenses" className="mt-4 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-xs text-muted-foreground">Total spent on this vehicle</div>
+              <div className="text-2xl font-bold">{fmtMoney(vehExpenseTotal)}</div>
+            </div>
+            <Button size="sm" onClick={() => setExpenseOpen(true)}>Add expense</Button>
+          </div>
+          {Object.keys(vehExpenseByCat).length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(vehExpenseByCat).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => (
+                <span key={cat} className="rounded-full bg-muted px-2.5 py-1 text-xs">
+                  {cat}: <span className="font-semibold">{fmtMoney(amt)}</span>
+                </span>
+              ))}
+            </div>
+          )}
+          <Section title={`Expenses (${vehExpenses.length})`}>
+            {vehExpenses.length === 0 ? <Empty/> : vehExpenses.map(e => (
+              <Row key={e.id}
+                title={e.category}
+                sub={`${fmtDate(e.date)}${e.vendor ? ` · ${e.vendor}` : ""}${e.notes ? ` · ${e.notes}` : ""}`}
+                right={<span className="font-medium">{fmtMoney(e.amount)}</span>} />
+            ))}
+          </Section>
+        </TabsContent>
+
         <TabsContent value="repairs" className="mt-4 space-y-4">
           <div className="flex justify-end">
             <Button
