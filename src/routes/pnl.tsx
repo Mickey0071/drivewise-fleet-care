@@ -134,7 +134,13 @@ function PnLPage() {
   const rentalRevenue = data.incomeRows.reduce((s, r) => s + r.rental, 0);
   const totalRevenue = data.totalRevenue;
 
+  const inPnlRange = (d: string) => {
+    if (rangeFrom && d < rangeFrom) return false;
+    if (rangeTo && d > rangeTo) return false;
+    return true;
+  };
   const byCat = expenses.reduce<Record<string, number>>((acc, e) => {
+    if (!inPnlRange(e.date)) return acc;
     acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc;
   }, {});
   const totalExpenses = data.totalExpenses || Object.values(byCat).reduce((a, b) => a + b, 0);
