@@ -10,6 +10,7 @@ export interface PublicRunnerTask {
   task?: {
     id: string;
     title: string;
+    type: string;
     instructions: string | null;
     priority: string;
     location: string | null;
@@ -30,6 +31,7 @@ function mapTask(row: any): PublicRunnerTask["task"] {
   return {
     id: row.id,
     title: row.title ?? "Task",
+    type: row.type ?? "custom",
     instructions: row.instructions ?? null,
     priority: row.priority ?? "medium",
     location: row.location ?? null,

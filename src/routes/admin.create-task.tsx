@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { vehicles, drivers } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { createRunnerTask } from "@/lib/runner-tasks.functions";
+import { computeScheduledItems } from "@/lib/maintenance-utils";
 import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 
 export const Route = createFileRoute("/admin/create-task")({
@@ -43,12 +44,31 @@ const TEMPLATES: Record<string, { type: string; items: string[] }> = {
   ] },
   "Vehicle Transport": { type: "transport", items: ["Confirm origin & destination", "Inspect before transport", "Photograph condition", "Record mileage", "Confirm safe delivery"] },
   "Repair Pickup": { type: "parts", items: ["Confirm shop & contact", "Verify completed work order", "Inspect repaired item", "Collect invoice/receipt", "Record mileage", "Return vehicle"] },
+  "Routine Maintenance": { type: "routine_maintenance", items: [] },
   Custom: { type: "custom", items: [] },
 };
 const TEMPLATE_KEYS = Object.keys(TEMPLATES);
 
 let counter = 0;
 const newItem = (label = "") => ({ id: `i${Date.now()}_${counter++}`, label });
+
+/** Build the RM checklist + metadata for a vehicle from its scheduled items. */
+function rmMetaForVehicle(vehicleId: string) {
+  const v = vehicles.find((x) => x.id === vehicleId);
+  if (!v) return { items: [] as { id: string; label: string }[], rm: [] as any[], mileage: 0 };
+  const scheduled = computeScheduledItems(v as any);
+  const rm = scheduled.map((s) => ({
+    type: s.type,
+    customId: s.customId ?? null,
+    label: s.label,
+    due: s.dueDate ?? (s.dueMileage != null ? `${s.dueMileage} mi` : null),
+  }));
+  return {
+    items: scheduled.map((s) => newItem(s.label)),
+    rm,
+    mileage: (v as any).mileage ?? 0,
+  };
+}
 
 function formatPhone(value: string): string {
   const d = value.replace(/\D/g, "").slice(0, 10);
@@ -73,9 +93,12 @@ function CreateTaskPage() {
   const [instructions, setInstructions] = useState("");
   const [template, setTemplate] = useState<string>("");
   const [items, setItems] = useState([newItem()]);
+  const [rmItems, setRmItems] = useState<any[]>([]);
   const [requiresPhotos, setRequiresPhotos] = useState(false);
   const [photosCount, setPhotosCount] = useState("2");
   const [sending, setSending] = useState(false);
+
+  const isRm = template ? TEMPLATES[template]?.type === "routine_maintenance" : false;
 
   const vehicleOptions = useMemo(
     () => vehicles.map((v) => ({ id: v.id, label: `${v.year} ${v.make} ${v.model} · ${v.plate}` })),
@@ -89,15 +112,42 @@ function CreateTaskPage() {
   function applyTemplate(key: string) {
     setTemplate(key);
     const t = TEMPLATES[key];
-    if (t && t.items.length) setItems(t.items.map((l) => newItem(l)));
-    else setItems([newItem()]);
+    if (t?.type === "routine_maintenance") {
+      if (vehicleId !== "none") {
+        const meta = rmMetaForVehicle(vehicleId);
+        setItems(meta.items.length ? meta.items : [newItem()]);
+        setRmItems(meta.rm);
+      } else {
+        setItems([]);
+        setRmItems([]);
+      }
+    } else if (t && t.items.length) {
+      setItems(t.items.map((l) => newItem(l)));
+      setRmItems([]);
+    } else {
+      setItems([newItem()]);
+      setRmItems([]);
+    }
+  }
+
+  function handleVehicleChange(id: string) {
+    setVehicleId(id);
+    if (isRm && id !== "none") {
+      const meta = rmMetaForVehicle(id);
+      setItems(meta.items.length ? meta.items : [newItem()]);
+      setRmItems(meta.rm);
+      const v = vehicles.find((x) => x.id === id);
+      if (v && !title.trim()) setTitle(`Routine Maintenance — ${v.year} ${v.make} ${v.model}`);
+    }
   }
 
   async function submit() {
     if (!runnerName.trim()) { toast.error("Runner name is required"); return; }
     if (runnerPhone.replace(/\D/g, "").length < 10) { toast.error("Enter a valid runner phone"); return; }
     if (!title.trim()) { toast.error("Task title is required"); return; }
+    if (isRm && vehicleId === "none") { toast.error("Select a vehicle for routine maintenance"); return; }
     const checklist = items.filter((i) => i.label.trim()).map((i) => ({ id: i.id, label: i.label.trim() }));
+    if (isRm && checklist.length === 0) { toast.error("This vehicle has no scheduled maintenance items"); return; }
     setSending(true);
     try {
       const vehicleLabel = vehicleId !== "none"
@@ -106,6 +156,7 @@ function CreateTaskPage() {
       const customer = customerId !== "none"
         ? customerOptions.find((c) => c.id === customerId)
         : undefined;
+      const rmMeta = isRm ? rmMetaForVehicle(vehicleId) : null;
       const res = await sendFn({
         data: {
           runnerName: runnerName.trim(),
@@ -124,6 +175,9 @@ function CreateTaskPage() {
           customerPhone: customer?.phone,
           requiresPhotos,
           photosCountRequired: requiresPhotos ? Math.max(1, Number(photosCount) || 1) : 0,
+          rmVehicleId: isRm ? vehicleId : null,
+          rmMileage: rmMeta?.mileage ?? null,
+          rmItems: rmMeta?.rm ?? [],
         },
       });
       if (res.smsStatus === "sent") toast.success(`✓ Task sent to ${runnerName.trim()}`);
@@ -131,7 +185,7 @@ function CreateTaskPage() {
       setRunnerName(""); setRunnerPhone(""); setTitle(""); setPriority("medium");
       setVehicleId("none"); setCustomerId("none"); setLocation(""); setScheduledAt("");
       setInstructions(""); setTemplate(""); setItems([newItem()]);
-      setRequiresPhotos(false); setPhotosCount("2");
+      setRequiresPhotos(false); setPhotosCount("2"); setRmItems([]);
     } catch (e: any) {
       toast.error(e?.message || "Failed to create task");
     } finally {
@@ -180,7 +234,7 @@ function CreateTaskPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label>Vehicle (optional)</Label>
-              <Select value={vehicleId} onValueChange={setVehicleId}>
+              <Select value={vehicleId} onValueChange={handleVehicleChange}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>

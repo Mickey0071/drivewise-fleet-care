@@ -2,6 +2,7 @@
 export const TASK_TYPES = {
   inspection: "Inspection Checklist",
   mechanic: "Mechanic Maintenance",
+  routine_maintenance: "Routine Maintenance",
   transport: "Transport",
   parts: "Parts Run",
   dmv: "DMV Run",

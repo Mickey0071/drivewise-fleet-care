@@ -27,7 +27,7 @@ export const Route = createFileRoute("/runner-task/$token")({
 const SUPPORT_PHONE = "(866) 625-5550";
 
 type CL = { id: string; label: string };
-type Status = "Done" | "Skipped" | "Issue";
+type Status = "Done" | "Skipped" | "Issue" | "Pass" | "Fail";
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -130,6 +130,7 @@ function RunnerTaskPage() {
 
   const task = data.task!;
   const checklist = task.checklist as CL[];
+  const isRm = task.type === "routine_maintenance";
 
   if (done) {
     return (
@@ -181,7 +182,10 @@ function RunnerTaskPage() {
           checklistResults: checklist.map((c) => ({
             item: c.label,
             status: statuses[c.id],
-            notes: statuses[c.id] === "Issue" ? (notes[c.id] || "") : "",
+            notes:
+              statuses[c.id] === "Issue" || statuses[c.id] === "Fail"
+                ? notes[c.id] || ""
+                : "",
           })),
           runnerNotes: runnerNotes.trim() || undefined,
           photos: photos.map((dataUrl) => ({ dataUrl })),
@@ -195,11 +199,16 @@ function RunnerTaskPage() {
     }
   }
 
-  const statusBtns: { key: Status; icon: React.ReactNode; on: string }[] = [
-    { key: "Done", icon: <Check className="h-4 w-4" />, on: "bg-green-600 text-white border-green-600" },
-    { key: "Skipped", icon: <CircleSlash className="h-4 w-4" />, on: "bg-muted-foreground text-white border-muted-foreground" },
-    { key: "Issue", icon: <AlertTriangle className="h-4 w-4" />, on: "bg-yellow-500 text-black border-yellow-500" },
-  ];
+  const statusBtns: { key: Status; icon: React.ReactNode; on: string }[] = isRm
+    ? [
+        { key: "Pass", icon: <Check className="h-4 w-4" />, on: "bg-green-600 text-white border-green-600" },
+        { key: "Fail", icon: <AlertTriangle className="h-4 w-4" />, on: "bg-red-600 text-white border-red-600" },
+      ]
+    : [
+        { key: "Done", icon: <Check className="h-4 w-4" />, on: "bg-green-600 text-white border-green-600" },
+        { key: "Skipped", icon: <CircleSlash className="h-4 w-4" />, on: "bg-muted-foreground text-white border-muted-foreground" },
+        { key: "Issue", icon: <AlertTriangle className="h-4 w-4" />, on: "bg-yellow-500 text-black border-yellow-500" },
+      ];
 
   return (
     <Shell>
@@ -255,7 +264,7 @@ function RunnerTaskPage() {
             {checklist.map((c) => (
               <div key={c.id} className="space-y-2">
                 <p className="text-sm font-medium">{c.label}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className={`grid gap-2 ${isRm ? "grid-cols-2" : "grid-cols-3"}`}>
                   {statusBtns.map((b) => (
                     <button
                       key={b.key}
@@ -269,7 +278,7 @@ function RunnerTaskPage() {
                     </button>
                   ))}
                 </div>
-                {statuses[c.id] === "Issue" && (
+                {(statuses[c.id] === "Issue" || statuses[c.id] === "Fail") && (
                   <Input
                     placeholder="Describe the issue…"
                     value={notes[c.id] || ""}
