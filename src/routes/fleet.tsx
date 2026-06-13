@@ -18,10 +18,11 @@ import { addVehicle, isVehicleBookable, awaitingPostReturnInspection, updateVehi
 import { toast } from "sonner";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ExpenseDialog } from "@/components/app/ExpenseDialog";
+import { SendRmTaskDialog } from "@/components/app/SendRmTaskDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehiclePhotosDialog } from "@/components/app/VehiclePhotosDialog";
-import { Share2, Camera, Pencil, Images, Plus } from "lucide-react";
+import { Share2, Camera, Pencil, Images, Plus, Wrench } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 
@@ -41,6 +42,7 @@ function FleetPage() {
   const [editVehicleId, setEditVehicleId] = useState<string | null>(null);
   const [photosVehicleId, setPhotosVehicleId] = useState<string | null>(null);
   const [expenseVehicleId, setExpenseVehicleId] = useState<string | null>(null);
+  const [rmVehicleId, setRmVehicleId] = useState<string | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { status } = Route.useSearch();
   const navigate = Route.useNavigate();
