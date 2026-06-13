@@ -58,6 +58,7 @@ function VehicleDetail() {
   const [completedRepair, setCompletedRepair] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [expenseOpen, setExpenseOpen] = useState(false);
   // Live last-inspection data (reflects approved runner inspections from the backend).
   const [liveInsp, setLiveInsp] = useState<{ at: string | null; mileage: number | null; status: string | null } | null>(null);
   useEffect(() => {
