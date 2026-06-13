@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { vehicles, drivers } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { createRunnerTask } from "@/lib/runner-tasks.functions";
+import { computeScheduledItems } from "@/lib/maintenance-utils";
 import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 
 export const Route = createFileRoute("/admin/create-task")({
@@ -43,12 +44,31 @@ const TEMPLATES: Record<string, { type: string; items: string[] }> = {
   ] },
   "Vehicle Transport": { type: "transport", items: ["Confirm origin & destination", "Inspect before transport", "Photograph condition", "Record mileage", "Confirm safe delivery"] },
   "Repair Pickup": { type: "parts", items: ["Confirm shop & contact", "Verify completed work order", "Inspect repaired item", "Collect invoice/receipt", "Record mileage", "Return vehicle"] },
+  "Routine Maintenance": { type: "routine_maintenance", items: [] },
   Custom: { type: "custom", items: [] },
 };
 const TEMPLATE_KEYS = Object.keys(TEMPLATES);
 
 let counter = 0;
 const newItem = (label = "") => ({ id: `i${Date.now()}_${counter++}`, label });
+
+/** Build the RM checklist + metadata for a vehicle from its scheduled items. */
+function rmMetaForVehicle(vehicleId: string) {
+  const v = vehicles.find((x) => x.id === vehicleId);
+  if (!v) return { items: [] as { id: string; label: string }[], rm: [] as any[], mileage: 0 };
+  const scheduled = computeScheduledItems(v as any);
+  const rm = scheduled.map((s) => ({
+    type: s.type,
+    customId: s.customId ?? null,
+    label: s.label,
+    due: s.dueDate ?? (s.dueMileage != null ? `${s.dueMileage} mi` : null),
+  }));
+  return {
+    items: scheduled.map((s) => newItem(s.label)),
+    rm,
+    mileage: (v as any).mileage ?? 0,
+  };
+}
 
 function formatPhone(value: string): string {
   const d = value.replace(/\D/g, "").slice(0, 10);
