@@ -76,6 +76,7 @@ import { Route as AdminImportLegacyRouteImport } from './routes/admin.import-leg
 import { Route as AdminImportDataRouteImport } from './routes/admin.import-data'
 import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminExpensesRouteImport } from './routes/admin.expenses'
+import { Route as AdminExpenseCategoriesRouteImport } from './routes/admin.expense-categories'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
 import { Route as RepairDeclineTokenRouteImport } from './routes/repair.decline.$token'
@@ -427,6 +428,11 @@ const AdminExpensesRoute = AdminExpensesRouteImport.update({
   path: '/admin/expenses',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminExpenseCategoriesRoute = AdminExpenseCategoriesRouteImport.update({
+  id: '/admin/expense-categories',
+  path: '/admin/expense-categories',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
   id: '/admin/create-task',
   path: '/admin/create-task',
@@ -545,6 +551,7 @@ export interface FileRoutesByFullPath {
   '/violations': typeof ViolationsRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/expense-categories': typeof AdminExpenseCategoriesRoute
   '/admin/expenses': typeof AdminExpensesRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/import-data': typeof AdminImportDataRoute
@@ -629,6 +636,7 @@ export interface FileRoutesByTo {
   '/violations': typeof ViolationsRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/expense-categories': typeof AdminExpenseCategoriesRoute
   '/admin/expenses': typeof AdminExpensesRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/import-data': typeof AdminImportDataRoute
@@ -714,6 +722,7 @@ export interface FileRoutesById {
   '/violations': typeof ViolationsRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
+  '/admin/expense-categories': typeof AdminExpenseCategoriesRoute
   '/admin/expenses': typeof AdminExpensesRoute
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/import-data': typeof AdminImportDataRoute
@@ -800,6 +809,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/admin/backups'
     | '/admin/create-task'
+    | '/admin/expense-categories'
     | '/admin/expenses'
     | '/admin/extensions'
     | '/admin/import-data'
@@ -884,6 +894,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/admin/backups'
     | '/admin/create-task'
+    | '/admin/expense-categories'
     | '/admin/expenses'
     | '/admin/extensions'
     | '/admin/import-data'
@@ -968,6 +979,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/admin/backups'
     | '/admin/create-task'
+    | '/admin/expense-categories'
     | '/admin/expenses'
     | '/admin/extensions'
     | '/admin/import-data'
@@ -1053,6 +1065,7 @@ export interface RootRouteChildren {
   ViolationsRoute: typeof ViolationsRoute
   AdminBackupsRoute: typeof AdminBackupsRoute
   AdminCreateTaskRoute: typeof AdminCreateTaskRoute
+  AdminExpenseCategoriesRoute: typeof AdminExpenseCategoriesRoute
   AdminExpensesRoute: typeof AdminExpensesRoute
   AdminExtensionsRoute: typeof AdminExtensionsRoute
   AdminImportDataRoute: typeof AdminImportDataRoute
@@ -1569,6 +1582,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminExpensesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/expense-categories': {
+      id: '/admin/expense-categories'
+      path: '/admin/expense-categories'
+      fullPath: '/admin/expense-categories'
+      preLoaderRoute: typeof AdminExpenseCategoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/create-task': {
       id: '/admin/create-task'
       path: '/admin/create-task'
@@ -1752,6 +1772,7 @@ const rootRouteChildren: RootRouteChildren = {
   ViolationsRoute: ViolationsRoute,
   AdminBackupsRoute: AdminBackupsRoute,
   AdminCreateTaskRoute: AdminCreateTaskRoute,
+  AdminExpenseCategoriesRoute: AdminExpenseCategoriesRoute,
   AdminExpensesRoute: AdminExpensesRoute,
   AdminExtensionsRoute: AdminExtensionsRoute,
   AdminImportDataRoute: AdminImportDataRoute,
