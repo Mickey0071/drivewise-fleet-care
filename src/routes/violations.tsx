@@ -267,12 +267,9 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                setRetroPhone(status?.phone ?? "");
-                setRetroOpen(true);
-              }}
+              onClick={() => setCreateOpen(true)}
             >
-              📲 Send Retroactive Agreement Link
+              ✍️ Create Agreement
             </Button>
           )}
           <Button size="sm" variant="outline" onClick={doPacket} disabled={busy === "packet"}>
