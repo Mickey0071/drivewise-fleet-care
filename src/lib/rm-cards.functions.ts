@@ -92,7 +92,7 @@ export const submitRmCardAdmin = createServerFn({ method: "POST" })
       mileage_at_inspection: data.mileage,
       items_checked: data.items as any,
       overall_notes: data.overallNotes || null,
-      status: "submitted",
+      status: "approved",
       created_by_admin: data.createdByAdmin || null,
       submitted_at: now,
     } as any);
