@@ -33,7 +33,6 @@ import {
 import {
   processEzpassDocument,
   getEzpassBatch,
-  searchRentalsForMatch,
   manualMatchEzpassItem,
   approveEzpassBatch,
   downloadAffidavitsZip,
