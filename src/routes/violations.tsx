@@ -651,40 +651,18 @@ function ViolationsPage() {
 
       <BureauContactsCard />
 
-      {readyForTransfer.length > 0 && (
-        <Card className="mb-4 border-amber-300 bg-amber-50">
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div className="flex items-center gap-2 text-sm text-amber-900">
-              <AlertTriangle className="h-4 w-4" />
-              <span>
-                <strong>{readyForTransfer.length}</strong> violation
-                {readyForTransfer.length === 1 ? "" : "s"} past 7 days with no customer response —
-                ready for liability transfer.
-              </span>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setFilter("awaiting_response")}
-              className="border-amber-400"
-            >
-              Review
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
       <Card className="mb-4">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-          <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as TabKey)}>
             <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="awaiting_response">Awaiting Response</TabsTrigger>
-              <TabsTrigger value="paid_direct">Paid Directly</TabsTrigger>
-              <TabsTrigger value="transfer_generated">Auto-Transfer</TabsTrigger>
-              <TabsTrigger value="packet_printed">Packet Printed</TabsTrigger>
-              <TabsTrigger value="mailed">Mailed</TabsTrigger>
-              <TabsTrigger value="confirmed">Disputed Successfully</TabsTrigger>
+              {TAB_ORDER.map((t) => (
+                <TabsTrigger key={t} value={t} className="gap-1.5">
+                  {TAB_LABELS[t]}
+                  <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                    {tabCounts[t]}
+                  </Badge>
+                </TabsTrigger>
+              ))}
             </TabsList>
           </Tabs>
           <div className="relative w-full max-w-sm">
