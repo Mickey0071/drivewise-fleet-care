@@ -694,21 +694,52 @@ function ManualMatchDialog({
   onClose: () => void;
   onMatched: () => void;
 }) {
-  const search = useServerFn(searchRentalsForMatch);
+function ManualMatchDialog({
+  item,
+  onClose,
+  onMatched,
+}: {
+  item: EzpassBatchItem;
+  onClose: () => void;
+  onMatched: () => void;
+}) {
+  const search = useServerFn(searchRentalsForViolation);
   const match = useServerFn(manualMatchEzpassItem);
-  const [q, setQ] = useState("");
+  const sendRetro = useServerFn(sendRetroAgreementLink);
+
+  const [date, setDate] = useState(item.violation_date ?? "");
+  const [plate, setPlate] = useState(item.plate ?? "");
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [retroFor, setRetroFor] = useState<ViolationSearchCard | null>(null);
+  const [retroPhone, setRetroPhone] = useState("");
+  const [retroEmail, setRetroEmail] = useState("");
 
-  const doSearch = useCallback(
-    (query: string) => search({ data: { query } }),
-    [search],
+  const soon = (label: string) => toast.message(`${label} — coming soon`);
+
+  const runSearch = useCallback(
+    () =>
+      search({
+        data: {
+          date: date.trim() || null,
+          plate: plate.trim() || null,
+          name: name.trim() || null,
+        },
+      }),
+    [search, date, plate, name],
   );
-  const { data: results = [], isFetching } = useQuery({
-    queryKey: ["ezpass-match-search", q],
-    queryFn: () => doSearch(q),
-  });
 
-  const candidates = item.candidates ?? [];
+  const {
+    data: results = [],
+    isFetching,
+    refetch,
+    error,
+  } = useQuery<ViolationSearchCard[]>({
+    queryKey: ["violation-match-search", item.id],
+    queryFn: runSearch,
+    enabled: Boolean(item.violation_date || item.plate),
+    retry: false,
+  });
 
   const confirm = async (rentalId: string) => {
     setBusy(true);
@@ -723,9 +754,40 @@ function ManualMatchDialog({
     }
   };
 
+  const startRetro = (card: ViolationSearchCard) => {
+    setRetroFor(card);
+    setRetroPhone(card.phone ?? "");
+    setRetroEmail(card.email ?? "");
+  };
+
+  const submitRetro = async () => {
+    if (!retroFor) return;
+    if (!retroPhone.trim()) {
+      toast.error("Enter a phone number to text the agreement");
+      return;
+    }
+    setBusy(true);
+    try {
+      await sendRetro({
+        data: {
+          legacyId: retroFor.id,
+          phone: retroPhone.trim(),
+          email: retroEmail.trim() || null,
+        },
+      });
+      toast.success("Retroactive agreement sent");
+      setRetroFor(null);
+      refetch();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send agreement");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Manual Match</DialogTitle>
           <DialogDescription>
@@ -734,69 +796,161 @@ function ManualMatchDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {candidates.length > 0 && (
-          <div className="mb-2">
-            <p className="mb-2 text-xs font-medium uppercase text-muted-foreground">
-              Overlapping rentals
-            </p>
-            <div className="space-y-2">
-              {candidates.map((c) => (
-                <button
-                  key={c.rental_id}
-                  disabled={busy}
-                  onClick={() => confirm(c.rental_id)}
-                  className="flex w-full items-center justify-between rounded-md border p-2 text-left text-sm hover:bg-muted/50"
-                >
-                  <span>{c.driver_name || "Unknown renter"}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {fmtDate(c.start_date)} → {c.end_date ? fmtDate(c.end_date) : "ongoing"}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Coming-soon actions */}
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => soon("Create New Rental")}>
+            <FilePlus2 className="mr-1 h-4 w-4" /> Create New Rental
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => soon("Plate Not Mine")}>
+            <Ban className="mr-1 h-4 w-4" /> Plate Not Mine
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => soon("Generate Dispute Packet")}>
+            <ShieldX className="mr-1 h-4 w-4" /> Generate Dispute Packet
+          </Button>
+        </div>
 
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        {/* Full search: date OR plate OR customer name */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search customer name or phone…"
-            className="pl-8"
+            value={plate}
+            onChange={(e) => setPlate(e.target.value)}
+            placeholder="License plate"
+          />
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Customer name / phone"
           />
         </div>
+        <Button
+          size="sm"
+          onClick={() => refetch()}
+          disabled={busy || isFetching}
+          className="bg-emerald-600 hover:bg-emerald-700"
+        >
+          <Search className="mr-1 h-4 w-4" /> Search rentals
+        </Button>
 
         <div className="max-h-72 space-y-2 overflow-y-auto">
           {isFetching ? (
             <p className="py-4 text-center text-sm text-muted-foreground">Searching…</p>
+          ) : error ? (
+            <p className="py-4 text-center text-sm text-destructive">
+              {error instanceof Error ? error.message : "Search failed"}
+            </p>
           ) : results.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
-              {q ? "No rentals found." : "Type to search rental history."}
+              No rentals found. Adjust the date, plate, or name and search again.
             </p>
           ) : (
             results.map((r) => (
-              <button
-                key={r.rental_id}
-                disabled={busy}
-                onClick={() => confirm(r.rental_id)}
-                className="flex w-full flex-col rounded-md border p-2 text-left text-sm hover:bg-muted/50"
+              <div
+                key={`${r.source}-${r.id}`}
+                className="flex flex-col gap-2 rounded-md border p-3 text-sm"
               >
-                <span className="font-medium">{r.driver_name || "Unknown renter"}</span>
-                <span className="text-xs text-muted-foreground">
-                  {r.vehicle_label || "—"} · {r.phone || "no phone"}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {fmtDate(r.start_date)} → {r.end_date ? fmtDate(r.end_date) : "ongoing"}
-                </span>
-              </button>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{r.customerName}</span>
+                      <Badge variant={r.isMigration ? "secondary" : "default"} className="text-[10px]">
+                        {r.isMigration ? "Legacy" : "Live"}
+                      </Badge>
+                      {r.hasAgreement ? (
+                        <Badge className="bg-emerald-600 text-[10px]">Agreement on file</Badge>
+                      ) : null}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {r.vehicleLabel}
+                      {r.plate ? ` · ${r.plate}` : ""} · {r.phone || "no phone"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {fmtDate(r.startDate)} → {r.endDate ? fmtDate(r.endDate) : "ongoing"}
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    {r.isMigration ? (
+                      r.hasAgreement ? (
+                        <Badge variant="secondary">Signed</Badge>
+                      ) : r.retroSentAt ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => startRetro(r)}
+                        >
+                          <Send className="mr-1 h-4 w-4" /> Resend Agreement
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => startRetro(r)}
+                        >
+                          <Send className="mr-1 h-4 w-4" /> Send Agreement
+                        </Button>
+                      )
+                    ) : (
+                      <Button
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => confirm(r.id)}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        Match
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {retroFor && retroFor.id === r.id && (
+                  <div className="space-y-2 rounded-md bg-muted/40 p-2">
+                    <p className="text-xs text-muted-foreground">
+                      Text a retroactive rental agreement to this customer. Once signed, the rental
+                      becomes matchable here.
+                    </p>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <Input
+                        value={retroPhone}
+                        onChange={(e) => setRetroPhone(e.target.value)}
+                        placeholder="Phone (required)"
+                      />
+                      <Input
+                        value={retroEmail}
+                        onChange={(e) => setRetroEmail(e.target.value)}
+                        placeholder="Email (optional)"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setRetroFor(null)}
+                        disabled={busy}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={submitRetro}
+                        disabled={busy}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}
+                        Send
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ))
           )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={busy}>
-            Cancel
+            Close
           </Button>
         </DialogFooter>
       </DialogContent>
