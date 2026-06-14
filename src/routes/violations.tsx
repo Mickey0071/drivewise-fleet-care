@@ -513,7 +513,7 @@ function ViolationsPage() {
     queryFn: () => list(),
   });
 
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<TabKey>("uploaded");
   const [search, setSearch] = useState("");
   const [newOpen, setNewOpen] = useState(false);
   const [chargeFor, setChargeFor] = useState<ViolationRow | null>(null);
@@ -522,6 +522,7 @@ function ViolationsPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [deleteFor, setDeleteFor] = useState<ViolationRow | null>(null);
   const [editFor, setEditFor] = useState<ViolationRow | null>(null);
+  const [findFor, setFindFor] = useState<ViolationRow | null>(null);
 
   const delFn = useServerFn(deleteViolation);
   const delMutation = useMutation({
