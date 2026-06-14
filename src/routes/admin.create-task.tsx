@@ -311,6 +311,31 @@ function CreateTaskPage() {
             </SelectContent>
           </Select>
         </CardHeader>
+        {isRm ? (
+        <CardContent className="space-y-2">
+          {vehicleId === "none" ? (
+            <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+              Select a vehicle — its scheduled maintenance items load here automatically.
+            </p>
+          ) : rmItems.length === 0 ? (
+            <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+              This vehicle has no scheduled maintenance due.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {rmItems.map((it, i) => (
+                <li key={`${it.type}-${it.customId ?? i}`} className="rounded-md border border-border p-2">
+                  <div className="text-sm font-medium">{it.label}</div>
+                  {it.due && <div className="text-xs text-muted-foreground">Due: {it.due}</div>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-xs text-muted-foreground">
+            The runner gets a Pass/Fail RM Card link. Results wait for your approval before the vehicle updates.
+          </p>
+        </CardContent>
+        ) : (
         <CardContent className="space-y-2">
           {items.map((it, i) => (
             <div key={it.id} className="flex gap-2">
@@ -325,6 +350,7 @@ function CreateTaskPage() {
             <Plus className="h-4 w-4" /> Add Item
           </Button>
         </CardContent>
+        )}
       </Card>
 
       <Card>
