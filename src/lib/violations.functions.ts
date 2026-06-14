@@ -54,6 +54,15 @@ export interface ViolationRow {
   location?: string | null;
   reference_number?: string | null;
   legacy_rental_id?: string | null;
+  retro_legacy_rental_id?: string | null;
+  workflow_stage?: string | null;
+  is_orphan?: boolean | null;
+  dispute_method?: string | null;
+  disputed_at?: string | null;
+  /** Computed: a signed rental agreement is on file for the matched rental. */
+  agreement_on_file?: boolean;
+  rental_start?: string | null;
+  rental_end?: string | null;
 }
 
 export const listViolations = createServerFn({ method: "GET" })
