@@ -750,14 +750,13 @@ function ViolationsPage() {
                       </td>
                       <td className="p-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {(v.status === "pending" || v.status === "failed") && v.rental_id && (
-                            <Button size="sm" variant="outline" onClick={() => setChargeFor(v)}>
-                              Charge
-                            </Button>
-                          )}
-                          {!["paid", "resolved", "submitted_to_authority"].includes(v.status) && (
-                            <SendCustomerButton violation={v} onDone={refresh} />
-                          )}
+                          <RowActions
+                            v={v}
+                            onFind={() => setFindFor(v)}
+                            onCreateAgreement={() => setCreateAgreementFor(v)}
+                            onToggleDetails={() => setExpanded(expanded === v.id ? null : v.id)}
+                            onDone={refresh}
+                          />
                           <Button
                             size="sm"
                             variant="ghost"
@@ -777,13 +776,6 @@ function ViolationsPage() {
                               <DropdownMenuItem onClick={() => setEditFor(v)}>
                                 Edit / fill missing info
                               </DropdownMenuItem>
-                              {v.payment_link_url && v.status === "pending" && (
-                                <DropdownMenuItem asChild>
-                                  <a href={v.payment_link_url} target="_blank" rel="noreferrer">
-                                    Open payment link
-                                  </a>
-                                </DropdownMenuItem>
-                              )}
                               {["submitted_to_authority", "resolved"].includes(v.status) && (
                                 <DropdownMenuItem onClick={() => setSubmitFor(v)}>
                                   View dispute
@@ -807,7 +799,6 @@ function ViolationsPage() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                        <LiabilityActions v={v} onDone={refresh} />
                       </td>
                     </tr>
                     {expanded === v.id && (
