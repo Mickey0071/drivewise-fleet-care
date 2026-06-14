@@ -181,6 +181,39 @@ export const markViolationStage = createServerFn({ method: "POST" })
     const patch: Record<string, unknown> = { updated_at: now };
     if (data.stage === "printed") patch.mail_packet_printed_at = now;
     if (data.stage === "mailed") {
+      // Gate: do not allow "mailed" until the packet has a signed agreement
+      // (live client signature or retroactively-signed agreement) OR an admin
+      // override is on file for an unreachable customer.
+      const { data: v } = await supabaseAdmin
+        .from("violations")
+        .select("rental_id, legacy_rental_id, retro_legacy_rental_id, mail_override_at")
+        .eq("id", data.violationId)
+        .maybeSingle();
+      let signed = Boolean(v?.mail_override_at);
+      if (!signed && v?.rental_id) {
+        const { data: r } = await supabaseAdmin
+          .from("rentals")
+          .select("client_signed_at")
+          .eq("id", v.rental_id)
+          .maybeSingle();
+        signed = Boolean(r?.client_signed_at);
+      }
+      if (!signed) {
+        const lid = v?.retro_legacy_rental_id || v?.legacy_rental_id;
+        if (lid) {
+          const { data: lr } = await supabaseAdmin
+            .from("legacy_rentals")
+            .select("retro_signed_at")
+            .eq("id", lid)
+            .maybeSingle();
+          signed = Boolean(lr?.retro_signed_at);
+        }
+      }
+      if (!signed) {
+        throw new Error(
+          "Cannot mark mailed: the packet has no signed agreement. Send a retroactive agreement link, or use the admin override for an unreachable customer.",
+        );
+      }
       patch.mailed_at = now;
       patch.submitted_to_authority_at = now;
     }
