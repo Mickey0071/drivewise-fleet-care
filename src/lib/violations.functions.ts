@@ -432,6 +432,9 @@ export interface RentalOption {
   end_date: string | null;
   reservation_status: string | null;
   source?: "live" | "migrated";
+  agreement_on_file?: boolean;
+  driver_phone?: string | null;
+  driver_email?: string | null;
 }
 
 export const listRentalsForViolation = createServerFn({ method: "GET" })
