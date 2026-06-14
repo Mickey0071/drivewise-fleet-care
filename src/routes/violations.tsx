@@ -589,7 +589,7 @@ function ViolationsPage() {
       v.fee,
       v.total_amount,
       v.status,
-      stageOf(v),
+      tabOf(v),
       v.sent_to_customer_at ?? "",
       v.mailed_at ?? "",
       v.transfer_confirmed_at ?? "",
