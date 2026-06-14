@@ -1,0 +1,180 @@
+import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+const STAGES = ["uploaded", "matched", "disputed", "completed"] as const;
+type Stage = (typeof STAGES)[number];
+
+async function changedByName(userId: string | null): Promise<string | null> {
+  if (!userId) return null;
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", userId)
+    .maybeSingle();
+  return data?.full_name || data?.email || null;
+}
+
+async function logAudit(opts: {
+  violationId: string;
+  fromStatus?: string | null;
+  toStatus: string;
+  reason?: string | null;
+  userId: string | null;
+}) {
+  await supabaseAdmin.from("violation_status_history").insert({
+    violation_id: opts.violationId,
+    from_status: opts.fromStatus ?? null,
+    to_status: opts.toStatus,
+    reason: opts.reason ?? null,
+    changed_by: opts.userId ?? null,
+    changed_by_name: await changedByName(opts.userId),
+  } as never);
+}
+
+/**
+ * Link a violation to a rental (live or migrated/legacy). Resolves the driver
+ * and vehicle from the chosen rental and records an internal audit entry.
+ */
+export const matchViolationToRental = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { violationId: string; rentalId: string }) => {
+    if (!input.violationId) throw new Error("violationId required");
+    if (!input.rentalId) throw new Error("rentalId required");
+    return { violationId: input.violationId, rentalId: input.rentalId };
+  })
+  .handler(async ({ data, context }) => {
+    const patch: Record<string, unknown> = {
+      is_orphan: false,
+      updated_at: new Date().toISOString(),
+    };
+    let label = "";
+    if (data.rentalId.startsWith("LEGACY:")) {
+      const legacyId = data.rentalId.slice("LEGACY:".length);
+      const { data: lr } = await supabaseAdmin
+        .from("legacy_rentals")
+        .select("id, renter_name, promoted_rental_id, promoted_driver_id")
+        .eq("id", legacyId)
+        .maybeSingle();
+      patch.legacy_rental_id = legacyId;
+      label = (lr as any)?.renter_name ?? "migrated reservation";
+      if ((lr as any)?.promoted_driver_id) patch.driver_id = (lr as any).promoted_driver_id;
+      if ((lr as any)?.promoted_rental_id) {
+        patch.rental_id = (lr as any).promoted_rental_id;
+        const { data: rr } = await supabaseAdmin
+          .from("rentals")
+          .select("vehicle_id")
+          .eq("id", (lr as any).promoted_rental_id)
+          .maybeSingle();
+        if (rr?.vehicle_id) patch.vehicle_id = rr.vehicle_id;
+      }
+    } else {
+      const { data: r } = await supabaseAdmin
+        .from("rentals")
+        .select("id, driver_id, vehicle_id")
+        .eq("id", data.rentalId)
+        .maybeSingle();
+      if (!r) throw new Error("Rental not found");
+      patch.rental_id = r.id;
+      patch.driver_id = r.driver_id ?? null;
+      if (r.vehicle_id) patch.vehicle_id = r.vehicle_id;
+      let name: string | null = null;
+      if (r.driver_id) {
+        const { data: d } = await supabaseAdmin
+          .from("drivers")
+          .select("full_name")
+          .eq("id", r.driver_id)
+          .maybeSingle();
+        name = d?.full_name ?? null;
+      }
+      label = name ?? r.id;
+    }
+
+    const { error } = await supabaseAdmin
+      .from("violations")
+      .update(patch as never)
+      .eq("id", data.violationId);
+    if (error) throw new Error(error.message);
+
+    await logAudit({
+      violationId: data.violationId,
+      toStatus: "matched_to_rental",
+      reason: `Matched to ${label} (${data.rentalId})`,
+      userId: context.userId ?? null,
+    });
+    return { ok: true as const };
+  });
+
+/** Manually move a violation between dashboard tabs. */
+export const setViolationStage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { violationId: string; stage: Stage }) => {
+    if (!input.violationId) throw new Error("violationId required");
+    if (!STAGES.includes(input.stage)) throw new Error("Invalid stage");
+    return { violationId: input.violationId, stage: input.stage };
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await supabaseAdmin
+      .from("violations")
+      .update({ workflow_stage: data.stage, updated_at: new Date().toISOString() } as never)
+      .eq("id", data.violationId);
+    if (error) throw new Error(error.message);
+    await logAudit({
+      violationId: data.violationId,
+      toStatus: `stage:${data.stage}`,
+      reason: `Moved to ${data.stage}`,
+      userId: context.userId ?? null,
+    });
+    return { ok: true as const };
+  });
+
+/** Flag a violation as an orphan dispute ("Plate Not Mine"). */
+export const flagViolationOrphan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { violationId: string; flag?: boolean }) => {
+    if (!input.violationId) throw new Error("violationId required");
+    return { violationId: input.violationId, flag: input.flag !== false };
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await supabaseAdmin
+      .from("violations")
+      .update({ is_orphan: data.flag, updated_at: new Date().toISOString() } as never)
+      .eq("id", data.violationId);
+    if (error) throw new Error(error.message);
+    await logAudit({
+      violationId: data.violationId,
+      toStatus: data.flag ? "flagged_orphan" : "unflagged_orphan",
+      reason: data.flag ? "Plate not mine — flagged as orphan dispute" : "Orphan flag removed",
+      userId: context.userId ?? null,
+    });
+    return { ok: true as const };
+  });
+
+/** Record how a matched violation was disputed and move it to the Disputed tab. */
+export const recordViolationDispute = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { violationId: string; method: "online" | "walk_in" | "mail" }) => {
+    if (!input.violationId) throw new Error("violationId required");
+    if (!["online", "walk_in", "mail"].includes(input.method)) throw new Error("Invalid method");
+    return { violationId: input.violationId, method: input.method };
+  })
+  .handler(async ({ data, context }) => {
+    const now = new Date().toISOString();
+    const { error } = await supabaseAdmin
+      .from("violations")
+      .update({
+        dispute_method: data.method,
+        disputed_at: now,
+        workflow_stage: "disputed",
+        updated_at: now,
+      } as never)
+      .eq("id", data.violationId);
+    if (error) throw new Error(error.message);
+    await logAudit({
+      violationId: data.violationId,
+      toStatus: `disputed:${data.method}`,
+      reason: `Dispute submitted via ${data.method.replace("_", "-")}`,
+      userId: context.userId ?? null,
+    });
+    return { ok: true as const };
+  });

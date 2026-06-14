@@ -54,6 +54,15 @@ export interface ViolationRow {
   location?: string | null;
   reference_number?: string | null;
   legacy_rental_id?: string | null;
+  retro_legacy_rental_id?: string | null;
+  workflow_stage?: string | null;
+  is_orphan?: boolean | null;
+  dispute_method?: string | null;
+  disputed_at?: string | null;
+  /** Computed: a signed rental agreement is on file for the matched rental. */
+  agreement_on_file?: boolean;
+  rental_start?: string | null;
+  rental_end?: string | null;
 }
 
 export const listViolations = createServerFn({ method: "GET" })
@@ -81,12 +90,42 @@ export const listViolations = createServerFn({ method: "GET" })
     const vMap = new Map(
       (vehicles ?? []).map((v) => [v.id, `${v.year} ${v.make} ${v.model} (${v.plate})`]),
     );
-    return rows.map((r) => ({
-      ...r,
-      driver_name: r.driver_id ? dMap.get(r.driver_id) ?? null : null,
-      driver_phone: r.driver_id ? dPhone.get(r.driver_id) ?? null : null,
-      vehicle_label: r.vehicle_id ? vMap.get(r.vehicle_id) ?? null : null,
-    }));
+    // Pull matched rentals so we can tell whether a signed agreement is on file
+    // and surface the rental period in the dashboard.
+    const rentalIds = Array.from(new Set(rows.map((r) => r.rental_id).filter(Boolean))) as string[];
+    const { data: rentalRows } = rentalIds.length
+      ? await supabaseAdmin
+          .from("rentals")
+          .select("id, start_date, end_date, agreement_pdf_url, client_signed_at")
+          .in("id", rentalIds)
+      : { data: [] as { id: string; start_date: string | null; end_date: string | null; agreement_pdf_url: string | null; client_signed_at: string | null }[] };
+    const rMap = new Map((rentalRows ?? []).map((r) => [r.id, r]));
+    // Legacy retro shells that have been signed.
+    const legacyIds = Array.from(
+      new Set(rows.map((r) => (r as any).retro_legacy_rental_id || r.legacy_rental_id).filter(Boolean)),
+    ) as string[];
+    const { data: legacyRows } = legacyIds.length
+      ? await supabaseAdmin
+          .from("legacy_rentals")
+          .select("id, retro_signed_at")
+          .in("id", legacyIds)
+      : { data: [] as { id: string; retro_signed_at: string | null }[] };
+    const lMap = new Map((legacyRows ?? []).map((r) => [r.id, r]));
+    return rows.map((r) => {
+      const rental = r.rental_id ? rMap.get(r.rental_id) : undefined;
+      const legacyId = (r as any).retro_legacy_rental_id || r.legacy_rental_id;
+      const legacy = legacyId ? lMap.get(legacyId) : undefined;
+      const agreementOnFile = Boolean(rental?.agreement_pdf_url) || Boolean(legacy?.retro_signed_at);
+      return {
+        ...r,
+        driver_name: r.driver_id ? dMap.get(r.driver_id) ?? null : null,
+        driver_phone: r.driver_id ? dPhone.get(r.driver_id) ?? null : null,
+        vehicle_label: r.vehicle_id ? vMap.get(r.vehicle_id) ?? null : null,
+        agreement_on_file: agreementOnFile,
+        rental_start: rental?.start_date ?? null,
+        rental_end: rental?.end_date ?? null,
+      };
+    });
   });
 
 export interface PlateMatch {
@@ -393,6 +432,9 @@ export interface RentalOption {
   end_date: string | null;
   reservation_status: string | null;
   source?: "live" | "migrated";
+  agreement_on_file?: boolean;
+  driver_phone?: string | null;
+  driver_email?: string | null;
 }
 
 export const listRentalsForViolation = createServerFn({ method: "GET" })
@@ -400,7 +442,7 @@ export const listRentalsForViolation = createServerFn({ method: "GET" })
   .handler(async (): Promise<RentalOption[]> => {
     const { data: rentals, error } = await supabaseAdmin
       .from("rentals")
-      .select("id, driver_id, vehicle_id, start_date, end_date, reservation_status")
+      .select("id, driver_id, vehicle_id, start_date, end_date, reservation_status, agreement_pdf_url, returned_at")
       .order("start_date", { ascending: false })
       .limit(500);
     if (error) throw new Error(error.message);
@@ -409,34 +451,38 @@ export const listRentalsForViolation = createServerFn({ method: "GET" })
     const vehicleIds = Array.from(new Set(rows.map((r) => r.vehicle_id).filter(Boolean))) as string[];
     const [{ data: drivers }, { data: vehicles }] = await Promise.all([
       driverIds.length
-        ? supabaseAdmin.from("drivers").select("id, full_name").in("id", driverIds)
-        : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
+        ? supabaseAdmin.from("drivers").select("id, full_name, phone, email").in("id", driverIds)
+        : Promise.resolve({ data: [] as { id: string; full_name: string; phone: string; email: string }[] }),
       vehicleIds.length
         ? supabaseAdmin.from("vehicles").select("id, plate, make, model, year").in("id", vehicleIds)
         : Promise.resolve({ data: [] as { id: string; plate: string; make: string; model: string; year: number }[] }),
     ]);
-    const dMap = new Map((drivers ?? []).map((d) => [d.id, d.full_name]));
+    const dMap = new Map((drivers ?? []).map((d) => [d.id, d]));
     const vMap = new Map((vehicles ?? []).map((v) => [v.id, v]));
     const liveOptions: RentalOption[] = rows.map((r) => {
       const v = r.vehicle_id ? vMap.get(r.vehicle_id) : undefined;
+      const d = r.driver_id ? dMap.get(r.driver_id) : undefined;
       return {
         id: r.id,
         driver_id: r.driver_id ?? null,
         vehicle_id: r.vehicle_id ?? null,
-        driver_name: r.driver_id ? dMap.get(r.driver_id) ?? null : null,
+        driver_name: d?.full_name ?? null,
+        driver_phone: (d as any)?.phone ?? null,
+        driver_email: (d as any)?.email ?? null,
         vehicle_label: v ? `${v.year} ${v.make} ${v.model} (${v.plate})` : null,
         plate: v?.plate ?? null,
         start_date: r.start_date,
         end_date: r.end_date ?? null,
-        reservation_status: r.reservation_status ?? null,
+        reservation_status: (r as any).returned_at ? "returned" : r.reservation_status ?? null,
         source: "live",
+        agreement_on_file: Boolean((r as any).agreement_pdf_url),
       };
     });
 
     // Also include migrated/legacy reservations so manual match can pick them.
     const { data: legacyRows } = await supabaseAdmin
       .from("legacy_rentals")
-      .select("id, renter_name, plate, vehicle, start_datetime, end_datetime")
+      .select("id, renter_name, plate, vehicle, start_datetime, end_datetime, retro_signed_at, phone, email")
       .order("start_datetime", { ascending: false, nullsFirst: false })
       .limit(1000);
     const legacyOptions: RentalOption[] = (legacyRows ?? []).map((r) => ({
@@ -444,12 +490,15 @@ export const listRentalsForViolation = createServerFn({ method: "GET" })
       driver_id: null,
       vehicle_id: null,
       driver_name: r.renter_name ?? null,
+      driver_phone: (r as any).phone ?? null,
+      driver_email: (r as any).email ?? null,
       vehicle_label: r.vehicle ?? null,
       plate: r.plate ?? null,
       start_date: r.start_datetime ? r.start_datetime.slice(0, 10) : "",
       end_date: r.end_datetime ? r.end_datetime.slice(0, 10) : null,
       reservation_status: "migrated",
       source: "migrated",
+      agreement_on_file: Boolean((r as any).retro_signed_at),
     }));
 
     return [...liveOptions, ...legacyOptions];

@@ -64,6 +64,12 @@ import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
 import { SubmitDisputeDialog } from "@/components/app/SubmitDisputeDialog";
 import { CreateAgreementDialog } from "@/components/app/CreateAgreementDialog";
+import { FindRenterDialog } from "@/components/app/FindRenterDialog";
+import {
+  setViolationStage,
+  recordViolationDispute,
+  flagViolationOrphan,
+} from "@/lib/violations-workflow.functions";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
 import { downloadCSV } from "@/lib/exports";
 
@@ -94,6 +100,193 @@ export const Route = createFileRoute("/violations")({
   head: () => ({ meta: [{ title: "Violations — Camauto Rentals" }] }),
   component: ViolationsPage,
 });
+
+/** Per-tab action buttons for a violation row. */
+function RowActions({
+  v,
+  onFind,
+  onCreateAgreement,
+  onToggleDetails,
+  onDone,
+}: {
+  v: ViolationRow;
+  onFind: () => void;
+  onCreateAgreement: () => void;
+  onToggleDetails: () => void;
+  onDone: () => void;
+}) {
+  const stageFn = useServerFn(setViolationStage);
+  const disputeFn = useServerFn(recordViolationDispute);
+  const orphanFn = useServerFn(flagViolationOrphan);
+  const packetFn = useServerFn(generateMailPacket);
+  const sendLinkFn = useServerFn(sendViolationRetroLink);
+  const resolveFn = useServerFn(changeViolationStatus);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const run = async (key: string, fn: () => Promise<unknown>, ok: string) => {
+    setBusy(key);
+    try {
+      await fn();
+      toast.success(ok);
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const stage = tabOf(v);
+  const matched = Boolean(v.rental_id);
+
+  if (stage === "uploaded") {
+    return (
+      <>
+        <Button size="sm" variant="outline" onClick={onFind}>
+          Find Renter
+        </Button>
+        {matched && !v.agreement_on_file && (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy === "send" || !v.driver_phone}
+              onClick={() =>
+                run(
+                  "send",
+                  () => sendLinkFn({ data: { violationId: v.id, phone: v.driver_phone || "" } }),
+                  "Sign link sent",
+                )
+              }
+            >
+              Send Sign Link
+            </Button>
+            <Button size="sm" variant="outline" onClick={onCreateAgreement}>
+              Create Agreement
+            </Button>
+          </>
+        )}
+        {matched && v.agreement_on_file && (
+          <Button
+            size="sm"
+            disabled={busy === "stage"}
+            onClick={() =>
+              run("stage", () => stageFn({ data: { violationId: v.id, stage: "matched" } }), "Moved to Matched")
+            }
+          >
+            Move to Matched
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-destructive"
+          disabled={busy === "orphan"}
+          onClick={() =>
+            run("orphan", () => orphanFn({ data: { violationId: v.id } }), "Flagged as orphan")
+          }
+        >
+          Plate Not Mine
+        </Button>
+      </>
+    );
+  }
+
+  if (stage === "matched") {
+    return (
+      <>
+        <Button size="sm" variant="outline" onClick={onToggleDetails}>
+          View Details
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" disabled={busy === "dispute"}>
+              Dispute <ChevronDown className="ml-1 h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() =>
+                run("dispute", () => disputeFn({ data: { violationId: v.id, method: "online" } }), "Recorded online dispute")
+              }
+            >
+              Online
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                run("dispute", () => disputeFn({ data: { violationId: v.id, method: "walk_in" } }), "Recorded walk-in dispute")
+              }
+            >
+              Walk-in
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                run(
+                  "dispute",
+                  async () => {
+                    await packetFn({ data: { violationId: v.id } });
+                    await disputeFn({ data: { violationId: v.id, method: "mail" } });
+                  },
+                  "Mail packet generated & dispute recorded",
+                )
+              }
+            >
+              Mail (generate packet)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button
+          size="sm"
+          disabled={busy === "stage"}
+          onClick={() =>
+            run("stage", () => stageFn({ data: { violationId: v.id, stage: "disputed" } }), "Moved to Disputed")
+          }
+        >
+          Move to Disputed
+        </Button>
+      </>
+    );
+  }
+
+  if (stage === "disputed") {
+    return (
+      <>
+        <Button size="sm" variant="outline" onClick={onToggleDetails}>
+          View Details
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy === "resolve"}
+          onClick={() =>
+            run(
+              "resolve",
+              () => resolveFn({ data: { id: v.id, status: "resolved", reason: "EZPass approved liability transfer" } }),
+              "Marked resolved",
+            )
+          }
+        >
+          Mark Resolved
+        </Button>
+        <Button
+          size="sm"
+          disabled={busy === "stage"}
+          onClick={() =>
+            run("stage", () => stageFn({ data: { violationId: v.id, stage: "completed" } }), "Moved to Completed")
+          }
+        >
+          Move to Completed
+        </Button>
+      </>
+    );
+  }
+
+  return (
+    <Button size="sm" variant="outline" onClick={onToggleDetails}>
+      View Details
+    </Button>
+  );
+}
 
 function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }) {
   const genTransfer = useServerFn(generateLiabilityTransfer);
@@ -463,25 +656,35 @@ function BureauContactsCard() {
   );
 }
 
-type Filter =
-  | "all"
-  | "awaiting_response"
-  | "paid_direct"
-  | "transfer_generated"
-  | "packet_printed"
-  | "mailed"
-  | "confirmed";
+type TabKey = "uploaded" | "matched" | "disputed" | "completed";
+
+const TAB_ORDER: TabKey[] = ["uploaded", "matched", "disputed", "completed"];
+const TAB_LABELS: Record<TabKey, string> = {
+  uploaded: "Uploaded",
+  matched: "Matched",
+  disputed: "Disputed",
+  completed: "Completed",
+};
 
 const PENDING_RESPONSE = ["pending", "failed", "sent_to_customer", "viewing"];
 
-/** Derive the tracking stage for a violation from its timestamps + status. */
-function stageOf(v: ViolationRow): Exclude<Filter, "all"> {
-  if (v.transfer_confirmed_at || v.status === "resolved") return "confirmed";
-  if (v.mailed_at || v.status === "submitted_to_authority") return "mailed";
-  if (v.mail_packet_printed_at) return "packet_printed";
-  if (v.liability_transfer_generated_at) return "transfer_generated";
-  if (v.status === "paid") return "paid_direct";
-  return "awaiting_response";
+/** Which of the 4 dashboard tabs a violation belongs to.
+ *  Hybrid: an explicit workflow_stage (set by "Move to…" actions) always wins,
+ *  otherwise the stage is derived from the violation's data. */
+function tabOf(v: ViolationRow): TabKey {
+  if (v.workflow_stage && TAB_ORDER.includes(v.workflow_stage as TabKey)) {
+    return v.workflow_stage as TabKey;
+  }
+  if (v.transfer_confirmed_at || v.status === "resolved") return "completed";
+  if (
+    v.disputed_at ||
+    v.mailed_at ||
+    v.submitted_to_authority_at ||
+    ["submitted_to_authority", "disputed"].includes(v.status)
+  )
+    return "disputed";
+  if (v.rental_id && v.agreement_on_file) return "matched";
+  return "uploaded";
 }
 
 /** A violation is ready for liability transfer when the customer has had >7 days
@@ -502,8 +705,13 @@ function ViolationsPage() {
     queryKey: ["violations"],
     queryFn: () => list(),
   });
+  const listRentals = useServerFn(listRentalsForViolation);
+  const { data: rentalOptions = [] } = useQuery({
+    queryKey: ["rental-options-for-violations"],
+    queryFn: () => listRentals(),
+  });
 
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<TabKey>("uploaded");
   const [search, setSearch] = useState("");
   const [newOpen, setNewOpen] = useState(false);
   const [chargeFor, setChargeFor] = useState<ViolationRow | null>(null);
@@ -512,6 +720,8 @@ function ViolationsPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [deleteFor, setDeleteFor] = useState<ViolationRow | null>(null);
   const [editFor, setEditFor] = useState<ViolationRow | null>(null);
+  const [findFor, setFindFor] = useState<ViolationRow | null>(null);
+  const [createAgreementFor, setCreateAgreementFor] = useState<ViolationRow | null>(null);
 
   const delFn = useServerFn(deleteViolation);
   const delMutation = useMutation({
@@ -527,7 +737,7 @@ function ViolationsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (filter !== "all" && stageOf(r) !== filter) return false;
+      if (tabOf(r) !== filter) return false;
       if (!q) return true;
       const hay = [
         r.id,
@@ -545,6 +755,12 @@ function ViolationsPage() {
       return hay.includes(q);
     });
   }, [rows, filter, search]);
+
+  const tabCounts = useMemo(() => {
+    const c: Record<TabKey, number> = { uploaded: 0, matched: 0, disputed: 0, completed: 0 };
+    for (const r of rows) c[tabOf(r)]++;
+    return c;
+  }, [rows]);
 
   const unpaidCount = rows.filter((r) => r.status === "pending" || r.status === "failed").length;
   const unpaidTotal = rows
@@ -572,7 +788,7 @@ function ViolationsPage() {
       v.fee,
       v.total_amount,
       v.status,
-      stageOf(v),
+      tabOf(v),
       v.sent_to_customer_at ?? "",
       v.mailed_at ?? "",
       v.transfer_confirmed_at ?? "",
@@ -634,40 +850,18 @@ function ViolationsPage() {
 
       <BureauContactsCard />
 
-      {readyForTransfer.length > 0 && (
-        <Card className="mb-4 border-amber-300 bg-amber-50">
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div className="flex items-center gap-2 text-sm text-amber-900">
-              <AlertTriangle className="h-4 w-4" />
-              <span>
-                <strong>{readyForTransfer.length}</strong> violation
-                {readyForTransfer.length === 1 ? "" : "s"} past 7 days with no customer response —
-                ready for liability transfer.
-              </span>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setFilter("awaiting_response")}
-              className="border-amber-400"
-            >
-              Review
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
       <Card className="mb-4">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-          <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as TabKey)}>
             <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="awaiting_response">Awaiting Response</TabsTrigger>
-              <TabsTrigger value="paid_direct">Paid Directly</TabsTrigger>
-              <TabsTrigger value="transfer_generated">Auto-Transfer</TabsTrigger>
-              <TabsTrigger value="packet_printed">Packet Printed</TabsTrigger>
-              <TabsTrigger value="mailed">Mailed</TabsTrigger>
-              <TabsTrigger value="confirmed">Disputed Successfully</TabsTrigger>
+              {TAB_ORDER.map((t) => (
+                <TabsTrigger key={t} value={t} className="gap-1.5">
+                  {TAB_LABELS[t]}
+                  <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                    {tabCounts[t]}
+                  </Badge>
+                </TabsTrigger>
+              ))}
             </TabsList>
           </Tabs>
           <div className="relative w-full max-w-sm">
@@ -735,6 +929,20 @@ function ViolationsPage() {
                       </td>
                       <td className="p-3">
                         <StatusBadge status={v.status} />
+                        {v.is_orphan && (
+                          <div className="mt-1">
+                            <Badge variant="destructive" className="text-xs">Plate Not Mine</Badge>
+                          </div>
+                        )}
+                        {!v.is_orphan && v.rental_id && !v.agreement_on_file && tabOf(v) === "uploaded" && (
+                          <div className="mt-1 text-xs text-amber-600">🟡 No signed agreement</div>
+                        )}
+                        {v.dispute_method && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            Disputed via {v.dispute_method.replace("_", "-")}
+                            {v.disputed_at ? ` · ${new Date(v.disputed_at).toLocaleDateString()}` : ""}
+                          </div>
+                        )}
                         {v.status === "paid" && v.paid_at && (
                           <div className="mt-1 text-xs text-muted-foreground">
                             ✓ {new Date(v.paid_at).toLocaleString()}
@@ -754,14 +962,13 @@ function ViolationsPage() {
                       </td>
                       <td className="p-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {(v.status === "pending" || v.status === "failed") && v.rental_id && (
-                            <Button size="sm" variant="outline" onClick={() => setChargeFor(v)}>
-                              Charge
-                            </Button>
-                          )}
-                          {!["paid", "resolved", "submitted_to_authority"].includes(v.status) && (
-                            <SendCustomerButton violation={v} onDone={refresh} />
-                          )}
+                          <RowActions
+                            v={v}
+                            onFind={() => setFindFor(v)}
+                            onCreateAgreement={() => setCreateAgreementFor(v)}
+                            onToggleDetails={() => setExpanded(expanded === v.id ? null : v.id)}
+                            onDone={refresh}
+                          />
                           <Button
                             size="sm"
                             variant="ghost"
@@ -781,13 +988,6 @@ function ViolationsPage() {
                               <DropdownMenuItem onClick={() => setEditFor(v)}>
                                 Edit / fill missing info
                               </DropdownMenuItem>
-                              {v.payment_link_url && v.status === "pending" && (
-                                <DropdownMenuItem asChild>
-                                  <a href={v.payment_link_url} target="_blank" rel="noreferrer">
-                                    Open payment link
-                                  </a>
-                                </DropdownMenuItem>
-                              )}
                               {["submitted_to_authority", "resolved"].includes(v.status) && (
                                 <DropdownMenuItem onClick={() => setSubmitFor(v)}>
                                   View dispute
@@ -811,7 +1011,6 @@ function ViolationsPage() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                        <LiabilityActions v={v} onDone={refresh} />
                       </td>
                     </tr>
                     {expanded === v.id && (
@@ -897,6 +1096,30 @@ function ViolationsPage() {
           setEditFor(null);
         }}
       />
+
+      <FindRenterDialog
+        violation={findFor}
+        rentalOptions={rentalOptions}
+        onClose={() => setFindFor(null)}
+        onDone={refresh}
+      />
+
+      {createAgreementFor && (
+        <CreateAgreementDialog
+          open={!!createAgreementFor}
+          onOpenChange={(o) => !o && setCreateAgreementFor(null)}
+          violationId={createAgreementFor.id}
+          violationDate={(createAgreementFor.date_issued || "").slice(0, 10)}
+          defaults={{
+            fullName: createAgreementFor.driver_name ?? null,
+            phone: createAgreementFor.driver_phone ?? null,
+          }}
+          onDone={() => {
+            refresh();
+            setCreateAgreementFor(null);
+          }}
+        />
+      )}
     </div>
   );
 }
