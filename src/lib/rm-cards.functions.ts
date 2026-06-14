@@ -273,6 +273,66 @@ export const submitRmCardByToken = createServerFn({ method: "POST" })
     return { ok: true as const, pending: true as const };
   });
 
+/** Admin: approve a submitted RM Card (optionally overriding Pass/Fail) and apply it. */
+export const approveRmCard = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; items?: RmItem[] }) => {
+    if (!d?.id) throw new Error("id required");
+    const items = d.items ? sanitizeItems(d.items) : null;
+    if (items && items.some((i) => i.status !== "Pass" && i.status !== "Fail"))
+      throw new Error("Set Pass or Fail for every item");
+    return { id: d.id, items };
+  })
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { applyRmSubmission } = await import("@/lib/rm-cards.server");
+    const { data: card } = await supabaseAdmin
+      .from("rm_cards")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!card) throw new Error("RM Card not found");
+    const c = card as any;
+    if (c.status !== "submitted") throw new Error("Only submitted RM Cards can be approved");
+    const items: RmItem[] = data.items ?? ((c.items_checked ?? []) as RmItem[]);
+    if (items.some((i) => i.status !== "Pass" && i.status !== "Fail"))
+      throw new Error("Set Pass or Fail for every item");
+    const now = new Date().toISOString();
+    const { error } = await supabaseAdmin
+      .from("rm_cards")
+      .update({ items_checked: items as any, status: "approved", submitted_at: c.submitted_at ?? now } as any)
+      .eq("id", c.id)
+      .eq("status", "submitted");
+    if (error) throw new Error(error.message);
+    const result = await applyRmSubmission({
+      vehicleId: c.vehicle_id,
+      items,
+      inspectorName: c.inspector_name || "Inspector",
+      inspectorType: c.inspector_type || "runner",
+      mileage: c.mileage_at_inspection,
+      overallNotes: c.overall_notes,
+    });
+    return { ok: true as const, ...result };
+  });
+
+/** Admin: reject a submitted RM Card without applying it. */
+export const rejectRmCard = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => {
+    if (!d?.id) throw new Error("id required");
+    return { id: d.id };
+  })
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("rm_cards")
+      .update({ status: "rejected" } as any)
+      .eq("id", data.id)
+      .eq("status", "submitted");
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 /** Admin: list RM Cards (recent + per-vehicle history). */
 export const listRmCards = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
