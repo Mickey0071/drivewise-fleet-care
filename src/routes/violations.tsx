@@ -705,6 +705,11 @@ function ViolationsPage() {
     queryKey: ["violations"],
     queryFn: () => list(),
   });
+  const listRentals = useServerFn(listRentalsForViolation);
+  const { data: rentalOptions = [] } = useQuery({
+    queryKey: ["rental-options-for-violations"],
+    queryFn: () => listRentals(),
+  });
 
   const [filter, setFilter] = useState<TabKey>("uploaded");
   const [search, setSearch] = useState("");
