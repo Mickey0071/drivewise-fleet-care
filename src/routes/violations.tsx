@@ -463,25 +463,35 @@ function BureauContactsCard() {
   );
 }
 
-type Filter =
-  | "all"
-  | "awaiting_response"
-  | "paid_direct"
-  | "transfer_generated"
-  | "packet_printed"
-  | "mailed"
-  | "confirmed";
+type TabKey = "uploaded" | "matched" | "disputed" | "completed";
+
+const TAB_ORDER: TabKey[] = ["uploaded", "matched", "disputed", "completed"];
+const TAB_LABELS: Record<TabKey, string> = {
+  uploaded: "Uploaded",
+  matched: "Matched",
+  disputed: "Disputed",
+  completed: "Completed",
+};
 
 const PENDING_RESPONSE = ["pending", "failed", "sent_to_customer", "viewing"];
 
-/** Derive the tracking stage for a violation from its timestamps + status. */
-function stageOf(v: ViolationRow): Exclude<Filter, "all"> {
-  if (v.transfer_confirmed_at || v.status === "resolved") return "confirmed";
-  if (v.mailed_at || v.status === "submitted_to_authority") return "mailed";
-  if (v.mail_packet_printed_at) return "packet_printed";
-  if (v.liability_transfer_generated_at) return "transfer_generated";
-  if (v.status === "paid") return "paid_direct";
-  return "awaiting_response";
+/** Which of the 4 dashboard tabs a violation belongs to.
+ *  Hybrid: an explicit workflow_stage (set by "Move to…" actions) always wins,
+ *  otherwise the stage is derived from the violation's data. */
+function tabOf(v: ViolationRow): TabKey {
+  if (v.workflow_stage && TAB_ORDER.includes(v.workflow_stage as TabKey)) {
+    return v.workflow_stage as TabKey;
+  }
+  if (v.transfer_confirmed_at || v.status === "resolved") return "completed";
+  if (
+    v.disputed_at ||
+    v.mailed_at ||
+    v.submitted_to_authority_at ||
+    ["submitted_to_authority", "disputed"].includes(v.status)
+  )
+    return "disputed";
+  if (v.rental_id && v.agreement_on_file) return "matched";
+  return "uploaded";
 }
 
 /** A violation is ready for liability transfer when the customer has had >7 days
