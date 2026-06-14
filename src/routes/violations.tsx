@@ -64,6 +64,11 @@ import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
 import { SubmitDisputeDialog } from "@/components/app/SubmitDisputeDialog";
 import { CreateAgreementDialog } from "@/components/app/CreateAgreementDialog";
+import { FindRenterDialog } from "@/components/app/FindRenterDialog";
+import {
+  setViolationStage,
+  recordViolationDispute,
+} from "@/lib/violations-workflow.functions";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
 import { downloadCSV } from "@/lib/exports";
 
