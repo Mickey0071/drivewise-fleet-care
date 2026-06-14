@@ -1082,6 +1082,30 @@ function ViolationsPage() {
           setEditFor(null);
         }}
       />
+
+      <FindRenterDialog
+        violation={findFor}
+        rentalOptions={rentalOptions}
+        onClose={() => setFindFor(null)}
+        onDone={refresh}
+      />
+
+      {createAgreementFor && (
+        <CreateAgreementDialog
+          open={!!createAgreementFor}
+          onOpenChange={(o) => !o && setCreateAgreementFor(null)}
+          violationId={createAgreementFor.id}
+          violationDate={(createAgreementFor.date_issued || "").slice(0, 10)}
+          defaults={{
+            fullName: createAgreementFor.driver_name ?? null,
+            phone: createAgreementFor.driver_phone ?? null,
+          }}
+          onDone={() => {
+            refresh();
+            setCreateAgreementFor(null);
+          }}
+        />
+      )}
     </div>
   );
 }
