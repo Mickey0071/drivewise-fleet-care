@@ -101,6 +101,193 @@ export const Route = createFileRoute("/violations")({
   component: ViolationsPage,
 });
 
+/** Per-tab action buttons for a violation row. */
+function RowActions({
+  v,
+  onFind,
+  onCreateAgreement,
+  onToggleDetails,
+  onDone,
+}: {
+  v: ViolationRow;
+  onFind: () => void;
+  onCreateAgreement: () => void;
+  onToggleDetails: () => void;
+  onDone: () => void;
+}) {
+  const stageFn = useServerFn(setViolationStage);
+  const disputeFn = useServerFn(recordViolationDispute);
+  const orphanFn = useServerFn(flagViolationOrphan);
+  const packetFn = useServerFn(generateMailPacket);
+  const sendLinkFn = useServerFn(sendViolationRetroLink);
+  const resolveFn = useServerFn(changeViolationStatus);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const run = async (key: string, fn: () => Promise<unknown>, ok: string) => {
+    setBusy(key);
+    try {
+      await fn();
+      toast.success(ok);
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const stage = tabOf(v);
+  const matched = Boolean(v.rental_id);
+
+  if (stage === "uploaded") {
+    return (
+      <>
+        <Button size="sm" variant="outline" onClick={onFind}>
+          Find Renter
+        </Button>
+        {matched && !v.agreement_on_file && (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy === "send" || !v.driver_phone}
+              onClick={() =>
+                run(
+                  "send",
+                  () => sendLinkFn({ data: { violationId: v.id, phone: v.driver_phone || "" } }),
+                  "Sign link sent",
+                )
+              }
+            >
+              Send Sign Link
+            </Button>
+            <Button size="sm" variant="outline" onClick={onCreateAgreement}>
+              Create Agreement
+            </Button>
+          </>
+        )}
+        {matched && v.agreement_on_file && (
+          <Button
+            size="sm"
+            disabled={busy === "stage"}
+            onClick={() =>
+              run("stage", () => stageFn({ data: { violationId: v.id, stage: "matched" } }), "Moved to Matched")
+            }
+          >
+            Move to Matched
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-destructive"
+          disabled={busy === "orphan"}
+          onClick={() =>
+            run("orphan", () => orphanFn({ data: { violationId: v.id } }), "Flagged as orphan")
+          }
+        >
+          Plate Not Mine
+        </Button>
+      </>
+    );
+  }
+
+  if (stage === "matched") {
+    return (
+      <>
+        <Button size="sm" variant="outline" onClick={onToggleDetails}>
+          View Details
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" disabled={busy === "dispute"}>
+              Dispute <ChevronDown className="ml-1 h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() =>
+                run("dispute", () => disputeFn({ data: { violationId: v.id, method: "online" } }), "Recorded online dispute")
+              }
+            >
+              Online
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                run("dispute", () => disputeFn({ data: { violationId: v.id, method: "walk_in" } }), "Recorded walk-in dispute")
+              }
+            >
+              Walk-in
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                run(
+                  "dispute",
+                  async () => {
+                    await packetFn({ data: { violationId: v.id } });
+                    await disputeFn({ data: { violationId: v.id, method: "mail" } });
+                  },
+                  "Mail packet generated & dispute recorded",
+                )
+              }
+            >
+              Mail (generate packet)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button
+          size="sm"
+          disabled={busy === "stage"}
+          onClick={() =>
+            run("stage", () => stageFn({ data: { violationId: v.id, stage: "disputed" } }), "Moved to Disputed")
+          }
+        >
+          Move to Disputed
+        </Button>
+      </>
+    );
+  }
+
+  if (stage === "disputed") {
+    return (
+      <>
+        <Button size="sm" variant="outline" onClick={onToggleDetails}>
+          View Details
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy === "resolve"}
+          onClick={() =>
+            run(
+              "resolve",
+              () => resolveFn({ data: { id: v.id, status: "resolved", reason: "EZPass approved liability transfer" } }),
+              "Marked resolved",
+            )
+          }
+        >
+          Mark Resolved
+        </Button>
+        <Button
+          size="sm"
+          disabled={busy === "stage"}
+          onClick={() =>
+            run("stage", () => stageFn({ data: { violationId: v.id, stage: "completed" } }), "Moved to Completed")
+          }
+        >
+          Move to Completed
+        </Button>
+      </>
+    );
+  }
+
+  return (
+    <Button size="sm" variant="outline" onClick={onToggleDetails}>
+      View Details
+    </Button>
+  );
+}
+
 function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }) {
   const genTransfer = useServerFn(generateLiabilityTransfer);
   const genPacket = useServerFn(generateMailPacket);
