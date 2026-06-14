@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { computeScheduledItems } from "@/lib/maintenance-utils";
-import { createRunnerTask } from "@/lib/runner-tasks.functions";
+import { createRmCardLink } from "@/lib/rm-cards.functions";
 import type { Vehicle } from "@/lib/mock/data";
 
 function formatPhone(value: string): string {
@@ -30,7 +30,7 @@ export function SendRmTaskDialog({
   onOpenChange: (open: boolean) => void;
   vehicle: Vehicle | null;
 }) {
-  const sendFn = useServerFn(createRunnerTask);
+  const sendFn = useServerFn(createRmCardLink);
   const [runnerName, setRunnerName] = useState("");
   const [runnerPhone, setRunnerPhone] = useState("");
   const [sending, setSending] = useState(false);
@@ -53,28 +53,22 @@ export function SendRmTaskDialog({
     try {
       const rmItems = scheduled.map((s) => ({
         type: s.type,
-        customId: s.customId ?? null,
+        customId: s.customId ?? undefined,
         label: s.label,
-        due: s.dueDate ?? (s.dueMileage != null ? `${s.dueMileage} mi` : null),
+        due: s.dueDate ?? (s.dueMileage != null ? `${s.dueMileage} mi` : undefined),
       }));
-      const res = await sendFn({
+      await sendFn({
         data: {
-          runnerName: runnerName.trim(),
-          runnerPhone: runnerPhone.trim(),
-          title: `Routine Maintenance — ${vehicle.year} ${vehicle.make} ${vehicle.model}`,
-          priority: "medium",
-          type: "routine_maintenance",
           vehicleId: vehicle.id,
+          items: rmItems,
+          inspectorName: runnerName.trim(),
+          inspectorPhone: runnerPhone.trim(),
+          inspectorType: "runner",
+          mileage: (vehicle as any).mileage ?? null,
           vehicleLabel,
-          checklist: scheduled.map((s, i) => ({ id: `rm${i}`, label: s.label })),
-          requiresPhotos: false,
-          rmVehicleId: vehicle.id,
-          rmMileage: (vehicle as any).mileage ?? null,
-          rmItems,
         },
       });
-      if (res.smsStatus === "sent") toast.success(`✓ RM task sent to ${runnerName.trim()}`);
-      else toast.warning("Task created, but the SMS could not be delivered");
+      toast.success(`✓ RM Card link sent to ${runnerName.trim()}`);
       setRunnerName(""); setRunnerPhone("");
       onOpenChange(false);
     } catch (e: any) {
