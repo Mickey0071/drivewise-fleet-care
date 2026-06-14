@@ -226,7 +226,6 @@ export const submitRmCardByToken = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { applyRmSubmission } = await import("@/lib/rm-cards.server");
     const { data: card } = await supabaseAdmin
       .from("rm_cards")
       .select("*")
