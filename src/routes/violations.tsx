@@ -63,6 +63,7 @@ import {
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
 import { SubmitDisputeDialog } from "@/components/app/SubmitDisputeDialog";
+import { CreateAgreementDialog } from "@/components/app/CreateAgreementDialog";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
 import { downloadCSV } from "@/lib/exports";
 
@@ -103,6 +104,7 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
   const override = useServerFn(overrideViolationMailReady);
   const [busy, setBusy] = useState<string | null>(null);
   const [retroOpen, setRetroOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [retroPhone, setRetroPhone] = useState("");
   const [retroMsg, setRetroMsg] = useState("");
   const [overrideOpen, setOverrideOpen] = useState(false);
