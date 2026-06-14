@@ -538,7 +538,7 @@ function ViolationsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (filter !== "all" && stageOf(r) !== filter) return false;
+      if (tabOf(r) !== filter) return false;
       if (!q) return true;
       const hay = [
         r.id,
@@ -556,6 +556,12 @@ function ViolationsPage() {
       return hay.includes(q);
     });
   }, [rows, filter, search]);
+
+  const tabCounts = useMemo(() => {
+    const c: Record<TabKey, number> = { uploaded: 0, matched: 0, disputed: 0, completed: 0 };
+    for (const r of rows) c[tabOf(r)]++;
+    return c;
+  }, [rows]);
 
   const unpaidCount = rows.filter((r) => r.status === "pending" || r.status === "failed").length;
   const unpaidTotal = rows
