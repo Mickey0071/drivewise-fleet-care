@@ -373,9 +373,9 @@ function CreateTaskPage() {
 
       <div className="flex justify-end pb-10">
         <div className="w-full max-w-md space-y-2">
-          <SendLinkPreview route="/runner/task/[id]" />
+          <SendLinkPreview route={isRm ? "/rm-card/[token]" : "/runner/task/[id]"} />
           <Button disabled={sending} onClick={submit} size="lg" className="w-full">
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Create & Send Task</>}
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> {isRm ? "Create & Send RM Card" : "Create & Send Task"}</>}
           </Button>
         </div>
       </div>
