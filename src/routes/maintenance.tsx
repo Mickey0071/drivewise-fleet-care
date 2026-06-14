@@ -257,7 +257,8 @@ function MaintenancePage() {
     } catch { /* ignore */ }
   }
   useEffect(() => { refreshRmCards(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
-  const recentRmCards = rmCards.filter(c => c.status === "submitted").slice(0, 5);
+  const pendingRmCards = rmCards.filter(c => c.status === "submitted");
+  const recentRmCards = rmCards.filter(c => c.status === "approved").slice(0, 5);
 
   return (
     <TooltipProvider>
