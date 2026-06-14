@@ -12,6 +12,7 @@ import { ViewDiagnosisDialog } from "@/components/app/ViewDiagnosisDialog";
 import { MechanicJobHistory } from "@/components/app/MechanicJobHistory";
 import { RmCardDialog } from "@/components/app/RmCardDialog";
 import { listRmCards, type RmCardRow } from "@/lib/rm-cards.functions";
+import { RmPendingApprovals } from "@/components/app/RmPendingApprovals";
 import { useServerFn } from "@tanstack/react-start";
 import {
   listMechanicJobs,
@@ -256,7 +257,8 @@ function MaintenancePage() {
     } catch { /* ignore */ }
   }
   useEffect(() => { refreshRmCards(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
-  const recentRmCards = rmCards.filter(c => c.status === "submitted").slice(0, 5);
+  const pendingRmCards = rmCards.filter(c => c.status === "submitted");
+  const recentRmCards = rmCards.filter(c => c.status === "approved").slice(0, 5);
 
   return (
     <TooltipProvider>
@@ -706,6 +708,16 @@ function MaintenancePage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* RM Cards awaiting approval */}
+            <RmPendingApprovals
+              cards={pendingRmCards}
+              labelFor={(vid) => {
+                const v = vehicleById(vid);
+                return v ? `${v.year} ${v.make} ${v.model}` : vid;
+              }}
+              onChanged={refreshRmCards}
+            />
 
             {/* Recent RM Cards */}
             <Card className="mt-4">

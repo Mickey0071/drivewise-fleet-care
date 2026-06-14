@@ -20,7 +20,7 @@ export function RmHistoryTab({ vehicleId }: { vehicleId: string }) {
       try {
         const r = await loadFn();
         if (cancelled) return;
-        setCards(((r.cards ?? []) as RmCardRow[]).filter(c => c.vehicle_id === vehicleId && c.status === "submitted"));
+        setCards(((r.cards ?? []) as RmCardRow[]).filter(c => c.vehicle_id === vehicleId && c.status === "approved"));
       } catch { /* ignore */ } finally {
         if (!cancelled) setLoading(false);
       }

@@ -120,7 +120,7 @@ function RmCardPublicPage() {
         <Card className="p-6 text-center">
           <CheckCircle2 className="mx-auto h-10 w-10 text-green-600" />
           <h2 className="mt-3 text-lg font-semibold">RM Card submitted</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Thank you. The team has been notified.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Thank you. Your results are pending admin approval before the vehicle is updated.</p>
         </Card>
       </Shell>
     );

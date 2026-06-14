@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { vehicles, drivers } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { createRunnerTask } from "@/lib/runner-tasks.functions";
+import { createRmCardLink } from "@/lib/rm-cards.functions";
 import { computeScheduledItems } from "@/lib/maintenance-utils";
 import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 
@@ -46,7 +47,7 @@ const TEMPLATES: Record<string, { type: string; items: string[] }> = {
   ] },
   "Vehicle Transport": { type: "transport", items: ["Confirm origin & destination", "Inspect before transport", "Photograph condition", "Record mileage", "Confirm safe delivery"] },
   "Repair Pickup": { type: "parts", items: ["Confirm shop & contact", "Verify completed work order", "Inspect repaired item", "Collect invoice/receipt", "Record mileage", "Return vehicle"] },
-  "Routine Maintenance": { type: "routine_maintenance", items: [] },
+  "Routine Maintenance Check": { type: "routine_maintenance", items: [] },
   Custom: { type: "custom", items: [] },
 };
 const TEMPLATE_KEYS = Object.keys(TEMPLATES);
@@ -83,6 +84,7 @@ function formatPhone(value: string): string {
 function CreateTaskPage() {
   useStoreVersion();
   const sendFn = useServerFn(createRunnerTask);
+  const sendRmFn = useServerFn(createRmCardLink);
 
   const [runnerName, setRunnerName] = useState("");
   const [runnerPhone, setRunnerPhone] = useState("");
@@ -155,10 +157,35 @@ function CreateTaskPage() {
       const vehicleLabel = vehicleId !== "none"
         ? vehicleOptions.find((v) => v.id === vehicleId)?.label
         : undefined;
+      // Routine Maintenance Check → send an RM Card link (Pass/Fail), gated by admin approval.
+      if (isRm) {
+        const rmMeta = rmMetaForVehicle(vehicleId);
+        await sendRmFn({
+          data: {
+            vehicleId,
+            items: rmMeta.rm.map((r) => ({
+              type: r.type,
+              customId: r.customId ?? undefined,
+              label: r.label,
+              due: r.due ?? undefined,
+            })),
+            inspectorName: runnerName.trim(),
+            inspectorPhone: runnerPhone.trim(),
+            inspectorType: "runner",
+            mileage: rmMeta.mileage,
+            vehicleLabel,
+          },
+        });
+        toast.success(`✓ RM Card link sent to ${runnerName.trim()}`);
+        setRunnerName(""); setRunnerPhone(""); setTitle(""); setPriority("medium");
+        setVehicleId("none"); setCustomerId("none"); setLocation(""); setScheduledAt("");
+        setInstructions(""); setTemplate(""); setItems([newItem()]);
+        setRequiresPhotos(false); setPhotosCount("2"); setRmItems([]);
+        return;
+      }
       const customer = customerId !== "none"
         ? customerOptions.find((c) => c.id === customerId)
         : undefined;
-      const rmMeta = isRm ? rmMetaForVehicle(vehicleId) : null;
       const res = await sendFn({
         data: {
           runnerName: runnerName.trim(),
@@ -177,9 +204,9 @@ function CreateTaskPage() {
           customerPhone: customer?.phone,
           requiresPhotos,
           photosCountRequired: requiresPhotos ? Math.max(1, Number(photosCount) || 1) : 0,
-          rmVehicleId: isRm ? vehicleId : null,
-          rmMileage: rmMeta?.mileage ?? null,
-          rmItems: rmMeta?.rm ?? [],
+          rmVehicleId: null,
+          rmMileage: null,
+          rmItems: [],
         },
       });
       if (res.smsStatus === "sent") toast.success(`✓ Task sent to ${runnerName.trim()}`);
@@ -284,6 +311,31 @@ function CreateTaskPage() {
             </SelectContent>
           </Select>
         </CardHeader>
+        {isRm ? (
+        <CardContent className="space-y-2">
+          {vehicleId === "none" ? (
+            <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+              Select a vehicle — its scheduled maintenance items load here automatically.
+            </p>
+          ) : rmItems.length === 0 ? (
+            <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+              This vehicle has no scheduled maintenance due.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {rmItems.map((it, i) => (
+                <li key={`${it.type}-${it.customId ?? i}`} className="rounded-md border border-border p-2">
+                  <div className="text-sm font-medium">{it.label}</div>
+                  {it.due && <div className="text-xs text-muted-foreground">Due: {it.due}</div>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-xs text-muted-foreground">
+            The runner gets a Pass/Fail RM Card link. Results wait for your approval before the vehicle updates.
+          </p>
+        </CardContent>
+        ) : (
         <CardContent className="space-y-2">
           {items.map((it, i) => (
             <div key={it.id} className="flex gap-2">
@@ -298,6 +350,7 @@ function CreateTaskPage() {
             <Plus className="h-4 w-4" /> Add Item
           </Button>
         </CardContent>
+        )}
       </Card>
 
       <Card>
@@ -320,9 +373,9 @@ function CreateTaskPage() {
 
       <div className="flex justify-end pb-10">
         <div className="w-full max-w-md space-y-2">
-          <SendLinkPreview route="/runner/task/[id]" />
+          <SendLinkPreview route={isRm ? "/rm-card/[token]" : "/runner/task/[id]"} />
           <Button disabled={sending} onClick={submit} size="lg" className="w-full">
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Create & Send Task</>}
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> {isRm ? "Create & Send RM Card" : "Create & Send Task"}</>}
           </Button>
         </div>
       </div>
