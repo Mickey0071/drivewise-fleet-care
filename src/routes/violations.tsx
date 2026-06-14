@@ -344,6 +344,15 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
         </DialogContent>
       </Dialog>
 
+      <CreateAgreementDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        violationId={v.id}
+        violationDate={v.date_issued}
+        defaults={{ fullName: status?.customerName ?? v.driver_name ?? null, phone: status?.phone ?? v.driver_phone ?? null }}
+        onDone={refreshAll}
+      />
+
       <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
         <DialogContent>
           <DialogHeader>
