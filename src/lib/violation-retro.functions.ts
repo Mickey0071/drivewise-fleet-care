@@ -217,7 +217,7 @@ export const sendViolationRetroLink = createServerFn({ method: "POST" })
       const { data: shell, error: insErr } = await supabaseAdmin
         .from("legacy_rentals")
         .insert({
-          renter_name: (d.full_name as string) ?? (v.driver_name as string) ?? "Renter",
+          renter_name: (d.full_name as string) ?? "Renter",
           vehicle: vehicleText,
           year: ve.year ? String(ve.year) : null,
           color: (ve.color as string) ?? null,
