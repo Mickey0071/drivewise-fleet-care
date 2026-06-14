@@ -694,15 +694,6 @@ function ManualMatchDialog({
   onClose: () => void;
   onMatched: () => void;
 }) {
-function ManualMatchDialog({
-  item,
-  onClose,
-  onMatched,
-}: {
-  item: EzpassBatchItem;
-  onClose: () => void;
-  onMatched: () => void;
-}) {
   const search = useServerFn(searchRentalsForViolation);
   const match = useServerFn(manualMatchEzpassItem);
   const sendRetro = useServerFn(sendRetroAgreementLink);
