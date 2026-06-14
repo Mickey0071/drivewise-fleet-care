@@ -29,6 +29,8 @@ const TEMPLATES: Record<string, { type: string; items: string[] }> = {
   "Routine Inspection": { type: "inspection", items: [
     "Vehicle cleanliness (interior)",
     "Vehicle cleanliness (exterior)",
+    "Inspection sticker up to date (not expired)",
+    "Registration present & current",
     "All lights working (headlights, taillights, brake lights)",
     "Blinkers/turn signals working",
     "AC working (cold air)",
