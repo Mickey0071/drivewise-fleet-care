@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { vehicles, drivers } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { createRunnerTask } from "@/lib/runner-tasks.functions";
+import { createRmCardLink } from "@/lib/rm-cards.functions";
 import { computeScheduledItems } from "@/lib/maintenance-utils";
 import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 
@@ -46,7 +47,7 @@ const TEMPLATES: Record<string, { type: string; items: string[] }> = {
   ] },
   "Vehicle Transport": { type: "transport", items: ["Confirm origin & destination", "Inspect before transport", "Photograph condition", "Record mileage", "Confirm safe delivery"] },
   "Repair Pickup": { type: "parts", items: ["Confirm shop & contact", "Verify completed work order", "Inspect repaired item", "Collect invoice/receipt", "Record mileage", "Return vehicle"] },
-  "Routine Maintenance": { type: "routine_maintenance", items: [] },
+  "Routine Maintenance Check": { type: "routine_maintenance", items: [] },
   Custom: { type: "custom", items: [] },
 };
 const TEMPLATE_KEYS = Object.keys(TEMPLATES);
@@ -83,6 +84,7 @@ function formatPhone(value: string): string {
 function CreateTaskPage() {
   useStoreVersion();
   const sendFn = useServerFn(createRunnerTask);
+  const sendRmFn = useServerFn(createRmCardLink);
 
   const [runnerName, setRunnerName] = useState("");
   const [runnerPhone, setRunnerPhone] = useState("");
