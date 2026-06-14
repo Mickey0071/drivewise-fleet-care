@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { renderRentalAgreementPdf, type RentalAgreementPDFData } from "@/components/pdf/RentalAgreementPDF";
+import { DEFAULT_SETTINGS } from "@/lib/agreementSettings";
+import { getRequestHeader } from "@tanstack/react-start/server";
 
 export type ViolationReadinessState = "ready" | "awaiting_signature" | "missing_info";
 
