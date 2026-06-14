@@ -55,6 +55,11 @@ import {
   generateMailPacket,
   markViolationStage,
 } from "@/lib/liability-transfer.functions";
+import {
+  getViolationReadiness,
+  sendViolationRetroLink,
+  overrideViolationMailReady,
+} from "@/lib/violation-retro.functions";
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
 import { SubmitDisputeDialog } from "@/components/app/SubmitDisputeDialog";
@@ -93,7 +98,29 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
   const genTransfer = useServerFn(generateLiabilityTransfer);
   const genPacket = useServerFn(generateMailPacket);
   const mark = useServerFn(markViolationStage);
+  const readiness = useServerFn(getViolationReadiness);
+  const sendRetro = useServerFn(sendViolationRetroLink);
+  const override = useServerFn(overrideViolationMailReady);
   const [busy, setBusy] = useState<string | null>(null);
+  const [retroOpen, setRetroOpen] = useState(false);
+  const [retroPhone, setRetroPhone] = useState("");
+  const [retroMsg, setRetroMsg] = useState("");
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [overrideNote, setOverrideNote] = useState(
+    "Customer unreachable - proceeding with available info per N.J.S.A. 39:4-138.1",
+  );
+
+  const transferred0 = !!v.liability_transfer_generated_at;
+  const { data: status, refetch: refetchStatus } = useQuery({
+    queryKey: ["violation-readiness", v.id],
+    queryFn: () => readiness({ data: { violationId: v.id } }),
+    enabled: transferred0,
+  });
+
+  const refreshAll = () => {
+    refetchStatus();
+    onDone();
+  };
 
   const doTransfer = async () => {
     setBusy("transfer");
@@ -132,7 +159,7 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
       } else {
         toast.success("Mail packet ready to print");
       }
-      onDone();
+      refreshAll();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -145,7 +172,45 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
     try {
       await mark({ data: { violationId: v.id, stage } });
       toast.success(stage === "mailed" ? "Marked mailed" : "Marked disputed successfully");
-      onDone();
+      refreshAll();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const doSendRetro = async () => {
+    if (!retroPhone.trim()) {
+      toast.error("Enter a phone number");
+      return;
+    }
+    setBusy("retro");
+    try {
+      await sendRetro({
+        data: { violationId: v.id, phone: retroPhone.trim(), message: retroMsg.trim() || null },
+      });
+      toast.success("Retroactive agreement link sent — awaiting signature");
+      setRetroOpen(false);
+      refreshAll();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const doOverride = async () => {
+    if (!overrideNote.trim()) {
+      toast.error("A note is required for an override");
+      return;
+    }
+    setBusy("override");
+    try {
+      await override({ data: { violationId: v.id, note: overrideNote.trim() } });
+      toast.success("Override recorded — packet may proceed without signature");
+      setOverrideOpen(false);
+      refreshAll();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -158,6 +223,17 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
 
   if (!eligible && !transferred) return null;
 
+  const statusTone =
+    status?.state === "ready" ? "🟢" : status?.state === "awaiting_signature" ? "🔴" : "🟡";
+  const statusClass =
+    status?.state === "ready"
+      ? "bg-success/15 text-success border-success/30"
+      : status?.state === "awaiting_signature"
+        ? "bg-destructive/15 text-destructive border-destructive/30"
+        : "bg-warning/20 text-warning-foreground border-warning/40";
+  const canMail = status?.state === "ready";
+  const needsLink = status && (status.state === "missing_info" || status.state === "awaiting_signature");
+
   return (
     <div className="mt-2 flex flex-wrap justify-end gap-1">
       {!transferred && eligible && (
@@ -167,6 +243,14 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
       )}
       {transferred && (
         <>
+          {status && (
+            <span
+              className={`inline-flex items-center gap-1 self-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${statusClass}`}
+              title={status.missingFields.length ? `Missing: ${status.missingFields.join(", ")}` : undefined}
+            >
+              {statusTone} {status.label}
+            </span>
+          )}
           {v.liability_transfer_pdf_url && (
             <a
               href={v.liability_transfer_pdf_url}
@@ -177,12 +261,40 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
               Letter
             </a>
           )}
+          {needsLink && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setRetroPhone(status?.phone ?? "");
+                setRetroOpen(true);
+              }}
+            >
+              📲 Send Retroactive Agreement Link
+            </Button>
+          )}
           <Button size="sm" variant="outline" onClick={doPacket} disabled={busy === "packet"}>
             {busy === "packet" ? "Building…" : "🖨️ Mail Packet"}
           </Button>
           {!v.mailed_at && (
-            <Button size="sm" variant="ghost" onClick={() => doMark("mailed")} disabled={busy === "mailed"}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => doMark("mailed")}
+              disabled={busy === "mailed" || !canMail}
+              title={canMail ? undefined : "Requires a signed agreement or an admin override"}
+            >
               ✉️ Mark Mailed
+            </Button>
+          )}
+          {!v.mailed_at && status && status.state !== "ready" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground"
+              onClick={() => setOverrideOpen(true)}
+            >
+              ⚠️ Override
             </Button>
           )}
           {v.mailed_at && !v.transfer_confirmed_at && (
@@ -192,6 +304,76 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
           )}
         </>
       )}
+
+      <Dialog open={retroOpen} onOpenChange={setRetroOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send retroactive agreement link</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Texts the customer a link to sign their rental agreement. Once signed, the renter's
+              address, license # and DOB are filled in, a signed agreement PDF is attached, and the
+              packet becomes ready to mail.
+            </p>
+            <div className="space-y-1">
+              <Label>Customer phone</Label>
+              <Input
+                value={retroPhone}
+                onChange={(e) => setRetroPhone(e.target.value)}
+                placeholder="(555) 555-5555"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Custom message (optional)</Label>
+              <Textarea
+                value={retroMsg}
+                onChange={(e) => setRetroMsg(e.target.value)}
+                placeholder="Leave blank to use the default compliance message."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRetroOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={doSendRetro} disabled={busy === "retro"}>
+              {busy === "retro" ? "Sending…" : "Send link via SMS"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Admin override — proceed without signature</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Use this only when the customer is unreachable. This is recorded in the audit trail and
+              allows the mail packet to be marked mailed without a signed agreement.
+            </p>
+            <div className="space-y-1">
+              <Label>Override note (required)</Label>
+              <Textarea
+                value={overrideNote}
+                onChange={(e) => setOverrideNote(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOverrideOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={doOverride} disabled={busy === "override"}>
+              {busy === "override" ? "Saving…" : "Confirm override"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

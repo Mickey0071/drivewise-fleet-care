@@ -648,10 +648,49 @@ export const submitRetroAgreement = createServerFn({ method: "POST" })
       .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 5);
     const agreementUrl = signedPdf?.signedUrl ?? null;
 
+    // ---- Live-target shell: fill in the existing live driver/rental in place ----
+    // When this legacy row is a "retro shell" created for a violation already
+    // matched to a live rental, update those live records instead of creating
+    // duplicate driver/rental rows via promotion.
+    const targetRentalId = (lr as { target_rental_id?: string | null }).target_rental_id || null;
+    const targetDriverId = (lr as { target_driver_id?: string | null }).target_driver_id || null;
+    let updatedLiveTarget = false;
+    if (targetDriverId || targetRentalId) {
+      try {
+        if (targetDriverId) {
+          const driverPatch: Record<string, unknown> = {};
+          if (data.fullName) driverPatch.full_name = data.fullName;
+          if (data.address) driverPatch.address = data.address;
+          if (data.licenseNumber) driverPatch.license_number = data.licenseNumber;
+          if (data.dlState) driverPatch.dl_state = data.dlState;
+          if (data.dateOfBirth) driverPatch.date_of_birth = data.dateOfBirth;
+          if (data.phone) driverPatch.phone = data.phone;
+          if (data.email) driverPatch.email = data.email;
+          if (Object.keys(driverPatch).length) {
+            await supabaseAdmin.from("drivers").update(driverPatch as never).eq("id", targetDriverId);
+          }
+        }
+        if (targetRentalId) {
+          await supabaseAdmin
+            .from("rentals")
+            .update({
+              agreement_pdf_url: agreementUrl,
+              agreement_pdf_generated_at: nowIso,
+              client_signed_at: nowIso,
+              signed_by: data.fullName || null,
+            } as never)
+            .eq("id", targetRentalId);
+        }
+        updatedLiveTarget = true;
+      } catch (e) {
+        console.error("[retro] live-target update failed", e);
+      }
+    }
+
     // ---- Promote legacy rental into real drivers + rentals rows ----
     let promotion: LegacyPromotionResult | null = null;
     const alreadyPromoted = Boolean((lr as { promoted_at?: string | null }).promoted_at);
-    if (!alreadyPromoted) {
+    if (!updatedLiveTarget && !alreadyPromoted) {
       try {
         promotion = await promoteLegacyRental(
           supabaseAdmin,
