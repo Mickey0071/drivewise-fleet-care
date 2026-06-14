@@ -41,19 +41,21 @@ function vehicleLabelFromText(year: string | null, vehicle: string | null, plate
  */
 export const searchRentalsForViolation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { date?: string | null; plate?: string | null }) => {
+  .inputValidator((input: { date?: string | null; plate?: string | null; name?: string | null }) => {
     const date = (input.date || "").trim();
     const plate = (input.plate || "").trim().toUpperCase();
-    if (!date && !plate) throw new Error("Enter a date or a license plate");
+    const name = (input.name || "").trim();
+    if (!date && !plate && !name) throw new Error("Enter a date, license plate, or customer name");
     if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Date must be YYYY-MM-DD");
-    return { date: date || null, plate: plate || null };
+    return { date: date || null, plate: plate || null, name: name || null };
   })
   .handler(async ({ data }): Promise<ViolationSearchCard[]> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { date, plate } = data;
+    const { date, plate, name } = data;
     const cards: ViolationSearchCard[] = [];
     const plateKey = plate ? normPlate(plate) : null;
     const today = new Date().toISOString().slice(0, 10);
+    const nameKey = name ? name.toLowerCase() : null;
     // Inclusive date-range test: searched date must be on/after start and
     // on/before end. Open-ended rentals (no end) are active through today.
     const covers = (start: string | null, end: string | null): boolean => {
@@ -77,7 +79,20 @@ export const searchRentalsForViolation = createServerFn({ method: "POST" })
       vMap = new Map(matched.map((v) => [v.id, v]));
     }
 
-    if (!plate || (vehicleIds && vehicleIds.length > 0)) {
+    // If searching by customer name, resolve matching live driver ids up front.
+    let nameDriverIds: string[] | null = null;
+    if (nameKey) {
+      const { data: drivers } = await supabaseAdmin
+        .from("drivers")
+        .select("id")
+        .or(`full_name.ilike.%${name}%,phone.ilike.%${name}%,email.ilike.%${name}%`)
+        .limit(100);
+      nameDriverIds = (drivers ?? []).map((d) => d.id);
+    }
+
+    const plateBlocksLive = plate && (!vehicleIds || vehicleIds.length === 0);
+    const nameBlocksLive = nameKey && (!nameDriverIds || nameDriverIds.length === 0);
+    if (!plateBlocksLive && !nameBlocksLive) {
       let q = supabaseAdmin
         .from("rentals")
         .select(
@@ -86,6 +101,7 @@ export const searchRentalsForViolation = createServerFn({ method: "POST" })
         .order("start_date", { ascending: false })
         .limit(500);
       if (vehicleIds) q = q.in("vehicle_id", vehicleIds);
+      if (nameDriverIds) q = q.in("driver_id", nameDriverIds);
       if (date) q = q.lte("start_date", date);
       const { data: rentals } = await q;
       let live = rentals ?? [];
@@ -144,6 +160,13 @@ export const searchRentalsForViolation = createServerFn({ method: "POST" })
     let legacy = legacyRows ?? [];
     // Normalized plate filter (in JS so spaces/dashes don't break matching).
     if (plateKey) legacy = legacy.filter((r) => normPlate(r.plate) === plateKey);
+    // Customer-name filter (matches renter name, phone, or email).
+    if (nameKey) {
+      legacy = legacy.filter((r) => {
+        const hay = `${r.renter_name ?? ""} ${r.phone ?? ""} ${r.email ?? ""}`.toLowerCase();
+        return hay.includes(nameKey);
+      });
+    }
     if (date) {
       legacy = legacy.filter((r) =>
         covers(
