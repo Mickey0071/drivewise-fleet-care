@@ -942,6 +942,8 @@ export type Database = {
           source: string | null
           start_datetime: string | null
           status: string | null
+          target_driver_id: string | null
+          target_rental_id: string | null
           vehicle: string | null
           year: string | null
         }
@@ -975,6 +977,8 @@ export type Database = {
           source?: string | null
           start_datetime?: string | null
           status?: string | null
+          target_driver_id?: string | null
+          target_rental_id?: string | null
           vehicle?: string | null
           year?: string | null
         }
@@ -1008,6 +1012,8 @@ export type Database = {
           source?: string | null
           start_datetime?: string | null
           status?: string | null
+          target_driver_id?: string | null
+          target_rental_id?: string | null
           vehicle?: string | null
           year?: string | null
         }
@@ -2953,6 +2959,9 @@ export type Database = {
           liability_transfer_pdf_url: string | null
           license_plate: string | null
           location: string | null
+          mail_override_at: string | null
+          mail_override_by: string | null
+          mail_override_note: string | null
           mail_packet_printed_at: string | null
           mailed_at: string | null
           notes: string | null
@@ -2967,6 +2976,7 @@ export type Database = {
           resolution_notes: string | null
           resolution_reason: string | null
           resolved_at: string | null
+          retro_legacy_rental_id: string | null
           sent_to_customer_at: string | null
           signature_url: string | null
           signed_at: string | null
@@ -3009,6 +3019,9 @@ export type Database = {
           liability_transfer_pdf_url?: string | null
           license_plate?: string | null
           location?: string | null
+          mail_override_at?: string | null
+          mail_override_by?: string | null
+          mail_override_note?: string | null
           mail_packet_printed_at?: string | null
           mailed_at?: string | null
           notes?: string | null
@@ -3023,6 +3036,7 @@ export type Database = {
           resolution_notes?: string | null
           resolution_reason?: string | null
           resolved_at?: string | null
+          retro_legacy_rental_id?: string | null
           sent_to_customer_at?: string | null
           signature_url?: string | null
           signed_at?: string | null
@@ -3065,6 +3079,9 @@ export type Database = {
           liability_transfer_pdf_url?: string | null
           license_plate?: string | null
           location?: string | null
+          mail_override_at?: string | null
+          mail_override_by?: string | null
+          mail_override_note?: string | null
           mail_packet_printed_at?: string | null
           mailed_at?: string | null
           notes?: string | null
@@ -3079,6 +3096,7 @@ export type Database = {
           resolution_notes?: string | null
           resolution_reason?: string | null
           resolved_at?: string | null
+          retro_legacy_rental_id?: string | null
           sent_to_customer_at?: string | null
           signature_url?: string | null
           signed_at?: string | null
