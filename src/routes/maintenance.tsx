@@ -709,6 +709,16 @@ function MaintenancePage() {
               </Card>
             </div>
 
+            {/* RM Cards awaiting approval */}
+            <RmPendingApprovals
+              cards={pendingRmCards}
+              labelFor={(vid) => {
+                const v = vehicleById(vid);
+                return v ? `${v.year} ${v.make} ${v.model}` : vid;
+              }}
+              onChanged={refreshRmCards}
+            />
+
             {/* Recent RM Cards */}
             <Card className="mt-4">
               <CardHeader>
