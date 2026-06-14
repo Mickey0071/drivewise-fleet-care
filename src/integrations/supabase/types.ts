@@ -2949,11 +2949,14 @@ export type Database = {
           customer_token_expires_at: string | null
           date_issued: string
           description: string | null
+          dispute_method: string | null
+          disputed_at: string | null
           driver_id: string | null
           extracted_confidence: number | null
           fee: number
           final_warning_sent_at: string | null
           id: string
+          is_orphan: boolean
           legacy_rental_id: string | null
           liability_transfer_generated_at: string | null
           liability_transfer_pdf_url: string | null
@@ -2998,6 +3001,7 @@ export type Database = {
           vehicle_id: string
           viewed_at: string | null
           violation_time: string | null
+          workflow_stage: string | null
         }
         Insert: {
           amount?: number
@@ -3009,11 +3013,14 @@ export type Database = {
           customer_token_expires_at?: string | null
           date_issued?: string
           description?: string | null
+          dispute_method?: string | null
+          disputed_at?: string | null
           driver_id?: string | null
           extracted_confidence?: number | null
           fee?: number
           final_warning_sent_at?: string | null
           id: string
+          is_orphan?: boolean
           legacy_rental_id?: string | null
           liability_transfer_generated_at?: string | null
           liability_transfer_pdf_url?: string | null
@@ -3058,6 +3065,7 @@ export type Database = {
           vehicle_id: string
           viewed_at?: string | null
           violation_time?: string | null
+          workflow_stage?: string | null
         }
         Update: {
           amount?: number
@@ -3069,11 +3077,14 @@ export type Database = {
           customer_token_expires_at?: string | null
           date_issued?: string
           description?: string | null
+          dispute_method?: string | null
+          disputed_at?: string | null
           driver_id?: string | null
           extracted_confidence?: number | null
           fee?: number
           final_warning_sent_at?: string | null
           id?: string
+          is_orphan?: boolean
           legacy_rental_id?: string | null
           liability_transfer_generated_at?: string | null
           liability_transfer_pdf_url?: string | null
@@ -3118,6 +3129,7 @@ export type Database = {
           vehicle_id?: string
           viewed_at?: string | null
           violation_time?: string | null
+          workflow_stage?: string | null
         }
         Relationships: []
       }
