@@ -252,15 +252,26 @@ export const submitRmCardByToken = createServerFn({ method: "POST" })
       .eq("status", "sent");
     if (error) throw new Error(error.message);
 
-    const result = await applyRmSubmission({
-      vehicleId: c.vehicle_id,
-      items: data.items,
-      inspectorName: c.inspector_name || "Inspector",
-      inspectorType: c.inspector_type || "runner",
-      mileage: c.mileage_at_inspection,
-      overallNotes: data.overallNotes,
-    });
-    return { ok: true as const, ...result };
+    // Awaiting admin approval — does NOT touch the vehicle yet.
+    try {
+      const { sendSms } = await import("@/lib/ghl.server");
+      const { data: v } = await supabaseAdmin
+        .from("vehicles")
+        .select("year, make, model")
+        .eq("id", c.vehicle_id)
+        .maybeSingle();
+      const vv = (v as any) ?? {};
+      const label = `${vv.year ?? ""} ${vv.make ?? ""} ${vv.model ?? ""}`.trim() || c.vehicle_id;
+      const failed = data.items.filter((i) => i.status === "Fail").length;
+      await sendSms(
+        "267-221-3977",
+        `🔔 RM Card submitted for review: ${label}\nBy ${c.inspector_name || "runner"} · ${failed} failed item(s). Approve in Maintenance.`,
+        "Camauto Admin",
+      );
+    } catch (e) {
+      console.error("rm review notify failed", e);
+    }
+    return { ok: true as const, pending: true as const };
   });
 
 /** Admin: list RM Cards (recent + per-vehicle history). */
