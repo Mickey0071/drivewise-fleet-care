@@ -157,10 +157,35 @@ function CreateTaskPage() {
       const vehicleLabel = vehicleId !== "none"
         ? vehicleOptions.find((v) => v.id === vehicleId)?.label
         : undefined;
+      // Routine Maintenance Check → send an RM Card link (Pass/Fail), gated by admin approval.
+      if (isRm) {
+        const rmMeta = rmMetaForVehicle(vehicleId);
+        await sendRmFn({
+          data: {
+            vehicleId,
+            items: rmMeta.rm.map((r) => ({
+              type: r.type,
+              customId: r.customId ?? undefined,
+              label: r.label,
+              due: r.due ?? undefined,
+            })),
+            inspectorName: runnerName.trim(),
+            inspectorPhone: runnerPhone.trim(),
+            inspectorType: "runner",
+            mileage: rmMeta.mileage,
+            vehicleLabel,
+          },
+        });
+        toast.success(`✓ RM Card link sent to ${runnerName.trim()}`);
+        setRunnerName(""); setRunnerPhone(""); setTitle(""); setPriority("medium");
+        setVehicleId("none"); setCustomerId("none"); setLocation(""); setScheduledAt("");
+        setInstructions(""); setTemplate(""); setItems([newItem()]);
+        setRequiresPhotos(false); setPhotosCount("2"); setRmItems([]);
+        return;
+      }
       const customer = customerId !== "none"
         ? customerOptions.find((c) => c.id === customerId)
         : undefined;
-      const rmMeta = isRm ? rmMetaForVehicle(vehicleId) : null;
       const res = await sendFn({
         data: {
           runnerName: runnerName.trim(),
@@ -179,9 +204,9 @@ function CreateTaskPage() {
           customerPhone: customer?.phone,
           requiresPhotos,
           photosCountRequired: requiresPhotos ? Math.max(1, Number(photosCount) || 1) : 0,
-          rmVehicleId: isRm ? vehicleId : null,
-          rmMileage: rmMeta?.mileage ?? null,
-          rmItems: rmMeta?.rm ?? [],
+          rmVehicleId: null,
+          rmMileage: null,
+          rmItems: [],
         },
       });
       if (res.smsStatus === "sent") toast.success(`✓ Task sent to ${runnerName.trim()}`);
