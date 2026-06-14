@@ -13,7 +13,7 @@ import {
   Search,
   Download,
 } from "lucide-react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Send, Ban, FilePlus2, ShieldX } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,6 +41,11 @@ import {
 } from "@/lib/ezpass.functions";
 import { debugEzpassMatch } from "@/lib/ezpass.functions";
 import { createManualEzpassBatch } from "@/lib/ezpass.functions";
+import {
+  searchRentalsForViolation,
+  sendRetroAgreementLink,
+  type ViolationSearchCard,
+} from "@/lib/retro-agreement.functions";
 import { loadPdf } from "@/lib/pdf-to-image";
 
 export const Route = createFileRoute("/violations_/bulk-upload")({
