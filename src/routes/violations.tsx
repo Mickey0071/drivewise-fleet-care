@@ -523,6 +523,7 @@ function ViolationsPage() {
   const [deleteFor, setDeleteFor] = useState<ViolationRow | null>(null);
   const [editFor, setEditFor] = useState<ViolationRow | null>(null);
   const [findFor, setFindFor] = useState<ViolationRow | null>(null);
+  const [createAgreementFor, setCreateAgreementFor] = useState<ViolationRow | null>(null);
 
   const delFn = useServerFn(deleteViolation);
   const delMutation = useMutation({
