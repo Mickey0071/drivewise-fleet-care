@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { renderRentalAgreementPdf, type RentalAgreementPDFData } from "@/components/pdf/RentalAgreementPDF";
+import { DEFAULT_SETTINGS } from "@/lib/agreementSettings";
+import { getRequestHeader } from "@tanstack/react-start/server";
 
 export type ViolationReadinessState = "ready" | "awaiting_signature" | "missing_info";
 
@@ -332,4 +335,364 @@ export const overrideViolationMailReady = createServerFn({ method: "POST" })
     } as never);
 
     return { ok: true as const, note };
+  });
+
+/** Convert a base64 PNG data URL to JPEG bytes that jsPDF can embed in the Worker runtime. */
+async function signatureToJpeg(dataUrl: string): Promise<Buffer | null> {
+  try {
+    const base64 = dataUrl.split(",")[1];
+    if (!base64) return null;
+    const ab = Buffer.from(base64, "base64");
+    // @ts-expect-error — upng-js has no types
+    const UPNG = (await import("upng-js")).default;
+    const jpeg = (await import("jpeg-js")).default;
+    const decoded = UPNG.decode(ab);
+    const rgba = new Uint8Array(UPNG.toRGBA8(decoded)[0]);
+    const w = decoded.width;
+    const h = decoded.height;
+    const rgb = new Uint8Array(w * h * 4);
+    for (let i = 0; i < w * h; i++) {
+      const a = rgba[i * 4 + 3] / 255;
+      rgb[i * 4] = Math.round(rgba[i * 4] * a + 255 * (1 - a));
+      rgb[i * 4 + 1] = Math.round(rgba[i * 4 + 1] * a + 255 * (1 - a));
+      rgb[i * 4 + 2] = Math.round(rgba[i * 4 + 2] * a + 255 * (1 - a));
+      rgb[i * 4 + 3] = 255;
+    }
+    const encoded = jpeg.encode({ data: rgb, width: w, height: h }, 90);
+    return Buffer.from(encoded.data);
+  } catch (e) {
+    console.warn("[violation-agreement] signature convert failed", e);
+    return null;
+  }
+}
+
+/** Read the violation date (YYYY-MM-DD) for client-side date prefill / validation. */
+async function logViolationAudit(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  violationId: string,
+  fromStatus: string | null,
+  toStatus: string,
+  reason: string,
+  changedBy: string,
+) {
+  let changedByName: string | null = null;
+  const { data: prof } = await admin
+    .from("profiles")
+    .select("full_name")
+    .eq("id", changedBy)
+    .maybeSingle();
+  changedByName = (prof?.full_name as string) ?? null;
+  await admin.from("violation_status_history").insert({
+    violation_id: violationId,
+    from_status: fromStatus,
+    to_status: toStatus,
+    reason,
+    changed_by: changedBy,
+    changed_by_name: changedByName,
+  } as never);
+}
+
+/**
+ * Create Agreement flow (from the violation match dialog).
+ *
+ * Builds a standard customer-style rental agreement covering the supplied
+ * dates, then either:
+ *  - "link": seeds a legacy_rentals retro shell with the entered info + dates,
+ *    sends the SMS sign link (existing /sign-agreement-retro flow), and marks
+ *    the violation "Awaiting signature".
+ *  - "admin": generates the signed agreement PDF immediately (same template,
+ *    NO admin watermark / N.J.S.A. text — those belong only in the cover
+ *    letter), fills the live driver/rental (or legacy shell) in place, and
+ *    records who signed it in the INTERNAL audit trail only.
+ *
+ * Dates MUST cover the violation date. Renter address / license # / DOB are
+ * required. The audit log is never written onto the PDF.
+ */
+export const createViolationAgreement = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        violationId: z.string().min(1).max(64),
+        startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Start date required"),
+        endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "End date required"),
+        fullName: z.string().trim().min(2).max(120),
+        phone: z.string().trim().min(7).max(30),
+        email: z.string().trim().max(120).optional().default(""),
+        address: z.string().trim().min(3, "Address is required").max(300),
+        licenseNumber: z.string().trim().min(2, "License # is required").max(40),
+        dlState: z.string().trim().max(4).optional().default(""),
+        dateOfBirth: z.string().trim().min(4, "Date of birth is required").max(20),
+        signingMethod: z.enum(["link", "admin"]),
+        signatureDataUrl: z.string().optional().default(""),
+        customMessage: z.string().max(500).optional().nullable(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: v, error } = await supabaseAdmin
+      .from("violations")
+      .select("*")
+      .eq("id", data.violationId)
+      .maybeSingle();
+    if (error || !v) throw new Error("Violation not found");
+
+    const violationDate = String((v as { date_issued?: string }).date_issued || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(violationDate)) {
+      throw new Error("This violation has no valid date to validate against");
+    }
+    // Date coverage validation (server-side gate).
+    if (data.startDate > violationDate) {
+      throw new Error(`Rental start date must be on or before the violation date (${violationDate})`);
+    }
+    if (data.endDate < violationDate) {
+      throw new Error(`Rental end date must be on or after the violation date (${violationDate})`);
+    }
+    if (data.endDate < data.startDate) {
+      throw new Error("Rental end date cannot be before the start date");
+    }
+
+    const t = await resolveTarget(supabaseAdmin, v);
+    const nowIso = new Date().toISOString();
+
+    // ---- Ensure a legacy_rentals shell exists, seeded with entered info + dates ----
+    let shellId: string | null =
+      (v.retro_legacy_rental_id as string | null) ||
+      (t.isLegacyDirect ? (v.legacy_rental_id as string | null) : null);
+
+    const ve = t.vehicle ?? {};
+    const d = t.driver ?? {};
+    const r = t.rental ?? {};
+    const vehicleText = [ve.make, ve.model].filter(Boolean).join(" ") || (ve.make ?? null);
+    const plate = (ve.plate as string) ?? (v.license_plate as string) ?? null;
+
+    const shellPatch = {
+      renter_name: data.fullName,
+      vehicle: vehicleText,
+      year: ve.year ? String(ve.year) : null,
+      color: (ve.color as string) ?? null,
+      plate,
+      start_datetime: data.startDate,
+      end_datetime: data.endDate,
+      phone: data.phone,
+      email: data.email || (d.email as string) || null,
+      address: data.address,
+      dl_number: data.licenseNumber,
+      dl_state: data.dlState || (d.dl_state as string) || null,
+      dob: data.dateOfBirth,
+    };
+
+    if (!shellId) {
+      const { data: shell, error: insErr } = await supabaseAdmin
+        .from("legacy_rentals")
+        .insert({
+          ...shellPatch,
+          status: "retro_shell",
+          target_rental_id: (r.id as string) ?? null,
+          target_driver_id: (d.id as string) ?? null,
+        } as never)
+        .select("id")
+        .single();
+      if (insErr || !shell) throw new Error(insErr?.message || "Could not create agreement record");
+      shellId = (shell as { id: string }).id;
+      await supabaseAdmin
+        .from("violations")
+        .update({ retro_legacy_rental_id: shellId, updated_at: nowIso } as never)
+        .eq("id", v.id);
+    } else {
+      await supabaseAdmin.from("legacy_rentals").update(shellPatch as never).eq("id", shellId);
+    }
+
+    await logViolationAudit(
+      supabaseAdmin,
+      v.id,
+      (v as { status?: string }).status ?? null,
+      "agreement_created",
+      `Agreement created by admin covering ${data.startDate} → ${data.endDate}`,
+      context.userId,
+    );
+
+    // ================= LINK METHOD =================
+    if (data.signingMethod === "link") {
+      const { sendSms } = await import("@/lib/ghl.server");
+      const { data: lr } = await supabaseAdmin
+        .from("legacy_rentals")
+        .select("id, renter_name, start_datetime, retro_token")
+        .eq("id", shellId)
+        .maybeSingle();
+      const token = (lr?.retro_token as string) || makeToken();
+      const expires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
+      const { error: upErr } = await supabaseAdmin
+        .from("legacy_rentals")
+        .update({
+          retro_token: token,
+          retro_token_expires_at: expires,
+          retro_sent_at: nowIso,
+          phone: data.phone,
+        } as never)
+        .eq("id", shellId);
+      if (upErr) throw new Error(upErr.message);
+
+      const link = `${appOrigin()}/sign-agreement-retro/${token}`;
+      const name = (lr?.renter_name as string) || data.fullName || "there";
+      const dateStr = new Date(data.startDate).toLocaleDateString("en-US");
+      const sms =
+        (data.customMessage && data.customMessage.trim()) ||
+        `Hi ${name}, Camauto Rentals needs you to sign a rental agreement for your rental on ${dateStr}. This is required for compliance. Click to sign: ${link}`;
+      await sendSms(data.phone, sms, name);
+
+      await logViolationAudit(
+        supabaseAdmin,
+        v.id,
+        "agreement_created",
+        "sign_link_sent",
+        `Sign link sent to customer at ${data.phone}`,
+        context.userId,
+      );
+
+      return { ok: true as const, method: "link" as const, link };
+    }
+
+    // ================= ADMIN SIGN METHOD =================
+    const sigJpeg = data.signatureDataUrl ? await signatureToJpeg(data.signatureDataUrl) : null;
+
+    // Upload signature image (if drawn)
+    let signatureUrl: string | null = null;
+    if (sigJpeg) {
+      const sPath = `retro/${shellId}/signature-${Date.now()}.jpg`;
+      const { error: sErr } = await supabaseAdmin.storage
+        .from("legacy-agreements")
+        .upload(sPath, sigJpeg, { contentType: "image/jpeg", upsert: true });
+      if (!sErr) {
+        const { data: signed } = await supabaseAdmin.storage
+          .from("legacy-agreements")
+          .createSignedUrl(sPath, 60 * 60 * 24 * 365 * 5);
+        signatureUrl = signed?.signedUrl ?? null;
+      }
+    }
+
+    // Build a STANDARD customer-style agreement PDF (no admin markings).
+    const [makeGuess, ...modelGuess] = String(vehicleText || "").split(/\s+/);
+    const pdfData: RentalAgreementPDFData = {
+      rental: {
+        id: String(v.id),
+        startDate: data.startDate,
+        endDate: data.endDate,
+        billingCadence: null,
+        billingPeriod: null,
+        rateAmount: null,
+        rate: 0,
+        weeklyRate: 0,
+        depositPaid: 0,
+        signedBy: data.fullName,
+        signedAt: nowIso,
+        clientSignedAt: nowIso,
+        agreementVersion: DEFAULT_SETTINGS.agreementVersion,
+      },
+      driver: {
+        fullName: data.fullName,
+        firstName: null,
+        lastName: null,
+        middleInitial: null,
+        dateOfBirth: data.dateOfBirth || null,
+        licenseNumber: data.licenseNumber || "",
+        licenseExpiry: null,
+        dlState: data.dlState || (d.dl_state as string) || null,
+        phone: data.phone || "",
+        email: data.email || (d.email as string) || "",
+        streetAddress: null,
+        aptUnit: null,
+        city: null,
+        state: null,
+        zipCode: null,
+        address: data.address || null,
+        altContactName: null,
+        altContactPhone: null,
+      },
+      vehicle: {
+        year: ve.year ? String(ve.year) : "",
+        make: (ve.make as string) || makeGuess || "",
+        model: (ve.model as string) || modelGuess.join(" "),
+        color: (ve.color as string) ?? null,
+        plate: plate || "",
+        vin: (ve.vin as string) || "",
+        mileage: 0,
+        fuelLevelPickup: null,
+        ezPassTag: null,
+      },
+      extensions: [],
+      settings: DEFAULT_SETTINGS,
+      signaturePng: sigJpeg,
+    };
+    const bytes = await renderRentalAgreementPdf(pdfData);
+    const pdfPath = `retro/${shellId}/agreement-${Date.now()}.pdf`;
+    const { error: pErr } = await supabaseAdmin.storage
+      .from("legacy-agreements")
+      .upload(pdfPath, Buffer.from(bytes), { contentType: "application/pdf", upsert: true });
+    if (pErr) throw new Error(pErr.message);
+    const { data: signedPdf } = await supabaseAdmin.storage
+      .from("legacy-agreements")
+      .createSignedUrl(pdfPath, 60 * 60 * 24 * 365 * 5);
+    const agreementUrl = signedPdf?.signedUrl ?? null;
+
+    const ip =
+      getRequestHeader("cf-connecting-ip") ||
+      (getRequestHeader("x-forwarded-for") || "").split(",")[0].trim() ||
+      null;
+
+    // Persist signed state on the shell.
+    await supabaseAdmin
+      .from("legacy_rentals")
+      .update({
+        retro_signed_at: nowIso,
+        retro_signed_ip: ip,
+        retro_signature_url: signatureUrl,
+        agreement_pdf_url: agreementUrl,
+        retro_token: null,
+        retro_token_expires_at: null,
+      } as never)
+      .eq("id", shellId);
+
+    // Fill the live driver/rental in place when this targets live records.
+    if (t.driver?.id) {
+      const driverPatch: Record<string, unknown> = {
+        full_name: data.fullName,
+        address: data.address,
+        license_number: data.licenseNumber,
+        date_of_birth: data.dateOfBirth,
+        phone: data.phone,
+      };
+      if (data.dlState) driverPatch.dl_state = data.dlState;
+      if (data.email) driverPatch.email = data.email;
+      await supabaseAdmin.from("drivers").update(driverPatch as never).eq("id", t.driver.id);
+    }
+    if (t.rental?.id) {
+      await supabaseAdmin
+        .from("rentals")
+        .update({
+          agreement_pdf_url: agreementUrl,
+          agreement_pdf_generated_at: nowIso,
+          client_signed_at: nowIso,
+          signed_by: data.fullName || null,
+        } as never)
+        .eq("id", t.rental.id);
+    }
+
+    // INTERNAL audit only — records who signed on the customer's behalf.
+    // This never appears on the rental agreement PDF.
+    await logViolationAudit(
+      supabaseAdmin,
+      v.id,
+      "agreement_created",
+      "admin_signed",
+      sigJpeg
+        ? "Admin captured customer's signature in person"
+        : `Admin signed on behalf with customer's typed name (${data.fullName})`,
+      context.userId,
+    );
+
+    return { ok: true as const, method: "admin" as const, agreementUrl };
   });

@@ -63,6 +63,7 @@ import {
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
 import { SubmitDisputeDialog } from "@/components/app/SubmitDisputeDialog";
+import { CreateAgreementDialog } from "@/components/app/CreateAgreementDialog";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
 import { downloadCSV } from "@/lib/exports";
 
@@ -103,6 +104,7 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
   const override = useServerFn(overrideViolationMailReady);
   const [busy, setBusy] = useState<string | null>(null);
   const [retroOpen, setRetroOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [retroPhone, setRetroPhone] = useState("");
   const [retroMsg, setRetroMsg] = useState("");
   const [overrideOpen, setOverrideOpen] = useState(false);
@@ -265,12 +267,9 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                setRetroPhone(status?.phone ?? "");
-                setRetroOpen(true);
-              }}
+              onClick={() => setCreateOpen(true)}
             >
-              📲 Send Retroactive Agreement Link
+              ✍️ Create Agreement
             </Button>
           )}
           <Button size="sm" variant="outline" onClick={doPacket} disabled={busy === "packet"}>
@@ -344,6 +343,15 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CreateAgreementDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        violationId={v.id}
+        violationDate={v.date_issued}
+        defaults={{ fullName: status?.customerName ?? v.driver_name ?? null, phone: status?.phone ?? v.driver_phone ?? null }}
+        onDone={refreshAll}
+      />
 
       <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
         <DialogContent>
