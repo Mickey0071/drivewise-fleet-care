@@ -90,12 +90,42 @@ export const listViolations = createServerFn({ method: "GET" })
     const vMap = new Map(
       (vehicles ?? []).map((v) => [v.id, `${v.year} ${v.make} ${v.model} (${v.plate})`]),
     );
-    return rows.map((r) => ({
-      ...r,
-      driver_name: r.driver_id ? dMap.get(r.driver_id) ?? null : null,
-      driver_phone: r.driver_id ? dPhone.get(r.driver_id) ?? null : null,
-      vehicle_label: r.vehicle_id ? vMap.get(r.vehicle_id) ?? null : null,
-    }));
+    // Pull matched rentals so we can tell whether a signed agreement is on file
+    // and surface the rental period in the dashboard.
+    const rentalIds = Array.from(new Set(rows.map((r) => r.rental_id).filter(Boolean))) as string[];
+    const { data: rentalRows } = rentalIds.length
+      ? await supabaseAdmin
+          .from("rentals")
+          .select("id, start_date, end_date, agreement_pdf_url, client_signed_at")
+          .in("id", rentalIds)
+      : { data: [] as { id: string; start_date: string | null; end_date: string | null; agreement_pdf_url: string | null; client_signed_at: string | null }[] };
+    const rMap = new Map((rentalRows ?? []).map((r) => [r.id, r]));
+    // Legacy retro shells that have been signed.
+    const legacyIds = Array.from(
+      new Set(rows.map((r) => (r as any).retro_legacy_rental_id || r.legacy_rental_id).filter(Boolean)),
+    ) as string[];
+    const { data: legacyRows } = legacyIds.length
+      ? await supabaseAdmin
+          .from("legacy_rentals")
+          .select("id, retro_signed_at")
+          .in("id", legacyIds)
+      : { data: [] as { id: string; retro_signed_at: string | null }[] };
+    const lMap = new Map((legacyRows ?? []).map((r) => [r.id, r]));
+    return rows.map((r) => {
+      const rental = r.rental_id ? rMap.get(r.rental_id) : undefined;
+      const legacyId = (r as any).retro_legacy_rental_id || r.legacy_rental_id;
+      const legacy = legacyId ? lMap.get(legacyId) : undefined;
+      const agreementOnFile = Boolean(rental?.agreement_pdf_url) || Boolean(legacy?.retro_signed_at);
+      return {
+        ...r,
+        driver_name: r.driver_id ? dMap.get(r.driver_id) ?? null : null,
+        driver_phone: r.driver_id ? dPhone.get(r.driver_id) ?? null : null,
+        vehicle_label: r.vehicle_id ? vMap.get(r.vehicle_id) ?? null : null,
+        agreement_on_file: agreementOnFile,
+        rental_start: rental?.start_date ?? null,
+        rental_end: rental?.end_date ?? null,
+      };
+    });
   });
 
 export interface PlateMatch {
