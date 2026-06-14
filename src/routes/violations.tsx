@@ -929,6 +929,20 @@ function ViolationsPage() {
                       </td>
                       <td className="p-3">
                         <StatusBadge status={v.status} />
+                        {v.is_orphan && (
+                          <div className="mt-1">
+                            <Badge variant="destructive" className="text-xs">Plate Not Mine</Badge>
+                          </div>
+                        )}
+                        {!v.is_orphan && v.rental_id && !v.agreement_on_file && tabOf(v) === "uploaded" && (
+                          <div className="mt-1 text-xs text-amber-600">🟡 No signed agreement</div>
+                        )}
+                        {v.dispute_method && (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            Disputed via {v.dispute_method.replace("_", "-")}
+                            {v.disputed_at ? ` · ${new Date(v.disputed_at).toLocaleDateString()}` : ""}
+                          </div>
+                        )}
                         {v.status === "paid" && v.paid_at && (
                           <div className="mt-1 text-xs text-muted-foreground">
                             ✓ {new Date(v.paid_at).toLocaleString()}
