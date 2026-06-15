@@ -70,6 +70,7 @@ import {
   recordViolationDispute,
   flagViolationOrphan,
 } from "@/lib/violations-workflow.functions";
+import { getViolationAgreement } from "@/lib/violations-workflow.functions";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
 import { downloadCSV } from "@/lib/exports";
 
@@ -101,6 +102,173 @@ export const Route = createFileRoute("/violations")({
   component: ViolationsPage,
 });
 
+/** Downloads (or generates) the signed rental agreement for a violation.
+ *  If no agreement exists yet it opens the Create Agreement form instead. */
+function DownloadAgreementButton({
+  v,
+  onNoAgreement,
+  onDownloaded,
+  label = "📄 Download Agreement",
+  variant = "outline",
+}: {
+  v: ViolationRow;
+  onNoAgreement: () => void;
+  onDownloaded?: () => void;
+  label?: string;
+  variant?: "outline" | "ghost" | "default";
+}) {
+  const getAgreement = useServerFn(getViolationAgreement);
+  const [busy, setBusy] = useState(false);
+  const handle = async () => {
+    setBusy(true);
+    try {
+      const res = await getAgreement({ data: { violationId: v.id } });
+      if (!res.exists || !res.url) {
+        toast.message("No agreement on file — create one to continue");
+        onNoAgreement();
+        return;
+      }
+      window.open(res.url, "_blank");
+      onDownloaded?.();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not load agreement");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Button size="sm" variant={variant} onClick={handle} disabled={busy}>
+      {busy ? "Loading…" : label}
+    </Button>
+  );
+}
+
+/** Downloads the combined dispute / mail packet (cover letter + agreement + notice). */
+function DownloadPacketButton({
+  v,
+  label = "📦 Download Dispute Packet",
+}: {
+  v: ViolationRow;
+  label?: string;
+}) {
+  const genPacket = useServerFn(generateMailPacket);
+  const [busy, setBusy] = useState(false);
+  const handle = async () => {
+    setBusy(true);
+    try {
+      const res = await genPacket({ data: { violationId: v.id } });
+      const bin = atob(res.base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      if (res.missing.length) {
+        toast.message(`Packet ready — ${res.missing.length} item(s) missing`, {
+          description: res.missing.join(", "),
+        });
+      } else {
+        toast.success("Dispute packet downloaded");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not build packet");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Button size="sm" variant="outline" onClick={handle} disabled={busy}>
+      {busy ? "Building…" : label}
+    </Button>
+  );
+}
+
+/** "How are you disputing?" gate before moving a violation to the Disputed tab. */
+function DisputeMethodDialog({
+  open,
+  onOpenChange,
+  violationId,
+  onDone,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  violationId: string;
+  onDone: () => void;
+}) {
+  const disputeFn = useServerFn(recordViolationDispute);
+  const packetFn = useServerFn(generateMailPacket);
+  const [method, setMethod] = useState<"online" | "mail" | "walk_in">("online");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      if (method === "mail") {
+        await packetFn({ data: { violationId } });
+      }
+      await disputeFn({ data: { violationId, method } });
+      toast.success("Dispute method recorded — moved to Disputed");
+      onOpenChange(false);
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not record dispute");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const OPTIONS: { value: "online" | "mail" | "walk_in"; title: string; desc: string }[] = [
+    { value: "online", title: "🌐 Online", desc: "ezpassnj.com" },
+    { value: "mail", title: "✉️ Mail", desc: "P.O. Box 4971, Trenton NJ 08650 (generates packet)" },
+    { value: "walk_in", title: "🚶 Walk-in", desc: "EZPass office" },
+  ];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>How are you disputing?</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2">
+          {OPTIONS.map((o) => (
+            <label
+              key={o.value}
+              className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 ${
+                method === o.value ? "border-primary bg-primary/5" : ""
+              }`}
+            >
+              <input
+                type="radio"
+                name="dispute-method"
+                className="mt-1"
+                checked={method === o.value}
+                onChange={() => setMethod(o.value)}
+              />
+              <div>
+                <p className="font-medium">{o.title}</p>
+                <p className="text-xs text-muted-foreground">{o.desc}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={busy}>
+            {busy ? "Recording…" : "Record & Move to Disputed"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /** Per-tab action buttons for a violation row. */
 function RowActions({
   v,
@@ -116,12 +284,12 @@ function RowActions({
   onDone: () => void;
 }) {
   const stageFn = useServerFn(setViolationStage);
-  const disputeFn = useServerFn(recordViolationDispute);
   const orphanFn = useServerFn(flagViolationOrphan);
-  const packetFn = useServerFn(generateMailPacket);
   const sendLinkFn = useServerFn(sendViolationRetroLink);
   const resolveFn = useServerFn(changeViolationStatus);
   const [busy, setBusy] = useState<string | null>(null);
+  const [downloaded, setDownloaded] = useState(false);
+  const [disputeOpen, setDisputeOpen] = useState(false);
 
   const run = async (key: string, fn: () => Promise<unknown>, ok: string) => {
     setBusy(key);
@@ -147,6 +315,7 @@ function RowActions({
         </Button>
         {matched && !v.agreement_on_file && (
           <>
+            <span className="self-center text-xs text-amber-600">⚠️ No agreement on file</span>
             <Button
               size="sm"
               variant="outline"
@@ -162,20 +331,29 @@ function RowActions({
               Send Sign Link
             </Button>
             <Button size="sm" variant="outline" onClick={onCreateAgreement}>
-              Create Agreement
+              📄 Create Agreement
             </Button>
           </>
         )}
         {matched && v.agreement_on_file && (
-          <Button
-            size="sm"
-            disabled={busy === "stage"}
-            onClick={() =>
-              run("stage", () => stageFn({ data: { violationId: v.id, stage: "matched" } }), "Moved to Matched")
-            }
-          >
-            Move to Matched
-          </Button>
+          <>
+            <span className="self-center text-xs text-success">✅ Signed agreement on file</span>
+            <DownloadAgreementButton
+              v={v}
+              onNoAgreement={onCreateAgreement}
+              onDownloaded={() => setDownloaded(true)}
+            />
+            <Button
+              size="sm"
+              disabled={busy === "stage" || !downloaded}
+              title={downloaded ? undefined : "Download the agreement first"}
+              onClick={() =>
+                run("stage", () => stageFn({ data: { violationId: v.id, stage: "matched" } }), "Moved to Matched")
+              }
+            >
+              Move to Matched →
+            </Button>
+          </>
         )}
         <Button
           size="sm"
@@ -198,52 +376,17 @@ function RowActions({
         <Button size="sm" variant="outline" onClick={onToggleDetails}>
           View Details
         </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" disabled={busy === "dispute"}>
-              Dispute <ChevronDown className="ml-1 h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() =>
-                run("dispute", () => disputeFn({ data: { violationId: v.id, method: "online" } }), "Recorded online dispute")
-              }
-            >
-              Online
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() =>
-                run("dispute", () => disputeFn({ data: { violationId: v.id, method: "walk_in" } }), "Recorded walk-in dispute")
-              }
-            >
-              Walk-in
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() =>
-                run(
-                  "dispute",
-                  async () => {
-                    await packetFn({ data: { violationId: v.id } });
-                    await disputeFn({ data: { violationId: v.id, method: "mail" } });
-                  },
-                  "Mail packet generated & dispute recorded",
-                )
-              }
-            >
-              Mail (generate packet)
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button
-          size="sm"
-          disabled={busy === "stage"}
-          onClick={() =>
-            run("stage", () => stageFn({ data: { violationId: v.id, stage: "disputed" } }), "Moved to Disputed")
-          }
-        >
-          Move to Disputed
+        <DownloadAgreementButton v={v} onNoAgreement={onCreateAgreement} />
+        <DownloadPacketButton v={v} />
+        <Button size="sm" onClick={() => setDisputeOpen(true)}>
+          Move to Disputed →
         </Button>
+        <DisputeMethodDialog
+          open={disputeOpen}
+          onOpenChange={setDisputeOpen}
+          violationId={v.id}
+          onDone={onDone}
+        />
       </>
     );
   }
@@ -254,37 +397,38 @@ function RowActions({
         <Button size="sm" variant="outline" onClick={onToggleDetails}>
           View Details
         </Button>
+        <DownloadAgreementButton v={v} onNoAgreement={onCreateAgreement} />
+        <DownloadPacketButton v={v} label="📦 Re-download Dispute Packet" />
         <Button
           size="sm"
-          variant="outline"
+          variant="default"
           disabled={busy === "resolve"}
           onClick={() =>
             run(
               "resolve",
-              () => resolveFn({ data: { id: v.id, status: "resolved", reason: "EZPass approved liability transfer" } }),
+              async () => {
+                await resolveFn({ data: { id: v.id, status: "resolved", reason: "EZPass approved liability transfer" } });
+                await stageFn({ data: { violationId: v.id, stage: "completed" } });
+              },
               "Marked resolved",
             )
           }
         >
-          Mark Resolved
-        </Button>
-        <Button
-          size="sm"
-          disabled={busy === "stage"}
-          onClick={() =>
-            run("stage", () => stageFn({ data: { violationId: v.id, stage: "completed" } }), "Moved to Completed")
-          }
-        >
-          Move to Completed
+          ✅ Mark Resolved
         </Button>
       </>
     );
   }
 
+  // completed (read-only)
   return (
-    <Button size="sm" variant="outline" onClick={onToggleDetails}>
-      View Details
-    </Button>
+    <>
+      <Button size="sm" variant="outline" onClick={onToggleDetails}>
+        View Details
+      </Button>
+      <DownloadAgreementButton v={v} onNoAgreement={onCreateAgreement} />
+      <DownloadPacketButton v={v} label="📦 Download Final Packet" />
+    </>
   );
 }
 
