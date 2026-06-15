@@ -1547,14 +1547,6 @@ function ViolationsPage() {
                       </td>
                       <td className="p-3">
                         <div className="font-medium">{v.driver_name || "Unknown renter"}</div>
-                        {v.driver_phone && (
-                          <a
-                            href={`tel:${v.driver_phone.replace(/[^\d]/g, "")}`}
-                            className="flex items-center gap-1 text-xs text-primary hover:underline"
-                          >
-                            <Phone className="h-3 w-3" /> {v.driver_phone}
-                          </a>
-                        )}
                         {v.rental_id && (
                           <div className="text-xs text-muted-foreground">{v.rental_id}</div>
                         )}

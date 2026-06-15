@@ -506,6 +506,7 @@ export type Database = {
           location: string | null
           match_status: string
           plate: string | null
+          reference_number: string | null
           rental_id: string | null
           updated_at: string
           vehicle_id: string | null
@@ -525,6 +526,7 @@ export type Database = {
           location?: string | null
           match_status?: string
           plate?: string | null
+          reference_number?: string | null
           rental_id?: string | null
           updated_at?: string
           vehicle_id?: string | null
@@ -544,6 +546,7 @@ export type Database = {
           location?: string | null
           match_status?: string
           plate?: string | null
+          reference_number?: string | null
           rental_id?: string | null
           updated_at?: string
           vehicle_id?: string | null
