@@ -435,6 +435,8 @@ export interface RentalOption {
   agreement_on_file?: boolean;
   driver_phone?: string | null;
   driver_email?: string | null;
+  /** Plate was not stored on the legacy row; inferred from the fleet by vehicle/year. */
+  plate_inferred?: boolean;
 }
 
 export const listRentalsForViolation = createServerFn({ method: "GET" })
