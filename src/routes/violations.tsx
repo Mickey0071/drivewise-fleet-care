@@ -1486,7 +1486,7 @@ function ViolationsPage() {
                         />
                       </th>
                     )}
-                    <th className="p-3">Violation #</th>
+                    <th className="p-3">EZPass Ref #</th>
                     <th className="p-3">Date</th>
                     <th className="p-3">Type</th>
                     <th className="p-3">Vehicle</th>
@@ -1510,14 +1510,22 @@ function ViolationsPage() {
                           />
                         </td>
                       )}
-                      <td className="p-3 font-mono text-xs">
-                        <div className="flex items-center gap-1">
-                          <span title={v.photo_url ? "Original document attached" : "No original document"}>
+                      <td className="p-3 align-top">
+                        <div className="flex items-start gap-1">
+                          <span
+                            className="mt-0.5"
+                            title={v.photo_url ? "Original document attached" : "No original document"}
+                          >
                             {v.photo_url ? "📄" : "📎"}
                           </span>
-                          <span>{v.reference_number || v.id}</span>
+                          <div>
+                            <EzpassRefControl v={v} onDone={refresh} />
+                            <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                              Internal ID: {v.id}
+                            </div>
+                            <OriginalDocControl v={v} onDone={refresh} />
+                          </div>
                         </div>
-                        <OriginalDocControl v={v} onDone={refresh} />
                       </td>
                       <td className="p-3">{fmtDate(v.date_issued)}</td>
                       <td className="p-3 capitalize">{v.type}</td>
