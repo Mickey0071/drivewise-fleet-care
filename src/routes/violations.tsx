@@ -1855,8 +1855,15 @@ function EditViolationDialog({
         </DialogHeader>
         <div className="grid gap-3">
           <div className="grid gap-1">
-            <Label>Violation / Ticket #</Label>
-            <Input value={violationNumber} onChange={(e) => setViolationNumber(e.target.value)} />
+            <Label>EZPass Ref # (from the EZPass document)</Label>
+            <Input
+              value={violationNumber}
+              onChange={(e) => setViolationNumber(e.target.value)}
+              placeholder="e.g. B062675392939"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used on all dispute letters and online disputes. The internal VIO- ID is never used externally.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1">
