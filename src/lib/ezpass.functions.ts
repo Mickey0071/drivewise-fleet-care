@@ -483,6 +483,9 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
             violation_time: item.violation_time,
             notes: `Imported from EZPass batch ${data.batchId}`,
             status: "pending",
+            // EZPass ref # is not auto-extracted from the scan — admin enters it
+            // manually on the violation card. Required before any dispute document.
+            reference_number: null,
             workflow_stage: isMatched ? "matched" : "uploaded",
             is_orphan: false,
             photo_url: originalDocUrl,

@@ -206,7 +206,7 @@ async function buildCoverPdf({ v, vehicle, driver, rental }: CoverArgs): Promise
   // Violation summary
   bar("Violation Summary");
   const amt = Number(v.total_amount ?? v.amount ?? 0);
-  field("Violation ID", String(v.id ?? "—"));
+  field("EZPass Ref #", String((v as any).reference_number ?? "—"));
   field("Type", String(v.type ?? "—").toUpperCase());
   field("Date Issued", fmtDate(v.date_issued as string | null));
   field("License Plate", String(v.license_plate ?? vehicle?.plate ?? "—"));

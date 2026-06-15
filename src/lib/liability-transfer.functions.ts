@@ -85,9 +85,12 @@ export const generateMailPacket = createServerFn({ method: "POST" })
 
     const out = await PDFDocument.create();
     const missing: string[] = [];
-    const ref =
-      (ctx.v.reference_number as string | null) ||
-      (ctx.v.id as string);
+    const ref = (ctx.v.reference_number as string | null)?.trim() || "";
+    if (!ref) {
+      throw new Error(
+        "EZPass Ref # is missing for this violation. Enter the EZPass violation number before generating the mail packet.",
+      );
+    }
     const violationStamp = `VIOLATION #: ${ref.toUpperCase()}`;
 
     async function appendPdf(bytes: Uint8Array, opts?: { stamp?: string }) {

@@ -146,6 +146,91 @@ function OriginalDocControl({ v, onDone }: { v: ViolationRow; onDone: () => void
   );
 }
 
+/** Inline editor for the real EZPass violation/reference number.
+ *  This is the number used on ALL external documents and online disputes.
+ *  The internal VIO- id is never used externally. */
+function EzpassRefControl({ v, onDone }: { v: ViolationRow; onDone: () => void }) {
+  const update = useServerFn(updateViolation);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(v.reference_number ?? "");
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      toast.error("Enter the EZPass violation/reference number");
+      return;
+    }
+    setBusy(true);
+    try {
+      await update({ data: { id: v.id, violationNumber: trimmed } });
+      toast.success("EZPass Ref # saved");
+      setEditing(false);
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="mt-1 flex items-center gap-1">
+        <Input
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          placeholder="EZPass #"
+          className="h-7 w-36 font-mono text-xs"
+        />
+        <Button size="sm" className="h-7 px-2" disabled={busy} onClick={save}>
+          {busy ? "…" : "Save"}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2"
+          onClick={() => {
+            setValue(v.reference_number ?? "");
+            setEditing(false);
+          }}
+        >
+          ✕
+        </Button>
+      </div>
+    );
+  }
+
+  if (v.reference_number) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold">{v.reference_number}</span>
+        <CopyButton value={v.reference_number} label="Copy #" />
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="text-xs text-muted-foreground hover:underline"
+        >
+          Edit
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="flex items-center gap-1 rounded text-xs font-medium text-amber-600 hover:underline"
+      title="No EZPass number on file — required for disputes"
+    >
+      ⚠️ EZPass # missing — Enter Manually
+    </button>
+  );
+}
+
 function SendCustomerButton({ violation, onDone }: { violation: ViolationRow; onDone: () => void }) {
   const send = useServerFn(sendViolationToCustomer);
   const [busy, setBusy] = useState(false);
@@ -329,7 +414,7 @@ function BulkOnlinePrepDialog({
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="p-2">Violation #</th>
+                <th className="p-2">EZPass Ref #</th>
                 <th className="p-2">Plate</th>
                 <th className="p-2 text-right">Amount</th>
                 <th className="p-2">Agreement</th>
@@ -339,10 +424,14 @@ function BulkOnlinePrepDialog({
               {rows.map((v) => (
                 <tr key={v.id} className="border-b last:border-0">
                   <td className="p-2 font-mono text-xs">
-                    <div className="flex items-center gap-2">
-                      <span>{v.reference_number || v.id}</span>
-                      <CopyButton value={v.reference_number || v.id} label="Copy #" />
-                    </div>
+                    {v.reference_number ? (
+                      <div className="flex items-center gap-2">
+                        <span>{v.reference_number}</span>
+                        <CopyButton value={v.reference_number} label="Copy #" />
+                      </div>
+                    ) : (
+                      <span className="text-amber-600">⚠️ EZPass # missing</span>
+                    )}
                   </td>
                   <td className="p-2">{v.license_plate || v.vehicle_label || "—"}</td>
                   <td className="p-2 text-right font-semibold">
@@ -387,7 +476,8 @@ function DisputeMethodDialog({
   const disputeFn = useServerFn(recordViolationDispute);
   const [method, setMethod] = useState<"online" | "mail" | "walk_in" | null>(null);
   const [busy, setBusy] = useState(false);
-  const violationNo = v.reference_number || v.id;
+  // External / online disputes must use the real EZPass number only — never the VIO- id.
+  const violationNo = v.reference_number || "";
 
   const reset = () => setMethod(null);
   const close = () => {
@@ -456,9 +546,17 @@ function DisputeMethodDialog({
                 <span className="font-medium">Step 2.</span> Click "Dispute a Violation"
               </li>
               <li className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">Step 3.</span> Enter violation #:
-                <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{violationNo}</code>
-                <CopyButton value={violationNo} />
+                <span className="font-medium">Step 3.</span> Enter EZPass Ref #:
+                {violationNo ? (
+                  <>
+                    <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{violationNo}</code>
+                    <CopyButton value={violationNo} />
+                  </>
+                ) : (
+                  <span className="text-xs font-medium text-amber-600">
+                    ⚠️ EZPass # missing — add it on the violation card first
+                  </span>
+                )}
               </li>
               <li className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">Step 4.</span> Upload rental agreement:
@@ -1401,7 +1499,7 @@ function ViolationsPage() {
                         />
                       </th>
                     )}
-                    <th className="p-3">Violation #</th>
+                    <th className="p-3">EZPass Ref #</th>
                     <th className="p-3">Date</th>
                     <th className="p-3">Type</th>
                     <th className="p-3">Vehicle</th>
@@ -1425,14 +1523,22 @@ function ViolationsPage() {
                           />
                         </td>
                       )}
-                      <td className="p-3 font-mono text-xs">
-                        <div className="flex items-center gap-1">
-                          <span title={v.photo_url ? "Original document attached" : "No original document"}>
+                      <td className="p-3 align-top">
+                        <div className="flex items-start gap-1">
+                          <span
+                            className="mt-0.5"
+                            title={v.photo_url ? "Original document attached" : "No original document"}
+                          >
                             {v.photo_url ? "📄" : "📎"}
                           </span>
-                          <span>{v.reference_number || v.id}</span>
+                          <div>
+                            <EzpassRefControl v={v} onDone={refresh} />
+                            <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                              Internal ID: {v.id}
+                            </div>
+                            <OriginalDocControl v={v} onDone={refresh} />
+                          </div>
                         </div>
-                        <OriginalDocControl v={v} onDone={refresh} />
                       </td>
                       <td className="p-3">{fmtDate(v.date_issued)}</td>
                       <td className="p-3 capitalize">{v.type}</td>
@@ -1749,8 +1855,15 @@ function EditViolationDialog({
         </DialogHeader>
         <div className="grid gap-3">
           <div className="grid gap-1">
-            <Label>Violation / Ticket #</Label>
-            <Input value={violationNumber} onChange={(e) => setViolationNumber(e.target.value)} />
+            <Label>EZPass Ref # (from the EZPass document)</Label>
+            <Input
+              value={violationNumber}
+              onChange={(e) => setViolationNumber(e.target.value)}
+              placeholder="e.g. B062675392939"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used on all dispute letters and online disputes. The internal VIO- ID is never used externally.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1">
@@ -2159,14 +2272,14 @@ function NewViolationDialog({
               </div>
 
               <div>
-                <Label>Violation / Citation #</Label>
+                <Label>EZPass Ref # (from the EZPass document)</Label>
                 <Input
                   value={citationNumber}
                   onChange={(e) => setCitationNumber(e.target.value.toUpperCase())}
                   placeholder="As printed on the notice (used as the record ID)"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Leave blank to auto-generate. When entered, this becomes the violation's ID so it matches the uploaded notice.
+                  The real EZPass number printed on the notice. Used on all dispute letters and online disputes. Leave blank to auto-generate an internal ID.
                 </p>
               </div>
 
