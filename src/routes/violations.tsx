@@ -299,6 +299,78 @@ const NJ_EZPASS_OFFICES = [
 
 /** "How are you disputing?" gate before moving a violation to the Disputed tab.
  *  Provides a guided flow for Online / Mail / Walk-in submission. */
+function BulkOnlinePrepDialog({
+  open,
+  onOpenChange,
+  rows,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  rows: ViolationRow[];
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>🌐 Bulk Online Prep — {rows.length} violation(s)</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Go to ezpassnj.com and dispute each one. Copy the violation # and download its agreement as
+          you go.
+        </p>
+        <Button
+          variant="outline"
+          className="w-fit"
+          onClick={() => window.open("https://www.ezpassnj.com", "_blank", "noopener")}
+        >
+          Open ezpassnj.com →
+        </Button>
+        <div className="max-h-[50vh] overflow-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="p-2">Violation #</th>
+                <th className="p-2">Plate</th>
+                <th className="p-2 text-right">Amount</th>
+                <th className="p-2">Agreement</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((v) => (
+                <tr key={v.id} className="border-b last:border-0">
+                  <td className="p-2 font-mono text-xs">
+                    <div className="flex items-center gap-2">
+                      <span>{v.reference_number || v.id}</span>
+                      <CopyButton value={v.reference_number || v.id} label="Copy #" />
+                    </div>
+                  </td>
+                  <td className="p-2">{v.license_plate || v.vehicle_label || "—"}</td>
+                  <td className="p-2 text-right font-semibold">
+                    {fmtMoney(Number(v.total_amount || v.amount))}
+                  </td>
+                  <td className="p-2">
+                    <DownloadAgreementButton
+                      v={v}
+                      onNoAgreement={() => toast.message("No agreement on file for this violation")}
+                      label="📥 Download"
+                      variant="ghost"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function DisputeMethodDialog({
   open,
   onOpenChange,
