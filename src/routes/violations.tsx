@@ -1061,6 +1061,15 @@ function ViolationsPage() {
   const [editFor, setEditFor] = useState<ViolationRow | null>(null);
   const [findFor, setFindFor] = useState<ViolationRow | null>(null);
   const [createAgreementFor, setCreateAgreementFor] = useState<ViolationRow | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkOnlineOpen, setBulkOnlineOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const genPacketFn = useServerFn(generateMailPacket);
+
+  // Clear selection whenever the active tab changes.
+  useEffect(() => {
+    setSelected(new Set());
+  }, [filter]);
 
   const delFn = useServerFn(deleteViolation);
   const delMutation = useMutation({
