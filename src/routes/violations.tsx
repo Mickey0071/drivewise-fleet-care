@@ -1119,6 +1119,61 @@ function ViolationsPage() {
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["violations"] });
 
+  const selectedRows = useMemo(
+    () => filtered.filter((v) => selected.has(v.id)),
+    [filtered, selected],
+  );
+  const allSelected = filtered.length > 0 && selectedRows.length === filtered.length;
+
+  const toggleOne = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const toggleAll = () =>
+    setSelected(() => (allSelected ? new Set() : new Set(filtered.map((v) => v.id))));
+
+  const safeName = (s: string) => (s || "").replace(/[^a-z0-9]+/gi, "").toUpperCase() || "NA";
+
+  const bulkDownloadPackets = async () => {
+    if (selectedRows.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      let missingTotal = 0;
+      for (const v of selectedRows) {
+        const res = await genPacketFn({ data: { violationId: v.id } });
+        const bin = atob(res.base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        missingTotal += res.missing.length;
+        const plate = safeName(v.license_plate || v.vehicle_label || "");
+        const num = safeName(v.reference_number || v.id);
+        const date = (v.date_issued || "").slice(0, 10) || "nodate";
+        zip.file(`${plate}_${num}_${date}.pdf`, bytes);
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dispute-packets-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(
+        `${selectedRows.length} packet(s) downloaded${missingTotal ? ` — ${missingTotal} item(s) missing across packets` : ""}`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not build packets");
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const exportCsv = () => {
     const headers = [
       "ID", "Date Issued", "Type", "Plate", "Vehicle", "Customer", "Rental",
