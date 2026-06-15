@@ -27,6 +27,7 @@ export interface EzpassBatchItem {
   candidates: MatchCandidate[] | null;
   violation_id: string | null;
   affidavit_pdf_url: string | null;
+  reference_number: string | null;
 }
 
 export interface EzpassBatch {
@@ -111,6 +112,7 @@ export const processEzpassDocument = createServerFn({ method: "POST" })
         vehicle_id: mr.vehicle_id,
         driver_name: mr.driver_name,
         candidates: mr.candidates as unknown,
+        reference_number: t.reference_number ?? null,
       };
     });
 
