@@ -47,6 +47,7 @@ export const matchViolationToRental = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const patch: Record<string, unknown> = {
       is_orphan: false,
+      workflow_stage: "matched",
       updated_at: new Date().toISOString(),
     };
     let label = "";
