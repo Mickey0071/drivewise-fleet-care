@@ -143,7 +143,30 @@ export const generateMailPacket = createServerFn({ method: "POST" })
     // Page 1: cover letter
     await appendPdf(cover);
     // Supporting documents (rely on the signed rental agreement — no affidavit)
-    await addUrl(ctx.v.photo_url as string | null, "Original violation notice");
+    const originalUrl = ctx.v.photo_url as string | null;
+    if (originalUrl) {
+      await addUrl(originalUrl, "Original violation notice");
+    } else {
+      // No original document on file — add an explicit note page for the record.
+      missing.push("Original violation notice");
+      const note = out.addPage([612, 792]);
+      note.drawText("ORIGINAL VIOLATION NOTICE NOT AVAILABLE", {
+        x: 36,
+        y: 740,
+        size: 14,
+        color: rgb(0.69, 0, 0.125),
+      });
+      note.drawText(`Violation reference #: ${ref.toUpperCase()}`, {
+        x: 36,
+        y: 710,
+        size: 11,
+        color: rgb(0, 0, 0),
+      });
+      note.drawText(
+        "The original notice was not uploaded with this violation.",
+        { x: 36, y: 688, size: 10, color: rgb(0.3, 0.3, 0.3) },
+      );
+    }
     await addUrl((ctx.rental?.license_image_url as string) ?? null, "Driver's license (front)");
     await addUrl((ctx.rental?.agreement_pdf_url as string) ?? null, "Signed rental agreement", { stamp: violationStamp });
 
