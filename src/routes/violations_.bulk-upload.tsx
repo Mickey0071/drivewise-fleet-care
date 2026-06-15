@@ -396,7 +396,9 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
     setApproving(true);
     try {
       const res = await approve({ data: { batchId } });
-      toast.success(`Generated ${res.generated} liability-transfer letter${res.generated === 1 ? "" : "s"}`);
+      toast.success(
+        `Saved ${res.total} violation${res.total === 1 ? "" : "s"} — ${res.matched} matched, ${res.unmatched} unmatched`,
+      );
       setConfirmOpen(false);
       refresh();
     } catch (e) {
