@@ -260,33 +260,148 @@ function DownloadPacketButton({
   );
 }
 
-/** "How are you disputing?" gate before moving a violation to the Disputed tab. */
+/** Small inline "copy to clipboard" button. */
+function CopyButton({ value, label = "Copy" }: { value: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      className="h-7 px-2 text-xs"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        } catch {
+          toast.error("Could not copy");
+        }
+      }}
+    >
+      {copied ? "✅ Copied" : `📋 ${label}`}
+    </Button>
+  );
+}
+
+const NJ_EZPASS_MAIL_ADDRESS = [
+  "NJ E-ZPass Violation Processing Center",
+  "P.O. Box 4971",
+  "Trenton, NJ 08650",
+];
+
+const NJ_EZPASS_OFFICES = [
+  "Newark — 375 McCarter Hwy, Newark, NJ 07114",
+  "Camden — 2 Riverside Dr, Camden, NJ 08103",
+  "Cherry Hill — 2095 NJ-38, Cherry Hill, NJ 08002",
+  "Wayne — 1481 NJ-23, Wayne, NJ 07470",
+];
+
+/** "How are you disputing?" gate before moving a violation to the Disputed tab.
+ *  Provides a guided flow for Online / Mail / Walk-in submission. */
+function BulkOnlinePrepDialog({
+  open,
+  onOpenChange,
+  rows,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  rows: ViolationRow[];
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>🌐 Bulk Online Prep — {rows.length} violation(s)</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Go to ezpassnj.com and dispute each one. Copy the violation # and download its agreement as
+          you go.
+        </p>
+        <Button
+          variant="outline"
+          className="w-fit"
+          onClick={() => window.open("https://www.ezpassnj.com", "_blank", "noopener")}
+        >
+          Open ezpassnj.com →
+        </Button>
+        <div className="max-h-[50vh] overflow-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="p-2">Violation #</th>
+                <th className="p-2">Plate</th>
+                <th className="p-2 text-right">Amount</th>
+                <th className="p-2">Agreement</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((v) => (
+                <tr key={v.id} className="border-b last:border-0">
+                  <td className="p-2 font-mono text-xs">
+                    <div className="flex items-center gap-2">
+                      <span>{v.reference_number || v.id}</span>
+                      <CopyButton value={v.reference_number || v.id} label="Copy #" />
+                    </div>
+                  </td>
+                  <td className="p-2">{v.license_plate || v.vehicle_label || "—"}</td>
+                  <td className="p-2 text-right font-semibold">
+                    {fmtMoney(Number(v.total_amount || v.amount))}
+                  </td>
+                  <td className="p-2">
+                    <DownloadAgreementButton
+                      v={v}
+                      onNoAgreement={() => toast.message("No agreement on file for this violation")}
+                      label="📥 Download"
+                      variant="ghost"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function DisputeMethodDialog({
   open,
   onOpenChange,
-  violationId,
+  v,
+  onCreateAgreement,
   onDone,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  violationId: string;
+  v: ViolationRow;
+  onCreateAgreement: () => void;
   onDone: () => void;
 }) {
   const disputeFn = useServerFn(recordViolationDispute);
-  const packetFn = useServerFn(generateMailPacket);
-  const [method, setMethod] = useState<"online" | "mail" | "walk_in">("online");
+  const [method, setMethod] = useState<"online" | "mail" | "walk_in" | null>(null);
   const [busy, setBusy] = useState(false);
+  const violationNo = v.reference_number || v.id;
 
-  const submit = async () => {
+  const reset = () => setMethod(null);
+  const close = () => {
+    onOpenChange(false);
+    setTimeout(reset, 200);
+  };
+
+  const confirm = async (m: "online" | "mail" | "walk_in") => {
     setBusy(true);
     try {
-      if (method === "mail") {
-        await packetFn({ data: { violationId } });
-      }
-      await disputeFn({ data: { violationId, method } });
-      toast.success("Dispute method recorded — moved to Disputed");
-      onOpenChange(false);
+      await disputeFn({ data: { violationId: v.id, method: m } });
+      toast.success("Dispute recorded — moved to Disputed");
       onDone();
+      close();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not record dispute");
     } finally {
@@ -294,47 +409,126 @@ function DisputeMethodDialog({
     }
   };
 
-  const OPTIONS: { value: "online" | "mail" | "walk_in"; title: string; desc: string }[] = [
-    { value: "online", title: "🌐 Online", desc: "ezpassnj.com" },
-    { value: "mail", title: "✉️ Mail", desc: "P.O. Box 4971, Trenton NJ 08650 (generates packet)" },
-    { value: "walk_in", title: "🚶 Walk-in", desc: "EZPass office" },
-  ];
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>How are you disputing?</DialogTitle>
+          <DialogTitle>
+            {method === null
+              ? "How are you disputing?"
+              : method === "online"
+                ? "🌐 Dispute online via ezpassnj.com"
+                : method === "mail"
+                  ? "✉️ Mail to NJ E-ZPass"
+                  : "🚶 Walk-in / In-Person"}
+          </DialogTitle>
         </DialogHeader>
-        <div className="space-y-2">
-          {OPTIONS.map((o) => (
-            <label
-              key={o.value}
-              className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 ${
-                method === o.value ? "border-primary bg-primary/5" : ""
-              }`}
+
+        {method === null && (
+          <div className="space-y-2">
+            {[
+              { value: "online" as const, title: "🌐 Online", desc: "Submit on ezpassnj.com" },
+              { value: "mail" as const, title: "✉️ Mail", desc: "Print & mail the dispute packet" },
+              { value: "walk_in" as const, title: "🚶 Walk-in / In-Person", desc: "Bring the packet to an E-ZPass office" },
+            ].map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => setMethod(o.value)}
+                className="flex w-full items-start gap-3 rounded-md border p-3 text-left hover:border-primary hover:bg-primary/5"
+              >
+                <div>
+                  <p className="font-medium">{o.title}</p>
+                  <p className="text-xs text-muted-foreground">{o.desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {method === "online" && (
+          <div className="space-y-3 text-sm">
+            <ol className="space-y-3">
+              <li>
+                <span className="font-medium">Step 1.</span> Go to ezpassnj.com
+              </li>
+              <li>
+                <span className="font-medium">Step 2.</span> Click "Dispute a Violation"
+              </li>
+              <li className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">Step 3.</span> Enter violation #:
+                <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{violationNo}</code>
+                <CopyButton value={violationNo} />
+              </li>
+              <li className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">Step 4.</span> Upload rental agreement:
+                <DownloadAgreementButton v={v} onNoAgreement={onCreateAgreement} label="📥 Download Agreement" />
+              </li>
+              <li>
+                <span className="font-medium">Step 5.</span> Submit on the E-ZPass website
+              </li>
+              <li>
+                <span className="font-medium">Step 6.</span> Come back here and confirm
+              </li>
+            </ol>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => window.open("https://www.ezpassnj.com", "_blank", "noopener")}
             >
-              <input
-                type="radio"
-                name="dispute-method"
-                className="mt-1"
-                checked={method === o.value}
-                onChange={() => setMethod(o.value)}
-              />
-              <div>
-                <p className="font-medium">{o.title}</p>
-                <p className="text-xs text-muted-foreground">{o.desc}</p>
+              Open ezpassnj.com →
+            </Button>
+          </div>
+        )}
+
+        {(method === "mail" || method === "walk_in") && (
+          <div className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Download the complete dispute packet (cover letter + signed rental agreement + original
+              violation notice).
+            </p>
+            <DownloadPacketButton v={v} label="📥 Download Packet" />
+            {method === "mail" ? (
+              <div className="rounded-md border bg-muted/30 p-3">
+                <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Mail to</p>
+                {NJ_EZPASS_MAIL_ADDRESS.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
               </div>
-            </label>
-          ))}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
-            Cancel
-          </Button>
-          <Button onClick={submit} disabled={busy}>
-            {busy ? "Recording…" : "Record & Move to Disputed"}
-          </Button>
+            ) : (
+              <div className="rounded-md border bg-muted/30 p-3">
+                <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
+                  E-ZPass office locations
+                </p>
+                <ul className="list-disc space-y-1 pl-4 text-xs">
+                  {NJ_EZPASS_OFFICES.map((o) => (
+                    <li key={o}>{o}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          {method === null ? (
+            <Button variant="outline" onClick={close} disabled={busy}>
+              Cancel
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={reset} disabled={busy}>
+                ← Back
+              </Button>
+              <Button onClick={() => confirm(method)} disabled={busy}>
+                {busy
+                  ? "Recording…"
+                  : method === "mail"
+                    ? "✅ Confirm Mailed"
+                    : "✅ Confirm Submitted"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -456,7 +650,8 @@ function RowActions({
         <DisputeMethodDialog
           open={disputeOpen}
           onOpenChange={setDisputeOpen}
-          violationId={v.id}
+          v={v}
+          onCreateAgreement={onCreateAgreement}
           onDone={onDone}
         />
       </>
@@ -938,6 +1133,15 @@ function ViolationsPage() {
   const [editFor, setEditFor] = useState<ViolationRow | null>(null);
   const [findFor, setFindFor] = useState<ViolationRow | null>(null);
   const [createAgreementFor, setCreateAgreementFor] = useState<ViolationRow | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkOnlineOpen, setBulkOnlineOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const genPacketFn = useServerFn(generateMailPacket);
+
+  // Clear selection whenever the active tab changes.
+  useEffect(() => {
+    setSelected(new Set());
+  }, [filter]);
 
   const delFn = useServerFn(deleteViolation);
   const delMutation = useMutation({
@@ -986,6 +1190,61 @@ function ViolationsPage() {
   const readyForTransfer = rows.filter(transferReady);
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["violations"] });
+
+  const selectedRows = useMemo(
+    () => filtered.filter((v) => selected.has(v.id)),
+    [filtered, selected],
+  );
+  const allSelected = filtered.length > 0 && selectedRows.length === filtered.length;
+
+  const toggleOne = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const toggleAll = () =>
+    setSelected(() => (allSelected ? new Set() : new Set(filtered.map((v) => v.id))));
+
+  const safeName = (s: string) => (s || "").replace(/[^a-z0-9]+/gi, "").toUpperCase() || "NA";
+
+  const bulkDownloadPackets = async () => {
+    if (selectedRows.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      let missingTotal = 0;
+      for (const v of selectedRows) {
+        const res = await genPacketFn({ data: { violationId: v.id } });
+        const bin = atob(res.base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        missingTotal += res.missing.length;
+        const plate = safeName(v.license_plate || v.vehicle_label || "");
+        const num = safeName(v.reference_number || v.id);
+        const date = (v.date_issued || "").slice(0, 10) || "nodate";
+        zip.file(`${plate}_${num}_${date}.pdf`, bytes);
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dispute-packets-${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(
+        `${selectedRows.length} packet(s) downloaded${missingTotal ? ` — ${missingTotal} item(s) missing across packets` : ""}`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not build packets");
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const exportCsv = () => {
     const headers = [
@@ -1097,6 +1356,29 @@ function ViolationsPage() {
 
       <Card>
         <CardContent className="p-0">
+          {filter === "matched" && filtered.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 border-b bg-muted/30 p-3 text-sm">
+              <span className="font-medium">
+                {selectedRows.length > 0 ? `${selectedRows.length} selected` : "Select violations to dispute in bulk"}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedRows.length === 0 || bulkBusy}
+                onClick={bulkDownloadPackets}
+              >
+                {bulkBusy ? "Building…" : "📦 Bulk Download Packets"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedRows.length === 0}
+                onClick={() => setBulkOnlineOpen(true)}
+              >
+                🌐 Bulk Online Prep
+              </Button>
+            </div>
+          )}
           {isLoading ? (
             <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
           ) : filtered.length === 0 ? (
@@ -1109,6 +1391,16 @@ function ViolationsPage() {
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <tr>
+                    {filter === "matched" && (
+                      <th className="p-3">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleAll}
+                          aria-label="Select all"
+                        />
+                      </th>
+                    )}
                     <th className="p-3">Violation #</th>
                     <th className="p-3">Date</th>
                     <th className="p-3">Type</th>
@@ -1123,6 +1415,16 @@ function ViolationsPage() {
                   {filtered.map((v) => (
                     <Fragment key={v.id}>
                     <tr className="border-b last:border-0 hover:bg-muted/30">
+                      {filter === "matched" && (
+                        <td className="p-3 align-top">
+                          <input
+                            type="checkbox"
+                            checked={selected.has(v.id)}
+                            onChange={() => toggleOne(v.id)}
+                            aria-label="Select violation"
+                          />
+                        </td>
+                      )}
                       <td className="p-3 font-mono text-xs">
                         <div className="flex items-center gap-1">
                           <span title={v.photo_url ? "Original document attached" : "No original document"}>
@@ -1242,7 +1544,7 @@ function ViolationsPage() {
                     </tr>
                     {expanded === v.id && (
                       <tr key={`${v.id}-tl`} className="border-b bg-muted/20 last:border-0">
-                        <td colSpan={8} className="p-4">
+                        <td colSpan={filter === "matched" ? 9 : 8} className="p-4">
                           <V1Timeline v={v} />
                         </td>
                       </tr>
@@ -1255,6 +1557,12 @@ function ViolationsPage() {
           )}
         </CardContent>
       </Card>
+
+      <BulkOnlinePrepDialog
+        open={bulkOnlineOpen}
+        onOpenChange={setBulkOnlineOpen}
+        rows={selectedRows}
+      />
 
       <NewViolationDialog open={newOpen} onOpenChange={setNewOpen} onCreated={(created) => {
         refresh();
