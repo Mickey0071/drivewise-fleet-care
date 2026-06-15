@@ -2272,14 +2272,14 @@ function NewViolationDialog({
               </div>
 
               <div>
-                <Label>Violation / Citation #</Label>
+                <Label>EZPass Ref # (from the EZPass document)</Label>
                 <Input
                   value={citationNumber}
                   onChange={(e) => setCitationNumber(e.target.value.toUpperCase())}
                   placeholder="As printed on the notice (used as the record ID)"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Leave blank to auto-generate. When entered, this becomes the violation's ID so it matches the uploaded notice.
+                  The real EZPass number printed on the notice. Used on all dispute letters and online disputes. Leave blank to auto-generate an internal ID.
                 </p>
               </div>
 
