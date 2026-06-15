@@ -524,12 +524,12 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
           <>
             {unmatchedCount > 0 && (
               <p className="text-sm text-muted-foreground">
-                Resolve all {unmatchedCount} unmatched violation(s) to continue.
+                {unmatchedCount} unmatched — these are still saved and can be matched later.
               </p>
             )}
             <Button
               size="lg"
-              disabled={unmatchedCount > 0 || items.length === 0}
+              disabled={items.length === 0}
               onClick={() => setConfirmOpen(true)}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
