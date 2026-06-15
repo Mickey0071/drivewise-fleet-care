@@ -400,6 +400,15 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
       const rows = (items ?? []) as EzpassBatchItem[];
       if (rows.length === 0) throw new Error("Batch has no items");
 
+      // The original uploaded EZPass document (first page) is stored on the
+      // batch — attach it to every violation as the "original notice".
+      const { data: batch } = await supabaseAdmin
+        .from("ezpass_batches")
+        .select("file_url")
+        .eq("id", data.batchId)
+        .maybeSingle();
+      const originalDocUrl = (batch as { file_url: string | null } | null)?.file_url ?? null;
+
       let generated = 0;
       let matched = 0;
       let unmatched = 0;
@@ -476,6 +485,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
             status: "pending",
             workflow_stage: isMatched ? "matched" : "uploaded",
             is_orphan: false,
+            photo_url: originalDocUrl,
             created_by: context.userId ?? null,
           } as never);
         } else {
