@@ -379,6 +379,7 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
   const [matchFor, setMatchFor] = useState<EzpassBatchItem | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [approveMode, setApproveMode] = useState<"all" | "matched">("all");
 
   const items = data?.items ?? [];
   const batch = data?.batch;
@@ -395,10 +396,16 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
   const handleApprove = async () => {
     setApproving(true);
     try {
-      const res = await approve({ data: { batchId } });
-      toast.success(
-        `Saved ${res.total} violation${res.total === 1 ? "" : "s"} — ${res.matched} matched, ${res.unmatched} unmatched`,
-      );
+      const res = await approve({ data: { batchId, mode: approveMode } });
+      if (approveMode === "matched") {
+        toast.success(
+          `Saved ${res.matched} matched violation${res.matched === 1 ? "" : "s"} — ${res.unmatched} unmatched left to match`,
+        );
+      } else {
+        toast.success(
+          `Saved ${res.total} violation${res.total === 1 ? "" : "s"} — ${res.matched} matched, ${res.unmatched} unmatched`,
+        );
+      }
       setConfirmOpen(false);
       refresh();
     } catch (e) {
@@ -481,7 +488,9 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                         {it.match_status === "matched" ? (
                           <Badge className="bg-emerald-600">✅ Matched</Badge>
                         ) : it.match_status === "multiple" ? (
-                          <Badge variant="secondary">⚠️ Multiple</Badge>
+                          <Badge className="bg-sky-600">
+                            🔢 {it.candidates?.length ?? 2} options — pick renter
+                          </Badge>
                         ) : (
                           <Badge variant="destructive">⚠️ Unmatched</Badge>
                         )}
@@ -500,7 +509,11 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                             onClick={() => setMatchFor(it)}
                             disabled={approved}
                           >
-                            {it.match_status === "matched" ? "Edit Match" : "Manual Match"}
+                            {it.match_status === "matched"
+                              ? "Edit Match"
+                              : it.match_status === "multiple"
+                                ? "Pick Renter"
+                                : "Manual Match"}
                           </Button>
                         )}
                       </td>
@@ -524,16 +537,31 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
           <>
             {unmatchedCount > 0 && (
               <p className="text-sm text-muted-foreground">
-                {unmatchedCount} unmatched — these are still saved and can be matched later.
+                {unmatchedCount} unmatched — save them too with "Approve All", or save only
+                matched now.
               </p>
             )}
             <Button
               size="lg"
+              variant="outline"
+              disabled={items.length === 0 || matchedCount === 0}
+              onClick={() => {
+                setApproveMode("matched");
+                setConfirmOpen(true);
+              }}
+            >
+              <CheckCircle2 className="mr-2 h-5 w-5" /> Approve Matched ({matchedCount})
+            </Button>
+            <Button
+              size="lg"
               disabled={items.length === 0}
-              onClick={() => setConfirmOpen(true)}
+              onClick={() => {
+                setApproveMode("all");
+                setConfirmOpen(true);
+              }}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              <CheckCircle2 className="mr-2 h-5 w-5" /> Approve & Generate PDFs
+              <CheckCircle2 className="mr-2 h-5 w-5" /> Approve All ({items.length})
             </Button>
           </>
         )}
@@ -555,9 +583,22 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
           <DialogHeader>
             <DialogTitle>Save violations & generate letters?</DialogTitle>
             <DialogDescription>
-              You're about to permanently save all {items.length} violation{items.length === 1 ? "" : "s"} to the
-              violations list. The plate matcher re-runs on save — matched ones move to the Matched tab and get a
-              pre-filled liability-transfer letter; unmatched ones land in the Uploaded tab to match later. Continue?
+              {approveMode === "matched" ? (
+                <>
+                  You're about to permanently save the {matchedCount} matched violation
+                  {matchedCount === 1 ? "" : "s"}. Each moves to the Matched tab and gets a pre-filled
+                  liability-transfer letter. The {unmatchedCount} unmatched one
+                  {unmatchedCount === 1 ? "" : "s"} stay in this batch so you can match them later.
+                  Continue?
+                </>
+              ) : (
+                <>
+                  You're about to permanently save all {items.length} violation
+                  {items.length === 1 ? "" : "s"} to the violations list. The plate matcher re-runs on
+                  save — matched ones move to the Matched tab and get a pre-filled liability-transfer
+                  letter; unmatched ones land in the Uploaded tab to match later. Continue?
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -710,16 +751,20 @@ function ManualMatchDialog({
 
   const soon = (label: string) => toast.message(`${label} — coming soon`);
 
+  // Always load ALL rentals on this plate (and/or name) — never hard-filter by
+  // the violation date. A rental whose stored window doesn't cover the toll
+  // date (common for legacy imports with gaps) must still be shown so the admin
+  // can pick it. The date is used only for relevance sorting below.
   const runSearch = useCallback(
     () =>
       search({
         data: {
-          date: date.trim() || null,
+          date: null,
           plate: plate.trim() || null,
           name: name.trim() || null,
         },
       }),
-    [search, date, plate, name],
+    [search, plate, name],
   );
 
   const {
@@ -733,6 +778,37 @@ function ManualMatchDialog({
     enabled: Boolean(item.violation_date || item.plate),
     retry: false,
   });
+
+  // Relevance sort: rentals that cover the violation date first, then the
+  // closest by date, then newest. Never drops any result.
+  const vDate = (item.violation_date || "").slice(0, 10);
+  const sorted = useMemo(() => {
+    const dayDiff = (a: string, b: string) => {
+      const da = new Date(`${a}T00:00:00`).getTime();
+      const db = new Date(`${b}T00:00:00`).getTime();
+      if (Number.isNaN(da) || Number.isNaN(db)) return Number.POSITIVE_INFINITY;
+      return Math.abs(Math.round((da - db) / 86400000));
+    };
+    const score = (r: ViolationSearchCard) => {
+      const start = (r.startDate || "").slice(0, 10);
+      const end = (r.endDate || "").slice(0, 10);
+      if (!vDate) return { rank: 2, dist: 0 };
+      if (start && start <= vDate && (!end || end >= vDate)) return { rank: 0, dist: 0 };
+      const dist = Math.min(
+        start ? dayDiff(start, vDate) : Number.POSITIVE_INFINITY,
+        end ? dayDiff(end, vDate) : Number.POSITIVE_INFINITY,
+      );
+      return { rank: dist <= 7 ? 1 : 2, dist };
+    };
+    return [...results]
+      .map((r) => ({ r, s: score(r) }))
+      .sort((a, b) => {
+        if (a.s.rank !== b.s.rank) return a.s.rank - b.s.rank;
+        if (a.s.dist !== b.s.dist) return a.s.dist - b.s.dist;
+        return (b.r.startDate || "").localeCompare(a.r.startDate || "");
+      })
+      .map((x) => ({ ...x.r, _coversDate: x.s.rank === 0 }));
+  }, [results, vDate]);
 
   const confirm = async (rentalId: string) => {
     setBusy(true);
@@ -832,12 +908,17 @@ function ManualMatchDialog({
             <p className="py-4 text-center text-sm text-destructive">
               {error instanceof Error ? error.message : "Search failed"}
             </p>
-          ) : results.length === 0 ? (
+          ) : sorted.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
               No rentals found. Adjust the date, plate, or name and search again.
             </p>
           ) : (
-            results.map((r) => (
+            <>
+            <p className="px-1 text-xs text-muted-foreground">
+              Showing all {sorted.length} rental{sorted.length === 1 ? "" : "s"} on this plate — date
+              matches first. Pick the correct one.
+            </p>
+            {sorted.map((r) => (
               <div
                 key={`${r.source}-${r.id}`}
                 className="flex flex-col gap-2 rounded-md border p-3 text-sm"
@@ -852,6 +933,13 @@ function ManualMatchDialog({
                       {r.hasAgreement ? (
                         <Badge className="bg-emerald-600 text-[10px]">Agreement on file</Badge>
                       ) : null}
+                      {r._coversDate ? (
+                        <Badge className="bg-emerald-600 text-[10px]">✅ Covers toll date</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px]">
+                          Different period
+                        </Badge>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {r.vehicleLabel}
@@ -937,7 +1025,8 @@ function ManualMatchDialog({
                   </div>
                 )}
               </div>
-            ))
+            ))}
+            </>
           )}
         </div>
 
