@@ -414,7 +414,7 @@ function BulkOnlinePrepDialog({
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="p-2">Violation #</th>
+                <th className="p-2">EZPass Ref #</th>
                 <th className="p-2">Plate</th>
                 <th className="p-2 text-right">Amount</th>
                 <th className="p-2">Agreement</th>
@@ -424,10 +424,14 @@ function BulkOnlinePrepDialog({
               {rows.map((v) => (
                 <tr key={v.id} className="border-b last:border-0">
                   <td className="p-2 font-mono text-xs">
-                    <div className="flex items-center gap-2">
-                      <span>{v.reference_number || v.id}</span>
-                      <CopyButton value={v.reference_number || v.id} label="Copy #" />
-                    </div>
+                    {v.reference_number ? (
+                      <div className="flex items-center gap-2">
+                        <span>{v.reference_number}</span>
+                        <CopyButton value={v.reference_number} label="Copy #" />
+                      </div>
+                    ) : (
+                      <span className="text-amber-600">⚠️ EZPass # missing</span>
+                    )}
                   </td>
                   <td className="p-2">{v.license_plate || v.vehicle_label || "—"}</td>
                   <td className="p-2 text-right font-semibold">
