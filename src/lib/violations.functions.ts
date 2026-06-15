@@ -107,9 +107,9 @@ export const listViolations = createServerFn({ method: "GET" })
     const { data: legacyRows } = legacyIds.length
       ? await supabaseAdmin
           .from("legacy_rentals")
-          .select("id, retro_signed_at")
+          .select("id, retro_signed_at, renter_name, phone")
           .in("id", legacyIds)
-      : { data: [] as { id: string; retro_signed_at: string | null }[] };
+      : { data: [] as { id: string; retro_signed_at: string | null; renter_name: string | null; phone: string | null }[] };
     const lMap = new Map((legacyRows ?? []).map((r) => [r.id, r]));
     return rows.map((r) => {
       const rental = r.rental_id ? rMap.get(r.rental_id) : undefined;
@@ -118,8 +118,12 @@ export const listViolations = createServerFn({ method: "GET" })
       const agreementOnFile = Boolean(rental?.agreement_pdf_url) || Boolean(legacy?.retro_signed_at);
       return {
         ...r,
-        driver_name: r.driver_id ? dMap.get(r.driver_id) ?? null : null,
-        driver_phone: r.driver_id ? dPhone.get(r.driver_id) ?? null : null,
+        driver_name:
+          (r.driver_id ? dMap.get(r.driver_id) ?? null : null) ??
+          (legacy?.renter_name ?? null),
+        driver_phone:
+          (r.driver_id ? dPhone.get(r.driver_id) ?? null : null) ??
+          ((legacy as any)?.phone ?? null),
         vehicle_label: r.vehicle_id ? vMap.get(r.vehicle_id) ?? null : null,
         agreement_on_file: agreementOnFile,
         rental_start: rental?.start_date ?? null,
