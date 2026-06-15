@@ -928,6 +928,8 @@ export type Database = {
           phone: string | null
           pickup_location: string | null
           plate: string | null
+          plate_inferred_from_vehicle: boolean
+          plate_needs_review: boolean
           promoted_at: string | null
           promoted_driver_id: string | null
           promoted_rental_id: string | null
@@ -963,6 +965,8 @@ export type Database = {
           phone?: string | null
           pickup_location?: string | null
           plate?: string | null
+          plate_inferred_from_vehicle?: boolean
+          plate_needs_review?: boolean
           promoted_at?: string | null
           promoted_driver_id?: string | null
           promoted_rental_id?: string | null
@@ -998,6 +1002,8 @@ export type Database = {
           phone?: string | null
           pickup_location?: string | null
           plate?: string | null
+          plate_inferred_from_vehicle?: boolean
+          plate_needs_review?: boolean
           promoted_at?: string | null
           promoted_driver_id?: string | null
           promoted_rental_id?: string | null

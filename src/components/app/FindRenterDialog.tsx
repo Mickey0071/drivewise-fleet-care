@@ -266,6 +266,9 @@ export function FindRenterDialog({
                   <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Search name" />
                 </div>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Can't find by plate? Clear the plate field and search by customer name instead — this finds legacy rentals with no vehicle or plate on file.
+              </p>
               <Button onClick={() => setSearched(true)} className="gap-2">
                 <Search className="h-4 w-4" /> Search
               </Button>
