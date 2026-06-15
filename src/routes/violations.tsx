@@ -146,10 +146,94 @@ function OriginalDocControl({ v, onDone }: { v: ViolationRow; onDone: () => void
   );
 }
 
+/** Inline editor for the real EZPass violation/reference number.
+ *  This is the number used on ALL external documents and online disputes.
+ *  The internal VIO- id is never used externally. */
+function EzpassRefControl({ v, onDone }: { v: ViolationRow; onDone: () => void }) {
+  const update = useServerFn(updateViolation);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(v.reference_number ?? "");
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      toast.error("Enter the EZPass violation/reference number");
+      return;
+    }
+    setBusy(true);
+    try {
+      await update({ data: { id: v.id, violationNumber: trimmed } });
+      toast.success("EZPass Ref # saved");
+      setEditing(false);
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="mt-1 flex items-center gap-1">
+        <Input
+          autoFocus
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          placeholder="EZPass #"
+          className="h-7 w-36 font-mono text-xs"
+        />
+        <Button size="sm" className="h-7 px-2" disabled={busy} onClick={save}>
+          {busy ? "…" : "Save"}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2"
+          onClick={() => {
+            setValue(v.reference_number ?? "");
+            setEditing(false);
+          }}
+        >
+          ✕
+        </Button>
+      </div>
+    );
+  }
+
+  if (v.reference_number) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold">{v.reference_number}</span>
+        <CopyButton value={v.reference_number} label="Copy #" />
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="text-xs text-muted-foreground hover:underline"
+        >
+          Edit
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="flex items-center gap-1 rounded text-xs font-medium text-amber-600 hover:underline"
+      title="No EZPass number on file — required for disputes"
+    >
+      ⚠️ EZPass # missing — Enter Manually
+    </button>
+  );
+}
+
 function SendCustomerButton({ violation, onDone }: { violation: ViolationRow; onDone: () => void }) {
   const send = useServerFn(sendViolationToCustomer);
   const [busy, setBusy] = useState(false);
-  // placeholder
   const handle = async () => {
     setBusy(true);
     try {
