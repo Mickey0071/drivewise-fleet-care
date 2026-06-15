@@ -272,12 +272,17 @@ export function FindRenterDialog({
 
               {searched && (
                 <div className="space-y-2">
+                  {searched && results.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      Showing all {results.length} rental{results.length === 1 ? "" : "s"} on this plate — pick the correct one.
+                    </div>
+                  )}
                   {results.length === 0 ? (
                     <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-                      No matching renters found.
+                      No rentals found on this plate. Use Create New Rental or Plate Not Mine below.
                     </div>
                   ) : (
-                    results.map((r) => {
+                    results.map(({ r, rel }) => {
                       const st = statusLabel(r);
                       return (
                         <div
@@ -303,6 +308,9 @@ export function FindRenterDialog({
                               >
                                 {r.agreement_on_file ? "Has Agreement" : "No Agreement"}
                               </span>
+                              <span className={`rounded px-1.5 py-0.5 text-xs ${rel.tone}`}>
+                                {rel.icon} {rel.label}
+                              </span>
                             </div>
                           </div>
                           <Button
@@ -313,7 +321,7 @@ export function FindRenterDialog({
                               setStep("confirm");
                             }}
                           >
-                            Match to This Rental
+                            Select This Rental
                           </Button>
                         </div>
                       );
