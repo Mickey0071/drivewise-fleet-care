@@ -469,6 +469,36 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
         }
 
         const violationId = item.violation_id || genId("VIO");
+        // Duplicate detection: same plate + same date + same amount means this
+        // toll already exists as a violation. Instead of creating a duplicate,
+        // update the existing record with the freshly-extracted EZPass ref #.
+        let existingDupId: string | null = null;
+        if (!item.violation_id && item.plate && item.violation_date) {
+          const { data: dups } = await supabaseAdmin
+            .from("violations")
+            .select("id, reference_number")
+            .eq("license_plate", item.plate)
+            .eq("date_issued", item.violation_date)
+            .eq("amount", item.amount)
+            .limit(1);
+          if (dups && dups.length > 0) existingDupId = (dups[0] as { id: string }).id;
+        }
+
+        if (existingDupId) {
+          // Update the existing violation rather than creating a duplicate.
+          const dupPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+          if (item.reference_number) dupPatch.reference_number = item.reference_number;
+          await supabaseAdmin
+            .from("violations")
+            .update(dupPatch as never)
+            .eq("id", existingDupId);
+          await supabaseAdmin
+            .from("ezpass_batch_items")
+            .update({ violation_id: existingDupId } as never)
+            .eq("id", item.id);
+          continue;
+        }
+
         // Permanently save the violation record if it doesn't exist yet.
         if (!item.violation_id) {
           await supabaseAdmin.from("violations").insert({
@@ -487,9 +517,9 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
             violation_time: item.violation_time,
             notes: `Imported from EZPass batch ${data.batchId}`,
             status: "pending",
-            // EZPass ref # is not auto-extracted from the scan — admin enters it
-            // manually on the violation card. Required before any dispute document.
-            reference_number: null,
+            // EZPass ref # is auto-extracted from the scan when present; admin
+            // can still enter/correct it manually on the violation card.
+            reference_number: item.reference_number ?? null,
             workflow_stage: isMatched ? "matched" : "uploaded",
             is_orphan: false,
             photo_url: originalDocUrl,
