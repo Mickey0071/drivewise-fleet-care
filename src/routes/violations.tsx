@@ -260,33 +260,76 @@ function DownloadPacketButton({
   );
 }
 
-/** "How are you disputing?" gate before moving a violation to the Disputed tab. */
+/** Small inline "copy to clipboard" button. */
+function CopyButton({ value, label = "Copy" }: { value: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      className="h-7 px-2 text-xs"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        } catch {
+          toast.error("Could not copy");
+        }
+      }}
+    >
+      {copied ? "✅ Copied" : `📋 ${label}`}
+    </Button>
+  );
+}
+
+const NJ_EZPASS_MAIL_ADDRESS = [
+  "NJ E-ZPass Violation Processing Center",
+  "P.O. Box 4971",
+  "Trenton, NJ 08650",
+];
+
+const NJ_EZPASS_OFFICES = [
+  "Newark — 375 McCarter Hwy, Newark, NJ 07114",
+  "Camden — 2 Riverside Dr, Camden, NJ 08103",
+  "Cherry Hill — 2095 NJ-38, Cherry Hill, NJ 08002",
+  "Wayne — 1481 NJ-23, Wayne, NJ 07470",
+];
+
+/** "How are you disputing?" gate before moving a violation to the Disputed tab.
+ *  Provides a guided flow for Online / Mail / Walk-in submission. */
 function DisputeMethodDialog({
   open,
   onOpenChange,
-  violationId,
+  v,
+  onCreateAgreement,
   onDone,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  violationId: string;
+  v: ViolationRow;
+  onCreateAgreement: () => void;
   onDone: () => void;
 }) {
   const disputeFn = useServerFn(recordViolationDispute);
-  const packetFn = useServerFn(generateMailPacket);
-  const [method, setMethod] = useState<"online" | "mail" | "walk_in">("online");
+  const [method, setMethod] = useState<"online" | "mail" | "walk_in" | null>(null);
   const [busy, setBusy] = useState(false);
+  const violationNo = v.reference_number || v.id;
 
-  const submit = async () => {
+  const reset = () => setMethod(null);
+  const close = () => {
+    onOpenChange(false);
+    setTimeout(reset, 200);
+  };
+
+  const confirm = async (m: "online" | "mail" | "walk_in") => {
     setBusy(true);
     try {
-      if (method === "mail") {
-        await packetFn({ data: { violationId } });
-      }
-      await disputeFn({ data: { violationId, method } });
-      toast.success("Dispute method recorded — moved to Disputed");
-      onOpenChange(false);
+      await disputeFn({ data: { violationId: v.id, method: m } });
+      toast.success("Dispute recorded — moved to Disputed");
       onDone();
+      close();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not record dispute");
     } finally {
@@ -294,47 +337,126 @@ function DisputeMethodDialog({
     }
   };
 
-  const OPTIONS: { value: "online" | "mail" | "walk_in"; title: string; desc: string }[] = [
-    { value: "online", title: "🌐 Online", desc: "ezpassnj.com" },
-    { value: "mail", title: "✉️ Mail", desc: "P.O. Box 4971, Trenton NJ 08650 (generates packet)" },
-    { value: "walk_in", title: "🚶 Walk-in", desc: "EZPass office" },
-  ];
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={(o) => (o ? onOpenChange(true) : close())}>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>How are you disputing?</DialogTitle>
+          <DialogTitle>
+            {method === null
+              ? "How are you disputing?"
+              : method === "online"
+                ? "🌐 Dispute online via ezpassnj.com"
+                : method === "mail"
+                  ? "✉️ Mail to NJ E-ZPass"
+                  : "🚶 Walk-in / In-Person"}
+          </DialogTitle>
         </DialogHeader>
-        <div className="space-y-2">
-          {OPTIONS.map((o) => (
-            <label
-              key={o.value}
-              className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 ${
-                method === o.value ? "border-primary bg-primary/5" : ""
-              }`}
+
+        {method === null && (
+          <div className="space-y-2">
+            {[
+              { value: "online" as const, title: "🌐 Online", desc: "Submit on ezpassnj.com" },
+              { value: "mail" as const, title: "✉️ Mail", desc: "Print & mail the dispute packet" },
+              { value: "walk_in" as const, title: "🚶 Walk-in / In-Person", desc: "Bring the packet to an E-ZPass office" },
+            ].map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => setMethod(o.value)}
+                className="flex w-full items-start gap-3 rounded-md border p-3 text-left hover:border-primary hover:bg-primary/5"
+              >
+                <div>
+                  <p className="font-medium">{o.title}</p>
+                  <p className="text-xs text-muted-foreground">{o.desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {method === "online" && (
+          <div className="space-y-3 text-sm">
+            <ol className="space-y-3">
+              <li>
+                <span className="font-medium">Step 1.</span> Go to ezpassnj.com
+              </li>
+              <li>
+                <span className="font-medium">Step 2.</span> Click "Dispute a Violation"
+              </li>
+              <li className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">Step 3.</span> Enter violation #:
+                <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{violationNo}</code>
+                <CopyButton value={violationNo} />
+              </li>
+              <li className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">Step 4.</span> Upload rental agreement:
+                <DownloadAgreementButton v={v} onNoAgreement={onCreateAgreement} label="📥 Download Agreement" />
+              </li>
+              <li>
+                <span className="font-medium">Step 5.</span> Submit on the E-ZPass website
+              </li>
+              <li>
+                <span className="font-medium">Step 6.</span> Come back here and confirm
+              </li>
+            </ol>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => window.open("https://www.ezpassnj.com", "_blank", "noopener")}
             >
-              <input
-                type="radio"
-                name="dispute-method"
-                className="mt-1"
-                checked={method === o.value}
-                onChange={() => setMethod(o.value)}
-              />
-              <div>
-                <p className="font-medium">{o.title}</p>
-                <p className="text-xs text-muted-foreground">{o.desc}</p>
+              Open ezpassnj.com →
+            </Button>
+          </div>
+        )}
+
+        {(method === "mail" || method === "walk_in") && (
+          <div className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Download the complete dispute packet (cover letter + signed rental agreement + original
+              violation notice).
+            </p>
+            <DownloadPacketButton v={v} label="📥 Download Packet" />
+            {method === "mail" ? (
+              <div className="rounded-md border bg-muted/30 p-3">
+                <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Mail to</p>
+                {NJ_EZPASS_MAIL_ADDRESS.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
               </div>
-            </label>
-          ))}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
-            Cancel
-          </Button>
-          <Button onClick={submit} disabled={busy}>
-            {busy ? "Recording…" : "Record & Move to Disputed"}
-          </Button>
+            ) : (
+              <div className="rounded-md border bg-muted/30 p-3">
+                <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
+                  E-ZPass office locations
+                </p>
+                <ul className="list-disc space-y-1 pl-4 text-xs">
+                  {NJ_EZPASS_OFFICES.map((o) => (
+                    <li key={o}>{o}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          {method === null ? (
+            <Button variant="outline" onClick={close} disabled={busy}>
+              Cancel
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={reset} disabled={busy}>
+                ← Back
+              </Button>
+              <Button onClick={() => confirm(method)} disabled={busy}>
+                {busy
+                  ? "Recording…"
+                  : method === "mail"
+                    ? "✅ Confirm Mailed"
+                    : "✅ Confirm Submitted"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
