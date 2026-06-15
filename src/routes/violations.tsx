@@ -1284,6 +1284,29 @@ function ViolationsPage() {
 
       <Card>
         <CardContent className="p-0">
+          {filter === "matched" && filtered.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 border-b bg-muted/30 p-3 text-sm">
+              <span className="font-medium">
+                {selectedRows.length > 0 ? `${selectedRows.length} selected` : "Select violations to dispute in bulk"}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedRows.length === 0 || bulkBusy}
+                onClick={bulkDownloadPackets}
+              >
+                {bulkBusy ? "Building…" : "📦 Bulk Download Packets"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedRows.length === 0}
+                onClick={() => setBulkOnlineOpen(true)}
+              >
+                🌐 Bulk Online Prep
+              </Button>
+            </div>
+          )}
           {isLoading ? (
             <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
           ) : filtered.length === 0 ? (
