@@ -908,12 +908,17 @@ function ManualMatchDialog({
             <p className="py-4 text-center text-sm text-destructive">
               {error instanceof Error ? error.message : "Search failed"}
             </p>
-          ) : results.length === 0 ? (
+          ) : sorted.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
               No rentals found. Adjust the date, plate, or name and search again.
             </p>
           ) : (
-            results.map((r) => (
+            <>
+            <p className="px-1 text-xs text-muted-foreground">
+              Showing all {sorted.length} rental{sorted.length === 1 ? "" : "s"} on this plate — date
+              matches first. Pick the correct one.
+            </p>
+            {sorted.map((r) => (
               <div
                 key={`${r.source}-${r.id}`}
                 className="flex flex-col gap-2 rounded-md border p-3 text-sm"
@@ -928,6 +933,13 @@ function ManualMatchDialog({
                       {r.hasAgreement ? (
                         <Badge className="bg-emerald-600 text-[10px]">Agreement on file</Badge>
                       ) : null}
+                      {r._coversDate ? (
+                        <Badge className="bg-emerald-600 text-[10px]">✅ Covers toll date</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px]">
+                          Different period
+                        </Badge>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {r.vehicleLabel}
@@ -1013,7 +1025,8 @@ function ManualMatchDialog({
                   </div>
                 )}
               </div>
-            ))
+            ))}
+            </>
           )}
         </div>
 
