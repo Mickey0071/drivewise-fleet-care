@@ -488,7 +488,9 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                         {it.match_status === "matched" ? (
                           <Badge className="bg-emerald-600">✅ Matched</Badge>
                         ) : it.match_status === "multiple" ? (
-                          <Badge variant="secondary">⚠️ Multiple</Badge>
+                          <Badge className="bg-sky-600">
+                            🔢 {it.candidates?.length ?? 2} options — pick renter
+                          </Badge>
                         ) : (
                           <Badge variant="destructive">⚠️ Unmatched</Badge>
                         )}
@@ -507,7 +509,11 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                             onClick={() => setMatchFor(it)}
                             disabled={approved}
                           >
-                            {it.match_status === "matched" ? "Edit Match" : "Manual Match"}
+                            {it.match_status === "matched"
+                              ? "Edit Match"
+                              : it.match_status === "multiple"
+                                ? "Pick Renter"
+                                : "Manual Match"}
                           </Button>
                         )}
                       </td>
