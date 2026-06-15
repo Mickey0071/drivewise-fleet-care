@@ -1472,7 +1472,7 @@ function ViolationsPage() {
                     </tr>
                     {expanded === v.id && (
                       <tr key={`${v.id}-tl`} className="border-b bg-muted/20 last:border-0">
-                        <td colSpan={8} className="p-4">
+                        <td colSpan={filter === "matched" ? 9 : 8} className="p-4">
                           <V1Timeline v={v} />
                         </td>
                       </tr>
