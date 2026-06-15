@@ -542,9 +542,17 @@ function DisputeMethodDialog({
                 <span className="font-medium">Step 2.</span> Click "Dispute a Violation"
               </li>
               <li className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">Step 3.</span> Enter violation #:
-                <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{violationNo}</code>
-                <CopyButton value={violationNo} />
+                <span className="font-medium">Step 3.</span> Enter EZPass Ref #:
+                {violationNo ? (
+                  <>
+                    <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{violationNo}</code>
+                    <CopyButton value={violationNo} />
+                  </>
+                ) : (
+                  <span className="text-xs font-medium text-amber-600">
+                    ⚠️ EZPass # missing — add it on the violation card first
+                  </span>
+                )}
               </li>
               <li className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">Step 4.</span> Upload rental agreement:
