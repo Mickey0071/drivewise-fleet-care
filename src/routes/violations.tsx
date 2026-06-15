@@ -149,6 +149,7 @@ function OriginalDocControl({ v, onDone }: { v: ViolationRow; onDone: () => void
 function SendCustomerButton({ violation, onDone }: { violation: ViolationRow; onDone: () => void }) {
   const send = useServerFn(sendViolationToCustomer);
   const [busy, setBusy] = useState(false);
+  // placeholder
   const handle = async () => {
     setBusy(true);
     try {
