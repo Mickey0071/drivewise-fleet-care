@@ -472,7 +472,8 @@ function DisputeMethodDialog({
   const disputeFn = useServerFn(recordViolationDispute);
   const [method, setMethod] = useState<"online" | "mail" | "walk_in" | null>(null);
   const [busy, setBusy] = useState(false);
-  const violationNo = v.reference_number || v.id;
+  // External / online disputes must use the real EZPass number only — never the VIO- id.
+  const violationNo = v.reference_number || "";
 
   const reset = () => setMethod(null);
   const close = () => {
