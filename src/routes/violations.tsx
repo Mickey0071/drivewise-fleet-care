@@ -831,6 +831,9 @@ function ViolationsPage() {
                   <Link to="/violations/import">Import CSV</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
+                  <Link to="/admin/malibu-plate-review">Malibu Plate Review</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
                   <Link to="/violations/imports">Import History</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
