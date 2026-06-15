@@ -1123,7 +1123,15 @@ function ViolationsPage() {
                   {filtered.map((v) => (
                     <Fragment key={v.id}>
                     <tr className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="p-3 font-mono text-xs">{v.reference_number || v.id}</td>
+                      <td className="p-3 font-mono text-xs">
+                        <div className="flex items-center gap-1">
+                          <span title={v.photo_url ? "Original document attached" : "No original document"}>
+                            {v.photo_url ? "📄" : "📎"}
+                          </span>
+                          <span>{v.reference_number || v.id}</span>
+                        </div>
+                        <OriginalDocControl v={v} onDone={refresh} />
+                      </td>
                       <td className="p-3">{fmtDate(v.date_issued)}</td>
                       <td className="p-3 capitalize">{v.type}</td>
                       <td className="p-3">
