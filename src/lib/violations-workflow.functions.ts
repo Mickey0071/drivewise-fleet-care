@@ -231,3 +231,54 @@ export const recordViolationDispute = createServerFn({ method: "POST" })
     });
     return { ok: true as const };
   });
+
+/**
+ * Attach (or replace) the original violation document (PDF or image) for an
+ * existing violation. Accepts a data URL, stores it in the `violation-photos`
+ * bucket, saves a long-lived signed URL onto `violations.photo_url`, and
+ * returns the URL so the UI can open it immediately.
+ */
+export const attachViolationDocument = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { violationId: string; dataUrl: string }) => {
+    if (!input.violationId) throw new Error("violationId required");
+    if (!input.dataUrl || !/^data:[^;]+;base64,/.test(input.dataUrl)) {
+      throw new Error("A PDF or image file is required");
+    }
+    return { violationId: input.violationId, dataUrl: input.dataUrl };
+  })
+  .handler(async ({ data, context }): Promise<{ url: string }> => {
+    const m = /^data:([^;]+);base64,(.+)$/.exec(data.dataUrl);
+    if (!m) throw new Error("Invalid file");
+    const contentType = m[1];
+    const buffer = Buffer.from(m[2], "base64");
+    const ext = contentType.includes("pdf")
+      ? "pdf"
+      : contentType.includes("png")
+        ? "png"
+        : "jpg";
+    const path = `originals/${data.violationId}-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabaseAdmin.storage
+      .from("violation-photos")
+      .upload(path, buffer, { contentType, upsert: true });
+    if (upErr) throw new Error(upErr.message);
+    const { data: signed } = await supabaseAdmin.storage
+      .from("violation-photos")
+      .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
+    const url = signed?.signedUrl;
+    if (!url) throw new Error("Could not create document URL");
+
+    const { error } = await supabaseAdmin
+      .from("violations")
+      .update({ photo_url: url, updated_at: new Date().toISOString() } as never)
+      .eq("id", data.violationId);
+    if (error) throw new Error(error.message);
+
+    await logAudit({
+      violationId: data.violationId,
+      toStatus: "original_document_attached",
+      reason: "Original violation document attached",
+      userId: context.userId ?? null,
+    });
+    return { url };
+  });
