@@ -1319,6 +1319,16 @@ function ViolationsPage() {
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <tr>
+                    {filter === "matched" && (
+                      <th className="p-3">
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleAll}
+                          aria-label="Select all"
+                        />
+                      </th>
+                    )}
                     <th className="p-3">Violation #</th>
                     <th className="p-3">Date</th>
                     <th className="p-3">Type</th>
@@ -1333,6 +1343,16 @@ function ViolationsPage() {
                   {filtered.map((v) => (
                     <Fragment key={v.id}>
                     <tr className="border-b last:border-0 hover:bg-muted/30">
+                      {filter === "matched" && (
+                        <td className="p-3 align-top">
+                          <input
+                            type="checkbox"
+                            checked={selected.has(v.id)}
+                            onChange={() => toggleOne(v.id)}
+                            aria-label="Select violation"
+                          />
+                        </td>
+                      )}
                       <td className="p-3 font-mono text-xs">
                         <div className="flex items-center gap-1">
                           <span title={v.photo_url ? "Original document attached" : "No original document"}>
