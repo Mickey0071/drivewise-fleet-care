@@ -71,8 +71,80 @@ import {
   flagViolationOrphan,
 } from "@/lib/violations-workflow.functions";
 import { getViolationAgreement } from "@/lib/violations-workflow.functions";
+import { attachViolationDocument } from "@/lib/violations-workflow.functions";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
 import { downloadCSV } from "@/lib/exports";
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result as string);
+    fr.onerror = () => reject(new Error("Failed to read file"));
+    fr.readAsDataURL(file);
+  });
+}
+
+/**
+ * Shows the original violation document status on a card and lets admins view
+ * it (PDF/image) or attach one when missing. Available on every tab.
+ */
+function OriginalDocControl({ v, onDone }: { v: ViolationRow; onDone: () => void }) {
+  const attach = useServerFn(attachViolationDocument);
+  const [busy, setBusy] = useState(false);
+  const inputId = `orig-doc-${v.id}`;
+
+  const onPick = async (file: File | null) => {
+    if (!file) return;
+    const ok = file.type === "application/pdf" || file.type.startsWith("image/");
+    if (!ok) {
+      toast.error("Please choose a PDF or image file");
+      return;
+    }
+    setBusy(true);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      await attach({ data: { violationId: v.id, dataUrl } });
+      toast.success("Original document attached");
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (v.photo_url) {
+    return (
+      <button
+        type="button"
+        onClick={() => window.open(v.photo_url as string, "_blank", "noopener")}
+        className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline"
+        title="Open the original violation notice"
+      >
+        📄 <span>View Original</span>
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <input
+        id={inputId}
+        type="file"
+        accept="application/pdf,image/*"
+        className="hidden"
+        onChange={(e) => onPick(e.target.files?.[0] ?? null)}
+      />
+      <label
+        htmlFor={inputId}
+        className="mt-1 flex cursor-pointer items-center gap-1 text-xs text-amber-600 hover:underline"
+        title="No original document — click to attach"
+      >
+        📎 <span>{busy ? "Uploading…" : "Attach Original"}</span>
+      </label>
+    </>
+  );
+}
 
 function SendCustomerButton({ violation, onDone }: { violation: ViolationRow; onDone: () => void }) {
   const send = useServerFn(sendViolationToCustomer);
