@@ -751,16 +751,20 @@ function ManualMatchDialog({
 
   const soon = (label: string) => toast.message(`${label} — coming soon`);
 
+  // Always load ALL rentals on this plate (and/or name) — never hard-filter by
+  // the violation date. A rental whose stored window doesn't cover the toll
+  // date (common for legacy imports with gaps) must still be shown so the admin
+  // can pick it. The date is used only for relevance sorting below.
   const runSearch = useCallback(
     () =>
       search({
         data: {
-          date: date.trim() || null,
+          date: null,
           plate: plate.trim() || null,
           name: name.trim() || null,
         },
       }),
-    [search, date, plate, name],
+    [search, plate, name],
   );
 
   const {
@@ -774,6 +778,37 @@ function ManualMatchDialog({
     enabled: Boolean(item.violation_date || item.plate),
     retry: false,
   });
+
+  // Relevance sort: rentals that cover the violation date first, then the
+  // closest by date, then newest. Never drops any result.
+  const vDate = (item.violation_date || "").slice(0, 10);
+  const sorted = useMemo(() => {
+    const dayDiff = (a: string, b: string) => {
+      const da = new Date(`${a}T00:00:00`).getTime();
+      const db = new Date(`${b}T00:00:00`).getTime();
+      if (Number.isNaN(da) || Number.isNaN(db)) return Number.POSITIVE_INFINITY;
+      return Math.abs(Math.round((da - db) / 86400000));
+    };
+    const score = (r: ViolationSearchCard) => {
+      const start = (r.startDate || "").slice(0, 10);
+      const end = (r.endDate || "").slice(0, 10);
+      if (!vDate) return { rank: 2, dist: 0 };
+      if (start && start <= vDate && (!end || end >= vDate)) return { rank: 0, dist: 0 };
+      const dist = Math.min(
+        start ? dayDiff(start, vDate) : Number.POSITIVE_INFINITY,
+        end ? dayDiff(end, vDate) : Number.POSITIVE_INFINITY,
+      );
+      return { rank: dist <= 7 ? 1 : 2, dist };
+    };
+    return [...results]
+      .map((r) => ({ r, s: score(r) }))
+      .sort((a, b) => {
+        if (a.s.rank !== b.s.rank) return a.s.rank - b.s.rank;
+        if (a.s.dist !== b.s.dist) return a.s.dist - b.s.dist;
+        return (b.r.startDate || "").localeCompare(a.r.startDate || "");
+      })
+      .map((x) => ({ ...x.r, _coversDate: x.s.rank === 0 }));
+  }, [results, vDate]);
 
   const confirm = async (rentalId: string) => {
     setBusy(true);
