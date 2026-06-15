@@ -119,10 +119,10 @@ export const listViolations = createServerFn({ method: "GET" })
       return {
         ...r,
         driver_name:
-          (r.driver_id ? dMap.get(r.driver_id) ?? null : null) ??
+          (r.driver_id ? dMap.get(r.driver_id) ?? null : null) ||
           (legacy?.renter_name ?? null),
         driver_phone:
-          (r.driver_id ? dPhone.get(r.driver_id) ?? null : null) ??
+          (r.driver_id ? dPhone.get(r.driver_id) ?? null : null) ||
           ((legacy as any)?.phone ?? null),
         vehicle_label: r.vehicle_id ? vMap.get(r.vehicle_id) ?? null : null,
         agreement_on_file: agreementOnFile,
