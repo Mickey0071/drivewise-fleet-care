@@ -583,9 +583,22 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
           <DialogHeader>
             <DialogTitle>Save violations & generate letters?</DialogTitle>
             <DialogDescription>
-              You're about to permanently save all {items.length} violation{items.length === 1 ? "" : "s"} to the
-              violations list. The plate matcher re-runs on save — matched ones move to the Matched tab and get a
-              pre-filled liability-transfer letter; unmatched ones land in the Uploaded tab to match later. Continue?
+              {approveMode === "matched" ? (
+                <>
+                  You're about to permanently save the {matchedCount} matched violation
+                  {matchedCount === 1 ? "" : "s"}. Each moves to the Matched tab and gets a pre-filled
+                  liability-transfer letter. The {unmatchedCount} unmatched one
+                  {unmatchedCount === 1 ? "" : "s"} stay in this batch so you can match them later.
+                  Continue?
+                </>
+              ) : (
+                <>
+                  You're about to permanently save all {items.length} violation
+                  {items.length === 1 ? "" : "s"} to the violations list. The plate matcher re-runs on
+                  save — matched ones move to the Matched tab and get a pre-filled liability-transfer
+                  letter; unmatched ones land in the Uploaded tab to match later. Continue?
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
