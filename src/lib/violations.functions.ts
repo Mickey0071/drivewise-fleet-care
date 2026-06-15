@@ -435,6 +435,8 @@ export interface RentalOption {
   agreement_on_file?: boolean;
   driver_phone?: string | null;
   driver_email?: string | null;
+  /** Plate was not stored on the legacy row; inferred from the fleet by vehicle/year. */
+  plate_inferred?: boolean;
 }
 
 export const listRentalsForViolation = createServerFn({ method: "GET" })
@@ -479,27 +481,82 @@ export const listRentalsForViolation = createServerFn({ method: "GET" })
       };
     });
 
+    // Load the FULL fleet so we can back-fill plates onto legacy rentals that
+    // were imported without one. legacy_rentals has no vehicle_id, so the only
+    // bridge is matching the legacy `vehicle`/`year` text to a fleet vehicle.
+    const { data: allVehicles } = await supabaseAdmin
+      .from("vehicles")
+      .select("id, plate, make, model, year");
+    const fleet = (allVehicles ?? []) as {
+      id: string;
+      plate: string | null;
+      make: string | null;
+      model: string | null;
+      year: number | null;
+    }[];
+    const tokenize = (s: string | null | undefined) =>
+      (s ?? "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim()
+        .split(" ")
+        .filter(Boolean);
+    // Infer the best fleet vehicle for a legacy vehicle description + year.
+    // Requires every model token to appear in the legacy text; prefers an
+    // exact year match and only commits when a single confident candidate
+    // remains (avoids guessing across identical make/model/year duplicates).
+    const inferVehicle = (vehicleText: string | null, yearText: string | null) => {
+      const desc = tokenize(vehicleText);
+      if (desc.length === 0) return null;
+      const yr = (yearText ?? "").match(/\d{4}/)?.[0] ?? null;
+      const candidates = fleet.filter((v) => {
+        const modelTokens = tokenize(v.model);
+        if (modelTokens.length === 0) return false;
+        return modelTokens.every((t) => desc.includes(t));
+      });
+      if (candidates.length === 0) return null;
+      if (candidates.length === 1) return candidates[0];
+      // Multiple model matches — disambiguate by year.
+      if (yr) {
+        const byYear = candidates.filter((v) => String(v.year ?? "") === yr);
+        if (byYear.length === 1) return byYear[0];
+      }
+      return null; // still ambiguous — leave unmatched rather than guess wrong
+    };
+
     // Also include migrated/legacy reservations so manual match can pick them.
     const { data: legacyRows } = await supabaseAdmin
       .from("legacy_rentals")
-      .select("id, renter_name, plate, vehicle, start_datetime, end_datetime, retro_signed_at, phone, email")
+      .select("id, renter_name, plate, vehicle, year, start_datetime, end_datetime, retro_signed_at, phone, email")
       .order("start_datetime", { ascending: false, nullsFirst: false })
       .limit(1000);
-    const legacyOptions: RentalOption[] = (legacyRows ?? []).map((r) => ({
-      id: `LEGACY:${r.id}`,
-      driver_id: null,
-      vehicle_id: null,
-      driver_name: r.renter_name ?? null,
-      driver_phone: (r as any).phone ?? null,
-      driver_email: (r as any).email ?? null,
-      vehicle_label: r.vehicle ?? null,
-      plate: r.plate ?? null,
-      start_date: r.start_datetime ? r.start_datetime.slice(0, 10) : "",
-      end_date: r.end_datetime ? r.end_datetime.slice(0, 10) : null,
-      reservation_status: "migrated",
-      source: "migrated",
-      agreement_on_file: Boolean((r as any).retro_signed_at),
-    }));
+    const legacyOptions: RentalOption[] = (legacyRows ?? []).map((r) => {
+      const storedPlate = (r.plate ?? "").trim() || null;
+      // Back-fill the plate from the fleet only when the legacy row lacks one.
+      const inferred = storedPlate ? null : inferVehicle(r.vehicle ?? null, (r as any).year ?? null);
+      const plate = storedPlate ?? inferred?.plate ?? null;
+      const yearStr = ((r as any).year ?? "").toString().trim();
+      const baseLabel = r.vehicle ?? null;
+      const label = baseLabel
+        ? `${yearStr ? yearStr + " " : ""}${baseLabel}${inferred?.plate ? ` (${inferred.plate} · inferred)` : ""}`
+        : null;
+      return {
+        id: `LEGACY:${r.id}`,
+        driver_id: null,
+        vehicle_id: inferred?.id ?? null,
+        driver_name: r.renter_name ?? null,
+        driver_phone: (r as any).phone ?? null,
+        driver_email: (r as any).email ?? null,
+        vehicle_label: label,
+        plate,
+        plate_inferred: Boolean(!storedPlate && inferred?.plate),
+        start_date: r.start_datetime ? r.start_datetime.slice(0, 10) : "",
+        end_date: r.end_datetime ? r.end_datetime.slice(0, 10) : null,
+        reservation_status: "migrated",
+        source: "migrated",
+        agreement_on_file: Boolean((r as any).retro_signed_at),
+      };
+    });
 
     return [...liveOptions, ...legacyOptions];
   });
