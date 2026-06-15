@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 
 const STAGES = ["uploaded", "matched", "disputed", "completed"] as const;
 type Stage = (typeof STAGES)[number];
@@ -148,6 +149,58 @@ export const flagViolationOrphan = createServerFn({ method: "POST" })
       userId: context.userId ?? null,
     });
     return { ok: true as const };
+  });
+
+/**
+ * Resolve a downloadable signed-rental-agreement PDF URL for a violation.
+ * Order of resolution:
+ *  1. Live rental's `agreement_pdf_url` (generate on the fly if the rental is
+ *     signed but has no PDF yet).
+ *  2. Legacy / retro shell's `agreement_pdf_url`.
+ * Returns `{ url, exists }`. `exists` is false when there is no agreement at
+ * all — the UI should then open the Create Agreement form.
+ */
+export const getViolationAgreement = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { violationId: string }) => {
+    if (!input.violationId) throw new Error("violationId required");
+    return { violationId: input.violationId };
+  })
+  .handler(async ({ data }): Promise<{ url: string | null; exists: boolean }> => {
+    const { data: v } = await supabaseAdmin
+      .from("violations")
+      .select("id, rental_id, legacy_rental_id, retro_legacy_rental_id")
+      .eq("id", data.violationId)
+      .maybeSingle();
+    if (!v) throw new Error("Violation not found");
+
+    // 1) Live rental
+    if (v.rental_id) {
+      const { data: r } = await supabaseAdmin
+        .from("rentals")
+        .select("id, agreement_pdf_url, client_signed_at")
+        .eq("id", v.rental_id)
+        .maybeSingle();
+      if (r?.agreement_pdf_url) return { url: r.agreement_pdf_url, exists: true };
+      // Signed but no PDF yet → generate it now.
+      if (r?.client_signed_at) {
+        const res = await generateAgreementPdf({ data: { rentalId: r.id } });
+        if (res.url) return { url: res.url, exists: true };
+      }
+    }
+
+    // 2) Legacy / retro shell
+    const legacyId = (v as any).retro_legacy_rental_id || v.legacy_rental_id;
+    if (legacyId) {
+      const { data: lr } = await supabaseAdmin
+        .from("legacy_rentals")
+        .select("agreement_pdf_url, retro_signed_at")
+        .eq("id", legacyId)
+        .maybeSingle();
+      if (lr?.agreement_pdf_url) return { url: lr.agreement_pdf_url, exists: true };
+    }
+
+    return { url: null, exists: false };
   });
 
 /** Record how a matched violation was disputed and move it to the Disputed tab. */
