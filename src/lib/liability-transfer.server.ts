@@ -160,7 +160,14 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
     y += h;
   };
 
-  const ref = (v.reference_number as string | null) || (v.id as string);
+  // External documents MUST use the real EZPass violation/reference number.
+  // Never fall back to the internal VIO- tracking id on any outgoing document.
+  const ref = (v.reference_number as string | null)?.trim() || "";
+  if (!ref) {
+    throw new Error(
+      "EZPass Ref # is missing for this violation. Enter the EZPass violation number before generating any dispute document.",
+    );
+  }
 
   // Violation number banner (top of document)
   doc.setFont("helvetica", "bold");
