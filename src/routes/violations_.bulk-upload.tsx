@@ -553,11 +553,11 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Generate liability-transfer letters?</DialogTitle>
+            <DialogTitle>Save violations & generate letters?</DialogTitle>
             <DialogDescription>
-              You're about to generate {items.length} liability-transfer letter{items.length === 1 ? "" : "s"} and
-              prepare them for review. Each PDF will be pre-filled with customer and violation details.
-              Continue?
+              You're about to permanently save all {items.length} violation{items.length === 1 ? "" : "s"} to the
+              violations list. The plate matcher re-runs on save — matched ones move to the Matched tab and get a
+              pre-filled liability-transfer letter; unmatched ones land in the Uploaded tab to match later. Continue?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
