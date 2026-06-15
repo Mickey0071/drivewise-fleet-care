@@ -311,6 +311,11 @@ export function FindRenterDialog({
                               <span className={`rounded px-1.5 py-0.5 text-xs ${rel.tone}`}>
                                 {rel.icon} {rel.label}
                               </span>
+                              {r.plate_inferred && (
+                                <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-xs text-sky-700 dark:text-sky-400">
+                                  🔎 Plate inferred from vehicle
+                                </span>
+                              )}
                             </div>
                           </div>
                           <Button
