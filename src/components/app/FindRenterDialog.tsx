@@ -30,6 +30,56 @@ function statusLabel(r: RentalOption): { label: string; tone: string } {
   return { label: "Active", tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" };
 }
 
+type Relevance = {
+  rank: 0 | 1 | 2;
+  distance: number;
+  label: string;
+  icon: string;
+  tone: string;
+};
+
+function dayDiff(a: string, b: string): number {
+  const da = new Date(a + "T00:00:00").getTime();
+  const db = new Date(b + "T00:00:00").getTime();
+  if (Number.isNaN(da) || Number.isNaN(db)) return Number.POSITIVE_INFINITY;
+  return Math.abs(Math.round((da - db) / 86400000));
+}
+
+function relevanceFor(r: RentalOption, vDate: string): Relevance {
+  const start = (r.start_date || "").slice(0, 10);
+  const end = (r.end_date || "").slice(0, 10);
+  // Within rental period.
+  if (vDate && start && start <= vDate && (!end || end >= vDate)) {
+    return {
+      rank: 0,
+      distance: 0,
+      label: "Violation date within rental period",
+      icon: "✅",
+      tone: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+    };
+  }
+  // Closeness to the period (within 7 days of either boundary).
+  const dStart = start ? dayDiff(start, vDate) : Number.POSITIVE_INFINITY;
+  const dEnd = end ? dayDiff(end, vDate) : Number.POSITIVE_INFINITY;
+  const distance = Math.min(dStart, dEnd);
+  if (vDate && distance <= 7) {
+    return {
+      rank: 1,
+      distance,
+      label: "Close to rental period",
+      icon: "🟡",
+      tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    };
+  }
+  return {
+    rank: 2,
+    distance,
+    label: "Same plate — different period",
+    icon: "⚪",
+    tone: "bg-muted text-muted-foreground",
+  };
+}
+
 export function FindRenterDialog({
   violation,
   rentalOptions,
@@ -73,11 +123,18 @@ export function FindRenterDialog({
     if (!searched) return [];
     const pk = normPlate(plate);
     const nq = name.trim().toLowerCase();
+    // Always show ALL rentals on the matching plate. Name is an optional
+    // narrowing filter only when the admin typed one.
     return rentalOptions
       .filter((r) => (pk ? normPlate(r.plate).includes(pk) : true))
       .filter((r) => (nq ? (r.driver_name || "").toLowerCase().includes(nq) : true))
-      .slice(0, 60);
-  }, [rentalOptions, searched, plate, name]);
+      .map((r) => ({ r, rel: relevanceFor(r, vDate) }))
+      .sort((a, b) => {
+        if (a.rel.rank !== b.rel.rank) return a.rel.rank - b.rel.rank;
+        if (a.rel.distance !== b.rel.distance) return a.rel.distance - b.rel.distance;
+        return (b.r.start_date || "").localeCompare(a.r.start_date || "");
+      });
+  }, [rentalOptions, searched, plate, name, vDate]);
 
   const covered = useMemo(() => {
     if (!selected) return false;
@@ -215,12 +272,17 @@ export function FindRenterDialog({
 
               {searched && (
                 <div className="space-y-2">
+                  {searched && results.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      Showing all {results.length} rental{results.length === 1 ? "" : "s"} on this plate — pick the correct one.
+                    </div>
+                  )}
                   {results.length === 0 ? (
                     <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
-                      No matching renters found.
+                      No rentals found on this plate. Use Create New Rental or Plate Not Mine below.
                     </div>
                   ) : (
-                    results.map((r) => {
+                    results.map(({ r, rel }) => {
                       const st = statusLabel(r);
                       return (
                         <div
@@ -246,6 +308,9 @@ export function FindRenterDialog({
                               >
                                 {r.agreement_on_file ? "Has Agreement" : "No Agreement"}
                               </span>
+                              <span className={`rounded px-1.5 py-0.5 text-xs ${rel.tone}`}>
+                                {rel.icon} {rel.label}
+                              </span>
                             </div>
                           </div>
                           <Button
@@ -256,7 +321,7 @@ export function FindRenterDialog({
                               setStep("confirm");
                             }}
                           >
-                            Match to This Rental
+                            Select This Rental
                           </Button>
                         </div>
                       );
