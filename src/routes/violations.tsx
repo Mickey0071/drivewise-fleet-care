@@ -578,7 +578,8 @@ function RowActions({
         <DisputeMethodDialog
           open={disputeOpen}
           onOpenChange={setDisputeOpen}
-          violationId={v.id}
+          v={v}
+          onCreateAgreement={onCreateAgreement}
           onDone={onDone}
         />
       </>
