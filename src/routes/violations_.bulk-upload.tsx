@@ -537,16 +537,31 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
           <>
             {unmatchedCount > 0 && (
               <p className="text-sm text-muted-foreground">
-                {unmatchedCount} unmatched — these are still saved and can be matched later.
+                {unmatchedCount} unmatched — save them too with "Approve All", or save only
+                matched now.
               </p>
             )}
             <Button
               size="lg"
+              variant="outline"
+              disabled={items.length === 0 || matchedCount === 0}
+              onClick={() => {
+                setApproveMode("matched");
+                setConfirmOpen(true);
+              }}
+            >
+              <CheckCircle2 className="mr-2 h-5 w-5" /> Approve Matched ({matchedCount})
+            </Button>
+            <Button
+              size="lg"
               disabled={items.length === 0}
-              onClick={() => setConfirmOpen(true)}
+              onClick={() => {
+                setApproveMode("all");
+                setConfirmOpen(true);
+              }}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
-              <CheckCircle2 className="mr-2 h-5 w-5" /> Approve & Generate PDFs
+              <CheckCircle2 className="mr-2 h-5 w-5" /> Approve All ({items.length})
             </Button>
           </>
         )}
