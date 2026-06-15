@@ -379,6 +379,7 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
   const [matchFor, setMatchFor] = useState<EzpassBatchItem | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [approveMode, setApproveMode] = useState<"all" | "matched">("all");
 
   const items = data?.items ?? [];
   const batch = data?.batch;
@@ -395,10 +396,16 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
   const handleApprove = async () => {
     setApproving(true);
     try {
-      const res = await approve({ data: { batchId } });
-      toast.success(
-        `Saved ${res.total} violation${res.total === 1 ? "" : "s"} — ${res.matched} matched, ${res.unmatched} unmatched`,
-      );
+      const res = await approve({ data: { batchId, mode: approveMode } });
+      if (approveMode === "matched") {
+        toast.success(
+          `Saved ${res.matched} matched violation${res.matched === 1 ? "" : "s"} — ${res.unmatched} unmatched left to match`,
+        );
+      } else {
+        toast.success(
+          `Saved ${res.total} violation${res.total === 1 ? "" : "s"} — ${res.matched} matched, ${res.unmatched} unmatched`,
+        );
+      }
       setConfirmOpen(false);
       refresh();
     } catch (e) {
