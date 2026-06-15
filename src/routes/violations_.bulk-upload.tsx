@@ -396,7 +396,9 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
     setApproving(true);
     try {
       const res = await approve({ data: { batchId } });
-      toast.success(`Generated ${res.generated} liability-transfer letter${res.generated === 1 ? "" : "s"}`);
+      toast.success(
+        `Saved ${res.total} violation${res.total === 1 ? "" : "s"} — ${res.matched} matched, ${res.unmatched} unmatched`,
+      );
       setConfirmOpen(false);
       refresh();
     } catch (e) {
@@ -522,12 +524,12 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
           <>
             {unmatchedCount > 0 && (
               <p className="text-sm text-muted-foreground">
-                Resolve all {unmatchedCount} unmatched violation(s) to continue.
+                {unmatchedCount} unmatched — these are still saved and can be matched later.
               </p>
             )}
             <Button
               size="lg"
-              disabled={unmatchedCount > 0 || items.length === 0}
+              disabled={items.length === 0}
               onClick={() => setConfirmOpen(true)}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
@@ -551,11 +553,11 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Generate liability-transfer letters?</DialogTitle>
+            <DialogTitle>Save violations & generate letters?</DialogTitle>
             <DialogDescription>
-              You're about to generate {items.length} liability-transfer letter{items.length === 1 ? "" : "s"} and
-              prepare them for review. Each PDF will be pre-filled with customer and violation details.
-              Continue?
+              You're about to permanently save all {items.length} violation{items.length === 1 ? "" : "s"} to the
+              violations list. The plate matcher re-runs on save — matched ones move to the Matched tab and get a
+              pre-filled liability-transfer letter; unmatched ones land in the Uploaded tab to match later. Continue?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

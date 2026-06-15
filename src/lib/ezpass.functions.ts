@@ -371,75 +371,135 @@ async function recomputeBatchCounts(batchId: string) {
     .eq("id", batchId);
 }
 
-/** Approve a fully-matched batch: create violation records + liability-transfer PDFs. */
+/**
+ * Approve a batch: permanently save EVERY violation (matched or not), set its
+ * workflow stage, re-run the plate matcher on commit to catch backfilled plates,
+ * and auto-generate liability-transfer letters for matched ones.
+ */
 export const approveEzpassBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ batchId: z.string().min(1).max(64) }).parse(input))
-  .handler(async ({ data, context }): Promise<{ generated: number }> => {
-    const { data: items, error: iErr } = await supabaseAdmin
-      .from("ezpass_batch_items")
-      .select("*")
-      .eq("batch_id", data.batchId);
-    if (iErr) throw new Error(iErr.message);
-    const rows = (items ?? []) as EzpassBatchItem[];
-    if (rows.length === 0) throw new Error("Batch has no items");
-    const unmatched = rows.filter((r) => r.match_status !== "matched");
-    if (unmatched.length > 0) {
-      throw new Error(`Resolve all ${unmatched.length} unmatched violation(s) before approving.`);
-    }
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{ generated: number; matched: number; unmatched: number; total: number }> => {
+      const { data: items, error: iErr } = await supabaseAdmin
+        .from("ezpass_batch_items")
+        .select("*")
+        .eq("batch_id", data.batchId);
+      if (iErr) throw new Error(iErr.message);
+      const rows = (items ?? []) as EzpassBatchItem[];
+      if (rows.length === 0) throw new Error("Batch has no items");
 
-    let generated = 0;
-    for (const item of rows) {
-      if (item.violation_id && item.affidavit_pdf_url) {
-        generated++;
-        continue;
-      }
-      const violationId = item.violation_id || genId("VIO");
-      // Create the violation record if it doesn't exist yet
-      if (!item.violation_id) {
-        await supabaseAdmin.from("violations").insert({
-          id: violationId,
-          rental_id: item.rental_id,
-          vehicle_id: item.vehicle_id ?? "UNKNOWN",
-          driver_id: item.driver_id,
-          type: "toll",
-          date_issued: item.violation_date,
-          license_plate: item.plate,
-          amount: item.amount,
-          fee: 0,
-          total_amount: item.amount,
-          description: `EZPass toll — ${item.location ?? ""}`.trim(),
-          location: item.location,
-          violation_time: item.violation_time,
-          notes: `Imported from EZPass batch ${data.batchId}`,
-          status: "pending",
-          created_by: context.userId ?? null,
-        } as never);
-      }
+      let generated = 0;
+      let matched = 0;
+      let unmatched = 0;
 
-      // Auto-generate the liability-transfer cover letter (no signature needed)
-      let transferUrl: string | null = item.affidavit_pdf_url;
-      try {
-        const res = await generateAndStoreLiabilityTransfer(violationId);
-        transferUrl = res.pdfUrl;
-      } catch (e) {
-        console.error("[ezpass] liability transfer gen failed:", e);
+      for (const item of rows) {
+        // Re-run the matcher on commit for anything not already firmly matched
+        // (picks up plates backfilled after the batch was first created).
+        let rentalId = item.rental_id;
+        let driverId = item.driver_id;
+        let vehicleId = item.vehicle_id;
+        let driverName = item.driver_name;
+        let matchStatus = item.match_status;
+
+        if (item.match_status !== "matched") {
+          const mr = await autoMatchToll({
+            violation_date: item.violation_date,
+            violation_time: item.violation_time,
+            plate: item.plate,
+            location: item.location,
+            amount: Number(item.amount || 0),
+          });
+          if (mr.match_status === "matched") {
+            rentalId = mr.rental_id;
+            driverId = mr.driver_id;
+            vehicleId = mr.vehicle_id;
+            driverName = mr.driver_name;
+            matchStatus = "matched";
+            await supabaseAdmin
+              .from("ezpass_batch_items")
+              .update({
+                match_status: "matched",
+                rental_id: rentalId,
+                driver_id: driverId,
+                vehicle_id: vehicleId,
+                driver_name: driverName,
+                candidates: null,
+              } as never)
+              .eq("id", item.id);
+          }
+        }
+
+        const isMatched = matchStatus === "matched" && !!rentalId;
+        if (isMatched) matched++;
+        else unmatched++;
+
+        const violationId = item.violation_id || genId("VIO");
+        // Permanently save the violation record if it doesn't exist yet.
+        if (!item.violation_id) {
+          await supabaseAdmin.from("violations").insert({
+            id: violationId,
+            rental_id: rentalId,
+            vehicle_id: vehicleId ?? "UNKNOWN",
+            driver_id: driverId,
+            type: "toll",
+            date_issued: item.violation_date,
+            license_plate: item.plate,
+            amount: item.amount,
+            fee: 0,
+            total_amount: item.amount,
+            description: `EZPass toll — ${item.location ?? ""}`.trim(),
+            location: item.location,
+            violation_time: item.violation_time,
+            notes: `Imported from EZPass batch ${data.batchId}`,
+            status: "pending",
+            workflow_stage: isMatched ? "matched" : "uploaded",
+            is_orphan: false,
+            created_by: context.userId ?? null,
+          } as never);
+        } else {
+          // Keep workflow stage in sync if it became matched on re-run.
+          await supabaseAdmin
+            .from("violations")
+            .update({
+              rental_id: rentalId,
+              vehicle_id: vehicleId ?? "UNKNOWN",
+              driver_id: driverId,
+              workflow_stage: isMatched ? "matched" : "uploaded",
+              updated_at: new Date().toISOString(),
+            } as never)
+            .eq("id", violationId);
+        }
+
+        // Only matched violations can get a pre-filled liability-transfer letter.
+        let transferUrl: string | null = item.affidavit_pdf_url;
+        if (isMatched) {
+          try {
+            const res = await generateAndStoreLiabilityTransfer(violationId);
+            transferUrl = res.pdfUrl;
+            generated++;
+          } catch (e) {
+            console.error("[ezpass] liability transfer gen failed:", e);
+          }
+        }
+
+        await supabaseAdmin
+          .from("ezpass_batch_items")
+          .update({ violation_id: violationId, affidavit_pdf_url: transferUrl } as never)
+          .eq("id", item.id);
       }
 
       await supabaseAdmin
-        .from("ezpass_batch_items")
-        .update({ violation_id: violationId, affidavit_pdf_url: transferUrl } as never)
-        .eq("id", item.id);
-      generated++;
-    }
+        .from("ezpass_batches")
+        .update({ status: "approved", matched_count: matched } as never)
+        .eq("id", data.batchId);
 
-    await supabaseAdmin
-      .from("ezpass_batches")
-      .update({ status: "approved" } as never)
-      .eq("id", data.batchId);
-
-    return { generated };
-  });
+      return { generated, matched, unmatched, total: rows.length };
+    },
+  );
 
 /** Download all liability-transfer letters for a batch as a ZIP. */
 export const downloadAffidavitsZip = createServerFn({ method: "POST" })

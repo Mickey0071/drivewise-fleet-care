@@ -72,6 +72,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminPartsRouteImport } from './routes/admin.parts'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
+import { Route as AdminMalibuPlateReviewRouteImport } from './routes/admin.malibu-plate-review'
 import { Route as AdminImportLegacyRouteImport } from './routes/admin.import-legacy'
 import { Route as AdminImportDataRouteImport } from './routes/admin.import-data'
 import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
@@ -409,6 +410,11 @@ const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
   path: '/admin/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminMalibuPlateReviewRoute = AdminMalibuPlateReviewRouteImport.update({
+  id: '/admin/malibu-plate-review',
+  path: '/admin/malibu-plate-review',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminImportLegacyRoute = AdminImportLegacyRouteImport.update({
   id: '/admin/import-legacy',
   path: '/admin/import-legacy',
@@ -563,6 +569,7 @@ export interface FileRoutesByFullPath {
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
+  '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
   '/admin/tasks': typeof AdminTasksRoute
@@ -649,6 +656,7 @@ export interface FileRoutesByTo {
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
+  '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
   '/admin/tasks': typeof AdminTasksRoute
@@ -736,6 +744,7 @@ export interface FileRoutesById {
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
+  '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
   '/admin/tasks': typeof AdminTasksRoute
@@ -824,6 +833,7 @@ export interface FileRouteTypes {
     | '/admin/extensions'
     | '/admin/import-data'
     | '/admin/import-legacy'
+    | '/admin/malibu-plate-review'
     | '/admin/notifications'
     | '/admin/parts'
     | '/admin/tasks'
@@ -910,6 +920,7 @@ export interface FileRouteTypes {
     | '/admin/extensions'
     | '/admin/import-data'
     | '/admin/import-legacy'
+    | '/admin/malibu-plate-review'
     | '/admin/notifications'
     | '/admin/parts'
     | '/admin/tasks'
@@ -996,6 +1007,7 @@ export interface FileRouteTypes {
     | '/admin/extensions'
     | '/admin/import-data'
     | '/admin/import-legacy'
+    | '/admin/malibu-plate-review'
     | '/admin/notifications'
     | '/admin/parts'
     | '/admin/tasks'
@@ -1083,6 +1095,7 @@ export interface RootRouteChildren {
   AdminExtensionsRoute: typeof AdminExtensionsRoute
   AdminImportDataRoute: typeof AdminImportDataRoute
   AdminImportLegacyRoute: typeof AdminImportLegacyRoute
+  AdminMalibuPlateReviewRoute: typeof AdminMalibuPlateReviewRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminPartsRoute: typeof AdminPartsRoute
   AdminTasksRoute: typeof AdminTasksRoute
@@ -1567,6 +1580,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminNotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/malibu-plate-review': {
+      id: '/admin/malibu-plate-review'
+      path: '/admin/malibu-plate-review'
+      fullPath: '/admin/malibu-plate-review'
+      preLoaderRoute: typeof AdminMalibuPlateReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/import-legacy': {
       id: '/admin/import-legacy'
       path: '/admin/import-legacy'
@@ -1798,6 +1818,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminExtensionsRoute: AdminExtensionsRoute,
   AdminImportDataRoute: AdminImportDataRoute,
   AdminImportLegacyRoute: AdminImportLegacyRoute,
+  AdminMalibuPlateReviewRoute: AdminMalibuPlateReviewRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminPartsRoute: AdminPartsRoute,
   AdminTasksRoute: AdminTasksRoute,
@@ -1842,3 +1863,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
