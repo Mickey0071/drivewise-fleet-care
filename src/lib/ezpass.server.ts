@@ -6,6 +6,7 @@ export interface ExtractedToll {
   plate: string | null;
   location: string | null;
   amount: number;
+  reference_number: string | null; // EZPass Toll Bill / Notice / Reference #
 }
 
 /**
@@ -58,7 +59,7 @@ export async function extractTollsFromImages(dataUrls: string[]): Promise<Extrac
             {
               role: "system",
               content:
-                'You read EZPass / toll authority statements. Extract EVERY toll/violation line item. Return ONLY a compact JSON object: {"violations":[{"date":string,"time":string,"plate_number":string,"toll_location":string,"amount":number}]}. date format MM/DD/YYYY. time as shown (24h or 12h, empty string if absent). plate_number exactly as printed (empty string if absent). toll_location is the plaza/exit/road. amount is a positive USD decimal number. If no violations are visible return {"violations":[]}. No prose, no code fences.',
+                'You read EZPass / toll authority statements. Extract EVERY toll/violation line item. Return ONLY a compact JSON object: {"violations":[{"date":string,"time":string,"plate_number":string,"toll_location":string,"amount":number,"reference_number":string}]}. date format MM/DD/YYYY. time as shown (24h or 12h, empty string if absent). plate_number exactly as printed (empty string if absent). toll_location is the plaza/exit/road. amount is a positive USD decimal number. reference_number is the official EZPass identifier for this violation/toll, found under labels like "Toll Bill No", "Bill No", "Reference #", "Notice #", "Violation #", or "Invoice #" (e.g. "B062675392939"); copy it exactly as printed, empty string if absent. If a single bill/notice number applies to all line items on the page, repeat it on each. If no violations are visible return {"violations":[]}. No prose, no code fences.',
             },
             {
               role: "user",
@@ -107,6 +108,7 @@ export async function extractTollsFromImages(dataUrls: string[]): Promise<Extrac
           plate: cleanStr(o.plate_number).toUpperCase() || null,
           location: cleanStr(o.toll_location) || null,
           amount: cleanNum(o.amount),
+          reference_number: cleanStr(o.reference_number) || null,
         });
       }
     } catch (e) {
