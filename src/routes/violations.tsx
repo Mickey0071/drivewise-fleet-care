@@ -1558,6 +1558,12 @@ function ViolationsPage() {
         </CardContent>
       </Card>
 
+      <BulkOnlinePrepDialog
+        open={bulkOnlineOpen}
+        onOpenChange={setBulkOnlineOpen}
+        rows={selectedRows}
+      />
+
       <NewViolationDialog open={newOpen} onOpenChange={setNewOpen} onCreated={(created) => {
         refresh();
         setNewOpen(false);
