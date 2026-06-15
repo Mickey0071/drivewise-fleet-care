@@ -378,12 +378,20 @@ async function recomputeBatchCounts(batchId: string) {
  */
 export const approveEzpassBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ batchId: z.string().min(1).max(64) }).parse(input))
+  .inputValidator((input) =>
+    z
+      .object({
+        batchId: z.string().min(1).max(64),
+        mode: z.enum(["all", "matched"]).optional(),
+      })
+      .parse(input),
+  )
   .handler(
     async ({
       data,
       context,
     }): Promise<{ generated: number; matched: number; unmatched: number; total: number }> => {
+      const mode = data.mode ?? "all";
       const { data: items, error: iErr } = await supabaseAdmin
         .from("ezpass_batch_items")
         .select("*")
@@ -395,6 +403,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
       let generated = 0;
       let matched = 0;
       let unmatched = 0;
+      let skippedUnmatched = 0;
 
       for (const item of rows) {
         // Re-run the matcher on commit for anything not already firmly matched
@@ -434,8 +443,17 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
         }
 
         const isMatched = matchStatus === "matched" && !!rentalId;
-        if (isMatched) matched++;
-        else unmatched++;
+        if (isMatched) {
+          matched++;
+        } else {
+          unmatched++;
+          // "Approve Matched" only persists matched violations; unmatched
+          // rows are left in the batch to resolve later.
+          if (mode === "matched") {
+            skippedUnmatched++;
+            continue;
+          }
+        }
 
         const violationId = item.violation_id || genId("VIO");
         // Permanently save the violation record if it doesn't exist yet.
@@ -492,10 +510,21 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
           .eq("id", item.id);
       }
 
-      await supabaseAdmin
-        .from("ezpass_batches")
-        .update({ status: "approved", matched_count: matched } as never)
-        .eq("id", data.batchId);
+      // Only flip the batch to "approved" (locks editing, shows the ZIP
+      // download) once everything has been persisted. In "matched" mode with
+      // unmatched rows still pending, keep the batch open for further matching.
+      const fullyResolved = mode === "all" || skippedUnmatched === 0;
+      if (fullyResolved) {
+        await supabaseAdmin
+          .from("ezpass_batches")
+          .update({ status: "approved", matched_count: matched } as never)
+          .eq("id", data.batchId);
+      } else {
+        await supabaseAdmin
+          .from("ezpass_batches")
+          .update({ matched_count: matched } as never)
+          .eq("id", data.batchId);
+      }
 
       return { generated, matched, unmatched, total: rows.length };
     },
