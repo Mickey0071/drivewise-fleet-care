@@ -70,6 +70,7 @@ import {
   recordViolationDispute,
   flagViolationOrphan,
 } from "@/lib/violations-workflow.functions";
+import { getViolationAgreement } from "@/lib/violations-workflow.functions";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
 import { downloadCSV } from "@/lib/exports";
 
