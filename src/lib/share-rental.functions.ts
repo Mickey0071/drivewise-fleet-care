@@ -4,6 +4,7 @@ import { sendSms } from "@/lib/ghl.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendPaymentLinkInternal } from "@/lib/payment-link.functions";
 import type { StripeEnv } from "@/lib/stripe.server";
+import { getRequestHeader } from "@tanstack/react-start/server";
 
 function genToken() {
   const bytes = new Uint8Array(16);
