@@ -1,42 +1,39 @@
-# Plate Backfill — Read-Only Preview
+## Goal
 
-A preview-only screen that shows exactly how the 93 verified plates would pair against `legacy_rentals`. **Nothing is written to the database in this step.** The actual update happens in a separate prompt after you confirm.
+When you share a rental link from a vehicle's fleet card, the client should go through the **same end-to-end process as a normal new reservation** — including the payment/deposit step — instead of stopping after signing. The link stays auto-generated for that specific vehicle; you (admin) still set the rate, billing type (daily/weekly), dates, and now an optional deposit before sending.
 
-## What I verified against the live data
-- `legacy_rentals` **already has** a nullable text `plate` column — no schema change needed.
-- 352 total rows; **3 already have a plate**, 349 are null.
-- The composite match (customer name + pickup date + return date) pairs correctly when comparing names case-insensitively and matching on the calendar date (UTC) of `start_datetime` / `end_datetime`.
-- Some mapping lines match **more than one** legacy row (e.g. duplicate "Janai Allen" rows). The preview will surface this so it's visible before any update.
+## What happens today vs. desired
 
-## How matching works
-For each of the 93 mapping lines:
-- Normalize: `lower(trim(renter_name))` vs `lower(trim(customer))`.
-- Dates: `start_datetime::date = pickup` and `end_datetime::date = return`.
-- **Never** match on order/reservation number.
+Today (fleet card → `/rent/$token`):
+1. Admin picks start date, billing period (daily/weekly/monthly), rate → generates link for that vehicle.
+2. Client fills details, uploads license + selfie, signs the agreement.
+3. A pending rental is created and an acknowledgement text is sent — **no payment is collected; staff handles it manually.**
 
-Each matched legacy row is classified:
-- **WILL UPDATE** — row found, `plate` currently null.
-- **ALREADY SET** — row found, `plate` already populated (will be left untouched).
-- **NO TABLE ROW FOUND** — mapping line matched zero rows.
-- **MULTIPLE MATCHES** (extra status) — mapping line matched more than one row, shown so you can review before updating.
+Desired: identical to the normal new-reservation flow, where after signing the client is sent to a secure Stripe payment page for the first charge (+ deposit), and the reservation activates automatically once paid.
 
-## Screen layout (`/admin/backfill-plates`, read-only)
-1. **Summary counts** at top: WILL UPDATE, ALREADY SET, NO TABLE ROW FOUND (plus a MULTIPLE MATCHES count if any).
-2. **Preview table** with columns:
-   - legacy_rentals row id
-   - customer
-   - pickup date
-   - return date
-   - vehicle (as stored)
-   - current plate value
-   - proposed plate (from mapping)
-   - match status (color-coded badge)
-3. **Remaining-null section**: a separate table listing every `legacy_rentals` row that will still have a null plate after this backfill (older/retired vehicles with no tag), so you can see exactly what's left unmatched.
+## Changes
 
-## Technical approach
-- Add a read-only server function `previewPlateBackfill` (in `src/lib/plate-backfill.functions.ts`) that embeds the 93-line mapping as a SQL `VALUES` list, LEFT JOINs it to `legacy_rentals` on the normalized composite key, and also returns the still-null rows. It only runs `SELECT` — no `UPDATE`/`INSERT`.
-- Add route `src/routes/admin.backfill-plates.tsx` rendering the counts, preview table, and remaining-null list using existing `Card`, `Table`, and `Badge` UI components.
-- No migration, no data writes. The mapping is stored in code so the follow-up "run the update" prompt can reuse the exact same matching logic.
+### 1. Admin share dialog — add deposit input
+In `ShareRentalDialog.tsx`, add an optional **Deposit ($)** field next to Rate (defaulting to the same `300` used by the new-reservation flow). Keep everything else (start date, daily/weekly, rate) as-is. This is the only new admin input; "type" already maps to the existing daily/weekly selector.
 
-## Out of scope (next prompt)
-- The actual `UPDATE legacy_rentals SET plate = ... WHERE plate IS NULL` will be built and run only after you confirm these pairings.
+### 2. Store deposit on the share link
+Add a `deposit` column to the `rental_share_links` table (migration) and persist it in `createShareLink`. Surface it through the existing public lookup so the client page knows the deposit amount.
+
+### 3. Collect payment after signing (the core change)
+In `submitShareApplication` (`share-rental.functions.ts`), after the rental + driver are created and the link is marked consumed, create a **first-payment Stripe link** for `rate + deposit` using the existing `sendPaymentLinkInternal` helper (the same machinery the normal reservation flow uses), tied to the new `rentalId`. Return the payment URL to the client.
+
+- Payment environment is determined server-side (live when the live key is present, otherwise sandbox).
+- The Stripe link redirects to the existing `/rent/paid?session_id=...&rental_id=...` page, and the existing payment webhook activates the reservation — exactly like a normal reservation. No new payment plumbing is invented.
+
+### 4. Client page — send them to payment instead of "we'll be in touch"
+In `/rent/$token`, when `submitShareApplication` returns a payment URL, redirect the client to it (and also keep the SMS/email payment link as a fallback). The final "thank you" state then reflects "complete your payment" rather than "staff will contact you," matching the normal flow.
+
+## Notes / technical details
+
+- Reuses `sendPaymentLinkInternal` from `payment-link.functions.ts`, `/rent/paid`, and the existing Stripe webhook — so activation, payment logging, and cardholder verification all behave the same as a standard reservation.
+- The rental is still created as `pending` and only activates on successful payment, preserving the 24h-hold semantics.
+- One migration adds `rental_share_links.deposit numeric default 0`; the public RPC `get_share_link_public` is updated to return it.
+- No change to how the link is generated per-vehicle — it remains auto-scoped to the fleet card's vehicle.
+
+## Open question (non-blocking)
+If you'd rather the deposit always be a fixed amount (e.g. $300) with no per-link input, I can skip the deposit field and just hardcode it — but the plan above lets you set it per reservation, consistent with the new-reservation dialog.
