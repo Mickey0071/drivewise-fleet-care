@@ -341,11 +341,11 @@ function RentPage() {
             <SignaturePad value={sig ?? undefined} onChange={setSig} />
           </Card>
           <div className="flex gap-2">
-            <Button variant="outline" size="lg" onClick={() => setStep("agreement")} disabled={submitting}>
+            <Button variant="outline" size="lg" onClick={() => setStep("agreement")} disabled={submitting || redirecting}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back
             </Button>
-            <Button className="flex-1" size="lg" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…</> : "Submit application"}
+            <Button className="flex-1" size="lg" onClick={handleSubmit} disabled={submitting || redirecting}>
+              {submitting || redirecting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {redirecting ? "Redirecting to payment…" : "Submitting…"}</> : "Submit & continue to payment"}
             </Button>
           </div>
         </>
