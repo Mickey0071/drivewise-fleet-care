@@ -30,6 +30,7 @@ export function ShareRentalDialog({
   const [startDate, setStartDate] = useState(today);
   const [billingPeriod, setBillingPeriod] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [rate, setRate] = useState<string>("");
+  const [deposit, setDeposit] = useState<string>("300");
   const [token, setToken] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [smsLoading, setSmsLoading] = useState(false);
@@ -43,6 +44,7 @@ export function ShareRentalDialog({
       setStartDate(today);
       setBillingPeriod("weekly");
       setRate(String(vehicle.weeklyRate ?? ""));
+      setDeposit("300");
       setToken(null);
       setPhone(""); setEmail(""); setName("");
     }
@@ -62,11 +64,13 @@ export function ShareRentalDialog({
     if (!vehicle) return;
     const r = Number(rate);
     if (!r || r <= 0) return toast.error("Enter a valid rate");
+    const dep = Number(deposit) || 0;
+    if (dep < 0) return toast.error("Enter a valid deposit");
     const cleanPhone = phone.trim();
     const willSend = cleanPhone.length >= 7;
     setCreating(true);
     try {
-      const res = await create({ data: { vehicleId: vehicle.id, startDate, billingPeriod, rate: r } });
+      const res = await create({ data: { vehicleId: vehicle.id, startDate, billingPeriod, rate: r, deposit: dep } });
       setToken(res.token);
       const newUrl = `${getPublicAppOrigin()}/rent/${res.token}`;
       if (willSend) {
@@ -163,16 +167,30 @@ export function ShareRentalDialog({
               </Select>
             </div>
           </div>
-          <div>
-            <Label htmlFor="share-rate">Rate ($)</Label>
-            <Input
-              id="share-rate"
-              type="number"
-              inputMode="decimal"
-              value={rate}
-              onChange={(e) => setRate(e.target.value)}
-              disabled={!!token}
-            />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="share-rate">Rate ($)</Label>
+              <Input
+                id="share-rate"
+                type="number"
+                inputMode="decimal"
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                disabled={!!token}
+              />
+            </div>
+            <div>
+              <Label htmlFor="share-deposit">Deposit ($)</Label>
+              <Input
+                id="share-deposit"
+                type="number"
+                inputMode="decimal"
+                value={deposit}
+                onChange={(e) => setDeposit(e.target.value)}
+                disabled={!!token}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">Charged with the first payment. Set 0 for none.</p>
+            </div>
           </div>
 
           <div className="rounded-md border border-border p-3 space-y-2">

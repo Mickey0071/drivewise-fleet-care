@@ -1914,6 +1914,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           daily_rate: number
+          deposit: number
           expires_at: string
           notes: string | null
           rate: number
@@ -1929,6 +1930,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           daily_rate?: number
+          deposit?: number
           expires_at?: string
           notes?: string | null
           rate?: number
@@ -1944,6 +1946,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           daily_rate?: number
+          deposit?: number
           expires_at?: string
           notes?: string | null
           rate?: number
@@ -3344,6 +3347,7 @@ export type Database = {
           billing_period: string
           consumed: boolean
           daily_rate: number
+          deposit: number
           expires_at: string
           notes: string
           rate: number

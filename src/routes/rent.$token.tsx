@@ -11,6 +11,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { toast } from "sonner";
 import { CheckCircle2, Loader2, Camera, FileSignature, IdCard, User, ArrowLeft, ArrowRight } from "lucide-react";
 import { US_STATES, formatFullName, formatAddressBlock } from "@/lib/us-states";
+import { getStripeEnvironment } from "@/lib/stripe";
 
 export const Route = createFileRoute("/rent/$token")({
   head: () => ({ meta: [{ title: "Rent a vehicle — Camauto Rentals" }] }),
@@ -47,6 +48,7 @@ function RentPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [step, setStep] = useState<"details" | "agreement" | "sign">("details");
 
   useEffect(() => {
@@ -72,7 +74,13 @@ function RentPage() {
     setSubmitting(true);
     try {
       const fullName = formatFullName({ firstName, middleInitial, lastName });
-      await submit({
+      let environment: "sandbox" | "live" | undefined;
+      try {
+        environment = getStripeEnvironment();
+      } catch {
+        environment = undefined;
+      }
+      const res = await submit({
         data: {
           token,
           fullName: fullName.trim(),
@@ -94,8 +102,15 @@ function RentPage() {
           licenseDataUrl: licenseUrl,
           selfieDataUrl: selfieUrl,
           signatureDataUrl: sig,
+          environment,
         },
       });
+      if (res?.paymentUrl) {
+        setRedirecting(true);
+        toast.success("Almost done — redirecting to secure payment…");
+        window.location.href = res.paymentUrl;
+        return;
+      }
       setDone(true);
       toast.success("Thank you for choosing Camauto");
     } catch (e) {
@@ -148,7 +163,10 @@ function RentPage() {
         <p className="text-sm text-muted-foreground">
           {info.vehicle.year} {info.vehicle.make} {info.vehicle.model}
         </p>
-        <p className="text-sm font-medium">${info.rate}/{periodLabel} · Starts {info.startDate}</p>
+        <p className="text-sm font-medium">
+          ${info.rate}/{periodLabel}
+          {info.deposit > 0 ? ` · $${info.deposit} deposit` : ""} · Starts {info.startDate}
+        </p>
       </header>
 
       <div className="text-center text-xs text-muted-foreground">
@@ -323,11 +341,11 @@ function RentPage() {
             <SignaturePad value={sig ?? undefined} onChange={setSig} />
           </Card>
           <div className="flex gap-2">
-            <Button variant="outline" size="lg" onClick={() => setStep("agreement")} disabled={submitting}>
+            <Button variant="outline" size="lg" onClick={() => setStep("agreement")} disabled={submitting || redirecting}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back
             </Button>
-            <Button className="flex-1" size="lg" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…</> : "Submit application"}
+            <Button className="flex-1" size="lg" onClick={handleSubmit} disabled={submitting || redirecting}>
+              {submitting || redirecting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {redirecting ? "Redirecting to payment…" : "Submitting…"}</> : "Submit & continue to payment"}
             </Button>
           </div>
         </>

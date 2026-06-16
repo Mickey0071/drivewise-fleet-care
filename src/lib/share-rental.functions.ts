@@ -2,6 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { sendPaymentLinkInternal } from "@/lib/payment-link.functions";
+import type { StripeEnv } from "@/lib/stripe.server";
+import { getRequestHeader } from "@tanstack/react-start/server";
 
 function genToken() {
   const bytes = new Uint8Array(16);
@@ -68,11 +71,13 @@ export const createShareLink = createServerFn({ method: "POST" })
     startDate: string;
     billingPeriod: "daily" | "weekly" | "monthly";
     rate: number;
+    deposit?: number;
   }) => {
     if (!input.vehicleId) throw new Error("vehicleId required");
     if (!input.startDate) throw new Error("startDate required");
     if (!["daily", "weekly", "monthly"].includes(input.billingPeriod)) throw new Error("invalid billingPeriod");
     if (typeof input.rate !== "number" || input.rate < 0) throw new Error("rate required");
+    if (input.deposit != null && (typeof input.deposit !== "number" || input.deposit < 0)) throw new Error("invalid deposit");
     return input;
   })
   .handler(async ({ data, context }) => {
@@ -92,6 +97,7 @@ export const createShareLink = createServerFn({ method: "POST" })
       start_date: data.startDate,
       billing_period: data.billingPeriod,
       rate: data.rate,
+      deposit: data.deposit ?? 0,
       weekly_rate: vehicle.weekly_rate ?? 0,
       daily_rate: vehicle.daily_rate ?? 0,
       created_by: context.userId,
@@ -259,6 +265,7 @@ export const getShareLinkPublic = createServerFn({ method: "POST" })
       rate: Number(row.rate),
       weeklyRate: Number(row.weekly_rate),
       dailyRate: Number(row.daily_rate),
+      deposit: Number(row.deposit ?? 0),
       vehicle: {
         make: row.vehicle_make as string | null,
         model: row.vehicle_model as string | null,
@@ -292,6 +299,7 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     licenseDataUrl: string;
     selfieDataUrl: string;
     signatureDataUrl: string;
+    environment?: StripeEnv;
   }) => {
     const reqStr = (s: unknown, label: string, max = 200) => {
       if (typeof s !== "string" || !s.trim() || s.length > max) throw new Error(`${label} required`);
@@ -317,6 +325,8 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     if (!input.licenseDataUrl?.startsWith("data:image/")) throw new Error("License photo required");
     if (!input.selfieDataUrl?.startsWith("data:image/")) throw new Error("Selfie required");
     if (!input.signatureDataUrl?.startsWith("data:image/")) throw new Error("Signature required");
+    if (input.environment && input.environment !== "sandbox" && input.environment !== "live")
+      throw new Error("invalid environment");
     return input;
   })
   .handler(async ({ data }) => {
@@ -407,15 +417,53 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       .update({ consumed_rental_id: rentalId, consumed_at: nowIso })
       .eq("token", data.token);
 
-    // Acknowledgment SMS — no payment link. Staff handles payment manually.
-    try {
-      await sendSms(
-        data.phone.trim(),
-        `Thank you for choosing Camauto, ${data.fullName.trim().split(" ")[0]}! Your application has been received. We'll be in touch shortly to confirm pickup.`,
-        data.fullName.trim(),
-      );
-    } catch (e) {
-      console.error("ack sms failed", e);
+    // First payment — same as a normal reservation: collect the first
+    // period charge plus any deposit before the reservation activates.
+    const deposit = Number(link.deposit ?? 0);
+    const firstCharge = Number(link.rate ?? 0) + (Number.isFinite(deposit) ? deposit : 0);
+    let paymentUrl: string | null = null;
+    if (firstCharge >= 0.5) {
+      try {
+        const environment: StripeEnv = data.environment ?? "live";
+        const origin =
+          getRequestHeader("origin") || getRequestHeader("referer") || process.env.PUBLIC_APP_ORIGIN || "";
+        const cleanOrigin = origin ? new URL(origin).origin : "";
+        const depositNote = deposit > 0 ? ` + $${deposit.toFixed(2)} deposit` : "";
+        const res = await sendPaymentLinkInternal({
+          phone: data.phone.trim(),
+          name: data.fullName.trim(),
+          email: data.email.trim() || null,
+          amountCents: Math.round(firstCharge * 100),
+          description: `Camauto Rentals — first payment for ${rentalId}${depositNote}`,
+          environment,
+          rentalId,
+          origin: cleanOrigin || undefined,
+          customMessage: `Thank you for choosing Camauto, ${data.fullName.trim().split(" ")[0]}! Complete your reservation by paying your first charge${depositNote}.`,
+        });
+        paymentUrl = res.url;
+      } catch (e) {
+        console.error("share first-payment link failed", e);
+        // Fall back to a plain acknowledgement so the renter isn't left hanging.
+        try {
+          await sendSms(
+            data.phone.trim(),
+            `Thank you for choosing Camauto, ${data.fullName.trim().split(" ")[0]}! Your application has been received. We'll be in touch shortly with payment details.`,
+            data.fullName.trim(),
+          );
+        } catch (e2) {
+          console.error("ack sms failed", e2);
+        }
+      }
+    } else {
+      try {
+        await sendSms(
+          data.phone.trim(),
+          `Thank you for choosing Camauto, ${data.fullName.trim().split(" ")[0]}! Your application has been received. We'll be in touch shortly to confirm pickup.`,
+          data.fullName.trim(),
+        );
+      } catch (e) {
+        console.error("ack sms failed", e);
+      }
     }
 
     // Notify admin who created the link
@@ -438,5 +486,5 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       console.error("admin notify sms failed", e);
     }
 
-    return { ok: true, rentalId, paymentUrl: null as string | null };
+    return { ok: true, rentalId, paymentUrl };
   });
