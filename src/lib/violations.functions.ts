@@ -657,6 +657,38 @@ export const updateViolation = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/**
+ * Focused, low-failure-surface writer for the real EZPass reference number.
+ * Used by the inline "Enter Manually" control on the violation card. Keeps the
+ * write path independent of the amount/fee recompute logic in updateViolation
+ * so saving a reference number can never be derailed by unrelated fields.
+ */
+export const setViolationReference = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; referenceNumber: string }) => {
+    if (!input?.id) throw new Error("id required");
+    const cleaned = String(input.referenceNumber ?? "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9-]/g, "")
+      .slice(0, 40);
+    if (!cleaned) throw new Error("Enter the EZPass reference number");
+    return { id: input.id, referenceNumber: cleaned };
+  })
+  .handler(async ({ data }) => {
+    const { error } = await (supabaseAdmin as any)
+      .from("violations")
+      .update({
+        reference_number: data.referenceNumber,
+        updated_at: new Date().toISOString(),
+      } as never)
+      .eq("id", data.id);
+    if (error) {
+      console.error("[setViolationReference] update failed", data.id, error.message);
+      throw new Error(error.message);
+    }
+    return { ok: true as const, id: data.id, referenceNumber: data.referenceNumber };
+  });
+
 export interface ViolationHistoryRow {
   id: string;
   violation_id: string;
