@@ -30,6 +30,7 @@ export function ShareRentalDialog({
   const [startDate, setStartDate] = useState(today);
   const [billingPeriod, setBillingPeriod] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [rate, setRate] = useState<string>("");
+  const [deposit, setDeposit] = useState<string>("300");
   const [token, setToken] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [smsLoading, setSmsLoading] = useState(false);
@@ -43,6 +44,7 @@ export function ShareRentalDialog({
       setStartDate(today);
       setBillingPeriod("weekly");
       setRate(String(vehicle.weeklyRate ?? ""));
+      setDeposit("300");
       setToken(null);
       setPhone(""); setEmail(""); setName("");
     }
@@ -62,11 +64,13 @@ export function ShareRentalDialog({
     if (!vehicle) return;
     const r = Number(rate);
     if (!r || r <= 0) return toast.error("Enter a valid rate");
+    const dep = Number(deposit) || 0;
+    if (dep < 0) return toast.error("Enter a valid deposit");
     const cleanPhone = phone.trim();
     const willSend = cleanPhone.length >= 7;
     setCreating(true);
     try {
-      const res = await create({ data: { vehicleId: vehicle.id, startDate, billingPeriod, rate: r } });
+      const res = await create({ data: { vehicleId: vehicle.id, startDate, billingPeriod, rate: r, deposit: dep } });
       setToken(res.token);
       const newUrl = `${getPublicAppOrigin()}/rent/${res.token}`;
       if (willSend) {
