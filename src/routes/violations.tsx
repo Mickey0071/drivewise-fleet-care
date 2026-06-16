@@ -50,6 +50,7 @@ import {
 import { sendViolationToCustomer } from "@/lib/violations.functions";
 import { deleteViolation } from "@/lib/violations.functions";
 import { updateViolation } from "@/lib/violations.functions";
+import { setViolationReference } from "@/lib/violations.functions";
 import {
   generateLiabilityTransfer,
   generateMailPacket,
