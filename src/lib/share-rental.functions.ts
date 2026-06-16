@@ -298,6 +298,7 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     licenseDataUrl: string;
     selfieDataUrl: string;
     signatureDataUrl: string;
+    environment?: StripeEnv;
   }) => {
     const reqStr = (s: unknown, label: string, max = 200) => {
       if (typeof s !== "string" || !s.trim() || s.length > max) throw new Error(`${label} required`);
@@ -323,6 +324,8 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     if (!input.licenseDataUrl?.startsWith("data:image/")) throw new Error("License photo required");
     if (!input.selfieDataUrl?.startsWith("data:image/")) throw new Error("Selfie required");
     if (!input.signatureDataUrl?.startsWith("data:image/")) throw new Error("Signature required");
+    if (input.environment && input.environment !== "sandbox" && input.environment !== "live")
+      throw new Error("invalid environment");
     return input;
   })
   .handler(async ({ data }) => {
