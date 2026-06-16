@@ -1,0 +1,1 @@
+ALTER TABLE public.expenses DROP CONSTRAINT IF EXISTS expenses_category_check;
