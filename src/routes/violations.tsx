@@ -150,7 +150,7 @@ function OriginalDocControl({ v, onDone }: { v: ViolationRow; onDone: () => void
  *  This is the number used on ALL external documents and online disputes.
  *  The internal VIO- id is never used externally. */
 function EzpassRefControl({ v, onDone }: { v: ViolationRow; onDone: () => void }) {
-  const update = useServerFn(updateViolation);
+  const saveRef = useServerFn(setViolationReference);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(v.reference_number ?? "");
   const [busy, setBusy] = useState(false);
@@ -163,8 +163,8 @@ function EzpassRefControl({ v, onDone }: { v: ViolationRow; onDone: () => void }
     }
     setBusy(true);
     try {
-      await update({ data: { id: v.id, violationNumber: trimmed } });
-      toast.success("EZPass Ref # saved");
+      const res = await saveRef({ data: { id: v.id, referenceNumber: trimmed } });
+      toast.success(`✅ EZPass # saved: ${res.referenceNumber}`);
       setEditing(false);
       onDone();
     } catch (e) {
