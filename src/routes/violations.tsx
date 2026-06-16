@@ -50,6 +50,7 @@ import {
 import { sendViolationToCustomer } from "@/lib/violations.functions";
 import { deleteViolation } from "@/lib/violations.functions";
 import { updateViolation } from "@/lib/violations.functions";
+import { setViolationReference } from "@/lib/violations.functions";
 import {
   generateLiabilityTransfer,
   generateMailPacket,
@@ -150,7 +151,7 @@ function OriginalDocControl({ v, onDone }: { v: ViolationRow; onDone: () => void
  *  This is the number used on ALL external documents and online disputes.
  *  The internal VIO- id is never used externally. */
 function EzpassRefControl({ v, onDone }: { v: ViolationRow; onDone: () => void }) {
-  const update = useServerFn(updateViolation);
+  const saveRef = useServerFn(setViolationReference);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(v.reference_number ?? "");
   const [busy, setBusy] = useState(false);
@@ -163,8 +164,8 @@ function EzpassRefControl({ v, onDone }: { v: ViolationRow; onDone: () => void }
     }
     setBusy(true);
     try {
-      await update({ data: { id: v.id, violationNumber: trimmed } });
-      toast.success("EZPass Ref # saved");
+      const res = await saveRef({ data: { id: v.id, referenceNumber: trimmed } });
+      toast.success(`✅ EZPass # saved: ${res.referenceNumber}`);
       setEditing(false);
       onDone();
     } catch (e) {
@@ -553,8 +554,9 @@ function DisputeMethodDialog({
                     <CopyButton value={violationNo} />
                   </>
                 ) : (
-                  <span className="text-xs font-medium text-amber-600">
-                    ⚠️ EZPass # missing — add it on the violation card first
+                  <span className="flex flex-wrap items-center gap-2 text-xs font-medium text-amber-600">
+                    ⚠️ EZPass # missing — add it on the card, or
+                    <DownloadPacketButton v={v} label="⚠️ Download Without EZPass #" />
                   </span>
                 )}
               </li>
