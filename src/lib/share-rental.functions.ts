@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { sendPaymentLinkInternal } from "@/lib/payment-link.functions";
+import type { StripeEnv } from "@/lib/stripe.server";
 
 function genToken() {
   const bytes = new Uint8Array(16);
@@ -68,11 +70,13 @@ export const createShareLink = createServerFn({ method: "POST" })
     startDate: string;
     billingPeriod: "daily" | "weekly" | "monthly";
     rate: number;
+    deposit?: number;
   }) => {
     if (!input.vehicleId) throw new Error("vehicleId required");
     if (!input.startDate) throw new Error("startDate required");
     if (!["daily", "weekly", "monthly"].includes(input.billingPeriod)) throw new Error("invalid billingPeriod");
     if (typeof input.rate !== "number" || input.rate < 0) throw new Error("rate required");
+    if (input.deposit != null && (typeof input.deposit !== "number" || input.deposit < 0)) throw new Error("invalid deposit");
     return input;
   })
   .handler(async ({ data, context }) => {
@@ -92,6 +96,7 @@ export const createShareLink = createServerFn({ method: "POST" })
       start_date: data.startDate,
       billing_period: data.billingPeriod,
       rate: data.rate,
+      deposit: data.deposit ?? 0,
       weekly_rate: vehicle.weekly_rate ?? 0,
       daily_rate: vehicle.daily_rate ?? 0,
       created_by: context.userId,
