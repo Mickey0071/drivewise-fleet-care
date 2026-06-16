@@ -167,16 +167,30 @@ export function ShareRentalDialog({
               </Select>
             </div>
           </div>
-          <div>
-            <Label htmlFor="share-rate">Rate ($)</Label>
-            <Input
-              id="share-rate"
-              type="number"
-              inputMode="decimal"
-              value={rate}
-              onChange={(e) => setRate(e.target.value)}
-              disabled={!!token}
-            />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="share-rate">Rate ($)</Label>
+              <Input
+                id="share-rate"
+                type="number"
+                inputMode="decimal"
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+                disabled={!!token}
+              />
+            </div>
+            <div>
+              <Label htmlFor="share-deposit">Deposit ($)</Label>
+              <Input
+                id="share-deposit"
+                type="number"
+                inputMode="decimal"
+                value={deposit}
+                onChange={(e) => setDeposit(e.target.value)}
+                disabled={!!token}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">Charged with the first payment. Set 0 for none.</p>
+            </div>
           </div>
 
           <div className="rounded-md border border-border p-3 space-y-2">
