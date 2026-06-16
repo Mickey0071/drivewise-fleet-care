@@ -264,6 +264,7 @@ export const getShareLinkPublic = createServerFn({ method: "POST" })
       rate: Number(row.rate),
       weeklyRate: Number(row.weekly_rate),
       dailyRate: Number(row.daily_rate),
+      deposit: Number(row.deposit ?? 0),
       vehicle: {
         make: row.vehicle_make as string | null,
         model: row.vehicle_model as string | null,
