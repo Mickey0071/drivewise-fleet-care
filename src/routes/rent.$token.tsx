@@ -11,6 +11,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { toast } from "sonner";
 import { CheckCircle2, Loader2, Camera, FileSignature, IdCard, User, ArrowLeft, ArrowRight } from "lucide-react";
 import { US_STATES, formatFullName, formatAddressBlock } from "@/lib/us-states";
+import { getStripeEnvironment } from "@/lib/stripe";
 
 export const Route = createFileRoute("/rent/$token")({
   head: () => ({ meta: [{ title: "Rent a vehicle — Camauto Rentals" }] }),
@@ -47,6 +48,7 @@ function RentPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [step, setStep] = useState<"details" | "agreement" | "sign">("details");
 
   useEffect(() => {
@@ -72,7 +74,13 @@ function RentPage() {
     setSubmitting(true);
     try {
       const fullName = formatFullName({ firstName, middleInitial, lastName });
-      await submit({
+      let environment: "sandbox" | "live" | undefined;
+      try {
+        environment = getStripeEnvironment();
+      } catch {
+        environment = undefined;
+      }
+      const res = await submit({
         data: {
           token,
           fullName: fullName.trim(),
@@ -94,8 +102,15 @@ function RentPage() {
           licenseDataUrl: licenseUrl,
           selfieDataUrl: selfieUrl,
           signatureDataUrl: sig,
+          environment,
         },
       });
+      if (res?.paymentUrl) {
+        setRedirecting(true);
+        toast.success("Almost done — redirecting to secure payment…");
+        window.location.href = res.paymentUrl;
+        return;
+      }
       setDone(true);
       toast.success("Thank you for choosing Camauto");
     } catch (e) {
