@@ -163,7 +163,10 @@ function RentPage() {
         <p className="text-sm text-muted-foreground">
           {info.vehicle.year} {info.vehicle.make} {info.vehicle.model}
         </p>
-        <p className="text-sm font-medium">${info.rate}/{periodLabel} · Starts {info.startDate}</p>
+        <p className="text-sm font-medium">
+          ${info.rate}/{periodLabel}
+          {info.deposit > 0 ? ` · $${info.deposit} deposit` : ""} · Starts {info.startDate}
+        </p>
       </header>
 
       <div className="text-center text-xs text-muted-foreground">
