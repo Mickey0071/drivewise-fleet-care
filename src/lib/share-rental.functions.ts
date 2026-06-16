@@ -416,15 +416,53 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       .update({ consumed_rental_id: rentalId, consumed_at: nowIso })
       .eq("token", data.token);
 
-    // Acknowledgment SMS — no payment link. Staff handles payment manually.
-    try {
-      await sendSms(
-        data.phone.trim(),
-        `Thank you for choosing Camauto, ${data.fullName.trim().split(" ")[0]}! Your application has been received. We'll be in touch shortly to confirm pickup.`,
-        data.fullName.trim(),
-      );
-    } catch (e) {
-      console.error("ack sms failed", e);
+    // First payment — same as a normal reservation: collect the first
+    // period charge plus any deposit before the reservation activates.
+    const deposit = Number(link.deposit ?? 0);
+    const firstCharge = Number(link.rate ?? 0) + (Number.isFinite(deposit) ? deposit : 0);
+    let paymentUrl: string | null = null;
+    if (firstCharge >= 0.5) {
+      try {
+        const environment: StripeEnv = data.environment ?? "live";
+        const origin =
+          getRequestHeader("origin") || getRequestHeader("referer") || process.env.PUBLIC_APP_ORIGIN || "";
+        const cleanOrigin = origin ? new URL(origin).origin : "";
+        const depositNote = deposit > 0 ? ` + $${deposit.toFixed(2)} deposit` : "";
+        const res = await sendPaymentLinkInternal({
+          phone: data.phone.trim(),
+          name: data.fullName.trim(),
+          email: data.email.trim() || null,
+          amountCents: Math.round(firstCharge * 100),
+          description: `Camauto Rentals — first payment for ${rentalId}${depositNote}`,
+          environment,
+          rentalId,
+          origin: cleanOrigin || undefined,
+          customMessage: `Thank you for choosing Camauto, ${data.fullName.trim().split(" ")[0]}! Complete your reservation by paying your first charge${depositNote}.`,
+        });
+        paymentUrl = res.url;
+      } catch (e) {
+        console.error("share first-payment link failed", e);
+        // Fall back to a plain acknowledgement so the renter isn't left hanging.
+        try {
+          await sendSms(
+            data.phone.trim(),
+            `Thank you for choosing Camauto, ${data.fullName.trim().split(" ")[0]}! Your application has been received. We'll be in touch shortly with payment details.`,
+            data.fullName.trim(),
+          );
+        } catch (e2) {
+          console.error("ack sms failed", e2);
+        }
+      }
+    } else {
+      try {
+        await sendSms(
+          data.phone.trim(),
+          `Thank you for choosing Camauto, ${data.fullName.trim().split(" ")[0]}! Your application has been received. We'll be in touch shortly to confirm pickup.`,
+          data.fullName.trim(),
+        );
+      } catch (e) {
+        console.error("ack sms failed", e);
+      }
     }
 
     // Notify admin who created the link
@@ -447,5 +485,5 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       console.error("admin notify sms failed", e);
     }
 
-    return { ok: true, rentalId, paymentUrl: null as string | null };
+    return { ok: true, rentalId, paymentUrl };
   });
