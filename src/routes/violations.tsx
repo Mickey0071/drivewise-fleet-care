@@ -554,8 +554,9 @@ function DisputeMethodDialog({
                     <CopyButton value={violationNo} />
                   </>
                 ) : (
-                  <span className="text-xs font-medium text-amber-600">
-                    ⚠️ EZPass # missing — add it on the violation card first
+                  <span className="flex flex-wrap items-center gap-2 text-xs font-medium text-amber-600">
+                    ⚠️ EZPass # missing — add it on the card, or
+                    <DownloadPacketButton v={v} label="⚠️ Download Without EZPass #" />
                   </span>
                 )}
               </li>
