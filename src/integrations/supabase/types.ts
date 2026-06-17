@@ -1476,6 +1476,10 @@ export type Database = {
           paid_date: string | null
           rental_id: string
           status: string
+          stripe_charge_id: string | null
+          stripe_checkout_session_id: string | null
+          stripe_event_id: string | null
+          stripe_payment_intent_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1489,6 +1493,10 @@ export type Database = {
           paid_date?: string | null
           rental_id: string
           status?: string
+          stripe_charge_id?: string | null
+          stripe_checkout_session_id?: string | null
+          stripe_event_id?: string | null
+          stripe_payment_intent_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1502,6 +1510,10 @@ export type Database = {
           paid_date?: string | null
           rental_id?: string
           status?: string
+          stripe_charge_id?: string | null
+          stripe_checkout_session_id?: string | null
+          stripe_event_id?: string | null
+          stripe_payment_intent_id?: string | null
           updated_at?: string
         }
         Relationships: [
