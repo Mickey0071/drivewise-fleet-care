@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 
-export const Route = createFileRoute("/analytics/costs")({
+export const Route = createFileRoute("/analytics_/costs")({
   head: () => ({ meta: [{ title: "Cost Breakdown — Analytics — Camauto Rentals" }] }),
   component: Page,
 });
