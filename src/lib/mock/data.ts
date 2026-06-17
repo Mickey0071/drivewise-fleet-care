@@ -113,6 +113,7 @@ export interface Rental {
   paymentReceived?: boolean;
   activatedAt?: string;
   extensions?: RentalExtension[];
+  swapHistory?: VehicleSwap[];
   licenseImageUrl?: string;
   selfieImageUrl?: string;
   clientSignatureUrl?: string;
@@ -145,6 +146,16 @@ export interface RentalExtension {
   signatureDataUrl?: string;
   signedBy?: string;
   agreementVersion?: string;
+}
+export interface VehicleSwap {
+  id: string;
+  swappedAt: string;
+  oldVehicleId: string;
+  newVehicleId: string;
+  oldVehicleLabel?: string;
+  newVehicleLabel?: string;
+  reason?: string;
+  swappedBy?: string;
 }
 export interface Payment {
   id: string; rentalId: string; driverId: string; amount: number;
