@@ -1507,6 +1507,7 @@ export type Database = {
           driver_id: string
           due_date: string
           id: string
+          kind: string
           method: string | null
           note: string | null
           paid_date: string | null
@@ -1524,6 +1525,7 @@ export type Database = {
           driver_id: string
           due_date: string
           id: string
+          kind?: string
           method?: string | null
           note?: string | null
           paid_date?: string | null
@@ -1541,6 +1543,7 @@ export type Database = {
           driver_id?: string
           due_date?: string
           id?: string
+          kind?: string
           method?: string | null
           note?: string | null
           paid_date?: string | null
