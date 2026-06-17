@@ -1,67 +1,57 @@
+# Fix plan: stop phantom / double-counted Stripe payments
+
+## Problem recap
+- `payments` rows are keyed only by `PM-<last 10 chars of checkout session id>`. The table has **no** `stripe_payment_intent_id` / `stripe_charge_id` columns, so there is no way to tell whether two rows represent the same real money.
+- The amount is taken from the checkout **session**, not the actual Stripe **charge**, so a $200 collection on R-576 was recorded as $400.
+- Result: any reservation that generates more than one checkout session (retried link, second link, duplicate `checkout.session.completed`) gets an extra revenue row. This is **systemic** — R-517, R-533, R-576, R-512, R-530, R-582, R-520 all have same-day duplicate paid rows, plus several $1 test duplicates.
+
 ## Goal
+Make a real Stripe **charge** the unit of truth: exactly one `payments` row per real charge, with the real charge amount, deduped no matter how many sessions/events fire. Then correct the historical data.
 
-Declutter the repair cards in the 3-phase kanban on `src/routes/maintenance.tsx`. Give each `RepairRow` a clean, essentials-only **card face**, and tuck lower-priority fields behind a per-card **Details** disclosure that is collapsed by default. No status, approval, cost, kanban-filter, or write logic changes — purely what renders and where.
+---
 
-## Scope guardrails (unchanged)
+## Phase 1 — Schema (migration)
+Add Stripe identity columns to `public.payments` and a uniqueness guard:
+- `stripe_charge_id text`
+- `stripe_payment_intent_id text`
+- `stripe_checkout_session_id text`
+- `stripe_event_id text`
+- **Partial unique index** on `stripe_charge_id` where `stripe_charge_id IS NOT NULL` (one row per real charge; this is the actual idempotency guard).
 
-- No edits to status values, `action_taken`, phase filters (`phase1/phase2/phase3`), approval/accept-decline, SMS digest, P&L, or rental blocking.
-- All existing stage forms (diagnosis inputs, payment input) and action buttons (Send to Mechanic, Move to Diagnose, Save Diagnosis, Process Payment, Complete Repair, Resend/Cancel job, etc.) keep their exact behavior and current location in the expanded stage body.
-- No column deletes; no changes to `data.ts`/`store.ts` field logic. (Type may get read-only display use only.)
+No data changes in this phase. Existing rows keep their `PM-…` ids; the new columns are null until backfilled in Phase 3.
 
-## Card FACE (always visible) — `RepairRow`
+## Phase 2 — Webhook hardening (`src/routes/api/public/payments/webhook.ts`)
+Applies to every path in `handleCheckoutCompleted` that writes a `payments` row (first_payment / deposit / payment_link, and custom_renter_payment):
+1. After retrieving the PaymentIntent, also capture `latest_charge.id` and the charge's `amount`.
+2. Write `stripe_charge_id`, `stripe_payment_intent_id`, `stripe_checkout_session_id`, and the event id onto the payment row.
+3. **Record the amount from the real charge** (`charge.amount / 100`), not `session.amount_total`, so a $200 charge can never be stored as $400.
+4. **Dedup on charge id**: upsert with `onConflict: stripe_charge_id` (or a pre-insert existence check on `stripe_charge_id`) so the same real charge never creates a second row, regardless of how many sessions or `checkout.session.completed` / `payment_intent.succeeded` events arrive.
+5. Keep the `PM-…` id scheme for new rows (backwards compatible), but correctness now comes from the charge-id unique index, not the id slice.
 
-Rebuild the `RepairRow` face (currently just chevron + `name — issue` + category badge) to show only:
+## Phase 3 — Reconcile & correct historical data
+Build a **read-first admin reconciliation server function** (auth + admin role check) that, for a given rental (and a fleet-wide batch mode), uses `createStripeClient` to:
+- List the real succeeded, non-refunded charges for that reservation (via the saved customer / payment-intent metadata `rental_id`).
+- Compare them to the existing `payments` Stripe rows and produce a **diff report**: which rows match a real charge, which have the wrong amount, and which are phantoms with no backing charge.
+- Backfill `stripe_charge_id` / `stripe_payment_intent_id` on the rows that do match.
 
-- **Vehicle**: `year make model` + plate (`vehicleById(m.vehicleId)`).
-- **Problem category badge**: `m.problemCategory` (existing badge, kept).
-- **Issue text**: `m.issueDescription ?? m.serviceType`, truncated to one line.
-- **Current status**: small status label derived from the existing status value (display only).
-- **Total cost**: `partsCost + laborCost`, falling back to `m.cost` when both are 0 (same rule already used in the diagnose/complete phases).
-- **Off road indicator**: a small badge shown **only when** `m.isRentalBlocking === true`.
-- **Mechanic name**: `m.mechanicName`, rendered only when assigned.
-- **Primary action button**: the single stage-appropriate primary button stays where it is in the expanded body; the face keeps the chevron toggle for the stage body. (No behavior change.)
+The function first runs in **report-only** mode. After you review the diff, corrections are applied with the data tool (UPDATE/DELETE), not blind deletes:
+- Fix wrong amounts to the real charge amount (e.g. R-576's $400→$200 row).
+- Delete phantom rows that have no backing Stripe charge.
+- Leave legitimate multi-week rows (e.g. R-513's five $55 across different dates) untouched.
 
-The face stays a compact tap target that toggles the existing stage body (`onToggle` / `expandedId`), and keeps the delete (trash) button.
-
-## DETAILS (collapsed by default, expands on tap)
-
-Add a lightweight **Details** disclosure to each card (its own local open/closed state, independent of the stage `open` toggle, defaulting to **collapsed**). When expanded it shows the lower-priority fields:
-
-- `vendor`
-- Mechanic phone + mechanic shop — sourced from the linked mechanic-job record (`sentJobByMaint` / `submittedJobByMaint`), since these aren't on the `Maintenance` row itself; shown only when a job exists.
-- Parts list (`m.diagnosisNotes` "parts used" / `partsNeeded`)
-- Payment breakdown: `downPayment`, `amountPaid`, `balance`, and deposit fields (`depositRequired`, `depositAmount`)
-- `nextServiceDue`
-- `mileageAtService`
-- Mechanic-job send/submitted status badges (the `📤 Sent to…` / `📋 Submitted by…` chips currently inline)
-
-Each field renders only when it has a value, so the Details section stays tidy.
-
-## Implementation approach
-
-- Refactor `RepairRow` (lines 1017–1053) into a richer presentational component that renders the new face plus a `RepairDetails` collapsible. Keep its props (`m`, `open`, `onToggle`, `onDelete`) and add what it needs to read the linked job (pass `sentJobByMaint`/`submittedJobByMaint` lookups or the job object in as props to avoid new logic in the row).
-- The three phase `.map(...)` blocks (lines 320–361, 388–445, 472–510) keep their existing expanded stage bodies and buttons exactly as-is. The only change there is passing the extra job-lookup prop to `RepairRow`.
-- Add a small `Details` toggle (Chevron + "Details") and a `useState(false)` per row inside the row component so every card defaults collapsed.
-- Display-only helpers: a `totalCostFor(m)` helper using the existing parts/labor/cost fallback, and a status-label map for display.
-
-## Technical notes
-
-```text
-RepairRow
- ├─ FACE (always)         vehicle+plate · category · issue(1-line) · status · total · [Off road?] · [mechanic?]
- │   └─ chevron toggles existing stage body (unchanged)
- ├─ STAGE BODY (open)     existing forms + primary/secondary buttons (UNCHANGED)
- └─ DETAILS (collapsed)   vendor · mech phone/shop · parts · pay breakdown · next due · mileage · job badges
-```
+Affected reservations to run through reconciliation: R-517, R-533, R-576, R-512, R-530, R-582, R-520 (real-money dups) and R-501, R-506, R-507, R-521, R-526, R-578 ($1–$7 test dups).
 
 ## Verification
+- After Phase 3, R-576 nets to **$600** ($400 + $200), matching Stripe.
+- Re-run the fleet-wide "same-day same-amount Stripe paid rows" query → only legitimate rows remain.
+- New rows written by the updated webhook carry a non-null `stripe_charge_id`; replaying the same charge does not create a second row.
 
-- Build passes; maintenance page renders.
-- Every card face shows only the essentials list; off-road badge appears only when `isRentalBlocking`, mechanic name only when assigned.
-- Details is collapsed on every card by default and expands/collapses on tap.
-- All stage buttons still trigger their existing handlers.
+## Notes / scope guards
+- No changes to refund handling (already idempotent via `refund_recovery.stripe_refund_id`).
+- No changes to subscription/weekly billing logic.
+- Historical data corrections are done only after you approve the reconciliation diff — nothing is deleted sight-unseen.
 
-## Report back after build
-
-- The final card-face field list.
-- Confirmation that Details defaults collapsed and expands/collapses per card.
+## Technical details
+- Migration adds 4 nullable text columns + 1 partial unique index on `payments`; `service_role` already has access (admin/webhook writes via service role).
+- Webhook: the charge object is already fetched today for the name-match step (`pi.latest_charge`), so capturing `charge.id` and `charge.amount` there is a small extension, not a new Stripe round-trip.
+- Reconciliation function lives in a new `*.functions.ts`, guarded by `requireSupabaseAuth` + `has_role(admin)`, and loads `supabaseAdmin` inside the handler.

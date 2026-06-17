@@ -102,6 +102,122 @@ async function reconcileScheduledDuplicate(
     .eq("id", match.id);
 }
 
+// Resolve the real Stripe charge behind a checkout session. The charge — not
+// the session — is the unit of truth for money: its id de-duplicates rows and
+// its amount is what was actually collected (so a $200 charge can never be
+// stored as $400). Returns nulls if the PaymentIntent/charge can't be loaded.
+async function resolveSessionStripeDetails(
+  session: any,
+  env: StripeEnv,
+): Promise<{
+  paymentIntentId: string | null;
+  chargeId: string | null;
+  chargeAmountCents: number | null;
+  paymentMethodId: string | null;
+  cardName: string;
+}> {
+  const empty = {
+    paymentIntentId: null,
+    chargeId: null,
+    chargeAmountCents: null,
+    paymentMethodId: null,
+    cardName: "",
+  };
+  const piId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id;
+  if (!piId) return empty;
+  try {
+    const stripe = createStripeClient(env);
+    const pi = await stripe.paymentIntents.retrieve(piId, {
+      expand: ["latest_charge", "payment_method"],
+    });
+    const charge: any =
+      pi.latest_charge && typeof pi.latest_charge !== "string" ? pi.latest_charge : null;
+    return {
+      paymentIntentId: piId,
+      chargeId: charge?.id ?? null,
+      chargeAmountCents: typeof charge?.amount === "number" ? charge.amount : null,
+      paymentMethodId:
+        typeof pi.payment_method === "string"
+          ? pi.payment_method
+          : (pi.payment_method?.id ?? null),
+      cardName:
+        charge?.billing_details?.name || (pi as any).payment_method?.billing_details?.name || "",
+    };
+  } catch (e) {
+    console.error("[webhook] resolveSessionStripeDetails failed", e);
+    return { ...empty, paymentIntentId: piId };
+  }
+}
+
+// Insert (or correct) a paid Stripe payment row with CHARGE-LEVEL idempotency.
+// If a row already exists for this stripe_charge_id we update that row in place
+// rather than inserting a second one — this is the core guard against phantom
+// double-counts when more than one checkout session / webhook event maps to the
+// same real Stripe charge. Returns the id of the row that now represents it.
+async function upsertStripePaymentRow(row: {
+  id: string;
+  rentalId: string;
+  driverId: string;
+  amount: number;
+  dueDate: string;
+  paidDate: string;
+  note?: string | null;
+  stripeChargeId?: string | null;
+  stripePaymentIntentId?: string | null;
+  stripeSessionId?: string | null;
+  stripeEventId?: string | null;
+}): Promise<string> {
+  const sb = getSupabase();
+  const stripeCols = {
+    stripe_charge_id: row.stripeChargeId ?? null,
+    stripe_payment_intent_id: row.stripePaymentIntentId ?? null,
+    stripe_checkout_session_id: row.stripeSessionId ?? null,
+    stripe_event_id: row.stripeEventId ?? null,
+  };
+  // Charge id present → if we've already recorded this charge, correct that
+  // row instead of creating a duplicate.
+  if (row.stripeChargeId) {
+    const { data: existing } = await sb
+      .from("payments")
+      .select("id")
+      .eq("stripe_charge_id", row.stripeChargeId)
+      .maybeSingle();
+    if (existing?.id) {
+      await sb
+        .from("payments")
+        .update({
+          amount: row.amount,
+          paid_date: row.paidDate,
+          method: "Stripe",
+          status: "paid",
+          ...(row.note != null ? { note: row.note } : {}),
+          ...stripeCols,
+        } as any)
+        .eq("id", existing.id);
+      return existing.id as string;
+    }
+  }
+  await sb.from("payments").upsert(
+    {
+      id: row.id,
+      rental_id: row.rentalId,
+      driver_id: row.driverId,
+      amount: row.amount,
+      due_date: row.dueDate,
+      paid_date: row.paidDate,
+      method: "Stripe",
+      status: "paid",
+      ...(row.note != null ? { note: row.note } : {}),
+      ...stripeCols,
+    } as any,
+    { onConflict: "id" },
+  );
+  return row.id;
+}
+
 // Persist the reusable Stripe customer + card on the driver record so the
 // card can be charged later (violations, extensions, etc.).
 async function saveCardToDriver(
@@ -231,7 +347,7 @@ function namesMatch(cardName: string, licenseName: string): boolean {
   return false;
 }
 
-async function handleCheckoutCompleted(session: any, env: StripeEnv) {
+async function handleCheckoutCompleted(session: any, env: StripeEnv, eventId?: string | null) {
   const userId = session.metadata?.userId || null;
   const rentalId = session.metadata?.rental_id || null;
   const kind =
@@ -317,12 +433,13 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         })
         .eq("id", violationId);
     }
-    let paymentMethodId: string | null = null;
-    try {
-      paymentMethodId = await resolveSessionPaymentMethodId();
-    } catch (e) {
-      console.error("[webhook:custom] failed to load PaymentIntent payment method", e);
-    }
+    const stripeDetails = await resolveSessionStripeDetails(session, env);
+    const paymentMethodId = stripeDetails.paymentMethodId;
+    // Prefer the real charge amount over the session total.
+    const customPaidDollars =
+      stripeDetails.chargeAmountCents != null
+        ? Number((stripeDetails.chargeAmountCents / 100).toFixed(2))
+        : amountDollars;
 
     const { data: rentalRow } = await sb
       .from("rentals")
@@ -330,21 +447,19 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       .eq("id", rentalId)
       .maybeSingle();
     if (rentalRow) {
-      const paidId = `PM-${session.id.slice(-10)}`;
-      await sb.from("payments").upsert(
-        {
-          id: paidId,
-          rental_id: rentalRow.id,
-          driver_id: rentalRow.driver_id,
-          amount: amountDollars,
-          due_date: today,
-          paid_date: today,
-          method: "Stripe",
-          status: "paid",
-          note,
-        } as any,
-        { onConflict: "id" },
-      );
+      const paidId = await upsertStripePaymentRow({
+        id: `PM-${session.id.slice(-10)}`,
+        rentalId: rentalRow.id,
+        driverId: rentalRow.driver_id,
+        amount: customPaidDollars,
+        dueDate: today,
+        paidDate: today,
+        note,
+        stripeChargeId: stripeDetails.chargeId,
+        stripePaymentIntentId: stripeDetails.paymentIntentId,
+        stripeSessionId: session.id,
+        stripeEventId: eventId ?? null,
+      });
 
       // Renter SMS
       const { data: drv } = await sb
@@ -368,7 +483,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         });
       }
       // Clear any duplicate scheduled "late" row for the same period.
-      await reconcileScheduledDuplicate(rentalRow.id, amountDollars, today, paidId);
+      await reconcileScheduledDuplicate(rentalRow.id, customPaidDollars, today, paidId);
       await sb.from("subscriptions").insert({
         user_id: userId,
         rental_id: rentalRow.id,
@@ -413,12 +528,15 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     const extStripe = createStripeClient(env);
     let extCardName = "";
     let extChargeId: string | null = null;
+    let extChargeAmountCents: number | null = null;
+    let extPaymentIntentId: string | null = null;
     try {
       const piId =
         typeof session.payment_intent === "string"
           ? session.payment_intent
           : session.payment_intent?.id;
       if (piId) {
+        extPaymentIntentId = piId;
         const pi = await extStripe.paymentIntents.retrieve(piId, {
           expand: ["latest_charge", "payment_method"],
         });
@@ -427,6 +545,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         extCardName =
           ch?.billing_details?.name || (pi as any).payment_method?.billing_details?.name || "";
         extChargeId = ch?.id ?? null;
+        extChargeAmountCents = typeof ch?.amount === "number" ? ch.amount : null;
       }
     } catch (e) {
       console.error("[webhook:ext] failed to load PaymentIntent for name check", e);
@@ -558,22 +677,24 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         newEndIso = newEnd.toISOString().slice(0, 10);
       }
 
-      // Record payment row
-      const paidId = `PM-${session.id.slice(-10)}`;
-      await sb.from("payments").upsert(
-        {
-          id: paidId,
-          rental_id: rentalRow.id,
-          driver_id: rentalRow.driver_id,
-          amount: amountDollars,
-          due_date: today,
-          paid_date: today,
-          method: "Stripe",
-          status: "paid",
-          note: `Extension: +${periods} ${periodLabel.replace(/ly$/, "")}${periods === 1 ? "" : "s"}`,
-        } as any,
-        { onConflict: "id" },
-      );
+      // Record payment row (charge-level idempotent; real charge amount).
+      const extPaidDollars =
+        extChargeAmountCents != null
+          ? Number((extChargeAmountCents / 100).toFixed(2))
+          : amountDollars;
+      const paidId = await upsertStripePaymentRow({
+        id: `PM-${session.id.slice(-10)}`,
+        rentalId: rentalRow.id,
+        driverId: rentalRow.driver_id,
+        amount: extPaidDollars,
+        dueDate: today,
+        paidDate: today,
+        note: `Extension: +${periods} ${periodLabel.replace(/ly$/, "")}${periods === 1 ? "" : "s"}`,
+        stripeChargeId: extChargeId,
+        stripePaymentIntentId: extPaymentIntentId,
+        stripeSessionId: session.id,
+        stripeEventId: eventId ?? null,
+      });
 
       // Record extension row (copy signature when admin link).
       const extRowId = `EXT-${session.id.slice(-10)}`;
@@ -585,7 +706,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
           new_end_date: newEndIso,
           periods,
           period_label: periodLabel,
-          additional_amount: amountDollars,
+          additional_amount: extPaidDollars,
           payment_id: paidId,
           signature_data_url: extReqRow?.signature_data_url ?? null,
           signed_by: extReqRow?.signed_by ?? null,
@@ -626,7 +747,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         .eq("id", rentalRow.id);
 
       // Clear any duplicate scheduled "late" row that this extension covers.
-      await reconcileScheduledDuplicate(rentalRow.id, amountDollars, today, paidId);
+      await reconcileScheduledDuplicate(rentalRow.id, extPaidDollars, today, paidId);
 
       // Persist the reusable card on the rental + driver for future charges.
       let extPaymentMethodId: string | null = null;
@@ -716,12 +837,15 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     let cardholderName = "";
     let paymentMethodId: string | null = null;
     let chargeId: string | null = null;
+    let chargeAmountCents: number | null = null;
+    let paymentIntentId: string | null = null;
     try {
       const piId =
         typeof session.payment_intent === "string"
           ? session.payment_intent
           : session.payment_intent?.id;
       if (piId) {
+        paymentIntentId = piId;
         const pi = await stripe.paymentIntents.retrieve(piId, {
           expand: ["latest_charge", "payment_method"],
         });
@@ -734,6 +858,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
             ? pi.payment_method
             : (pi.payment_method?.id ?? null);
         chargeId = charge?.id ?? null;
+        chargeAmountCents = typeof charge?.amount === "number" ? charge.amount : null;
       }
     } catch (e) {
       console.error("[webhook] failed to load PaymentIntent for name check", e);
@@ -935,25 +1060,27 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       const amount = Number(rental.rate ?? rental.weekly_rate ?? 0);
       // The first charge reflects what Stripe actually collected upfront
       // (e.g. 2 days for a daily rental); the recurring row stays one period.
-      const paidAmount = session.amount_total != null
-        ? Number((session.amount_total / 100).toFixed(2))
-        : amount;
+      // Prefer the real charge amount; fall back to session total, then rate.
+      const paidAmount =
+        chargeAmountCents != null
+          ? Number((chargeAmountCents / 100).toFixed(2))
+          : session.amount_total != null
+            ? Number((session.amount_total / 100).toFixed(2))
+            : amount;
       const today = new Date().toISOString().slice(0, 10);
-      const paidId = `PM-${session.id.slice(-10)}`;
-      // First payment row (already paid via Stripe).
-      await sb.from("payments").upsert(
-        {
-          id: paidId,
-          rental_id: rental.id,
-          driver_id: rental.driver_id,
-          amount: paidAmount,
-          due_date: today,
-          paid_date: today,
-          method: "Stripe",
-          status: "paid",
-        } as any,
-        { onConflict: "id" },
-      );
+      // First payment row (already paid via Stripe) — charge-level idempotent.
+      const paidId = await upsertStripePaymentRow({
+        id: `PM-${session.id.slice(-10)}`,
+        rentalId: rental.id,
+        driverId: rental.driver_id,
+        amount: paidAmount,
+        dueDate: today,
+        paidDate: today,
+        stripeChargeId: chargeId,
+        stripePaymentIntentId: paymentIntentId,
+        stripeSessionId: session.id,
+        stripeEventId: eventId ?? null,
+      });
       // Clear any duplicate scheduled "late" row for this first period.
       await reconcileScheduledDuplicate(rental.id, paidAmount, today, paidId);
       // Next scheduled payment (only if none already exists past today).
@@ -1310,7 +1437,7 @@ async function handleWebhook(req: Request, env: StripeEnv) {
   const event = await verifyWebhook(req, env);
   switch (event.type) {
     case "checkout.session.completed":
-      await handleCheckoutCompleted(event.data.object, env);
+      await handleCheckoutCompleted(event.data.object, env, (event as any).id ?? null);
       break;
     case "payment_intent.succeeded":
       await handlePaymentIntentSucceeded(event.data.object, env);
