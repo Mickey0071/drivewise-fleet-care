@@ -173,6 +173,8 @@ const toRental = (r: any) => ({
   swap_history: r.swapHistory ?? [],
   last_auto_renew_date: r.lastAutoRenewDate ?? null,
   extension_declined_at: r.extensionDeclinedAt ?? null,
+  accident_report: r.accidentReport ?? null,
+  accident_token: r.accidentToken ?? null,
 });
 const fromExt = (r: any): RentalExtension => ({
   id: r.id, extendedAt: r.extended_at, previousEndDate: r.previous_end_date ?? undefined,
