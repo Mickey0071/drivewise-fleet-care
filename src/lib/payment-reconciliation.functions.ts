@@ -121,7 +121,7 @@ export const reconcilePayments = createServerFn({ method: "POST" })
               : `Row is $${Number(r.amount).toFixed(2)} but Stripe charge is $${stripeAmount.toFixed(2)}.`,
           });
         } catch (err) {
-          const msg = getStripeErrorMessage(err);
+          const msg = stripeErrorMessage(err);
           const notFound = /no such charge|resource_missing/i.test(msg);
           lines.push({
             ...base,
