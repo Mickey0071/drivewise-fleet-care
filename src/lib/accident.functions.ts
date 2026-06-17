@@ -1,3 +1,4 @@
+import type { AccidentReport } from "@/lib/mock/data";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
@@ -31,7 +32,7 @@ export const getAccidentIntake = createServerFn({ method: "GET" })
       driverName: (row.driver_full_name as string) ?? "",
       startDate: (row.start_date as string) ?? null,
       endDate: (row.end_date as string) ?? null,
-      report: (row.accident_report as Record<string, unknown> | null) ?? null,
+      report: (row.accident_report as AccidentReport | null) ?? null,
     };
   });
 
