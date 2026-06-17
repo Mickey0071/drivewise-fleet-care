@@ -450,6 +450,15 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv, eventId?: s
       .eq("id", rentalId)
       .maybeSingle();
     if (rentalRow) {
+      // If nothing is currently owed on this rental, this custom payment is
+      // pure overpayment money — record it as credit on file so it shows as a
+      // positive balance (nothing due) rather than an unexplained receipt.
+      const { data: outstanding } = await sb
+        .from("payments")
+        .select("id")
+        .eq("rental_id", rentalRow.id)
+        .in("status", ["late", "missed"]);
+      const isCredit = !outstanding || outstanding.length === 0;
       const paidId = await upsertStripePaymentRow({
         id: `PM-${session.id.slice(-10)}`,
         rentalId: rentalRow.id,
@@ -458,6 +467,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv, eventId?: s
         dueDate: today,
         paidDate: today,
         note,
+        kind: isCredit ? "credit" : "charge",
         stripeChargeId: stripeDetails.chargeId,
         stripePaymentIntentId: stripeDetails.paymentIntentId,
         stripeSessionId: session.id,
