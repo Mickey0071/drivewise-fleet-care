@@ -108,12 +108,14 @@ export async function sendPaymentLinkInternal(
     sms: msg,
     emailSubject: "Complete Your Payment — Camauto Rentals",
     emailHeading: "Complete Your Payment",
-    emailIntro: custom
-      ? `${custom}<br/><br/>Tap the button below to pay <strong>${amt}</strong> securely via Stripe.`
-      : `Your payment of <strong>${amt}</strong> is ready. Tap the button below to pay securely via Stripe.`,
-    emailCta: { label: `Pay ${amt} Now`, url: link.url },
+    emailIntro: data.customerChoosesAmount
+      ? `${custom ? custom + "<br/><br/>" : ""}You can pay any amount toward your balance. Tap the button below to enter your amount and pay securely via Stripe.`
+      : custom
+        ? `${custom}<br/><br/>Tap the button below to pay <strong>${amt}</strong> securely via Stripe.`
+        : `Your payment of <strong>${amt}</strong> is ready. Tap the button below to pay securely via Stripe.`,
+    emailCta: { label: data.customerChoosesAmount ? "Pay Now" : `Pay ${amt} Now`, url: link.url },
     emailDetails: [
-      { label: "Amount Due", value: amt },
+      { label: data.customerChoosesAmount ? "Suggested Amount" : "Amount Due", value: amt },
       { label: "Description", value: data.description },
     ],
     emailFootnote:
