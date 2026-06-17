@@ -252,6 +252,8 @@ function RentalsPage() {
       return owedThroughReturn + extOwed;
     }
     // ON RENT (active)
+    // She still has the car, so a SENT-but-unsigned extension counts as owed.
+    const extOwedActive = unpaidExtensionTotal(r.id, { includePending: true });
     const today = new Date().toISOString().slice(0, 10);
     const end = r.endDate ?? today;
     // Rental period has ended. A paid-up renter should NOT show a balance just
@@ -259,11 +261,14 @@ function RentalsPage() {
     // extension has actually begun (extOwed) or there were genuinely unpaid
     // charges from BEFORE the end date.
     if (today > end) {
-      // Charges that came due on/before the end date and are still unpaid.
+      // Charges that came due strictly BEFORE the end date and are still
+      // unpaid. The renewal week (due on/after the end date) is represented by
+      // the extension amount instead, so it is excluded here to avoid double
+      // counting.
       const overduePrePeriod = sched
-        .filter(p => p.status !== "paid" && (p.dueDate ?? "") !== "" && (p.dueDate ?? "") <= end)
+        .filter(p => p.status !== "paid" && (p.dueDate ?? "") !== "" && (p.dueDate ?? "") < end)
         .reduce((s, p) => s + Number(p.amount || 0), 0);
-      return overduePrePeriod + extOwed;
+      return overduePrePeriod + extOwedActive;
     }
     // Within paid rental period -> only show unpaid extension charges, if any
     const extPaymentIds = new Set(
@@ -271,7 +276,7 @@ function RentalsPage() {
     );
     return sched
       .filter(p => p.status !== "paid" && extPaymentIds.has(p.id))
-      .reduce((s, p) => s + Number(p.amount || 0), 0) + extOwed;
+      .reduce((s, p) => s + Number(p.amount || 0), 0) + extOwedActive;
   }
   function rentalStatus(r: Rental): DisplayStatus {
     const rs = r.reservationStatus ?? "active";
