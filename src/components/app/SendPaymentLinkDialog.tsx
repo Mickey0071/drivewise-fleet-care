@@ -54,6 +54,7 @@ export function SendPaymentLinkDialog({
   const [sending, setSending] = useState(false);
   const [viaSms, setViaSms] = useState(true);
   const [viaEmail, setViaEmail] = useState(true);
+  const [letRenterChoose, setLetRenterChoose] = useState(false);
   const [logs, setLogs] = useState<PaymentLinkLog[]>([]);
 
   async function loadLogs() {
@@ -72,6 +73,7 @@ export function SendPaymentLinkDialog({
       setMessage("");
       setViaSms(true);
       setViaEmail(!!email);
+      setLetRenterChoose(false);
       loadLogs();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,6 +114,8 @@ export function SendPaymentLinkDialog({
           reason: reasonLabel,
           sendSms: viaSms,
           sendEmail: viaEmail,
+          customerChoosesAmount: letRenterChoose,
+          minAmountCents: 100,
         },
       });
       toast.success(`Payment link sent to ${renterName || "renter"}`, {
