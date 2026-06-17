@@ -238,21 +238,23 @@ function RentalsPage() {
     const rs = r.reservationStatus ?? "active";
     // PENDING: nothing due yet
     if (rs === "pending") return 0;
+    // Amounts still owed for extensions that were created/signed but not yet paid.
+    const extOwed = unpaidExtensionTotal(r.id);
     // RETURNED: show whatever is still unpaid
-    if (rs === "returned" || rs === "completed") return unpaid;
+    if (rs === "returned" || rs === "completed") return unpaid + extOwed;
     // ON RENT (active)
     const today = new Date().toISOString().slice(0, 10);
     const end = r.endDate ?? today;
     // Rental period has ended -> show full outstanding balance (overdue).
     // Late only AFTER the due/end date passes (not on the date itself).
-    if (today > end) return unpaid;
+    if (today > end) return unpaid + extOwed;
     // Within paid rental period -> only show unpaid extension charges, if any
     const extPaymentIds = new Set(
       (r.extensions ?? []).map(e => e.paymentId).filter(Boolean) as string[],
     );
     return sched
       .filter(p => p.status !== "paid" && extPaymentIds.has(p.id))
-      .reduce((s, p) => s + Number(p.amount || 0), 0);
+      .reduce((s, p) => s + Number(p.amount || 0), 0) + extOwed;
   }
   function rentalStatus(r: Rental): DisplayStatus {
     const rs = r.reservationStatus ?? "active";
