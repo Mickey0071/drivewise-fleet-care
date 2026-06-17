@@ -82,6 +82,7 @@ import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as AdminCategorizeRepairsRouteImport } from './routes/admin.categorize-repairs'
 import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
 import { Route as AdminBackfillPlatesRouteImport } from './routes/admin.backfill-plates'
+import { Route as AccidentReportTokenRouteImport } from './routes/accident-report.$token'
 import { Route as RepairDeclineTokenRouteImport } from './routes/repair.decline.$token'
 import { Route as RepairAcceptTokenRouteImport } from './routes/repair.accept.$token'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
@@ -461,6 +462,11 @@ const AdminBackfillPlatesRoute = AdminBackfillPlatesRouteImport.update({
   path: '/admin/backfill-plates',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccidentReportTokenRoute = AccidentReportTokenRouteImport.update({
+  id: '/accident-report/$token',
+  path: '/accident-report/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RepairDeclineTokenRoute = RepairDeclineTokenRouteImport.update({
   id: '/repair/decline/$token',
   path: '/repair/decline/$token',
@@ -567,6 +573,7 @@ export interface FileRoutesByFullPath {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/accident-report/$token': typeof AccidentReportTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
@@ -655,6 +662,7 @@ export interface FileRoutesByTo {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/accident-report/$token': typeof AccidentReportTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
@@ -744,6 +752,7 @@ export interface FileRoutesById {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/accident-report/$token': typeof AccidentReportTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
@@ -834,6 +843,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/accident-report/$token'
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
@@ -922,6 +932,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/accident-report/$token'
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
@@ -1010,6 +1021,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/accident-report/$token'
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
@@ -1099,6 +1111,7 @@ export interface RootRouteChildren {
   SmsLogRoute: typeof SmsLogRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
+  AccidentReportTokenRoute: typeof AccidentReportTokenRoute
   AdminBackfillPlatesRoute: typeof AdminBackfillPlatesRoute
   AdminBackupsRoute: typeof AdminBackupsRoute
   AdminCategorizeRepairsRoute: typeof AdminCategorizeRepairsRoute
@@ -1668,6 +1681,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBackfillPlatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/accident-report/$token': {
+      id: '/accident-report/$token'
+      path: '/accident-report/$token'
+      fullPath: '/accident-report/$token'
+      preLoaderRoute: typeof AccidentReportTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/repair/decline/$token': {
       id: '/repair/decline/$token'
       path: '/repair/decline/$token'
@@ -1815,6 +1835,7 @@ const rootRouteChildren: RootRouteChildren = {
   SmsLogRoute: SmsLogRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
+  AccidentReportTokenRoute: AccidentReportTokenRoute,
   AdminBackfillPlatesRoute: AdminBackfillPlatesRoute,
   AdminBackupsRoute: AdminBackupsRoute,
   AdminCategorizeRepairsRoute: AdminCategorizeRepairsRoute,
