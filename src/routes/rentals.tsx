@@ -245,9 +245,17 @@ function RentalsPage() {
     // ON RENT (active)
     const today = new Date().toISOString().slice(0, 10);
     const end = r.endDate ?? today;
-    // Rental period has ended -> show full outstanding balance (overdue).
-    // Late only AFTER the due/end date passes (not on the date itself).
-    if (today > end) return unpaid + extOwed;
+    // Rental period has ended. A paid-up renter should NOT show a balance just
+    // because the end date passed — a balance only appears once a renewal /
+    // extension has actually begun (extOwed) or there were genuinely unpaid
+    // charges from BEFORE the end date.
+    if (today > end) {
+      // Charges that came due on/before the end date and are still unpaid.
+      const overduePrePeriod = sched
+        .filter(p => p.status !== "paid" && (p.dueDate ?? "") !== "" && (p.dueDate ?? "") <= end)
+        .reduce((s, p) => s + Number(p.amount || 0), 0);
+      return overduePrePeriod + extOwed;
+    }
     // Within paid rental period -> only show unpaid extension charges, if any
     const extPaymentIds = new Set(
       (r.extensions ?? []).map(e => e.paymentId).filter(Boolean) as string[],
