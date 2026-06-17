@@ -244,6 +244,8 @@ export const createExtensionLink = createServerFn({ method: "POST" })
       periodLabel,
       smsSent,
       renterPhone: drv?.phone ?? null,
+      applied: true as const,
+      chargeState: "owed" as const,
     };
   });
 
