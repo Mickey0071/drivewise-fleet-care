@@ -34,6 +34,7 @@ import { RecordPaymentDialog } from "@/components/app/RecordPaymentDialog";
 import { getSavedCard } from "@/lib/card-display";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
+import { SwapHistoryTimeline } from "@/components/app/SwapHistoryTimeline";
 import { ReservationDocuments } from "@/components/app/ReservationDocuments";
 import { RentalVerificationPanel } from "@/components/app/RentalVerificationPanel";
 import { useAuth } from "@/hooks/use-auth";
