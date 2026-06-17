@@ -5,7 +5,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicles, vehicleById, driverById, payments, violations, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, unpaidExtensionTotal } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -238,21 +238,23 @@ function RentalsPage() {
     const rs = r.reservationStatus ?? "active";
     // PENDING: nothing due yet
     if (rs === "pending") return 0;
+    // Amounts still owed for extensions that were created/signed but not yet paid.
+    const extOwed = unpaidExtensionTotal(r.id);
     // RETURNED: show whatever is still unpaid
-    if (rs === "returned" || rs === "completed") return unpaid;
+    if (rs === "returned" || rs === "completed") return unpaid + extOwed;
     // ON RENT (active)
     const today = new Date().toISOString().slice(0, 10);
     const end = r.endDate ?? today;
     // Rental period has ended -> show full outstanding balance (overdue).
     // Late only AFTER the due/end date passes (not on the date itself).
-    if (today > end) return unpaid;
+    if (today > end) return unpaid + extOwed;
     // Within paid rental period -> only show unpaid extension charges, if any
     const extPaymentIds = new Set(
       (r.extensions ?? []).map(e => e.paymentId).filter(Boolean) as string[],
     );
     return sched
       .filter(p => p.status !== "paid" && extPaymentIds.has(p.id))
-      .reduce((s, p) => s + Number(p.amount || 0), 0);
+      .reduce((s, p) => s + Number(p.amount || 0), 0) + extOwed;
   }
   function rentalStatus(r: Rental): DisplayStatus {
     const rs = r.reservationStatus ?? "active";
