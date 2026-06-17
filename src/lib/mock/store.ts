@@ -147,6 +147,8 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   verificationStatus: r.verification_status ?? undefined,
   extensions: exts.filter(e => e.rental_id === r.id).map(fromExt),
   swapHistory: Array.isArray(r.swap_history) ? r.swap_history : [],
+  lastAutoRenewDate: r.last_auto_renew_date ?? undefined,
+  extensionDeclinedAt: r.extension_declined_at ?? undefined,
 });
 const toRental = (r: any) => ({
   id: r.id, vehicle_id: r.vehicleId, driver_id: r.driverId,
@@ -167,6 +169,8 @@ const toRental = (r: any) => ({
   activated_at: r.activatedAt ?? null,
   payment_received: !!r.paymentReceived,
   swap_history: r.swapHistory ?? [],
+  last_auto_renew_date: r.lastAutoRenewDate ?? null,
+  extension_declined_at: r.extensionDeclinedAt ?? null,
 });
 const fromExt = (r: any): RentalExtension => ({
   id: r.id, extendedAt: r.extended_at, previousEndDate: r.previous_end_date ?? undefined,

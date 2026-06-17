@@ -4,13 +4,14 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   getAutoExtensionOffer,
   submitAutoExtension,
+  declineAutoExtension,
 } from "@/lib/auto-extension.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SignaturePad } from "@/components/app/SignaturePad";
-import { CheckCircle2, FileSignature, Loader2, CalendarPlus } from "lucide-react";
+import { CheckCircle2, FileSignature, Loader2, CalendarPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import logoUrl from "@/assets/camauto-logo-full.jpeg";
 
@@ -41,6 +42,7 @@ function AutoExtendPage() {
   const { token } = Route.useParams();
   const fetchOffer = useServerFn(getAutoExtensionOffer);
   const submitFn = useServerFn(submitAutoExtension);
+  const declineFn = useServerFn(declineAutoExtension);
 
   const [offer, setOffer] = useState<Offer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +52,8 @@ function AutoExtendPage() {
   const [sig, setSig] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [declining, setDeclining] = useState(false);
+  const [declined, setDeclined] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,6 +116,22 @@ function AutoExtendPage() {
     }
   }
 
+  async function onDecline() {
+    if (!offer || !offer.found) return;
+    if (!window.confirm("Decline the extension? Your rental will not be extended and we'll arrange to pick up the vehicle.")) {
+      return;
+    }
+    setDeclining(true);
+    try {
+      await declineFn({ data: { token } });
+      setDeclined(true);
+    } catch (e: any) {
+      toast.error(e?.message || "Could not record your response");
+    } finally {
+      setDeclining(false);
+    }
+  }
+
   const total =
     offer && offer.found && choice ? priceFor(choice, offer) : 0;
 
@@ -150,7 +170,18 @@ function AutoExtendPage() {
           </Card>
         )}
 
-        {!loading && offer && offer.found && offer.status !== "consumed" && (
+        {!loading && declined && (
+          <Card className="p-8 text-center space-y-2">
+            <XCircle className="mx-auto h-8 w-8 text-muted-foreground" />
+            <div className="text-lg font-semibold">Extension declined</div>
+            <p className="text-sm text-muted-foreground">
+              Thanks for letting us know. We won't extend your rental. Our team will
+              reach out to arrange returning the vehicle. Questions? Call 1-866-625-5550.
+            </p>
+          </Card>
+        )}
+
+        {!loading && !declined && offer && offer.found && offer.status !== "consumed" && (
           <Card className="p-6 space-y-6">
             <div>
               <h1 className="text-xl font-bold">Extend Your Rental</h1>
@@ -283,6 +314,24 @@ function AutoExtendPage() {
               Payment is processed securely by Stripe. Your rental end date updates immediately after
               payment.
             </p>
+
+            <div className="border-t pt-4 text-center">
+              <p className="text-xs text-muted-foreground mb-2">
+                Not extending this time?
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onDecline}
+                disabled={declining || submitting}
+              >
+                {declining ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…</>
+                ) : (
+                  <><XCircle className="mr-2 h-4 w-4" /> Decline extension</>
+                )}
+              </Button>
+            </div>
           </Card>
         )}
       </div>

@@ -1,39 +1,73 @@
 ## Goal
 
-When you share a rental link from a vehicle's fleet card, the client should go through the **same end-to-end process as a normal new reservation** — including the payment/deposit step — instead of stopping after signing. The link stays auto-generated for that specific vehicle; you (admin) still set the rate, billing type (daily/weekly), dates, and now an optional deposit before sending.
+Three connected fixes to the rental renewal flow:
 
-## What happens today vs. desired
+1. **Balance bug** — stop showing a balance for paid-up renters whose rental simply passed its end date.
+2. **Auto-renew** — when auto-renew is ON, automatically charge the saved card each period *and* send an accept/decline link; only stop when paused.
+3. **Decline** — let the renter decline, which pauses auto-renew and raises an in-dashboard alert that the renter doesn't want to extend.
 
-Today (fleet card → `/rent/$token`):
-1. Admin picks start date, billing period (daily/weekly/monthly), rate → generates link for that vehicle.
-2. Client fills details, uploads license + selfie, signs the agreement.
-3. A pending rental is created and an acknowledgement text is sent — **no payment is collected; staff handles it manually.**
+---
 
-Desired: identical to the normal new-reservation flow, where after signing the client is sent to a secure Stripe payment page for the first charge (+ deposit), and the reservation activates automatically once paid.
+### Why the balance shows $850
 
-## Changes
+The Balance column (`rentalBalance` in `src/routes/rentals.tsx`) currently does this once a rental passes its end date:
 
-### 1. Admin share dialog — add deposit input
-In `ShareRentalDialog.tsx`, add an optional **Deposit ($)** field next to Rate (defaulting to the same `300` used by the new-reservation flow). Keep everything else (start date, daily/weekly, rate) as-is. This is the only new admin input; "type" already maps to the existing daily/weekly selector.
+```text
+if (today > end) return unpaid + extOwed;   // shows ALL unpaid schedule rows as overdue
+```
 
-### 2. Store deposit on the share link
-Add a `deposit` column to the `rental_share_links` table (migration) and persist it in `createShareLink`. Surface it through the existing public lookup so the client page knows the deposit amount.
+So R-517 (ended May 30) shows the full remaining base schedule as "overdue" even though the renter paid through her period. It's the past-due base rental being surfaced, not a renewal charge.
 
-### 3. Collect payment after signing (the core change)
-In `submitShareApplication` (`share-rental.functions.ts`), after the rental + driver are created and the link is marked consumed, create a **first-payment Stripe link** for `rate + deposit` using the existing `sendPaymentLinkInternal` helper (the same machinery the normal reservation flow uses), tied to the new `rentalId`. Return the payment URL to the client.
+---
 
-- Payment environment is determined server-side (live when the live key is present, otherwise sandbox).
-- The Stripe link redirects to the existing `/rent/paid?session_id=...&rental_id=...` page, and the existing payment webhook activates the reservation — exactly like a normal reservation. No new payment plumbing is invented.
+### 1. Balance only when a renewal begins
 
-### 4. Client page — send them to payment instead of "we'll be in touch"
-In `/rent/$token`, when `submitShareApplication` returns a payment URL, redirect the client to it (and also keep the SMS/email payment link as a fallback). The final "thank you" state then reflects "complete your payment" rather than "staff will contact you," matching the normal flow.
+In `rentalBalance` (`src/routes/rentals.tsx`), change the past-end-date branch so a paid-up renter shows **$0** after the end date, and a balance only appears once an actual extension/renewal exists:
 
-## Notes / technical details
+- After the end date, return **only** `unpaidExtensionTotal(r.id)` (extension charges that were created/charged), not the base unpaid schedule.
+- Base unpaid within the paid period is unchanged (still billed during the active window).
+- `rentalStatus` past-due logic keys off `rentalBalance > 0`, so a paid-up renter past end date will read **On Rent** until a renewal charge is created — matching "balance only if renewal begins."
 
-- Reuses `sendPaymentLinkInternal` from `payment-link.functions.ts`, `/rent/paid`, and the existing Stripe webhook — so activation, payment logging, and cardholder verification all behave the same as a standard reservation.
-- The rental is still created as `pending` and only activates on successful payment, preserving the 24h-hold semantics.
-- One migration adds `rental_share_links.deposit numeric default 0`; the public RPC `get_share_link_public` is updated to return it.
-- No change to how the link is generated per-vehicle — it remains auto-scoped to the fleet card's vehicle.
+### 2. Auto-renew: auto-charge saved card + accept/decline link
 
-## Open question (non-blocking)
-If you'd rather the deposit always be a fixed amount (e.g. $300) with no per-link input, I can skip the deposit field and just hardcode it — but the plan above lets you set it per reservation, consistent with the new-reservation dialog.
+The pieces already exist: `rentals.auto_renew` flag (with a toggle in the rental dialog), the `auto_extension_offers` table, the `get_auto_extension_offer_public` RPC, the `/api/public/hooks/auto-extension-links` cron, and saved-card fields on `drivers` (`stripe_customer_id`, `stripe_payment_method_id`, `card_last4`).
+
+Rework `src/routes/api/public/hooks/auto-extension-links.ts` so that, per due period:
+
+- **Skip** any rental where `auto_renew = false` (paused) — this is the pause switch.
+- Generate the `auto_extension_offer` and **send the accept/decline link** (existing behavior) so the renter is notified.
+- If the driver has a saved card, **auto-charge off-session** for the period amount (daily = configured daily rate, weekly = weekly rate) via a Stripe `paymentIntent` (`off_session: true`, `customer` + `payment_method`), routed through `createStripeClient`.
+  - On success: record the payment, create the extension (reuse the same logic the payments webhook uses for `kind=admin_extension`), and advance the rental end date.
+  - On card failure: leave the link active so the renter can pay manually, and SMS the admin.
+- Make the cron re-arm each period instead of firing once: track the last auto-renew period (e.g. `last_auto_renew_date` on `rentals`) instead of the one-shot `extension_link_sent` flag, so it renews every cycle until paused.
+
+This means the renter no longer *needs* to tap the link for the charge to happen — but the link still lets them decline.
+
+### 3. Decline → pause + dashboard alert
+
+- Add a **Decline** button to `src/routes/auto-extend.$token.tsx` alongside the accept/sign/pay flow.
+- Add a `declineAutoExtension` server function (`src/lib/auto-extension.functions.ts`) that, given the offer token: sets the offer `status='declined'`, sets the rental `auto_renew=false` (stops further charges/links), records `extension_declined_at`, and SMSes the admin.
+- Surface an **alert on the rentals dashboard** (`src/routes/rentals.tsx`): rentals with a recent `extension_declined_at` show a banner / highlighted row ("Renter declined to extend") so staff see it in the dashboard tab.
+
+---
+
+### Technical changes
+
+**Migration** (new file):
+- `rentals`: add `last_auto_renew_date date`, `extension_declined_at timestamptz`.
+- `auto_extension_offers`: allow `status='declined'` (text column, no enum change needed).
+
+**Files edited:**
+- `src/routes/rentals.tsx` — balance branch fix + declined-rental alert in the dashboard.
+- `src/routes/api/public/hooks/auto-extension-links.ts` — pause check, per-period re-arm, off-session auto-charge + extension application.
+- `src/lib/auto-extension.functions.ts` — new `declineAutoExtension` server fn.
+- `src/routes/auto-extend.$token.tsx` — Decline button + confirmation state.
+- `src/lib/mock/store.ts` + `src/integrations/supabase/types.ts` — map new rental fields.
+
+**No changes** to the existing payments webhook contract, the manual extension flow, or P&L wiring (auto-renew charges flow through the same payment recording path that already feeds P&L).
+
+---
+
+### Open dependency
+
+Auto-charging requires the renter's card to have been saved during their original checkout (the webhook already saves it via `setup_future_usage`). Renters who paid before card-saving was in place won't have a card on file — for them the cron falls back to sending the accept/decline link only. I'll note this in the UI.
