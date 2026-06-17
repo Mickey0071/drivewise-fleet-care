@@ -1826,11 +1826,117 @@ function RentalCardTabs({ rental }: { rental: Rental }) {
         </div>
       </TabsContent>
       <TabsContent value="accident" className="mt-2">
-        <div className="rounded-md border border-dashed bg-muted/20 p-4 text-center text-sm text-muted-foreground">
-          Accident reporting for this reservation will go here.
-        </div>
+        <AccidentTab rental={rental} />
       </TabsContent>
     </Tabs>
+  );
+}
+
+const EMPTY_ACCIDENT: AccidentReport = {
+  occurredAt: "", location: "", description: "", fault: "",
+  otherPartyName: "", otherPartyPhone: "", otherPartyInsurance: "",
+  otherPartyPlate: "", injuries: "", policeReport: "",
+};
+
+function AccidentTab({ rental }: { rental: Rental }) {
+  const existing = rental.accidentReport;
+  const [editing, setEditing] = useState(!existing);
+  const [form, setForm] = useState<AccidentReport>(existing ?? EMPTY_ACCIDENT);
+  useEffect(() => {
+    setForm(rental.accidentReport ?? EMPTY_ACCIDENT);
+    setEditing(!rental.accidentReport);
+  }, [rental.id, rental.accidentReport]);
+
+  function set<K extends keyof AccidentReport>(k: K, v: AccidentReport[K]) {
+    setForm(prev => ({ ...prev, [k]: v }));
+  }
+
+  function save() {
+    if (!form.occurredAt) { toast.error("Date & time of accident is required"); return; }
+    saveAccidentReport(rental.id, { ...form, reportedBy: form.reportedBy ?? "admin", updatedAt: new Date().toISOString() });
+    setEditing(false);
+    toast.success("Accident report saved");
+  }
+
+  function shareWithRenter() {
+    const token = ensureAccidentToken(rental.id);
+    if (!token) { toast.error("Could not create share link"); return; }
+    const url = `${window.location.origin}/accident-report/${token}`;
+    navigator.clipboard?.writeText(url).then(
+      () => toast.success("Renter accident link copied to clipboard"),
+      () => toast.message(url),
+    );
+  }
+
+  if (!editing && existing) {
+    return (
+      <div className="rounded-md border bg-muted/20 p-3 text-sm">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="font-medium text-destructive">⚠️ Accident on file</span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditing(true)}>Edit</Button>
+            <Button size="sm" className="h-7 text-xs" onClick={shareWithRenter}>
+              <Copy className="mr-1 h-3 w-3" /> Share with renter
+            </Button>
+          </div>
+        </div>
+        <dl className="grid gap-1">
+          <AccRow label="When" value={existing.occurredAt ? new Date(existing.occurredAt).toLocaleString() : "—"} />
+          {existing.location && <AccRow label="Location" value={existing.location} />}
+          {existing.description && <AccRow label="What happened" value={existing.description} />}
+          {existing.fault && <AccRow label="Fault" value={existing.fault} />}
+          {existing.injuries && <AccRow label="Injuries" value={existing.injuries} />}
+          {existing.otherPartyName && <AccRow label="Other party" value={existing.otherPartyName} />}
+          {existing.otherPartyPhone && <AccRow label="Other phone" value={existing.otherPartyPhone} />}
+          {existing.otherPartyInsurance && <AccRow label="Other insurance" value={existing.otherPartyInsurance} />}
+          {existing.otherPartyPlate && <AccRow label="Other plate" value={existing.otherPartyPlate} />}
+          {existing.policeReport && <AccRow label="Police report #" value={existing.policeReport} />}
+          <AccRow label="Reported by" value={existing.reportedBy === "renter" ? "Renter" : "Staff"} />
+        </dl>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border bg-muted/20 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-sm font-medium">Accident report</span>
+        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={shareWithRenter}>
+          <Copy className="mr-1 h-3 w-3" /> Share with renter
+        </Button>
+      </div>
+      <p className="mb-3 text-xs text-muted-foreground">Fill this in yourself, or use “Share with renter” to send a form they complete.</p>
+      <div className="space-y-2">
+        <div>
+          <label className="text-xs font-medium">Date &amp; time of accident <span className="text-destructive">*</span></label>
+          <Input type="datetime-local" className="mt-1 text-sm" value={form.occurredAt} onChange={e => set("occurredAt", e.target.value)} />
+        </div>
+        <Input placeholder="Location" className="text-sm" value={form.location ?? ""} onChange={e => set("location", e.target.value)} />
+        <Textarea placeholder="What happened?" className="min-h-[80px] text-sm" value={form.description ?? ""} onChange={e => set("description", e.target.value)} />
+        <Input placeholder="Who was at fault?" className="text-sm" value={form.fault ?? ""} onChange={e => set("fault", e.target.value)} />
+        <Input placeholder="Injuries (or 'none')" className="text-sm" value={form.injuries ?? ""} onChange={e => set("injuries", e.target.value)} />
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Input placeholder="Other party name" className="text-sm" value={form.otherPartyName ?? ""} onChange={e => set("otherPartyName", e.target.value)} />
+          <Input placeholder="Other party phone" className="text-sm" value={form.otherPartyPhone ?? ""} onChange={e => set("otherPartyPhone", e.target.value)} />
+          <Input placeholder="Other insurance / policy" className="text-sm" value={form.otherPartyInsurance ?? ""} onChange={e => set("otherPartyInsurance", e.target.value)} />
+          <Input placeholder="Other license plate" className="text-sm" value={form.otherPartyPlate ?? ""} onChange={e => set("otherPartyPlate", e.target.value)} />
+        </div>
+        <Input placeholder="Police report # (if any)" className="text-sm" value={form.policeReport ?? ""} onChange={e => set("policeReport", e.target.value)} />
+        <div className="flex justify-end gap-2 pt-1">
+          {existing && <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setForm(existing); setEditing(false); }}>Cancel</Button>}
+          <Button size="sm" className="h-7 text-xs" onClick={save}>Save report</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AccRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex gap-2">
+      <dt className="w-28 shrink-0 text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-xs">{value}</dd>
+    </div>
   );
 }
 
