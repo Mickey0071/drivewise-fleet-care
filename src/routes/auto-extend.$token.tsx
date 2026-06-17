@@ -170,7 +170,18 @@ function AutoExtendPage() {
           </Card>
         )}
 
-        {!loading && offer && offer.found && offer.status !== "consumed" && (
+        {!loading && declined && (
+          <Card className="p-8 text-center space-y-2">
+            <XCircle className="mx-auto h-8 w-8 text-muted-foreground" />
+            <div className="text-lg font-semibold">Extension declined</div>
+            <p className="text-sm text-muted-foreground">
+              Thanks for letting us know. We won't extend your rental. Our team will
+              reach out to arrange returning the vehicle. Questions? Call 1-866-625-5550.
+            </p>
+          </Card>
+        )}
+
+        {!loading && !declined && offer && offer.found && offer.status !== "consumed" && (
           <Card className="p-6 space-y-6">
             <div>
               <h1 className="text-xl font-bold">Extend Your Rental</h1>
@@ -303,6 +314,24 @@ function AutoExtendPage() {
               Payment is processed securely by Stripe. Your rental end date updates immediately after
               payment.
             </p>
+
+            <div className="border-t pt-4 text-center">
+              <p className="text-xs text-muted-foreground mb-2">
+                Not extending this time?
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onDecline}
+                disabled={declining || submitting}
+              >
+                {declining ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…</>
+                ) : (
+                  <><XCircle className="mr-2 h-4 w-4" /> Decline extension</>
+                )}
+              </Button>
+            </div>
           </Card>
         )}
       </div>
