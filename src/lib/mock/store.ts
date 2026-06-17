@@ -1309,7 +1309,7 @@ export function saveAccidentReport(id: string, report: import("@/lib/mock/data")
   const r = rentals.find(r => r.id === id);
   if (!r) return;
   r.accidentReport = report;
-  cloudWrite("rental:update", supabase.from("rentals").update({ accident_report: report ?? null }).eq("id", r.id));
+  cloudWrite("rental:update", supabase.from("rentals").update({ accident_report: report ?? null } as any).eq("id", r.id));
   emit();
 }
 
@@ -1320,7 +1320,7 @@ export function ensureAccidentToken(id: string): string | undefined {
   if (!r.accidentToken) {
     const token = `acc_${(crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, "")}`;
     r.accidentToken = token;
-    cloudWrite("rental:update", supabase.from("rentals").update({ accident_token: token }).eq("id", r.id));
+    cloudWrite("rental:update", supabase.from("rentals").update({ accident_token: token } as any).eq("id", r.id));
     emit();
   }
   return r.accidentToken;
