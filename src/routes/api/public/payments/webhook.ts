@@ -62,11 +62,18 @@ function fmtAmount(cents: number | null | undefined): string {
 }
 
 // After a Stripe payment is recorded for a rental, clear any pre-existing
-// scheduled payment row that covers the same period. The auto-scheduler
+// scheduled placeholder row that covers the same period. The auto-scheduler
 // inserts upcoming weekly rows with status "late"; without this they linger
 // as "due/overdue" on the dashboard even though Stripe already charged the
-// card. Matches an unpaid row of the same amount whose due_date is within a
-// few days of the charge, marking the EARLIEST such row as paid.
+// card.
+//
+// IMPORTANT: the real charge is already represented by its own paid
+// `PM-<session>` row (the caller inserts it before calling this). Marking the
+// scheduled placeholder as *paid* too would double-count the same money — that
+// was the root cause of the phantom-balance / inflated-revenue bug. So we
+// DELETE the redundant placeholder instead of marking it paid. Matches an
+// unpaid row of the same amount whose due_date is within a few days of the
+// charge, removing the EARLIEST such row.
 async function reconcileScheduledDuplicate(
   rentalId: string,
   amountDollars: number,
@@ -91,15 +98,8 @@ async function reconcileScheduledDuplicate(
     (c: any) => c.id !== excludePaymentId && Number(c.amount) === Number(amountDollars),
   );
   if (!match) return;
-  await sb
-    .from("payments")
-    .update({
-      status: "paid",
-      method: "Stripe",
-      paid_date: paidDateIso,
-      note: "Reconciled with Stripe charge",
-    } as any)
-    .eq("id", match.id);
+  // Only remove a placeholder that is NOT backed by a real Stripe charge.
+  await sb.from("payments").delete().eq("id", match.id).is("stripe_charge_id", null);
 }
 
 // Resolve the real Stripe charge behind a checkout session. The charge — not
