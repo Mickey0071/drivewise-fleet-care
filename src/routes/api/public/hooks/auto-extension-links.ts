@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
 import { sendSms } from "@/lib/ghl.server";
+import { createStripeClient } from "@/lib/stripe.server";
 import {
   getNotificationSetting,
   isNotificationEnabled,
@@ -17,6 +18,87 @@ function genToken(): string {
 
 function ymd(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/** Resolve the per-period rate (daily or weekly) for a rental from its own
+ *  rate fields, falling back to the vehicle's configured rates. */
+function resolvePeriodRate(
+  isDaily: boolean,
+  rental: { billing_period: string | null; rate: number | null; weekly_rate: number | null },
+  vehicle: { daily_rate: number | null; weekly_rate: number | null } | null,
+): number {
+  const rentalIsDaily = (rental.billing_period || "").toLowerCase().startsWith("day");
+  let weekly =
+    Number(rental.weekly_rate ?? 0) ||
+    (!rentalIsDaily ? Number(rental.rate ?? 0) : 0) ||
+    Number(vehicle?.weekly_rate ?? 0);
+  let daily =
+    (rentalIsDaily ? Number(rental.rate ?? 0) : 0) ||
+    Number(vehicle?.daily_rate ?? 0) ||
+    (weekly ? round2(weekly / 7) : 0);
+  if (!weekly && daily) weekly = round2(daily * 7);
+  return isDaily ? round2(daily) : round2(weekly);
+}
+
+/** Apply a fully-paid auto-renewal: advance end date, record payment +
+ *  extension rows. Mirrors the payments webhook admin_extension path. */
+async function applyAutoExtension(args: {
+  rentalId: string;
+  driverId: string;
+  isDaily: boolean;
+  amount: number;
+  prevEndDate: string | null;
+  paymentIntentId: string;
+}): Promise<string> {
+  const { rentalId, driverId, isDaily, amount, prevEndDate, paymentIntentId } = args;
+  const today = ymd(new Date());
+  const base = prevEndDate ? new Date(prevEndDate + "T00:00:00Z") : new Date();
+  const newEnd = new Date(base);
+  newEnd.setUTCDate(newEnd.getUTCDate() + (isDaily ? 1 : 7));
+  const newEndIso = ymd(newEnd);
+  const periodLabel = isDaily ? "day" : "week";
+
+  const paidId = `PM-${paymentIntentId.slice(-12)}`;
+  await supabaseAdmin.from("payments").upsert(
+    {
+      id: paidId,
+      rental_id: rentalId,
+      driver_id: driverId,
+      amount,
+      due_date: today,
+      paid_date: today,
+      method: "Stripe (auto-renew)",
+      status: "paid",
+      note: `Auto-renew: +1 ${periodLabel}`,
+    } as any,
+    { onConflict: "id" },
+  );
+
+  const extRowId = `EXT-${paymentIntentId.slice(-12)}`;
+  await supabaseAdmin.from("rental_extensions").upsert(
+    {
+      id: extRowId,
+      rental_id: rentalId,
+      previous_end_date: prevEndDate,
+      new_end_date: newEndIso,
+      periods: 1,
+      period_label: periodLabel,
+      additional_amount: amount,
+      payment_id: paidId,
+    } as any,
+    { onConflict: "id" },
+  );
+
+  await supabaseAdmin
+    .from("rentals")
+    .update({ end_date: newEndIso, updated_at: new Date().toISOString() })
+    .eq("id", rentalId);
+
+  return newEndIso;
 }
 
 /** Whole-day difference (today - dateStr) using UTC calendar days. */
