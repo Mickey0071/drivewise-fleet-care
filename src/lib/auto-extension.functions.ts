@@ -223,3 +223,63 @@ export const submitAutoExtension = createServerFn({ method: "POST" })
 
     return { paymentUrl: link.url, newEndDate: newEndIso, amount: additionalAmount };
   });
+
+/**
+ * Public: customer declines the extension. Pauses auto-renew on the rental so
+ * no further links or auto-charges go out, flags the rental for a dashboard
+ * alert (extension_declined_at), marks the offer declined, and SMSes the admin.
+ */
+export const declineAutoExtension = createServerFn({ method: "POST" })
+  .inputValidator((d: { token: string }) => {
+    if (!d?.token || typeof d.token !== "string" || d.token.length < 16) {
+      throw new Error("Invalid token");
+    }
+    return { token: d.token };
+  })
+  .handler(async ({ data }) => {
+    const { data: rows, error } = await supabaseAdmin.rpc(
+      "get_auto_extension_offer_public",
+      { _token: data.token },
+    );
+    if (error) throw new Error(error.message);
+    const offer = Array.isArray(rows) ? rows[0] : rows;
+    if (!offer) throw new Error("This extension link is invalid or has expired.");
+    if (offer.status === "consumed") {
+      throw new Error("This extension has already been completed.");
+    }
+
+    const nowIso = new Date().toISOString();
+
+    // Pause auto-renew + flag for dashboard alert.
+    await supabaseAdmin
+      .from("rentals")
+      .update({
+        auto_renew: false,
+        extension_declined_at: nowIso,
+        updated_at: nowIso,
+      } as any)
+      .eq("id", offer.rental_id);
+
+    // Mark the offer declined.
+    await supabaseAdmin
+      .from("auto_extension_offers")
+      .update({ status: "declined", consumed_at: nowIso })
+      .eq("token", data.token);
+
+    // Notify admin.
+    try {
+      await notifyRenter({
+        phone: "267-221-3977",
+        email: null,
+        name: "Admin",
+        sms: `Camauto: ${offer.driver_full_name || "Customer"} DECLINED to extend ${offer.vehicle_year ?? ""} ${offer.vehicle_make ?? ""} ${offer.vehicle_model ?? ""}. Auto-renew paused — arrange pickup.`,
+        emailSubject: "Renter declined to extend",
+        emailHeading: "Renter declined to extend",
+        emailIntro: "A renter declined their rental extension. Auto-renew has been paused.",
+      });
+    } catch (e) {
+      console.error("[declineAutoExtension] admin notify failed", e);
+    }
+
+    return { ok: true as const };
+  });
