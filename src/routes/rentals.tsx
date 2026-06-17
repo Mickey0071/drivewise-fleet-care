@@ -51,7 +51,7 @@ import { closeoutRental } from "@/lib/return.functions";
 import { createExtensionLink } from "@/lib/extension-link.functions";
 import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 import { toast } from "sonner";
-import type { Rental } from "@/lib/mock/data";
+import type { Rental, AccidentReport } from "@/lib/mock/data";
 
 const getPublicAppOrigin = () =>
   typeof window !== "undefined" ? window.location.origin : "";
