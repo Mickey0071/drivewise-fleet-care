@@ -147,6 +147,8 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   verificationStatus: r.verification_status ?? undefined,
   extensions: exts.filter(e => e.rental_id === r.id).map(fromExt),
   swapHistory: Array.isArray(r.swap_history) ? r.swap_history : [],
+  lastAutoRenewDate: r.last_auto_renew_date ?? undefined,
+  extensionDeclinedAt: r.extension_declined_at ?? undefined,
 });
 const toRental = (r: any) => ({
   id: r.id, vehicle_id: r.vehicleId, driver_id: r.driverId,
