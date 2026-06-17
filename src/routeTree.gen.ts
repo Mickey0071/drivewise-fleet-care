@@ -70,6 +70,7 @@ import { Route as AnalyticsCostsRouteImport } from './routes/analytics_.costs'
 import { Route as AnalyticsBreakevenRouteImport } from './routes/analytics_.breakeven'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
+import { Route as AdminPaymentReconciliationRouteImport } from './routes/admin.payment-reconciliation'
 import { Route as AdminPartsRouteImport } from './routes/admin.parts'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminMalibuPlateReviewRouteImport } from './routes/admin.malibu-plate-review'
@@ -402,6 +403,12 @@ const AdminTasksRoute = AdminTasksRouteImport.update({
   path: '/admin/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPaymentReconciliationRoute =
+  AdminPaymentReconciliationRouteImport.update({
+    id: '/admin/payment-reconciliation',
+    path: '/admin/payment-reconciliation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AdminPartsRoute = AdminPartsRouteImport.update({
   id: '/admin/parts',
   path: '/admin/parts',
@@ -586,6 +593,7 @@ export interface FileRoutesByFullPath {
   '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
+  '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/admin/users': typeof AdminUsersRoute
   '/analytics/breakeven': typeof AnalyticsBreakevenRoute
@@ -675,6 +683,7 @@ export interface FileRoutesByTo {
   '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
+  '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/admin/users': typeof AdminUsersRoute
   '/analytics/breakeven': typeof AnalyticsBreakevenRoute
@@ -765,6 +774,7 @@ export interface FileRoutesById {
   '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
+  '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/admin/users': typeof AdminUsersRoute
   '/analytics_/breakeven': typeof AnalyticsBreakevenRoute
@@ -856,6 +866,7 @@ export interface FileRouteTypes {
     | '/admin/malibu-plate-review'
     | '/admin/notifications'
     | '/admin/parts'
+    | '/admin/payment-reconciliation'
     | '/admin/tasks'
     | '/admin/users'
     | '/analytics/breakeven'
@@ -945,6 +956,7 @@ export interface FileRouteTypes {
     | '/admin/malibu-plate-review'
     | '/admin/notifications'
     | '/admin/parts'
+    | '/admin/payment-reconciliation'
     | '/admin/tasks'
     | '/admin/users'
     | '/analytics/breakeven'
@@ -1034,6 +1046,7 @@ export interface FileRouteTypes {
     | '/admin/malibu-plate-review'
     | '/admin/notifications'
     | '/admin/parts'
+    | '/admin/payment-reconciliation'
     | '/admin/tasks'
     | '/admin/users'
     | '/analytics_/breakeven'
@@ -1124,6 +1137,7 @@ export interface RootRouteChildren {
   AdminMalibuPlateReviewRoute: typeof AdminMalibuPlateReviewRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminPartsRoute: typeof AdminPartsRoute
+  AdminPaymentReconciliationRoute: typeof AdminPaymentReconciliationRoute
   AdminTasksRoute: typeof AdminTasksRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AnalyticsBreakevenRoute: typeof AnalyticsBreakevenRoute
@@ -1597,6 +1611,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTasksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/payment-reconciliation': {
+      id: '/admin/payment-reconciliation'
+      path: '/admin/payment-reconciliation'
+      fullPath: '/admin/payment-reconciliation'
+      preLoaderRoute: typeof AdminPaymentReconciliationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/parts': {
       id: '/admin/parts'
       path: '/admin/parts'
@@ -1848,6 +1869,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminMalibuPlateReviewRoute: AdminMalibuPlateReviewRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminPartsRoute: AdminPartsRoute,
+  AdminPaymentReconciliationRoute: AdminPaymentReconciliationRoute,
   AdminTasksRoute: AdminTasksRoute,
   AdminUsersRoute: AdminUsersRoute,
   AnalyticsBreakevenRoute: AnalyticsBreakevenRoute,

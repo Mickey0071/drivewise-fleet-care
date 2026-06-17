@@ -1431,6 +1431,42 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_audit_log: {
+        Row: {
+          action: string
+          actor: string | null
+          after_value: Json | null
+          before_value: Json | null
+          created_at: string
+          id: string
+          payment_id: string
+          reason: string | null
+          rental_id: string | null
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          id?: string
+          payment_id: string
+          reason?: string | null
+          rental_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          id?: string
+          payment_id?: string
+          reason?: string | null
+          rental_id?: string | null
+        }
+        Relationships: []
+      }
       payment_link_logs: {
         Row: {
           amount_cents: number
@@ -3261,6 +3297,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_correct_payment_amount: {
+        Args: { _new_amount: number; _payment_id: string; _reason: string }
+        Returns: undefined
+      }
+      admin_delete_payment: {
+        Args: { _payment_id: string; _reason: string }
+        Returns: undefined
+      }
       current_driver_id: { Args: never; Returns: string }
       get_accident_intake_public: {
         Args: { _token: string }
