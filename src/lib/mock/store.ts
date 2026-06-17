@@ -2601,8 +2601,34 @@ export function addWorkOrder(input: Omit<WorkOrder, "id" | "status" | "createdAt
   };
   workOrders.push(rec);
   cloudWrite("work_orders:insert", supabase.from("work_orders").insert(toWorkOrder(rec)));
+  // Mirror the work order into the maintenance log so it shows up in the
+  // vehicle's maintenance history. Created as an open, non-blocking service
+  // item (scheduled preventive work shouldn't take the vehicle offline).
+  ensureWorkOrderMaintenance(rec);
   emit();
   return rec;
+}
+
+/** Find (or create) the maintenance row mirroring a work order. */
+function ensureWorkOrderMaintenance(wo: WorkOrder): Maintenance {
+  const existing = maintenance.find(m => m.sourceWorkOrderId === wo.id);
+  if (existing) return existing;
+  const v = vehicles.find(x => x.id === wo.vehicleId);
+  return addMaintenance({
+    vehicleId: wo.vehicleId,
+    serviceType: wo.serviceType,
+    vendor: wo.assignedTo?.trim() || "Pending assignment",
+    dateCompleted: "",
+    mileageAtService: v?.mileage ?? 0,
+    nextServiceDue: wo.scheduledDate,
+    notes: wo.description || undefined,
+    status: "open",
+    issueDescription: wo.description || wo.serviceType,
+    isRentalBlocking: false,
+    source: "work_order",
+    sourceWorkOrderId: wo.id,
+    createdAt: wo.createdAt ?? new Date().toISOString(),
+  });
 }
 
 function genFieldToken(): string {
