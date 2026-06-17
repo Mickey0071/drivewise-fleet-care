@@ -169,6 +169,7 @@ async function upsertStripePaymentRow(row: {
   stripePaymentIntentId?: string | null;
   stripeSessionId?: string | null;
   stripeEventId?: string | null;
+  kind?: "charge" | "credit";
 }): Promise<string> {
   const sb = getSupabase();
   const stripeCols = {
@@ -194,6 +195,7 @@ async function upsertStripePaymentRow(row: {
           method: "Stripe",
           status: "paid",
           ...(row.note != null ? { note: row.note } : {}),
+          ...(row.kind != null ? { kind: row.kind } : {}),
           ...stripeCols,
         } as any)
         .eq("id", existing.id);
@@ -211,6 +213,7 @@ async function upsertStripePaymentRow(row: {
       method: "Stripe",
       status: "paid",
       ...(row.note != null ? { note: row.note } : {}),
+      ...(row.kind != null ? { kind: row.kind } : {}),
       ...stripeCols,
     } as any,
     { onConflict: "id" },
