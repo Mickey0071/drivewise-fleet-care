@@ -933,6 +933,11 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
       } else if (period === "monthly") next.setMonth(next.getMonth() + 1);
       else next.setDate(next.getDate() + 7);
       const amount = Number(rental.rate ?? rental.weekly_rate ?? 0);
+      // The first charge reflects what Stripe actually collected upfront
+      // (e.g. 2 days for a daily rental); the recurring row stays one period.
+      const paidAmount = session.amount_total != null
+        ? Number((session.amount_total / 100).toFixed(2))
+        : amount;
       const today = new Date().toISOString().slice(0, 10);
       const paidId = `PM-${session.id.slice(-10)}`;
       // First payment row (already paid via Stripe).
@@ -941,7 +946,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
           id: paidId,
           rental_id: rental.id,
           driver_id: rental.driver_id,
-          amount,
+          amount: paidAmount,
           due_date: today,
           paid_date: today,
           method: "Stripe",
@@ -950,7 +955,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         { onConflict: "id" },
       );
       // Clear any duplicate scheduled "late" row for this first period.
-      await reconcileScheduledDuplicate(rental.id, amount, today, paidId);
+      await reconcileScheduledDuplicate(rental.id, paidAmount, today, paidId);
       // Next scheduled payment (only if none already exists past today).
       const { data: upcoming } = await sb
         .from("payments")
