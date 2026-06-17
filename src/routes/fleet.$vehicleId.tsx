@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { vehicleById, rentals, maintenance, violations, inspections, payments, expenses, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
-import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, useStoreVersion } from "@/lib/mock/store";
+import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, updateVehicle, useStoreVersion } from "@/lib/mock/store";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
@@ -335,6 +335,7 @@ function VehicleDetail() {
           <TabsTrigger value="rm">RM History</TabsTrigger>
           <TabsTrigger value="renters">Renter History ({uniqueRenters.length})</TabsTrigger>
           <TabsTrigger value="other">Violations &amp; Inspections</TabsTrigger>
+          <TabsTrigger value="notes">Notes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4 space-y-4">
