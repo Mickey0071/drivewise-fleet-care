@@ -1,6 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { createStripeClient, getStripeErrorMessage, type StripeEnv } from "@/lib/stripe.server";
+import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
+
+function stripeErrorMessage(error: unknown): string {
+  if (error && typeof error === "object") {
+    const e = error as { message?: string; raw?: { message?: string } };
+    return e.raw?.message ?? e.message ?? "Stripe request failed";
+  }
+  return "Stripe request failed";
+}
 
 /**
  * Payment reconciliation — REPORT-ONLY by default.
