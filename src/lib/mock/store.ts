@@ -2652,6 +2652,23 @@ export function updateWorkOrder(id: string, patch: Partial<WorkOrder>) {
   if (!w) return;
   Object.assign(w, patch);
   cloudWrite("work_orders:update", supabase.from("work_orders").update(toWorkOrder(w)).eq("id", id));
+  // When a work order reaches "completed", finalize its maintenance mirror:
+  // mark it complete and post the actual cost to P&L. Idempotent — if the
+  // linked maintenance is already complete, this does nothing.
+  if (w.status === "completed") {
+    const m = ensureWorkOrderMaintenance(w);
+    if (m.status !== "complete") {
+      const partsNote = w.partsUsed?.trim() ? `Parts: ${w.partsUsed.trim()}` : "";
+      const notes = [w.completionNotes?.trim(), partsNote].filter(Boolean).join("\n");
+      completeRepair(m.id, {
+        completedBy: w.reviewedBy?.trim() || w.assignedTo?.trim() || "Admin",
+        mechanicName: w.assignedTo?.trim() || undefined,
+        partsCost: w.actualCost ?? w.estimatedCost ?? 0,
+        laborCost: 0,
+        mechanicNotes: notes || undefined,
+      });
+    }
+  }
   emit();
 }
 
