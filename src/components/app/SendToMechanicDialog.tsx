@@ -9,8 +9,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 import { Plus, X, Loader2, Send, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+
+const CUSTOM_VALUE = "__custom__";
+
+interface VendorOption {
+  id: string;
+  name: string;
+  phone: string;
+  service_type: string | null;
+}
 
 const COMMON_ITEMS = [
   "Check battery voltage",
@@ -74,12 +85,37 @@ export function SendToMechanicDialog({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [shop, setShop] = useState("");
+  const [vendors, setVendors] = useState<VendorOption[]>([]);
+  const [selectedVendor, setSelectedVendor] = useState<string>(CUSTOM_VALUE);
   const [context, setContext] = useState("");
   const [includeChecklist, setIncludeChecklist] = useState(false);
   const [selectedCommon, setSelectedCommon] = useState<string[]>([]);
   const [customItems, setCustomItems] = useState<{ id: string; label: string }[]>([]);
   const [sending, setSending] = useState(false);
   const [checklistError, setChecklistError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from("vendors")
+      .select("id, name, phone, service_type")
+      .order("name", { ascending: true })
+      .then(({ data }) => setVendors((data ?? []) as VendorOption[]));
+  }, [open]);
+
+  function pickVendor(value: string) {
+    setSelectedVendor(value);
+    if (value === CUSTOM_VALUE) {
+      setName(""); setPhone(""); setShop("");
+      return;
+    }
+    const v = vendors.find((x) => x.id === value);
+    if (v) {
+      setName(v.name ?? "");
+      setPhone(v.phone ?? "");
+      setShop(v.service_type ?? "");
+    }
+  }
 
   function toggleCommon(label: string) {
     setSelectedCommon((prev) => {
@@ -97,6 +133,7 @@ export function SendToMechanicDialog({
 
   function reset() {
     setName(""); setPhone(""); setShop(""); setContext("");
+    setSelectedVendor(CUSTOM_VALUE); setVendors([]);
     setIncludeChecklist(false); setSelectedCommon([]); setCustomItems([]); setChecklistError("");
   }
 
@@ -151,6 +188,22 @@ export function SendToMechanicDialog({
           <DialogTitle>Send Diagnosis to Mechanic</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          <div>
+            <Label className="text-xs">Vendor</Label>
+            <Select value={selectedVendor} onValueChange={pickVendor}>
+              <SelectTrigger className="mt-1 h-8">
+                <SelectValue placeholder="Select a vendor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={CUSTOM_VALUE}>Custom number</SelectItem>
+                {vendors.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.name}{v.phone ? ` · ${v.phone}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">Mechanic name</Label>
