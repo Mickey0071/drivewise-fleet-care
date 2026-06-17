@@ -187,6 +187,8 @@ export interface Maintenance {
   issueDescription?: string;
   /** What the customer reported about the issue (reported stage). */
   customerNotes?: string;
+  /** Controlled problem category for analytics grouping (additive to serviceType). */
+  problemCategory?: string;
   /** Diagnosis notes added by an admin before moving to an open repair. */
   diagnosisNotes?: string;
   /** True when this repair started life as a reported issue. */

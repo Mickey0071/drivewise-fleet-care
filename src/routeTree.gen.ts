@@ -79,6 +79,7 @@ import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminExpensesRouteImport } from './routes/admin.expenses'
 import { Route as AdminExpenseCategoriesRouteImport } from './routes/admin.expense-categories'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
+import { Route as AdminCategorizeRepairsRouteImport } from './routes/admin.categorize-repairs'
 import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
 import { Route as AdminBackfillPlatesRouteImport } from './routes/admin.backfill-plates'
 import { Route as RepairDeclineTokenRouteImport } from './routes/repair.decline.$token'
@@ -445,6 +446,11 @@ const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
   path: '/admin/create-task',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCategorizeRepairsRoute = AdminCategorizeRepairsRouteImport.update({
+  id: '/admin/categorize-repairs',
+  path: '/admin/categorize-repairs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminBackupsRoute = AdminBackupsRouteImport.update({
   id: '/admin/backups',
   path: '/admin/backups',
@@ -563,6 +569,7 @@ export interface FileRoutesByFullPath {
   '/violations': typeof ViolationsRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
+  '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/expense-categories': typeof AdminExpenseCategoriesRoute
   '/admin/expenses': typeof AdminExpensesRoute
@@ -650,6 +657,7 @@ export interface FileRoutesByTo {
   '/violations': typeof ViolationsRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
+  '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/expense-categories': typeof AdminExpenseCategoriesRoute
   '/admin/expenses': typeof AdminExpensesRoute
@@ -738,6 +746,7 @@ export interface FileRoutesById {
   '/violations': typeof ViolationsRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
+  '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/expense-categories': typeof AdminExpenseCategoriesRoute
   '/admin/expenses': typeof AdminExpensesRoute
@@ -827,6 +836,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/admin/backfill-plates'
     | '/admin/backups'
+    | '/admin/categorize-repairs'
     | '/admin/create-task'
     | '/admin/expense-categories'
     | '/admin/expenses'
@@ -914,6 +924,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/admin/backfill-plates'
     | '/admin/backups'
+    | '/admin/categorize-repairs'
     | '/admin/create-task'
     | '/admin/expense-categories'
     | '/admin/expenses'
@@ -1001,6 +1012,7 @@ export interface FileRouteTypes {
     | '/violations'
     | '/admin/backfill-plates'
     | '/admin/backups'
+    | '/admin/categorize-repairs'
     | '/admin/create-task'
     | '/admin/expense-categories'
     | '/admin/expenses'
@@ -1089,6 +1101,7 @@ export interface RootRouteChildren {
   ViolationsRoute: typeof ViolationsRoute
   AdminBackfillPlatesRoute: typeof AdminBackfillPlatesRoute
   AdminBackupsRoute: typeof AdminBackupsRoute
+  AdminCategorizeRepairsRoute: typeof AdminCategorizeRepairsRoute
   AdminCreateTaskRoute: typeof AdminCreateTaskRoute
   AdminExpenseCategoriesRoute: typeof AdminExpenseCategoriesRoute
   AdminExpensesRoute: typeof AdminExpensesRoute
@@ -1629,6 +1642,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCreateTaskRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/categorize-repairs': {
+      id: '/admin/categorize-repairs'
+      path: '/admin/categorize-repairs'
+      fullPath: '/admin/categorize-repairs'
+      preLoaderRoute: typeof AdminCategorizeRepairsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/backups': {
       id: '/admin/backups'
       path: '/admin/backups'
@@ -1812,6 +1832,7 @@ const rootRouteChildren: RootRouteChildren = {
   ViolationsRoute: ViolationsRoute,
   AdminBackfillPlatesRoute: AdminBackfillPlatesRoute,
   AdminBackupsRoute: AdminBackupsRoute,
+  AdminCategorizeRepairsRoute: AdminCategorizeRepairsRoute,
   AdminCreateTaskRoute: AdminCreateTaskRoute,
   AdminExpenseCategoriesRoute: AdminExpenseCategoriesRoute,
   AdminExpensesRoute: AdminExpensesRoute,
@@ -1863,13 +1884,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { updateMaintenance, deleteMaintenance } from "@/lib/mock/store";
 import { vehicleById, fmtDate, type Maintenance } from "@/lib/mock/data";
 import { InspectionDetailDialog } from "@/components/app/InspectionDetailDialog";
+import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 
 interface Props {
@@ -20,6 +22,7 @@ interface Props {
 export function EditMaintenanceDialog({ open, onOpenChange, record }: Props) {
   const { role } = useAuth();
   const [serviceType, setServiceType] = useState("");
+  const [problemCategory, setProblemCategory] = useState("");
   const [vendor, setVendor] = useState("");
   const [dateCompleted, setDateCompleted] = useState<string>("");
   const [mileage, setMileage] = useState<string>("0");
@@ -32,6 +35,7 @@ export function EditMaintenanceDialog({ open, onOpenChange, record }: Props) {
   useEffect(() => {
     if (!record) return;
     setServiceType(record.serviceType);
+    setProblemCategory(record.problemCategory ?? "");
     setVendor(record.vendor);
     setDateCompleted(record.dateCompleted ?? "");
     setMileage(String(record.mileageAtService ?? 0));
@@ -65,6 +69,7 @@ export function EditMaintenanceDialog({ open, onOpenChange, record }: Props) {
     if (!Number.isFinite(costNum) || costNum < 0) return toast.error("Valid cost required");
     updateMaintenance(record.id, {
       serviceType: serviceType.trim(),
+      problemCategory: problemCategory || undefined,
       vendor: vendor.trim(),
       dateCompleted: dateCompleted || undefined,
       mileageAtService: mileageNum,
@@ -116,6 +121,13 @@ export function EditMaintenanceDialog({ open, onOpenChange, record }: Props) {
             <div className="grid gap-1.5">
               <Label>Service type</Label>
               <Input value={serviceType} onChange={e => setServiceType(e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label className="flex items-center gap-2">
+                Problem category
+                {problemCategory && <Badge variant="outline" className="text-[10px]">{problemCategory}</Badge>}
+              </Label>
+              <ProblemCategorySelect value={problemCategory} onChange={setProblemCategory} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">

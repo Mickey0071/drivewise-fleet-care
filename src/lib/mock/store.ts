@@ -414,6 +414,7 @@ const fromMaintenance = (r: any): Maintenance => ({
   status: r.status ?? undefined,
   issueDescription: r.issue_description ?? undefined,
   customerNotes: r.customer_notes ?? undefined,
+  problemCategory: r.problem_category ?? undefined,
   diagnosisNotes: r.diagnosis_notes ?? undefined,
   createdFromIssue: !!r.created_from_issue,
   solutions: r.solutions ?? undefined,
@@ -448,6 +449,7 @@ const toMaintenance = (m: Maintenance) => ({
   status: m.status ?? null,
   issue_description: m.issueDescription ?? null,
   customer_notes: m.customerNotes ?? null,
+  problem_category: m.problemCategory ?? null,
   diagnosis_notes: m.diagnosisNotes ?? null,
   created_from_issue: m.createdFromIssue ?? false,
   solutions: (m.solutions ?? null) as any,
@@ -1879,6 +1881,7 @@ export function createRepair(input: {
   vehicleId: string;
   issueDescription: string;
   solutions: RepairSolution[];
+  problemCategory?: string;
 }) {
   const v = vehicles.find(x => x.id === input.vehicleId);
   const rec: Maintenance = {
@@ -1886,6 +1889,7 @@ export function createRepair(input: {
     vehicleId: input.vehicleId,
     serviceType: input.issueDescription,
     issueDescription: input.issueDescription,
+    problemCategory: input.problemCategory,
     solutions: input.solutions,
     vendor: "Pending assignment",
     dateCompleted: undefined as unknown as string,
@@ -2362,7 +2366,7 @@ function moveIssueToOpenRepairImpl(id: string) {
 // Used by the Maintenance "Active Repairs" board.
 // ---------------------------------------------------------------------------
 /** [+ Create Repair] — admin opens a repair manually. Phase 1 (reported). */
-export function createManualRepair(vehicleId: string, issueDescription: string, takeOffRental = true) {
+export function createManualRepair(vehicleId: string, issueDescription: string, takeOffRental = true, problemCategory?: string) {
   const issue = issueDescription.trim();
   const v = vehicles.find(x => x.id === vehicleId);
   const rec: Maintenance = {
@@ -2370,6 +2374,7 @@ export function createManualRepair(vehicleId: string, issueDescription: string, 
     vehicleId,
     serviceType: issue,
     issueDescription: issue,
+    problemCategory,
     vendor: "Pending assignment",
     dateCompleted: undefined as unknown as string,
     mileageAtService: v?.mileage ?? 0,

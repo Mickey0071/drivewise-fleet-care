@@ -1071,6 +1071,7 @@ export type Database = {
           notes: string | null
           parts_cost: number
           parts_list: Json | null
+          problem_category: string | null
           repair_request_notes: string | null
           runner_id: string | null
           selected_solution: Json | null
@@ -1125,6 +1126,7 @@ export type Database = {
           notes?: string | null
           parts_cost?: number
           parts_list?: Json | null
+          problem_category?: string | null
           repair_request_notes?: string | null
           runner_id?: string | null
           selected_solution?: Json | null
@@ -1179,6 +1181,7 @@ export type Database = {
           notes?: string | null
           parts_cost?: number
           parts_list?: Json | null
+          problem_category?: string | null
           repair_request_notes?: string | null
           runner_id?: string | null
           selected_solution?: Json | null
