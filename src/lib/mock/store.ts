@@ -169,6 +169,8 @@ const toRental = (r: any) => ({
   activated_at: r.activatedAt ?? null,
   payment_received: !!r.paymentReceived,
   swap_history: r.swapHistory ?? [],
+  last_auto_renew_date: r.lastAutoRenewDate ?? null,
+  extension_declined_at: r.extensionDeclinedAt ?? null,
 });
 const fromExt = (r: any): RentalExtension => ({
   id: r.id, extendedAt: r.extended_at, previousEndDate: r.previous_end_date ?? undefined,
