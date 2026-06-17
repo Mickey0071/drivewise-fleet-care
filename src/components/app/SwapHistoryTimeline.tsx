@@ -1,6 +1,5 @@
 import { ArrowRight, Repeat, User } from "lucide-react";
 import type { Rental } from "@/lib/mock/data";
-import { fmtDate } from "@/lib/mock/data";
 
 function fmtDateTime(iso: string): string {
   const d = new Date(iso);
