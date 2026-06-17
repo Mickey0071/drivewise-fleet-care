@@ -677,10 +677,6 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv, eventId?: s
       // charge paid + stamp signature. Do NOT advance the end date again or
       // create a duplicate extension log row.
       if (extReqRow?.rental_extension_id && extReqRow?.applied_payment_id) {
-        const extPaidDollars =
-          extChargeAmountCents != null
-            ? Number((extChargeAmountCents / 100).toFixed(2))
-            : amountDollars;
         await sb
           .from("payments")
           .update({
