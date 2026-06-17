@@ -659,7 +659,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv, eventId?: s
       const { data: er } = await sb
         .from("extension_requests")
         .select(
-          "token, periods, period_label, new_end_date, previous_end_date, additional_amount, signature_data_url, signed_by, signed_at, agreement_version",
+          "token, periods, period_label, new_end_date, previous_end_date, additional_amount, signature_data_url, signed_by, signed_at, agreement_version, rental_extension_id, applied_payment_id, charge_state",
         )
         .eq("token", extToken)
         .maybeSingle();
@@ -672,6 +672,59 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv, eventId?: s
       .eq("id", rentalId)
       .maybeSingle();
     if (rentalRow) {
+      // ---- Pre-applied extension (admin already advanced the end date and
+      // logged the extension at input time). Reconcile only: mark the linked
+      // charge paid + stamp signature. Do NOT advance the end date again or
+      // create a duplicate extension log row.
+      if (extReqRow?.rental_extension_id && extReqRow?.applied_payment_id) {
+        const extPaidDollars =
+          extChargeAmountCents != null
+            ? Number((extChargeAmountCents / 100).toFixed(2))
+            : amountDollars;
+        await sb
+          .from("payments")
+          .update({
+            status: "paid",
+            paid_date: today,
+            method: "Stripe",
+            stripe_charge_id: extChargeId,
+            stripe_payment_intent_id: extPaymentIntentId,
+            stripe_checkout_session_id: session.id,
+            stripe_event_id: eventId ?? null,
+            updated_at: new Date().toISOString(),
+          } as any)
+          .eq("id", extReqRow.applied_payment_id);
+
+        await sb
+          .from("rental_extensions")
+          .update({
+            signature_data_url: extReqRow?.signature_data_url ?? null,
+            signed_by: extReqRow?.signed_by ?? null,
+            agreement_version: extReqRow?.agreement_version ?? null,
+          } as any)
+          .eq("id", extReqRow.rental_extension_id);
+
+        if (extToken) {
+          await sb
+            .from("extension_requests")
+            .update({
+              status: "paid",
+              paid_at: new Date().toISOString(),
+              stripe_session_id: session.id,
+              payment_id: extReqRow.applied_payment_id,
+              charge_state: "paid",
+              name_match_status: extDecision ? extDecision.status : "unverified",
+              name_match_score: extScore || null,
+              cardholder_name: extCardName || null,
+            })
+            .eq("token", extToken);
+        }
+        console.log(
+          `[webhook:ext] Reconciled pre-applied extension ${extReqRow.rental_extension_id} for rental ${rentalRow.id} (charge ${extReqRow.applied_payment_id} marked paid; end date unchanged).`,
+        );
+        return new Response("ok", { status: 200 });
+      }
+
       const periodLabel =
         (extReqRow?.period_label as string) ||
         (session.metadata?.period_label as string) ||
