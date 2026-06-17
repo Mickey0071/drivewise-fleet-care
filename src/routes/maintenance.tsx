@@ -867,7 +867,7 @@ function MaintenancePage() {
         onSubmitted={refreshRmCards}
       />
 
-      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateTakeOffRental(true); } }}>
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateCategory(""); setCreateTakeOffRental(true); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create Repair</DialogTitle>
@@ -888,6 +888,11 @@ function MaintenancePage() {
               <Label htmlFor="create-issue">Issue</Label>
               <Input id="create-issue" value={createIssue} maxLength={200}
                 onChange={(e) => setCreateIssue(e.target.value)} placeholder="What's wrong?" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-category">Problem category</Label>
+              <ProblemCategorySelect id="create-category" value={createCategory} onChange={setCreateCategory} />
+              <p className="text-xs text-muted-foreground">Required — used to group repairs in analytics.</p>
             </div>
             <div className="flex items-center justify-between rounded-md border border-border p-3">
               <div className="space-y-0.5">
