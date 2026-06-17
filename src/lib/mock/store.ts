@@ -2621,6 +2621,7 @@ function ensureWorkOrderMaintenance(wo: WorkOrder): Maintenance {
     dateCompleted: "",
     mileageAtService: v?.mileage ?? 0,
     nextServiceDue: wo.scheduledDate,
+    cost: 0,
     notes: wo.description || undefined,
     status: "open",
     issueDescription: wo.description || wo.serviceType,
