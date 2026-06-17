@@ -2166,12 +2166,36 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
                 </div>
               </div>
             )}
-            <div className="rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
-              The renter will receive a text with one link. On that page they review the Extension
-              Agreement, sign, and pay {charge?.additionalAmount ? fmtMoney(charge.additionalAmount) : ""} via Stripe.
-              Once paid, the reservation end date, calendar, and P&amp;L update automatically.
+            <div>
+              <Label className="text-xs uppercase text-muted-foreground">Charge handling</Label>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setChargeState("owed")}
+                  className={`rounded-md border p-2 text-left text-sm ${chargeState === "owed" ? "border-primary bg-primary/10" : "bg-background"}`}
+                >
+                  <div className="font-medium">Renter will pay</div>
+                  <div className="text-xs text-muted-foreground">Adds charge as owed · sends a pay link</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChargeState("paid")}
+                  className={`rounded-md border p-2 text-left text-sm ${chargeState === "paid" ? "border-primary bg-primary/10" : "bg-background"}`}
+                >
+                  <div className="font-medium">Already paid</div>
+                  <div className="text-xs text-muted-foreground">Logs as paid · no link sent</div>
+                </button>
+              </div>
             </div>
-            {!d.phone && (
+            <div className="rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
+              {chargeState === "owed" ? (
+                <>The extension is logged immediately and the end date updates now. The renter receives one
+                link to sign and pay {charge?.additionalAmount ? fmtMoney(charge.additionalAmount) : ""} via Stripe; the balance clears when they pay.</>
+              ) : (
+                <>The extension is logged immediately as paid and the end date updates now. No link is sent.</>
+              )}
+            </div>
+            {chargeState === "owed" && !d.phone && (
               <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-xs text-amber-800">
                 No phone number on file for this renter — we'll generate the link but you'll need to share it manually.
               </div>
