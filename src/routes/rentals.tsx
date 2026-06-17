@@ -2068,6 +2068,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
   const [newEndDate, setNewEndDate] = useState("");
   const [duration, setDuration] = useState<"7" | "14" | "21" | "custom">("7");
   const [submitting, setSubmitting] = useState(false);
+  const [chargeState, setChargeState] = useState<"owed" | "paid">("owed");
   const [sentInfo, setSentInfo] = useState<{ signUrl: string; amount: number; newEnd: string; phone: string | null; smsSent: boolean } | null>(null);
   useEffect(() => {
     if (rental) {
@@ -2075,6 +2076,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
       base.setDate(base.getDate() + 7);
       setNewEndDate(base.toISOString().slice(0, 10));
       setDuration("7");
+      setChargeState("owed");
       setSentInfo(null);
       setSubmitting(false);
     }
@@ -2097,9 +2099,13 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
     if (!charge || charge.periods < 1) { toast.error("Pick a duration"); return; }
     setSubmitting(true);
     try {
-      const r = await createLinkFn({ data: { rentalId: rental.id, periods: charge.periods, periodLabel: charge.periodLabel } });
+      const r = await createLinkFn({ data: { rentalId: rental.id, periods: charge.periods, periodLabel: charge.periodLabel, chargeState } });
       setSentInfo({ signUrl: r.signUrl, amount: r.additionalAmount, newEnd: r.newEndDate, phone: r.renterPhone, smsSent: r.smsSent });
-      toast.success(r.smsSent ? "Extension link sent to renter" : "Extension link created");
+      if (chargeState === "paid") {
+        toast.success("Extension recorded and logged (marked paid)");
+      } else {
+        toast.success(r.smsSent ? "Extension logged · link sent to renter" : "Extension logged · link created");
+      }
     } catch (e: any) {
       toast.error(e?.message || "Could not create extension link");
     } finally {
