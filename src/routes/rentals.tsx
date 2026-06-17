@@ -1761,6 +1761,14 @@ function RentalCardTabs({ rental }: { rental: Rental }) {
   }
   const done = RETURN_CHECKLIST.filter(i => checked[i]).length;
   const total = RETURN_CHECKLIST.length;
+  // Notes (persisted to the rental record)
+  const [notes, setNotes] = useState(rental.notes ?? "");
+  useEffect(() => { setNotes(rental.notes ?? ""); }, [rental.id, rental.notes]);
+  const notesDirty = notes !== (rental.notes ?? "");
+  function saveNotes() {
+    updateRental(rental.id, { notes: notes.trim() || undefined });
+    toast.success("Notes saved");
+  }
   return (
     <Tabs defaultValue="overview" className="mt-2">
       <TabsList className="h-9">
@@ -1771,6 +1779,11 @@ function RentalCardTabs({ rental }: { rental: Rental }) {
             {done}/{total}
           </span>
         </TabsTrigger>
+        <TabsTrigger value="notes" className="text-xs">
+          Notes
+          {(rental.notes ?? "").trim() && <span className="ml-1.5 h-1.5 w-1.5 rounded-full bg-primary" />}
+        </TabsTrigger>
+        <TabsTrigger value="accident" className="text-xs">Accident</TabsTrigger>
       </TabsList>
       <TabsContent value="overview" className="mt-2 text-xs text-muted-foreground">
         Use the Return Checklist tab to walk through end-of-rental steps before processing the return.
@@ -1796,6 +1809,25 @@ function RentalCardTabs({ rental }: { rental: Rental }) {
           <p className="mt-2 text-xs text-muted-foreground">
             This is a pre-return guide. The official inspection is captured when you click <strong>Mark as Returned</strong>.
           </p>
+        </div>
+      </TabsContent>
+      <TabsContent value="notes" className="mt-2">
+        <div className="rounded-md border bg-muted/20 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-sm font-medium">Reservation notes</span>
+            <Button size="sm" className="h-7 text-xs" disabled={!notesDirty} onClick={saveNotes}>Save</Button>
+          </div>
+          <Textarea
+            className="min-h-[120px] text-sm"
+            placeholder="Add notes about this reservation…"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </div>
+      </TabsContent>
+      <TabsContent value="accident" className="mt-2">
+        <div className="rounded-md border border-dashed bg-muted/20 p-4 text-center text-sm text-muted-foreground">
+          Accident reporting for this reservation will go here.
         </div>
       </TabsContent>
     </Tabs>
