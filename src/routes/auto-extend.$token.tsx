@@ -4,13 +4,14 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   getAutoExtensionOffer,
   submitAutoExtension,
+  declineAutoExtension,
 } from "@/lib/auto-extension.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SignaturePad } from "@/components/app/SignaturePad";
-import { CheckCircle2, FileSignature, Loader2, CalendarPlus } from "lucide-react";
+import { CheckCircle2, FileSignature, Loader2, CalendarPlus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import logoUrl from "@/assets/camauto-logo-full.jpeg";
 
@@ -41,6 +42,7 @@ function AutoExtendPage() {
   const { token } = Route.useParams();
   const fetchOffer = useServerFn(getAutoExtensionOffer);
   const submitFn = useServerFn(submitAutoExtension);
+  const declineFn = useServerFn(declineAutoExtension);
 
   const [offer, setOffer] = useState<Offer | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +52,8 @@ function AutoExtendPage() {
   const [sig, setSig] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [declining, setDeclining] = useState(false);
+  const [declined, setDeclined] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
