@@ -175,7 +175,7 @@ const toRental = (r: any) => ({
   extension_declined_at: r.extensionDeclinedAt ?? null,
   accident_report: r.accidentReport ?? null,
   accident_token: r.accidentToken ?? null,
-});
+}) as any;
 const fromExt = (r: any): RentalExtension => ({
   id: r.id, extendedAt: r.extended_at, previousEndDate: r.previous_end_date ?? undefined,
   newEndDate: r.new_end_date, periods: r.periods, periodLabel: r.period_label,
