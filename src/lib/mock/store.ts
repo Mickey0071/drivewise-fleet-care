@@ -456,6 +456,7 @@ const fromMaintenance = (r: any): Maintenance => ({
   nextServiceDue: r.next_service_due, notes: r.notes ?? undefined,
   completedBy: r.completed_by ?? undefined,
   sourceInspectionId: r.source_inspection_id ?? undefined,
+  sourceWorkOrderId: r.source_work_order_id ?? undefined,
   createdAt: r.created_at ?? undefined,
   status: r.status ?? undefined,
   issueDescription: r.issue_description ?? undefined,
