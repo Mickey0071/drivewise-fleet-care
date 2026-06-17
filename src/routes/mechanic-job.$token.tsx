@@ -204,26 +204,32 @@ function MechanicJobPage() {
             <h2 className="text-sm font-semibold">Parts Needed</h2>
             <Badge variant="secondary" className="text-xs">Total {money(partsTotal + laborTotal)}</Badge>
           </div>
-          <div className="mb-1 flex gap-2 px-1 text-[10px] font-medium uppercase text-muted-foreground">
-            <span className="flex-1">Part</span>
-            <span className="w-20 text-right">Part $</span>
-            <span className="w-20 text-right">Labor $</span>
-            <span className="w-20 text-right">Line total</span>
-            <span className="w-8" />
-          </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {parts.map((p, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <Input className="h-8 flex-1 text-xs" placeholder="Part name (e.g. Drive shaft)"
-                  value={p.name} onChange={(e) => setPart(i, { name: e.target.value })} />
-                <Input className="h-8 w-20 text-right text-xs" type="number" min="0" step="0.01" placeholder="0"
-                  value={p.price ? String(p.price) : ""} onChange={(e) => setPart(i, { price: parseFloat(e.target.value) || 0 })} />
-                <Input className="h-8 w-20 text-right text-xs" type="number" min="0" step="0.01" placeholder="0"
-                  value={p.labor ? String(p.labor) : ""} onChange={(e) => setPart(i, { labor: parseFloat(e.target.value) || 0 })} />
-                <span className="w-20 text-right text-xs font-medium tabular-nums">{money((Number(p.price) || 0) + (Number(p.labor) || 0))}</span>
-                <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => removePart(i)}>
-                  <X className="h-4 w-4" />
-                </Button>
+              <div key={i} className="rounded-lg border p-2.5">
+                <div className="flex items-center gap-2">
+                  <Input className="h-9 flex-1 text-sm" placeholder="Part name (e.g. Drive shaft)"
+                    value={p.name} onChange={(e) => setPart(i, { name: e.target.value })} />
+                  <Button type="button" size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={() => removePart(i)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium uppercase text-muted-foreground">Part $</label>
+                    <Input className="h-9 text-right text-sm" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0"
+                      value={p.price ? String(p.price) : ""} onChange={(e) => setPart(i, { price: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium uppercase text-muted-foreground">Labor $</label>
+                    <Input className="h-9 text-right text-sm" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0"
+                      value={p.labor ? String(p.labor) : ""} onChange={(e) => setPart(i, { labor: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium uppercase text-muted-foreground">Line total</label>
+                    <div className="flex h-9 items-center justify-end text-sm font-medium tabular-nums">{money((Number(p.price) || 0) + (Number(p.labor) || 0))}</div>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
