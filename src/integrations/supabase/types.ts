@@ -1431,6 +1431,42 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_audit_log: {
+        Row: {
+          action: string
+          actor: string | null
+          after_value: Json | null
+          before_value: Json | null
+          created_at: string
+          id: string
+          payment_id: string
+          reason: string | null
+          rental_id: string | null
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          id?: string
+          payment_id: string
+          reason?: string | null
+          rental_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          after_value?: Json | null
+          before_value?: Json | null
+          created_at?: string
+          id?: string
+          payment_id?: string
+          reason?: string | null
+          rental_id?: string | null
+        }
+        Relationships: []
+      }
       payment_link_logs: {
         Row: {
           amount_cents: number
