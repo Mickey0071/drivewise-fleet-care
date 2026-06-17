@@ -180,6 +180,8 @@ export interface Payment {
   id: string; rentalId: string; driverId: string; amount: number;
   dueDate: string; paidDate?: string;
   method?: "cash" | "Zelle" | "card" | "Stripe"; status: PaymentStatus;
+  /** "charge" = ordinary scheduled charge/receipt; "credit" = overpayment money on file. */
+  kind?: "charge" | "credit";
 }
 export interface RepairType {
   id: string;

@@ -5,7 +5,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicles, vehicleById, driverById, payments, violations, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, unpaidExtensionTotal, saveAccidentReport, ensureAccidentToken } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, unpaidExtensionTotal, rentalCredit, saveAccidentReport, ensureAccidentToken } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -230,7 +230,12 @@ function RentalsPage() {
 
   // ---- Derive a display status + outstanding balance for a reservation ----
   type DisplayStatus = "on_rent" | "returned" | "pending" | "past_due" | "paid";
+  // Net balance = what's owed minus any overpayment credit on file. A negative
+  // result means the renter has a positive credit (nothing due).
   function rentalBalance(r: Rental): number {
+    return rentalOwed(r) - rentalCredit(r.id);
+  }
+  function rentalOwed(r: Rental): number {
     const sched = payments.filter(p => p.rentalId === r.id);
     const rs = r.reservationStatus ?? "active";
     // PENDING: nothing due yet
@@ -504,7 +509,16 @@ function RentalsPage() {
                 })() : <div className="mt-1 text-sm text-muted-foreground">All paid</div>}
                 <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
                   <span className="text-xs uppercase text-muted-foreground">Balance</span>
-                  <span className="text-base font-semibold">{fmtMoney(rentalBalance(r))}</span>
+                  {(() => {
+                    const bal = rentalBalance(r);
+                    return bal < 0 ? (
+                      <span className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
+                        Credit {fmtMoney(-bal)} · nothing due
+                      </span>
+                    ) : (
+                      <span className="text-base font-semibold">{fmtMoney(bal)}</span>
+                    );
+                  })()}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Button
@@ -1104,8 +1118,8 @@ function RentalsPage() {
                     <TableCell>
                       <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
                     </TableCell>
-                    <TableCell className={`text-right font-medium ${bal > 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                      {fmtMoney(bal)}
+                    <TableCell className={`text-right font-medium ${bal > 0 ? "text-destructive" : bal < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                      {bal < 0 ? `Credit ${fmtMoney(-bal)}` : fmtMoney(bal)}
                     </TableCell>
                   </TableRow>
                 );
@@ -1168,7 +1182,8 @@ function RentalsPage() {
         renterName={payLinkRental ? (driverById(payLinkRental.driverId)?.fullName ?? "") : ""}
         phone={payLinkRental ? (driverById(payLinkRental.driverId)?.phone ?? "") : ""}
         email={payLinkRental ? (driverById(payLinkRental.driverId)?.email ?? null) : null}
-        defaultAmount={payLinkRental ? (rentalBalance(payLinkRental) || Number(payLinkRental.rate ?? payLinkRental.weeklyRate ?? 0)) : 0}
+        defaultAmount={payLinkRental ? (Math.max(0, rentalBalance(payLinkRental)) || Number(payLinkRental.rate ?? payLinkRental.weeklyRate ?? 0)) : 0}
+        creditOnFile={payLinkRental ? rentalCredit(payLinkRental.id) : 0}
         description={payLinkRental ? (() => {
           const v = vehicleById(payLinkRental.vehicleId);
           const periodLbl = payLinkRental.billingPeriod === "daily" ? "day" : payLinkRental.billingPeriod === "monthly" ? "month" : "week";
@@ -1187,7 +1202,8 @@ function RentalsPage() {
         onOpenChange={(o) => { if (!o) setCashRental(null); }}
         rentalId={cashRental?.id ?? ""}
         renterName={cashRental ? (driverById(cashRental.driverId)?.fullName ?? "") : ""}
-        defaultAmount={cashRental ? (rentalBalance(cashRental) || Number(cashRental.rate ?? cashRental.weeklyRate ?? 0)) : 0}
+        defaultAmount={cashRental ? (Math.max(0, rentalBalance(cashRental)) || Number(cashRental.rate ?? cashRental.weeklyRate ?? 0)) : 0}
+        creditOnFile={cashRental ? rentalCredit(cashRental.id) : 0}
       />
       <ChargeCardDialog
         open={!!chargeCardRental}
@@ -1195,7 +1211,7 @@ function RentalsPage() {
         rentalId={chargeCardRental?.id ?? ""}
         driverId={chargeCardRental?.driverId ?? ""}
         renterName={chargeCardRental ? (driverById(chargeCardRental.driverId)?.fullName ?? "") : ""}
-        defaultAmount={chargeCardRental ? (rentalBalance(chargeCardRental) || Number(chargeCardRental.rate ?? chargeCardRental.weeklyRate ?? 0)) : 0}
+        defaultAmount={chargeCardRental ? (Math.max(0, rentalBalance(chargeCardRental)) || Number(chargeCardRental.rate ?? chargeCardRental.weeklyRate ?? 0)) : 0}
         description={chargeCardRental ? (() => {
           const v = vehicleById(chargeCardRental.vehicleId);
           return `Camauto Rentals — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim();
@@ -1211,7 +1227,7 @@ function RentalsPage() {
         open={!!recordPayRental}
         onOpenChange={(o) => { if (!o) setRecordPayRental(null); }}
         renterName={recordPayRental ? (driverById(recordPayRental.driverId)?.fullName ?? "") : ""}
-        balance={recordPayRental ? rentalBalance(recordPayRental) : 0}
+        balance={recordPayRental ? Math.max(0, rentalBalance(recordPayRental)) : 0}
         savedCard={recordPayRental ? getSavedCard(driverById(recordPayRental.driverId)) : null}
         onCash={() => recordPayRental && setCashRental(recordPayRental)}
         onCard={() => recordPayRental && setChargeCardRental(recordPayRental)}
@@ -1226,7 +1242,7 @@ function RentalsPage() {
       />
       <DiscountDialog
         rental={discountRental}
-        balance={discountRental ? rentalBalance(discountRental) : 0}
+        balance={discountRental ? Math.max(0, rentalBalance(discountRental)) : 0}
         renterName={discountRental ? (driverById(discountRental.driverId)?.fullName ?? "") : ""}
         onClose={() => setDiscountRental(null)}
       />

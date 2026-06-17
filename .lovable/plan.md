@@ -1,57 +1,41 @@
-# Fix plan: stop phantom / double-counted Stripe payments
-
-## Problem recap
-- `payments` rows are keyed only by `PM-<last 10 chars of checkout session id>`. The table has **no** `stripe_payment_intent_id` / `stripe_charge_id` columns, so there is no way to tell whether two rows represent the same real money.
-- The amount is taken from the checkout **session**, not the actual Stripe **charge**, so a $200 collection on R-576 was recorded as $400.
-- Result: any reservation that generates more than one checkout session (retried link, second link, duplicate `checkout.session.completed`) gets an extra revenue row. This is **systemic** — R-517, R-533, R-576, R-512, R-530, R-582, R-520 all have same-day duplicate paid rows, plus several $1 test duplicates.
+# Custom payments with a positive credit balance
 
 ## Goal
-Make a real Stripe **charge** the unit of truth: exactly one `payments` row per real charge, with the real charge amount, deduped no matter how many sessions/events fire. Then correct the historical data.
+Let a reservation accept a custom payment larger than what's owed. The payment first clears the outstanding balance, and any extra becomes a **credit on file** that shows as a positive balance with "nothing due". Example: renter owes $100, pays $200 → $0 due + $100 credit. Credit is **display-only** (staff decide when to use it; it is not auto-applied to future charges) and is **surfaced everywhere relevant**: the reservations balance column, the reservation detail, and the payment/cash dialogs.
 
----
+## How it works today
+- `recordManualPayment` (cash/manual) already applies money to the oldest unpaid charges first, then records any leftover as a standalone paid receipt — but that leftover is invisible because `rentalBalance` never goes below $0.
+- The Send Payment Link dialog already supports a custom amount and "let renter choose the amount", so admins can already *send* an arbitrary amount. The missing piece is representing the resulting overpayment as a credit.
 
-## Phase 1 — Schema (migration)
-Add Stripe identity columns to `public.payments` and a uniqueness guard:
-- `stripe_charge_id text`
-- `stripe_payment_intent_id text`
-- `stripe_checkout_session_id text`
-- `stripe_event_id text`
-- **Partial unique index** on `stripe_charge_id` where `stripe_charge_id IS NOT NULL` (one row per real charge; this is the actual idempotency guard).
+## Plan
 
-No data changes in this phase. Existing rows keep their `PM-…` ids; the new columns are null until backfilled in Phase 3.
+### 1. Tag overpayment receipts (database)
+Add a `kind` column to the `payments` table (`text not null default 'charge'`, allowed values `charge` | `credit`). This lets us distinguish pure overpayment money from charge-satisfying payments without guessing. Existing rows default to `charge`.
 
-## Phase 2 — Webhook hardening (`src/routes/api/public/payments/webhook.ts`)
-Applies to every path in `handleCheckoutCompleted` that writes a `payments` row (first_payment / deposit / payment_link, and custom_renter_payment):
-1. After retrieving the PaymentIntent, also capture `latest_charge.id` and the charge's `amount`.
-2. Write `stripe_charge_id`, `stripe_payment_intent_id`, `stripe_checkout_session_id`, and the event id onto the payment row.
-3. **Record the amount from the real charge** (`charge.amount / 100`), not `session.amount_total`, so a $200 charge can never be stored as $400.
-4. **Dedup on charge id**: upsert with `onConflict: stripe_charge_id` (or a pre-insert existence check on `stripe_charge_id`) so the same real charge never creates a second row, regardless of how many sessions or `checkout.session.completed` / `payment_intent.succeeded` events arrive.
-5. Keep the `PM-…` id scheme for new rows (backwards compatible), but correctness now comes from the charge-id unique index, not the id slice.
+### 2. Store layer (`src/lib/mock/store.ts` + `src/lib/mock/data.ts`)
+- Add `kind?: "charge" | "credit"` to the `Payment` type and include it in the `fromPayment` / `toPayment` mappers.
+- In `recordManualPayment`, tag the leftover overpayment "extra" receipt with `kind: "credit"` (the branch that already runs when `remaining > 0` after clearing all unpaid charges).
+- Add a helper `rentalCredit(rentalId): number` that sums paid receipts where `kind === "credit"`.
 
-## Phase 3 — Reconcile & correct historical data
-Build a **read-first admin reconciliation server function** (auth + admin role check) that, for a given rental (and a fleet-wide batch mode), uses `createStripeClient` to:
-- List the real succeeded, non-refunded charges for that reservation (via the saved customer / payment-intent metadata `rental_id`).
-- Compare them to the existing `payments` Stripe rows and produce a **diff report**: which rows match a real charge, which have the wrong amount, and which are phantoms with no backing charge.
-- Backfill `stripe_charge_id` / `stripe_payment_intent_id` on the rows that do match.
+### 3. Balance display (`src/routes/rentals.tsx`)
+- Update `rentalBalance` to return a **net** value: `owedAmount - rentalCredit(r)`. This can now be negative (a credit).
+- Where the balance is rendered (row + detail), when the value is negative show it in green as `Credit $100.00 · nothing due`; when zero/positive keep current behavior.
+- `rentalStatus`: a reservation with a credit (net ≤ 0) is never `past_due`.
+- Anywhere a dialog's `defaultAmount` uses `rentalBalance(...)`, clamp with `Math.max(0, ...)` so we never pre-fill a negative amount.
+- Sorting by balance keeps working (smaller/negative = credit sorts as fully paid).
 
-The function first runs in **report-only** mode. After you review the diff, corrections are applied with the data tool (UPDATE/DELETE), not blind deletes:
-- Fix wrong amounts to the real charge amount (e.g. R-576's $400→$200 row).
-- Delete phantom rows that have no backing Stripe charge.
-- Leave legitimate multi-week rows (e.g. R-513's five $55 across different dates) untouched.
+### 4. Payment dialogs (surface credit "everywhere relevant")
+- `SendPaymentLinkDialog.tsx` and `RecordCashDialog.tsx`: accept an optional `creditOnFile` number prop and, when > 0, render a small note (e.g. `💳 Credit on file: $100.00`) so staff don't accidentally re-charge. Pass `rentalCredit(r)` from `rentals.tsx`.
+- Custom/over amounts are already allowed in these dialogs; no change to their input validation.
 
-Affected reservations to run through reconciliation: R-517, R-533, R-576, R-512, R-530, R-582, R-520 (real-money dups) and R-501, R-506, R-507, R-521, R-526, R-578 ($1–$7 test dups).
+### 5. Stripe link / custom payments (`src/routes/api/public/payments/webhook.ts`)
+- When recording a paid receipt for a payment-link / `custom_renter_payment` whose amount exceeds the remaining unpaid charges, apply it to the oldest unpaid charges first and tag the leftover row `kind: "credit"`, mirroring `recordManualPayment`. This makes credit appear consistently whether paid by cash or by Stripe link.
 
-## Verification
-- After Phase 3, R-576 nets to **$600** ($400 + $200), matching Stripe.
-- Re-run the fleet-wide "same-day same-amount Stripe paid rows" query → only legitimate rows remain.
-- New rows written by the updated webhook carry a non-null `stripe_charge_id`; replaying the same charge does not create a second row.
+## Technical notes
+- Migration is additive (new nullable-with-default column); no backfill needed. `payment_audit_log` trigger continues to capture changes unchanged.
+- `kind` is the single source of truth for credit, so the UI math stays simple and the existing nuanced owed-amount logic (extensions, returned cutoffs, phantom-balance protection) is untouched — we only subtract a separately-tracked credit total.
+- No auto-apply: credit never reduces a future charge automatically; it only changes what's displayed.
 
-## Notes / scope guards
-- No changes to refund handling (already idempotent via `refund_recovery.stripe_refund_id`).
-- No changes to subscription/weekly billing logic.
-- Historical data corrections are done only after you approve the reconciliation diff — nothing is deleted sight-unseen.
-
-## Technical details
-- Migration adds 4 nullable text columns + 1 partial unique index on `payments`; `service_role` already has access (admin/webhook writes via service role).
-- Webhook: the charge object is already fetched today for the name-match step (`pi.latest_charge`), so capturing `charge.id` and `charge.amount` there is a small extension, not a new Stripe round-trip.
-- Reconciliation function lives in a new `*.functions.ts`, guarded by `requireSupabaseAuth` + `has_role(admin)`, and loads `supabaseAdmin` inside the handler.
+## Out of scope
+- Auto-applying credit to future extensions/renewals.
+- Refunding credit back to a card.
