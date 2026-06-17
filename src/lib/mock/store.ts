@@ -713,6 +713,18 @@ function subscribeRealtime() {
       }
       emit();
     })
+    .on("postgres_changes", { event: "*", schema: "public", table: "extension_requests" }, (payload) => {
+      if (payload.eventType === "DELETE") {
+        const id = (payload.old as any).id;
+        const idx = pendingExtensions.findIndex(x => x.id === id);
+        if (idx >= 0) pendingExtensions.splice(idx, 1);
+      } else {
+        const next = fromPendingExt(payload.new);
+        const idx = pendingExtensions.findIndex(x => x.id === next.id);
+        if (idx >= 0) pendingExtensions[idx] = next; else pendingExtensions.push(next);
+      }
+      emit();
+    })
     .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, (payload) => {
       if (payload.eventType === "DELETE") {
         const id = (payload.old as any).id;
