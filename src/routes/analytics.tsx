@@ -1,216 +1,338 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useStoreVersion } from "@/lib/mock/store";
-import {
-  vehicles, rentals, payments, maintenance, violations, vehicleById, fmtMoney,
-} from "@/lib/mock/data";
-import { isIssueRecord, isServiceLogRecord } from "@/lib/maintenance-utils";
-import { ChevronRight } from "lucide-react";
+import { vehicles, maintenance, vehicleById, fmtMoney } from "@/lib/mock/data";
+import type { Maintenance } from "@/lib/mock/data";
+import { listPendingApprovals } from "@/lib/repair-actions.functions";
 
 export const Route = createFileRoute("/analytics")({
-  head: () => ({ meta: [{ title: "Analytics Dashboard — Camauto Rentals" }] }),
+  head: () => ({ meta: [{ title: "Repair Analytics — Camauto Rentals" }] }),
   component: AnalyticsHub,
 });
 
-type RangeKey = "30" | "60" | "90" | "custom";
+const RATE_KEY = "fleet_default_daily_rate";
+const DEFAULT_RATE = 40;
 
-function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
-function vName(id: string) { const v = vehicleById(id); return v ? `${v.year} ${v.make} ${v.model}` : id; }
-function pct(n: number) { return `${Math.round(n)}%`; }
+function vLabel(id: string) {
+  const v = vehicleById(id);
+  if (!v) return id;
+  return `${v.year} ${v.make} ${v.model}`.trim() || (v.plate ?? id);
+}
+
+/** Days a repair has spent in the shop (whole days, min 0). */
+function daysInShop(m: Maintenance, now: number): number {
+  const created = m.createdAt ? new Date(m.createdAt).getTime() : NaN;
+  if (isNaN(created)) return 0;
+  const end = m.completionDate || m.dateCompleted
+    ? new Date((m.completionDate ?? m.dateCompleted) as string).getTime()
+    : now;
+  return Math.max(0, Math.round((end - created) / 86_400_000));
+}
+
+/** Actual repair cost: parts+labor, fall back to cost when both are 0. */
+function repairCostOf(m: Maintenance): number {
+  const parts = m.partsCost ?? 0;
+  const labor = m.laborCost ?? 0;
+  if (parts === 0 && labor === 0) return m.cost ?? 0;
+  return parts + labor;
+}
 
 function AnalyticsHub() {
   useStoreVersion();
-  const [range, setRange] = useState<RangeKey>("90");
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
 
-  const { from, to, windowDays } = useMemo(() => {
-    if (range === "custom" && customFrom && customTo) {
-      const f = customFrom, t = customTo;
-      const d = Math.max(1, Math.round((new Date(t).getTime() - new Date(f).getTime()) / 86400000));
-      return { from: f, to: t, windowDays: d };
+  // --- Daily rate: per-vehicle dailyRate (or weeklyRate/7), else fleet default ---
+  const [fleetRate, setFleetRate] = useState<number>(DEFAULT_RATE);
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem(RATE_KEY) : null;
+    if (saved && !isNaN(Number(saved))) setFleetRate(Number(saved));
+  }, []);
+  function updateFleetRate(v: string) {
+    const n = Number(v);
+    setFleetRate(isNaN(n) ? 0 : n);
+    if (typeof window !== "undefined") window.localStorage.setItem(RATE_KEY, v);
+  }
+  function dailyRateFor(vehicleId: string): number {
+    const v = vehicleById(vehicleId);
+    if (v) {
+      if (v.dailyRate && v.dailyRate > 0) return v.dailyRate;
+      if (v.weeklyRate && v.weeklyRate > 0) return v.weeklyRate / 7;
     }
-    const n = range === "custom" ? 90 : Number(range);
-    return { from: daysAgo(n), to: new Date().toISOString().slice(0, 10), windowDays: n };
-  }, [range, customFrom, customTo]);
+    return fleetRate;
+  }
+  const anyVehicleRate = vehicles.some(v => (v.dailyRate && v.dailyRate > 0) || (v.weeklyRate && v.weeklyRate > 0));
+  const rateCaption = anyVehicleRate
+    ? `Using each vehicle's own daily rate (weekly ÷ 7 where only a weekly rate exists); falling back to the fleet default of ${fmtMoney(fleetRate)}/day.`
+    : `No per-vehicle rate found — using the fleet default of ${fmtMoney(fleetRate)}/day for all vehicles.`;
 
-  const inRange = (date?: string) => !!date && date.slice(0, 10) >= from && date.slice(0, 10) <= to;
+  // --- Pending approvals (same source as PendingApprovalsCard) ---
+  const pendingFn = useServerFn(listPendingApprovals);
+  const { data: pendingData } = useQuery({
+    queryKey: ["pending-repair-approvals"],
+    queryFn: () => pendingFn(),
+    refetchInterval: 5 * 60 * 1000,
+  });
+  const awaitingApproval = (pendingData?.pending ?? []).length;
 
-  const stats = useMemo(() => {
-    const rentalVehicle = new Map(rentals.map(r => [r.id, r.vehicleId]));
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const now = Date.now();
 
-    // Revenue per vehicle (paid payments in range)
-    const revByVehicle = new Map<string, number>();
-    for (const p of payments) {
-      if (p.status !== "paid" && !p.paidDate) continue;
-      if (!inRange(p.paidDate ?? p.dueDate)) continue;
-      const vid = rentalVehicle.get(p.rentalId);
-      if (!vid) continue;
-      revByVehicle.set(vid, (revByVehicle.get(vid) ?? 0) + p.amount);
-    }
+  const data = useMemo(() => {
+    // Match the kanban: repairs are status-tracked, non-pending/rejected.
+    const repairs = maintenance.filter(
+      m => !!m.status && m.approvalStatus !== "pending" && m.approvalStatus !== "rejected",
+    );
+    const completed = repairs.filter(m => m.status === "complete");
+    const completedThisMonth = completed.filter(
+      m => (m.completionDate ?? m.dateCompleted ?? "").slice(0, 7) === monthKey,
+    );
+    const openRepairs = repairs.filter(m => m.status !== "complete");
 
-    // Costs
-    let maintCost = 0, repairCost = 0, violationCost = 0;
+    // Section 1 metrics
+    const repairSpend = completedThisMonth.reduce((s, m) => s + repairCostOf(m), 0);
+
+    // Blocking repairs this month (completed this month OR currently open)
+    const blockingThisMonth = [
+      ...completedThisMonth.filter(m => m.isRentalBlocking),
+      ...openRepairs.filter(m => m.isRentalBlocking),
+    ];
+    const rentalLost = blockingThisMonth.reduce(
+      (s, m) => s + daysInShop(m, now) * dailyRateFor(m.vehicleId), 0,
+    );
+
+    const carsDownNow = new Set(
+      openRepairs.filter(m => m.isRentalBlocking).map(m => m.vehicleId),
+    ).size;
+
+    const avgDaysInShop = completedThisMonth.length
+      ? completedThisMonth.reduce((s, m) => s + daysInShop(m, now), 0) / completedThisMonth.length
+      : 0;
+
+    const totalFleetImpact = repairSpend + rentalLost;
+
+    // Section 2 — repair cost by vehicle (this month)
     const costByVehicle = new Map<string, number>();
-    let repairCount = 0;
-    const repairsByVehicle = new Map<string, number>();
-    const issueCounts = new Map<string, number>();
-    for (const m of maintenance) {
-      const completed = m.status === "complete" || isServiceLogRecord(m);
-      if (!completed) continue;
-      if (!inRange(m.completionDate ?? m.dateCompleted)) continue;
-      const c = m.cost ?? 0;
-      if (isIssueRecord(m)) {
-        repairCost += c; repairCount += 1;
-        repairsByVehicle.set(m.vehicleId, (repairsByVehicle.get(m.vehicleId) ?? 0) + 1);
-        const issue = (m.serviceType || "Other").trim();
-        issueCounts.set(issue, (issueCounts.get(issue) ?? 0) + 1);
-      } else {
-        maintCost += c;
-      }
-      costByVehicle.set(m.vehicleId, (costByVehicle.get(m.vehicleId) ?? 0) + c);
+    for (const m of completedThisMonth) {
+      costByVehicle.set(m.vehicleId, (costByVehicle.get(m.vehicleId) ?? 0) + repairCostOf(m));
     }
-    for (const v of violations) {
-      if (!inRange(v.dateIssued)) continue;
-      violationCost += v.amount;
+    const costBars = [...costByVehicle.entries()]
+      .map(([id, amount]) => ({ id, amount }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 8);
+
+    // Section 3 — rental income lost by vehicle
+    const lostByVehicle = new Map<string, { days: number; amount: number }>();
+    for (const m of blockingThisMonth) {
+      const d = daysInShop(m, now);
+      const prev = lostByVehicle.get(m.vehicleId) ?? { days: 0, amount: 0 };
+      lostByVehicle.set(m.vehicleId, {
+        days: prev.days + d,
+        amount: prev.amount + d * dailyRateFor(m.vehicleId),
+      });
     }
-    const totalCosts = maintCost + repairCost + violationCost;
+    const lostBars = [...lostByVehicle.entries()]
+      .map(([id, v]) => ({ id, ...v }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 8);
 
-    // Profitability per vehicle
-    let totalNet = 0;
-    const netByVehicle: { id: string; net: number }[] = [];
-    for (const v of vehicles) {
-      const net = (revByVehicle.get(v.id) ?? 0) - (costByVehicle.get(v.id) ?? 0);
-      netByVehicle.push({ id: v.id, net });
-      totalNet += net;
+    // Section 4 — parts vs labour (this month)
+    let partsTotal = 0, laborTotal = 0;
+    for (const m of completedThisMonth) {
+      partsTotal += m.partsCost ?? 0;
+      laborTotal += m.laborCost ?? 0;
     }
-    const sortedNet = [...netByVehicle].sort((a, b) => b.net - a.net);
-    const best = sortedNet[0];
-    const worst = sortedNet[sortedNet.length - 1];
 
-    // Utilization per vehicle (rented days within window)
-    const utilByVehicle = vehicles.map(v => {
-      let rentedDays = 0;
-      for (const r of rentals) {
-        if (r.vehicleId !== v.id) continue;
-        const s = (r.startDate || "").slice(0, 10);
-        const e = (r.endDate || to).slice(0, 10);
-        if (!s) continue;
-        const os = s > from ? s : from;
-        const oe = e < to ? e : to;
-        if (os <= oe) rentedDays += Math.round((new Date(oe).getTime() - new Date(os).getTime()) / 86400000) + 1;
-      }
-      return { id: v.id, util: windowDays > 0 ? Math.min(100, (rentedDays / windowDays) * 100) : 0 };
-    });
-    const fleetAvgUtil = utilByVehicle.length ? utilByVehicle.reduce((s, u) => s + u.util, 0) / utilByVehicle.length : 0;
-    const sortedUtil = [...utilByVehicle].sort((a, b) => b.util - a.util);
-    const topUtil = sortedUtil[0];
-    const bottomUtil = sortedUtil[sortedUtil.length - 1];
+    // Section 5 — top problems by category (this month, skip null)
+    const catCounts = new Map<string, number>();
+    for (const m of completedThisMonth) {
+      const c = (m.problemCategory ?? "").trim();
+      if (!c) continue;
+      catCounts.set(c, (catCounts.get(c) ?? 0) + 1);
+    }
+    const catBars = [...catCounts.entries()]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count);
 
-    // Failures
-    const sortedRepairs = [...repairsByVehicle.entries()].sort((a, b) => b[1] - a[1]);
-    const mostFailures = sortedRepairs[0];
-    const sortedIssues = [...issueCounts.entries()].sort((a, b) => b[1] - a[1]);
-    const topIssue = sortedIssues[0];
-
-    // Break-even (proxy: net profit sign, no purchase cost in dataset)
-    const paidOff = netByVehicle.filter(n => n.net > 0).length;
-    const closeToRoi = netByVehicle.filter(n => n.net <= 0 && n.net > -500).length;
-    const losing = netByVehicle.filter(n => n.net <= -500).length;
+    // Section 6 — pipeline (same filters as kanban)
+    const pipeline = {
+      reported: maintenance.filter(m => m.status === "reported").length,
+      diagnosing: maintenance.filter(m => m.status === "diagnosing").length,
+      pendingComplete: maintenance.filter(m => m.status === "pending_complete").length,
+      completeThisMonth: completedThisMonth.length,
+    };
 
     return {
-      totalNet, best, worst,
-      totalCosts, maintCost, repairCost, violationCost,
-      fleetAvgUtil, topUtil, bottomUtil,
-      repairCount, mostFailures, topIssue,
-      paidOff, closeToRoi, losing,
+      repairSpend, rentalLost, carsDownNow, avgDaysInShop, totalFleetImpact,
+      costBars, lostBars, partsTotal, laborTotal, catBars, pipeline,
     };
-  }, [from, to, windowDays]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthKey, fleetRate]);
 
-  const cards = [
-    {
-      to: "/analytics/profitability", icon: "📊", title: "Profitability Scorecard",
-      top: `Total Net Profit: ${fmtMoney(stats.totalNet)}`,
-      sub: stats.best && stats.worst
-        ? `Best: ${vName(stats.best.id)} ${fmtMoney(stats.best.net)} · Worst: ${vName(stats.worst.id)} ${fmtMoney(stats.worst.net)}`
-        : "No vehicle data in range",
-    },
-    {
-      to: "/analytics/costs", icon: "💰", title: "Cost Breakdown",
-      top: `Total Costs: ${fmtMoney(stats.totalCosts)}`,
-      sub: `Maintenance ${fmtMoney(stats.maintCost)} · Repairs ${fmtMoney(stats.repairCost)} · Violations ${fmtMoney(stats.violationCost)}`,
-    },
-    {
-      to: "/analytics/utilization", icon: "📈", title: "Utilization",
-      top: `Fleet Avg: ${pct(stats.fleetAvgUtil)}`,
-      sub: stats.topUtil && stats.bottomUtil
-        ? `Top: ${vName(stats.topUtil.id)} ${pct(stats.topUtil.util)} · Bottom: ${vName(stats.bottomUtil.id)} ${pct(stats.bottomUtil.util)}`
-        : "No vehicle data",
-    },
-    {
-      to: "/analytics/failures", icon: "⚠️", title: "Failure Patterns",
-      top: `${stats.repairCount} total repairs`,
-      sub: `Most failures: ${stats.mostFailures ? `${vName(stats.mostFailures[0])} (${stats.mostFailures[1]})` : "—"} · Top issue: ${stats.topIssue ? stats.topIssue[0] : "—"}`,
-    },
-    {
-      to: "/analytics/breakeven", icon: "💼", title: "Break-Even Analysis",
-      top: `${stats.paidOff}/${vehicles.length} vehicles profitable`,
-      sub: `${stats.closeToRoi} close to ROI · ${stats.losing} losing long-term`,
-    },
-  ] as const;
+  const metrics = [
+    { label: "Repair spend (this month)", value: fmtMoney(Math.round(data.repairSpend)) },
+    { label: "Rental income lost", value: fmtMoney(Math.round(data.rentalLost)) },
+    { label: "Cars down now", value: String(data.carsDownNow) },
+    { label: "Avg days in shop", value: `${Math.round(data.avgDaysInShop)} d` },
+    { label: "Awaiting approval", value: String(awaitingApproval) },
+    { label: "Total fleet impact", value: fmtMoney(Math.round(data.totalFleetImpact)) },
+  ];
+
+  const maxCost = Math.max(1, ...data.costBars.map(b => b.amount));
+  const maxLost = Math.max(1, ...data.lostBars.map(b => b.amount));
+  const maxCat = Math.max(1, ...data.catBars.map(b => b.count));
+  const splitTotal = data.partsTotal + data.laborTotal;
+  const partsPct = splitTotal > 0 ? (data.partsTotal / splitTotal) * 100 : 0;
+  const laborPct = splitTotal > 0 ? (data.laborTotal / splitTotal) * 100 : 0;
 
   return (
     <div>
       <PageHeader
-        title="Analytics Dashboard"
-        subtitle={`Last ${range === "custom" ? "custom range" : `${range} days`} · ${vehicles.length} vehicles`}
+        title="Repair Analytics"
+        subtitle={`Current month · ${vehicles.length} vehicles`}
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
-              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="30">Last 30 days</SelectItem>
-                <SelectItem value="60">Last 60 days</SelectItem>
-                <SelectItem value="90">Last 90 days</SelectItem>
-                <SelectItem value="custom">Custom range</SelectItem>
-              </SelectContent>
-            </Select>
-            {range === "custom" && (
-              <div className="flex items-center gap-2">
-                <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-[150px]" />
-                <span className="text-muted-foreground">→</span>
-                <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-[150px]" />
-              </div>
-            )}
+          <div className="flex items-center gap-2">
+            <Label htmlFor="fleetRate" className="whitespace-nowrap text-sm text-muted-foreground">
+              Fleet default daily rate
+            </Label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+              <Input
+                id="fleetRate"
+                type="number"
+                value={fleetRate}
+                onChange={(e) => updateFleetRate(e.target.value)}
+                className="w-[110px] pl-6"
+              />
+            </div>
           </div>
         }
       />
 
+      <p className="mb-4 text-xs text-muted-foreground">{rateCaption}</p>
+
+      {/* SECTION 1 — metric cards */}
       <div className="grid gap-4 sm:grid-cols-2">
-        {cards.map((c) => (
-          <Link key={c.to} to={c.to} className="block">
-            <Card className="h-full transition-colors hover:border-primary/50 hover:bg-accent/30">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <span className="text-xl" aria-hidden>{c.icon}</span>
-                  {c.title}
-                </CardTitle>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold tracking-tight">{c.top}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{c.sub}</p>
-              </CardContent>
-            </Card>
-          </Link>
+        {metrics.map((m) => (
+          <Card key={m.label}>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">{m.label}</p>
+              <p className="mt-1 text-3xl font-bold tracking-tight">{m.value}</p>
+            </CardContent>
+          </Card>
         ))}
+      </div>
+
+      {/* SECTION 2 — repair cost by vehicle */}
+      <Card className="mt-6">
+        <CardHeader><CardTitle className="text-base">Repair cost by vehicle (this month)</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {data.costBars.length === 0 ? <Empty /> : data.costBars.map((b) => (
+            <BarRow key={b.id} label={vLabel(b.id)} pct={(b.amount / maxCost) * 100} value={fmtMoney(Math.round(b.amount))} />
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* SECTION 3 — rental income lost by vehicle */}
+      <Card className="mt-6">
+        <CardHeader><CardTitle className="text-base">Rental income lost by vehicle (this month)</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {data.lostBars.length === 0 ? <Empty /> : data.lostBars.map((b) => (
+            <BarRow
+              key={b.id}
+              label={`${vLabel(b.id)} · ${b.days}d`}
+              pct={(b.amount / maxLost) * 100}
+              value={fmtMoney(Math.round(b.amount))}
+              color="bg-amber-500"
+            />
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* SECTION 4 — parts vs labour */}
+      <Card className="mt-6">
+        <CardHeader><CardTitle className="text-base">Parts vs labour (this month)</CardTitle></CardHeader>
+        <CardContent>
+          {splitTotal === 0 ? <Empty /> : (
+            <>
+              <div className="flex h-8 w-full overflow-hidden rounded-md">
+                <div className="flex items-center justify-center bg-sky-500 text-xs font-medium text-white" style={{ width: `${partsPct}%` }}>
+                  {partsPct >= 12 ? `${Math.round(partsPct)}%` : ""}
+                </div>
+                <div className="flex items-center justify-center bg-violet-500 text-xs font-medium text-white" style={{ width: `${laborPct}%` }}>
+                  {laborPct >= 12 ? `${Math.round(laborPct)}%` : ""}
+                </div>
+              </div>
+              <div className="mt-3 flex justify-between text-sm">
+                <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-sm bg-sky-500" />Parts {fmtMoney(Math.round(data.partsTotal))} ({Math.round(partsPct)}%)</span>
+                <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-sm bg-violet-500" />Labour {fmtMoney(Math.round(data.laborTotal))} ({Math.round(laborPct)}%)</span>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* SECTION 5 — top problems */}
+      <Card className="mt-6">
+        <CardHeader><CardTitle className="text-base">Top problems by category (this month)</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {data.catBars.length === 0 ? <Empty /> : data.catBars.map((b) => (
+            <BarRow key={b.label} label={b.label} pct={(b.count / maxCat) * 100} value={String(b.count)} color="bg-rose-500" />
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* SECTION 6 — pipeline */}
+      <Card className="mt-6">
+        <CardHeader><CardTitle className="text-base">Pipeline now</CardTitle></CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Chip label="Reported" count={data.pipeline.reported} className="bg-yellow-500/15 text-yellow-600" />
+          <Chip label="Diagnosing" count={data.pipeline.diagnosing} className="bg-blue-500/15 text-blue-600" />
+          <Chip label="Pending complete" count={data.pipeline.pendingComplete} className="bg-green-600/15 text-green-600" />
+          <Chip label="Complete (this month)" count={data.pipeline.completeThisMonth} className="bg-muted text-foreground" />
+          <Chip label="Awaiting approval" count={awaitingApproval} className="bg-amber-500/15 text-amber-600" />
+        </CardContent>
+      </Card>
+
+      {/* Legacy detail reports */}
+      <div className="mt-6 flex flex-wrap gap-3 text-sm">
+        <Link to="/analytics/profitability" className="text-primary hover:underline">Profitability →</Link>
+        <Link to="/analytics/costs" className="text-primary hover:underline">Cost breakdown →</Link>
+        <Link to="/analytics/utilization" className="text-primary hover:underline">Utilization →</Link>
+        <Link to="/analytics/failures" className="text-primary hover:underline">Failure patterns →</Link>
+        <Link to="/analytics/breakeven" className="text-primary hover:underline">Break-even →</Link>
       </div>
     </div>
   );
+}
+
+function BarRow({ label, pct, value, color = "bg-primary" }: { label: string; pct: number; value: string; color?: string }) {
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-sm">
+        <span className="truncate pr-2">{label}</span>
+        <span className="font-semibold">{value}</span>
+      </div>
+      <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.max(2, pct)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function Chip({ label, count, className }: { label: string; count: number; className: string }) {
+  return (
+    <div className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${className}`}>
+      <span>{label}</span>
+      <span className="font-bold">{count}</span>
+    </div>
+  );
+}
+
+function Empty() {
+  return <p className="text-sm text-muted-foreground">No data this month.</p>;
 }
