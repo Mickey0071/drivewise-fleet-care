@@ -209,6 +209,8 @@ function Index() {
 
       {role === "admin" && <PartsQuotedCard />}
 
+      {role === "admin" && <NewDiagnosisAlertCard />}
+
       {role === "admin" && <PendingApprovalsCard />}
 
       {role === "admin" && <ApprovedInspections />}
