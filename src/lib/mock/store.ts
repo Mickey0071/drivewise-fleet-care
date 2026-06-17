@@ -211,6 +211,7 @@ export interface PendingExtension {
   status: string;
   newEndDate: string | null;
   expiresAt: string | null;
+  signedAt: string | null;
 }
 export const pendingExtensions: PendingExtension[] = [];
 const fromPendingExt = (r: any): PendingExtension => ({
@@ -220,6 +221,7 @@ const fromPendingExt = (r: any): PendingExtension => ({
   status: r.status,
   newEndDate: r.new_end_date ?? null,
   expiresAt: r.expires_at ?? null,
+  signedAt: r.signed_at ?? null,
 });
 
 /** Total still-owed for unpaid extensions on a rental (pending or signed,
@@ -227,13 +229,18 @@ const fromPendingExt = (r: any): PendingExtension => ({
 export function unpaidExtensionTotal(rentalId: string): number {
   const now = Date.now();
   return pendingExtensions
-    .filter(e =>
-      e.rentalId === rentalId &&
-      e.status !== "paid" &&
-      e.status !== "refunded" &&
-      e.status !== "cancelled" &&
-      (!e.expiresAt || new Date(e.expiresAt).getTime() > now),
-    )
+    .filter(e => {
+      if (e.rentalId !== rentalId) return false;
+      const st = (e.status ?? "").toLowerCase();
+      if (st === "paid") return false;
+      if (st.includes("refund") || st.includes("cancel") || st.includes("expired")) return false;
+      // Only count extensions that have actually been signed/activated.
+      // Unsigned "pending" offers are NOT a real balance owed.
+      const signedOrActive = !!e.signedAt || st === "signed" || st === "active";
+      if (!signedOrActive) return false;
+      if (e.expiresAt && new Date(e.expiresAt).getTime() <= now) return false;
+      return true;
+    })
     .reduce((s, e) => s + (e.additionalAmount || 0), 0);
 }
 
