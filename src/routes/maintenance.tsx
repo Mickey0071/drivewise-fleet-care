@@ -1030,6 +1030,9 @@ function RepairRow({ m, open, onToggle, onDelete }: { m: Maintenance; open: bool
           <span className="font-medium">{name}</span>
           <span className="text-muted-foreground"> — {issue}</span>
         </span>
+        {m.problemCategory && (
+          <Badge variant="outline" className="shrink-0 text-[10px]">{m.problemCategory}</Badge>
+        )}
       </button>
       <Tooltip>
         <TooltipTrigger asChild>
