@@ -229,16 +229,18 @@ const fromPendingExt = (r: any): PendingExtension => ({
 export function unpaidExtensionTotal(rentalId: string): number {
   const now = Date.now();
   return pendingExtensions
-    .filter(e =>
-      e.rentalId === rentalId &&
-      e.status !== "paid" &&
-      e.status !== "refunded" &&
-      e.status !== "cancelled" &&
+    .filter(e => {
+      if (e.rentalId !== rentalId) return false;
+      const st = (e.status ?? "").toLowerCase();
+      if (st === "paid") return false;
+      if (st.includes("refund") || st.includes("cancel") || st.includes("expired")) return false;
       // Only count extensions that have actually been signed/activated.
       // Unsigned "pending" offers are NOT a real balance owed.
-      (!!e.signedAt || e.status === "signed" || e.status === "active") &&
-      (!e.expiresAt || new Date(e.expiresAt).getTime() > now),
-    )
+      const signedOrActive = !!e.signedAt || st === "signed" || st === "active";
+      if (!signedOrActive) return false;
+      if (e.expiresAt && new Date(e.expiresAt).getTime() <= now) return false;
+      return true;
+    })
     .reduce((s, e) => s + (e.additionalAmount || 0), 0);
 }
 
