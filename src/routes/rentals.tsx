@@ -968,6 +968,36 @@ function RentalsPage() {
         }
       />
       <div className="space-y-4">
+        {(() => {
+          const declined = rentals.filter(
+            r => r.extensionDeclinedAt &&
+              (r.reservationStatus ?? "active") !== "returned" &&
+              (r.reservationStatus ?? "active") !== "cancelled" &&
+              (r.reservationStatus ?? "active") !== "completed",
+          );
+          if (declined.length === 0) return null;
+          return (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
+              <div className="font-semibold text-destructive">
+                Renter declined to extend ({declined.length})
+              </div>
+              <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                {declined.map(r => {
+                  const v = vehicleById(r.vehicleId);
+                  return (
+                    <div key={r.id}>
+                      {driverById(r.driverId)?.fullName ?? r.driverId}
+                      {" — "}
+                      {v ? `${v.year} ${v.make} ${v.model}` : r.vehicleId}
+                      {v?.plate ? ` · ${v.plate}` : ""}
+                      {" · auto-renew paused — arrange pickup"}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
         {reviewFilter ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
