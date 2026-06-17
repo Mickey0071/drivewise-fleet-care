@@ -224,24 +224,44 @@ const fromPendingExt = (r: any): PendingExtension => ({
   signedAt: r.signed_at ?? null,
 });
 
-/** Total still-owed for unpaid extensions on a rental (pending or signed,
- *  not yet paid and not expired). */
-export function unpaidExtensionTotal(rentalId: string): number {
+/** Total still-owed for unpaid extensions on a rental.
+ *
+ *  By default this counts only extensions that have actually been SIGNED /
+ *  activated — unsigned offers are not a real balance (this is what prevents
+ *  the phantom-balance bug on returned reservations).
+ *
+ *  When `includePending` is set (used for active, not-yet-returned rentals),
+ *  a SENT-but-unsigned extension is also counted: the renter still has the
+ *  car past the period that was paid for, so the extension amount is owed.
+ *
+ *  Duplicate requests for the same new end date (e.g. the offer was sent
+ *  several times) are de-duplicated so the balance reflects a single week. */
+export function unpaidExtensionTotal(
+  rentalId: string,
+  opts: { includePending?: boolean } = {},
+): number {
   const now = Date.now();
-  return pendingExtensions
-    .filter(e => {
-      if (e.rentalId !== rentalId) return false;
-      const st = (e.status ?? "").toLowerCase();
-      if (st === "paid") return false;
-      if (st.includes("refund") || st.includes("cancel") || st.includes("expired")) return false;
-      // Only count extensions that have actually been signed/activated.
-      // Unsigned "pending" offers are NOT a real balance owed.
-      const signedOrActive = !!e.signedAt || st === "signed" || st === "active";
-      if (!signedOrActive) return false;
-      if (e.expiresAt && new Date(e.expiresAt).getTime() <= now) return false;
-      return true;
-    })
-    .reduce((s, e) => s + (e.additionalAmount || 0), 0);
+  const eligible = pendingExtensions.filter(e => {
+    if (e.rentalId !== rentalId) return false;
+    const st = (e.status ?? "").toLowerCase();
+    if (st === "paid") return false;
+    if (st.includes("refund") || st.includes("cancel") || st.includes("expired")) return false;
+    if (e.expiresAt && new Date(e.expiresAt).getTime() <= now) return false;
+    const signedOrActive = !!e.signedAt || st === "signed" || st === "active";
+    if (signedOrActive) return true;
+    // Unsigned "pending" offers only count when explicitly requested.
+    return !!opts.includePending;
+  });
+
+  // De-duplicate: the same renewal can be represented by multiple requests
+  // (offer re-sent) and/or a signed + pending pair. Collapse by the new end
+  // date, keeping the largest amount for that date.
+  const byPeriod = new Map<string, number>();
+  for (const e of eligible) {
+    const key = e.newEndDate ?? e.id;
+    byPeriod.set(key, Math.max(byPeriod.get(key) ?? 0, e.additionalAmount || 0));
+  }
+  return Array.from(byPeriod.values()).reduce((s, v) => s + v, 0);
 }
 
 /** Does an existing rental block a vehicle from a new booking?
