@@ -1984,12 +1984,14 @@ export type Database = {
           deposit_paid: number
           driver_id: string
           end_date: string | null
+          extension_declined_at: string | null
           extension_link_sent: boolean
           extension_link_sent_date: string | null
           final_charge_amount: number | null
           final_charge_breakdown: Json | null
           id: string
           import_source: string | null
+          last_auto_renew_date: string | null
           license_image_url: string | null
           mileage_in: number | null
           mileage_out: number | null
@@ -2062,12 +2064,14 @@ export type Database = {
           deposit_paid?: number
           driver_id: string
           end_date?: string | null
+          extension_declined_at?: string | null
           extension_link_sent?: boolean
           extension_link_sent_date?: string | null
           final_charge_amount?: number | null
           final_charge_breakdown?: Json | null
           id: string
           import_source?: string | null
+          last_auto_renew_date?: string | null
           license_image_url?: string | null
           mileage_in?: number | null
           mileage_out?: number | null
@@ -2140,12 +2144,14 @@ export type Database = {
           deposit_paid?: number
           driver_id?: string
           end_date?: string | null
+          extension_declined_at?: string | null
           extension_link_sent?: boolean
           extension_link_sent_date?: string | null
           final_charge_amount?: number | null
           final_charge_breakdown?: Json | null
           id?: string
           import_source?: string | null
+          last_auto_renew_date?: string | null
           license_image_url?: string | null
           mileage_in?: number | null
           mileage_out?: number | null
