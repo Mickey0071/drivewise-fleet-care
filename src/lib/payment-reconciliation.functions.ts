@@ -162,7 +162,7 @@ export const applyPaymentCorrection = createServerFn({ method: "POST" })
       if (data.action === "set_amount") {
         const { error } = await context.supabase.rpc("admin_correct_payment_amount", {
           _payment_id: data.paymentId,
-          _new_amount: data.newAmount,
+          _new_amount: data.newAmount ?? 0,
           _reason: data.reason.trim(),
         });
         if (error) throw new Error(error.message);
