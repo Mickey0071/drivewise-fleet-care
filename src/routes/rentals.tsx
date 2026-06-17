@@ -644,6 +644,9 @@ function RentalsPage() {
                     Record Cash
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditing(r)}>Edit</Button>
+                  <Button variant="outline" size="sm" onClick={() => setSwapping(r)}>
+                    <ArrowLeftRight className="mr-1 h-4 w-4" /> Swap vehicle
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
