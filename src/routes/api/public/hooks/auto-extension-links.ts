@@ -136,14 +136,18 @@ export const Route = createFileRoute("/api/public/hooks/auto-extension-links")({
         const yesterday = new Date(today);
         yesterday.setUTCDate(yesterday.getUTCDate() - 1);
         const yesterdayIso = ymd(yesterday);
+        const todayIso = ymd(today);
+
+        const env = process.env.STRIPE_LIVE_API_KEY ? "live" : "sandbox";
+        const stripe = createStripeClient(env);
 
         const { data: rentals, error } = await supabaseAdmin
           .from("rentals")
           .select(
-            "id, driver_id, billing_period, billing_cadence, end_date, signed_at, client_signed_at, activated_at, start_date, reservation_status, extension_link_sent",
+            "id, driver_id, vehicle_id, billing_period, billing_cadence, rate, weekly_rate, end_date, signed_at, client_signed_at, activated_at, start_date, reservation_status, auto_renew, last_auto_renew_date",
           )
           .eq("reservation_status", "active")
-          .eq("extension_link_sent", false);
+          .or("auto_renew.is.null,auto_renew.eq.true");
         if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
 
         const results: Array<Record<string, unknown>> = [];
@@ -176,9 +180,16 @@ export const Route = createFileRoute("/api/public/hooks/auto-extension-links")({
               continue;
             }
 
+            // Per-period re-arm: only process once per cycle. If we already
+            // ran auto-renew for this rental today, skip.
+            if (r.last_auto_renew_date && String(r.last_auto_renew_date).slice(0, 10) === todayIso) {
+              results.push({ rentalId: r.id, skipped: "already_processed_today" });
+              continue;
+            }
+
             const { data: drv } = await supabaseAdmin
               .from("drivers")
-              .select("full_name, phone, email")
+              .select("full_name, phone, email, stripe_customer_id, stripe_payment_method_id")
               .eq("id", r.driver_id)
               .maybeSingle();
 
@@ -212,11 +223,77 @@ export const Route = createFileRoute("/api/public/hooks/auto-extension-links")({
               });
             }
 
+            // Attempt an off-session auto-charge of the saved card. The renter
+            // still has the link above to decline before/after.
+            let autoCharged = false;
+            let chargeError: string | null = null;
+            if (drv?.stripe_customer_id && drv?.stripe_payment_method_id) {
+              const { data: veh } = await supabaseAdmin
+                .from("vehicles")
+                .select("daily_rate, weekly_rate")
+                .eq("id", r.vehicle_id)
+                .maybeSingle();
+              const amount = resolvePeriodRate(
+                isDaily,
+                { billing_period: r.billing_period as any, rate: r.rate as any, weekly_rate: r.weekly_rate as any },
+                (veh as any) ?? null,
+              );
+              if (amount > 0) {
+                try {
+                  const pi = await stripe.paymentIntents.create({
+                    amount: Math.round(amount * 100),
+                    currency: "usd",
+                    customer: drv.stripe_customer_id as string,
+                    payment_method: drv.stripe_payment_method_id as string,
+                    off_session: true,
+                    confirm: true,
+                    metadata: {
+                      kind: "auto_renew",
+                      rental_id: r.id,
+                      offer_token: token,
+                      period_label: isDaily ? "day" : "week",
+                    },
+                  });
+                  if (pi.status === "succeeded") {
+                    const newEnd = await applyAutoExtension({
+                      rentalId: r.id,
+                      driverId: r.driver_id as string,
+                      isDaily,
+                      amount,
+                      prevEndDate: r.end_date ? String(r.end_date).slice(0, 10) : null,
+                      paymentIntentId: pi.id,
+                    });
+                    autoCharged = true;
+                    await supabaseAdmin
+                      .from("auto_extension_offers")
+                      .update({ status: "consumed", auto_pay_enabled: true, consumed_at: new Date().toISOString() })
+                      .eq("token", token);
+                    if (drv?.phone) {
+                      await notifyRenter({
+                        phone: drv.phone,
+                        email: drv.email ?? null,
+                        name: drv.full_name,
+                        sms: `Camauto: Your rental was auto-renewed (+1 ${isDaily ? "day" : "week"}, $${amount.toFixed(2)}). New return date: ${newEnd}. Reply or call 1-866-625-5550 to stop auto-renew.`,
+                        emailSubject: "Your rental was auto-renewed",
+                        emailHeading: "Rental auto-renewed",
+                        emailIntro: `We charged your card on file $${amount.toFixed(2)} and extended your rental to ${newEnd}.`,
+                      });
+                    }
+                  } else {
+                    chargeError = `payment_intent_status_${pi.status}`;
+                  }
+                } catch (e: any) {
+                  chargeError = e?.message ?? String(e);
+                }
+              }
+            }
+
             await supabaseAdmin
               .from("rentals")
               .update({
                 extension_link_sent: true,
                 extension_link_sent_date: new Date().toISOString(),
+                last_auto_renew_date: todayIso,
                 updated_at: new Date().toISOString(),
               } as any)
               .eq("id", r.id);
@@ -226,7 +303,11 @@ export const Route = createFileRoute("/api/public/hooks/auto-extension-links")({
               try {
                 await sendSms(
                   ADMIN_PHONE,
-                  `Camauto: Extension link sent to ${customerName} (${offerType}).`,
+                  autoCharged
+                    ? `Camauto: ${customerName} auto-renewed (${offerType}).`
+                    : chargeError
+                      ? `Camauto: Auto-renew charge FAILED for ${customerName} (${offerType}) — link sent for manual pay. ${chargeError}`
+                      : `Camauto: Extension link sent to ${customerName} (${offerType}).`,
                   "Admin",
                 );
               } catch (e) {
@@ -234,14 +315,15 @@ export const Route = createFileRoute("/api/public/hooks/auto-extension-links")({
               }
             }
 
-            results.push({ rentalId: r.id, sent: true, offerType, phone: drv?.phone ?? null });
+            results.push({ rentalId: r.id, sent: true, offerType, autoCharged, chargeError, phone: drv?.phone ?? null });
           } catch (e: any) {
             results.push({ rentalId: r.id, error: e?.message ?? String(e) });
           }
         }
 
         const sentCount = results.filter((x) => x.sent).length;
-        return Response.json({ ok: true, processed: rentals?.length ?? 0, sent: sentCount, results });
+        const chargedCount = results.filter((x) => x.autoCharged).length;
+        return Response.json({ ok: true, processed: rentals?.length ?? 0, sent: sentCount, autoCharged: chargedCount, results });
       },
     },
   },
