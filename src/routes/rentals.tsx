@@ -232,16 +232,25 @@ function RentalsPage() {
   type DisplayStatus = "on_rent" | "returned" | "pending" | "past_due" | "paid";
   function rentalBalance(r: Rental): number {
     const sched = payments.filter(p => p.rentalId === r.id);
-    const unpaid = sched
-      .filter(p => p.status !== "paid")
-      .reduce((s, p) => s + Number(p.amount || 0), 0);
     const rs = r.reservationStatus ?? "active";
     // PENDING: nothing due yet
     if (rs === "pending") return 0;
     // Amounts still owed for extensions that were created/signed but not yet paid.
     const extOwed = unpaidExtensionTotal(r.id);
-    // RETURNED: show whatever is still unpaid
-    if (rs === "returned" || rs === "completed") return unpaid + extOwed;
+    // RETURNED: only count what was actually owed for the rental period the
+    // renter used (original agreement + any extension that began), NOT future
+    // renewal weeks that were scheduled but never came into effect. A charge
+    // counts only if it came due on/before the actual return date.
+    if (rs === "returned" || rs === "completed") {
+      const cutoff = (r.returnedAt ?? r.endDate ?? "").slice(0, 10);
+      const owedThroughReturn = sched
+        .filter(p =>
+          p.status !== "paid" &&
+          (cutoff === "" || ((p.dueDate ?? "") !== "" && (p.dueDate ?? "") <= cutoff)),
+        )
+        .reduce((s, p) => s + Number(p.amount || 0), 0);
+      return owedThroughReturn + extOwed;
+    }
     // ON RENT (active)
     const today = new Date().toISOString().slice(0, 10);
     const end = r.endDate ?? today;
