@@ -855,7 +855,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     const { data: rental } = await sb
       .from("rentals")
       .select(
-        "id, vehicle_id, driver_id, start_date, billing_period, rate, weekly_rate, reservation_status, payment_received",
+        "id, vehicle_id, driver_id, start_date, billing_period, rate, weekly_rate, reservation_status, payment_received, skip_daily_minimum",
       )
       .eq("id", rentalId)
       .maybeSingle();
