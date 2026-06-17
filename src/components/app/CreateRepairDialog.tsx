@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
 import { vehicles, fmtMoney, type RepairSolution } from "@/lib/mock/data";
 import { createRepair } from "@/lib/mock/store";
 import { sendNewRepairAlert } from "@/lib/repair-alert.functions";
@@ -32,12 +33,14 @@ function emptyRow(): IssueRow {
 export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockVehicle }: Props) {
   const [vehicleId, setVehicleId] = useState(initialVehicleId ?? "");
   const [rows, setRows] = useState<IssueRow[]>([emptyRow()]);
+  const [category, setCategory] = useState("");
 
   const lockedVehicle = lockVehicle && initialVehicleId ? vehicles.find(x => x.id === initialVehicleId) : undefined;
 
   const reset = () => {
     setVehicleId(initialVehicleId ?? "");
     setRows([emptyRow()]);
+    setCategory("");
   };
 
   const totalOf = (r: IssueRow) => (Number(r.partsCost) || 0) + (Number(r.laborCost) || 0);
@@ -47,6 +50,7 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
 
   const submit = () => {
     if (!vehicleId) return toast.error("Select a vehicle");
+    if (!category) return toast.error("Select a problem category");
     const valid = rows.filter(r => r.issue.trim());
     if (valid.length === 0) return toast.error("Add at least one issue");
     const issueDescription = valid.map(r => r.issue.trim()).join("; ");
@@ -56,7 +60,7 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
       laborCost: Number(r.laborCost) || 0,
       totalCost: totalOf(r),
     }));
-    const rec = createRepair({ vehicleId, issueDescription, solutions });
+    const rec = createRepair({ vehicleId, issueDescription, solutions, problemCategory: category });
     toast.success(`Repair ${rec.id} created`);
     const v = vehicles.find(x => x.id === vehicleId);
     const vehicleLabel = v ? `${v.year} ${v.make} ${v.model}` : vehicleId;
