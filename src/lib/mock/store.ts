@@ -195,11 +195,13 @@ const fromPayment = (r: any): Payment => ({
   id: r.id, rentalId: r.rental_id, driverId: r.driver_id,
   amount: Number(r.amount), dueDate: r.due_date, paidDate: r.paid_date ?? undefined,
   method: r.method ?? undefined, status: r.status,
+  kind: r.kind ?? "charge",
 });
 const toPayment = (p: Payment) => ({
   id: p.id, rental_id: p.rentalId, driver_id: p.driverId,
   amount: p.amount, due_date: p.dueDate, paid_date: p.paidDate ?? null,
   method: p.method ?? null, status: p.status,
+  kind: p.kind ?? "charge",
 });
 
 /** An admin/renter extension that has been created/signed but NOT yet paid.
