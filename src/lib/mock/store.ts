@@ -1277,7 +1277,7 @@ export function markReturnedAwaitingInspection(id: string, endDate?: string) {
 }
 
 /** Swap the vehicle on an active rental. Old vehicle → available, new → rented. */
-export function swapVehicle(rentalId: string, newVehicleId: string, reason?: string) {
+export function swapVehicle(rentalId: string, newVehicleId: string, reason?: string, swappedBy?: string) {
   const r = rentals.find(x => x.id === rentalId);
   if (!r) throw new Error("Rental not found");
   if (r.vehicleId === newVehicleId) throw new Error("Already on that vehicle");
@@ -1292,6 +1292,19 @@ export function swapVehicle(rentalId: string, newVehicleId: string, reason?: str
   const oldVehicleId = r.vehicleId;
   r.vehicleId = newVehicleId;
   const stamp = new Date().toISOString();
+  const oldLabel = oldV ? `${oldV.year} ${oldV.make} ${oldV.model}${oldV.plate ? ` (${oldV.plate})` : ""}` : oldVehicleId;
+  const newLabel = `${newV.year} ${newV.make} ${newV.model}${newV.plate ? ` (${newV.plate})` : ""}`;
+  const swap = {
+    id: `SWP-${stamp.replace(/[^0-9]/g, "").slice(0, 14)}`,
+    swappedAt: stamp,
+    oldVehicleId,
+    newVehicleId,
+    oldVehicleLabel: oldLabel,
+    newVehicleLabel: newLabel,
+    reason: reason || undefined,
+    swappedBy: swappedBy || undefined,
+  };
+  r.swapHistory = [...(r.swapHistory ?? []), swap];
   const historyLine =
     `Swapped vehicle ${oldVehicleId} → ${newVehicleId} on ${stamp.slice(0, 10)}` +
     (reason ? ` — Reason: ${reason}` : "");
