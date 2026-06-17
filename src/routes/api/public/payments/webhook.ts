@@ -924,8 +924,13 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         (rental.start_date as string) || new Date().toISOString().slice(0, 10),
       );
       const next = new Date(start);
-      if (period === "daily") next.setDate(next.getDate() + 1);
-      else if (period === "monthly") next.setMonth(next.getMonth() + 1);
+      if (period === "daily") {
+        // DAILY rentals collect the first 2 days upfront (1 day when the
+        // family-&-friends override is on), so recurring billing only starts
+        // the morning AFTER the prepaid days — i.e. the 3rd morning by default.
+        const prepaidDays = (rental as any).skip_daily_minimum ? 1 : 2;
+        next.setDate(next.getDate() + prepaidDays);
+      } else if (period === "monthly") next.setMonth(next.getMonth() + 1);
       else next.setDate(next.getDate() + 7);
       const amount = Number(rental.rate ?? rental.weekly_rate ?? 0);
       const today = new Date().toISOString().slice(0, 10);
