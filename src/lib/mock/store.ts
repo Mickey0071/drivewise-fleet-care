@@ -194,6 +194,41 @@ const toPayment = (p: Payment) => ({
   method: p.method ?? null, status: p.status,
 });
 
+/** An admin/renter extension that has been created/signed but NOT yet paid.
+ *  These represent outstanding balance the renter still owes for an extension. */
+export interface PendingExtension {
+  id: string;
+  rentalId: string;
+  additionalAmount: number;
+  status: string;
+  newEndDate: string | null;
+  expiresAt: string | null;
+}
+export const pendingExtensions: PendingExtension[] = [];
+const fromPendingExt = (r: any): PendingExtension => ({
+  id: r.id,
+  rentalId: r.rental_id,
+  additionalAmount: Number(r.additional_amount ?? 0),
+  status: r.status,
+  newEndDate: r.new_end_date ?? null,
+  expiresAt: r.expires_at ?? null,
+});
+
+/** Total still-owed for unpaid extensions on a rental (pending or signed,
+ *  not yet paid and not expired). */
+export function unpaidExtensionTotal(rentalId: string): number {
+  const now = Date.now();
+  return pendingExtensions
+    .filter(e =>
+      e.rentalId === rentalId &&
+      e.status !== "paid" &&
+      e.status !== "refunded" &&
+      e.status !== "cancelled" &&
+      (!e.expiresAt || new Date(e.expiresAt).getTime() > now),
+    )
+    .reduce((s, e) => s + (e.additionalAmount || 0), 0);
+}
+
 /** Does an existing rental block a vehicle from a new booking?
  *  When `newStart` is omitted (reconcile / picker before dates are entered),
  *  any active+unreturned rental is considered blocking — this preserves the
