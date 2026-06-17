@@ -155,7 +155,18 @@ export function SendPaymentLinkDialog({
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
-            <p className="text-xs text-muted-foreground">Auto-filled with remaining balance — edit for partial or additional payments.</p>
+            <p className="text-xs text-muted-foreground">
+              {letRenterChoose
+                ? "Renter can pay any amount (this is shown as the suggested amount)."
+                : "Auto-filled with remaining balance — edit for partial or additional payments."}
+            </p>
+            <label className="mt-1 flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={letRenterChoose}
+                onCheckedChange={(c) => setLetRenterChoose(!!c)}
+              />
+              Let renter choose the amount (pay as they can)
+            </label>
           </div>
           <div className="space-y-1.5">
             <Label>Reason (optional)</Label>
