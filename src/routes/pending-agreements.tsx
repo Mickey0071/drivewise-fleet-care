@@ -118,10 +118,19 @@ function ReviewSheet({
   async function handleApprove() {
     if (!rental || !d) return;
     if (!d.phone) { toast.error("No phone on file for renter"); return; }
-    const amount = Number(rental.rate ?? rental.weeklyRate ?? 0);
-    if (amount < 0.5) { toast.error("Set a rate on this rental before approving"); return; }
+    const rate = Number(rental.rate ?? rental.weeklyRate ?? 0);
+    if (rate < 0.5) { toast.error("Set a rate on this rental before approving"); return; }
     const periodLbl = rental.billingPeriod === "daily" ? "day"
       : rental.billingPeriod === "monthly" ? "month" : "week";
+    // DAILY rentals collect the first 2 days upfront (1 day with the
+    // family-&-friends override). Other cadences collect a single period.
+    const prepaidDays = rental.billingPeriod === "daily"
+      ? (rental.skipDailyMinimum ? 1 : 2)
+      : 1;
+    const amount = rate * prepaidDays;
+    const desc = rental.billingPeriod === "daily"
+      ? `First ${prepaidDays} day${prepaidDays === 1 ? "" : "s"} upfront`
+      : `First ${periodLbl}`;
     setSending(true);
     try {
       await ensureRentalSynced(rental.id);
@@ -130,7 +139,7 @@ function ReviewSheet({
         name: d.fullName,
         email: d.email ?? null,
         amountCents: Math.round(amount * 100),
-        description: `First ${periodLbl} — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim(),
+        description: `${desc} — ${v?.year ?? ""} ${v?.make ?? ""} ${v?.model ?? ""}`.trim(),
         environment: getStripeEnvironment(),
         rentalId: rental.id,
       } });

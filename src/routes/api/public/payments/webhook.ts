@@ -855,7 +855,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
     const { data: rental } = await sb
       .from("rentals")
       .select(
-        "id, vehicle_id, driver_id, start_date, billing_period, rate, weekly_rate, reservation_status, payment_received",
+        "id, vehicle_id, driver_id, start_date, billing_period, rate, weekly_rate, reservation_status, payment_received, skip_daily_minimum",
       )
       .eq("id", rentalId)
       .maybeSingle();
@@ -924,10 +924,20 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         (rental.start_date as string) || new Date().toISOString().slice(0, 10),
       );
       const next = new Date(start);
-      if (period === "daily") next.setDate(next.getDate() + 1);
-      else if (period === "monthly") next.setMonth(next.getMonth() + 1);
+      if (period === "daily") {
+        // DAILY rentals collect the first 2 days upfront (1 day when the
+        // family-&-friends override is on), so recurring billing only starts
+        // the morning AFTER the prepaid days — i.e. the 3rd morning by default.
+        const prepaidDays = (rental as any).skip_daily_minimum ? 1 : 2;
+        next.setDate(next.getDate() + prepaidDays);
+      } else if (period === "monthly") next.setMonth(next.getMonth() + 1);
       else next.setDate(next.getDate() + 7);
       const amount = Number(rental.rate ?? rental.weekly_rate ?? 0);
+      // The first charge reflects what Stripe actually collected upfront
+      // (e.g. 2 days for a daily rental); the recurring row stays one period.
+      const paidAmount = session.amount_total != null
+        ? Number((session.amount_total / 100).toFixed(2))
+        : amount;
       const today = new Date().toISOString().slice(0, 10);
       const paidId = `PM-${session.id.slice(-10)}`;
       // First payment row (already paid via Stripe).
@@ -936,7 +946,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
           id: paidId,
           rental_id: rental.id,
           driver_id: rental.driver_id,
-          amount,
+          amount: paidAmount,
           due_date: today,
           paid_date: today,
           method: "Stripe",
@@ -945,7 +955,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
         { onConflict: "id" },
       );
       // Clear any duplicate scheduled "late" row for this first period.
-      await reconcileScheduledDuplicate(rental.id, amount, today, paidId);
+      await reconcileScheduledDuplicate(rental.id, paidAmount, today, paidId);
       // Next scheduled payment (only if none already exists past today).
       const { data: upcoming } = await sb
         .from("payments")

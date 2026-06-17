@@ -1026,11 +1026,16 @@ function tryActivate(rental: Rental) {
     v.status = "rented";
     cloudWrite("vehicle:update", supabase.from("vehicles").update({ status: "rented" }).eq("id", v.id));
   }
-  // Schedule first payment one period out
+  // Schedule first recurring payment one period out.
+  // DAILY rentals collect the first 2 days upfront (1 day when the
+  // family-&-friends override is on), so recurring billing only starts the
+  // morning AFTER the prepaid days — i.e. the 3rd morning by default.
   const period = rental.billingPeriod ?? "weekly";
   const due = new Date(rental.startDate);
-  if (period === "daily") due.setDate(due.getDate() + 1);
-  else if (period === "monthly") due.setMonth(due.getMonth() + 1);
+  if (period === "daily") {
+    const prepaidDays = rental.skipDailyMinimum ? 1 : 2;
+    due.setDate(due.getDate() + prepaidDays);
+  } else if (period === "monthly") due.setMonth(due.getMonth() + 1);
   else due.setDate(due.getDate() + 7);
   const exists = payments.some(p => p.rentalId === rental.id);
   if (!exists) {
