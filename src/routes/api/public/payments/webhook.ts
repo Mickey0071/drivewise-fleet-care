@@ -722,7 +722,7 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv, eventId?: s
         console.log(
           `[webhook:ext] Reconciled pre-applied extension ${extReqRow.rental_extension_id} for rental ${rentalRow.id} (charge ${extReqRow.applied_payment_id} marked paid; end date unchanged).`,
         );
-        return new Response("ok", { status: 200 });
+        return;
       }
 
       const periodLabel =
