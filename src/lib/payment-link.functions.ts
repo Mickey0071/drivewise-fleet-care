@@ -19,6 +19,10 @@ export interface PaymentLinkInput {
   reason?: string;
   sendSms?: boolean;
   sendEmail?: boolean;
+  /** When true, the renter chooses the amount at checkout (pay-what-you-can). */
+  customerChoosesAmount?: boolean;
+  /** Minimum amount (cents) the renter must pay when choosing their own amount. */
+  minAmountCents?: number;
 }
 
 /**
@@ -49,11 +53,21 @@ export async function sendPaymentLinkInternal(
     name: data.description.slice(0, 250),
     ...(data.rentalId ? { metadata: { rental_id: data.rentalId } } : {}),
   });
-  const price = await stripe.prices.create({
-    product: product.id,
-    currency: "usd",
-    unit_amount: Math.round(data.amountCents),
-  });
+  const price = data.customerChoosesAmount
+    ? await stripe.prices.create({
+        product: product.id,
+        currency: "usd",
+        custom_unit_amount: {
+          enabled: true,
+          preset: Math.round(data.amountCents),
+          minimum: Math.max(50, Math.round(data.minAmountCents ?? 100)),
+        },
+      })
+    : await stripe.prices.create({
+        product: product.id,
+        currency: "usd",
+        unit_amount: Math.round(data.amountCents),
+      });
 
   const link = await stripe.paymentLinks.create({
     line_items: [{ price: price.id, quantity: 1 }],
@@ -81,7 +95,9 @@ export async function sendPaymentLinkInternal(
   const custom = (data.customMessage || "").trim();
   const msg = custom
     ? `${custom} Pay: ${link.url}`
-    : `Camauto Rentals: ${amt} due. Pay: ${link.url}`;
+    : data.customerChoosesAmount
+      ? `Camauto Rentals: Pay any amount toward your balance: ${link.url}`
+      : `Camauto Rentals: ${amt} due. Pay: ${link.url}`;
   // Default both channels on when neither flag is provided (back-compat).
   const wantSms = data.sendSms !== false;
   const wantEmail = data.sendEmail !== false;
@@ -92,12 +108,14 @@ export async function sendPaymentLinkInternal(
     sms: msg,
     emailSubject: "Complete Your Payment — Camauto Rentals",
     emailHeading: "Complete Your Payment",
-    emailIntro: custom
-      ? `${custom}<br/><br/>Tap the button below to pay <strong>${amt}</strong> securely via Stripe.`
-      : `Your payment of <strong>${amt}</strong> is ready. Tap the button below to pay securely via Stripe.`,
-    emailCta: { label: `Pay ${amt} Now`, url: link.url },
+    emailIntro: data.customerChoosesAmount
+      ? `${custom ? custom + "<br/><br/>" : ""}You can pay any amount toward your balance. Tap the button below to enter your amount and pay securely via Stripe.`
+      : custom
+        ? `${custom}<br/><br/>Tap the button below to pay <strong>${amt}</strong> securely via Stripe.`
+        : `Your payment of <strong>${amt}</strong> is ready. Tap the button below to pay securely via Stripe.`,
+    emailCta: { label: data.customerChoosesAmount ? "Pay Now" : `Pay ${amt} Now`, url: link.url },
     emailDetails: [
-      { label: "Amount Due", value: amt },
+      { label: data.customerChoosesAmount ? "Suggested Amount" : "Amount Due", value: amt },
       { label: "Description", value: data.description },
     ],
     emailFootnote:

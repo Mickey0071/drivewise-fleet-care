@@ -54,6 +54,7 @@ export function SendPaymentLinkDialog({
   const [sending, setSending] = useState(false);
   const [viaSms, setViaSms] = useState(true);
   const [viaEmail, setViaEmail] = useState(true);
+  const [letRenterChoose, setLetRenterChoose] = useState(false);
   const [logs, setLogs] = useState<PaymentLinkLog[]>([]);
 
   async function loadLogs() {
@@ -72,6 +73,7 @@ export function SendPaymentLinkDialog({
       setMessage("");
       setViaSms(true);
       setViaEmail(!!email);
+      setLetRenterChoose(false);
       loadLogs();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,6 +114,8 @@ export function SendPaymentLinkDialog({
           reason: reasonLabel,
           sendSms: viaSms,
           sendEmail: viaEmail,
+          customerChoosesAmount: letRenterChoose,
+          minAmountCents: 100,
         },
       });
       toast.success(`Payment link sent to ${renterName || "renter"}`, {
@@ -151,7 +155,18 @@ export function SendPaymentLinkDialog({
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
-            <p className="text-xs text-muted-foreground">Auto-filled with remaining balance — edit for partial or additional payments.</p>
+            <p className="text-xs text-muted-foreground">
+              {letRenterChoose
+                ? "Renter can pay any amount (this is shown as the suggested amount)."
+                : "Auto-filled with remaining balance — edit for partial or additional payments."}
+            </p>
+            <label className="mt-1 flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={letRenterChoose}
+                onCheckedChange={(c) => setLetRenterChoose(!!c)}
+              />
+              Let renter choose the amount (pay as they can)
+            </label>
           </div>
           <div className="space-y-1.5">
             <Label>Reason (optional)</Label>
