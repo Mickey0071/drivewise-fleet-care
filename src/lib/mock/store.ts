@@ -146,6 +146,7 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   cardholderVerifiedAt: r.cardholder_verified_at ?? undefined,
   verificationStatus: r.verification_status ?? undefined,
   extensions: exts.filter(e => e.rental_id === r.id).map(fromExt),
+  swapHistory: Array.isArray(r.swap_history) ? r.swap_history : [],
 });
 const toRental = (r: any) => ({
   id: r.id, vehicle_id: r.vehicleId, driver_id: r.driverId,
@@ -165,6 +166,7 @@ const toRental = (r: any) => ({
   pending_created_at: r.pendingCreatedAt ?? null,
   activated_at: r.activatedAt ?? null,
   payment_received: !!r.paymentReceived,
+  swap_history: r.swapHistory ?? [],
 });
 const fromExt = (r: any): RentalExtension => ({
   id: r.id, extendedAt: r.extended_at, previousEndDate: r.previous_end_date ?? undefined,
@@ -1275,7 +1277,7 @@ export function markReturnedAwaitingInspection(id: string, endDate?: string) {
 }
 
 /** Swap the vehicle on an active rental. Old vehicle → available, new → rented. */
-export function swapVehicle(rentalId: string, newVehicleId: string, reason?: string) {
+export function swapVehicle(rentalId: string, newVehicleId: string, reason?: string, swappedBy?: string) {
   const r = rentals.find(x => x.id === rentalId);
   if (!r) throw new Error("Rental not found");
   if (r.vehicleId === newVehicleId) throw new Error("Already on that vehicle");
@@ -1290,6 +1292,19 @@ export function swapVehicle(rentalId: string, newVehicleId: string, reason?: str
   const oldVehicleId = r.vehicleId;
   r.vehicleId = newVehicleId;
   const stamp = new Date().toISOString();
+  const oldLabel = oldV ? `${oldV.year} ${oldV.make} ${oldV.model}${oldV.plate ? ` (${oldV.plate})` : ""}` : oldVehicleId;
+  const newLabel = `${newV.year} ${newV.make} ${newV.model}${newV.plate ? ` (${newV.plate})` : ""}`;
+  const swap = {
+    id: `SWP-${stamp.replace(/[^0-9]/g, "").slice(0, 14)}`,
+    swappedAt: stamp,
+    oldVehicleId,
+    newVehicleId,
+    oldVehicleLabel: oldLabel,
+    newVehicleLabel: newLabel,
+    reason: reason || undefined,
+    swappedBy: swappedBy || undefined,
+  };
+  r.swapHistory = [...(r.swapHistory ?? []), swap];
   const historyLine =
     `Swapped vehicle ${oldVehicleId} → ${newVehicleId} on ${stamp.slice(0, 10)}` +
     (reason ? ` — Reason: ${reason}` : "");

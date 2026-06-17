@@ -2019,6 +2019,7 @@ export type Database = {
           start_date: string
           stripe_customer_id: string | null
           stripe_payment_method_id: string | null
+          swap_history: Json
           tags: string | null
           third_party_payer: boolean
           updated_at: string
@@ -2096,6 +2097,7 @@ export type Database = {
           start_date: string
           stripe_customer_id?: string | null
           stripe_payment_method_id?: string | null
+          swap_history?: Json
           tags?: string | null
           third_party_payer?: boolean
           updated_at?: string
@@ -2173,6 +2175,7 @@ export type Database = {
           start_date?: string
           stripe_customer_id?: string | null
           stripe_payment_method_id?: string | null
+          swap_history?: Json
           tags?: string | null
           third_party_payer?: boolean
           updated_at?: string
