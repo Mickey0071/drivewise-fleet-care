@@ -14,9 +14,10 @@ interface Props {
   rentalId: string;
   renterName: string;
   defaultAmount: number;
+  creditOnFile?: number;
 }
 
-export function RecordCashDialog({ open, onOpenChange, rentalId, renterName, defaultAmount }: Props) {
+export function RecordCashDialog({ open, onOpenChange, rentalId, renterName, defaultAmount, creditOnFile = 0 }: Props) {
   const today = new Date().toISOString().slice(0, 10);
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(today);
@@ -89,6 +90,11 @@ export function RecordCashDialog({ open, onOpenChange, rentalId, renterName, def
           <div className="rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
             Records a cash receipt for {renterName || "renter"} into Payments and P&amp;L.
           </div>
+          {creditOnFile > 0 && (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-xs text-emerald-700 dark:text-emerald-400">
+              💳 Credit on file: ${creditOnFile.toFixed(2)} — already paid, nothing currently due.
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
