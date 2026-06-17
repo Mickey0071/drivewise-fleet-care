@@ -610,6 +610,33 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <Card><CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader><CardContent className="space-y-2">{children}</CardContent></Card>;
 }
+
+function VehicleNotesTab({ vehicleId, notes }: { vehicleId: string; notes?: string }) {
+  const [value, setValue] = useState(notes ?? "");
+  useEffect(() => { setValue(notes ?? ""); }, [vehicleId, notes]);
+  const dirty = value !== (notes ?? "");
+  function save() {
+    updateVehicle(vehicleId, { notes: value.trim() || undefined })
+      .then(() => toast.success("Notes saved"))
+      .catch((e: any) => toast.error("Could not save notes", { description: e?.message }));
+  }
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <CardTitle className="text-base">Vehicle notes</CardTitle>
+        <Button size="sm" disabled={!dirty} onClick={save}>Save</Button>
+      </CardHeader>
+      <CardContent>
+        <Textarea
+          className="min-h-[160px]"
+          placeholder="Add notes about this vehicle (condition, quirks, history, reminders)…"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      </CardContent>
+    </Card>
+  );
+}
 function Row({ title, sub, right }: { title: string; sub: string; right?: React.ReactNode }) {
   return <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2"><div><div className="text-sm font-medium">{title}</div><div className="text-xs text-muted-foreground">{sub}</div></div><div className="flex items-center">{right}</div></div>;
 }
