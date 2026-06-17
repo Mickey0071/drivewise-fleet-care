@@ -1962,6 +1962,8 @@ export type Database = {
       }
       rentals: {
         Row: {
+          accident_report: Json | null
+          accident_token: string | null
           activated_at: string | null
           agreement_pdf_generated_at: string | null
           agreement_pdf_url: string | null
@@ -2042,6 +2044,8 @@ export type Database = {
           weekly_rate: number
         }
         Insert: {
+          accident_report?: Json | null
+          accident_token?: string | null
           activated_at?: string | null
           agreement_pdf_generated_at?: string | null
           agreement_pdf_url?: string | null
@@ -2122,6 +2126,8 @@ export type Database = {
           weekly_rate?: number
         }
         Update: {
+          accident_report?: Json | null
+          accident_token?: string | null
           activated_at?: string | null
           agreement_pdf_generated_at?: string | null
           agreement_pdf_url?: string | null
@@ -3244,6 +3250,18 @@ export type Database = {
     }
     Functions: {
       current_driver_id: { Args: never; Returns: string }
+      get_accident_intake_public: {
+        Args: { _token: string }
+        Returns: {
+          accident_report: Json
+          driver_full_name: string
+          end_date: string
+          plate: string
+          rental_id: string
+          start_date: string
+          vehicle: string
+        }[]
+      }
       get_auto_extension_offer_public: {
         Args: { _token: string }
         Returns: {
