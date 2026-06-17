@@ -203,6 +203,8 @@ export interface Maintenance {
   nextServiceDue: string; notes?: string; completedBy?: string;
   sourceInspectionId?: string;
   createdAt?: string;
+  /** Work order this maintenance record was generated from, when applicable. */
+  sourceWorkOrderId?: string;
   // ---- Repair kanban fields (null for plain maintenance / service-log rows) ----
   status?: RepairStatus;
   issueDescription?: string;
