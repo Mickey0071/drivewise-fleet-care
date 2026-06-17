@@ -529,6 +529,9 @@ function VehicleDetail() {
             ))}
           </Section>
         </TabsContent>
+        <TabsContent value="notes" className="mt-4">
+          <VehicleNotesTab vehicleId={v.id} notes={v.notes} />
+        </TabsContent>
       </Tabs>
       <NewReservationDialog
         open={reserveOpen}
