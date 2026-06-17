@@ -2068,6 +2068,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
   const [newEndDate, setNewEndDate] = useState("");
   const [duration, setDuration] = useState<"7" | "14" | "21" | "custom">("7");
   const [submitting, setSubmitting] = useState(false);
+  const [chargeState, setChargeState] = useState<"owed" | "paid">("owed");
   const [sentInfo, setSentInfo] = useState<{ signUrl: string; amount: number; newEnd: string; phone: string | null; smsSent: boolean } | null>(null);
   useEffect(() => {
     if (rental) {
@@ -2075,6 +2076,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
       base.setDate(base.getDate() + 7);
       setNewEndDate(base.toISOString().slice(0, 10));
       setDuration("7");
+      setChargeState("owed");
       setSentInfo(null);
       setSubmitting(false);
     }
@@ -2097,9 +2099,13 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
     if (!charge || charge.periods < 1) { toast.error("Pick a duration"); return; }
     setSubmitting(true);
     try {
-      const r = await createLinkFn({ data: { rentalId: rental.id, periods: charge.periods, periodLabel: charge.periodLabel } });
+      const r = await createLinkFn({ data: { rentalId: rental.id, periods: charge.periods, periodLabel: charge.periodLabel, chargeState } });
       setSentInfo({ signUrl: r.signUrl, amount: r.additionalAmount, newEnd: r.newEndDate, phone: r.renterPhone, smsSent: r.smsSent });
-      toast.success(r.smsSent ? "Extension link sent to renter" : "Extension link created");
+      if (chargeState === "paid") {
+        toast.success("Extension recorded and logged (marked paid)");
+      } else {
+        toast.success(r.smsSent ? "Extension logged · link sent to renter" : "Extension logged · link created");
+      }
     } catch (e: any) {
       toast.error(e?.message || "Could not create extension link");
     } finally {
@@ -2160,12 +2166,36 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
                 </div>
               </div>
             )}
-            <div className="rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
-              The renter will receive a text with one link. On that page they review the Extension
-              Agreement, sign, and pay {charge?.additionalAmount ? fmtMoney(charge.additionalAmount) : ""} via Stripe.
-              Once paid, the reservation end date, calendar, and P&amp;L update automatically.
+            <div>
+              <Label className="text-xs uppercase text-muted-foreground">Charge handling</Label>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setChargeState("owed")}
+                  className={`rounded-md border p-2 text-left text-sm ${chargeState === "owed" ? "border-primary bg-primary/10" : "bg-background"}`}
+                >
+                  <div className="font-medium">Renter will pay</div>
+                  <div className="text-xs text-muted-foreground">Adds charge as owed · sends a pay link</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChargeState("paid")}
+                  className={`rounded-md border p-2 text-left text-sm ${chargeState === "paid" ? "border-primary bg-primary/10" : "bg-background"}`}
+                >
+                  <div className="font-medium">Already paid</div>
+                  <div className="text-xs text-muted-foreground">Logs as paid · no link sent</div>
+                </button>
+              </div>
             </div>
-            {!d.phone && (
+            <div className="rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
+              {chargeState === "owed" ? (
+                <>The extension is logged immediately and the end date updates now. The renter receives one
+                link to sign and pay {charge?.additionalAmount ? fmtMoney(charge.additionalAmount) : ""} via Stripe; the balance clears when they pay.</>
+              ) : (
+                <>The extension is logged immediately as paid and the end date updates now. No link is sent.</>
+              )}
+            </div>
+            {chargeState === "owed" && !d.phone && (
               <div className="rounded-md border border-amber-500/40 bg-amber-50 p-3 text-xs text-amber-800">
                 No phone number on file for this renter — we'll generate the link but you'll need to share it manually.
               </div>
@@ -2177,16 +2207,22 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
             <div className="rounded-md border bg-green-50 dark:bg-green-950/30 p-3 text-sm">
               <div className="font-semibold text-green-700 dark:text-green-300 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" />
-                {sentInfo.smsSent ? `Link sent to ${sentInfo.phone}` : "Link created"}
+                {chargeState === "paid"
+                  ? "Extension logged (marked paid)"
+                  : sentInfo.smsSent ? `Extension logged · link sent to ${sentInfo.phone}` : "Extension logged · link created"}
               </div>
               <div className="text-xs text-muted-foreground mt-2">
-                Once the renter signs and pays {fmtMoney(sentInfo.amount)}, the reservation extends to {fmtDate(sentInfo.newEnd)} automatically.
+                {chargeState === "paid"
+                  ? <>The reservation now extends to {fmtDate(sentInfo.newEnd)} and the {fmtMoney(sentInfo.amount)} charge is recorded as paid.</>
+                  : <>The reservation already extends to {fmtDate(sentInfo.newEnd)}. The {fmtMoney(sentInfo.amount)} balance clears once the renter pays.</>}
               </div>
             </div>
-            <div className="rounded-md border p-2 text-xs flex items-center gap-2 bg-muted/30">
-              <code className="flex-1 truncate">{sentInfo.signUrl}</code>
-              <Button variant="outline" size="sm" onClick={copyLink}><Copy className="h-3.5 w-3.5" /></Button>
-            </div>
+            {sentInfo.signUrl && (
+              <div className="rounded-md border p-2 text-xs flex items-center gap-2 bg-muted/30">
+                <code className="flex-1 truncate">{sentInfo.signUrl}</code>
+                <Button variant="outline" size="sm" onClick={copyLink}><Copy className="h-3.5 w-3.5" /></Button>
+              </div>
+            )}
           </div>
         )}
         {!sentInfo && <SendLinkPreview route="/extend/[token]" />}
@@ -2194,7 +2230,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
           <Button variant="outline" onClick={onClose}>{sentInfo ? "Done" : "Cancel"}</Button>
           {!sentInfo && (
             <Button onClick={sendLink} disabled={submitting}>
-              <Send className="mr-1 h-4 w-4" /> {submitting ? "Sending…" : "Send Extension Link to Renter"}
+              <Send className="mr-1 h-4 w-4" /> {submitting ? "Saving…" : chargeState === "paid" ? "Record Extension (Paid)" : "Log & Send Extension Link"}
             </Button>
           )}
         </DialogFooter>

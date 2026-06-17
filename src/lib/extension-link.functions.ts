@@ -37,7 +37,7 @@ async function assertAdmin(userId: string) {
  */
 export const createExtensionLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { rentalId: string; periods: number; periodLabel?: string }) => {
+  .inputValidator((d: { rentalId: string; periods: number; periodLabel?: string; chargeState?: "owed" | "paid"; method?: string }) => {
     if (!d?.rentalId || typeof d.rentalId !== "string") throw new Error("rentalId required");
     const n = Number(d.periods);
     if (!Number.isInteger(n) || n < 1 || n > 60) throw new Error("Periods must be 1–60");
@@ -45,7 +45,9 @@ export const createExtensionLink = createServerFn({ method: "POST" })
     if (label && !["day", "week", "month", "daily", "weekly", "monthly"].includes(label)) {
       throw new Error("Invalid period label");
     }
-    return { rentalId: d.rentalId, periods: n, periodLabel: label || "" };
+    const chargeState = d.chargeState === "paid" ? "paid" : "owed";
+    const method = typeof d.method === "string" ? d.method : "cash";
+    return { rentalId: d.rentalId, periods: n, periodLabel: label || "", chargeState, method };
   })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
@@ -92,6 +94,75 @@ export const createExtensionLink = createServerFn({ method: "POST" })
       .select("id, token")
       .maybeSingle();
     if (insErr || !inserted) throw new Error(insErr?.message || "Failed to create extension request");
+
+    // ---- Apply + log the extension immediately ----
+    // Advance the rental end date, write the extension log row, and create the
+    // extension charge now so it shows on the reservation card right away,
+    // instead of waiting for the renter to sign/pay the Stripe link.
+    const today = new Date().toISOString().slice(0, 10);
+    const rand = () => Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => b.toString(16).padStart(2, "0")).join("");
+    const extId = `EXT-${rand().toUpperCase()}`;
+    const payId = `EXTPAY-${rand().toUpperCase()}`;
+    const chargePaid = data.chargeState === "paid";
+
+    // Extension charge line.
+    await supabaseAdmin.from("payments").insert({
+      id: payId,
+      rental_id: rental.id,
+      driver_id: rental.driver_id,
+      amount: additionalAmount,
+      due_date: newEndIso,
+      paid_date: chargePaid ? today : null,
+      method: chargePaid ? data.method : null,
+      status: chargePaid ? "paid" : "late",
+      kind: "charge",
+      note: `Extension: +${data.periods} ${periodLabel}${data.periods === 1 ? "" : "s"}`,
+    } as any);
+
+    // Extension log row.
+    await supabaseAdmin.from("rental_extensions").insert({
+      id: extId,
+      rental_id: rental.id,
+      extended_at: new Date().toISOString(),
+      previous_end_date: rental.end_date ?? null,
+      new_end_date: newEndIso,
+      periods: data.periods,
+      period_label: periodLabel,
+      additional_amount: additionalAmount,
+      payment_id: payId,
+      agreement_version: AGREEMENT_VERSION,
+    } as any);
+
+    // Advance the rental end date.
+    await supabaseAdmin.from("rentals").update({ end_date: newEndIso }).eq("id", rental.id);
+
+    // Link the request to the applied records so the webhook reconciles
+    // (marks paid) instead of applying the extension a second time.
+    await supabaseAdmin.from("extension_requests").update({
+      rental_extension_id: extId,
+      applied_payment_id: payId,
+      applied_at: new Date().toISOString(),
+      charge_state: chargePaid ? "paid" : "owed",
+      ...(chargePaid ? { status: "paid", paid_at: new Date().toISOString() } : {}),
+    } as any).eq("token", token);
+
+    // If the admin recorded the charge as already paid, there's nothing for
+    // the renter to pay — skip the Stripe link + SMS and return.
+    if (chargePaid) {
+      return {
+        token,
+        signUrl: "",
+        paymentUrl: "",
+        additionalAmount,
+        newEndDate: newEndIso,
+        periods: data.periods,
+        periodLabel,
+        smsSent: false,
+        renterPhone: null,
+        applied: true as const,
+        chargeState: "paid" as const,
+      };
+    }
 
     const env = process.env.STRIPE_LIVE_API_KEY ? "live" : "sandbox";
     const stripe = createStripeClient(env);
@@ -173,6 +244,8 @@ export const createExtensionLink = createServerFn({ method: "POST" })
       periodLabel,
       smsSent,
       renterPhone: drv?.phone ?? null,
+      applied: true as const,
+      chargeState: "owed" as const,
     };
   });
 

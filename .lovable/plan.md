@@ -1,41 +1,47 @@
-# Custom payments with a positive credit balance
-
 ## Goal
-Let a reservation accept a custom payment larger than what's owed. The payment first clears the outstanding balance, and any extra becomes a **credit on file** that shows as a positive balance with "nothing due". Example: renter owes $100, pays $200 → $0 due + $100 credit. Credit is **display-only** (staff decide when to use it; it is not auto-applied to future charges) and is **surfaced everywhere relevant**: the reservations balance column, the reservation detail, and the payment/cash dialogs.
 
-## How it works today
-- `recordManualPayment` (cash/manual) already applies money to the oldest unpaid charges first, then records any leftover as a standalone paid receipt — but that leftover is invisible because `rentalBalance` never goes below $0.
-- The Send Payment Link dialog already supports a custom amount and "let renter choose the amount", so admins can already *send* an arbitrary amount. The missing piece is representing the resulting overpayment as a credit.
+When an admin inputs an extension on a reservation, it should be **logged immediately** in the extension log and on the reservation card (end date advanced + charge recorded), instead of staying invisible until the renter signs and pays the Stripe link. A per-extension Paid/Unpaid choice controls how the charge hits the balance.
 
-## Plan
+This is exactly what's wrong on **Luther Bunting / R-527**: the "Extend rental" button today only sends a Stripe pay-link and writes nothing to `rental_extensions` until the renter pays — so the card shows no extension even though one was offered.
 
-### 1. Tag overpayment receipts (database)
-Add a `kind` column to the `payments` table (`text not null default 'charge'`, allowed values `charge` | `credit`). This lets us distinguish pure overpayment money from charge-satisfying payments without guessing. Existing rows default to `charge`.
+## What changes
 
-### 2. Store layer (`src/lib/mock/store.ts` + `src/lib/mock/data.ts`)
-- Add `kind?: "charge" | "credit"` to the `Payment` type and include it in the `fromPayment` / `toPayment` mappers.
-- In `recordManualPayment`, tag the leftover overpayment "extra" receipt with `kind: "credit"` (the branch that already runs when `remaining > 0` after clearing all unpaid charges).
-- Add a helper `rentalCredit(rentalId): number` that sums paid receipts where `kind === "credit"`.
+### 1. Apply + log the extension at the moment of input (server)
+In `src/lib/extension-link.functions.ts` (`createExtensionLink`), after computing `newEndIso` / `additionalAmount`, immediately:
+- Advance `rentals.end_date` to the new end date.
+- Insert a `rental_extensions` row now (previous end, new end, periods, period label, amount) so it shows in the log/card instantly.
+- Insert a `payments` row for the extension charge:
+  - **Unpaid choice** → `status: "late"` (adds to balance as owed; renter pays via the link).
+  - **Paid choice** → `status: "paid"` with today's date and method (does not add to balance).
+- Link the `extension_requests` row to the new `rental_extension` id and `payment` id (store on the request row) so the webhook can reconcile.
 
-### 3. Balance display (`src/routes/rentals.tsx`)
-- Update `rentalBalance` to return a **net** value: `owedAmount - rentalCredit(r)`. This can now be negative (a credit).
-- Where the balance is rendered (row + detail), when the value is negative show it in green as `Credit $100.00 · nothing due`; when zero/positive keep current behavior.
-- `rentalStatus`: a reservation with a credit (net ≤ 0) is never `past_due`.
-- Anywhere a dialog's `defaultAmount` uses `rentalBalance(...)`, clamp with `Math.max(0, ...)` so we never pre-fill a negative amount.
-- Sorting by balance keeps working (smaller/negative = credit sorts as fully paid).
+Add a `chargeState: "owed" | "paid"` input to the server fn. When `paid`, skip generating/sending the Stripe link (nothing to pay) and just return the logged result; when `owed`, create and send the Stripe link as today.
 
-### 4. Payment dialogs (surface credit "everywhere relevant")
-- `SendPaymentLinkDialog.tsx` and `RecordCashDialog.tsx`: accept an optional `creditOnFile` number prop and, when > 0, render a small note (e.g. `💳 Credit on file: $100.00`) so staff don't accidentally re-charge. Pass `rentalCredit(r)` from `rentals.tsx`.
-- Custom/over amounts are already allowed in these dialogs; no change to their input validation.
+### 2. Make the webhook idempotent (no double-apply)
+In `src/routes/api/public/payments/webhook.ts`, `admin_extension` branch: if the `extension_requests` row already has a linked `rental_extension_id`/payment (pre-applied by the admin), then on payment **do not** advance the end date again or insert a second `rental_extensions` row. Only:
+- Mark the linked extension's payment `paid`.
+- Stamp signature / signed_by / paid_at onto the existing `rental_extensions` row and the `extension_requests` row.
 
-### 5. Stripe link / custom payments (`src/routes/api/public/payments/webhook.ts`)
-- When recording a paid receipt for a payment-link / `custom_renter_payment` whose amount exceeds the remaining unpaid charges, apply it to the oldest unpaid charges first and tag the leftover row `kind: "credit"`, mirroring `recordManualPayment`. This makes credit appear consistently whether paid by cash or by Stripe link.
+This prevents the end date from jumping twice and duplicate log rows.
 
-## Technical notes
-- Migration is additive (new nullable-with-default column); no backfill needed. `payment_audit_log` trigger continues to capture changes unchanged.
-- `kind` is the single source of truth for credit, so the UI math stays simple and the existing nuanced owed-amount logic (extensions, returned cutoffs, phantom-balance protection) is untouched — we only subtract a separately-tracked credit total.
-- No auto-apply: credit never reduces a future charge automatically; it only changes what's displayed.
+### 3. UI: Paid/Unpaid choice in the Extend dialog
+In `ExtendRentalDialog` (`src/routes/rentals.tsx`):
+- Add a Paid / Unpaid toggle ("Renter will pay via link" vs "Already paid").
+- Pass `chargeState` to the server fn.
+- **Unpaid:** behaves like today (logs the extension immediately, then shows/sends the pay link).
+- **Paid:** logs the extension as paid immediately; success message confirms it's recorded, no link.
 
-## Out of scope
-- Auto-applying credit to future extensions/renewals.
-- Refunding credit back to a card.
+After either path, the extension appears in the log/card right away because `rental_extensions` is written synchronously.
+
+## Note on Luther Bunting's $900 balance
+
+The high balance is a **separate** issue from the missing extension. R-527 has unpaid scheduled weekly charges (e.g. the $450 due 6/7 still marked `late`, plus another period) that earlier cash/Stripe payments were booked as standalone receipts instead of being allocated against. The extension log is empty simply because no extension was ever recorded (only a link was sent). This plan fixes the extension-logging behavior so future extensions show up. If you also want me to re-allocate R-527's existing payments so the $900 reflects reality, say so and I'll handle that as a follow-up data fix.
+
+## Technical details
+
+- New columns may be needed on `extension_requests` to link the pre-applied records: `rental_extension_id` (text/uuid) and `applied_payment_id` (text). I'll add these via a migration with proper GRANTs before wiring the code.
+- `rental_extensions` already supports all needed fields; no schema change there.
+- One source of truth: keep the apply/log logic in the server fn (admin flow is server-based); the card picks it up via the existing `rental_extensions` realtime subscription in the store.
+</content>
+<summary>Make admin "Extend rental" log the extension immediately (advance end date + record charge) with a Paid/Unpaid choice, instead of waiting for the renter to pay the Stripe link; make the webhook idempotent so it doesn't double-apply.</summary>
+</invoke>
