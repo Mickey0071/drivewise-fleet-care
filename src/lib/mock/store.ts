@@ -456,6 +456,7 @@ const fromMaintenance = (r: any): Maintenance => ({
   nextServiceDue: r.next_service_due, notes: r.notes ?? undefined,
   completedBy: r.completed_by ?? undefined,
   sourceInspectionId: r.source_inspection_id ?? undefined,
+  sourceWorkOrderId: r.source_work_order_id ?? undefined,
   createdAt: r.created_at ?? undefined,
   status: r.status ?? undefined,
   issueDescription: r.issue_description ?? undefined,
@@ -516,6 +517,7 @@ const toMaintenance = (m: Maintenance) => ({
   approved_by: m.approvedBy ?? null,
   source: m.source ?? "manual_report",
   inspection_id: m.inspectionId ?? null,
+  source_work_order_id: m.sourceWorkOrderId ?? null,
   deposit_required: m.depositRequired ?? 0,
   deposit_amount: m.depositAmount ?? 0,
   deposit_processed: m.depositProcessed ?? false,
@@ -2599,8 +2601,35 @@ export function addWorkOrder(input: Omit<WorkOrder, "id" | "status" | "createdAt
   };
   workOrders.push(rec);
   cloudWrite("work_orders:insert", supabase.from("work_orders").insert(toWorkOrder(rec)));
+  // Mirror the work order into the maintenance log so it shows up in the
+  // vehicle's maintenance history. Created as an open, non-blocking service
+  // item (scheduled preventive work shouldn't take the vehicle offline).
+  ensureWorkOrderMaintenance(rec);
   emit();
   return rec;
+}
+
+/** Find (or create) the maintenance row mirroring a work order. */
+function ensureWorkOrderMaintenance(wo: WorkOrder): Maintenance {
+  const existing = maintenance.find(m => m.sourceWorkOrderId === wo.id);
+  if (existing) return existing;
+  const v = vehicles.find(x => x.id === wo.vehicleId);
+  return addMaintenance({
+    vehicleId: wo.vehicleId,
+    serviceType: wo.serviceType,
+    vendor: wo.assignedTo?.trim() || "Pending assignment",
+    dateCompleted: "",
+    mileageAtService: v?.mileage ?? 0,
+    nextServiceDue: wo.scheduledDate,
+    cost: 0,
+    notes: wo.description || undefined,
+    status: "open",
+    issueDescription: wo.description || wo.serviceType,
+    isRentalBlocking: false,
+    source: "work_order",
+    sourceWorkOrderId: wo.id,
+    createdAt: wo.createdAt ?? new Date().toISOString(),
+  });
 }
 
 function genFieldToken(): string {
@@ -2623,6 +2652,23 @@ export function updateWorkOrder(id: string, patch: Partial<WorkOrder>) {
   if (!w) return;
   Object.assign(w, patch);
   cloudWrite("work_orders:update", supabase.from("work_orders").update(toWorkOrder(w)).eq("id", id));
+  // When a work order reaches "completed", finalize its maintenance mirror:
+  // mark it complete and post the actual cost to P&L. Idempotent — if the
+  // linked maintenance is already complete, this does nothing.
+  if (w.status === "completed") {
+    const m = ensureWorkOrderMaintenance(w);
+    if (m.status !== "complete") {
+      const partsNote = w.partsUsed?.trim() ? `Parts: ${w.partsUsed.trim()}` : "";
+      const notes = [w.completionNotes?.trim(), partsNote].filter(Boolean).join("\n");
+      completeRepair(m.id, {
+        completedBy: w.reviewedBy?.trim() || w.assignedTo?.trim() || "Admin",
+        mechanicName: w.assignedTo?.trim() || undefined,
+        partsCost: w.actualCost ?? w.estimatedCost ?? 0,
+        laborCost: 0,
+        mechanicNotes: notes || undefined,
+      });
+    }
+  }
   emit();
 }
 
@@ -2631,6 +2677,15 @@ export function deleteWorkOrder(id: string) {
   if (idx < 0) return;
   workOrders.splice(idx, 1);
   cloudWrite("work_orders:delete", supabase.from("work_orders").delete().eq("id", id));
+  // Remove the mirrored maintenance row only if it was never completed, so
+  // completed-work-order history is preserved.
+  const mIdx = maintenance.findIndex(m => m.sourceWorkOrderId === id && m.status !== "complete" && !m.dateCompleted);
+  if (mIdx >= 0) {
+    const m = maintenance[mIdx];
+    maintenance.splice(mIdx, 1);
+    cloudWrite("maintenance:delete", supabase.from("maintenance").delete().eq("id", m.id));
+    syncVehicleOpenIssues(m.vehicleId);
+  }
   emit();
 }
 

@@ -1079,6 +1079,7 @@ export type Database = {
           solutions: Json | null
           source: string
           source_inspection_id: string | null
+          source_work_order_id: string | null
           status: string | null
           updated_at: string
           vehicle_id: string
@@ -1134,6 +1135,7 @@ export type Database = {
           solutions?: Json | null
           source?: string
           source_inspection_id?: string | null
+          source_work_order_id?: string | null
           status?: string | null
           updated_at?: string
           vehicle_id: string
@@ -1189,6 +1191,7 @@ export type Database = {
           solutions?: Json | null
           source?: string
           source_inspection_id?: string | null
+          source_work_order_id?: string | null
           status?: string | null
           updated_at?: string
           vehicle_id?: string
