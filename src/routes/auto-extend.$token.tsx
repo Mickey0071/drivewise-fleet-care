@@ -116,6 +116,22 @@ function AutoExtendPage() {
     }
   }
 
+  async function onDecline() {
+    if (!offer || !offer.found) return;
+    if (!window.confirm("Decline the extension? Your rental will not be extended and we'll arrange to pick up the vehicle.")) {
+      return;
+    }
+    setDeclining(true);
+    try {
+      await declineFn({ data: { token } });
+      setDeclined(true);
+    } catch (e: any) {
+      toast.error(e?.message || "Could not record your response");
+    } finally {
+      setDeclining(false);
+    }
+  }
+
   const total =
     offer && offer.found && choice ? priceFor(choice, offer) : 0;
 
