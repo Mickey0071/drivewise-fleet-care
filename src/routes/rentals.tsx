@@ -1998,6 +1998,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
 
 function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose: () => void }) {
   const sendSmsFn = useServerFn(sendRentalSms);
+  const { user } = useAuth();
   const [newVehicleId, setNewVehicleId] = useState<string>("");
   const [reason, setReason] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -2012,7 +2013,11 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
     if (!reason.trim()) { toast.error("Reason for swap is required"); return; }
     setSubmitting(true);
     try {
-      const { newVehicle } = swapVehicle(rental.id, newVehicleId, reason.trim());
+      const swappedBy =
+        (user?.user_metadata?.full_name as string | undefined) ||
+        user?.email ||
+        "Admin";
+      const { newVehicle } = swapVehicle(rental.id, newVehicleId, reason.trim(), swappedBy);
       if (d?.phone) {
         const msg = `Your vehicle has been swapped to ${newVehicle.year} ${newVehicle.make} ${newVehicle.model} (Plate ${newVehicle.plate}). Your rental continues.`;
         sendSmsFn({ data: { phone: d.phone, message: msg.slice(0, 1000), name: d.fullName } })
