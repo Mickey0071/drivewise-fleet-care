@@ -2207,16 +2207,22 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
             <div className="rounded-md border bg-green-50 dark:bg-green-950/30 p-3 text-sm">
               <div className="font-semibold text-green-700 dark:text-green-300 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" />
-                {sentInfo.smsSent ? `Link sent to ${sentInfo.phone}` : "Link created"}
+                {chargeState === "paid"
+                  ? "Extension logged (marked paid)"
+                  : sentInfo.smsSent ? `Extension logged · link sent to ${sentInfo.phone}` : "Extension logged · link created"}
               </div>
               <div className="text-xs text-muted-foreground mt-2">
-                Once the renter signs and pays {fmtMoney(sentInfo.amount)}, the reservation extends to {fmtDate(sentInfo.newEnd)} automatically.
+                {chargeState === "paid"
+                  ? <>The reservation now extends to {fmtDate(sentInfo.newEnd)} and the {fmtMoney(sentInfo.amount)} charge is recorded as paid.</>
+                  : <>The reservation already extends to {fmtDate(sentInfo.newEnd)}. The {fmtMoney(sentInfo.amount)} balance clears once the renter pays.</>}
               </div>
             </div>
-            <div className="rounded-md border p-2 text-xs flex items-center gap-2 bg-muted/30">
-              <code className="flex-1 truncate">{sentInfo.signUrl}</code>
-              <Button variant="outline" size="sm" onClick={copyLink}><Copy className="h-3.5 w-3.5" /></Button>
-            </div>
+            {sentInfo.signUrl && (
+              <div className="rounded-md border p-2 text-xs flex items-center gap-2 bg-muted/30">
+                <code className="flex-1 truncate">{sentInfo.signUrl}</code>
+                <Button variant="outline" size="sm" onClick={copyLink}><Copy className="h-3.5 w-3.5" /></Button>
+              </div>
+            )}
           </div>
         )}
         {!sentInfo && <SendLinkPreview route="/extend/[token]" />}
@@ -2224,7 +2230,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
           <Button variant="outline" onClick={onClose}>{sentInfo ? "Done" : "Cancel"}</Button>
           {!sentInfo && (
             <Button onClick={sendLink} disabled={submitting}>
-              <Send className="mr-1 h-4 w-4" /> {submitting ? "Sending…" : "Send Extension Link to Renter"}
+              <Send className="mr-1 h-4 w-4" /> {submitting ? "Saving…" : chargeState === "paid" ? "Record Extension (Paid)" : "Log & Send Extension Link"}
             </Button>
           )}
         </DialogFooter>
