@@ -37,7 +37,7 @@ async function assertAdmin(userId: string) {
  */
 export const createExtensionLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { rentalId: string; periods: number; periodLabel?: string }) => {
+  .inputValidator((d: { rentalId: string; periods: number; periodLabel?: string; chargeState?: "owed" | "paid"; method?: string }) => {
     if (!d?.rentalId || typeof d.rentalId !== "string") throw new Error("rentalId required");
     const n = Number(d.periods);
     if (!Number.isInteger(n) || n < 1 || n > 60) throw new Error("Periods must be 1–60");
@@ -45,7 +45,9 @@ export const createExtensionLink = createServerFn({ method: "POST" })
     if (label && !["day", "week", "month", "daily", "weekly", "monthly"].includes(label)) {
       throw new Error("Invalid period label");
     }
-    return { rentalId: d.rentalId, periods: n, periodLabel: label || "" };
+    const chargeState = d.chargeState === "paid" ? "paid" : "owed";
+    const method = typeof d.method === "string" ? d.method : "cash";
+    return { rentalId: d.rentalId, periods: n, periodLabel: label || "", chargeState, method };
   })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
