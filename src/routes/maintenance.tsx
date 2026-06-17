@@ -64,6 +64,7 @@ function MaintenancePage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createVehicleId, setCreateVehicleId] = useState("");
   const [createIssue, setCreateIssue] = useState("");
+  const [createCategory, setCreateCategory] = useState("");
   const [createTakeOffRental, setCreateTakeOffRental] = useState(true);
 
   // Which repair line is expanded (one at a time, across all phases)
@@ -90,10 +91,12 @@ function MaintenancePage() {
   function submitCreateRepair() {
     if (!createVehicleId) { toast.error("Select a vehicle"); return; }
     if (!createIssue.trim()) { toast.error("Describe the issue"); return; }
-    createManualRepair(createVehicleId, createIssue, createTakeOffRental);
+    if (!createCategory) { toast.error("Select a problem category"); return; }
+    createManualRepair(createVehicleId, createIssue, createTakeOffRental, createCategory);
     setCreateOpen(false);
     setCreateVehicleId("");
     setCreateIssue("");
+    setCreateCategory("");
     setCreateTakeOffRental(true);
     toast.success("Repair created — added to Phase 1");
   }
