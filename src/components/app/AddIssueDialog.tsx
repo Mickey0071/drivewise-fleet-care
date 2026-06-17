@@ -214,6 +214,12 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
           </div>
 
           <div className="grid gap-1.5">
+            <Label>Problem category</Label>
+            <ProblemCategorySelect value={category} onChange={setCategory} />
+            <p className="text-xs text-muted-foreground">Required — used to group repairs in analytics.</p>
+          </div>
+
+          <div className="grid gap-1.5">
             <Label>Vendor</Label>
             <VendorCombobox value={vendor} onChange={setVendor} />
             <p className="text-xs text-muted-foreground">The vendor is recorded as who completes the work.</p>
