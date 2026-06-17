@@ -509,7 +509,16 @@ function RentalsPage() {
                 })() : <div className="mt-1 text-sm text-muted-foreground">All paid</div>}
                 <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
                   <span className="text-xs uppercase text-muted-foreground">Balance</span>
-                  <span className="text-base font-semibold">{fmtMoney(rentalBalance(r))}</span>
+                  {(() => {
+                    const bal = rentalBalance(r);
+                    return bal < 0 ? (
+                      <span className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
+                        Credit {fmtMoney(-bal)} · nothing due
+                      </span>
+                    ) : (
+                      <span className="text-base font-semibold">{fmtMoney(bal)}</span>
+                    );
+                  })()}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Button
