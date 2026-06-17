@@ -1242,6 +1242,7 @@ export function recordManualPayment(
     const extra: Payment = {
       id: nextPaymentId(), rentalId: r.id, driverId: r.driverId,
       amount: remaining, dueDate: date, paidDate: date, method, status: "paid",
+      kind: "credit",
     };
     payments.push(extra);
     cloudWrite("payment:insert", supabase.from("payments").insert(toPayment(extra)));
