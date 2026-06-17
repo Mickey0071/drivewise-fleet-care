@@ -176,4 +176,33 @@ export const listPendingApprovals = createServerFn({ method: "GET" })
     return { pending: data ?? [] };
   });
 
+/** Admin: list ALL mechanic diagnoses awaiting Accept/Decline (flash alert). */
+export const listNewDiagnoses = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { data } = await db
+      .from("maintenance")
+      .select("id, vehicle_id, issue_description, service_type, cost, parts_cost, labor_cost, updated_at, mechanic_name")
+      .eq("action_taken", "pending")
+      .eq("status", "diagnosing")
+      .not("accept_token", "is", null)
+      .order("updated_at", { ascending: false })
+      .limit(100);
+    const rows = data ?? [];
+    const enriched = await Promise.all(
+      rows.map(async (r: any) => {
+        const { label, plate } = await vehicleLabel(r.vehicle_id);
+        return {
+          id: r.id,
+          vehicle: label,
+          plate,
+          issue: r.issue_description || r.service_type || "Repair",
+          mechanicName: r.mechanic_name ?? "",
+          cost: Number(r.cost) || 0,
+        };
+      }),
+    );
+    return { diagnoses: enriched };
+  });
+
 export { ADMIN_REPAIR_PHONE };
