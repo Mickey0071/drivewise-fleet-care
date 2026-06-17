@@ -8,6 +8,7 @@ import { vehicles } from "@/lib/mock/data";
 import { addMaintenance, addExpense, useStoreVersion } from "@/lib/mock/store";
 import { RepairTypeCombobox } from "@/components/app/RepairTypeCombobox";
 import { VendorCombobox } from "@/components/app/VendorCombobox";
+import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
 import { fmtMoney } from "@/lib/mock/data";
 import { toast } from "sonner";
 import { Trash2, Plus } from "lucide-react";
@@ -53,6 +54,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
   const [estReturn, setEstReturn] = useState<string>(defaultReturn());
   const [vendor, setVendor] = useState<string>("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState<string>("");
 
   const reset = () => {
     setVehicleId(initialVehicleId ?? "");
@@ -61,6 +63,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
     setEstReturn(defaultReturn());
     setVendor("");
     setDescription("");
+    setCategory("");
   };
 
   const subtotalOf = (r: PartRow) => (Number(r.partPrice) || 0) + (Number(r.laborPrice) || 0);
@@ -72,6 +75,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
 
   const submit = () => {
     if (!vehicleId) return toast.error("Select a vehicle");
+    if (!category) return toast.error("Select a problem category");
     const valid = rows.filter(r => r.selection.trim());
     if (valid.length === 0) return toast.error("Add at least one part");
     for (const r of valid) {
@@ -99,6 +103,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
     const rec = addMaintenance({
       vehicleId,
       serviceType: partsSummary,
+      problemCategory: category,
       vendor: vendor.trim(),
       dateCompleted: undefined as unknown as string,
       mileageAtService: v?.mileage ?? 0,
