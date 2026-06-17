@@ -97,6 +97,13 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
 
           <div className="grid gap-2">
             <Label>Issues</Label>
+          </div>
+          <div className="grid gap-1.5">
+            <Label>Problem category</Label>
+            <ProblemCategorySelect value={category} onChange={setCategory} />
+            <p className="text-xs text-muted-foreground">Required — used to group repairs in analytics.</p>
+          </div>
+          <div className="grid gap-2">
             {rows.map((r, i) => (
               <div key={r.key} className="rounded-md border border-border p-3">
                 <div className="mb-2 flex items-center justify-between">
