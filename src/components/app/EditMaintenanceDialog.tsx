@@ -122,6 +122,13 @@ export function EditMaintenanceDialog({ open, onOpenChange, record }: Props) {
               <Label>Service type</Label>
               <Input value={serviceType} onChange={e => setServiceType(e.target.value)} />
             </div>
+            <div className="grid gap-1.5">
+              <Label className="flex items-center gap-2">
+                Problem category
+                {problemCategory && <Badge variant="outline" className="text-[10px]">{problemCategory}</Badge>}
+              </Label>
+              <ProblemCategorySelect value={problemCategory} onChange={setProblemCategory} />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
                 <Label>Vendor</Label>
