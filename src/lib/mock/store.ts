@@ -2677,6 +2677,15 @@ export function deleteWorkOrder(id: string) {
   if (idx < 0) return;
   workOrders.splice(idx, 1);
   cloudWrite("work_orders:delete", supabase.from("work_orders").delete().eq("id", id));
+  // Remove the mirrored maintenance row only if it was never completed, so
+  // completed-work-order history is preserved.
+  const mIdx = maintenance.findIndex(m => m.sourceWorkOrderId === id && m.status !== "complete" && !m.dateCompleted);
+  if (mIdx >= 0) {
+    const m = maintenance[mIdx];
+    maintenance.splice(mIdx, 1);
+    cloudWrite("maintenance:delete", supabase.from("maintenance").delete().eq("id", m.id));
+    syncVehicleOpenIssues(m.vehicleId);
+  }
   emit();
 }
 
