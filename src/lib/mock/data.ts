@@ -133,6 +133,8 @@ export interface Rental {
   cardholderLicenseUrl?: string;
   cardholderVerifiedAt?: string;
   verificationStatus?: string;
+  lastAutoRenewDate?: string;
+  extensionDeclinedAt?: string;
 }
 export interface RentalExtension {
   id: string;
