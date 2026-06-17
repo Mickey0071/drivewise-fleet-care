@@ -149,6 +149,8 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   swapHistory: Array.isArray(r.swap_history) ? r.swap_history : [],
   lastAutoRenewDate: r.last_auto_renew_date ?? undefined,
   extensionDeclinedAt: r.extension_declined_at ?? undefined,
+  accidentReport: r.accident_report ?? undefined,
+  accidentToken: r.accident_token ?? undefined,
 });
 const toRental = (r: any) => ({
   id: r.id, vehicle_id: r.vehicleId, driver_id: r.driverId,
@@ -171,7 +173,9 @@ const toRental = (r: any) => ({
   swap_history: r.swapHistory ?? [],
   last_auto_renew_date: r.lastAutoRenewDate ?? null,
   extension_declined_at: r.extensionDeclinedAt ?? null,
-});
+  accident_report: r.accidentReport ?? null,
+  accident_token: r.accidentToken ?? null,
+}) as any;
 const fromExt = (r: any): RentalExtension => ({
   id: r.id, extendedAt: r.extended_at, previousEndDate: r.previous_end_date ?? undefined,
   newEndDate: r.new_end_date, periods: r.periods, periodLabel: r.period_label,
@@ -1298,6 +1302,28 @@ export function updateRental(id: string, patch: Partial<Rental>) {
   Object.assign(r, patch);
   cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
   emit();
+}
+
+/** Save (or clear) the accident report on a reservation. */
+export function saveAccidentReport(id: string, report: import("@/lib/mock/data").AccidentReport | undefined) {
+  const r = rentals.find(r => r.id === id);
+  if (!r) return;
+  r.accidentReport = report;
+  cloudWrite("rental:update", supabase.from("rentals").update({ accident_report: report ?? null } as any).eq("id", r.id));
+  emit();
+}
+
+/** Ensure a shareable accident-intake token exists; returns the token. */
+export function ensureAccidentToken(id: string): string | undefined {
+  const r = rentals.find(r => r.id === id);
+  if (!r) return undefined;
+  if (!r.accidentToken) {
+    const token = `acc_${(crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, "")}`;
+    r.accidentToken = token;
+    cloudWrite("rental:update", supabase.from("rentals").update({ accident_token: token } as any).eq("id", r.id));
+    emit();
+  }
+  return r.accidentToken;
 }
 
 export function markReturned(id: string, endDate?: string) {

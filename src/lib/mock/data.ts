@@ -135,6 +135,23 @@ export interface Rental {
   verificationStatus?: string;
   lastAutoRenewDate?: string;
   extensionDeclinedAt?: string;
+  accidentReport?: AccidentReport;
+  accidentToken?: string;
+}
+export interface AccidentReport {
+  /** ISO datetime the accident occurred (mandatory). */
+  occurredAt: string;
+  location?: string;
+  description?: string;
+  fault?: string;
+  otherPartyName?: string;
+  otherPartyPhone?: string;
+  otherPartyInsurance?: string;
+  otherPartyPlate?: string;
+  injuries?: string;
+  policeReport?: string;
+  reportedBy?: "admin" | "renter";
+  updatedAt?: string;
 }
 export interface RentalExtension {
   id: string;
