@@ -21,7 +21,7 @@ import {
   type MechanicJobRow,
 } from "@/lib/mechanic-jobs.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
 import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, recordRepairPaymentRaw, completeRepair, reverseRepairToDiagnose, deleteRepair } from "@/lib/mock/store";
@@ -1100,7 +1100,7 @@ function RepairRow({ m, open, onToggle, onDelete, job }: { m: Maintenance; open:
 }
 
 function RepairDetails({ m, job }: { m: Maintenance; job?: MechanicJobRow }) {
-  const rows: Array<[string, React.ReactNode]> = [];
+  const rows: Array<[string, ReactNode]> = [];
   if (m.vendor) rows.push(["Vendor", m.vendor]);
   if (job?.mechanic_phone) rows.push(["Mechanic phone", job.mechanic_phone]);
   if (job?.mechanic_shop) rows.push(["Mechanic shop", job.mechanic_shop]);
