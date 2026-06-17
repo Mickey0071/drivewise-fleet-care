@@ -20,7 +20,7 @@ export const getAccidentIntake = createServerFn({ method: "GET" })
   .inputValidator((data: { token: string }) => z.object({ token: z.string().min(1) }).parse(data))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows, error } = await supabaseAdmin.rpc("get_accident_intake_public", { _token: data.token });
+    const { data: rows, error } = await (supabaseAdmin as any).rpc("get_accident_intake_public", { _token: data.token });
     if (error) throw new Error("Unable to load accident form");
     const row = Array.isArray(rows) ? rows[0] : rows;
     if (!row) return { found: false as const };
@@ -44,9 +44,9 @@ export const submitAccidentReport = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const report = { ...data.report, reportedBy: "renter", updatedAt: new Date().toISOString() };
-    const { data: updated, error } = await supabaseAdmin
+    const { data: updated, error } = await (supabaseAdmin as any)
       .from("rentals")
-      .update({ accident_report: report } as never)
+      .update({ accident_report: report })
       .eq("accident_token", data.token)
       .select("id");
     if (error) throw new Error("Could not save report");
