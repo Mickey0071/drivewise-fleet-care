@@ -2,15 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 
-export const Route = createFileRoute("/analytics/profitability")({
-  head: () => ({ meta: [{ title: "Profitability — Analytics — Camauto Rentals" }] }),
+export const Route = createFileRoute("/analytics_/utilization")({
+  head: () => ({ meta: [{ title: "Utilization — Analytics — Camauto Rentals" }] }),
   component: Page,
 });
 
 function Page() {
   return (
     <div>
-      <PageHeader title="📊 Profitability" subtitle="Detailed analytics" />
+      <PageHeader title="📈 Utilization" subtitle="Detailed analytics" />
       <Card>
         <CardContent className="flex min-h-[240px] flex-col items-center justify-center text-center">
           <p className="text-lg font-semibold text-foreground">Coming soon</p>
