@@ -240,6 +240,11 @@ export function SendPaymentLinkDialog({
             {phone ? ` · ${phone}` : ""}
             {email ? ` · ${email}` : ""}
           </div>
+          {creditOnFile > 0 && (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-xs text-emerald-700 dark:text-emerald-400">
+              💳 Credit on file: ${creditOnFile.toFixed(2)} — already paid, nothing currently due.
+            </div>
+          )}
           {savedCard && !savedCard.expired ? (
             <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs text-foreground">
               💳 Using saved card ending in {savedCard.last4}
