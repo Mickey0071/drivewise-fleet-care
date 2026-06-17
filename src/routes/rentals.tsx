@@ -507,6 +507,7 @@ function RentalsPage() {
               </div>
             )}
             {!isPending && <ReservationPaymentHistory rental={r} />}
+            <SwapHistoryTimeline rental={r} />
             {!isPending && (() => {
               const card = getSavedCard(d);
               return (
