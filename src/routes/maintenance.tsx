@@ -322,7 +322,7 @@ function MaintenancePage() {
                     const open = expandedId === m.id;
                     return (
                       <li key={m.id} className="border-l-[3px] border-l-yellow-500">
-                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} />
+                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} job={sentJobByMaint.get(m.id) ?? submittedJobByMaint.get(m.id)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
                             {m.repairRequestNotes && (
@@ -393,7 +393,7 @@ function MaintenancePage() {
                     const open = expandedId === m.id;
                     return (
                       <li key={m.id} className="border-l-[3px] border-l-blue-500">
-                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} />
+                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} job={sentJobByMaint.get(m.id) ?? submittedJobByMaint.get(m.id)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
                       {submittedJobByMaint.has(m.id) && (
@@ -476,7 +476,7 @@ function MaintenancePage() {
                     const open = expandedId === m.id;
                     return (
                       <li key={m.id} className="border-l-[3px] border-l-green-600">
-                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} />
+                        <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} job={sentJobByMaint.get(m.id) ?? submittedJobByMaint.get(m.id)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
                     {m.diagnosisNotes && (
