@@ -1014,40 +1014,129 @@ function MaintenancePage() {
   );
 }
 
-function RepairRow({ m, open, onToggle, onDelete }: { m: Maintenance; open: boolean; onToggle: () => void; onDelete: () => void }) {
+const REPAIR_STATUS_LABEL: Record<string, string> = {
+  reported: "Reported",
+  diagnosing: "Diagnosing",
+  open: "Open",
+  pending_deposit: "Pending deposit",
+  pending_complete: "Pending complete",
+  in_progress: "In progress",
+  complete: "Complete",
+};
+
+/** Display-only total: actual parts+labor, falling back to `cost` when both are 0. */
+function totalCostFor(m: Maintenance): number {
+  const pl = (m.partsCost ?? 0) + (m.laborCost ?? 0);
+  return pl > 0 ? pl : (m.cost ?? 0);
+}
+
+function RepairRow({ m, open, onToggle, onDelete, job }: { m: Maintenance; open: boolean; onToggle: () => void; onDelete: () => void; job?: MechanicJobRow }) {
   const v = vehicleById(m.vehicleId);
   const name = v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId;
   const issue = m.issueDescription ?? m.serviceType;
+  const statusLabel = m.status ? (REPAIR_STATUS_LABEL[m.status] ?? m.status) : null;
+  const total = totalCostFor(m);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
   return (
-    <div className="flex w-full items-center gap-1 pr-1 hover:bg-muted/40">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left"
-      >
-        {open ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
-        <span className="min-w-0 flex-1 truncate text-sm">
-          <span className="font-medium">{name}</span>
-          <span className="text-muted-foreground"> — {issue}</span>
-        </span>
-        {m.problemCategory && (
-          <Badge variant="outline" className="shrink-0 text-[10px]">{m.problemCategory}</Badge>
-        )}
-      </button>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 shrink-0 text-muted-foreground/60 hover:text-destructive"
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Delete repair</TooltipContent>
-      </Tooltip>
+    <div className="w-full">
+      {/* ===== CARD FACE (essentials only) ===== */}
+      <div className="flex w-full items-start gap-1 pr-1 hover:bg-muted/40">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex min-w-0 flex-1 items-start gap-2 px-3 py-2 text-left"
+        >
+          {open ? <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
+          <span className="min-w-0 flex-1 space-y-1">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-sm font-medium">{name}</span>
+              {v?.plate && <span className="text-xs text-muted-foreground">{v.plate}</span>}
+              {m.problemCategory && (
+                <Badge variant="outline" className="text-[10px]">{m.problemCategory}</Badge>
+              )}
+              {m.isRentalBlocking && (
+                <Badge variant="destructive" className="text-[10px]">Off road</Badge>
+              )}
+            </span>
+            <span className="block truncate text-xs text-muted-foreground">{issue}</span>
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+              {statusLabel && <span className="font-medium text-foreground">{statusLabel}</span>}
+              {total > 0 && <span>{fmtMoney(total)}</span>}
+              {m.mechanicName && <span>🔧 {m.mechanicName}</span>}
+            </span>
+          </span>
+        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="mt-1 h-7 w-7 shrink-0 text-muted-foreground/60 hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Delete repair</TooltipContent>
+        </Tooltip>
+      </div>
+
+      {/* ===== DETAILS (collapsed by default) ===== */}
+      <div className="px-3 pb-1">
+        <button
+          type="button"
+          onClick={() => setDetailsOpen(o => !o)}
+          className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+        >
+          {detailsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          Details
+        </button>
+        {detailsOpen && <RepairDetails m={m} job={job} />}
+      </div>
+    </div>
+  );
+}
+
+function RepairDetails({ m, job }: { m: Maintenance; job?: MechanicJobRow }) {
+  const rows: Array<[string, React.ReactNode]> = [];
+  if (m.vendor) rows.push(["Vendor", m.vendor]);
+  if (job?.mechanic_phone) rows.push(["Mechanic phone", job.mechanic_phone]);
+  if (job?.mechanic_shop) rows.push(["Mechanic shop", job.mechanic_shop]);
+  if (m.diagnosisNotes) rows.push(["Parts list", m.diagnosisNotes]);
+  if (m.downPayment != null && m.downPayment > 0) rows.push(["Down payment", fmtMoney(m.downPayment)]);
+  if (m.amountPaid != null && m.amountPaid > 0) rows.push(["Amount paid", fmtMoney(m.amountPaid)]);
+  if (m.balance != null && m.balance > 0) rows.push(["Balance", fmtMoney(m.balance)]);
+  if (m.depositRequired != null && m.depositRequired > 0) rows.push(["Deposit required", fmtMoney(m.depositRequired)]);
+  if (m.depositAmount != null && m.depositAmount > 0) rows.push(["Deposit received", fmtMoney(m.depositAmount)]);
+  if (m.nextServiceDue) rows.push(["Next service due", fmtDate(m.nextServiceDue.slice(0, 10))]);
+  if (m.mileageAtService) rows.push(["Mileage at service", m.mileageAtService.toLocaleString()]);
+
+  return (
+    <div className="mt-2 space-y-2 rounded-md border border-dashed bg-muted/20 p-2">
+      {(job?.status === "sent" || job?.status === "submitted") && (
+        <div className="flex flex-wrap gap-1.5">
+          {job.status === "sent" && (
+            <Badge variant="secondary" className="text-[10px]">📤 Sent to {job.mechanic_name}{job.sent_at ? ` · ${fmtDate(job.sent_at.slice(0, 10))}` : ""}</Badge>
+          )}
+          {job.status === "submitted" && (
+            <Badge variant="secondary" className="text-[10px]">📋 Submitted by {job.mechanic_name}{job.submitted_at ? ` · ${fmtDate(job.submitted_at.slice(0, 10))}` : ""}</Badge>
+          )}
+        </div>
+      )}
+      {rows.length === 0 ? (
+        <p className="text-[11px] text-muted-foreground">No additional details.</p>
+      ) : (
+        <dl className="space-y-1 text-[11px]">
+          {rows.map(([label, value]) => (
+            <div key={label} className="flex justify-between gap-3">
+              <dt className="shrink-0 text-muted-foreground">{label}</dt>
+              <dd className="min-w-0 break-words text-right text-foreground">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
     </div>
   );
 }
