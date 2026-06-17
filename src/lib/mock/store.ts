@@ -266,6 +266,15 @@ export function unpaidExtensionTotal(
   return Array.from(byPeriod.values()).reduce((s, v) => s + v, 0);
 }
 
+/** Overpayment credit on file for a rental: the sum of paid receipts that
+ *  represent money received beyond what was owed (kind === "credit"). This is
+ *  display-only — it is never auto-applied to future charges. */
+export function rentalCredit(rentalId: string): number {
+  return payments
+    .filter(p => p.rentalId === rentalId && p.status === "paid" && p.kind === "credit")
+    .reduce((s, p) => s + Number(p.amount || 0), 0);
+}
+
 /** Does an existing rental block a vehicle from a new booking?
  *  When `newStart` is omitted (reconcile / picker before dates are entered),
  *  any active+unreturned rental is considered blocking — this preserves the
