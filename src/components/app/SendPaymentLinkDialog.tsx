@@ -32,6 +32,7 @@ interface Props {
   description: string;
   onSent?: () => void;
   savedCard?: SavedCard | null;
+  creditOnFile?: number;
 }
 
 export function SendPaymentLinkDialog({
@@ -45,6 +46,7 @@ export function SendPaymentLinkDialog({
   description,
   onSent,
   savedCard,
+  creditOnFile = 0,
 }: Props) {
   const sendFn = useServerFn(sendPaymentLink);
   const logsFn = useServerFn(getPaymentLinkLogs);
