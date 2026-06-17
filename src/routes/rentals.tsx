@@ -232,9 +232,6 @@ function RentalsPage() {
   type DisplayStatus = "on_rent" | "returned" | "pending" | "past_due" | "paid";
   function rentalBalance(r: Rental): number {
     const sched = payments.filter(p => p.rentalId === r.id);
-    const unpaid = sched
-      .filter(p => p.status !== "paid")
-      .reduce((s, p) => s + Number(p.amount || 0), 0);
     const rs = r.reservationStatus ?? "active";
     // PENDING: nothing due yet
     if (rs === "pending") return 0;
