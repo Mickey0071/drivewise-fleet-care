@@ -517,6 +517,7 @@ const toMaintenance = (m: Maintenance) => ({
   approved_by: m.approvedBy ?? null,
   source: m.source ?? "manual_report",
   inspection_id: m.inspectionId ?? null,
+  source_work_order_id: m.sourceWorkOrderId ?? null,
   deposit_required: m.depositRequired ?? 0,
   deposit_amount: m.depositAmount ?? 0,
   deposit_processed: m.depositProcessed ?? false,
