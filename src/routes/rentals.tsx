@@ -230,7 +230,12 @@ function RentalsPage() {
 
   // ---- Derive a display status + outstanding balance for a reservation ----
   type DisplayStatus = "on_rent" | "returned" | "pending" | "past_due" | "paid";
+  // Net balance = what's owed minus any overpayment credit on file. A negative
+  // result means the renter has a positive credit (nothing due).
   function rentalBalance(r: Rental): number {
+    return rentalOwed(r) - rentalCredit(r.id);
+  }
+  function rentalOwed(r: Rental): number {
     const sched = payments.filter(p => p.rentalId === r.id);
     const rs = r.reservationStatus ?? "active";
     // PENDING: nothing due yet
