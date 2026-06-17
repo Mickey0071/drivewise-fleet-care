@@ -1304,6 +1304,28 @@ export function updateRental(id: string, patch: Partial<Rental>) {
   emit();
 }
 
+/** Save (or clear) the accident report on a reservation. */
+export function saveAccidentReport(id: string, report: import("@/lib/mock/data").AccidentReport | undefined) {
+  const r = rentals.find(r => r.id === id);
+  if (!r) return;
+  r.accidentReport = report;
+  cloudWrite("rental:update", supabase.from("rentals").update({ accident_report: report ?? null }).eq("id", r.id));
+  emit();
+}
+
+/** Ensure a shareable accident-intake token exists; returns the token. */
+export function ensureAccidentToken(id: string): string | undefined {
+  const r = rentals.find(r => r.id === id);
+  if (!r) return undefined;
+  if (!r.accidentToken) {
+    const token = `acc_${(crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, "")}`;
+    r.accidentToken = token;
+    cloudWrite("rental:update", supabase.from("rentals").update({ accident_token: token }).eq("id", r.id));
+    emit();
+  }
+  return r.accidentToken;
+}
+
 export function markReturned(id: string, endDate?: string) {
   const r = rentals.find(r => r.id === id);
   if (!r) return;
