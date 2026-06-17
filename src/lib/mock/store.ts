@@ -607,6 +607,19 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
     replaceArray(workOrders, (wo.data ?? []).map(fromWorkOrder));
     reconcileVehicleAvailability(true);
     hydrated = true;
+    // Load unpaid extension requests so the dashboard balance reflects
+    // amounts a renter still owes for an extension (best-effort: only
+    // admins/runners can read this table, so ignore errors for others).
+    try {
+      const exr = await supabase
+        .from("extension_requests")
+        .select("id, rental_id, additional_amount, status, new_end_date, expires_at");
+      if (!exr.error) {
+        replaceArray(pendingExtensions, (exr.data ?? []).map(fromPendingExt));
+      }
+    } catch (e) {
+      console.error("[cloud:hydrate] extension_requests", e);
+    }
     emit();
     subscribeRealtime();
   })();
