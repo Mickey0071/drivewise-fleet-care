@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicles, vehicleById, driverById, payments, violations, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, unpaidExtensionTotal, rentalCredit, rentalViolationsUnpaid, saveAccidentReport, ensureAccidentToken } from "@/lib/mock/store";
+import { extensionSignatureStatus } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -240,10 +241,15 @@ function RentalsPage() {
     const rs = r.reservationStatus ?? "active";
     // PENDING: nothing due yet
     if (rs === "pending") return 0;
-    // Canonical rule: only SIGNED/accepted extensions count toward balance —
-    // sent-but-unsigned extension links never do. Unpaid violations add too.
-    const extOwed = unpaidExtensionTotal(r.id);
-    const violationsOwed = rentalViolationsUnpaid(r.id);
+    // CANONICAL RULE (period-based, signature-agnostic):
+    //   balance = base_rental(original term) + extension time the car is
+    //             actually out − payments received.
+    // Extension time is owed automatically once the car is out past its end
+    // date; a signature is NOT required. Each period the car is out is counted
+    // ONCE (multiple sent links for the same period collapse to one charge —
+    // dedupe handled inside unpaidExtensionTotal). Violations are NEVER part of
+    // the rental balance; they are tracked on their own line.
+    const extOwed = unpaidExtensionTotal(r.id, { includePending: true });
     // RETURNED: only count what was actually owed for the rental period the
     // renter used (original agreement + any extension that began), NOT future
     // renewal weeks that were scheduled but never came into effect. A charge
@@ -256,11 +262,11 @@ function RentalsPage() {
           (cutoff === "" || ((p.dueDate ?? "") !== "" && (p.dueDate ?? "") <= cutoff)),
         )
         .reduce((s, p) => s + Number(p.amount || 0), 0);
-      return owedThroughReturn + extOwed + violationsOwed;
+      return owedThroughReturn + extOwed;
     }
-    // ON RENT (active) — canonical: a SENT-but-unsigned extension does NOT
-    // count. Only signed/accepted extensions are owed.
-    const extOwedActive = unpaidExtensionTotal(r.id);
+    // ON RENT (active) — extension time the car is out counts whether or not
+    // the agreement has been signed yet.
+    const extOwedActive = extOwed;
     const today = new Date().toISOString().slice(0, 10);
     const end = r.endDate ?? today;
     // Rental period has ended. A paid-up renter should NOT show a balance just
@@ -275,7 +281,7 @@ function RentalsPage() {
       const overduePrePeriod = sched
         .filter(p => p.status !== "paid" && (p.dueDate ?? "") !== "" && (p.dueDate ?? "") < end)
         .reduce((s, p) => s + Number(p.amount || 0), 0);
-      return overduePrePeriod + extOwedActive + violationsOwed;
+      return overduePrePeriod + extOwedActive;
     }
     // Within paid rental period -> only show unpaid extension charges, if any
     const extPaymentIds = new Set(
@@ -283,7 +289,7 @@ function RentalsPage() {
     );
     return sched
       .filter(p => p.status !== "paid" && extPaymentIds.has(p.id))
-      .reduce((s, p) => s + Number(p.amount || 0), 0) + extOwedActive + violationsOwed;
+      .reduce((s, p) => s + Number(p.amount || 0), 0) + extOwedActive;
   }
   function rentalStatus(r: Rental): DisplayStatus {
     const rs = r.reservationStatus ?? "active";
@@ -522,6 +528,16 @@ function RentalsPage() {
                     );
                   })()}
                 </div>
+                {(() => {
+                  const vOwed = rentalViolationsUnpaid(r.id);
+                  if (vOwed <= 0) return null;
+                  return (
+                    <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="uppercase tracking-wide">Violations (separate)</span>
+                      <span className="font-medium text-foreground">{fmtMoney(vOwed)}</span>
+                    </div>
+                  );
+                })()}
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Button
                     size="sm"
@@ -738,9 +754,23 @@ function RentalsPage() {
                     </Button>
                   )}
                   {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (
-                    <Button variant="outline" size="sm" onClick={() => setExtending(r)}>
-                      <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
-                    </Button>
+                    <div className="inline-flex items-center gap-1.5">
+                      <Button variant="outline" size="sm" onClick={() => setExtending(r)}>
+                        <CalendarPlus className="mr-1 h-4 w-4" /> Extend / Send for signature
+                      </Button>
+                      {(() => {
+                        const sig = extensionSignatureStatus(r.id);
+                        if (sig.state === "none") return null;
+                        const tone = sig.state === "signed"
+                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                          : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400";
+                        return (
+                          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${tone}`}>
+                            <FileSignature className="h-3 w-3" /> {sig.label}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   )}
                   {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (
                     <Button variant="outline" size="sm" onClick={() => setSwapping(r)}>

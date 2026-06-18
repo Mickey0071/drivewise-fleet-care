@@ -8,9 +8,13 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  * canonical balance defined by the one rule we apply everywhere:
  *
  *   Balance due = base_rental(original term only)
- *               + extensions(signed/accepted only)
- *               + violations(unpaid)
+ *               + extension time the car is actually out
+ *                 (counted ONCE per period, signature NOT required,
+ *                  re-sent links for the same period deduped)
  *               - cash_payments_received
+ *
+ *   Violations are NEVER part of the rental balance — they are reported on a
+ *   separate line (violations_unpaid) and tracked independently.
  *
  * This function NEVER writes anything. Corrections are applied one-by-one
  * from the /admin/payment-reconciliation screen and routed through the
@@ -219,17 +223,31 @@ export const auditBalances = createServerFn({ method: "POST" })
         }
 
         // --- balances ---
-        const canonical_balance = unpaid_charges + violations_unpaid - credits;
-        const old_balance = unpaid_charges + phantom_sent_extension - credits; // legacy: no violations, + phantom
+        // NEW canonical rule (period-based, signature-agnostic):
+        //   balance = base_rental(original term) + extension time the car is
+        //             actually out (counted ONCE per period, deduped across
+        //             re-sent links) − payments received.
+        // Violations are NEVER part of the rental balance — reported separately
+        // in `violations_unpaid` only.
+        // `phantom_sent_extension` is the deduped, per-period extension amount
+        // the car is out for (sent links count even before signature); periods
+        // already represented by a signed/paid payment row are excluded above
+        // to avoid double counting.
+        const canonical_balance = unpaid_charges + phantom_sent_extension - credits;
+        // OLD shown balance under the prior signed-only rule (which also folded
+        // unpaid violations into the balance).
+        const old_balance = unpaid_charges + violations_unpaid - credits;
         const delta = canonical_balance - old_balance;
 
         const reasons: string[] = [];
         if (phantom_sent_extension > 0)
           reasons.push(
-            `Legacy added $${phantom_sent_extension.toFixed(2)} for sent-but-unsigned extension(s) (rule: only signed count).`,
+            `Adds $${phantom_sent_extension.toFixed(2)} extension time the car is out (counted once per period — re-sent links deduped).`,
           );
         if (violations_unpaid > 0)
-          reasons.push(`Adds $${violations_unpaid.toFixed(2)} unpaid violation(s) the legacy calc ignored.`);
+          reasons.push(
+            `Removes $${violations_unpaid.toFixed(2)} violation(s) from the rental balance (now tracked on a separate line).`,
+          );
         if (bloated_rows.length)
           reasons.push(
             `${bloated_rows.length} charge row(s) above the $${periodRate.toFixed(2)} rate — base may include extension days (needs split/review).`,
