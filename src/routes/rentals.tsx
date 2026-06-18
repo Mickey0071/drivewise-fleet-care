@@ -5,7 +5,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicles, vehicleById, driverById, payments, violations, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, unpaidExtensionTotal, rentalCredit, saveAccidentReport, ensureAccidentToken } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, unpaidExtensionTotal, rentalCredit, rentalViolationsUnpaid, saveAccidentReport, ensureAccidentToken } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -240,8 +240,10 @@ function RentalsPage() {
     const rs = r.reservationStatus ?? "active";
     // PENDING: nothing due yet
     if (rs === "pending") return 0;
-    // Amounts still owed for extensions that were created/signed but not yet paid.
+    // Canonical rule: only SIGNED/accepted extensions count toward balance —
+    // sent-but-unsigned extension links never do. Unpaid violations add too.
     const extOwed = unpaidExtensionTotal(r.id);
+    const violationsOwed = rentalViolationsUnpaid(r.id);
     // RETURNED: only count what was actually owed for the rental period the
     // renter used (original agreement + any extension that began), NOT future
     // renewal weeks that were scheduled but never came into effect. A charge
@@ -254,11 +256,11 @@ function RentalsPage() {
           (cutoff === "" || ((p.dueDate ?? "") !== "" && (p.dueDate ?? "") <= cutoff)),
         )
         .reduce((s, p) => s + Number(p.amount || 0), 0);
-      return owedThroughReturn + extOwed;
+      return owedThroughReturn + extOwed + violationsOwed;
     }
-    // ON RENT (active)
-    // She still has the car, so a SENT-but-unsigned extension counts as owed.
-    const extOwedActive = unpaidExtensionTotal(r.id, { includePending: true });
+    // ON RENT (active) — canonical: a SENT-but-unsigned extension does NOT
+    // count. Only signed/accepted extensions are owed.
+    const extOwedActive = unpaidExtensionTotal(r.id);
     const today = new Date().toISOString().slice(0, 10);
     const end = r.endDate ?? today;
     // Rental period has ended. A paid-up renter should NOT show a balance just
@@ -273,7 +275,7 @@ function RentalsPage() {
       const overduePrePeriod = sched
         .filter(p => p.status !== "paid" && (p.dueDate ?? "") !== "" && (p.dueDate ?? "") < end)
         .reduce((s, p) => s + Number(p.amount || 0), 0);
-      return overduePrePeriod + extOwedActive;
+      return overduePrePeriod + extOwedActive + violationsOwed;
     }
     // Within paid rental period -> only show unpaid extension charges, if any
     const extPaymentIds = new Set(
@@ -281,7 +283,7 @@ function RentalsPage() {
     );
     return sched
       .filter(p => p.status !== "paid" && extPaymentIds.has(p.id))
-      .reduce((s, p) => s + Number(p.amount || 0), 0) + extOwedActive;
+      .reduce((s, p) => s + Number(p.amount || 0), 0) + extOwedActive + violationsOwed;
   }
   function rentalStatus(r: Rental): DisplayStatus {
     const rs = r.reservationStatus ?? "active";

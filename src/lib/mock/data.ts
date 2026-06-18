@@ -272,8 +272,9 @@ export interface Inspection {
   createdAt?: string;
 }
 export interface Violation {
-  id: string; vehicleId: string; driverId?: string;
+  id: string; vehicleId: string; driverId?: string; rentalId?: string;
   type: "PPA" | "ticket" | "impound"; amount: number;
+  totalAmount?: number; paidAt?: string;
   dateIssued: string; status: ViolationStatus; notes?: string;
 }
 export interface Staff {

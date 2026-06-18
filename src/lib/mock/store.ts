@@ -275,6 +275,16 @@ export function rentalCredit(rentalId: string): number {
     .reduce((s, p) => s + Number(p.amount || 0), 0);
 }
 
+/** Unpaid violation charges tied to a reservation. Counts toward balance per
+ *  the canonical rule: violations(unpaid) add to balance due. */
+const VIOLATION_PAID_STATES = new Set(["paid", "dismissed", "waived", "cancelled", "canceled", "resolved", "closed", "refunded"]);
+export function rentalViolationsUnpaid(rentalId: string): number {
+  return violations
+    .filter(v => v.rentalId === rentalId)
+    .filter(v => !v.paidAt && !VIOLATION_PAID_STATES.has(String(v.status ?? "").toLowerCase()))
+    .reduce((s, v) => s + Number(v.totalAmount ?? v.amount ?? 0), 0);
+}
+
 /** Does an existing rental block a vehicle from a new booking?
  *  When `newStart` is omitted (reconcile / picker before dates are entered),
  *  any active+unreturned rental is considered blocking — this preserves the
@@ -439,7 +449,11 @@ const fromChecklist = (r: any): InsuranceChecklistItem => ({
 // ---- violations ----
 const fromViolation = (r: any): Violation => ({
   id: r.id, vehicleId: r.vehicle_id, driverId: r.driver_id ?? undefined,
-  type: r.type, amount: Number(r.amount), dateIssued: r.date_issued,
+  rentalId: r.rental_id ?? undefined,
+  type: r.type, amount: Number(r.amount),
+  totalAmount: r.total_amount != null ? Number(r.total_amount) : undefined,
+  paidAt: r.paid_at ?? undefined,
+  dateIssued: r.date_issued,
   status: r.status, notes: r.notes ?? undefined,
 });
 const toViolation = (v: Violation) => ({

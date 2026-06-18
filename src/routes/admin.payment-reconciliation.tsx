@@ -30,6 +30,11 @@ import {
   applyPaymentCorrection,
   type ReconLine,
 } from "@/lib/payment-reconciliation.functions";
+import {
+  auditBalances,
+  type BalanceAuditLine,
+} from "@/lib/balance-audit.functions";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/payment-reconciliation")({
@@ -132,6 +137,17 @@ function ReconciliationPage() {
         subtitle="Report-only: compares each payment row against the real Stripe charge. No changes are made until you approve a correction — every applied change is written to the payment audit log."
       />
 
+      <Tabs defaultValue="balance" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="balance">Balance audit</TabsTrigger>
+          <TabsTrigger value="stripe">Stripe reconciliation</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="balance" className="space-y-4">
+          <BalanceAuditPanel />
+        </TabsContent>
+
+        <TabsContent value="stripe" className="space-y-4">
       <Card className="p-4 space-y-3">
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
@@ -277,6 +293,219 @@ function ReconciliationPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+      </Tabs>
     </div>
+  );
+}
+
+const BAL_VERDICT: Record<
+  BalanceAuditLine["verdict"],
+  { label: string; variant: "default" | "secondary" | "outline" | "destructive" }
+> = {
+  ok: { label: "OK", variant: "secondary" },
+  phantom_extension: { label: "Phantom extension", variant: "destructive" },
+  missing_violation: { label: "Missing violation", variant: "outline" },
+  bloated_base: { label: "Bloated base", variant: "destructive" },
+  multi: { label: "Multiple", variant: "destructive" },
+};
+
+function BalanceAuditPanel() {
+  const runAudit = useServerFn(auditBalances);
+  const applyFix = useServerFn(applyPaymentCorrection);
+
+  const [rentalId, setRentalId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [lines, setLines] = useState<BalanceAuditLine[] | null>(null);
+  const [onlyChanged, setOnlyChanged] = useState(true);
+
+  const [fixRow, setFixRow] = useState<{ rentalId: string; paymentId: string; amount: number; expected: number } | null>(null);
+  const [newAmount, setNewAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [applying, setApplying] = useState(false);
+
+  async function run() {
+    setLoading(true);
+    try {
+      const res = await runAudit({ data: { rentalId: rentalId.trim() || undefined, onlyChanged } });
+      if ("error" in res) {
+        toast.error(res.error);
+        return;
+      }
+      setLines(res.lines);
+      toast.success(`Checked ${res.checked} reservations — ${res.changed} will change`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Balance audit failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function openSplit(rentalId: string, row: { payment_id: string; amount: number; expected: number }) {
+    setFixRow({ rentalId, paymentId: row.payment_id, amount: row.amount, expected: row.expected });
+    setNewAmount(String(row.expected));
+    setReason(`Split base: original term is $${row.expected.toFixed(2)}; remove extension days bloat.`);
+  }
+
+  async function submitFix() {
+    if (!fixRow) return;
+    if (!reason.trim()) {
+      toast.error("A reason is required");
+      return;
+    }
+    setApplying(true);
+    try {
+      const res = await applyFix({
+        data: {
+          paymentId: fixRow.paymentId,
+          action: "set_amount",
+          newAmount: Number(newAmount),
+          reason: reason.trim(),
+        },
+      });
+      if ("error" in res) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success("Correction applied and logged to audit");
+      setFixRow(null);
+      await run();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Correction failed");
+    } finally {
+      setApplying(false);
+    }
+  }
+
+  return (
+    <>
+      <Card className="p-4 space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Canonical rule: <span className="font-medium text-foreground">base (original term) + signed extensions + unpaid violations − payments received</span>.
+          Sent-but-unsigned extensions never count. Report-only — splitting a bloated charge routes through the audit log.
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="balRentalId" className="text-xs">Reservation (optional)</Label>
+            <Input
+              id="balRentalId"
+              placeholder="e.g. R-576 — leave blank for all"
+              value={rentalId}
+              onChange={(e) => setRentalId(e.target.value)}
+              className="w-64"
+            />
+          </div>
+          <Button onClick={run} disabled={loading} className="gap-2">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Run balance audit
+          </Button>
+          {lines && (
+            <Button variant="ghost" size="sm" onClick={() => setOnlyChanged((v) => !v)}>
+              {onlyChanged ? "Show all" : "Show only changed"}
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      {lines && (
+        <Card className="p-0 overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reservation</TableHead>
+                <TableHead>Renter</TableHead>
+                <TableHead className="text-right">Current</TableHead>
+                <TableHead className="text-right">Canonical</TableHead>
+                <TableHead className="text-right">Δ</TableHead>
+                <TableHead>Why</TableHead>
+                <TableHead>Verdict</TableHead>
+                <TableHead></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {lines.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-6">
+                    <CheckCircle2 className="h-5 w-5 inline mr-2 text-green-600" />
+                    No balance changes.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                lines.map((l) => {
+                  const v = BAL_VERDICT[l.verdict];
+                  return (
+                    <TableRow key={l.rental_id}>
+                      <TableCell className="font-medium">{l.rental_id}</TableCell>
+                      <TableCell className="text-xs">{l.renter_name}</TableCell>
+                      <TableCell className="text-right">{money(l.old_balance)}</TableCell>
+                      <TableCell className="text-right font-medium">{money(l.canonical_balance)}</TableCell>
+                      <TableCell className={`text-right ${l.delta < 0 ? "text-green-600" : l.delta > 0 ? "text-destructive" : ""}`}>
+                        {l.delta === 0 ? "—" : `${l.delta > 0 ? "+" : ""}${money(l.delta)}`}
+                      </TableCell>
+                      <TableCell className="text-xs max-w-[320px]">
+                        <ul className="list-disc pl-4 space-y-0.5">
+                          {l.reasons.map((r, i) => <li key={i}>{r}</li>)}
+                        </ul>
+                      </TableCell>
+                      <TableCell><Badge variant={v.variant}>{v.label}</Badge></TableCell>
+                      <TableCell>
+                        {l.bloated_rows.map((b) => (
+                          <Button
+                            key={b.payment_id}
+                            size="sm"
+                            variant="outline"
+                            className="mb-1"
+                            onClick={() => openSplit(l.rental_id, b)}
+                          >
+                            Split {money(b.amount)}
+                          </Button>
+                        ))}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+
+      <Dialog open={!!fixRow} onOpenChange={(o) => !o && setFixRow(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" /> Split bloated base charge
+            </DialogTitle>
+            <DialogDescription>
+              Correct the base charge to the original-term amount. The change is written to the payment audit log.
+            </DialogDescription>
+          </DialogHeader>
+          {fixRow && (
+            <div className="space-y-3 text-sm">
+              <div className="rounded-md bg-muted/40 p-3 space-y-1">
+                <div>Reservation: <span className="font-medium">{fixRow.rentalId}</span></div>
+                <div>Payment: <span className="font-mono text-xs">{fixRow.paymentId}</span></div>
+                <div>Current: {money(fixRow.amount)} · Expected base: {money(fixRow.expected)}</div>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="balNewAmount" className="text-xs">New base amount</Label>
+                <Input id="balNewAmount" type="number" step="0.01" value={newAmount} onChange={(e) => setNewAmount(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="balReason" className="text-xs">Reason (required — recorded in audit log)</Label>
+                <Input id="balReason" value={reason} onChange={(e) => setReason(e.target.value)} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setFixRow(null)} disabled={applying}>Cancel</Button>
+            <Button onClick={submitFix} disabled={applying} className="gap-2">
+              {applying && <Loader2 className="h-4 w-4 animate-spin" />}
+              Apply &amp; log
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
