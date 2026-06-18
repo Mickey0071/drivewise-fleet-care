@@ -381,8 +381,8 @@ function BalanceAuditPanel() {
     <>
       <Card className="p-4 space-y-3">
         <p className="text-sm text-muted-foreground">
-          Canonical rule: <span className="font-medium text-foreground">base (original term) + signed extensions + unpaid violations − payments received</span>.
-          Sent-but-unsigned extensions never count. Report-only — splitting a bloated charge routes through the audit log.
+          Canonical rule: <span className="font-medium text-foreground">base (original term) + signed extensions + unsigned out-accrual − ALL payments received − discounts</span>.
+          Total payments includes every payment type (base, extensions, other). Sent-but-unsigned links never count; violations stay on their own line. Report-only — no records change.
         </p>
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
