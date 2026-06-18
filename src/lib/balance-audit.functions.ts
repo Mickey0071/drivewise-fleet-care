@@ -41,13 +41,15 @@ export type BalanceAuditLine = {
   renter_name: string;
   status: string;
   /** components of the canonical balance */
-  unpaid_charges: number;
-  signed_extension_owed: number;
+  base_rental: number;
+  signed_extensions: number;
+  unsigned_accrual: number;
+  /** sum of ALL payments received (base + extension + any other), excl. credits */
+  total_payments: number;
+  /** payments that the buggy legacy calc counted (base-rental only) */
+  base_payments: number;
   violations_unpaid: number;
   credits: number;
-  payments_received: number;
-  /** phantom amount the legacy calc was adding for sent-but-unsigned extensions */
-  phantom_sent_extension: number;
   old_balance: number;
   canonical_balance: number;
   delta: number;
