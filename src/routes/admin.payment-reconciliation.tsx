@@ -414,9 +414,14 @@ function BalanceAuditPanel() {
               <TableRow>
                 <TableHead>Reservation</TableHead>
                 <TableHead>Renter</TableHead>
-                <TableHead className="text-right">Current</TableHead>
-                <TableHead className="text-right">Canonical</TableHead>
+                <TableHead className="text-right">Base</TableHead>
+                <TableHead className="text-right">Signed ext.</TableHead>
+                <TableHead className="text-right">Accrual</TableHead>
+                <TableHead className="text-right">Payments</TableHead>
+                <TableHead className="text-right">Old bal.</TableHead>
+                <TableHead className="text-right">New bal.</TableHead>
                 <TableHead className="text-right">Δ</TableHead>
+                <TableHead className="text-right">Violations</TableHead>
                 <TableHead>Why</TableHead>
                 <TableHead>Verdict</TableHead>
                 <TableHead></TableHead>
@@ -425,7 +430,7 @@ function BalanceAuditPanel() {
             <TableBody>
               {lines.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-6">
+                  <TableCell colSpan={13} className="text-center text-muted-foreground py-6">
                     <CheckCircle2 className="h-5 w-5 inline mr-2 text-green-600" />
                     No balance changes.
                   </TableCell>
@@ -437,11 +442,16 @@ function BalanceAuditPanel() {
                     <TableRow key={l.rental_id}>
                       <TableCell className="font-medium">{l.rental_id}</TableCell>
                       <TableCell className="text-xs">{l.renter_name}</TableCell>
+                      <TableCell className="text-right">{money(l.base_rental)}</TableCell>
+                      <TableCell className="text-right">{money(l.signed_extensions)}</TableCell>
+                      <TableCell className="text-right">{money(l.unsigned_accrual)}</TableCell>
+                      <TableCell className="text-right">{money(l.total_payments)}</TableCell>
                       <TableCell className="text-right">{money(l.old_balance)}</TableCell>
                       <TableCell className="text-right font-medium">{money(l.canonical_balance)}</TableCell>
                       <TableCell className={`text-right ${l.delta < 0 ? "text-green-600" : l.delta > 0 ? "text-destructive" : ""}`}>
                         {l.delta === 0 ? "—" : `${l.delta > 0 ? "+" : ""}${money(l.delta)}`}
                       </TableCell>
+                      <TableCell className="text-right text-muted-foreground">{money(l.violations_unpaid)}</TableCell>
                       <TableCell className="text-xs max-w-[320px]">
                         <ul className="list-disc pl-4 space-y-0.5">
                           {l.reasons.map((r, i) => <li key={i}>{r}</li>)}
