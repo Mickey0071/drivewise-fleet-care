@@ -130,6 +130,16 @@ export const auditBalances = createServerFn({ method: "POST" })
       const filter = data.rentalId?.trim();
       const lines: BalanceAuditLine[] = [];
 
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const dayMs = 86400000;
+      const periodsBetween = (fromISO: string, toISO: string, weekly: boolean): number => {
+        const a = new Date(fromISO + "T00:00:00Z").getTime();
+        const b = new Date(toISO + "T00:00:00Z").getTime();
+        const days = Math.round((b - a) / dayMs);
+        if (days <= 0) return 0;
+        return weekly ? Math.ceil(days / 7) : days;
+      };
+
       for (const r of rentals as any[]) {
         if (filter && r.id !== filter) continue;
         const rs = (r.reservation_status ?? "active") as string;
@@ -139,28 +149,59 @@ export const auditBalances = createServerFn({ method: "POST" })
         const mySigned = extSigned.filter((e: any) => e.rental_id === r.id);
         const myViolations = violations.filter((v: any) => v.rental_id === r.id);
 
-        // --- payments received (paid charge receipts) and credits ---
+        // --- discounts (credit rows) ---
         const credits = myPayments
           .filter((p: any) => p.status === "paid" && p.kind === "credit")
           .reduce((s: number, p: any) => s + n(p.amount), 0);
-        const payments_received = myPayments
-          .filter((p: any) => p.status === "paid" && p.kind !== "credit")
+
+        // --- extension payment rows (linked to a signed/paid extension) ---
+        // Used both to (a) exclude these charges from base_rental and (b) count
+        // them in total_payments — the legacy bug was that extension payments
+        // were never subtracted from the balance.
+        const extPayIdsAll = new Set<string>([
+          ...mySigned.map((e: any) => e.payment_id).filter(Boolean),
+          ...myReqs
+            .filter((e: any) => {
+              const st = String(e.status ?? "").toLowerCase();
+              return st === "signed" || st === "paid" || e.signed_at || e.rental_extension_id;
+            })
+            .map((e: any) => e.payment_id)
+            .filter(Boolean),
+        ]);
+        const isExtensionCharge = (p: any) =>
+          extPayIdsAll.has(p.id) || /extension/i.test(String(p.note ?? ""));
+
+        // --- signed extensions (real charges), deduped by the period they
+        //     cover (new_end_date). Sent-but-unsigned links count for nothing. ---
+        const signedByEnd = new Map<string, number>();
+        for (const e of mySigned) {
+          const key = e.new_end_date ?? e.id;
+          signedByEnd.set(key, Math.max(signedByEnd.get(key) ?? 0, n(e.additional_amount)));
+        }
+        for (const e of myReqs) {
+          const st = String(e.status ?? "").toLowerCase();
+          const isSigned = st === "signed" || st === "paid" || e.signed_at || e.rental_extension_id;
+          if (!isSigned) continue;
+          const key = e.new_end_date ?? e.id;
+          signedByEnd.set(key, Math.max(signedByEnd.get(key) ?? 0, n(e.additional_amount)));
+        }
+        const signed_extensions = Array.from(signedByEnd.values()).reduce((s, v) => s + v, 0);
+        const signedEnds = Array.from(signedByEnd.keys());
+
+        // --- base rental (original term only): every non-credit charge that is
+        //     NOT an extension charge, regardless of paid status. ---
+        const base_rental = myPayments
+          .filter((p: any) => p.kind !== "credit" && !isExtensionCharge(p))
           .reduce((s: number, p: any) => s + n(p.amount), 0);
 
-        // --- unpaid charge rows (these already represent signed extensions
-        //     because applying an extension inserts a payment row) ---
-        const unpaid_charges = myPayments
-          .filter((p: any) => p.status !== "paid" && p.kind !== "credit")
+        // --- total payments received: ALL paid non-credit rows (base +
+        //     extension + anything else). This is the bug fix. ---
+        const paidRows = myPayments.filter((p: any) => p.status === "paid" && p.kind !== "credit");
+        const total_payments = paidRows.reduce((s: number, p: any) => s + n(p.amount), 0);
+        // legacy buggy payments figure: base-rental payments only (extensions ignored)
+        const base_payments = paidRows
+          .filter((p: any) => !isExtensionCharge(p))
           .reduce((s: number, p: any) => s + n(p.amount), 0);
-
-        // signed extension owed = signed but not yet represented by a paid row.
-        // Captured inside unpaid_charges already; tracked separately for display.
-        const signed_extension_owed = mySigned
-          .filter((e: any) => {
-            const pay = myPayments.find((p: any) => p.id === e.payment_id);
-            return pay ? pay.status !== "paid" : false;
-          })
-          .reduce((s: number, e: any) => s + n(e.additional_amount), 0);
 
         // --- unpaid violations ---
         const violations_unpaid = myViolations
@@ -171,47 +212,40 @@ export const auditBalances = createServerFn({ method: "POST" })
           })
           .reduce((s: number, v: any) => s + (n(v.total_amount) || n(v.amount)), 0);
 
-        // --- phantom: sent-but-unsigned extension requests the legacy calc
-        //     was counting via includePending. They have no payment row and no
-        //     signature. Dedup by new_end_date, and drop periods already
-        //     covered by a signed/accepted extension. ---
-        const coveredEnds = new Set<string>([
-          ...mySigned.map((e: any) => e.new_end_date),
-          ...myReqs
-            .filter((e: any) => {
-              const st = String(e.status ?? "").toLowerCase();
-              return st === "signed" || st === "paid" || e.signed_at || e.rental_extension_id;
-            })
-            .map((e: any) => e.new_end_date),
-        ]);
-        const now = Date.now();
-        const phantomByEnd = new Map<string, number>();
-        for (const e of myReqs) {
-          const st = String(e.status ?? "").toLowerCase();
-          if (st !== "pending") continue;
-          if (e.signed_at || e.rental_extension_id || e.payment_id) continue;
-          if (e.expires_at && new Date(e.expires_at).getTime() <= now) continue;
-          if (coveredEnds.has(e.new_end_date)) continue;
-          const key = e.new_end_date ?? e.id;
-          phantomByEnd.set(key, Math.max(phantomByEnd.get(key) ?? 0, n(e.additional_amount)));
+        // --- unsigned out accrual: car still out past everything it has paid
+        //     for. Accrues per day (daily plan) or per week (weekly plan) from
+        //     the covered-through date to today. Stops once the car is returned. ---
+        const weekly = String(r.billing_period ?? "").toLowerCase() === "weekly";
+        const periodRate = weekly ? (n(r.weekly_rate) || n(r.rate)) : (n(r.rate) || n(r.weekly_rate));
+        let unsigned_accrual = 0;
+        const isOut = rs !== "returned" && rs !== "completed" && rs !== "pending" && !r.returned_at;
+        if (isOut && periodRate > 0) {
+          // covered-through date = the latest of the original end date and any
+          // signed extension's new end date. If there is no end date, fall back
+          // to start_date + (base_rental / rate) periods.
+          let coveredEnd = (r.end_date as string) || "";
+          if (!coveredEnd && r.start_date) {
+            const used = periodRate > 0 ? Math.floor(base_rental / periodRate) : 0;
+            const startMs = new Date(r.start_date + "T00:00:00Z").getTime();
+            coveredEnd = new Date(startMs + used * (weekly ? 7 : 1) * dayMs)
+              .toISOString()
+              .slice(0, 10);
+          }
+          for (const end of signedEnds) {
+            if (typeof end === "string" && end > coveredEnd) coveredEnd = end;
+          }
+          if (coveredEnd && todayStr > coveredEnd) {
+            unsigned_accrual = periodsBetween(coveredEnd, todayStr, weekly) * periodRate;
+          }
         }
-        const phantom_sent_extension =
-          rs === "active"
-            ? Array.from(phantomByEnd.values()).reduce((s, v) => s + v, 0)
-            : 0;
 
         // --- bloated base rows: paid/owed charge rows materially above the
         //     period rate that are NOT linked to an extension. ---
-        const extPayIds = new Set<string>([
-          ...mySigned.map((e: any) => e.payment_id).filter(Boolean),
-          ...myReqs.map((e: any) => e.payment_id).filter(Boolean),
-        ]);
-        const periodRate = n(r.rate) || n(r.weekly_rate);
         const bloated_rows: BloatedRow[] = [];
         if (periodRate > 0) {
           for (const p of myPayments) {
             if (p.kind === "credit") continue;
-            if (extPayIds.has(p.id)) continue;
+            if (extPayIdsAll.has(p.id)) continue;
             if (/extension/i.test(String((p as any).note ?? ""))) continue;
             if (n(p.amount) > periodRate + 0.5) {
               bloated_rows.push({
@@ -225,30 +259,34 @@ export const auditBalances = createServerFn({ method: "POST" })
         }
 
         // --- balances ---
-        // NEW canonical rule (period-based, signature-agnostic):
-        //   balance = base_rental(original term) + extension time the car is
-        //             actually out (counted ONCE per period, deduped across
-        //             re-sent links) − payments received.
-        // Violations are NEVER part of the rental balance — reported separately
-        // in `violations_unpaid` only.
-        // `phantom_sent_extension` is the deduped, per-period extension amount
-        // the car is out for (sent links count even before signature); periods
-        // already represented by a signed/paid payment row are excluded above
-        // to avoid double counting.
-        const canonical_balance = unpaid_charges + phantom_sent_extension - credits;
-        // OLD shown balance under the prior signed-only rule (which also folded
-        // unpaid violations into the balance).
-        const old_balance = unpaid_charges + violations_unpaid - credits;
+        // CANONICAL RULE:
+        //   balance = base_rental(original term)
+        //           + signed_extensions (deduped per period)
+        //           + unsigned_out_accrual (per day/week the car is still out)
+        //           − total_payments (EVERY payment type)
+        //           − credits (discounts)
+        // Violations are NEVER part of the rental balance.
+        const canonical_balance =
+          base_rental + signed_extensions + unsigned_accrual - total_payments - credits;
+        // LEGACY (buggy) balance: identical, but only subtracts base-rental
+        // payments — extension payments were ignored.
+        const old_balance =
+          base_rental + signed_extensions + unsigned_accrual - base_payments - credits;
         const delta = canonical_balance - old_balance;
 
+        const extension_payments = total_payments - base_payments;
         const reasons: string[] = [];
-        if (phantom_sent_extension > 0)
+        if (extension_payments > 0.005)
           reasons.push(
-            `Adds $${phantom_sent_extension.toFixed(2)} extension time the car is out (counted once per period — re-sent links deduped).`,
+            `Subtracts $${extension_payments.toFixed(2)} of extension/other payments that the old balance ignored.`,
+          );
+        if (unsigned_accrual > 0)
+          reasons.push(
+            `Adds $${unsigned_accrual.toFixed(2)} accrual — car still out past covered date (${weekly ? "per week" : "per day"}).`,
           );
         if (violations_unpaid > 0)
           reasons.push(
-            `Removes $${violations_unpaid.toFixed(2)} violation(s) from the rental balance (now tracked on a separate line).`,
+            `$${violations_unpaid.toFixed(2)} violation(s) tracked on a separate line (never in the balance).`,
           );
         if (bloated_rows.length)
           reasons.push(
@@ -257,8 +295,8 @@ export const auditBalances = createServerFn({ method: "POST" })
 
         let verdict: BalanceVerdict = "ok";
         const flags = [
-          phantom_sent_extension > 0 ? "phantom_extension" : null,
-          violations_unpaid > 0 && Math.abs(delta) > 0.005 ? "missing_violation" : null,
+          extension_payments > 0.005 && Math.abs(delta) > 0.005 ? "phantom_extension" : null,
+          violations_unpaid > 0 ? "missing_violation" : null,
           bloated_rows.length ? "bloated_base" : null,
         ].filter(Boolean) as BalanceVerdict[];
         if (flags.length === 1) verdict = flags[0];
@@ -271,12 +309,13 @@ export const auditBalances = createServerFn({ method: "POST" })
           rental_id: r.id,
           renter_name: driverName.get(r.driver_id) ?? "",
           status: rs,
-          unpaid_charges,
-          signed_extension_owed,
+          base_rental,
+          signed_extensions,
+          unsigned_accrual,
+          total_payments,
+          base_payments,
           violations_unpaid,
           credits,
-          payments_received,
-          phantom_sent_extension,
           old_balance,
           canonical_balance,
           delta,
