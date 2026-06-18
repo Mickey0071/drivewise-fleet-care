@@ -266,6 +266,24 @@ export function unpaidExtensionTotal(
   return Array.from(byPeriod.values()).reduce((s, v) => s + v, 0);
 }
 
+/** Signature status for the most recent extension agreement on a rental.
+ *  This is purely an "on file" record — it does NOT gate the balance, which
+ *  already reflects the time the car is out (see unpaidExtensionTotal). */
+export function extensionSignatureStatus(
+  rentalId: string,
+): { state: "none" | "sent" | "signed"; label: string; date: string | null } {
+  const mine = pendingExtensions
+    .filter(e => e.rentalId === rentalId)
+    .filter(e => {
+      const st = (e.status ?? "").toLowerCase();
+      return !st.includes("cancel") && !st.includes("expired");
+    });
+  if (mine.length === 0) return { state: "none", label: "Not sent", date: null };
+  const signed = mine.find(e => !!e.signedAt || (e.status ?? "").toLowerCase() === "signed");
+  if (signed) return { state: "signed", label: "Signed", date: signed.signedAt ?? null };
+  return { state: "sent", label: "Sent — awaiting signature", date: null };
+}
+
 /** Overpayment credit on file for a rental: the sum of paid receipts that
  *  represent money received beyond what was owed (kind === "credit"). This is
  *  display-only — it is never auto-applied to future charges. */
