@@ -439,7 +439,11 @@ const fromChecklist = (r: any): InsuranceChecklistItem => ({
 // ---- violations ----
 const fromViolation = (r: any): Violation => ({
   id: r.id, vehicleId: r.vehicle_id, driverId: r.driver_id ?? undefined,
-  type: r.type, amount: Number(r.amount), dateIssued: r.date_issued,
+  rentalId: r.rental_id ?? undefined,
+  type: r.type, amount: Number(r.amount),
+  totalAmount: r.total_amount != null ? Number(r.total_amount) : undefined,
+  paidAt: r.paid_at ?? undefined,
+  dateIssued: r.date_issued,
   status: r.status, notes: r.notes ?? undefined,
 });
 const toViolation = (v: Violation) => ({
