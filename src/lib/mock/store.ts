@@ -303,6 +303,64 @@ export function rentalViolationsUnpaid(rentalId: string): number {
     .reduce((s, v) => s + Number(v.totalAmount ?? v.amount ?? 0), 0);
 }
 
+/* ===========================================================================
+ * CANONICAL BALANCE ENGINE — single source of truth
+ *
+ * Balance due = base rental owed for the time the car is actually out
+ *             − every payment received (base + extension + any other)
+ *
+ *   • "Time actually out" runs from the start date to TODAY while the car is
+ *     still out, and to the RETURN date once it is back. It keeps accruing
+ *     day-by-day (daily plans) or week-by-week (weekly plans) until return.
+ *   • The time charge already INCLUDES any extension time, so extension
+ *     periods are never added a second time (that was the old double-count /
+ *     phantom-balance bug). Extension PAYMENTS are subtracted like any other
+ *     payment, so a paid extension nets to zero.
+ *   • Violations are NEVER part of this number — see rentalViolationsUnpaid().
+ * ========================================================================= */
+
+/** Period rate + cadence for a rental. Weekly unless billingPeriod is daily. */
+export function rentalPeriodRate(r: Rental): { rate: number; weekly: boolean } {
+  const weekly = String(r.billingPeriod ?? "").toLowerCase() !== "daily";
+  const rate = weekly
+    ? (Number(r.weeklyRate) || Number(r.rate) || 0)
+    : (Number(r.rate) || Number(r.weeklyRate) || 0);
+  return { rate, weekly };
+}
+
+const DAY_MS = 86400000;
+
+/** Base rental owed for the time the car is actually out (periods × rate). */
+export function rentalTimeCharge(r: Rental): number {
+  const rs = r.reservationStatus ?? "active";
+  if (rs === "pending") return 0;
+  const { rate, weekly } = rentalPeriodRate(r);
+  if (!r.startDate || rate <= 0) return 0;
+  const today = new Date().toISOString().slice(0, 10);
+  const returned = rs === "returned" || rs === "completed" || !!r.returnedAt;
+  const through = (returned ? (r.returnedAt ?? r.endDate ?? today) : today).slice(0, 10);
+  const start = r.startDate.slice(0, 10);
+  const days = Math.round(
+    (Date.parse(through + "T00:00:00Z") - Date.parse(start + "T00:00:00Z")) / DAY_MS,
+  );
+  if (days <= 0) return 0;
+  const periods = weekly ? Math.ceil(days / 7) : days;
+  return periods * rate;
+}
+
+/** Sum of every payment received against a rental (excludes credit rows). */
+export function rentalPaymentsReceived(rentalId: string): number {
+  return payments
+    .filter(p => p.rentalId === rentalId && p.status === "paid" && p.kind !== "credit")
+    .reduce((s, p) => s + Number(p.amount || 0), 0);
+}
+
+/** Canonical amount owed: time charge − all payments received. */
+export function rentalCanonicalOwed(r: Rental): number {
+  if ((r.reservationStatus ?? "active") === "pending") return 0;
+  return rentalTimeCharge(r) - rentalPaymentsReceived(r.id);
+}
+
 /** Does an existing rental block a vehicle from a new booking?
  *  When `newStart` is omitted (reconcile / picker before dates are entered),
  *  any active+unreturned rental is considered blocking — this preserves the

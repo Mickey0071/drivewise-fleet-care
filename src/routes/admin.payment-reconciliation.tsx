@@ -414,9 +414,9 @@ function BalanceAuditPanel() {
               <TableRow>
                 <TableHead>Reservation</TableHead>
                 <TableHead>Renter</TableHead>
-                <TableHead className="text-right">Base</TableHead>
-                <TableHead className="text-right">Signed ext.</TableHead>
-                <TableHead className="text-right">Accrual</TableHead>
+                <TableHead className="text-right">Time charge</TableHead>
+                <TableHead className="text-right">Ext. sent</TableHead>
+                <TableHead className="text-right">Accruing</TableHead>
                 <TableHead className="text-right">Payments</TableHead>
                 <TableHead className="text-right">Old bal.</TableHead>
                 <TableHead className="text-right">New bal.</TableHead>
