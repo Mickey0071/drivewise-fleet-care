@@ -1,47 +1,79 @@
-## Goal
+# Fix Balance Calculations — One Canonical Rule
 
-When an admin inputs an extension on a reservation, it should be **logged immediately** in the extension log and on the reservation card (end date advanced + charge recorded), instead of staying invisible until the renter signs and pays the Stripe link. A per-extension Paid/Unpaid choice controls how the charge hits the balance.
+## Canonical rule (to apply everywhere)
 
-This is exactly what's wrong on **Luther Bunting / R-527**: the "Extend rental" button today only sends a Stripe pay-link and writes nothing to `rental_extensions` until the renter pays — so the card shows no extension even though one was offered.
+```text
+Balance due = base_rental(original term only)
+            + extensions(signed/accepted only)
+            + violations(unpaid)
+            − cash_payments_received
+```
 
-## What changes
+- Base rental never changes when an extension is added.
+- Extensions are separate line items, owed only once **signed/accepted** (not when merely **sent**).
 
-### 1. Apply + log the extension at the moment of input (server)
-In `src/lib/extension-link.functions.ts` (`createExtensionLink`), after computing `newEndIso` / `additionalAmount`, immediately:
-- Advance `rentals.end_date` to the new end date.
-- Insert a `rental_extensions` row now (previous end, new end, periods, period label, amount) so it shows in the log/card instantly.
-- Insert a `payments` row for the extension charge:
-  - **Unpaid choice** → `status: "late"` (adds to balance as owed; renter pays via the link).
-  - **Paid choice** → `status: "paid"` with today's date and method (does not add to balance).
-- Link the `extension_requests` row to the new `rental_extension` id and `payment` id (store on the request row) so the webhook can reconcile.
+## What I found (root cause)
 
-Add a `chargeState: "owed" | "paid"` input to the server fn. When `paid`, skip generating/sending the Stripe link (nothing to pay) and just return the logged result; when `owed`, create and send the Stripe link as today.
+Balance is **not stored** on a rental — it is computed live in `rentalOwed()` / `unpaidExtensionTotal()` (`src/routes/rentals.tsx`, `src/lib/mock/store.ts`). Two rule violations exist today:
 
-### 2. Make the webhook idempotent (no double-apply)
-In `src/routes/api/public/payments/webhook.ts`, `admin_extension` branch: if the `extension_requests` row already has a linked `rental_extension_id`/payment (pre-applied by the admin), then on payment **do not** advance the end date again or insert a second `rental_extensions` row. Only:
-- Mark the linked extension's payment `paid`.
-- Stamp signature / signed_by / paid_at onto the existing `rental_extensions` row and the `extension_requests` row.
+1. **Sent-but-unsigned extensions count as owed.** For active rentals, `rentalOwed` calls `unpaidExtensionTotal(id, { includePending: true })`. Every duplicated "extension link sent" request (status `pending`, never signed) inflates the balance — even when that exact period was already signed AND paid.
+2. **Violations are not in the balance at all.** Unpaid violation charges are omitted, so some balances are understated.
 
-This prevents the end date from jumping twice and duplicate log rows.
+There are 26 `pending` (sent-only) extension requests, 1 `signed`, 10 `paid` — the 26 pending ones are the main source of phantom balances. 10 reservations are multi-week (candidates for base-vs-extension splitting / bloated charge rows).
 
-### 3. UI: Paid/Unpaid choice in the Extend dialog
-In `ExtendRentalDialog` (`src/routes/rentals.tsx`):
-- Add a Paid / Unpaid toggle ("Renter will pay via link" vs "Already paid").
-- Pass `chargeState` to the server fn.
-- **Unpaid:** behaves like today (logs the extension immediately, then shows/sends the pay link).
-- **Paid:** logs the extension as paid immediately; success message confirms it's recorded, no link.
+## Verified before/after for the two you asked about
 
-After either path, the extension appears in the log/card right away because `rental_extensions` is written synchronously.
+### R-576 — Patricia McIntyre (weekly $400, 6/11→6/18, extended +1wk → 6/25, signed & paid)
+- Charges paid: $400 (base) + $200 + $400 (signed extension) = **$1,000 received**
+- 4 duplicate **sent-only** extension requests for the already-signed 6/25 period → currently adds a **phantom $400**
+- Unpaid violation VIO-NAO5SBY2C = **$218.90** (currently ignored)
 
-## Note on Luther Bunting's $900 balance
+| | Current (shown) | Canonical |
+|---|---|---|
+| Base | 400 | 400 |
+| Extensions (signed) | 400 | 400 |
+| Violations (unpaid) | 0 | 218.90 |
+| Payments received | 1,000 | 1,000 |
+| **Balance** | **≈ $400 (phantom)** | **$18.90** |
 
-The high balance is a **separate** issue from the missing extension. R-527 has unpaid scheduled weekly charges (e.g. the $450 due 6/7 still marked `late`, plus another period) that earlier cash/Stripe payments were booked as standalone receipts instead of being allocated against. The extension log is empty simply because no extension was ever recorded (only a link was sent). This plan fixes the extension-logging behavior so future extensions show up. If you also want me to re-allocate R-527's existing payments so the $900 reflects reality, say so and I'll handle that as a follow-up data fix.
+Reason for change: drop sent-only extension (−$400), add unpaid violation (+$218.90).
 
-## Technical details
+### R-533 — Janai Allen (weekly $425, 6/6→6/13, end now 6/20)
+- Charges paid: $425 (week 1) + **$525 (6/16 — bloated; weekly rate is $425)** = $950 received
+- 2 **sent-only** extension requests for 6/20, **none signed** → currently adds a **phantom $425**
+- Unpaid violation VIO-2Y35XQ70X = **$6** (currently ignored)
+- The 6/20 second week was consumed and paid, but exists only as an unsigned request — so the strict rule would treat it as not-owed, producing a misleading credit.
 
-- New columns may be needed on `extension_requests` to link the pre-applied records: `rental_extension_id` (text/uuid) and `applied_payment_id` (text). I'll add these via a migration with proper GRANTs before wiring the code.
-- `rental_extensions` already supports all needed fields; no schema change there.
-- One source of truth: keep the apply/log logic in the server fn (admin flow is server-based); the card picks it up via the existing `rental_extensions` realtime subscription in the store.
-</content>
-<summary>Make admin "Extend rental" log the extension immediately (advance end date + record charge) with a Paid/Unpaid choice, instead of waiting for the renter to pay the Stripe link; make the webhook idempotent so it doesn't double-apply.</summary>
-</invoke>
+| | Current (shown) | Canonical (strict) |
+|---|---|---|
+| Base (orig term) | 425 | 425 |
+| Extensions (signed) | 0 | 0 |
+| Violations (unpaid) | 0 | 6 |
+| Payments received | 950 | 950 |
+| **Balance** | **≈ $425 (phantom)** | **−$519 (credit) ⚠ needs human decision** |
+
+R-533 is exactly why we review one-by-one: the $525 row is bloated (should be $425 + a $100 line, or the 2nd week should be promoted to a **signed/accepted** extension so it legitimately counts). I will surface this as a flagged row, not auto-apply.
+
+## Implementation
+
+### 1. Canonical engine (single source of truth)
+Add `src/lib/balance.ts` exporting `computeCanonicalBalance(rentalId)` returning the breakdown `{ base, extensionsSigned, violationsUnpaid, paymentsReceived, balance }`. Rules:
+- base = original-term charge only (first period through original end date, before any extension).
+- extensions: sum signed/accepted `rental_extensions` (signature present) / `extension_requests` with status `signed`/`paid`; **exclude** `pending`/sent.
+- violations: unpaid (`paid_at IS NULL`, not resolved/dismissed).
+- payments: sum `paid` receipts.
+Point `rentalOwed()` at this engine and **remove the `includePending: true` path** so sent-only extensions never count.
+
+### 2. Balance audit mode on /admin/payment-reconciliation
+Extend the existing screen (`src/routes/admin.payment-reconciliation.tsx` + `src/lib/payment-reconciliation.functions.ts`) with a "Balance audit" tab that, per reservation, shows current-derived vs canonical balance, the full breakdown, and a verdict (`ok` / `phantom_extension` / `bloated_base` / `missing_violation` / `needs_split`). Every correction is applied only on click and routed through the existing audited RPCs (`admin_correct_payment_amount`, `admin_delete_payment`) with a required reason → `payment_audit_log`. Splitting a bloated base row = correct the base row to the original-term amount + insert a separate extension line (audited).
+
+### 3. Report-first
+Step 1 deliverable is the **read-only report** across all reservations (no writes): table of every reservation whose canonical balance differs, with delta and reason. You review it, then approve each correction one-by-one in the review screen; each writes to the audit log.
+
+## Open decisions (please confirm before I build)
+1. **Violations in balance:** include all unpaid violations in the reservation balance (rule as written), or keep violations on their own track? This *raises* some balances (R-576 +$218.90, R-533 +$6).
+2. **Paid-but-unsigned extensions (R-533's 2nd week / $525):** promote the consumed+paid week to an accepted extension so it counts (balance stays ~$0), OR apply the strict rule and show the resulting credit for manual refund review? Recommended: promote-to-accepted when a matching payment exists, flag the $100 bloat separately.
+
+## Technical notes
+- No stored balance column changes; balance stays derived. Only payment/extension **rows** are corrected, all via audited admin RPCs.
+- Data corrections happen exclusively through the reconciliation screen — nothing silent.
