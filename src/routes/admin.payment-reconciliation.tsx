@@ -30,6 +30,11 @@ import {
   applyPaymentCorrection,
   type ReconLine,
 } from "@/lib/payment-reconciliation.functions";
+import {
+  auditBalances,
+  type BalanceAuditLine,
+} from "@/lib/balance-audit.functions";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Loader2, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/payment-reconciliation")({
