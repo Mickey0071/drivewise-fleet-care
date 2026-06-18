@@ -528,6 +528,16 @@ function RentalsPage() {
                     );
                   })()}
                 </div>
+                {(() => {
+                  const vOwed = rentalViolationsUnpaid(r.id);
+                  if (vOwed <= 0) return null;
+                  return (
+                    <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="uppercase tracking-wide">Violations (separate)</span>
+                      <span className="font-medium text-foreground">{fmtMoney(vOwed)}</span>
+                    </div>
+                  );
+                })()}
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Button
                     size="sm"
