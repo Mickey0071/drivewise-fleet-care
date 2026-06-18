@@ -8,9 +8,13 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  * canonical balance defined by the one rule we apply everywhere:
  *
  *   Balance due = base_rental(original term only)
- *               + extensions(signed/accepted only)
- *               + violations(unpaid)
+ *               + extension time the car is actually out
+ *                 (counted ONCE per period, signature NOT required,
+ *                  re-sent links for the same period deduped)
  *               - cash_payments_received
+ *
+ *   Violations are NEVER part of the rental balance — they are reported on a
+ *   separate line (violations_unpaid) and tracked independently.
  *
  * This function NEVER writes anything. Corrections are applied one-by-one
  * from the /admin/payment-reconciliation screen and routed through the
