@@ -137,6 +137,17 @@ function ReconciliationPage() {
         subtitle="Report-only: compares each payment row against the real Stripe charge. No changes are made until you approve a correction — every applied change is written to the payment audit log."
       />
 
+      <Tabs defaultValue="balance" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="balance">Balance audit</TabsTrigger>
+          <TabsTrigger value="stripe">Stripe reconciliation</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="balance" className="space-y-4">
+          <BalanceAuditPanel />
+        </TabsContent>
+
+        <TabsContent value="stripe" className="space-y-4">
       <Card className="p-4 space-y-3">
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
