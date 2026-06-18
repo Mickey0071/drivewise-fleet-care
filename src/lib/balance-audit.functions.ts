@@ -96,7 +96,7 @@ export const auditBalances = createServerFn({ method: "POST" })
 
       const [rRes, pRes, erRes, reRes, vRes, dRes] = await Promise.all([
         supabaseAdmin.from("rentals").select(
-          "id, driver_id, start_date, end_date, billing_period, rate, weekly_rate, reservation_status, returned_at, balance",
+          "id, driver_id, start_date, end_date, billing_period, rate, weekly_rate, reservation_status, returned_at",
         ),
         supabaseAdmin.from("payments").select(
           "id, rental_id, amount, due_date, paid_date, status, kind, note",
