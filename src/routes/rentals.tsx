@@ -744,9 +744,23 @@ function RentalsPage() {
                     </Button>
                   )}
                   {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (
-                    <Button variant="outline" size="sm" onClick={() => setExtending(r)}>
-                      <CalendarPlus className="mr-1 h-4 w-4" /> Extend rental
-                    </Button>
+                    <div className="inline-flex items-center gap-1.5">
+                      <Button variant="outline" size="sm" onClick={() => setExtending(r)}>
+                        <CalendarPlus className="mr-1 h-4 w-4" /> Extend / Send for signature
+                      </Button>
+                      {(() => {
+                        const sig = extensionSignatureStatus(r.id);
+                        if (sig.state === "none") return null;
+                        const tone = sig.state === "signed"
+                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                          : "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400";
+                        return (
+                          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${tone}`}>
+                            <FileSignature className="h-3 w-3" /> {sig.label}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   )}
                   {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (
                     <Button variant="outline" size="sm" onClick={() => setSwapping(r)}>
