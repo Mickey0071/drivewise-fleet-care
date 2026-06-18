@@ -93,7 +93,7 @@ export const auditBalances = createServerFn({ method: "POST" })
           "id, driver_id, start_date, end_date, billing_period, rate, weekly_rate, reservation_status, returned_at",
         ),
         supabaseAdmin.from("payments").select(
-          "id, rental_id, amount, due_date, paid_date, status, kind",
+          "id, rental_id, amount, due_date, paid_date, status, kind, note",
         ),
         supabaseAdmin.from("extension_requests").select(
           "id, rental_id, status, additional_amount, new_end_date, signed_at, paid_at, rental_extension_id, payment_id, expires_at",
