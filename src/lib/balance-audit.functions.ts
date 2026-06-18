@@ -96,7 +96,7 @@ export const auditBalances = createServerFn({ method: "POST" })
 
       const [rRes, pRes, erRes, reRes, vRes, dRes] = await Promise.all([
         supabaseAdmin.from("rentals").select(
-          "id, driver_id, start_date, end_date, billing_period, rate, weekly_rate, reservation_status, returned_at",
+          "id, driver_id, start_date, end_date, billing_period, rate, weekly_rate, reservation_status, returned_at, balance",
         ),
         supabaseAdmin.from("payments").select(
           "id, rental_id, amount, due_date, paid_date, status, kind, note",
@@ -212,29 +212,30 @@ export const auditBalances = createServerFn({ method: "POST" })
           })
           .reduce((s: number, v: any) => s + (n(v.total_amount) || n(v.amount)), 0);
 
-        // --- unsigned out accrual: car still out past everything it has paid
-        //     for. Accrues per day (daily plan) or per week (weekly plan) from
-        //     the covered-through date to today. Stops once the car is returned. ---
-        const weekly = String(r.billing_period ?? "").toLowerCase() === "weekly";
+        // --- TIME CHARGE (single source of truth): base rental owed for the
+        //     time the car is actually out, periods × rate, from the start date
+        //     to TODAY while still out and to the RETURN date once back. This
+        //     already includes any extension time, so extensions are never
+        //     added a second time. ---
+        const weekly = String(r.billing_period ?? "").toLowerCase() !== "daily";
         const periodRate = weekly ? (n(r.weekly_rate) || n(r.rate)) : (n(r.rate) || n(r.weekly_rate));
+        const returned = rs === "returned" || rs === "completed" || !!r.returned_at;
+        let time_charge = 0;
+        if (rs !== "pending" && periodRate > 0 && r.start_date) {
+          const start = String(r.start_date).slice(0, 10);
+          const through = String(
+            (returned ? (r.returned_at ?? r.end_date ?? todayStr) : todayStr),
+          ).slice(0, 10);
+          if (through > start) {
+            time_charge = periodsBetween(start, through, weekly) * periodRate;
+          }
+        }
+        // accrual = the portion of the time charge beyond the original end date
+        // (shown for transparency only; it is already part of time_charge).
         let unsigned_accrual = 0;
-        const isOut = rs !== "returned" && rs !== "completed" && rs !== "pending" && !r.returned_at;
-        if (isOut && periodRate > 0) {
-          // covered-through date = the latest of the original end date and any
-          // signed extension's new end date. If there is no end date, fall back
-          // to start_date + (base_rental / rate) periods.
-          let coveredEnd = (r.end_date as string) || "";
-          if (!coveredEnd && r.start_date) {
-            const used = periodRate > 0 ? Math.floor(base_rental / periodRate) : 0;
-            const startMs = new Date(r.start_date + "T00:00:00Z").getTime();
-            coveredEnd = new Date(startMs + used * (weekly ? 7 : 1) * dayMs)
-              .toISOString()
-              .slice(0, 10);
-          }
-          for (const end of signedEnds) {
-            if (typeof end === "string" && end > coveredEnd) coveredEnd = end;
-          }
-          if (coveredEnd && todayStr > coveredEnd) {
+        if (!returned && rs !== "pending" && periodRate > 0 && r.end_date) {
+          const coveredEnd = String(r.end_date).slice(0, 10);
+          if (todayStr > coveredEnd) {
             unsigned_accrual = periodsBetween(coveredEnd, todayStr, weekly) * periodRate;
           }
         }
@@ -259,30 +260,26 @@ export const auditBalances = createServerFn({ method: "POST" })
         }
 
         // --- balances ---
-        // CANONICAL RULE:
-        //   balance = base_rental(original term)
-        //           + signed_extensions (deduped per period)
-        //           + unsigned_out_accrual (per day/week the car is still out)
+        // CANONICAL RULE (single source of truth):
+        //   balance = time the car is actually out × period rate
         //           − total_payments (EVERY payment type)
         //           − credits (discounts)
+        // Extension time is included in the time charge (never added twice).
         // Violations are NEVER part of the rental balance.
-        const canonical_balance =
-          base_rental + signed_extensions + unsigned_accrual - total_payments - credits;
-        // LEGACY (buggy) balance: identical, but only subtracts base-rental
-        // payments — extension payments were ignored.
-        const old_balance =
-          base_rental + signed_extensions + unsigned_accrual - base_payments - credits;
+        const canonical_balance = time_charge - total_payments - credits;
+        // OLD balance = the number stored on the reservation before this rule.
+        const old_balance = n(r.balance);
         const delta = canonical_balance - old_balance;
 
         const extension_payments = total_payments - base_payments;
         const reasons: string[] = [];
-        if (extension_payments > 0.005)
-          reasons.push(
-            `Subtracts $${extension_payments.toFixed(2)} of extension/other payments that the old balance ignored.`,
-          );
+        reasons.push(
+          `Time charged: ${periodsBetween(String(r.start_date ?? todayStr).slice(0, 10), (returned ? String(r.returned_at ?? r.end_date ?? todayStr) : todayStr).slice(0, 10), weekly)} ${weekly ? "week(s)" : "day(s)"} × $${periodRate.toFixed(2)} = $${time_charge.toFixed(2)}.`,
+        );
+        reasons.push(`Payments received (all types): $${total_payments.toFixed(2)}.`);
         if (unsigned_accrual > 0)
           reasons.push(
-            `Adds $${unsigned_accrual.toFixed(2)} accrual — car still out past covered date (${weekly ? "per week" : "per day"}).`,
+            `Includes $${unsigned_accrual.toFixed(2)} still accruing — car out past its end date (${weekly ? "per week" : "per day"}).`,
           );
         if (violations_unpaid > 0)
           reasons.push(
@@ -309,7 +306,7 @@ export const auditBalances = createServerFn({ method: "POST" })
           rental_id: r.id,
           renter_name: driverName.get(r.driver_id) ?? "",
           status: rs,
-          base_rental,
+          base_rental: time_charge,
           signed_extensions,
           unsigned_accrual,
           total_payments,

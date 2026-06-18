@@ -5,7 +5,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicles, vehicleById, driverById, payments, violations, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, unpaidExtensionTotal, rentalCredit, rentalViolationsUnpaid, saveAccidentReport, ensureAccidentToken } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, rentalCredit, rentalViolationsUnpaid, rentalCanonicalOwed, saveAccidentReport, ensureAccidentToken } from "@/lib/mock/store";
 import { extensionSignatureStatus } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
 import { Switch } from "@/components/ui/switch";
@@ -237,59 +237,13 @@ function RentalsPage() {
     return rentalOwed(r) - rentalCredit(r.id);
   }
   function rentalOwed(r: Rental): number {
-    const sched = payments.filter(p => p.rentalId === r.id);
-    const rs = r.reservationStatus ?? "active";
-    // PENDING: nothing due yet
-    if (rs === "pending") return 0;
-    // CANONICAL RULE (period-based, signature-agnostic):
-    //   balance = base_rental(original term) + extension time the car is
-    //             actually out − payments received.
-    // Extension time is owed automatically once the car is out past its end
-    // date; a signature is NOT required. Each period the car is out is counted
-    // ONCE (multiple sent links for the same period collapse to one charge —
-    // dedupe handled inside unpaidExtensionTotal). Violations are NEVER part of
-    // the rental balance; they are tracked on their own line.
-    const extOwed = unpaidExtensionTotal(r.id, { includePending: true });
-    // RETURNED: only count what was actually owed for the rental period the
-    // renter used (original agreement + any extension that began), NOT future
-    // renewal weeks that were scheduled but never came into effect. A charge
-    // counts only if it came due on/before the actual return date.
-    if (rs === "returned" || rs === "completed") {
-      const cutoff = (r.returnedAt ?? r.endDate ?? "").slice(0, 10);
-      const owedThroughReturn = sched
-        .filter(p =>
-          p.status !== "paid" &&
-          (cutoff === "" || ((p.dueDate ?? "") !== "" && (p.dueDate ?? "") <= cutoff)),
-        )
-        .reduce((s, p) => s + Number(p.amount || 0), 0);
-      return owedThroughReturn + extOwed;
-    }
-    // ON RENT (active) — extension time the car is out counts whether or not
-    // the agreement has been signed yet.
-    const extOwedActive = extOwed;
-    const today = new Date().toISOString().slice(0, 10);
-    const end = r.endDate ?? today;
-    // Rental period has ended. A paid-up renter should NOT show a balance just
-    // because the end date passed — a balance only appears once a renewal /
-    // extension has actually begun (extOwed) or there were genuinely unpaid
-    // charges from BEFORE the end date.
-    if (today > end) {
-      // Charges that came due strictly BEFORE the end date and are still
-      // unpaid. The renewal week (due on/after the end date) is represented by
-      // the extension amount instead, so it is excluded here to avoid double
-      // counting.
-      const overduePrePeriod = sched
-        .filter(p => p.status !== "paid" && (p.dueDate ?? "") !== "" && (p.dueDate ?? "") < end)
-        .reduce((s, p) => s + Number(p.amount || 0), 0);
-      return overduePrePeriod + extOwedActive;
-    }
-    // Within paid rental period -> only show unpaid extension charges, if any
-    const extPaymentIds = new Set(
-      (r.extensions ?? []).map(e => e.paymentId).filter(Boolean) as string[],
-    );
-    return sched
-      .filter(p => p.status !== "paid" && extPaymentIds.has(p.id))
-      .reduce((s, p) => s + Number(p.amount || 0), 0) + extOwedActive;
+    // CANONICAL RULE (single source of truth — see store.rentalCanonicalOwed):
+    //   balance = time the car is actually out × period rate
+    //           − every payment received (base + extension + any other)
+    // The time charge keeps accruing day-by-day / week-by-week until the car
+    // is returned, and already INCLUDES extension time, so extension periods
+    // are never double-counted. Violations are tracked on their own line.
+    return rentalCanonicalOwed(r);
   }
   function rentalStatus(r: Rental): DisplayStatus {
     const rs = r.reservationStatus ?? "active";
