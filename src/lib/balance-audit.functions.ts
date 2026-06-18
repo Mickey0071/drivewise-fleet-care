@@ -267,8 +267,11 @@ export const auditBalances = createServerFn({ method: "POST" })
         // Extension time is included in the time charge (never added twice).
         // Violations are NEVER part of the rental balance.
         const canonical_balance = time_charge - total_payments - credits;
-        // OLD balance = the number stored on the reservation before this rule.
-        const old_balance = n(r.balance);
+        // OLD balance = the legacy derived number (charge rows + signed
+        // extensions + accrual − base-rental payments). There is no stored
+        // balance column, so we reconstruct what the app showed before.
+        const old_balance =
+          base_rental + signed_extensions + unsigned_accrual - base_payments - credits;
         const delta = canonical_balance - old_balance;
 
         const extension_payments = total_payments - base_payments;
