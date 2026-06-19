@@ -1,56 +1,42 @@
-## Goal
+## What you're seeing
 
-Make every reservation's balance come from **one live calculation** based on the rule you just described, and stop relying on any old stored balance numbers. Then re-evaluate extensions so balances update correctly going forward.
+On Luther Bunting's reservation (R-527): the car was **Returned Jun 21, 2026**, the **Balance is $0**, yet the **NEXT PAYMENT** box shows **"$450 due Jun 7, 2026 — Overdue"**. That is contradictory and confusing.
 
-## The single balance rule (plain English)
+## Why it happens
 
-For every reservation, balance is computed live as:
+The card has two independent calculations that disagree:
+
+- **Balance** uses the new canonical engine (time actually used × rate − all payments). For Luther it nets to **$0** — he's fully paid up.
+- **Next payment** does NOT use that engine. It just grabs the first row in the old fixed payment schedule that isn't marked "paid":
 
 ```text
-Balance due =  base rental owed for days actually used
-            +  all extensions sent out (added to amount due)
-            −  every payment received (base + extension + any other)
+next = sched.find(p => p.status !== "paid")
 ```
 
-Details of each piece:
+When a weekly rental was set up, the system pre-created a row for every week (Jun 7, Jun 14, …). Those scheduled rows were never flipped to "paid" even though the money came in as actual payments (e.g. the $1,350 already received). So a stale, leftover schedule row (Jun 7) surfaces as the "next payment," and because today is past Jun 7 it gets stamped **Overdue** — even though nothing is actually owed and the car is already back.
 
-1. **Base rental owed (time actually used)**
-   - Daily rentals: number of days the car has been out × daily rate.
-   - Weekly rentals: number of weeks out × weekly rate.
-   - Counts from the start date up to **today** while the car is still out, and up to the **return date** once returned. It keeps adding every day/week until the vehicle is returned.
+So the "overdue next payment" is a **phantom from the legacy schedule**, not a real debt. The $0 balance is the correct number.
 
-2. **Extensions**
-   - When an extension is **sent out**, its amount is **added** to the balance due.
-   - When that extension is **paid**, the payment is **subtracted** (handled by the payments line below), so a paid extension nets to zero.
-   - Duplicate links for the same period are collapsed to a single charge so re-sent links never stack.
+## The fix
 
-3. **Payments received**
-   - Subtract **every** payment recorded against the reservation — base rental, extension, or anything else.
+Make the "Next payment" box agree with the canonical balance and the rental's real state, instead of trusting stale schedule rows.
 
-4. **Violations** stay on their **own separate line** and are never mixed into the rental balance.
+1. **Returned/completed rentals show no "next payment."** If `reservationStatus` is `returned` or `completed`, replace the Next payment line with "Rental returned — nothing scheduled" (and just show the Balance). A car that's back has no future installment.
 
-So: a fully paid-up renter shows **$0**; a car still out keeps accruing day-by-day (or week-by-week) until returned; sent-but-unpaid extensions show as owed; paid extensions disappear from the balance.
+2. **Suppress the box when the balance is $0 or a credit.** Even for active rentals, if the canonical balance is ≤ $0, don't show an "Overdue" installment — show "All paid" / the credit. An overdue label should only appear when the canonical engine actually says money is owed.
 
-## What changes in the app
+3. **Drive the amount/label from the balance, not the stale row.** When something IS owed on an active rental, show the real outstanding amount and the next genuine due date, rather than a pre-seeded schedule row that was never reconciled.
 
-1. **One calculation engine.** Update `rentalOwed()` in `src/routes/rentals.tsx` and the helpers in `src/lib/mock/store.ts` so the balance is always derived live from the rule above — never read from a stored `balance` field. The same engine already exists in `src/lib/balance-audit.functions.ts`; align all three to identical math (base = time-used × rate, extensions sent = added, all payments = subtracted, accrue until return).
+This is a **display-logic change only** in `src/routes/rentals.tsx` (the `renderCard` "Next payment" block). No balances, payments, or records are modified — it just stops the card from contradicting itself.
 
-2. **Time-based accrual.** Add the day/week accrual so a car still out keeps increasing the balance up to today, and a returned car stops at the return date.
+## Result
 
-3. **Re-evaluate extensions.** Make "extension sent" add to the balance and "extension paid" subtract via the payment, with same-period dedupe — so stale/duplicate extension rows stop inflating balances.
+- Luther (R-527, returned, $0): Next-payment "Overdue" disappears; card shows Returned + Balance $0.
+- Active renters who genuinely owe money still show the correct amount and an Overdue flag when truly past due.
 
-4. **Audit / report first.** The `/admin/payment-reconciliation` Balance Audit tab will show, for every reservation, the old (stored/legacy) number vs the new live number, the full breakdown (days used × rate, extensions sent, payments, accrual), and the difference — so you can see exactly who changes and why before anything is touched.
+## Technical detail
 
-## Rollout / safety
-
-- No stored balance is silently overwritten. The live calculation drives what's displayed; any actual record corrections (e.g. fixing a bloated charge row or a bad extension) are applied **one-by-one** from the Balance Audit screen and logged to `payment_audit_log` with a reason, using the existing audited admin functions.
-- Deliverable order: (1) wire the single engine, (2) show the before/after report across all reservations, (3) you approve corrections individually.
-
-## Technical notes
-
-- Engine inputs per reservation: `start_date`, `end_date`/`returned_at`, `billing_period`, `rate`/`weekly_rate`, payments (all kinds), extension requests (sent/paid), violations (separate).
-- Accrual: `periods(coveredStart → today-or-returnDate) × periodRate`, weekly = `ceil(days/7)`, daily = days.
-- Files: `src/routes/rentals.tsx` (`rentalOwed`/`rentalBalance`), `src/lib/mock/store.ts` (`unpaidExtensionTotal` and a new base-accrual helper), `src/lib/balance-audit.functions.ts` (align report math), `src/routes/admin.payment-reconciliation.tsx` (before/after columns).
+In `renderCard`, gate the Next-payment render on `r.reservationStatus` and on `rentalBalance(r)` rather than on `sched.find(p => p.status !== "paid")`. Keep the existing Balance/credit block as the single source of truth.
 </content>
-<summary>One live balance engine: base = days/weeks actually used × rate, plus extensions sent, minus all payments, accruing until the car returns; violations separate. Report old vs new for every reservation before any record change.</summary>
+<summary>The "Next payment / Overdue" line reads stale legacy schedule rows instead of the canonical balance, so a returned, fully-paid rental falsely shows an overdue installment. Fix is display-only in rentals.tsx: hide next-payment for returned rentals and when balance ≤ $0, and drive it from the canonical balance.</summary>
 </invoke>
