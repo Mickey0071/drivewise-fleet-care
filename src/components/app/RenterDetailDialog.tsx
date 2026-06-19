@@ -65,6 +65,11 @@ export function RenterDetailDialog({
     .reduce((s, p) => s + p.amount, 0);
   const cashSpent = totalSpent - stripeSpent;
 
+  // License/ID + selfie photos are captured per-rental at signing time.
+  // Surface the most recent ones on the renter card.
+  const licenseImageUrl = myRentals.find((r) => r.licenseImageUrl)?.licenseImageUrl;
+  const selfieImageUrl = myRentals.find((r) => r.selfieImageUrl)?.selfieImageUrl;
+
   const address =
     d?.address ||
     (d
