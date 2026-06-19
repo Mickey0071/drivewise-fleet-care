@@ -160,6 +160,8 @@
   aside,
   .no-print { display: none !important; }
 
+  .print-only { display: block !important; }
+
   html, body {
     background: white !important;
     color: black !important;
