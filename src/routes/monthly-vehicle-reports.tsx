@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ReportActions } from "@/components/app/ReportActions";
+import { Button } from "@/components/ui/button";
+import { downloadCSV } from "@/lib/exports";
 import {
   vehicles,
   rentals,
@@ -18,7 +20,7 @@ import {
   fmtDate,
 } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
-import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Printer, Download } from "lucide-react";
 
 export const Route = createFileRoute("/monthly-vehicle-reports")({
   head: () => ({ meta: [{ title: "Monthly Vehicle Reports — Camauto Rentals" }] }),
@@ -268,6 +270,23 @@ function MonthlyVehicleReportsPage() {
                     {fmtMoney(r.net)}
                   </div>
                 </div>
+                <div className="no-print flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const spec = vehicleCsv(r, ym);
+                      downloadCSV(spec.filename, spec.headers, spec.rows);
+                    }}
+                  >
+                    <Download className="mr-1.5 h-4 w-4" />
+                    CSV
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => printVehicleReport(r, ym)}>
+                    <Printer className="mr-1.5 h-4 w-4" />
+                    Print
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="grid gap-6 md:grid-cols-3">
                 <div>
@@ -347,4 +366,83 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="text-foreground">{value}</span>
     </div>
   );
+}
+
+function vehicleCsv(r: VehicleReport, ym: string) {
+  const rows: (string | number)[][] = [];
+  rows.push(["Section", "Detail", "Date", "Amount"]);
+  rows.push(["Income", "Rental", "", r.rentalIncome]);
+  if (r.extensionIncome > 0) rows.push(["Income", "Extensions", "", r.extensionIncome]);
+  r.renters.forEach((x) =>
+    rows.push([
+      "Renter",
+      `${x.name} (${x.startDate}${x.endDate ? ` – ${x.endDate}` : " – ongoing"})`,
+      "",
+      x.paid,
+    ]),
+  );
+  r.expenseLines.forEach((e) =>
+    rows.push(["Expense", `${e.label}${e.vendor ? ` · ${e.vendor}` : ""}`, e.date, e.amount]),
+  );
+  rows.push(["Total", "Net", "", r.net]);
+  const safe = `${r.title}-${r.plate}`.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  return {
+    filename: `vehicle-report-${safe}-${ym}.csv`,
+    headers: rows[0] as string[],
+    rows: rows.slice(1),
+  };
+}
+
+function printVehicleReport(r: VehicleReport, ym: string) {
+  if (typeof window === "undefined") return;
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const renters = r.renters.length
+    ? r.renters
+        .map(
+          (x) =>
+            `<li>${esc(x.name)} (${esc(fmtDate(x.startDate))} – ${
+              x.endDate ? esc(fmtDate(x.endDate)) : "ongoing"
+            })${x.paid > 0 ? ` — ${fmtMoney(x.paid)}` : ""}</li>`,
+        )
+        .join("")
+    : "<li>—</li>";
+  const exp = r.expenseLines.length
+    ? r.expenseLines
+        .map(
+          (e) =>
+            `<tr><td>${esc(e.label)}${e.vendor ? ` · ${esc(e.vendor)}` : ""}</td><td>${esc(
+              fmtDate(e.date),
+            )}</td><td style="text-align:right">${fmtMoney(e.amount)}</td></tr>`,
+        )
+        .join("")
+    : `<tr><td colspan="3">—</td></tr>`;
+  const w = window.open("", "_blank", "width=800,height=900");
+  if (!w) return;
+  w.document.write(`<!doctype html><html><head><title>${esc(r.title)} ${esc(
+    r.plate,
+  )} — ${esc(monthLabel(ym))}</title>
+    <style>
+      body{font-family:system-ui,Arial,sans-serif;margin:32px;color:#111}
+      h1{font-size:20px;margin:0 0 4px}
+      h2{font-size:14px;margin:20px 0 6px;border-bottom:1px solid #ddd;padding-bottom:4px}
+      .sub{color:#666;margin-bottom:16px}
+      table{width:100%;border-collapse:collapse;font-size:13px}
+      td,th{padding:4px 6px}
+      .totals td{font-weight:600;border-top:1px solid #ddd}
+      ul{margin:0;padding-left:18px;font-size:13px}
+    </style></head><body>
+    <h1>${esc(r.title)} <span style="color:#666;font-weight:400">${esc(r.plate)}</span></h1>
+    <div class="sub">Monthly Vehicle Report — ${esc(monthLabel(ym))}</div>
+    <h2>Income · ${fmtMoney(r.income)}</h2>
+    <table><tr><td>Rental</td><td style="text-align:right">${fmtMoney(r.rentalIncome)}</td></tr>
+    ${r.extensionIncome > 0 ? `<tr><td>Extensions</td><td style="text-align:right">${fmtMoney(r.extensionIncome)}</td></tr>` : ""}</table>
+    <h2>Renters</h2><ul>${renters}</ul>
+    <h2>Expenses · ${fmtMoney(r.expenseTotal)}</h2>
+    <table><tr><th style="text-align:left">Item</th><th style="text-align:left">Date</th><th style="text-align:right">Amount</th></tr>${exp}</table>
+    <table class="totals"><tr><td>Net</td><td style="text-align:right">${fmtMoney(r.net)}</td></tr></table>
+    </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 300);
 }
