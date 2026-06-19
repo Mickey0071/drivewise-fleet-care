@@ -373,7 +373,7 @@ function MaintenancePage() {
                   <span className="flex items-center gap-2 text-blue-600">
                     {openPhases["p2"] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
-                    Phase 2 · Diagnose
+                    Phase 2 · Diag/In Repair
                   </span>
                   <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-xs font-medium text-blue-600">{phase2.length}</span>
                 </CardTitle>
