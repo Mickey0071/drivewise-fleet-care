@@ -451,7 +451,20 @@ function RentalsPage() {
             {!isPending && (
               <div className="rounded-md border border-border bg-muted/30 p-3">
                 <div className="text-xs uppercase text-muted-foreground">Next payment</div>
-                {next ? (() => {
+                {(() => {
+                  const isReturned = r.reservationStatus === "returned" || r.reservationStatus === "completed";
+                  const bal = rentalBalance(r);
+                  // A returned car has no future installment.
+                  if (isReturned) {
+                    return <div className="mt-1 text-sm text-muted-foreground">Rental returned — nothing scheduled</div>;
+                  }
+                  // Only show an installment when the canonical engine says money is owed.
+                  if (bal <= 0) {
+                    return <div className="mt-1 text-sm text-muted-foreground">All paid</div>;
+                  }
+                  if (!next) {
+                    return <div className="mt-1 text-sm text-muted-foreground">All paid</div>;
+                  }
                   const today = new Date().toISOString().slice(0, 10);
                   let label = "Scheduled";
                   let tone = "bg-muted text-muted-foreground border-border";
@@ -468,7 +481,7 @@ function RentalsPage() {
                       <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${tone}`}>{label}</span>
                     </div>
                   );
-                })() : <div className="mt-1 text-sm text-muted-foreground">All paid</div>}
+                })()}
                 <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
                   <span className="text-xs uppercase text-muted-foreground">Balance</span>
                   {(() => {
