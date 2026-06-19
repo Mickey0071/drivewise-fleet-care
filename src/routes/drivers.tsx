@@ -29,8 +29,19 @@ function DriversPage() {
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
   const [blockDriver, setBlockDriver] = useState<Driver | null>(null);
   const [detailDriver, setDetailDriver] = useState<Driver | null>(null);
+  const [query, setQuery] = useState("");
   const today = new Date();
   const soon = new Date(today); soon.setDate(today.getDate() + 60);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const digitsQuery = query.replace(/\D/g, "");
+  const filteredDrivers = drivers.filter((d) => {
+    if (!normalizedQuery) return true;
+    const nameMatch = d.fullName.toLowerCase().includes(normalizedQuery);
+    const phoneDigits = (d.phone ?? "").replace(/\D/g, "");
+    const phoneMatch = digitsQuery.length > 0 && phoneDigits.includes(digitsQuery);
+    return nameMatch || phoneMatch;
+  });
 
   return (
     <div>
@@ -39,8 +50,21 @@ function DriversPage() {
         subtitle={`${drivers.length} renters · ${drivers.filter(d => d.status === "active").length} active`}
         action={<Button onClick={() => setOpen(true)}>+ Add Renter</Button>}
       />
+      <div className="mb-3">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search renters by name or phone number…"
+          aria-label="Search renters by name or phone number"
+        />
+      </div>
       <div className="space-y-2">
-        {drivers.map(d => {
+        {filteredDrivers.length === 0 && (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No renters match “{query}”.
+          </p>
+        )}
+        {filteredDrivers.map(d => {
           const rental = rentals.find(r => r.driverId === d.id);
           const veh = rental ? vehicleById(rental.vehicleId) : null;
           const lateCount = payments.filter(p => p.driverId === d.id && p.status !== "paid").length;

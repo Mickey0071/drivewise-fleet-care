@@ -65,6 +65,11 @@ export function RenterDetailDialog({
     .reduce((s, p) => s + p.amount, 0);
   const cashSpent = totalSpent - stripeSpent;
 
+  // License/ID + selfie photos are captured per-rental at signing time.
+  // Surface the most recent ones on the renter card.
+  const licenseImageUrl = myRentals.find((r) => r.licenseImageUrl)?.licenseImageUrl;
+  const selfieImageUrl = myRentals.find((r) => r.selfieImageUrl)?.selfieImageUrl;
+
   const address =
     d?.address ||
     (d
@@ -108,6 +113,36 @@ export function RenterDetailDialog({
 
               {/* INFORMATION */}
               <TabsContent value="info" className="mt-3">
+                {(licenseImageUrl || selfieImageUrl) && (
+                  <div className="mb-4 grid grid-cols-2 gap-3">
+                    {licenseImageUrl && (
+                      <div>
+                        <div className="mb-1 text-xs text-muted-foreground">Driver's License / ID</div>
+                        <a href={licenseImageUrl} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={licenseImageUrl}
+                            alt={`${d.fullName} driver's license`}
+                            className="h-36 w-full rounded-md border object-cover transition-opacity hover:opacity-90"
+                            loading="lazy"
+                          />
+                        </a>
+                      </div>
+                    )}
+                    {selfieImageUrl && (
+                      <div>
+                        <div className="mb-1 text-xs text-muted-foreground">Selfie</div>
+                        <a href={selfieImageUrl} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={selfieImageUrl}
+                            alt={`${d.fullName} selfie`}
+                            className="h-36 w-full rounded-md border object-cover transition-opacity hover:opacity-90"
+                            loading="lazy"
+                          />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <InfoRow icon={<Phone className="h-4 w-4" />} label="Phone" value={d.phone} />
                   <InfoRow icon={<Mail className="h-4 w-4" />} label="Email" value={d.email} />
