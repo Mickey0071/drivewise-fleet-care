@@ -270,6 +270,23 @@ function MonthlyVehicleReportsPage() {
                     {fmtMoney(r.net)}
                   </div>
                 </div>
+                <div className="no-print flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const spec = vehicleCsv(r, ym);
+                      downloadCSV(spec.filename, spec.headers, spec.rows);
+                    }}
+                  >
+                    <Download className="mr-1.5 h-4 w-4" />
+                    CSV
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => printVehicleReport(r, ym)}>
+                    <Printer className="mr-1.5 h-4 w-4" />
+                    Print
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="grid gap-6 md:grid-cols-3">
                 <div>
