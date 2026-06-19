@@ -25,6 +25,7 @@ import { Route as PayrollReturnRouteImport } from './routes/payroll-return'
 import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as MyRentalsRouteImport } from './routes/my-rentals'
+import { Route as MonthlyVehicleReportsRouteImport } from './routes/monthly-vehicle-reports'
 import { Route as MigratedReservationsRouteImport } from './routes/migrated-reservations'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
@@ -176,6 +177,11 @@ const PaymentsRoute = PaymentsRouteImport.update({
 const MyRentalsRoute = MyRentalsRouteImport.update({
   id: '/my-rentals',
   path: '/my-rentals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MonthlyVehicleReportsRoute = MonthlyVehicleReportsRouteImport.update({
+  id: '/monthly-vehicle-reports',
+  path: '/monthly-vehicle-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MigratedReservationsRoute = MigratedReservationsRouteImport.update({
@@ -564,6 +570,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
+  '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
@@ -654,6 +661,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
+  '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
@@ -745,6 +753,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
+  '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
@@ -837,6 +846,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/maintenance'
     | '/migrated-reservations'
+    | '/monthly-vehicle-reports'
     | '/my-rentals'
     | '/payments'
     | '/payroll'
@@ -927,6 +937,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/maintenance'
     | '/migrated-reservations'
+    | '/monthly-vehicle-reports'
     | '/my-rentals'
     | '/payments'
     | '/payroll'
@@ -1017,6 +1028,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/maintenance'
     | '/migrated-reservations'
+    | '/monthly-vehicle-reports'
     | '/my-rentals'
     | '/payments'
     | '/payroll'
@@ -1108,6 +1120,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MaintenanceRoute: typeof MaintenanceRoute
   MigratedReservationsRoute: typeof MigratedReservationsRoute
+  MonthlyVehicleReportsRoute: typeof MonthlyVehicleReportsRoute
   MyRentalsRoute: typeof MyRentalsRouteWithChildren
   PaymentsRoute: typeof PaymentsRoute
   PayrollRoute: typeof PayrollRoute
@@ -1294,6 +1307,13 @@ declare module '@tanstack/react-router' {
       path: '/my-rentals'
       fullPath: '/my-rentals'
       preLoaderRoute: typeof MyRentalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/monthly-vehicle-reports': {
+      id: '/monthly-vehicle-reports'
+      path: '/monthly-vehicle-reports'
+      fullPath: '/monthly-vehicle-reports'
+      preLoaderRoute: typeof MonthlyVehicleReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/migrated-reservations': {
@@ -1840,6 +1860,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MaintenanceRoute: MaintenanceRoute,
   MigratedReservationsRoute: MigratedReservationsRoute,
+  MonthlyVehicleReportsRoute: MonthlyVehicleReportsRoute,
   MyRentalsRoute: MyRentalsRouteWithChildren,
   PaymentsRoute: PaymentsRoute,
   PayrollRoute: PayrollRoute,
