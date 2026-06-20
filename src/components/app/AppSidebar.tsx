@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
   Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature, Bell, CalendarPlus, BarChart3, DatabaseBackup, Package, Upload, Database,
+  Gauge,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -17,7 +18,7 @@ import logo from "@/assets/camauto-logo.jpeg";
 type Item = { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] };
 const adminItems: Item[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["admin"] },
-  { title: "Fleet Snapshot", url: "/fleet-snapshot", icon: LayoutDashboard, roles: ["admin"] },
+  { title: "Fleet Snapshot", url: "/fleet-snapshot", icon: Gauge, roles: ["admin"] },
   { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin"] },
   { title: "Fleet", url: "/fleet", icon: Car, roles: ["admin"] },
   { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["admin"] },
