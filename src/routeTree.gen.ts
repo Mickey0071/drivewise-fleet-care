@@ -26,7 +26,6 @@ import { Route as PayrollRouteImport } from './routes/payroll'
 import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as MyRentalsRouteImport } from './routes/my-rentals'
 import { Route as MonthlyVehicleReportsRouteImport } from './routes/monthly-vehicle-reports'
-import { Route as FleetSnapshotRouteImport } from './routes/fleet-snapshot'
 import { Route as MigratedReservationsRouteImport } from './routes/migrated-reservations'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
@@ -184,11 +183,6 @@ const MyRentalsRoute = MyRentalsRouteImport.update({
 const MonthlyVehicleReportsRoute = MonthlyVehicleReportsRouteImport.update({
   id: '/monthly-vehicle-reports',
   path: '/monthly-vehicle-reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FleetSnapshotRoute = FleetSnapshotRouteImport.update({
-  id: '/fleet-snapshot',
-  path: '/fleet-snapshot',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MigratedReservationsRoute = MigratedReservationsRouteImport.update({
@@ -584,6 +578,7 @@ export interface FileRoutesByFullPath {
   '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
+  '/fleet-snapshot': typeof FleetSnapshotRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
@@ -676,6 +671,7 @@ export interface FileRoutesByTo {
   '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
+  '/fleet-snapshot': typeof FleetSnapshotRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
@@ -769,6 +765,7 @@ export interface FileRoutesById {
   '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
+  '/fleet-snapshot': typeof FleetSnapshotRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
   '/payments': typeof PaymentsRoute
   '/payroll': typeof PayrollRoute
@@ -863,6 +860,7 @@ export interface FileRouteTypes {
     | '/maintenance'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
+    | '/fleet-snapshot'
     | '/my-rentals'
     | '/payments'
     | '/payroll'
@@ -955,6 +953,7 @@ export interface FileRouteTypes {
     | '/maintenance'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
+    | '/fleet-snapshot'
     | '/my-rentals'
     | '/payments'
     | '/payroll'
@@ -1047,6 +1046,7 @@ export interface FileRouteTypes {
     | '/maintenance'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
+    | '/fleet-snapshot'
     | '/my-rentals'
     | '/payments'
     | '/payroll'
@@ -1140,6 +1140,7 @@ export interface RootRouteChildren {
   MaintenanceRoute: typeof MaintenanceRoute
   MigratedReservationsRoute: typeof MigratedReservationsRoute
   MonthlyVehicleReportsRoute: typeof MonthlyVehicleReportsRoute
+  FleetSnapshotRoute: typeof FleetSnapshotRoute
   MyRentalsRoute: typeof MyRentalsRouteWithChildren
   PaymentsRoute: typeof PaymentsRoute
   PayrollRoute: typeof PayrollRoute
@@ -1333,6 +1334,13 @@ declare module '@tanstack/react-router' {
       path: '/monthly-vehicle-reports'
       fullPath: '/monthly-vehicle-reports'
       preLoaderRoute: typeof MonthlyVehicleReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fleet-snapshot': {
+      id: '/fleet-snapshot'
+      path: '/fleet-snapshot'
+      fullPath: '/fleet-snapshot'
+      preLoaderRoute: typeof FleetSnapshotRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/migrated-reservations': {
@@ -1888,6 +1896,7 @@ const rootRouteChildren: RootRouteChildren = {
   MaintenanceRoute: MaintenanceRoute,
   MigratedReservationsRoute: MigratedReservationsRoute,
   MonthlyVehicleReportsRoute: MonthlyVehicleReportsRoute,
+  FleetSnapshotRoute: FleetSnapshotRoute,
   MyRentalsRoute: MyRentalsRouteWithChildren,
   PaymentsRoute: PaymentsRoute,
   PayrollRoute: PayrollRoute,
