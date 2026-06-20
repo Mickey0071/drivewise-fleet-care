@@ -17,6 +17,7 @@ import logo from "@/assets/camauto-logo.jpeg";
 type Item = { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] };
 const adminItems: Item[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["admin"] },
+  { title: "Fleet Snapshot", url: "/fleet-snapshot", icon: LayoutDashboard, roles: ["admin"] },
   { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin"] },
   { title: "Fleet", url: "/fleet", icon: Car, roles: ["admin"] },
   { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["admin"] },
