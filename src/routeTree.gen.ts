@@ -32,6 +32,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as InsuranceRouteImport } from './routes/insurance'
 import { Route as InspectionsRouteImport } from './routes/inspections'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as FleetSnapshotRouteImport } from './routes/fleet-snapshot'
 import { Route as FleetRouteImport } from './routes/fleet'
 import { Route as ExpensesRouteImport } from './routes/expenses'
 import { Route as DriversRouteImport } from './routes/drivers'
@@ -212,6 +213,11 @@ const InspectionsRoute = InspectionsRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FleetSnapshotRoute = FleetSnapshotRouteImport.update({
+  id: '/fleet-snapshot',
+  path: '/fleet-snapshot',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FleetRoute = FleetRouteImport.update({
@@ -564,6 +570,7 @@ export interface FileRoutesByFullPath {
   '/drivers': typeof DriversRoute
   '/expenses': typeof ExpensesRoute
   '/fleet': typeof FleetRouteWithChildren
+  '/fleet-snapshot': typeof FleetSnapshotRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/inspections': typeof InspectionsRoute
   '/insurance': typeof InsuranceRoute
@@ -655,6 +662,7 @@ export interface FileRoutesByTo {
   '/drivers': typeof DriversRoute
   '/expenses': typeof ExpensesRoute
   '/fleet': typeof FleetRouteWithChildren
+  '/fleet-snapshot': typeof FleetSnapshotRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/inspections': typeof InspectionsRoute
   '/insurance': typeof InsuranceRoute
@@ -747,6 +755,7 @@ export interface FileRoutesById {
   '/drivers': typeof DriversRoute
   '/expenses': typeof ExpensesRoute
   '/fleet': typeof FleetRouteWithChildren
+  '/fleet-snapshot': typeof FleetSnapshotRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/inspections': typeof InspectionsRoute
   '/insurance': typeof InsuranceRoute
@@ -840,6 +849,7 @@ export interface FileRouteTypes {
     | '/drivers'
     | '/expenses'
     | '/fleet'
+    | '/fleet-snapshot'
     | '/forgot-password'
     | '/inspections'
     | '/insurance'
@@ -931,6 +941,7 @@ export interface FileRouteTypes {
     | '/drivers'
     | '/expenses'
     | '/fleet'
+    | '/fleet-snapshot'
     | '/forgot-password'
     | '/inspections'
     | '/insurance'
@@ -1022,6 +1033,7 @@ export interface FileRouteTypes {
     | '/drivers'
     | '/expenses'
     | '/fleet'
+    | '/fleet-snapshot'
     | '/forgot-password'
     | '/inspections'
     | '/insurance'
@@ -1114,6 +1126,7 @@ export interface RootRouteChildren {
   DriversRoute: typeof DriversRoute
   ExpensesRoute: typeof ExpensesRoute
   FleetRoute: typeof FleetRouteWithChildren
+  FleetSnapshotRoute: typeof FleetSnapshotRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InspectionsRoute: typeof InspectionsRoute
   InsuranceRoute: typeof InsuranceRoute
@@ -1356,6 +1369,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fleet-snapshot': {
+      id: '/fleet-snapshot'
+      path: '/fleet-snapshot'
+      fullPath: '/fleet-snapshot'
+      preLoaderRoute: typeof FleetSnapshotRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/fleet': {
@@ -1854,6 +1874,7 @@ const rootRouteChildren: RootRouteChildren = {
   DriversRoute: DriversRoute,
   ExpensesRoute: ExpensesRoute,
   FleetRoute: FleetRouteWithChildren,
+  FleetSnapshotRoute: FleetSnapshotRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InspectionsRoute: InspectionsRoute,
   InsuranceRoute: InsuranceRoute,
