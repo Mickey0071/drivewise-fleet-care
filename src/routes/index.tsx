@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { vehicles, payments, maintenance, drivers, rentals, fmtMoney, fmtDate, vehicleById, driverById } from "@/lib/mock/data";
+import { vehicles, maintenance, drivers, rentals, fmtMoney, fmtDate, vehicleById, driverById } from "@/lib/mock/data";
 import { isVehicleBookable, useStoreVersion } from "@/lib/mock/store";
 import { rentalCanonicalOwed, rentalNextDueDate, rentalPastDueDays } from "@/lib/mock/store";
 import { computeVehicleAlerts } from "@/lib/maintenance-utils";
