@@ -1,45 +1,38 @@
-## Goal
-On the extension tab, let staff choose how much to collect via the Stripe link right now ("Amount to collect now"), pre-filled with the full extension charge but editable to any amount > $0. The link uses that amount; the account still records the FULL period charge, so a partial payment naturally leaves the difference as an open balance. Additive change to the extension flow only.
+# Separate violation payments from rent due
 
-## How the current extension flow works (for reference)
-1. `ExtendRentalDialog` (`src/routes/rentals.tsx`) computes the full charge via `computeExtensionCharge` and calls the `createExtensionLink` server function.
-2. `createExtensionLink` (`src/lib/extension-link.functions.ts`):
-   - Inserts a `payments` charge row (`EXTPAY-…`, amount = full charge, status `late`).
-   - Inserts a `rental_extensions` log row (`additional_amount` = full charge).
-   - Advances `end_date`.
-   - Builds the Stripe Payment Link priced at `amountCents = additionalAmount * 100`.
-3. On payment, the webhook (`src/routes/api/public/payments/webhook.ts`, pre-applied block ~L679) flips that `EXTPAY` charge row to `paid` (currently keeping its full amount).
-4. Balance is `rentalTimeCharge − rentalPaymentsReceived` (`src/lib/mock/store.ts`). The extension's full period is in `rentalTimeCharge`; `rentalPaymentsReceived` only counts `paid` rows. This formula is NOT touched.
+## Problem
+Janai Allen (R-533) paid $525 on 6/16, but that was **$425 rent + $100 toward violations**. Today the full $525 counts as rent received, so the app shows her further "paid ahead" on rent than she really is. Violation money should never reduce rent due.
 
-## Changes
+Confirmed in the data: her payments are $425 (6/8), $525 (6/16), and an unpaid $425 extension. Rate is $425/week.
 
-### 1. UI — `ExtendRentalDialog` in `src/routes/rentals.tsx`
-- Add state `collectAmount` (string). When `charge` recomputes (duration / end date change), reset the field to the full `charge.additionalAmount`.
-- Render an editable field **"Amount to collect now"** (only in the `chargeState === "owed"` branch, next to / under the existing "Extension charge" panel). Pre-filled with the full charge.
-- Validation:
-  - Must parse to a number `> 0`, else block send with a toast.
-  - If `< charge.additionalAmount`: show inline note `A balance of $X will remain on this reservation.` (X = full − entered).
-  - If `>= charge.additionalAmount`: no warning.
-- Pass `collectAmount` (as a number) to `createLinkFn` alongside the existing args.
-- Update the confirmation/info copy so it references the collected amount for the link and, when partial, the remaining balance. The "Log & Send Extension Link" button and signature-status chip are unchanged.
+## What I'll build
 
-### 2. Server — `createExtensionLink` in `src/lib/extension-link.functions.ts`
-- Add `collectAmount?: number` to the input validator. Default to the full computed charge when absent; require `> 0` and cap defensively.
-- Keep `additionalAmount` (full period charge) exactly as today for: the `payments` charge row, the `rental_extensions` log row, and `extension_requests.additional_amount`.
-- Use a new `collectCents = Math.round(collectAmount * 100)` for the Stripe `prices.create` `unit_amount` ONLY (the only behavior change).
-- Return both `additionalAmount` (full charge) and the `collectAmount` so the dialog can show the link amount and remaining balance.
+### 1. New permanent payment category: `violation`
+A payment row tagged `kind = "violation"` is money the renter paid against tickets/tolls/violations. It is tracked on the account but **excluded from rent payments-received**, so it can never make rent owed go down or push a renter "ahead."
 
-### 3. Webhook — pre-applied extension reconciliation in `src/routes/api/public/payments/webhook.ts`
-- In the block that marks `extReqRow.applied_payment_id` as `paid` (~L680-692), also set that row's `amount` to the amount actually collected (`amountDollars` from `session.amount_total`) instead of leaving it at the full charge.
-- Effect: `rentalPaymentsReceived` counts the collected amount ($200), while `rentalTimeCharge` still includes the full extension period ($450) → balance shows the $250 remainder automatically. For a full-amount collection this is a no-op (collected == full), so existing behavior is preserved.
-- No other webhook branch changes; the balance formula is untouched.
+- `src/lib/mock/data.ts` — extend the `Payment.kind` union from `"charge" | "credit"` to `"charge" | "credit" | "violation"`.
+- `src/lib/mock/store.ts`:
+  - `rentalPaymentsReceived` (line ~395): exclude `kind === "violation"` (currently only excludes `"credit"`), so violation money never offsets rent.
+  - Add a small helper `rentalViolationPaymentsReceived(rentalId)` that sums paid `violation` rows, for display.
+- The `payments.kind` column is free text (no check constraint), so no schema migration is needed — `"violation"` stores fine.
+
+### 2. Show it as its own line (a different column, not rent)
+- `src/components/app/ReservationPaymentHistory.tsx` — render `violation` rows with their own label/icon (e.g. "Violation payment") so they read clearly as not-rent.
+- `src/routes/rentals.tsx` — surface violation payments received as a separate figure on the card, kept apart from the rent "Due now / balance" math.
+
+### 3. Correct Janai's record (data fix, no money moved)
+- Change existing row `PM-5K5JvqKsxP` from `525` → `425` (rent).
+- Insert a new paid row: `$100`, `kind = "violation"`, dated 6/16, method Stripe, note "Violation payment (separated from rent)".
+
+This leaves total cash received identical ($950) but only $850 counts as rent.
+
+## Resulting numbers for Janai (R-533), today 6/21
+- Possession: 15 days out → 3 weeks posted × $425 = **$1,275 rent charged**
+- Rent received: $425 + $425 = **$850** (the $100 no longer counts)
+- **Rent due now: $425** — she is **not** ahead
+- Violation payments received: **$100**, shown separately
+- Unpaid $425 extension still ignored by the balance (possession-based engine, unchanged)
 
 ## Out of scope (unchanged)
-- Balance formula (`rentalTimeCharge`, `rentalPaymentsReceived`, `rentalCanonicalOwed` in `store.ts`).
-- Signature flow, return flow, "Already paid" (no-link) extension path, auto-extension, and manual `admin-extensions` recording.
-
-## Verification & report
-1. Show the extension tab with the new "Amount to collect now" field and its pre-filled default (Playwright screenshot against the running app).
-2. Trace/test a weekly $450 extension with collect = $200: confirm the Stripe price line uses $200, the `rental_extensions`/charge record the $450, a $200 paid payment is recorded on reconciliation, and `rentalCanonicalOwed` = $250. Where live Stripe execution isn't possible in-sandbox, verify by reading the code path and, if needed, a direct DB check of an extension row.
-3. Confirm no change to reservations not extended in the test.
-4. Confirm the balance-formula code in `store.ts` was not modified.
+- Possession/time-charge engine, extensions logic, credit handling, the Return flow.
+- No violation record is created; the $6 EZPass on file is untouched. The $100 is recorded purely as a violation-category payment, per your choice.
