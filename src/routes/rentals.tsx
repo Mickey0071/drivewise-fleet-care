@@ -5,7 +5,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicles, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, rentalCredit, rentalViolationsUnpaid, rentalCanonicalOwed, saveAccidentReport, ensureAccidentToken, deletePendingExtension } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, rentalCredit, rentalViolationsUnpaid, rentalViolationPaymentsReceived, rentalCanonicalOwed, saveAccidentReport, ensureAccidentToken, deletePendingExtension } from "@/lib/mock/store";
 import { extensionSignatureStatus } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
 import { rentalNextDueDate } from "@/lib/mock/store";
@@ -485,6 +485,16 @@ function RentalsPage() {
                     <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
                       <span className="uppercase tracking-wide">Violations (separate)</span>
                       <span className="font-medium text-foreground">{fmtMoney(vOwed)}</span>
+                    </div>
+                  );
+                })()}
+                {(() => {
+                  const vPaid = rentalViolationPaymentsReceived(r.id);
+                  if (vPaid <= 0) return null;
+                  return (
+                    <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="uppercase tracking-wide">Violation payments (not rent)</span>
+                      <span className="font-medium text-foreground">{fmtMoney(vPaid)}</span>
                     </div>
                   );
                 })()}

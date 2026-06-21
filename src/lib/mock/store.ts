@@ -392,7 +392,15 @@ export function rentalTimeCharge(r: Rental): number {
 /** Sum of every payment received against a rental (excludes credit rows). */
 export function rentalPaymentsReceived(rentalId: string): number {
   return payments
-    .filter(p => p.rentalId === rentalId && p.status === "paid" && p.kind !== "credit")
+    .filter(p => p.rentalId === rentalId && p.status === "paid" && p.kind !== "credit" && p.kind !== "violation")
+    .reduce((s, p) => s + Number(p.amount || 0), 0);
+}
+
+/** Money received toward violations (kind === "violation"). Tracked on the
+ *  account but never offsets rent due — shown as its own figure. */
+export function rentalViolationPaymentsReceived(rentalId: string): number {
+  return payments
+    .filter(p => p.rentalId === rentalId && p.status === "paid" && p.kind === "violation")
     .reduce((s, p) => s + Number(p.amount || 0), 0);
 }
 

@@ -184,7 +184,7 @@ export interface Payment {
   dueDate: string; paidDate?: string;
   method?: "cash" | "Zelle" | "card" | "Stripe"; status: PaymentStatus;
   /** "charge" = ordinary scheduled charge/receipt; "credit" = overpayment money on file. */
-  kind?: "charge" | "credit";
+  kind?: "charge" | "credit" | "violation";
 }
 export interface RepairType {
   id: string;
