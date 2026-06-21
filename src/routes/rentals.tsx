@@ -2051,6 +2051,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
   const [duration, setDuration] = useState<"7" | "14" | "21" | "custom">("7");
   const [submitting, setSubmitting] = useState(false);
   const [chargeState, setChargeState] = useState<"owed" | "paid">("owed");
+  const [collectAmount, setCollectAmount] = useState<string>("");
   const [sentInfo, setSentInfo] = useState<{ signUrl: string; amount: number; newEnd: string; phone: string | null; smsSent: boolean } | null>(null);
   useEffect(() => {
     if (rental) {
@@ -2072,6 +2073,15 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
     setNewEndDate(base.toISOString().slice(0, 10));
   }
   const charge = rental && newEndDate ? computeExtensionCharge(rental, newEndDate) : null;
+  const fullCharge = charge?.additionalAmount ?? 0;
+  // Pre-fill / reset "Amount to collect now" to the full charge whenever the
+  // computed extension charge changes (duration / end-date edits).
+  useEffect(() => {
+    if (fullCharge > 0) setCollectAmount(String(fullCharge));
+  }, [fullCharge]);
+  const collectNum = Number(collectAmount);
+  const collectValid = Number.isFinite(collectNum) && collectNum > 0;
+  const remaining = collectValid && collectNum < fullCharge ? Number((fullCharge - collectNum).toFixed(2)) : 0;
   async function sendLink() {
     if (!rental || !newEndDate || !d) return;
     if (rental.endDate && newEndDate <= rental.endDate) {
@@ -2079,10 +2089,14 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
       return;
     }
     if (!charge || charge.periods < 1) { toast.error("Pick a duration"); return; }
+    if (chargeState === "owed" && !collectValid) {
+      toast.error("Amount to collect must be greater than $0");
+      return;
+    }
     setSubmitting(true);
     try {
-      const r = await createLinkFn({ data: { rentalId: rental.id, periods: charge.periods, periodLabel: charge.periodLabel, chargeState } });
-      setSentInfo({ signUrl: r.signUrl, amount: r.additionalAmount, newEnd: r.newEndDate, phone: r.renterPhone, smsSent: r.smsSent });
+      const r = await createLinkFn({ data: { rentalId: rental.id, periods: charge.periods, periodLabel: charge.periodLabel, chargeState, ...(chargeState === "owed" ? { collectAmount: collectNum } : {}) } });
+      setSentInfo({ signUrl: r.signUrl, amount: chargeState === "owed" ? r.collectAmount : r.additionalAmount, newEnd: r.newEndDate, phone: r.renterPhone, smsSent: r.smsSent });
       if (chargeState === "paid") {
         toast.success("Extension recorded and logged (marked paid)");
       } else {
@@ -2148,6 +2162,34 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
                 </div>
               </div>
             )}
+            {charge && charge.additionalAmount > 0 && chargeState === "owed" && (
+              <div>
+                <Label htmlFor="ext-collect">Amount to collect now</Label>
+                <div className="relative mt-1">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                  <Input
+                    id="ext-collect"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="pl-6"
+                    value={collectAmount}
+                    onChange={(e) => setCollectAmount(e.target.value)}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Sets only the payment link amount. The full {fmtMoney(fullCharge)} extension charge still posts to the account.
+                </p>
+                {collectValid && remaining > 0 && (
+                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                    A balance of {fmtMoney(remaining)} will remain on this reservation.
+                  </p>
+                )}
+                {!collectValid && (
+                  <p className="mt-1 text-xs text-destructive">Enter an amount greater than $0.</p>
+                )}
+              </div>
+            )}
             <div>
               <Label className="text-xs uppercase text-muted-foreground">Charge handling</Label>
               <div className="mt-1 grid grid-cols-2 gap-2">
@@ -2172,7 +2214,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
             <div className="rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
               {chargeState === "owed" ? (
                 <>The extension is logged immediately and the end date updates now. The renter receives one
-                link to sign and pay {charge?.additionalAmount ? fmtMoney(charge.additionalAmount) : ""} via Stripe; the balance clears when they pay.</>
+                link to sign and pay {collectValid ? fmtMoney(collectNum) : ""} via Stripe{remaining > 0 ? `, leaving ${fmtMoney(remaining)} on the account` : ""}; the balance updates when they pay.</>
               ) : (
                 <>The extension is logged immediately as paid and the end date updates now. No link is sent.</>
               )}
@@ -2211,7 +2253,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>{sentInfo ? "Done" : "Cancel"}</Button>
           {!sentInfo && (
-            <Button onClick={sendLink} disabled={submitting}>
+            <Button onClick={sendLink} disabled={submitting || (chargeState === "owed" && !collectValid)}>
               <Send className="mr-1 h-4 w-4" /> {submitting ? "Saving…" : chargeState === "paid" ? "Record Extension (Paid)" : "Log & Send Extension Link"}
             </Button>
           )}

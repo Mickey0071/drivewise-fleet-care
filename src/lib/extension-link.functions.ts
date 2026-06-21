@@ -37,7 +37,7 @@ async function assertAdmin(userId: string) {
  */
 export const createExtensionLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { rentalId: string; periods: number; periodLabel?: string; chargeState?: "owed" | "paid"; method?: string }) => {
+  .inputValidator((d: { rentalId: string; periods: number; periodLabel?: string; chargeState?: "owed" | "paid"; method?: string; collectAmount?: number }) => {
     if (!d?.rentalId || typeof d.rentalId !== "string") throw new Error("rentalId required");
     const n = Number(d.periods);
     if (!Number.isInteger(n) || n < 1 || n > 60) throw new Error("Periods must be 1–60");
@@ -47,7 +47,14 @@ export const createExtensionLink = createServerFn({ method: "POST" })
     }
     const chargeState = d.chargeState === "paid" ? "paid" : "owed";
     const method = typeof d.method === "string" ? d.method : "cash";
-    return { rentalId: d.rentalId, periods: n, periodLabel: label || "", chargeState, method };
+    let collectAmount: number | undefined;
+    if (d.collectAmount != null) {
+      const c = Number(d.collectAmount);
+      if (!Number.isFinite(c) || c <= 0) throw new Error("Amount to collect must be greater than $0");
+      if (c > 1_000_000) throw new Error("Amount to collect is too large");
+      collectAmount = Number(c.toFixed(2));
+    }
+    return { rentalId: d.rentalId, periods: n, periodLabel: label || "", chargeState, method, collectAmount };
   })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
@@ -72,7 +79,14 @@ export const createExtensionLink = createServerFn({ method: "POST" })
     const newEnd = addPeriod(baseEnd, data.periods, periodLabel);
     const newEndIso = newEnd.toISOString().slice(0, 10);
     const additionalAmount = Number((rate * data.periods).toFixed(2));
-    const amountCents = Math.round(additionalAmount * 100);
+    // The full period charge always hits the account (charge + extension log).
+    // The Stripe link, however, only collects what the admin chose to collect
+    // now (defaults to the full charge). A partial collection naturally leaves
+    // the difference as an open balance via timeCharge − paymentsReceived.
+    const collectAmount = data.collectAmount != null
+      ? Number(data.collectAmount.toFixed(2))
+      : additionalAmount;
+    const amountCents = Math.round(collectAmount * 100);
 
     const token = genToken();
 
@@ -154,6 +168,7 @@ export const createExtensionLink = createServerFn({ method: "POST" })
         signUrl: "",
         paymentUrl: "",
         additionalAmount,
+        collectAmount,
         newEndDate: newEndIso,
         periods: data.periods,
         periodLabel,
@@ -211,7 +226,7 @@ export const createExtensionLink = createServerFn({ method: "POST" })
     if (drv?.phone) {
       try {
         const periodsLbl = `${data.periods} ${periodLabel}${data.periods === 1 ? "" : "s"}`;
-        const amt = `$${additionalAmount.toFixed(2)}`;
+        const amt = `$${collectAmount.toFixed(2)}`;
         await notifyRenter({
           phone: drv.phone,
           email: drv.email ?? null,
@@ -239,6 +254,7 @@ export const createExtensionLink = createServerFn({ method: "POST" })
       signUrl,
       paymentUrl: link.url,
       additionalAmount,
+      collectAmount,
       newEndDate: newEndIso,
       periods: data.periods,
       periodLabel,
