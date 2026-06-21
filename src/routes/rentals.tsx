@@ -2073,6 +2073,15 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
     setNewEndDate(base.toISOString().slice(0, 10));
   }
   const charge = rental && newEndDate ? computeExtensionCharge(rental, newEndDate) : null;
+  const fullCharge = charge?.additionalAmount ?? 0;
+  // Pre-fill / reset "Amount to collect now" to the full charge whenever the
+  // computed extension charge changes (duration / end-date edits).
+  useEffect(() => {
+    if (fullCharge > 0) setCollectAmount(String(fullCharge));
+  }, [fullCharge]);
+  const collectNum = Number(collectAmount);
+  const collectValid = Number.isFinite(collectNum) && collectNum > 0;
+  const remaining = collectValid && collectNum < fullCharge ? Number((fullCharge - collectNum).toFixed(2)) : 0;
   async function sendLink() {
     if (!rental || !newEndDate || !d) return;
     if (rental.endDate && newEndDate <= rental.endDate) {
@@ -2080,10 +2089,14 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
       return;
     }
     if (!charge || charge.periods < 1) { toast.error("Pick a duration"); return; }
+    if (chargeState === "owed" && !collectValid) {
+      toast.error("Amount to collect must be greater than $0");
+      return;
+    }
     setSubmitting(true);
     try {
-      const r = await createLinkFn({ data: { rentalId: rental.id, periods: charge.periods, periodLabel: charge.periodLabel, chargeState } });
-      setSentInfo({ signUrl: r.signUrl, amount: r.additionalAmount, newEnd: r.newEndDate, phone: r.renterPhone, smsSent: r.smsSent });
+      const r = await createLinkFn({ data: { rentalId: rental.id, periods: charge.periods, periodLabel: charge.periodLabel, chargeState, ...(chargeState === "owed" ? { collectAmount: collectNum } : {}) } });
+      setSentInfo({ signUrl: r.signUrl, amount: chargeState === "owed" ? r.collectAmount : r.additionalAmount, newEnd: r.newEndDate, phone: r.renterPhone, smsSent: r.smsSent });
       if (chargeState === "paid") {
         toast.success("Extension recorded and logged (marked paid)");
       } else {
