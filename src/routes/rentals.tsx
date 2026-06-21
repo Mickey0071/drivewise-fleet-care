@@ -363,9 +363,6 @@ function RentalsPage() {
     const isPending = r.reservationStatus === "pending";
     // ---- Amount-paid summary ----
     const paidPayments = sched.filter(p => p.status === "paid");
-    const extensionsTotal = (r.extensions ?? []).reduce(
-      (s, e) => s + Number(e.additionalAmount || 0), 0,
-    );
     const extensionPaymentIds = new Set(
       (r.extensions ?? []).map(e => e.paymentId).filter(Boolean) as string[],
     );
