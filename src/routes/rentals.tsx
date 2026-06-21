@@ -4,7 +4,7 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
-import { rentals, vehicles, vehicleById, driverById, payments, violations, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { rentals, vehicles, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, rentalCredit, rentalViolationsUnpaid, rentalCanonicalOwed, saveAccidentReport, ensureAccidentToken } from "@/lib/mock/store";
 import { extensionSignatureStatus } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
@@ -370,23 +370,12 @@ function RentalsPage() {
     const extensionsReceived = paidPayments
       .filter(p => extensionPaymentIds.has(p.id))
       .reduce((s, p) => s + Number(p.amount || 0), 0);
-    const rentalEnd = r.endDate ?? new Date().toISOString().slice(0, 10);
-    const rentalViolations = violations.filter(
-      x =>
-        x.vehicleId === r.vehicleId &&
-        x.driverId === r.driverId &&
-        x.dateIssued >= r.startDate &&
-        x.dateIssued <= rentalEnd,
-    );
-    const violationsPaid = rentalViolations
-      .filter(x => x.status === "paid")
-      .reduce((s, x) => s + Number(x.amount || 0), 0);
     // Base = paid payments that aren't tagged as extension payments
     const basePaid = paidPayments
       .filter(p => !extensionPaymentIds.has(p.id))
       .reduce((s, p) => s + Number(p.amount || 0), 0);
     const baseRental = Math.max(0, basePaid) + Number(r.depositPaid || 0);
-    const totalPaid = baseRental + extensionsReceived + violationsPaid;
+    const totalPaid = baseRental + extensionsReceived;
     return (
       <Card key={r.id} className="overflow-hidden">
         <div className="flex flex-col md:flex-row">
@@ -429,7 +418,7 @@ function RentalsPage() {
                 </div>
                 <div className="text-base font-semibold">{fmtMoney(totalPaid)}</div>
               </div>
-              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <div className="text-muted-foreground">Base rental</div>
                   <div className="font-medium text-sm">{fmtMoney(baseRental)}</div>
@@ -439,12 +428,6 @@ function RentalsPage() {
                     Extensions{(r.extensions?.length ?? 0) > 0 ? ` (${r.extensions!.length})` : ""}
                   </div>
                   <div className="font-medium text-sm">{fmtMoney(extensionsReceived)}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">
-                    Violations{rentalViolations.length > 0 ? ` (${rentalViolations.length})` : ""}
-                  </div>
-                  <div className="font-medium text-sm">{fmtMoney(violationsPaid)}</div>
                 </div>
               </div>
             </div>
