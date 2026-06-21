@@ -65,12 +65,13 @@ export function ReservationPaymentHistory({ rental }: { rental: Rental }) {
 
     const paymentRows: HistoryRow[] = sched.map((p) => {
       const isExt = extPaymentIds.has(p.id);
+      const isViolationPayment = p.kind === "violation";
       return {
         id: p.id,
         date: p.paidDate ?? p.dueDate,
         amount: Number(p.amount || 0),
-        type: isExt ? "extension" : "rental",
-        source: sourceFromMethod(p.method, last4),
+        type: isViolationPayment ? "violation" : isExt ? "extension" : "rental",
+        source: isViolationPayment ? "Violation payment" : sourceFromMethod(p.method, last4),
         status: mapStatus(p.status),
         method: p.method,
         payment: p,
