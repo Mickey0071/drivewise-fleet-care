@@ -98,6 +98,9 @@ export interface Rental {
   paymentStatus: PayStatus; notes?: string;
   billingPeriod?: "daily" | "weekly" | "monthly";
   rate?: number;
+  /** Daily rentals: number of initial days covered by the deposit before
+   *  daily charges start posting. Defaults to 2 when unset. */
+  paidDaysWindow?: number;
   // New billing-fee fields (separate from legacy rate / billingPeriod)
   billingCadence?: "daily" | "weekly";
   rateAmount?: number;
