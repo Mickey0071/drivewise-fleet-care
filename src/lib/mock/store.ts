@@ -406,10 +406,16 @@ export function rentalViolationPaymentsReceived(rentalId: string): number {
     .reduce((s, p) => s + Number(p.amount || 0), 0);
 }
 
-/** Canonical amount owed: time charge − all payments received. */
+/** Documented prior balance carried forward from a previous rental that was
+ *  not entered at booking. Adds to the amount owed. Display + engine only. */
+export function rentalPriorBalance(r: Rental): number {
+  return Number(r.priorBalance || 0);
+}
+
+/** Canonical amount owed: time charge + prior balance − all payments received. */
 export function rentalCanonicalOwed(r: Rental): number {
   if ((r.reservationStatus ?? "active") === "pending") return 0;
-  return rentalTimeCharge(r) - rentalPaymentsReceived(r.id);
+  return rentalTimeCharge(r) + rentalPriorBalance(r) - rentalPaymentsReceived(r.id);
 }
 
 /** Due date of the earliest billing period not yet covered by payments.
