@@ -723,6 +723,32 @@ function RentalsPage() {
                     </div>
                   )}
                   {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        const d = driverById(r.driverId);
+                        if (!d?.phone) { toast.error("No phone on file for renter"); return; }
+                        const v2 = vehicleById(r.vehicleId);
+                        const carName = v2 ? `${v2.year} ${v2.make} ${v2.model}` : "your rental";
+                        const message =
+                          `Hi ${d.fullName ?? ""}, this is Camauto Rentals about ${carName}. ` +
+                          `Please contact management to let us know whether you'd like to RETURN the vehicle or RENEW for another period. ` +
+                          `Call us at (866) 625-5550. Thank you!`;
+                        try {
+                          await sendSmsFn({ data: { phone: d.phone, message, name: d.fullName } });
+                          toast.success("Return-or-renew reminder sent");
+                        } catch (e) {
+                          toast.error("Could not send reminder", {
+                            description: e instanceof Error ? e.message : String(e),
+                          });
+                        }
+                      }}
+                    >
+                      <MessageSquare className="mr-1 h-4 w-4" /> Return or Renew
+                    </Button>
+                  )}
+                  {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (
                     <Button variant="outline" size="sm" onClick={() => setSwapping(r)}>
                       <ArrowLeftRight className="mr-1 h-4 w-4" /> Swap vehicle
                     </Button>
