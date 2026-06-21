@@ -8,6 +8,7 @@ import { rentals, vehicles, vehicleById, driverById, payments, violations, fmtMo
 import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, rentalCredit, rentalViolationsUnpaid, rentalCanonicalOwed, saveAccidentReport, ensureAccidentToken } from "@/lib/mock/store";
 import { extensionSignatureStatus } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
+import { rentalNextDueDate } from "@/lib/mock/store";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReportActions } from "@/components/app/ReportActions";
