@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { drivers, rentals, payments, vehicleById, fmtDate } from "@/lib/mock/data";
+import { drivers, rentals, vehicleById, fmtDate } from "@/lib/mock/data";
 import { AlertCircle, Ban, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
