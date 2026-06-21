@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { drivers, rentals, payments, vehicleById, fmtDate } from "@/lib/mock/data";
+import { drivers, rentals, vehicleById, fmtDate } from "@/lib/mock/data";
 import { AlertCircle, Ban, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addDriver, useStoreVersion } from "@/lib/mock/store";
 import { updateDriver } from "@/lib/mock/store";
+import { rentalPastDueDays } from "@/lib/mock/store";
 import type { Driver } from "@/lib/mock/data";
 import { toast } from "sonner";
 import { US_STATES, formatAddressBlock, formatFullName } from "@/lib/us-states";
@@ -67,7 +68,12 @@ function DriversPage() {
         {filteredDrivers.map(d => {
           const rental = rentals.find(r => r.driverId === d.id);
           const veh = rental ? vehicleById(rental.vehicleId) : null;
-          const lateCount = payments.filter(p => p.driverId === d.id && p.status !== "paid").length;
+          // Late only when an active rental's current period is past due (canonical engine).
+          const lateCount = rentals.filter(
+            r => r.driverId === d.id
+              && (r.reservationStatus ?? "active") === "active"
+              && rentalPastDueDays(r) > 0,
+          ).length;
           const expSoon = new Date(d.licenseExpiry) < soon;
 
           return (

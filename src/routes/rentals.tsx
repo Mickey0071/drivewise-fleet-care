@@ -8,6 +8,7 @@ import { rentals, vehicles, vehicleById, driverById, payments, violations, fmtMo
 import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, rentalCredit, rentalViolationsUnpaid, rentalCanonicalOwed, saveAccidentReport, ensureAccidentToken } from "@/lib/mock/store";
 import { extensionSignatureStatus } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
+import { rentalNextDueDate } from "@/lib/mock/store";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReportActions } from "@/components/app/ReportActions";
@@ -359,7 +360,6 @@ function RentalsPage() {
     const v = vehicleById(r.vehicleId);
     const d = driverById(r.driverId);
     const sched = payments.filter(p => p.rentalId === r.id);
-    const next = sched.find(p => p.status !== "paid");
     const isPending = r.reservationStatus === "pending";
     // ---- Amount-paid summary ----
     const paidPayments = sched.filter(p => p.status === "paid");
@@ -462,22 +462,22 @@ function RentalsPage() {
                   if (bal <= 0) {
                     return <div className="mt-1 text-sm text-muted-foreground">All paid</div>;
                   }
-                  if (!next) {
-                    return <div className="mt-1 text-sm text-muted-foreground">All paid</div>;
-                  }
                   const today = new Date().toISOString().slice(0, 10);
+                  // Drive label off the canonical engine so it can't disagree
+                  // with the Balance line shown directly below.
+                  const dueDate = rentalNextDueDate(r);
                   let label = "Scheduled";
                   let tone = "bg-muted text-muted-foreground border-border";
-                  if (today > next.dueDate) {
+                  if (today > dueDate) {
                     label = "Overdue";
                     tone = "bg-destructive/15 text-destructive border-destructive/30";
-                  } else if (today === next.dueDate) {
+                  } else if (today === dueDate) {
                     label = "Due today";
                     tone = "bg-warning/20 text-warning-foreground border-warning/40";
                   }
                   return (
                     <div className="mt-1 flex items-center justify-between">
-                      <span className="font-medium">{fmtMoney(next.amount)} due {fmtDate(next.dueDate)}</span>
+                      <span className="font-medium">{fmtMoney(bal)} due {fmtDate(dueDate)}</span>
                       <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${tone}`}>{label}</span>
                     </div>
                   );

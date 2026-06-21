@@ -361,6 +361,33 @@ export function rentalCanonicalOwed(r: Rental): number {
   return rentalTimeCharge(r) - rentalPaymentsReceived(r.id);
 }
 
+/** Due date of the earliest billing period not yet covered by payments.
+ *  Derived from the canonical engine (payments received ÷ period rate), so it
+ *  never disagrees with the balance shown to the user. */
+export function rentalNextDueDate(r: Rental): string {
+  const start = r.startDate?.slice(0, 10) ?? "";
+  const { rate, weekly } = rentalPeriodRate(r);
+  if (!start || rate <= 0) return r.currentPeriodEnd ?? start;
+  const step = weekly ? 7 : 1;
+  const received = rentalPaymentsReceived(r.id);
+  const periodsCovered = Math.max(0, Math.floor(received / rate));
+  const d = new Date(start + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + periodsCovered * step);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Whole days a rental is past due, from the canonical engine.
+ *  Returns 0 when nothing is owed or the current period is not yet due. */
+export function rentalPastDueDays(r: Rental): number {
+  if (rentalCanonicalOwed(r) <= 0) return 0;
+  const due = rentalNextDueDate(r);
+  const today = new Date().toISOString().slice(0, 10);
+  if (!due || today <= due) return 0;
+  return Math.round(
+    (Date.parse(today + "T00:00:00Z") - Date.parse(due + "T00:00:00Z")) / DAY_MS,
+  );
+}
+
 /** Does an existing rental block a vehicle from a new booking?
  *  When `newStart` is omitted (reconcile / picker before dates are entered),
  *  any active+unreturned rental is considered blocking — this preserves the
