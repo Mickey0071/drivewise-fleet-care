@@ -1,51 +1,60 @@
-## Monthly Vehicle Reports
+# Fix Lateness Calculations
 
-A new tab that produces a per-vehicle monthly statement you can hand to joint-venture partners: for a chosen month, each vehicle shows its income, who rented it, expenses, and the net.
+## The problem
 
-### What it shows
+Luther Bunting (R-527) shows as ~2 weeks late even though he is fully paid up.
 
-For a selected month (defaulting to the current month), one card/section per vehicle containing:
+His numbers:
+- Rental: May 31 → today, weekly rate $450. Time on rent = 3 weeks = **$1,350 owed**.
+- Payments received (cash + Stripe): 450 + 400 + 50 + 350 + 100 = **$1,350**.
+- Canonical balance = 1,350 − 1,350 = **$0**. He owes nothing.
 
-- **Header**: Year Make Model + plate.
-- **Income**: total of all payments marked paid whose paid date falls in the month, attributed to the vehicle via the rental. Broken out by rental vs extension where available.
-- **Renters**: each driver who had this vehicle on rent during the month — name, rental dates, and amount paid that month.
-- **Expenses**: vehicle-tagged expenses (date, category, vendor, amount) plus maintenance/repair costs for the vehicle in that month.
-- **Net for month**: income − expenses.
+But there is a stale, orphaned scheduled installment row (`PM-R-527-20260607`, due **Jun 7**, $450, status `late`) that was never reconciled when his actual payments came in as separate rows. The lateness indicators read that orphaned row and compute "Jun 7 → today ≈ 2 weeks late."
 
-A top summary strip shows fleet totals (total income, total expenses, net) for the month.
+## Root cause
 
-### Filters & export
+The app has two parallel accounting systems that disagree:
 
-- Month picker (and a free range is out of scope — month granularity as requested).
-- **Print / PDF** button (uses the existing print-to-PDF flow) so you can save/send a clean printout.
-- **Export CSV** button (one row per vehicle with income/expense/net columns, matching the other reports).
+1. **Canonical engine** (`rentalCanonicalOwed` = time charge − all payments received). This is the single source of truth and correctly says $0. Used by the Rentals card *Balance* line.
+2. **Legacy scheduled-payment rows** (`payments` with `status !== "paid"`). When a payment is recorded via cash/Stripe it creates a *new* payment row but does not mark the matching scheduled installment paid, so those installments linger as `late`/unpaid forever.
 
-### Layout
+The lateness/overdue UI still reads system #2:
 
 ```text
-Monthly Vehicle Reports        [Month ▼]  [Export CSV] [Print/PDF]
------------------------------------------------------------------
-Fleet totals: Income $X | Expenses $Y | Net $Z
------------------------------------------------------------------
-2021 Toyota Camry · ABC1234
-  Income .......... $1,400   (rental $1,200, extensions $200)
-  Renters: John Doe (Jun 1–Jun 21) — $1,400
-  Expenses ........ $320     (oil change $80, tires $240)
-  Net ............. $1,080
------------------------------------------------------------------
-... next vehicle ...
+src/routes/index.tsx
+  - dueThisWeek: sums payments where status !== "paid", earliest unpaid dueDate
+  - overdue: payments where status === "missed" || "late"
+  - DueRow "X days overdue" badge driven by that earliest unpaid dueDate
+src/routes/drivers.tsx
+  - lateCount = payments where driverId matches AND status !== "paid"  → "late" badge
+src/routes/rentals.tsx
+  - "Next payment" Overdue label uses next = first unpaid scheduled row
+    (already partly guarded by bal <= 0, but the underlying row is still stale)
 ```
 
-Vehicles with no activity in the month are hidden by default (with a toggle to show all).
+## The fix
 
-### Technical details
+Make every lateness/overdue display derive from the canonical balance engine, not from orphaned schedule rows. A renter is only late when `rentalCanonicalOwed(r) > 0` AND the current billing period's due date has passed.
 
-- New route file `src/routes/monthly-vehicle-reports.tsx` (URL `/monthly-vehicle-reports`), with `head()` title metadata, mirroring the structure of `src/routes/pnl.tsx`.
-- Data comes from the existing in-memory store (`@/lib/mock/data`: `vehicles`, `rentals`, `payments`, `drivers`, `expenses`, `maintenance`, plus `vehicleById`, `driverById`, `fmtMoney`, `fmtDate`) — same source the P&L and Expenses pages already use. Pure presentation/computation, no backend changes.
-  - Income: `payments.filter(status === "paid")` grouped by month of `paidDate ?? dueDate`, joined to vehicle through `rentals[rentalId].vehicleId`. Extension portions identified the same way `pnl.tsx` does (via `rental.extensions[].paymentId`).
-  - Renters: rentals whose active window overlaps the month, grouped per vehicle.
-  - Expenses: `expenses.filter(e => e.vehicleId === v.id && month matches)` + maintenance records for the vehicle with a completion/cost date in the month.
-- Reuse `ReportActions` (`src/components/app/ReportActions.tsx`) for the CSV + Print/PDF buttons; use `PageHeader` for the title bar; wrap in cards consistent with existing pages.
-- Add a sidebar entry in the Finance group of `src/components/app/AppSidebar.tsx`: `{ title: "Monthly Vehicle Reports", url: "/monthly-vehicle-reports", icon: <a finance/report icon>, roles: ["admin"] }`. Optionally add it to `GlobalSearch.tsx`.
+### Changes
 
-No database, schema, or server-function changes are required.
+1. **`src/routes/index.tsx` — Payments due / overdue**
+   - Replace the per-rental `unpaid` schedule sum with `rentalCanonicalOwed(r)` for `totalOwed`.
+   - Only include a rental in "due this week / overdue" when canonical owed > 0.
+   - Compute `earliestDue` / days-overdue from the rental's current billing period (`currentPeriodEnd` / `calcCurrentPeriodEnd`) instead of the earliest orphaned schedule row, so the day/week count reflects the actual unpaid period.
+   - Recompute the headline "overdue" total from canonical balances of active rentals rather than `payments` rows flagged `late`/`missed`.
+
+2. **`src/routes/drivers.tsx` — late badge**
+   - Replace `lateCount` (count of unpaid payment rows) with a check that the driver has at least one active rental whose canonical balance is past due (owed > 0 and current period end < today). Show the `late` badge only then.
+
+3. **`src/routes/rentals.tsx` — "Next payment" Overdue label**
+   - Drive the Overdue / Due today / Scheduled label off the canonical balance and current period due date rather than `next = first unpaid schedule row`, so the label can never disagree with the Balance line shown right below it.
+
+### Optional cleanup (recommended, ask before doing)
+Add a one-time reconciliation that marks orphaned scheduled installments `paid` (or removes them) once the canonical balance for their rental is covered, so the legacy rows stop accumulating. This is a data change to the `payments` table and is separable from the display fix above.
+
+## Outcome
+Luther and any other paid-up renter will show **$0 balance, not late**. Renters who genuinely owe past their current period still show the correct days/weeks overdue, computed from one consistent source.
+
+## Note
+No schema changes required for the display fix (items 1–3). Only the optional cleanup touches stored data.
