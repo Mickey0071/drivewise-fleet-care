@@ -363,12 +363,13 @@ function RentalsPage() {
     const isPending = r.reservationStatus === "pending";
     // ---- Amount-paid summary ----
     const paidPayments = sched.filter(p => p.status === "paid");
-    const extensionsTotal = (r.extensions ?? []).reduce(
-      (s, e) => s + Number(e.additionalAmount || 0), 0,
-    );
     const extensionPaymentIds = new Set(
       (r.extensions ?? []).map(e => e.paymentId).filter(Boolean) as string[],
     );
+    // Extensions actually paid: paid payment rows tagged as extension payments.
+    const extensionsReceived = paidPayments
+      .filter(p => extensionPaymentIds.has(p.id))
+      .reduce((s, p) => s + Number(p.amount || 0), 0);
     const rentalEnd = r.endDate ?? new Date().toISOString().slice(0, 10);
     const rentalViolations = violations.filter(
       x =>
@@ -383,10 +384,9 @@ function RentalsPage() {
     // Base = paid payments that aren't tagged as extension payments
     const basePaid = paidPayments
       .filter(p => !extensionPaymentIds.has(p.id))
-      .reduce((s, p) => s + Number(p.amount || 0), 0)
-      - (extensionPaymentIds.size === 0 ? extensionsTotal : 0);
+      .reduce((s, p) => s + Number(p.amount || 0), 0);
     const baseRental = Math.max(0, basePaid) + Number(r.depositPaid || 0);
-    const totalPaid = baseRental + extensionsTotal + violationsPaid;
+    const totalPaid = baseRental + extensionsReceived + violationsPaid;
     return (
       <Card key={r.id} className="overflow-hidden">
         <div className="flex flex-col md:flex-row">
@@ -438,7 +438,7 @@ function RentalsPage() {
                   <div className="text-muted-foreground">
                     Extensions{(r.extensions?.length ?? 0) > 0 ? ` (${r.extensions!.length})` : ""}
                   </div>
-                  <div className="font-medium text-sm">{fmtMoney(extensionsTotal)}</div>
+                  <div className="font-medium text-sm">{fmtMoney(extensionsReceived)}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">

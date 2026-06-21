@@ -340,12 +340,44 @@ export function rentalTimeCharge(r: Rental): number {
   const returned = rs === "returned" || rs === "completed" || !!r.returnedAt;
   const through = (returned ? (r.returnedAt ?? r.endDate ?? today) : today).slice(0, 10);
   const start = r.startDate.slice(0, 10);
-  const days = Math.round(
-    (Date.parse(through + "T00:00:00Z") - Date.parse(start + "T00:00:00Z")) / DAY_MS,
+
+  const periodsBetween = (a: string, b: string) => {
+    const d = Math.round(
+      (Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / DAY_MS,
+    );
+    if (d <= 0) return 0;
+    return weekly ? Math.ceil(d / 7) : d;
+  };
+
+  const exts = r.extensions ?? [];
+  // No extensions → plain pay-as-you-go for the time actually out.
+  if (exts.length === 0) {
+    return periodsBetween(start, through) * rate;
+  }
+
+  // With extensions: the extension amount is OWED IMMEDIATELY on extend, while
+  // the base term and any overstay beyond the extended end accrue
+  // pay-as-you-go. The base term is capped at the original end date so the
+  // extension period is never billed twice.
+  const extensionsTotal = exts.reduce(
+    (s, e) => s + (Number(e.additionalAmount) || 0), 0,
   );
-  if (days <= 0) return 0;
-  const periods = weekly ? Math.ceil(days / 7) : days;
-  return periods * rate;
+  const originalEnd =
+    exts.reduce<string | undefined>((min, e) => {
+      const p = e.previousEndDate?.slice(0, 10);
+      return p && (!min || p < min) ? p : min;
+    }, undefined) ?? r.endDate?.slice(0, 10);
+  const extendedEnd = r.endDate?.slice(0, 10);
+
+  const baseThrough = originalEnd && through > originalEnd ? originalEnd : through;
+  const baseCharge = periodsBetween(start, baseThrough) * rate;
+
+  let overstayCharge = 0;
+  if (extendedEnd && through > extendedEnd) {
+    overstayCharge = periodsBetween(extendedEnd, through) * rate;
+  }
+
+  return baseCharge + extensionsTotal + overstayCharge;
 }
 
 /** Sum of every payment received against a rental (excludes credit rows). */
