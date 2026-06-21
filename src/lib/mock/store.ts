@@ -113,6 +113,7 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   weeklyRate: Number(r.weekly_rate), depositPaid: Number(r.deposit_paid),
   paymentStatus: r.payment_status, notes: r.notes ?? undefined,
   billingPeriod: r.billing_period ?? undefined,
+  paidDaysWindow: r.paid_days_window != null ? Number(r.paid_days_window) : undefined,
   rate: r.rate != null ? Number(r.rate) : undefined,
   billingCadence: r.billing_cadence ?? undefined,
   rateAmount: r.rate_amount != null ? Number(r.rate_amount) : undefined,
@@ -158,6 +159,7 @@ const toRental = (r: any) => ({
   weekly_rate: r.weeklyRate, deposit_paid: r.depositPaid,
   payment_status: r.paymentStatus, notes: r.notes ?? null,
   billing_period: r.billingPeriod ?? null, rate: r.rate ?? null,
+  paid_days_window: r.paidDaysWindow ?? 2,
   billing_cadence: r.billingCadence ?? null,
   rate_amount: r.rateAmount ?? null,
   auto_renew: r.autoRenew ?? true,
@@ -330,54 +332,61 @@ export function rentalPeriodRate(r: Rental): { rate: number; weekly: boolean } {
 
 const DAY_MS = 86400000;
 
-/** Base rental owed for the time the car is actually out (periods × rate). */
-export function rentalTimeCharge(r: Rental): number {
+/** Default initial deposit-covered days for a daily rental. */
+const DEFAULT_PAID_DAYS_WINDOW = 2;
+
+/** Whole days from `a` to `b` (b − a), zero-clamped. */
+function daysBetweenISO(a: string, b: string): number {
+  const d = Math.round(
+    (Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / DAY_MS,
+  );
+  return d;
+}
+
+/** The date through which charges accrue: today while the car is still out,
+ *  or the return date once it is back. Accrual stops ONLY on return. */
+function rentalThroughDate(r: Rental): string {
   const rs = r.reservationStatus ?? "active";
-  if (rs === "pending") return 0;
-  const { rate, weekly } = rentalPeriodRate(r);
-  if (!r.startDate || rate <= 0) return 0;
   const today = new Date().toISOString().slice(0, 10);
   const returned = rs === "returned" || rs === "completed" || !!r.returnedAt;
-  const through = (returned ? (r.returnedAt ?? r.endDate ?? today) : today).slice(0, 10);
+  return (returned ? (r.returnedAt ?? r.endDate ?? today) : today).slice(0, 10);
+}
+
+/** Daily paid-days window (deposit-covered days), default 2. */
+export function rentalPaidDaysWindow(r: Rental): number {
+  const w = Number(r.paidDaysWindow);
+  return Number.isFinite(w) && w >= 0 ? w : DEFAULT_PAID_DAYS_WINDOW;
+}
+
+/** Number of billing periods that have POSTED as owed, purely from elapsed
+ *  possession vs. today's date. Extension rows are NEVER read for money.
+ *
+ *  WEEKLY: week 1 posts on the start day (first 7 days); each later week posts
+ *  on its 8th morning. posted = floor(daysOut / 7) + 1.
+ *  DAILY: the first `paidDaysWindow` days are covered by the deposit and post
+ *  $0; from the morning after the window, one day posts each morning.
+ *  posted = max(0, daysOutInclusive − window).
+ *  Accrual stops at the return date. */
+export function rentalPostedPeriods(r: Rental): { periods: number; rate: number; weekly: boolean } {
+  const { rate, weekly } = rentalPeriodRate(r);
+  const rs = r.reservationStatus ?? "active";
+  if (rs === "pending" || !r.startDate || rate <= 0) return { periods: 0, rate, weekly };
   const start = r.startDate.slice(0, 10);
+  const through = rentalThroughDate(r);
+  const days = daysBetweenISO(start, through);
+  if (days < 0) return { periods: 0, rate, weekly };
+  if (weekly) return { periods: Math.floor(days / 7) + 1, rate, weekly };
+  const window = rentalPaidDaysWindow(r);
+  const daysOutInclusive = days + 1;
+  return { periods: Math.max(0, daysOutInclusive - window), rate, weekly };
+}
 
-  const periodsBetween = (a: string, b: string) => {
-    const d = Math.round(
-      (Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / DAY_MS,
-    );
-    if (d <= 0) return 0;
-    return weekly ? Math.ceil(d / 7) : d;
-  };
-
-  const exts = r.extensions ?? [];
-  // No extensions → plain pay-as-you-go for the time actually out.
-  if (exts.length === 0) {
-    return periodsBetween(start, through) * rate;
-  }
-
-  // With extensions: the extension amount is OWED IMMEDIATELY on extend, while
-  // the base term and any overstay beyond the extended end accrue
-  // pay-as-you-go. The base term is capped at the original end date so the
-  // extension period is never billed twice.
-  const extensionsTotal = exts.reduce(
-    (s, e) => s + (Number(e.additionalAmount) || 0), 0,
-  );
-  const originalEnd =
-    exts.reduce<string | undefined>((min, e) => {
-      const p = e.previousEndDate?.slice(0, 10);
-      return p && (!min || p < min) ? p : min;
-    }, undefined) ?? r.endDate?.slice(0, 10);
-  const extendedEnd = r.endDate?.slice(0, 10);
-
-  const baseThrough = originalEnd && through > originalEnd ? originalEnd : through;
-  const baseCharge = periodsBetween(start, baseThrough) * rate;
-
-  let overstayCharge = 0;
-  if (extendedEnd && through > extendedEnd) {
-    overstayCharge = periodsBetween(extendedEnd, through) * rate;
-  }
-
-  return baseCharge + extensionsTotal + overstayCharge;
+/** Base rental owed for the time the car is actually out.
+ *  Possession + elapsed time is the ONLY money trigger. Extension records
+ *  (signed, unsigned, or absent) contribute $0 — they are paperwork only. */
+export function rentalTimeCharge(r: Rental): number {
+  const { periods, rate } = rentalPostedPeriods(r);
+  return periods * rate;
 }
 
 /** Sum of every payment received against a rental (excludes credit rows). */
@@ -400,11 +409,17 @@ export function rentalNextDueDate(r: Rental): string {
   const start = r.startDate?.slice(0, 10) ?? "";
   const { rate, weekly } = rentalPeriodRate(r);
   if (!start || rate <= 0) return r.currentPeriodEnd ?? start;
-  const step = weekly ? 7 : 1;
   const received = rentalPaymentsReceived(r.id);
   const periodsCovered = Math.max(0, Math.floor(received / rate));
   const d = new Date(start + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() + periodsCovered * step);
+  if (weekly) {
+    // Next unpaid week posts on its posting morning (start + 7×covered).
+    d.setUTCDate(d.getUTCDate() + periodsCovered * 7);
+  } else {
+    // Daily: the first `window` days are deposit-covered; the next unpaid
+    // posted day falls after the window plus whatever payments already cover.
+    d.setUTCDate(d.getUTCDate() + rentalPaidDaysWindow(r) + periodsCovered);
+  }
   return d.toISOString().slice(0, 10);
 }
 
@@ -1670,6 +1685,51 @@ export function extendRental(
   cloudWrite("ext:insert", supabase.from("rental_extensions").insert(toExt(r.id, ext)));
   emit();
   return ext;
+}
+
+/** Delete a PENDING (unsigned) extension record. Signed extensions are kept
+ *  as history and cannot be deleted here. Because extensions no longer move
+ *  money (possession + elapsed time is the only money trigger), deleting one
+ *  shifts no balance — it only removes the paperwork and voids any open
+ *  payment link / request tied to that period. */
+export function deletePendingExtension(rentalId: string, extId: string) {
+  const r = rentals.find(x => x.id === rentalId);
+  if (!r) return;
+  const ext = (r.extensions ?? []).find(e => e.id === extId);
+  if (!ext) return;
+  const signed = !!ext.signedBy || !!ext.signatureDataUrl;
+  if (signed) throw new Error("Signed extensions are kept as history and cannot be deleted.");
+
+  // Remove the extension log row.
+  r.extensions = (r.extensions ?? []).filter(e => e.id !== extId);
+  cloudWrite("ext:delete", supabase.from("rental_extensions").delete().eq("id", extId));
+
+  // Void the unpaid charge placeholder created for this extension, if any.
+  if (ext.paymentId) {
+    const pid = ext.paymentId;
+    const idx = payments.findIndex(p => p.id === pid && p.status !== "paid");
+    if (idx >= 0) {
+      payments.splice(idx, 1);
+      cloudWrite("payment:delete", supabase.from("payments").delete().eq("id", pid).neq("status", "paid"));
+    }
+  }
+
+  // Void any open extension_requests payment link for the same new end date.
+  cloudWrite(
+    "ext-req:cancel",
+    supabase.from("extension_requests")
+      .update({ status: "cancelled" } as any)
+      .eq("rental_id", rentalId)
+      .eq("new_end_date", ext.newEndDate)
+      .neq("status", "paid"),
+  );
+  for (const pe of pendingExtensions) {
+    if (pe.rentalId === rentalId && pe.newEndDate === ext.newEndDate && (pe.status ?? "").toLowerCase() !== "paid") {
+      pe.status = "cancelled";
+    }
+  }
+
+  emit();
 }
 
 function nextDriverId() {

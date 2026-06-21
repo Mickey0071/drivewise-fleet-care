@@ -1,0 +1,1 @@
+ALTER TABLE public.rentals ADD COLUMN IF NOT EXISTS paid_days_window integer NOT NULL DEFAULT 2;

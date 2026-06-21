@@ -5,7 +5,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicles, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, rentalCredit, rentalViolationsUnpaid, rentalCanonicalOwed, saveAccidentReport, ensureAccidentToken } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, rentalCredit, rentalViolationsUnpaid, rentalCanonicalOwed, saveAccidentReport, ensureAccidentToken, deletePendingExtension } from "@/lib/mock/store";
 import { extensionSignatureStatus } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
 import { rentalNextDueDate } from "@/lib/mock/store";
@@ -723,6 +723,32 @@ function RentalsPage() {
                     </div>
                   )}
                   {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        const d = driverById(r.driverId);
+                        if (!d?.phone) { toast.error("No phone on file for renter"); return; }
+                        const v2 = vehicleById(r.vehicleId);
+                        const carName = v2 ? `${v2.year} ${v2.make} ${v2.model}` : "your rental";
+                        const message =
+                          `Hi ${d.fullName ?? ""}, this is Camauto Rentals about ${carName}. ` +
+                          `Please contact management to let us know whether you'd like to RETURN the vehicle or RENEW for another period. ` +
+                          `Call us at (866) 625-5550. Thank you!`;
+                        try {
+                          await sendSmsFn({ data: { phone: d.phone, message, name: d.fullName } });
+                          toast.success("Return-or-renew reminder sent");
+                        } catch (e) {
+                          toast.error("Could not send reminder", {
+                            description: e instanceof Error ? e.message : String(e),
+                          });
+                        }
+                      }}
+                    >
+                      <MessageSquare className="mr-1 h-4 w-4" /> Return or Renew
+                    </Button>
+                  )}
+                  {(['active', 'on_rent'].includes(r.reservationStatus ?? 'active')) && (
                     <Button variant="outline" size="sm" onClick={() => setSwapping(r)}>
                       <ArrowLeftRight className="mr-1 h-4 w-4" /> Swap vehicle
                     </Button>
@@ -790,6 +816,56 @@ function RentalsPage() {
                 </>
               )}
             </div>
+            {!isPending && (r.extensions?.length ?? 0) > 0 && (() => {
+              const exts = [...(r.extensions ?? [])].sort((a, b) =>
+                (a.newEndDate ?? "") < (b.newEndDate ?? "") ? -1 : 1,
+              );
+              return (
+                <div className="rounded-md border border-border bg-muted/30 p-3">
+                  <div className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                    Extensions on file ({exts.length})
+                  </div>
+                  <div className="space-y-1.5">
+                    {exts.map(e => {
+                      const signed = !!e.signedBy || !!e.signatureDataUrl;
+                      return (
+                        <div key={e.id} className="flex items-center justify-between gap-2 text-sm">
+                          <span className="min-w-0 truncate">
+                            {e.previousEndDate ? `${fmtDate(e.previousEndDate)} → ` : ""}{fmtDate(e.newEndDate)}
+                            {" · "}
+                            <span className={signed ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
+                              {signed ? "Signed" : "Pending (unsigned)"}
+                            </span>
+                          </span>
+                          {signed ? (
+                            <span className="text-xs text-muted-foreground">history</span>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-destructive hover:text-destructive"
+                              onClick={() => {
+                                if (!window.confirm("Delete this pending extension? It voids its payment link and moves no balance. This cannot be undone.")) return;
+                                try {
+                                  deletePendingExtension(r.id, e.id);
+                                  toast.success("Pending extension deleted");
+                                } catch (err) {
+                                  toast.error("Could not delete", {
+                                    description: err instanceof Error ? err.message : String(err),
+                                  });
+                                }
+                              }}
+                            >
+                              <XIcon className="mr-1 h-3.5 w-3.5" /> Delete
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
             {!isPending && (
               <div className="rounded-md border border-border bg-muted/30 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
@@ -1961,6 +2037,7 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
   const [rateAmount, setRateAmount] = useState<number>(0);
   const [autoRenew, setAutoRenew] = useState<boolean>(true);
   const [skipDailyMin, setSkipDailyMin] = useState<boolean>(false);
+  const [paidDaysWindow, setPaidDaysWindow] = useState<number>(2);
   useEffect(() => {
     if (rental) {
       setWeeklyRate(rental.weeklyRate);
@@ -1971,6 +2048,7 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
       setRateAmount(rental.rateAmount ?? rental.rate ?? rental.weeklyRate ?? 0);
       setAutoRenew(rental.autoRenew ?? true);
       setSkipDailyMin(rental.skipDailyMinimum ?? false);
+      setPaidDaysWindow(rental.paidDaysWindow ?? 2);
     }
   }, [rental]);
   const computedPeriodEnd = rental ? calcCurrentPeriodEnd(rental.startDate, billingCadence) : "";
@@ -1984,6 +2062,7 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
       rateAmount,
       autoRenew,
       skipDailyMinimum: billingCadence === "daily" ? skipDailyMin : false,
+      paidDaysWindow: billingCadence === "daily" ? paidDaysWindow : rental.paidDaysWindow,
       currentPeriodEnd: computedPeriodEnd,
     });
     toast.success("Reservation updated");
@@ -2024,6 +2103,21 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
                 <p className="text-xs text-muted-foreground">When ON, only 1 day is collected upfront. Default is 2 days.</p>
               </div>
               <Switch checked={skipDailyMin} onCheckedChange={setSkipDailyMin} />
+            </div>
+          )}
+          {billingCadence === "daily" && (
+            <div className="sm:col-span-2">
+              <Label>Paid-days window (deposit-covered days)</Label>
+              <Input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={paidDaysWindow}
+                onChange={e => setPaidDaysWindow(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Days covered by the deposit before daily charges start posting. Default 2 — daily accrual begins the morning after this window.
+              </p>
             </div>
           )}
           <div className="sm:col-span-2 rounded-md border bg-muted/30 p-3 text-sm">
