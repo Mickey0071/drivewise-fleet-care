@@ -2037,6 +2037,7 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
   const [rateAmount, setRateAmount] = useState<number>(0);
   const [autoRenew, setAutoRenew] = useState<boolean>(true);
   const [skipDailyMin, setSkipDailyMin] = useState<boolean>(false);
+  const [paidDaysWindow, setPaidDaysWindow] = useState<number>(2);
   useEffect(() => {
     if (rental) {
       setWeeklyRate(rental.weeklyRate);
@@ -2047,6 +2048,7 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
       setRateAmount(rental.rateAmount ?? rental.rate ?? rental.weeklyRate ?? 0);
       setAutoRenew(rental.autoRenew ?? true);
       setSkipDailyMin(rental.skipDailyMinimum ?? false);
+      setPaidDaysWindow(rental.paidDaysWindow ?? 2);
     }
   }, [rental]);
   const computedPeriodEnd = rental ? calcCurrentPeriodEnd(rental.startDate, billingCadence) : "";
@@ -2060,6 +2062,7 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
       rateAmount,
       autoRenew,
       skipDailyMinimum: billingCadence === "daily" ? skipDailyMin : false,
+      paidDaysWindow: billingCadence === "daily" ? paidDaysWindow : rental.paidDaysWindow,
       currentPeriodEnd: computedPeriodEnd,
     });
     toast.success("Reservation updated");
@@ -2100,6 +2103,21 @@ function EditRentalDialog({ rental, onClose }: { rental: Rental | null; onClose:
                 <p className="text-xs text-muted-foreground">When ON, only 1 day is collected upfront. Default is 2 days.</p>
               </div>
               <Switch checked={skipDailyMin} onCheckedChange={setSkipDailyMin} />
+            </div>
+          )}
+          {billingCadence === "daily" && (
+            <div className="sm:col-span-2">
+              <Label>Paid-days window (deposit-covered days)</Label>
+              <Input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={paidDaysWindow}
+                onChange={e => setPaidDaysWindow(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Days covered by the deposit before daily charges start posting. Default 2 — daily accrual begins the morning after this window.
+              </p>
             </div>
           )}
           <div className="sm:col-span-2 rounded-md border bg-muted/30 p-3 text-sm">
