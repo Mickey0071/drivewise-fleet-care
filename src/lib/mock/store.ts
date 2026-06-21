@@ -159,6 +159,7 @@ const toRental = (r: any) => ({
   weekly_rate: r.weeklyRate, deposit_paid: r.depositPaid,
   payment_status: r.paymentStatus, notes: r.notes ?? null,
   billing_period: r.billingPeriod ?? null, rate: r.rate ?? null,
+  paid_days_window: r.paidDaysWindow ?? null,
   billing_cadence: r.billingCadence ?? null,
   rate_amount: r.rateAmount ?? null,
   auto_renew: r.autoRenew ?? true,
