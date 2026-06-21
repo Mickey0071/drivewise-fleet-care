@@ -462,22 +462,22 @@ function RentalsPage() {
                   if (bal <= 0) {
                     return <div className="mt-1 text-sm text-muted-foreground">All paid</div>;
                   }
-                  if (!next) {
-                    return <div className="mt-1 text-sm text-muted-foreground">All paid</div>;
-                  }
                   const today = new Date().toISOString().slice(0, 10);
+                  // Drive label off the canonical engine so it can't disagree
+                  // with the Balance line shown directly below.
+                  const dueDate = rentalNextDueDate(r);
                   let label = "Scheduled";
                   let tone = "bg-muted text-muted-foreground border-border";
-                  if (today > next.dueDate) {
+                  if (today > dueDate) {
                     label = "Overdue";
                     tone = "bg-destructive/15 text-destructive border-destructive/30";
-                  } else if (today === next.dueDate) {
+                  } else if (today === dueDate) {
                     label = "Due today";
                     tone = "bg-warning/20 text-warning-foreground border-warning/40";
                   }
                   return (
                     <div className="mt-1 flex items-center justify-between">
-                      <span className="font-medium">{fmtMoney(next.amount)} due {fmtDate(next.dueDate)}</span>
+                      <span className="font-medium">{fmtMoney(bal)} due {fmtDate(dueDate)}</span>
                       <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${tone}`}>{label}</span>
                     </div>
                   );
