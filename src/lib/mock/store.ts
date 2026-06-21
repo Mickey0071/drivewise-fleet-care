@@ -114,6 +114,7 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   paymentStatus: r.payment_status, notes: r.notes ?? undefined,
   billingPeriod: r.billing_period ?? undefined,
   paidDaysWindow: r.paid_days_window != null ? Number(r.paid_days_window) : undefined,
+  priorBalance: r.prior_balance != null ? Number(r.prior_balance) : undefined,
   rate: r.rate != null ? Number(r.rate) : undefined,
   billingCadence: r.billing_cadence ?? undefined,
   rateAmount: r.rate_amount != null ? Number(r.rate_amount) : undefined,
@@ -160,6 +161,7 @@ const toRental = (r: any) => ({
   payment_status: r.paymentStatus, notes: r.notes ?? null,
   billing_period: r.billingPeriod ?? null, rate: r.rate ?? null,
   paid_days_window: r.paidDaysWindow ?? 2,
+  prior_balance: r.priorBalance ?? 0,
   billing_cadence: r.billingCadence ?? null,
   rate_amount: r.rateAmount ?? null,
   auto_renew: r.autoRenew ?? true,
@@ -404,10 +406,16 @@ export function rentalViolationPaymentsReceived(rentalId: string): number {
     .reduce((s, p) => s + Number(p.amount || 0), 0);
 }
 
-/** Canonical amount owed: time charge − all payments received. */
+/** Documented prior balance carried forward from a previous rental that was
+ *  not entered at booking. Adds to the amount owed. Display + engine only. */
+export function rentalPriorBalance(r: Rental): number {
+  return Number(r.priorBalance || 0);
+}
+
+/** Canonical amount owed: time charge + prior balance − all payments received. */
 export function rentalCanonicalOwed(r: Rental): number {
   if ((r.reservationStatus ?? "active") === "pending") return 0;
-  return rentalTimeCharge(r) - rentalPaymentsReceived(r.id);
+  return rentalTimeCharge(r) + rentalPriorBalance(r) - rentalPaymentsReceived(r.id);
 }
 
 /** Due date of the earliest billing period not yet covered by payments.

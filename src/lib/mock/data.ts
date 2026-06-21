@@ -101,6 +101,9 @@ export interface Rental {
   /** Daily rentals: number of initial days covered by the deposit before
    *  daily charges start posting. Defaults to 2 when unset. */
   paidDaysWindow?: number;
+  /** Documented balance carried forward from a previous rental that was not
+   *  entered at booking. Adds to amount owed in the canonical balance engine. */
+  priorBalance?: number;
   // New billing-fee fields (separate from legacy rate / billingPeriod)
   billingCadence?: "daily" | "weekly";
   rateAmount?: number;
