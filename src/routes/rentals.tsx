@@ -2253,7 +2253,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>{sentInfo ? "Done" : "Cancel"}</Button>
           {!sentInfo && (
-            <Button onClick={sendLink} disabled={submitting}>
+            <Button onClick={sendLink} disabled={submitting || (chargeState === "owed" && !collectValid)}>
               <Send className="mr-1 h-4 w-4" /> {submitting ? "Saving…" : chargeState === "paid" ? "Record Extension (Paid)" : "Log & Send Extension Link"}
             </Button>
           )}
