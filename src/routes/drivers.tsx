@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addDriver, useStoreVersion } from "@/lib/mock/store";
 import { updateDriver } from "@/lib/mock/store";
+import { rentalPastDueDays } from "@/lib/mock/store";
 import type { Driver } from "@/lib/mock/data";
 import { toast } from "sonner";
 import { US_STATES, formatAddressBlock, formatFullName } from "@/lib/us-states";
