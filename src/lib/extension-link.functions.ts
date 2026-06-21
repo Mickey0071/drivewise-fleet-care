@@ -226,7 +226,7 @@ export const createExtensionLink = createServerFn({ method: "POST" })
     if (drv?.phone) {
       try {
         const periodsLbl = `${data.periods} ${periodLabel}${data.periods === 1 ? "" : "s"}`;
-        const amt = `$${additionalAmount.toFixed(2)}`;
+        const amt = `$${collectAmount.toFixed(2)}`;
         await notifyRenter({
           phone: drv.phone,
           email: drv.email ?? null,
