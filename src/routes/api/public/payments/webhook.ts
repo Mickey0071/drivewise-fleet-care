@@ -683,6 +683,10 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv, eventId?: s
             status: "paid",
             paid_date: today,
             method: "Stripe",
+            // Record what was actually collected via the link. The full period
+            // charge still lives on rental_extensions / timeCharge, so a partial
+            // collection automatically leaves the difference as an open balance.
+            amount: amountDollars,
             stripe_charge_id: extChargeId,
             stripe_payment_intent_id: extPaymentIntentId,
             stripe_checkout_session_id: session.id,
