@@ -1687,6 +1687,51 @@ export function extendRental(
   return ext;
 }
 
+/** Delete a PENDING (unsigned) extension record. Signed extensions are kept
+ *  as history and cannot be deleted here. Because extensions no longer move
+ *  money (possession + elapsed time is the only money trigger), deleting one
+ *  shifts no balance — it only removes the paperwork and voids any open
+ *  payment link / request tied to that period. */
+export function deletePendingExtension(rentalId: string, extId: string) {
+  const r = rentals.find(x => x.id === rentalId);
+  if (!r) return;
+  const ext = (r.extensions ?? []).find(e => e.id === extId);
+  if (!ext) return;
+  const signed = !!ext.signedBy || !!ext.signatureDataUrl;
+  if (signed) throw new Error("Signed extensions are kept as history and cannot be deleted.");
+
+  // Remove the extension log row.
+  r.extensions = (r.extensions ?? []).filter(e => e.id !== extId);
+  cloudWrite("ext:delete", supabase.from("rental_extensions").delete().eq("id", extId));
+
+  // Void the unpaid charge placeholder created for this extension, if any.
+  if (ext.paymentId) {
+    const pid = ext.paymentId;
+    const idx = payments.findIndex(p => p.id === pid && p.status !== "paid");
+    if (idx >= 0) {
+      payments.splice(idx, 1);
+      cloudWrite("payment:delete", supabase.from("payments").delete().eq("id", pid).neq("status", "paid"));
+    }
+  }
+
+  // Void any open extension_requests payment link for the same new end date.
+  cloudWrite(
+    "ext-req:cancel",
+    supabase.from("extension_requests")
+      .update({ status: "cancelled" } as any)
+      .eq("rental_id", rentalId)
+      .eq("new_end_date", ext.newEndDate)
+      .neq("status", "paid"),
+  );
+  for (const pe of pendingExtensions) {
+    if (pe.rentalId === rentalId && pe.newEndDate === ext.newEndDate && (pe.status ?? "").toLowerCase() !== "paid") {
+      pe.status = "cancelled";
+    }
+  }
+
+  emit();
+}
+
 function nextDriverId() {
   const n = drivers.reduce((m, d) => Math.max(m, parseInt(d.id.replace(/\D/g, "")) || 0), 1000);
   return `D-${n + 1}`;
