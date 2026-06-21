@@ -2051,6 +2051,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
   const [duration, setDuration] = useState<"7" | "14" | "21" | "custom">("7");
   const [submitting, setSubmitting] = useState(false);
   const [chargeState, setChargeState] = useState<"owed" | "paid">("owed");
+  const [collectAmount, setCollectAmount] = useState<string>("");
   const [sentInfo, setSentInfo] = useState<{ signUrl: string; amount: number; newEnd: string; phone: string | null; smsSent: boolean } | null>(null);
   useEffect(() => {
     if (rental) {
