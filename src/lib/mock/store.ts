@@ -409,11 +409,17 @@ export function rentalNextDueDate(r: Rental): string {
   const start = r.startDate?.slice(0, 10) ?? "";
   const { rate, weekly } = rentalPeriodRate(r);
   if (!start || rate <= 0) return r.currentPeriodEnd ?? start;
-  const step = weekly ? 7 : 1;
   const received = rentalPaymentsReceived(r.id);
   const periodsCovered = Math.max(0, Math.floor(received / rate));
   const d = new Date(start + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() + periodsCovered * step);
+  if (weekly) {
+    // Next unpaid week posts on its posting morning (start + 7×covered).
+    d.setUTCDate(d.getUTCDate() + periodsCovered * 7);
+  } else {
+    // Daily: the first `window` days are deposit-covered; the next unpaid
+    // posted day falls after the window plus whatever payments already cover.
+    d.setUTCDate(d.getUTCDate() + rentalPaidDaysWindow(r) + periodsCovered);
+  }
   return d.toISOString().slice(0, 10);
 }
 
