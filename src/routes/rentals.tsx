@@ -386,7 +386,7 @@ function RentalsPage() {
       .filter(p => !extensionPaymentIds.has(p.id))
       .reduce((s, p) => s + Number(p.amount || 0), 0);
     const baseRental = Math.max(0, basePaid) + Number(r.depositPaid || 0);
-    const totalPaid = baseRental + extensionsReceived + violationsPaid;
+    const totalPaid = baseRental + extensionsReceived;
     return (
       <Card key={r.id} className="overflow-hidden">
         <div className="flex flex-col md:flex-row">
@@ -429,7 +429,7 @@ function RentalsPage() {
                 </div>
                 <div className="text-base font-semibold">{fmtMoney(totalPaid)}</div>
               </div>
-              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <div className="text-muted-foreground">Base rental</div>
                   <div className="font-medium text-sm">{fmtMoney(baseRental)}</div>
@@ -439,12 +439,6 @@ function RentalsPage() {
                     Extensions{(r.extensions?.length ?? 0) > 0 ? ` (${r.extensions!.length})` : ""}
                   </div>
                   <div className="font-medium text-sm">{fmtMoney(extensionsReceived)}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">
-                    Violations{rentalViolations.length > 0 ? ` (${rentalViolations.length})` : ""}
-                  </div>
-                  <div className="font-medium text-sm">{fmtMoney(violationsPaid)}</div>
                 </div>
               </div>
             </div>
