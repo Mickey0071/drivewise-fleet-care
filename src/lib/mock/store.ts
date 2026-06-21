@@ -113,6 +113,7 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   weeklyRate: Number(r.weekly_rate), depositPaid: Number(r.deposit_paid),
   paymentStatus: r.payment_status, notes: r.notes ?? undefined,
   billingPeriod: r.billing_period ?? undefined,
+  paidDaysWindow: r.paid_days_window != null ? Number(r.paid_days_window) : undefined,
   rate: r.rate != null ? Number(r.rate) : undefined,
   billingCadence: r.billing_cadence ?? undefined,
   rateAmount: r.rate_amount != null ? Number(r.rate_amount) : undefined,
