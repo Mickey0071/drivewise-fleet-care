@@ -370,17 +370,6 @@ function RentalsPage() {
     const extensionsReceived = paidPayments
       .filter(p => extensionPaymentIds.has(p.id))
       .reduce((s, p) => s + Number(p.amount || 0), 0);
-    const rentalEnd = r.endDate ?? new Date().toISOString().slice(0, 10);
-    const rentalViolations = violations.filter(
-      x =>
-        x.vehicleId === r.vehicleId &&
-        x.driverId === r.driverId &&
-        x.dateIssued >= r.startDate &&
-        x.dateIssued <= rentalEnd,
-    );
-    const violationsPaid = rentalViolations
-      .filter(x => x.status === "paid")
-      .reduce((s, x) => s + Number(x.amount || 0), 0);
     // Base = paid payments that aren't tagged as extension payments
     const basePaid = paidPayments
       .filter(p => !extensionPaymentIds.has(p.id))
