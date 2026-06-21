@@ -2214,7 +2214,7 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
             <div className="rounded-md border bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
               {chargeState === "owed" ? (
                 <>The extension is logged immediately and the end date updates now. The renter receives one
-                link to sign and pay {charge?.additionalAmount ? fmtMoney(charge.additionalAmount) : ""} via Stripe; the balance clears when they pay.</>
+                link to sign and pay {collectValid ? fmtMoney(collectNum) : ""} via Stripe{remaining > 0 ? `, leaving ${fmtMoney(remaining)} on the account` : ""}; the balance updates when they pay.</>
               ) : (
                 <>The extension is logged immediately as paid and the end date updates now. No link is sent.</>
               )}
