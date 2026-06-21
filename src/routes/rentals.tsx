@@ -2162,6 +2162,34 @@ function ExtendRentalDialog({ rental, onClose }: { rental: Rental | null; onClos
                 </div>
               </div>
             )}
+            {charge && charge.additionalAmount > 0 && chargeState === "owed" && (
+              <div>
+                <Label htmlFor="ext-collect">Amount to collect now</Label>
+                <div className="relative mt-1">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                  <Input
+                    id="ext-collect"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="pl-6"
+                    value={collectAmount}
+                    onChange={(e) => setCollectAmount(e.target.value)}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Sets only the payment link amount. The full {fmtMoney(fullCharge)} extension charge still posts to the account.
+                </p>
+                {collectValid && remaining > 0 && (
+                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                    A balance of {fmtMoney(remaining)} will remain on this reservation.
+                  </p>
+                )}
+                {!collectValid && (
+                  <p className="mt-1 text-xs text-destructive">Enter an amount greater than $0.</p>
+                )}
+              </div>
+            )}
             <div>
               <Label className="text-xs uppercase text-muted-foreground">Charge handling</Label>
               <div className="mt-1 grid grid-cols-2 gap-2">
