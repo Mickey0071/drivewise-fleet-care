@@ -115,18 +115,18 @@ function Index() {
   const dueThisWeek = rentals
     .filter(r => (r.reservationStatus ?? "active") === "active") // exclude pending / returned / completed
     .map(r => {
-      const unpaid = payments.filter(p => p.rentalId === r.id && p.status !== "paid");
-      const totalOwed = unpaid.reduce((s, p) => s + Number(p.amount || 0), 0);
-      const earliestDue = unpaid.reduce<string | null>(
-        (min, p) => (min === null || p.dueDate < min ? p.dueDate : min),
-        null,
-      );
+      // Single source of truth: canonical engine (time charge − payments received).
+      const totalOwed = rentalCanonicalOwed(r);
+      const earliestDue = totalOwed > 0 ? rentalNextDueDate(r) : null;
       return { rental: r, totalOwed, earliestDue };
     })
     .filter(x => x.totalOwed > 0 && x.earliestDue !== null && x.earliestDue <= weekEndStr)
     .sort((a, b) => (a.earliestDue! < b.earliestDue! ? -1 : 1));
-  const overdue = payments.filter(p => p.status === "missed" || p.status === "late");
-  const overdueAmount = overdue.reduce((s, p) => s + p.amount, 0);
+  // Overdue = active rentals whose current period is past due, by canonical balance.
+  const overdue = rentals.filter(
+    r => (r.reservationStatus ?? "active") === "active" && rentalPastDueDays(r) > 0,
+  );
+  const overdueAmount = overdue.reduce((s, r) => s + Math.max(0, rentalCanonicalOwed(r)), 0);
   const serviceAlerts = maintenance.filter(m => m.nextServiceDue && new Date(m.nextServiceDue) <= weekEnd);
   const dedupedServiceAlerts = useMemo(() => {
     const byVehicle: Record<string, typeof maintenance[number]> = {};
