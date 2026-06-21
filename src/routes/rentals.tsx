@@ -359,7 +359,6 @@ function RentalsPage() {
     const v = vehicleById(r.vehicleId);
     const d = driverById(r.driverId);
     const sched = payments.filter(p => p.rentalId === r.id);
-    const next = sched.find(p => p.status !== "paid");
     const isPending = r.reservationStatus === "pending";
     // ---- Amount-paid summary ----
     const paidPayments = sched.filter(p => p.status === "paid");
