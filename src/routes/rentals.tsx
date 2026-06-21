@@ -438,7 +438,7 @@ function RentalsPage() {
                   <div className="text-muted-foreground">
                     Extensions{(r.extensions?.length ?? 0) > 0 ? ` (${r.extensions!.length})` : ""}
                   </div>
-                  <div className="font-medium text-sm">{fmtMoney(extensionsTotal)}</div>
+                  <div className="font-medium text-sm">{fmtMoney(extensionsReceived)}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">
