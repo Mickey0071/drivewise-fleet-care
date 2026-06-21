@@ -68,7 +68,12 @@ function DriversPage() {
         {filteredDrivers.map(d => {
           const rental = rentals.find(r => r.driverId === d.id);
           const veh = rental ? vehicleById(rental.vehicleId) : null;
-          const lateCount = payments.filter(p => p.driverId === d.id && p.status !== "paid").length;
+          // Late only when an active rental's current period is past due (canonical engine).
+          const lateCount = rentals.filter(
+            r => r.driverId === d.id
+              && (r.reservationStatus ?? "active") === "active"
+              && rentalPastDueDays(r) > 0,
+          ).length;
           const expSoon = new Date(d.licenseExpiry) < soon;
 
           return (
