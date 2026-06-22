@@ -132,7 +132,7 @@ function PnLDashboard() {
           bestMonth = new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "short" });
         }
       }
-      const utilization = (daysRented / periodDays) * 100;
+      const utilization = Math.min(100, (daysRented / periodDays) * 100);
       return { id: v.id, label: vLabel(v.id), rev, exp, net: rev - exp, daysRented, utilization, bestMonth };
     });
 
