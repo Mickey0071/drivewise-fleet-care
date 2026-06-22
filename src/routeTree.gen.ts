@@ -67,6 +67,7 @@ import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
 import { Route as AutoExtendTokenRouteImport } from './routes/auto-extend.$token'
 import { Route as AnalyticsUtilizationRouteImport } from './routes/analytics_.utilization'
 import { Route as AnalyticsProfitabilityRouteImport } from './routes/analytics_.profitability'
+import { Route as AnalyticsPnlDashboardRouteImport } from './routes/analytics_.pnl-dashboard'
 import { Route as AnalyticsFailuresRouteImport } from './routes/analytics_.failures'
 import { Route as AnalyticsCostsRouteImport } from './routes/analytics_.costs'
 import { Route as AnalyticsBreakevenRouteImport } from './routes/analytics_.breakeven'
@@ -390,6 +391,11 @@ const AnalyticsProfitabilityRoute = AnalyticsProfitabilityRouteImport.update({
   path: '/analytics/profitability',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalyticsPnlDashboardRoute = AnalyticsPnlDashboardRouteImport.update({
+  id: '/analytics_/pnl-dashboard',
+  path: '/analytics/pnl-dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyticsFailuresRoute = AnalyticsFailuresRouteImport.update({
   id: '/analytics_/failures',
   path: '/analytics/failures',
@@ -613,6 +619,7 @@ export interface FileRoutesByFullPath {
   '/analytics/breakeven': typeof AnalyticsBreakevenRoute
   '/analytics/costs': typeof AnalyticsCostsRoute
   '/analytics/failures': typeof AnalyticsFailuresRoute
+  '/analytics/pnl-dashboard': typeof AnalyticsPnlDashboardRoute
   '/analytics/profitability': typeof AnalyticsProfitabilityRoute
   '/analytics/utilization': typeof AnalyticsUtilizationRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
@@ -705,6 +712,7 @@ export interface FileRoutesByTo {
   '/analytics/breakeven': typeof AnalyticsBreakevenRoute
   '/analytics/costs': typeof AnalyticsCostsRoute
   '/analytics/failures': typeof AnalyticsFailuresRoute
+  '/analytics/pnl-dashboard': typeof AnalyticsPnlDashboardRoute
   '/analytics/profitability': typeof AnalyticsProfitabilityRoute
   '/analytics/utilization': typeof AnalyticsUtilizationRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
@@ -798,6 +806,7 @@ export interface FileRoutesById {
   '/analytics_/breakeven': typeof AnalyticsBreakevenRoute
   '/analytics_/costs': typeof AnalyticsCostsRoute
   '/analytics_/failures': typeof AnalyticsFailuresRoute
+  '/analytics_/pnl-dashboard': typeof AnalyticsPnlDashboardRoute
   '/analytics_/profitability': typeof AnalyticsProfitabilityRoute
   '/analytics_/utilization': typeof AnalyticsUtilizationRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
@@ -892,6 +901,7 @@ export interface FileRouteTypes {
     | '/analytics/breakeven'
     | '/analytics/costs'
     | '/analytics/failures'
+    | '/analytics/pnl-dashboard'
     | '/analytics/profitability'
     | '/analytics/utilization'
     | '/auto-extend/$token'
@@ -984,6 +994,7 @@ export interface FileRouteTypes {
     | '/analytics/breakeven'
     | '/analytics/costs'
     | '/analytics/failures'
+    | '/analytics/pnl-dashboard'
     | '/analytics/profitability'
     | '/analytics/utilization'
     | '/auto-extend/$token'
@@ -1076,6 +1087,7 @@ export interface FileRouteTypes {
     | '/analytics_/breakeven'
     | '/analytics_/costs'
     | '/analytics_/failures'
+    | '/analytics_/pnl-dashboard'
     | '/analytics_/profitability'
     | '/analytics_/utilization'
     | '/auto-extend/$token'
@@ -1169,6 +1181,7 @@ export interface RootRouteChildren {
   AnalyticsBreakevenRoute: typeof AnalyticsBreakevenRoute
   AnalyticsCostsRoute: typeof AnalyticsCostsRoute
   AnalyticsFailuresRoute: typeof AnalyticsFailuresRoute
+  AnalyticsPnlDashboardRoute: typeof AnalyticsPnlDashboardRoute
   AnalyticsProfitabilityRoute: typeof AnalyticsProfitabilityRoute
   AnalyticsUtilizationRoute: typeof AnalyticsUtilizationRoute
   AutoExtendTokenRoute: typeof AutoExtendTokenRoute
@@ -1616,6 +1629,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsProfitabilityRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analytics_/pnl-dashboard': {
+      id: '/analytics_/pnl-dashboard'
+      path: '/analytics/pnl-dashboard'
+      fullPath: '/analytics/pnl-dashboard'
+      preLoaderRoute: typeof AnalyticsPnlDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analytics_/failures': {
       id: '/analytics_/failures'
       path: '/analytics/failures'
@@ -1917,6 +1937,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsBreakevenRoute: AnalyticsBreakevenRoute,
   AnalyticsCostsRoute: AnalyticsCostsRoute,
   AnalyticsFailuresRoute: AnalyticsFailuresRoute,
+  AnalyticsPnlDashboardRoute: AnalyticsPnlDashboardRoute,
   AnalyticsProfitabilityRoute: AnalyticsProfitabilityRoute,
   AnalyticsUtilizationRoute: AnalyticsUtilizationRoute,
   AutoExtendTokenRoute: AutoExtendTokenRoute,

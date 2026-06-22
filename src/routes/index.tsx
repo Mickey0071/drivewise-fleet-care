@@ -341,10 +341,11 @@ function Index() {
         </CardContent>
       </Card>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <QuickLink to="/fleet" label="Manage Fleet" icon={Car} />
         <QuickLink to="/drivers" label="Renter Roster" icon={Users} />
         <QuickLink to="/pnl" label="View P&L" icon={TrendingUp} />
+        <QuickLink to="/analytics/pnl-dashboard" label="P&L Dashboard" icon={TrendingUp} />
       </div>
     </div>
   );
