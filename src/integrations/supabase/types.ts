@@ -2047,6 +2047,7 @@ export type Database = {
           created_at: string
           current_period_end: string | null
           deposit_paid: number
+          discount_total: number
           driver_id: string
           end_date: string | null
           extension_declined_at: string | null
@@ -2131,6 +2132,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           deposit_paid?: number
+          discount_total?: number
           driver_id: string
           end_date?: string | null
           extension_declined_at?: string | null
@@ -2215,6 +2217,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           deposit_paid?: number
+          discount_total?: number
           driver_id?: string
           end_date?: string | null
           extension_declined_at?: string | null
