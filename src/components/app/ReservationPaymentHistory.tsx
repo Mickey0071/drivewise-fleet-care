@@ -114,7 +114,7 @@ export function ReservationPaymentHistory({ rental }: { rental: Rental }) {
     );
   }, [rental, last4]);
 
-  const visible = filter === "all" ? rows.filter((r) => r.type === "rental") : rows.filter((r) => r.type === filter);
+  const visible = filter === "all" ? rows : rows.filter((r) => r.type === filter);
   const total = visible
     .filter((r) => r.status === "paid")
     .reduce((s, r) => s + r.amount, 0);
