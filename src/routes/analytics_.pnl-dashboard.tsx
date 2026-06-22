@@ -16,7 +16,7 @@ import {
 } from "@/lib/mock/data";
 import { TrendingUp, TrendingDown, Trophy, AlertTriangle } from "lucide-react";
 
-export const Route = createFileRoute("/analytics/pnl-dashboard")({
+export const Route = createFileRoute("/analytics_/pnl-dashboard")({
   head: () => ({ meta: [{ title: "P&L Dashboard — Camauto Rentals" }] }),
   component: PnLDashboard,
 });
@@ -211,15 +211,19 @@ function PnLDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="P&L Dashboard" subtitle={`${from} → ${to}`}>
-        <ReportActions
-          csv={{
-            filename: `pnl-${mode}-${from}_${to}.csv`,
-            headers: ["Vehicle", "Days Rented", "Utilization", "Revenue", "Expenses", "Net", "Best Month"],
-            rows: csvRows,
-          }}
-        />
-      </PageHeader>
+      <PageHeader
+        title="P&L Dashboard"
+        subtitle={`${from} → ${to}`}
+        action={
+          <ReportActions
+            csv={{
+              filename: `pnl-${mode}-${from}_${to}.csv`,
+              headers: ["Vehicle", "Days Rented", "Utilization", "Revenue", "Expenses", "Net", "Best Month"],
+              rows: csvRows,
+            }}
+          />
+        }
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-2">
