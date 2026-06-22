@@ -1,38 +1,44 @@
-# Separate violation payments from rent due
+# Dashboard accuracy: past-due first, figures match real payments
 
-## Problem
-Janai Allen (R-533) paid $525 on 6/16, but that was **$425 rent + $100 toward violations**. Today the full $525 counts as rent received, so the app shows her further "paid ahead" on rent than she really is. Violation money should never reduce rent due.
+## Goal
+The Admin Dashboard "Payments due this week" and "Overdue" cards must:
+1. List genuinely **past-due** rentals first (most overdue at top).
+2. Show dollar figures that **coincide with true payments** — every figure = elapsed-time charge + prior balance − payments actually recorded (the rows that mirror real Stripe charges / cash).
 
-Confirmed in the data: her payments are $425 (6/8), $525 (6/16), and an unpaid $425 extension. Rate is $425/week.
+No new "upcoming" section. Layout stays the same; only ordering + accuracy.
 
-## What I'll build
+## What's already correct (verified against live data, today = 2026-06-22)
+The dashboard already reads the canonical engine (`rentalCanonicalOwed` = time charge + prior balance − payments received), so it nets out recorded payments. Current true numbers:
 
-### 1. New permanent payment category: `violation`
-A payment row tagged `kind = "violation"` is money the renter paid against tickets/tolls/violations. It is tracked on the account but **excluded from rent payments-received**, so it can never make rent owed go down or push a renter "ahead."
+```text
+R-517 Kassan Crutchfield  weekly $450  start 5/30  4 wks posted=1800  paid 1350 -> OWED $450 (2 days past due)
+R-533 Janai Allen         weekly $425  start 6/6   3 wks posted=1275  paid 850  -> OWED $425 (2 days past due)
+R-527 Luther Bunting      weekly $450  start 5/31  4 wks posted=1800  paid 1350 -> OWED $450 (1 day past due)
+R-576 Patricia McIntyre   weekly $400  start 6/11  2 wks posted=800 +200 prior  paid 1000 -> OWED $0 (not shown)
+R-571 Chase Francois      now RETURNED -> excluded from active dashboard lists
+```
+So the screenshot ($1,275 / Chase 11-days-overdue) is stale; the engine now reports a different, current set. Overdue card should read **$1,325 across 3** (Kassan + Janai + Luther) unless other active rentals are also past due.
 
-- `src/lib/mock/data.ts` — extend the `Payment.kind` union from `"charge" | "credit"` to `"charge" | "credit" | "violation"`.
-- `src/lib/mock/store.ts`:
-  - `rentalPaymentsReceived` (line ~395): exclude `kind === "violation"` (currently only excludes `"credit"`), so violation money never offsets rent.
-  - Add a small helper `rentalViolationPaymentsReceived(rentalId)` that sums paid `violation` rows, for display.
-- The `payments.kind` column is free text (no check constraint), so no schema migration is needed — `"violation"` stores fine.
+## Changes
 
-### 2. Show it as its own line (a different column, not rent)
-- `src/components/app/ReservationPaymentHistory.tsx` — render `violation` rows with their own label/icon (e.g. "Violation payment") so they read clearly as not-rent.
-- `src/routes/rentals.tsx` — surface violation payments received as a separate figure on the card, kept apart from the rent "Due now / balance" math.
+### 1. Order past-due first (`src/routes/index.tsx`)
+The `dueThisWeek` list currently sorts by `earliestDue` ascending, which already floats overdue items up, but it mixes "due today / due soon" in the same flat list with no clear priority. Make the ordering explicit and unambiguous:
 
-### 3. Correct Janai's record (data fix, no money moved)
-- Change existing row `PM-5K5JvqKsxP` from `525` → `425` (rent).
-- Insert a new paid row: `$100`, `kind = "violation"`, dated 6/16, method Stripe, note "Violation payment (separated from rent)".
+- Sort key: rentals with `rentalPastDueDays(r) > 0` first, ordered by **days past due descending** (most overdue on top); then **due today**; then **upcoming within 7 days** by soonest due date.
+- Keep the existing week-window filter (overdue items have past due-dates and always pass it), but confirm no past-due active rental is ever dropped.
 
-This leaves total cash received identical ($950) but only $850 counts as rent.
+### 2. Confirm figures equal recorded-payment math (no engine change expected)
+The engine already subtracts only `status = 'paid'` rows that are not `credit`/`violation` — i.e. real money. As part of this task I will re-run a read-only check of each active, past-due rental: `time charge + prior balance − Σ(paid rent rows)` and confirm it matches what the card renders. If any rental's figure does **not** match its real Stripe/cash payments, that means a payment row is missing or mis-recorded (a data issue, fixed via an audited payment correction), not an engine bug — I'll flag those rather than silently change them.
 
-## Resulting numbers for Janai (R-533), today 6/21
-- Possession: 15 days out → 3 weeks posted × $425 = **$1,275 rent charged**
-- Rent received: $425 + $425 = **$850** (the $100 no longer counts)
-- **Rent due now: $425** — she is **not** ahead
-- Violation payments received: **$100**, shown separately
-- Unpaid $425 extension still ignored by the balance (possession-based engine, unchanged)
+### 3. Verify the Overdue card total + count
+`overdueAmount` / `overdue.length` already derive from `rentalPastDueDays > 0` and `rentalCanonicalOwed`. Confirm they recompute to the live numbers above after the ordering change.
 
-## Out of scope (unchanged)
-- Possession/time-charge engine, extensions logic, credit handling, the Return flow.
-- No violation record is created; the $6 EZPass on file is untouched. The $100 is recorded purely as a violation-category payment, per your choice.
+## Out of scope
+- No "upcoming / not-yet-due" section.
+- No changes to the billing engine, extensions, violations, prior-balance, or Return flow.
+- No bulk rewrite of payment history; any genuine missing-Stripe-payment rows would be handled separately as audited corrections.
+
+## Verification
+- Load `/` and confirm the "Payments due this week" list shows overdue rentals first (Kassan/Janai/Luther order by days overdue), each with the figures above.
+- Confirm the Overdue card total and "late or missed" count match the recomputed live numbers.
+- Confirm returned rentals (Chase R-571) and net-zero rentals (Patricia R-576) do not appear.

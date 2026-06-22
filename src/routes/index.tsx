@@ -118,10 +118,15 @@ function Index() {
       // Single source of truth: canonical engine (time charge − payments received).
       const totalOwed = rentalCanonicalOwed(r);
       const earliestDue = totalOwed > 0 ? rentalNextDueDate(r) : null;
-      return { rental: r, totalOwed, earliestDue };
+      return { rental: r, totalOwed, earliestDue, pastDueDays: rentalPastDueDays(r) };
     })
-    .filter(x => x.totalOwed > 0 && x.earliestDue !== null && x.earliestDue <= weekEndStr)
-    .sort((a, b) => (a.earliestDue! < b.earliestDue! ? -1 : 1));
+    // Keep anything past due (always) plus anything due within the next 7 days.
+    .filter(x => x.totalOwed > 0 && x.earliestDue !== null && (x.pastDueDays > 0 || x.earliestDue <= weekEndStr))
+    // Past due first (most overdue on top), then due today / upcoming by soonest date.
+    .sort((a, b) => {
+      if (a.pastDueDays !== b.pastDueDays) return b.pastDueDays - a.pastDueDays;
+      return a.earliestDue! < b.earliestDue! ? -1 : 1;
+    });
   // Overdue = active rentals whose current period is past due, by canonical balance.
   const overdue = rentals.filter(
     r => (r.reservationStatus ?? "active") === "active" && rentalPastDueDays(r) > 0,
