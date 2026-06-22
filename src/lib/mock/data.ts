@@ -104,6 +104,9 @@ export interface Rental {
   /** Documented balance carried forward from a previous rental that was not
    *  entered at booking. Adds to amount owed in the canonical balance engine. */
   priorBalance?: number;
+  /** Total goodwill discount / balance waived on this reservation.
+   *  Subtracted from amount owed in the canonical balance engine. */
+  discountTotal?: number;
   // New billing-fee fields (separate from legacy rate / billingPeriod)
   billingCadence?: "daily" | "weekly";
   rateAmount?: number;
