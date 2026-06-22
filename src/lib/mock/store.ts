@@ -115,6 +115,7 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   billingPeriod: r.billing_period ?? undefined,
   paidDaysWindow: r.paid_days_window != null ? Number(r.paid_days_window) : undefined,
   priorBalance: r.prior_balance != null ? Number(r.prior_balance) : undefined,
+  discountTotal: r.discount_total != null ? Number(r.discount_total) : undefined,
   rate: r.rate != null ? Number(r.rate) : undefined,
   billingCadence: r.billing_cadence ?? undefined,
   rateAmount: r.rate_amount != null ? Number(r.rate_amount) : undefined,
@@ -162,6 +163,7 @@ const toRental = (r: any) => ({
   billing_period: r.billingPeriod ?? null, rate: r.rate ?? null,
   paid_days_window: r.paidDaysWindow ?? 2,
   prior_balance: r.priorBalance ?? 0,
+  discount_total: r.discountTotal ?? 0,
   billing_cadence: r.billingCadence ?? null,
   rate_amount: r.rateAmount ?? null,
   auto_renew: r.autoRenew ?? true,
@@ -412,10 +414,21 @@ export function rentalPriorBalance(r: Rental): number {
   return Number(r.priorBalance || 0);
 }
 
-/** Canonical amount owed: time charge + prior balance − all payments received. */
+/** Total goodwill discount / waived balance applied to a rental. Reduces the
+ *  amount owed in the canonical engine without being booked as cash revenue. */
+export function rentalDiscountTotal(r: Rental): number {
+  return Number(r.discountTotal || 0);
+}
+
+/** Canonical amount owed: time charge + prior balance − payments received − discounts. */
 export function rentalCanonicalOwed(r: Rental): number {
   if ((r.reservationStatus ?? "active") === "pending") return 0;
-  return rentalTimeCharge(r) + rentalPriorBalance(r) - rentalPaymentsReceived(r.id);
+  return (
+    rentalTimeCharge(r) +
+    rentalPriorBalance(r) -
+    rentalPaymentsReceived(r.id) -
+    rentalDiscountTotal(r)
+  );
 }
 
 /** Due date of the earliest billing period not yet covered by payments.
@@ -1467,36 +1480,27 @@ export function applyDiscount(
   if (!r || !(amount > 0)) return { discounted: 0, fullyPaid: false };
   const date = new Date().toISOString().slice(0, 10);
 
-  let remaining = amount;
-  const unpaid = payments
-    .filter(p => p.rentalId === r.id && p.status !== "paid")
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  // The canonical balance engine derives "owed" from elapsed time minus
+  // payments minus discounts — it does NOT read scheduled-payment rows. So a
+  // discount must be recorded against the rental's discountTotal to actually
+  // lower the balance (the old approach edited unpaid payment rows, which the
+  // engine ignored — that's why waived balances kept reappearing).
+  const owedBefore = Math.max(0, rentalCanonicalOwed(r));
+  const discounted = Math.min(amount, owedBefore);
+  if (discounted <= 0) return { discounted: 0, fullyPaid: rentalCanonicalOwed(r) <= 0 };
 
-  for (const p of unpaid) {
-    if (remaining <= 0) break;
-    const owed = Number(p.amount || 0);
-    if (remaining >= owed) {
-      // Fully discount this record -> mark as a $0 paid line (waived).
-      p.amount = 0;
-      p.status = "paid";
-      p.paidDate = date;
-      cloudWrite("payment:update", supabase.from("payments").update(toPayment(p)).eq("id", p.id));
-      remaining -= owed;
-    } else {
-      p.amount = owed - remaining;
-      cloudWrite("payment:update", supabase.from("payments").update(toPayment(p)).eq("id", p.id));
-      remaining = 0;
-    }
+  r.discountTotal = Number(r.discountTotal || 0) + discounted;
+  r.notes = `${r.notes ? `${r.notes}\n` : ""}[${date}] Discount $${discounted.toFixed(2)}${note ? `: ${note}` : ""}`;
+
+  const fullyPaid = rentalCanonicalOwed(r) <= 0;
+  // Clearing the balance must also clear any past-due status so the
+  // reservation no longer shows "Past Due".
+  if (fullyPaid && (r.paymentStatus === "late" || r.paymentStatus === "defaulted")) {
+    r.paymentStatus = "current";
   }
 
-  const discounted = amount - remaining;
-  if (discounted > 0 && note) {
-    r.notes = `${r.notes ? `${r.notes}\n` : ""}[${date}] Discount $${discounted.toFixed(2)}: ${note}`;
-    cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
-  }
-
+  cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
   emit();
-  const fullyPaid = !payments.some(p => p.rentalId === r.id && p.status !== "paid");
   return { discounted, fullyPaid };
 }
 
