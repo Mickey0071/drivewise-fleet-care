@@ -414,10 +414,21 @@ export function rentalPriorBalance(r: Rental): number {
   return Number(r.priorBalance || 0);
 }
 
-/** Canonical amount owed: time charge + prior balance − all payments received. */
+/** Total goodwill discount / waived balance applied to a rental. Reduces the
+ *  amount owed in the canonical engine without being booked as cash revenue. */
+export function rentalDiscountTotal(r: Rental): number {
+  return Number(r.discountTotal || 0);
+}
+
+/** Canonical amount owed: time charge + prior balance − payments received − discounts. */
 export function rentalCanonicalOwed(r: Rental): number {
   if ((r.reservationStatus ?? "active") === "pending") return 0;
-  return rentalTimeCharge(r) + rentalPriorBalance(r) - rentalPaymentsReceived(r.id);
+  return (
+    rentalTimeCharge(r) +
+    rentalPriorBalance(r) -
+    rentalPaymentsReceived(r.id) -
+    rentalDiscountTotal(r)
+  );
 }
 
 /** Due date of the earliest billing period not yet covered by payments.
