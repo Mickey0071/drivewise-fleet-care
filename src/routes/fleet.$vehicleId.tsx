@@ -90,8 +90,6 @@ function VehicleDetail() {
   const vRentals = rentals.filter(r => r.vehicleId === v.id);
   const vMx = maintenance.filter(m => m.vehicleId === v.id);
   const openIssues = vMx.filter(m => !m.dateCompleted);
-  const serviceLog = vMx.filter(isServiceLogRecord)
-    .sort((a, b) => (b.dateCompleted ?? "").localeCompare(a.dateCompleted ?? ""));
   const lastSvc = lastServiceFor(maintenance, v.id);
   const SCHEDULED_KEYWORDS = ["oil", "battery", "alternator", "inspection"];
   const completedRepairs = vMx
