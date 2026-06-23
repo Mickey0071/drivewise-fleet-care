@@ -4,10 +4,11 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { vehicleById, rentals, maintenance, violations, inspections, payments, expenses, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
-import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, updateVehicle, useStoreVersion } from "@/lib/mock/store";
+import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, updateVehicle, completeRepair, deleteMaintenance, deleteWorkOrder, updateWorkOrder, useStoreVersion } from "@/lib/mock/store";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
@@ -25,12 +26,13 @@ import { ServiceHistoryReportDialog } from "@/components/app/ServiceHistoryRepor
 import { CreateWorkOrderDialog } from "@/components/app/CreateWorkOrderDialog";
 import { WorkOrderDialog } from "@/components/app/WorkOrderDialog";
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
+import { EditMaintenanceDialog } from "@/components/app/EditMaintenanceDialog";
 import { ExpenseDialog } from "@/components/app/ExpenseDialog";
 import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 import type { Maintenance, WorkOrder } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
-import { isServiceLogRecord, lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
+import { lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
