@@ -140,6 +140,38 @@ function VehicleDetail() {
     .sort((a, b) =>
       (b.completionDate ?? b.dateCompleted ?? "").localeCompare(a.completionDate ?? a.dateCompleted ?? ""),
     );
+  const todayStr = new Date().toISOString().slice(0, 10);
+  function openStatusLabel(m: Maintenance): string {
+    const wo = woById(m.sourceWorkOrderId);
+    const due = wo?.scheduledDate ?? m.nextServiceDue;
+    if (due && due < todayStr) return "Overdue";
+    if (wo?.status === "in_progress") return "In Progress";
+    return "Pending";
+  }
+  function markComplete(m: Maintenance) {
+    if (!window.confirm("Mark this work as completed? This logs it to history and creates an expense record.")) return;
+    const wo = woById(m.sourceWorkOrderId);
+    if (wo) {
+      updateWorkOrder(wo.id, {
+        status: "completed",
+        completedDate: wo.completedDate ?? todayStr,
+        actualCost: wo.actualCost ?? wo.estimatedCost ?? 0,
+      });
+    } else {
+      completeRepair(m.id);
+    }
+    toast.success("Marked complete", { description: "Moved to Completed history." });
+  }
+  function removeMaint(m: Maintenance) {
+    if (!window.confirm("Delete this maintenance record? This cannot be undone.")) return;
+    const wo = woById(m.sourceWorkOrderId);
+    if (wo) deleteWorkOrder(wo.id); else deleteMaintenance(m.id);
+    toast.success("Deleted");
+  }
+  function editMaint(m: Maintenance) {
+    const wo = woById(m.sourceWorkOrderId);
+    if (wo) setActiveWo(wo); else setEditRecord(m);
+  }
 
   const uniqueRenters = Array.from(new Map(vRentals.map(r => [r.driverId, driverById(r.driverId)])).entries())
     .map(([driverId, driver]) => {
