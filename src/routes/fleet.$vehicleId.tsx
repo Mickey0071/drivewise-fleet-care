@@ -4,10 +4,11 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { vehicleById, rentals, maintenance, violations, inspections, payments, expenses, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
-import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, updateVehicle, useStoreVersion } from "@/lib/mock/store";
+import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, updateVehicle, completeRepair, deleteMaintenance, deleteWorkOrder, updateWorkOrder, useStoreVersion } from "@/lib/mock/store";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
@@ -25,12 +26,13 @@ import { ServiceHistoryReportDialog } from "@/components/app/ServiceHistoryRepor
 import { CreateWorkOrderDialog } from "@/components/app/CreateWorkOrderDialog";
 import { WorkOrderDialog } from "@/components/app/WorkOrderDialog";
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
+import { EditMaintenanceDialog } from "@/components/app/EditMaintenanceDialog";
 import { ExpenseDialog } from "@/components/app/ExpenseDialog";
 import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 import type { Maintenance, WorkOrder } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
-import { isServiceLogRecord, lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
+import { lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
@@ -57,6 +59,7 @@ function VehicleDetail() {
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const [completedRepair, setCompletedRepair] = useState<Maintenance | null>(null);
+  const [editRecord, setEditRecord] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
@@ -87,8 +90,6 @@ function VehicleDetail() {
   const vRentals = rentals.filter(r => r.vehicleId === v.id);
   const vMx = maintenance.filter(m => m.vehicleId === v.id);
   const openIssues = vMx.filter(m => !m.dateCompleted);
-  const serviceLog = vMx.filter(isServiceLogRecord)
-    .sort((a, b) => (b.dateCompleted ?? "").localeCompare(a.dateCompleted ?? ""));
   const lastSvc = lastServiceFor(maintenance, v.id);
   const SCHEDULED_KEYWORDS = ["oil", "battery", "alternator", "inspection"];
   const completedRepairs = vMx
@@ -127,9 +128,50 @@ function VehicleDetail() {
   const isCurrentlyRented = v.status === "rented" && !!activeRental && !activeRental.endDate;
   const nextDue = vPayments.find(p => p.status !== "paid");
   const alerts = computeVehicleAlerts(v);
-  const vWorkOrders = workOrders
-    .filter(w => w.vehicleId === v.id)
-    .sort((a, b) => (b.scheduledDate ?? "").localeCompare(a.scheduledDate ?? ""));
+  // Single source of truth for maintenance history: the maintenance ledger.
+  // Work orders are mirrored into maintenance rows (sourceWorkOrderId), so we
+  // derive Open vs Completed from one list — no duplicate sections.
+  const woById = (id?: string) => (id ? workOrders.find(w => w.id === id) : undefined);
+  const openMaint = vMx
+    .filter(m => m.status !== "complete" && !m.dateCompleted)
+    .sort((a, b) => (a.nextServiceDue ?? "").localeCompare(b.nextServiceDue ?? ""));
+  const completedMaint = vMx
+    .filter(m => m.status === "complete" || !!m.dateCompleted)
+    .sort((a, b) =>
+      (b.completionDate ?? b.dateCompleted ?? "").localeCompare(a.completionDate ?? a.dateCompleted ?? ""),
+    );
+  const todayStr = new Date().toISOString().slice(0, 10);
+  function openStatusLabel(m: Maintenance): string {
+    const wo = woById(m.sourceWorkOrderId);
+    const due = wo?.scheduledDate ?? m.nextServiceDue;
+    if (due && due < todayStr) return "Overdue";
+    if (wo?.status === "in_progress") return "In Progress";
+    return "Pending";
+  }
+  function markComplete(m: Maintenance) {
+    if (!window.confirm("Mark this work as completed? This logs it to history and creates an expense record.")) return;
+    const wo = woById(m.sourceWorkOrderId);
+    if (wo) {
+      updateWorkOrder(wo.id, {
+        status: "completed",
+        completedDate: wo.completedDate ?? todayStr,
+        actualCost: wo.actualCost ?? wo.estimatedCost ?? 0,
+      });
+    } else {
+      completeRepair(m.id);
+    }
+    toast.success("Marked complete", { description: "Moved to Completed history." });
+  }
+  function removeMaint(m: Maintenance) {
+    if (!window.confirm("Delete this maintenance record? This cannot be undone.")) return;
+    const wo = woById(m.sourceWorkOrderId);
+    if (wo) deleteWorkOrder(wo.id); else deleteMaintenance(m.id);
+    toast.success("Deleted");
+  }
+  function editMaint(m: Maintenance) {
+    const wo = woById(m.sourceWorkOrderId);
+    if (wo) setActiveWo(wo); else setEditRecord(m);
+  }
 
   const uniqueRenters = Array.from(new Map(vRentals.map(r => [r.driverId, driverById(r.driverId)])).entries())
     .map(([driverId, driver]) => {
@@ -386,40 +428,85 @@ function VehicleDetail() {
           </div>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Work orders ({vWorkOrders.length})</CardTitle>
+              <CardTitle className="text-base">Maintenance History</CardTitle>
               <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>
                 <ClipboardList className="mr-1 h-4 w-4" />New work order
               </Button>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {vWorkOrders.length === 0 ? <Empty/> : vWorkOrders.map(w => (
-                <button
-                  key={w.id}
-                  type="button"
-                  onClick={() => setActiveWo(w)}
-                  className="flex w-full items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-left hover:bg-accent"
-                >
-                  <div>
-                    <div className="text-sm font-medium">{w.serviceType}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Scheduled {fmtDate(w.scheduledDate)}{w.assignedTo ? ` · ${w.assignedTo}` : ""} · {fmtMoney(w.estimatedCost)}
-                    </div>
-                  </div>
-                  <StatusBadge status={w.status} />
-                </button>
-              ))}
+            <CardContent>
+              <Tabs defaultValue="open">
+                <TabsList>
+                  <TabsTrigger value="open">Open ({openMaint.length})</TabsTrigger>
+                  <TabsTrigger value="completed">Completed ({completedMaint.length})</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="open" className="mt-3">
+                  {openMaint.length === 0 ? <Empty/> : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Service</TableHead>
+                          <TableHead>Scheduled</TableHead>
+                          <TableHead className="text-right">Est. Cost</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {openMaint.map(m => {
+                          const wo = woById(m.sourceWorkOrderId);
+                          const scheduled = wo?.scheduledDate ?? m.nextServiceDue;
+                          const est = wo?.estimatedCost ?? m.cost ?? 0;
+                          return (
+                            <TableRow key={m.id}>
+                              <TableCell className="font-medium">{m.serviceType}</TableCell>
+                              <TableCell>{fmtDate(scheduled)}</TableCell>
+                              <TableCell className="text-right">{fmtMoney(est)}</TableCell>
+                              <TableCell><StatusBadge status={openStatusLabel(m)} /></TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1.5">
+                                  <Button size="sm" onClick={() => markComplete(m)}>Mark Complete</Button>
+                                  <Button size="sm" variant="outline" onClick={() => editMaint(m)}>Edit</Button>
+                                  <Button size="sm" variant="ghost" onClick={() => removeMaint(m)}>Delete</Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="completed" className="mt-3">
+                  {completedMaint.length === 0 ? <Empty/> : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Service</TableHead>
+                          <TableHead>Completed</TableHead>
+                          <TableHead className="text-right">Mileage</TableHead>
+                          <TableHead className="text-right">Cost</TableHead>
+                          <TableHead>Done By</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {completedMaint.map(m => (
+                          <TableRow key={m.id}>
+                            <TableCell className="font-medium">{m.serviceType}</TableCell>
+                            <TableCell>{fmtDate(m.completionDate?.slice(0, 10) ?? m.dateCompleted)}</TableCell>
+                            <TableCell className="text-right">{(m.mileageAtService ?? 0).toLocaleString()} mi</TableCell>
+                            <TableCell className="text-right">{fmtMoney(m.cost)}</TableCell>
+                            <TableCell>{m.completedBy || m.vendor || "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
-          <Section title={`Service log (${serviceLog.length})`}>
-            {serviceLog.length === 0 ? <Empty/> : serviceLog.map(m => (
-              <Row key={m.id} title={m.serviceType} sub={`${m.vendor || "—"} · ${fmtDate(m.dateCompleted)} · by ${m.completedBy || "—"} · ${m.mileageAtService.toLocaleString()} mi · next due ${fmtDate(m.nextServiceDue)}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
-            ))}
-          </Section>
-          <Section title={`Maintenance records (${vMx.length})`}>
-            {vMx.length === 0 ? <Empty/> : vMx.map(m => (
-              <Row key={m.id} title={m.serviceType} sub={`${m.vendor || "—"} · ${fmtDate(m.dateCompleted)} · by ${m.completedBy || "—"} · ${m.mileageAtService.toLocaleString()} mi · next due ${fmtDate(m.nextServiceDue)}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
-            ))}
-          </Section>
           <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/maintenance">Open maintenance log →</Link></Button>
         </TabsContent>
 
@@ -563,6 +650,11 @@ function VehicleDetail() {
         open={!!completedRepair}
         onOpenChange={(o) => { if (!o) setCompletedRepair(null); }}
         record={completedRepair}
+      />
+      <EditMaintenanceDialog
+        open={!!editRecord}
+        onOpenChange={(o) => { if (!o) setEditRecord(null); }}
+        record={editRecord}
       />
       <MaintenanceSettingsDialog
         open={settingsOpen}
