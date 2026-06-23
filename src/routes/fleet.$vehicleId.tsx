@@ -428,40 +428,85 @@ function VehicleDetail() {
           </div>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Work orders ({vWorkOrders.length})</CardTitle>
+              <CardTitle className="text-base">Maintenance History</CardTitle>
               <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>
                 <ClipboardList className="mr-1 h-4 w-4" />New work order
               </Button>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {vWorkOrders.length === 0 ? <Empty/> : vWorkOrders.map(w => (
-                <button
-                  key={w.id}
-                  type="button"
-                  onClick={() => setActiveWo(w)}
-                  className="flex w-full items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-left hover:bg-accent"
-                >
-                  <div>
-                    <div className="text-sm font-medium">{w.serviceType}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Scheduled {fmtDate(w.scheduledDate)}{w.assignedTo ? ` · ${w.assignedTo}` : ""} · {fmtMoney(w.estimatedCost)}
-                    </div>
-                  </div>
-                  <StatusBadge status={w.status} />
-                </button>
-              ))}
+            <CardContent>
+              <Tabs defaultValue="open">
+                <TabsList>
+                  <TabsTrigger value="open">Open ({openMaint.length})</TabsTrigger>
+                  <TabsTrigger value="completed">Completed ({completedMaint.length})</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="open" className="mt-3">
+                  {openMaint.length === 0 ? <Empty/> : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Service</TableHead>
+                          <TableHead>Scheduled</TableHead>
+                          <TableHead className="text-right">Est. Cost</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {openMaint.map(m => {
+                          const wo = woById(m.sourceWorkOrderId);
+                          const scheduled = wo?.scheduledDate ?? m.nextServiceDue;
+                          const est = wo?.estimatedCost ?? m.cost ?? 0;
+                          return (
+                            <TableRow key={m.id}>
+                              <TableCell className="font-medium">{m.serviceType}</TableCell>
+                              <TableCell>{fmtDate(scheduled)}</TableCell>
+                              <TableCell className="text-right">{fmtMoney(est)}</TableCell>
+                              <TableCell><StatusBadge status={openStatusLabel(m)} /></TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-1.5">
+                                  <Button size="sm" onClick={() => markComplete(m)}>Mark Complete</Button>
+                                  <Button size="sm" variant="outline" onClick={() => editMaint(m)}>Edit</Button>
+                                  <Button size="sm" variant="ghost" onClick={() => removeMaint(m)}>Delete</Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="completed" className="mt-3">
+                  {completedMaint.length === 0 ? <Empty/> : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Service</TableHead>
+                          <TableHead>Completed</TableHead>
+                          <TableHead className="text-right">Mileage</TableHead>
+                          <TableHead className="text-right">Cost</TableHead>
+                          <TableHead>Done By</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {completedMaint.map(m => (
+                          <TableRow key={m.id}>
+                            <TableCell className="font-medium">{m.serviceType}</TableCell>
+                            <TableCell>{fmtDate(m.completionDate?.slice(0, 10) ?? m.dateCompleted)}</TableCell>
+                            <TableCell className="text-right">{(m.mileageAtService ?? 0).toLocaleString()} mi</TableCell>
+                            <TableCell className="text-right">{fmtMoney(m.cost)}</TableCell>
+                            <TableCell>{m.completedBy || m.vendor || "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
-          <Section title={`Service log (${serviceLog.length})`}>
-            {serviceLog.length === 0 ? <Empty/> : serviceLog.map(m => (
-              <Row key={m.id} title={m.serviceType} sub={`${m.vendor || "—"} · ${fmtDate(m.dateCompleted)} · by ${m.completedBy || "—"} · ${m.mileageAtService.toLocaleString()} mi · next due ${fmtDate(m.nextServiceDue)}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
-            ))}
-          </Section>
-          <Section title={`Maintenance records (${vMx.length})`}>
-            {vMx.length === 0 ? <Empty/> : vMx.map(m => (
-              <Row key={m.id} title={m.serviceType} sub={`${m.vendor || "—"} · ${fmtDate(m.dateCompleted)} · by ${m.completedBy || "—"} · ${m.mileageAtService.toLocaleString()} mi · next due ${fmtDate(m.nextServiceDue)}`} right={<span className="font-medium">{fmtMoney(m.cost)}</span>} />
-            ))}
-          </Section>
           <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/maintenance">Open maintenance log →</Link></Button>
         </TabsContent>
 
