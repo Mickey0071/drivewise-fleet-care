@@ -128,9 +128,18 @@ function VehicleDetail() {
   const isCurrentlyRented = v.status === "rented" && !!activeRental && !activeRental.endDate;
   const nextDue = vPayments.find(p => p.status !== "paid");
   const alerts = computeVehicleAlerts(v);
-  const vWorkOrders = workOrders
-    .filter(w => w.vehicleId === v.id)
-    .sort((a, b) => (b.scheduledDate ?? "").localeCompare(a.scheduledDate ?? ""));
+  // Single source of truth for maintenance history: the maintenance ledger.
+  // Work orders are mirrored into maintenance rows (sourceWorkOrderId), so we
+  // derive Open vs Completed from one list — no duplicate sections.
+  const woById = (id?: string) => (id ? workOrders.find(w => w.id === id) : undefined);
+  const openMaint = vMx
+    .filter(m => m.status !== "complete" && !m.dateCompleted)
+    .sort((a, b) => (a.nextServiceDue ?? "").localeCompare(b.nextServiceDue ?? ""));
+  const completedMaint = vMx
+    .filter(m => m.status === "complete" || !!m.dateCompleted)
+    .sort((a, b) =>
+      (b.completionDate ?? b.dateCompleted ?? "").localeCompare(a.completionDate ?? a.dateCompleted ?? ""),
+    );
 
   const uniqueRenters = Array.from(new Map(vRentals.map(r => [r.driverId, driverById(r.driverId)])).entries())
     .map(([driverId, driver]) => {
