@@ -59,6 +59,7 @@ function VehicleDetail() {
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
   const [completedRepair, setCompletedRepair] = useState<Maintenance | null>(null);
+  const [editRecord, setEditRecord] = useState<Maintenance | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
