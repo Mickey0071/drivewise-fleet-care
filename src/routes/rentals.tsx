@@ -471,8 +471,11 @@ function RentalsPage() {
                   {(() => {
                     const bal = rentalBalance(r);
                     return bal < 0 ? (
-                      <span className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
-                        Credit {fmtMoney(-bal)} · nothing due
+                      <span
+                        className="text-base font-semibold text-emerald-600 dark:text-emerald-400"
+                        title="Payment received ahead of charges — applies automatically as time accrues."
+                      >
+                        Prepaid credit {fmtMoney(-bal)} · nothing due
                       </span>
                     ) : (
                       <span className="text-base font-semibold">{fmtMoney(bal)}</span>
