@@ -529,3 +529,153 @@ function BalanceAuditPanel() {
     </>
   );
 }
+
+const IMPORT_STATUS: Record<
+  ImportChargeLine["status"],
+  { label: string; variant: "default" | "secondary" | "outline" | "destructive" }
+> = {
+  inserted: { label: "Recorded", variant: "secondary" },
+  would_insert: { label: "Will add", variant: "default" },
+  already_recorded: { label: "Already there", variant: "outline" },
+  possible_cash_duplicate: { label: "Possible duplicate", variant: "destructive" },
+  unmatched: { label: "Unmatched", variant: "destructive" },
+};
+
+function ImportChargesPanel() {
+  const runImport = useServerFn(importStripeCharges);
+
+  const [driverId, setDriverId] = useState("");
+  const [allDrivers, setAllDrivers] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [committing, setCommitting] = useState(false);
+  const [result, setResult] = useState<Exclude<ImportResult, { error: string }> | null>(null);
+
+  async function run(commit: boolean) {
+    if (!driverId.trim() && !allDrivers) {
+      toast.error("Enter a renter id or tick 'all renters'");
+      return;
+    }
+    commit ? setCommitting(true) : setLoading(true);
+    try {
+      const res = await runImport({
+        data: {
+          driverId: allDrivers ? undefined : driverId.trim() || undefined,
+          allDrivers: allDrivers || undefined,
+          commit,
+        },
+      });
+      if ("error" in res) {
+        toast.error(res.error);
+        return;
+      }
+      setResult(res);
+      toast.success(
+        commit
+          ? `Recorded ${res.inserted} Stripe charge(s)`
+          : `Found ${res.would_insert} missing charge(s) to add`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setLoading(false);
+      setCommitting(false);
+    }
+  }
+
+  return (
+    <>
+      <Card className="p-4 space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Pulls succeeded Stripe charges (including from payment links / extensions) that were never
+          written into the payments table and records them against the matching reservation. Preview
+          first — nothing is saved until you press <span className="font-medium text-foreground">Import</span>.
+          Already-recorded charges and likely cash duplicates are skipped automatically.
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="impDriverId" className="text-xs">Renter id (e.g. D-1014)</Label>
+            <Input
+              id="impDriverId"
+              placeholder="D-1014"
+              value={driverId}
+              onChange={(e) => setDriverId(e.target.value)}
+              disabled={allDrivers}
+              className="w-48"
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm pb-2">
+            <input type="checkbox" checked={allDrivers} onChange={(e) => setAllDrivers(e.target.checked)} />
+            All renters
+          </label>
+          <Button onClick={() => run(false)} disabled={loading || committing} className="gap-2" variant="outline">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Preview
+          </Button>
+          <Button
+            onClick={() => run(true)}
+            disabled={loading || committing || !result || result.would_insert === 0}
+            className="gap-2"
+          >
+            {committing && <Loader2 className="h-4 w-4 animate-spin" />}
+            Import{result ? ` ${result.would_insert}` : ""}
+          </Button>
+          {result && <Badge variant="outline">Stripe: {result.environment}</Badge>}
+        </div>
+        {result && (
+          <div className="text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+            <span>Renters scanned: {result.drivers_scanned}</span>
+            <span>Charges found: {result.charges_found}</span>
+            <span>To add: {result.would_insert}</span>
+            <span>Recorded: {result.inserted}</span>
+            <span>Already there: {result.already_recorded}</span>
+            <span>Possible duplicates: {result.possible_duplicates}</span>
+            <span>Unmatched: {result.unmatched}</span>
+          </div>
+        )}
+      </Card>
+
+      {result && (
+        <Card className="p-0 overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Renter</TableHead>
+                <TableHead>Reservation</TableHead>
+                <TableHead>Charge date</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Charge id</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Detail</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {result.lines.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
+                    <CheckCircle2 className="h-5 w-5 inline mr-2 text-green-600" />
+                    No Stripe charges found for this renter.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                result.lines.map((l) => {
+                  const s = IMPORT_STATUS[l.status];
+                  return (
+                    <TableRow key={l.charge_id}>
+                      <TableCell className="font-mono text-xs">{l.driver_id}</TableCell>
+                      <TableCell className="font-medium">{l.rental_id ?? "—"}</TableCell>
+                      <TableCell className="text-xs">{l.charge_date}</TableCell>
+                      <TableCell className="text-right">{money(l.amount)}</TableCell>
+                      <TableCell className="font-mono text-xs max-w-[160px] truncate">{l.charge_id}</TableCell>
+                      <TableCell><Badge variant={s.variant}>{s.label}</Badge></TableCell>
+                      <TableCell className="text-xs max-w-[280px]">{l.detail}</TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+    </>
+  );
+}
