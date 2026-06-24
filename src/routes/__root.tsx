@@ -58,6 +58,7 @@ const PUBLIC_ROUTES = [
   "/inspect",
   "/verify-payment",
   "/portal-signup",
+  "/portal",
   "/runner-task",
   "/mechanic-job",
   "/work-order",
