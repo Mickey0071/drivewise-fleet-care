@@ -1243,7 +1243,7 @@ function RentalsPage() {
                       <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
                     </TableCell>
                     <TableCell className={`text-right font-medium ${bal > 0 ? "text-destructive" : bal < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
-                      {bal < 0 ? `Credit ${fmtMoney(-bal)}` : fmtMoney(bal)}
+                      {bal < 0 ? `Prepaid ${fmtMoney(-bal)}` : fmtMoney(bal)}
                     </TableCell>
                   </TableRow>
                 );
