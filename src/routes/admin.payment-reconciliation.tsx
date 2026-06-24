@@ -31,6 +31,11 @@ import {
   type ReconLine,
 } from "@/lib/payment-reconciliation.functions";
 import {
+  importStripeCharges,
+  type ImportChargeLine,
+  type ImportResult,
+} from "@/lib/payment-reconciliation.functions";
+import {
   auditBalances,
   type BalanceAuditLine,
 } from "@/lib/balance-audit.functions";
@@ -141,10 +146,15 @@ function ReconciliationPage() {
         <TabsList>
           <TabsTrigger value="balance">Balance audit</TabsTrigger>
           <TabsTrigger value="stripe">Stripe reconciliation</TabsTrigger>
+          <TabsTrigger value="import">Import Stripe charges</TabsTrigger>
         </TabsList>
 
         <TabsContent value="balance" className="space-y-4">
           <BalanceAuditPanel />
+        </TabsContent>
+
+        <TabsContent value="import" className="space-y-4">
+          <ImportChargesPanel />
         </TabsContent>
 
         <TabsContent value="stripe" className="space-y-4">
