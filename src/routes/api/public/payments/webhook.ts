@@ -102,6 +102,36 @@ async function reconcileScheduledDuplicate(
   await sb.from("payments").delete().eq("id", match.id).is("stripe_charge_id", null);
 }
 
+// When a real Stripe charge is recorded, supersede any manual (non-Stripe)
+// PAID row for the same rental, same amount, on the exact same day. Those are
+// duplicate hand-entries of money the Stripe charge already represents — keeping
+// both double-counts payments and produces phantom credits. The Stripe charge
+// is the source of truth; the manual row is removed. Exact-date match only, so
+// a legitimately separate same-amount cash payment on another day is untouched.
+async function supersedeManualDuplicate(
+  rentalId: string,
+  amountDollars: number,
+  paidDateIso: string,
+  keepPaymentId: string,
+): Promise<void> {
+  if (!rentalId || !amountDollars || !paidDateIso) return;
+  const sb = getSupabase();
+  const day = paidDateIso.slice(0, 10);
+  const { data: dups } = await sb
+    .from("payments")
+    .select("id, kind")
+    .eq("rental_id", rentalId)
+    .eq("status", "paid")
+    .eq("amount", amountDollars)
+    .eq("paid_date", day)
+    .is("stripe_charge_id", null)
+    .neq("id", keepPaymentId);
+  for (const d of dups || []) {
+    if (d.kind === "violation" || d.kind === "credit") continue;
+    await sb.from("payments").delete().eq("id", d.id).is("stripe_charge_id", null);
+  }
+}
+
 // Resolve the real Stripe charge behind a checkout session. The charge — not
 // the session — is the unit of truth for money: its id de-duplicates rows and
 // its amount is what was actually collected (so a $200 charge can never be
