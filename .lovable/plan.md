@@ -1,45 +1,40 @@
-# Fix: Stripe payments not showing on reservation cards (false "late" status)
-
-## Problem
-Renters pay through Stripe checkout/payment links, but most of those succeeded charges are never written back into the app's `payments` table. The balance engine (`rentalCanonicalOwed`) only subtracts recorded payments, so it undercounts what was paid and falsely flags renters as late with a balance due.
-
-Confirmed with Tory Sanders (D-1014): Stripe has **34 succeeded charges** under his email across 34 auto-created customer records, but the app recorded only a few. His active rental R-583 has 6 succeeded Stripe charges ($390) — exactly what's owed — yet the app shows only $195 and marks him late.
-
 ## Goal
-Make every succeeded Stripe charge appear as a payment on the correct reservation, so balances and late status reflect reality. Never double-count.
 
-## Approach
+Tory Sanders is falsely flagged "late." Stripe shows **34 succeeded $65/day charges totaling $2,275** (daily, 5/11 → 6/23), but the app's `payments` table only recorded a handful and links just 6 by Stripe charge ID. The fix: reconcile every real Stripe charge into the app, and prevent the gap from reopening.
 
-### 1. Reconciliation server function (server-only, admin-gated)
-Add a `createServerFn` (e.g. in `src/lib/payment-reconciliation.functions.ts`, which already exists) that:
-- Requires an authenticated admin (`requireSupabaseAuth` + `has_role` check).
-- Takes a `driver_id` (and optionally a date range / "all drivers" flag).
-- Resolves the driver's Stripe customer ids by listing customers via the gateway by the driver's email (handle the many-customers-per-email case), plus any `stripe_customer_id` already on their rentals.
-- Lists all succeeded charges for those customers through the connector gateway (`createStripeClient`, with `Stripe-Version` recent enough; search API is unavailable on the default version, so list per customer).
-- For each succeeded charge, matches it to a rental by charge date falling within the rental's `[start_date, returned_at|today]` window for that driver.
-- Inserts a `payments` row only when no existing row has that `stripe_charge_id` (dedupe key), so re-running is idempotent. Records: amount, `kind='charge'`, `status='paid'`, `method='Stripe'`, `paid_date`, `stripe_charge_id`, `stripe_payment_intent_id`, `rental_id`, `driver_id`.
-- Returns a summary: charges found, already-recorded, newly inserted, and any charges that couldn't be matched to a rental (for manual review).
+## What's actually in Stripe vs the app
 
-### 2. Handle the "cash" duplicates
-Some missing charges were manually logged as `method='cash'` to compensate. Before inserting, detect a likely duplicate (same rental, same amount, same/adjacent date, no `stripe_charge_id`) and either skip or flag it in the summary rather than blindly adding a second payment. Surface these in the result so staff can confirm.
+- 34 succeeded charges across 34 auto-created Stripe customers (Stripe makes a new customer per payment-link charge), all under `SANDERSTORY2008@GMAIL.COM`.
+- App `payments` for driver D-1014: 11 rows, only 6 carry a `stripe_charge_id`.
+- Two app rows logged as **cash** (6/17, 6/21) coincide with real Stripe charges — likely mislabeled.
 
-### 3. Admin UI to run it
-On the existing `src/routes/admin.payment-reconciliation.tsx` page, add a "Reconcile Stripe charges" action:
-- Run for a single renter (default) or all renters.
-- Show the dry-run summary (what would be added / skipped / unmatched) before committing, then a confirm step that performs the inserts.
+## Plan
 
-### 4. Run it for Tory and verify
-- Reconcile D-1014. Expect R-583 balance to drop to $0 and the late flag to clear; R-531 to be corrected too.
-- Verify on the reservation card and via the balance engine.
+### 1. Reconcile Tory's full history (one-time, admin-only)
+A `createServerFn` in `src/lib/payment-reconciliation.functions.ts` (guarded by `requireSupabaseAuth` + `has_role('admin')`):
 
-### 5. Prevent recurrence (follow-up)
-The webhook at `src/routes/api/public/payments/webhook.ts` currently handles subscription events only. Extend it to also record one-time `charge.succeeded` / `checkout.session.completed` events into `payments` (deduped by `stripe_charge_id`), so future Stripe payments sync automatically and this gap doesn't reopen.
+1. Resolve the driver's Stripe customer IDs: list customers by email (handling the many-customers-per-email case), plus any `stripe_customer_id` on the driver's rentals.
+2. Enumerate all succeeded, non-refunded charges for those customers via `createStripeClient` (gateway), paginating.
+3. For each charge, find the rental whose `[start_date, COALESCE(returned_at, now())]` window contains the charge date for that driver.
+4. **Dry-run first**: return a summary — charges to add, already-recorded (deduped on `stripe_charge_id`), cash-day conflicts, and unmatched charges (no rental window — e.g. the May charges that predate R-520). Nothing is written until confirmed.
+5. **On confirm**, insert one `payments` row per missing charge: `amount`, `kind='charge'`, `status='paid'`, `method='Stripe'`, `paid_date`, `stripe_charge_id`, `stripe_payment_intent_id`, `rental_id`, `driver_id`.
 
-## Out of scope / notes
-- No change to the balance math itself — it's correct; it was simply missing payment rows.
-- Inserts go through a migration-safe, admin-authorized path; no service-role key is exposed to the client.
+### 2. Cash-duplicate handling (per your choice: keep both, flag)
+For days that have both a manual cash row and a real Stripe charge (6/17, 6/21): insert the Stripe charge as a normal row, but mark it for review (e.g. a `needs_review` note/flag) and surface it in the dry-run conflict list so you can decide which to keep. Nothing is auto-deleted.
 
-## Technical details
-- Stripe access must use `createStripeClient` from `@/lib/stripe.server` (gateway proxy); the live env key works. The account's default API version rejects the Search API, so enumerate charges with `GET /v1/charges?customer=...&limit=100` per customer and a recent `Stripe-Version` header.
-- Dedupe strictly on `payments.stripe_charge_id`; it's the only reliable idempotency key.
-- Rental matching: a charge belongs to the rental whose `[start_date, COALESCE(returned_at, now())]` window contains the charge's `created` date for that driver; report ambiguous/unmatched charges instead of guessing.
+### 3. Unmatched May charges
+~21 charges from 5/11–5/31 fall before any rental currently in the system (earliest is R-520 on 6/1). These will be reported as "unmatched — no rental window" rather than force-inserted. You decide whether an earlier rental existed; I can widen a rental's start window or create a historical rental record if you confirm.
+
+### 4. Prevent recurrence (webhook)
+Extend `src/routes/api/public/payments/webhook.ts` to also record one-time `charge.succeeded` / `checkout.session.completed` events into `payments` (deduped by `stripe_charge_id`), matching to the open rental by customer/date. This stops future daily Stripe charges from going unrecorded.
+
+## Outcome
+
+After running reconciliation on Tory, his recorded paid total matches Stripe, his balance reflects true payments, and the "late" flag clears. The same tool can be run for other renters with the same phantom-balance issue.
+
+## Technical notes
+
+- Gateway-only Stripe access via `createStripeClient` from `@/lib/stripe.server` (live env); enumerate charges per customer (Search API needs charge-level queries that aren't reliable on the pinned version).
+- `attachSupabaseAuth` is already required globally for `requireSupabaseAuth` — verify it's in `src/start.ts`, add if missing.
+- Inserts via service-role client loaded inside the handler after the admin check.
+- No schema change unless we add a `needs_review` flag column for cash conflicts (small migration); otherwise encoded in the row's `notes`.
