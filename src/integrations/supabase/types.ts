@@ -1688,6 +1688,30 @@ export type Database = {
         }
         Relationships: []
       }
+      portal_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          reservation_id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          reservation_id: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          reservation_id?: string
+          token?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

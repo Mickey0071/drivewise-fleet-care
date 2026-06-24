@@ -58,6 +58,7 @@ import { Route as RunnerTaskTokenRouteImport } from './routes/runner-task.$token
 import { Route as RmCardTokenRouteImport } from './routes/rm-card.$token'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
+import { Route as PortalTokenRouteImport } from './routes/portal.$token'
 import { Route as PortalSignupRentalIdRouteImport } from './routes/portal-signup.$rentalId'
 import { Route as PartQuoteTokenRouteImport } from './routes/part-quote.$token'
 import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rentalId'
@@ -346,6 +347,11 @@ const RentTokenRoute = RentTokenRouteImport.update({
   path: '/rent/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalTokenRoute = PortalTokenRouteImport.update({
+  id: '/portal/$token',
+  path: '/portal/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortalSignupRentalIdRoute = PortalSignupRentalIdRouteImport.update({
   id: '/portal-signup/$rentalId',
   path: '/portal-signup/$rentalId',
@@ -629,6 +635,7 @@ export interface FileRoutesByFullPath {
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/part-quote/$token': typeof PartQuoteTokenRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
+  '/portal/$token': typeof PortalTokenRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/rm-card/$token': typeof RmCardTokenRoute
@@ -722,6 +729,7 @@ export interface FileRoutesByTo {
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/part-quote/$token': typeof PartQuoteTokenRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
+  '/portal/$token': typeof PortalTokenRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/rm-card/$token': typeof RmCardTokenRoute
@@ -816,6 +824,7 @@ export interface FileRoutesById {
   '/my-rentals/$rentalId': typeof MyRentalsRentalIdRoute
   '/part-quote/$token': typeof PartQuoteTokenRoute
   '/portal-signup/$rentalId': typeof PortalSignupRentalIdRoute
+  '/portal/$token': typeof PortalTokenRoute
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/rm-card/$token': typeof RmCardTokenRoute
@@ -911,6 +920,7 @@ export interface FileRouteTypes {
     | '/my-rentals/$rentalId'
     | '/part-quote/$token'
     | '/portal-signup/$rentalId'
+    | '/portal/$token'
     | '/rent/$token'
     | '/rent/paid'
     | '/rm-card/$token'
@@ -1004,6 +1014,7 @@ export interface FileRouteTypes {
     | '/my-rentals/$rentalId'
     | '/part-quote/$token'
     | '/portal-signup/$rentalId'
+    | '/portal/$token'
     | '/rent/$token'
     | '/rent/paid'
     | '/rm-card/$token'
@@ -1097,6 +1108,7 @@ export interface FileRouteTypes {
     | '/my-rentals/$rentalId'
     | '/part-quote/$token'
     | '/portal-signup/$rentalId'
+    | '/portal/$token'
     | '/rent/$token'
     | '/rent/paid'
     | '/rm-card/$token'
@@ -1189,6 +1201,7 @@ export interface RootRouteChildren {
   MechanicJobTokenRoute: typeof MechanicJobTokenRoute
   PartQuoteTokenRoute: typeof PartQuoteTokenRoute
   PortalSignupRentalIdRoute: typeof PortalSignupRentalIdRoute
+  PortalTokenRoute: typeof PortalTokenRoute
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
   RmCardTokenRoute: typeof RmCardTokenRoute
@@ -1564,6 +1577,13 @@ declare module '@tanstack/react-router' {
       path: '/rent/$token'
       fullPath: '/rent/$token'
       preLoaderRoute: typeof RentTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal/$token': {
+      id: '/portal/$token'
+      path: '/portal/$token'
+      fullPath: '/portal/$token'
+      preLoaderRoute: typeof PortalTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal-signup/$rentalId': {
@@ -1945,6 +1965,7 @@ const rootRouteChildren: RootRouteChildren = {
   MechanicJobTokenRoute: MechanicJobTokenRoute,
   PartQuoteTokenRoute: PartQuoteTokenRoute,
   PortalSignupRentalIdRoute: PortalSignupRentalIdRoute,
+  PortalTokenRoute: PortalTokenRoute,
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
   RmCardTokenRoute: RmCardTokenRoute,

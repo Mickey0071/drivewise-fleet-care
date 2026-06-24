@@ -11,6 +11,11 @@ export interface PortalLinkSend {
   email: string | null;
 }
 
+function genPortalToken(): string {
+  const a = crypto.getRandomValues(new Uint8Array(24));
+  return Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function resolveOrigin(provided?: string): string {
   if (provided) {
     try {
@@ -69,20 +74,29 @@ export const sendPortalLink = createServerFn({ method: "POST" })
 
     const origin = resolveOrigin(data.origin);
     if (!origin) throw new Error("App origin not configured");
-    const portalUrl = `${origin}/portal-signup/${encodeURIComponent(rental.id)}`;
+
+    // Generate a unique token tied to this reservation and store it (30-day
+    // expiry handled by the DB default). The token is the only key that
+    // unlocks the renter-facing portal page.
+    const token = genPortalToken();
+    const { error: tokErr } = await supabaseAdmin
+      .from("portal_tokens")
+      .insert({ reservation_id: rental.id, token });
+    if (tokErr) throw new Error(tokErr.message);
+    const portalUrl = `${origin}/portal/${encodeURIComponent(token)}`;
 
     const result = await notifyRenter({
       phone,
       email,
       name: driver?.full_name ?? null,
-      sms: `Access your rental details anytime: ${portalUrl}`,
+      sms: `View your rental, extensions & make a payment: ${portalUrl}`,
       emailSubject: "Your Rental Portal",
       emailHeading: "Your Rental Portal",
       emailIntro:
-        "Click the button below to create your account and view your rental anytime.",
-      emailCta: { label: "Create Account & View Rental", url: portalUrl },
+        "Click the button below to view your reservation, extensions, and make a payment anytime — no login required.",
+      emailCta: { label: "Open My Rental Portal", url: portalUrl },
       emailFootnote:
-        "You'll choose your own password when you create your account.",
+        "This secure link is personal to you. This link expires in 30 days.",
     });
 
     if (!result.smsSent && !result.emailSent) {
