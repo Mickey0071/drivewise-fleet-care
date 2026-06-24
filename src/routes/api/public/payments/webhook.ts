@@ -199,6 +199,7 @@ async function upsertStripePaymentRow(row: {
           ...stripeCols,
         } as any)
         .eq("id", existing.id);
+      await supersedeManualDuplicate(row.rentalId, row.amount, row.paidDate, existing.id as string);
       return existing.id as string;
     }
   }
@@ -218,6 +219,9 @@ async function upsertStripePaymentRow(row: {
     } as any,
     { onConflict: "id" },
   );
+  if (row.stripeChargeId) {
+    await supersedeManualDuplicate(row.rentalId, row.amount, row.paidDate, row.id);
+  }
   return row.id;
 }
 
