@@ -1,40 +1,84 @@
-## Goal
+## What the balance is actually based on (plain English)
 
-Tory Sanders is falsely flagged "late." Stripe shows **34 succeeded $65/day charges totaling $2,275** (daily, 5/11 → 6/23), but the app's `payments` table only recorded a handful and links just 6 by Stripe charge ID. The fix: reconcile every real Stripe charge into the app, and prevent the gap from reopening.
+There is **one** formula behind every "owed" number on every screen:
 
-## What's actually in Stripe vs the app
+```text
+Balance owed  =  (time the car has been out  ×  the rate)
+              −  every real payment received
+```
 
-- 34 succeeded charges across 34 auto-created Stripe customers (Stripe makes a new customer per payment-link charge), all under `SANDERSTORY2008@GMAIL.COM`.
-- App `payments` for driver D-1014: 11 rows, only 6 carry a `stripe_charge_id`.
-- Two app rows logged as **cash** (6/17, 6/21) coincide with real Stripe charges — likely mislabeled.
+- **Time charge** grows on its own as the days/weeks pass — it does **not**
+  depend on extensions being signed, links being sent, or anything else.
+  For a daily rental it's $65 for each day the car is out (after the 2 deposit
+  days); for a weekly rental it's one week's rate per week out.
+- **Payments received** = only rows in the payments list that are marked
+  **paid** (cash you recorded, or a Stripe charge that actually went through).
+- Extensions, signed agreements, and payment links are **paperwork** — they
+  add **$0** by themselves. So your rule ("only count it when Stripe actually
+  pays") is already how the engine is designed.
 
-## Plan
+So if a number is wrong, it's almost never the formula — it's that the
+**payments list has a wrong/duplicate row** feeding into it.
 
-### 1. Reconcile Tory's full history (one-time, admin-only)
-A `createServerFn` in `src/lib/payment-reconciliation.functions.ts` (guarded by `requireSupabaseAuth` + `has_role('admin')`):
+## Why Tory's credit is wrong
 
-1. Resolve the driver's Stripe customer IDs: list customers by email (handling the many-customers-per-email case), plus any `stripe_customer_id` on the driver's rentals.
-2. Enumerate all succeeded, non-refunded charges for those customers via `createStripeClient` (gateway), paginating.
-3. For each charge, find the rental whose `[start_date, COALESCE(returned_at, now())]` window contains the charge date for that driver.
-4. **Dry-run first**: return a summary — charges to add, already-recorded (deduped on `stripe_charge_id`), cash-day conflicts, and unmatched charges (no rental window — e.g. the May charges that predate R-520). Nothing is written until confirmed.
-5. **On confirm**, insert one `payments` row per missing charge: `amount`, `kind='charge'`, `status='paid'`, `method='Stripe'`, `paid_date`, `stripe_charge_id`, `stripe_payment_intent_id`, `rental_id`, `driver_id`.
+Tory pays **$65/day through Stripe**. During the earlier reconciliation we
+followed a "keep both, flag for review" rule, which left **duplicate rows**:
+on **6/17 and 6/21** he has *both* a manual **cash $65** row *and* the real
+**Stripe $65** charge for the same day. That double-counts $130.
 
-### 2. Cash-duplicate handling (per your choice: keep both, flag)
-For days that have both a manual cash row and a real Stripe charge (6/17, 6/21): insert the Stripe charge as a normal row, but mark it for review (e.g. a `needs_review` note/flag) and surface it in the dry-run conflict list so you can decide which to keep. Nothing is auto-deleted.
+- Today (6/24) his car has been out 6 chargeable days = **$390** owed.
+- Real Stripe payments = 6 × $65 = **$390**.
+- With the 2 phantom cash rows, the system thinks he paid **$520** → shows a
+  fake **$130 credit**.
+- Remove the 2 duplicates and he reads **$0 owed, paid through today, next
+  payment due tomorrow (6/25)** — exactly what you said.
 
-### 3. Unmatched May charges
-~21 charges from 5/11–5/31 fall before any rental currently in the system (earliest is R-520 on 6/1). These will be reported as "unmatched — no rental window" rather than force-inserted. You decide whether an earlier rental existed; I can widen a rental's start window or create a historical rental record if you confirm.
+The same pattern left stray duplicates on his returned rental R-531.
 
-### 4. Prevent recurrence (webhook)
-Extend `src/routes/api/public/payments/webhook.ts` to also record one-time `charge.succeeded` / `checkout.session.completed` events into `payments` (deduped by `stripe_charge_id`), matching to the open rental by customer/date. This stops future daily Stripe charges from going unrecorded.
+## The fix
 
-## Outcome
+**1. Clean up the bad rows now (data fix)**
+- Delete the two duplicate **cash** rows on R-583: `P-58220260619` (6/17) and
+  `PM-R-583-20260619` (6/21). Keep the real Stripe charges.
+- Resolve the flagged duplicates on R-531 (returned): drop the non-Stripe
+  placeholder where a real Stripe charge exists for the same day/amount.
+- Re-scan all rentals for the same "cash + Stripe, same day, same amount"
+  pattern and list any others before deleting, so nothing legitimate is lost.
 
-After running reconciliation on Tory, his recorded paid total matches Stripe, his balance reflects true payments, and the "late" flag clears. The same tool can be run for other renters with the same phantom-balance issue.
+**2. Stop duplicates from coming back (the trust fix)**
+- Today the auto-dedupe only removes *unpaid* placeholder rows. It ignores a
+  manual **paid cash** row, so when the real Stripe charge lands, both survive.
+- Change the rule: when a Stripe charge arrives that matches a same-day
+  manual cash entry on the same rental for the same amount, treat the Stripe
+  charge as the source of truth and **supersede the manual cash row** instead
+  of keeping both. The Stripe charge id stays the unique key.
+
+**3. Lock in the extension-link behavior you described**
+- Sending a link (signed or not) creates a charge line that shows as **due**
+  and does **not** count as money. It flips to **paid automatically** only
+  when the Stripe webhook confirms payment (or you explicitly record it paid).
+  This is already the design; it will be verified end-to-end so a sent/signed
+  link can never reduce a balance on its own.
+
+**4. Make it auditable**
+- Add a small "balance breakdown" on the rental so you can see the math in one
+  place: days out × rate, minus each payment listed — so any wrong number
+  points straight to the offending row.
+
+### One decision for you
+You previously chose "keep both, flag for review" for same-day cash + Stripe.
+This plan reverses that to **"Stripe wins, drop the duplicate cash row"**,
+because that's what's producing the false credits. If instead you want the
+cash row kept in some cases, tell me and I'll make it a review step rather
+than an automatic merge.
 
 ## Technical notes
-
-- Gateway-only Stripe access via `createStripeClient` from `@/lib/stripe.server` (live env); enumerate charges per customer (Search API needs charge-level queries that aren't reliable on the pinned version).
-- `attachSupabaseAuth` is already required globally for `requireSupabaseAuth` — verify it's in `src/start.ts`, add if missing.
-- Inserts via service-role client loaded inside the handler after the admin check.
-- No schema change unless we add a `needs_review` flag column for cash conflicts (small migration); otherwise encoded in the row's `notes`.
+- Formula lives in `src/lib/mock/store.ts` (`rentalCanonicalOwed`,
+  `rentalTimeCharge`, `rentalPaymentsReceived`, `rentalNextDueDate`) — no
+  change needed; it's correct.
+- Dedupe change in `reconcileScheduledDuplicate` / `upsertStripePaymentRow`
+  in `src/routes/api/public/payments/webhook.ts` to also supersede *paid*
+  manual cash rows that match an incoming Stripe charge.
+- Data cleanup via SQL after confirming the full duplicate list.
+- Breakdown UI in `src/routes/rentals.tsx` (and the rental detail view).
