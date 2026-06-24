@@ -471,8 +471,11 @@ function RentalsPage() {
                   {(() => {
                     const bal = rentalBalance(r);
                     return bal < 0 ? (
-                      <span className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
-                        Credit {fmtMoney(-bal)} · nothing due
+                      <span
+                        className="text-base font-semibold text-emerald-600 dark:text-emerald-400"
+                        title="Payment received ahead of charges — applies automatically as time accrues."
+                      >
+                        Prepaid credit {fmtMoney(-bal)} · nothing due
                       </span>
                     ) : (
                       <span className="text-base font-semibold">{fmtMoney(bal)}</span>
@@ -515,7 +518,7 @@ function RentalsPage() {
                         )}
                         {credit > 0 && (
                           <div className="flex items-center justify-between">
-                            <span>Credit on file</span>
+                            <span>Prepaid credit</span>
                             <span className="font-medium text-emerald-600 dark:text-emerald-400">− {fmtMoney(credit)}</span>
                           </div>
                         )}
@@ -1240,7 +1243,7 @@ function RentalsPage() {
                       <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
                     </TableCell>
                     <TableCell className={`text-right font-medium ${bal > 0 ? "text-destructive" : bal < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
-                      {bal < 0 ? `Credit ${fmtMoney(-bal)}` : fmtMoney(bal)}
+                      {bal < 0 ? `Prepaid ${fmtMoney(-bal)}` : fmtMoney(bal)}
                     </TableCell>
                   </TableRow>
                 );

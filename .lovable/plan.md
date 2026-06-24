@@ -1,29 +1,23 @@
-# Fix renter portal redirecting to the vehicle list
+## Context
 
-## Diagnosis
-The portal page and its server data function are already implemented to spec — they read the token, resolve it via `portal_tokens` to exactly one reservation, and render the three tabs (Reservation, Extensions, Make a payment) with balance-engine numbers.
+"Ford Tester" reservation **R-586** shows an **$8 credit**. This is mathematically correct, not a bug:
 
-The real bug: the global auth guard in `src/routes/__root.tsx` has a `PUBLIC_ROUTES` allowlist. It includes `/portal-signup` but **not** `/portal`. So loading `/portal/<token>` is treated as authenticated, redirects to `/login`, and after sign-in the user lands on the fleet — the "list of vehicles" they reported.
+- The canonical balance engine charges only for **time the car has actually been out**: `owed = time charge + prior balance − payments received − discounts`.
+- R-586 (daily, $1/day, started 6/21): only ~$2 has posted so far (first 2 days deposit-covered, then $1/day).
+- Payments received = **$10** ($2 base + an **$8 extension** prepaid via Stripe 6/22).
+- `$2 − $10 = −$8` → displayed as an **$8 credit**.
 
-When I loaded a real token (`/portal/<token>`) in the live preview, the URL redirected to `/login`, confirming this.
+The renter prepaid an extension for days that haven't elapsed yet. As days accrue, the time charge climbs and the credit naturally burns down to $0. The formula is working as designed.
 
-## The fix (one change)
-In `src/routes/__root.tsx`, add `"/portal"` to the `PUBLIC_ROUTES` array.
+## Decision
 
-```text
-const PUBLIC_ROUTES = [
-  "/login",
-  ...
-  "/portal-signup",
-  "/portal",        // <-- add: token-authenticated renter portal, no login
-  ...
-];
-```
+Leave the balance engine and all numbers exactly as they are. Make a **presentation-only** clarification so a negative balance reads as prepaid money rather than a mystery "credit."
 
-`path.startsWith("/portal")` makes `/portal/<token>` public. `/portal-signup` is already public and remains so. The token itself remains the only key — the server function still validates the token and exposes only that one reservation.
+## Change (display only)
 
-## Out of scope (unchanged)
-The "Send Portal Link" button, token generation, SMS/email send, the balance engine, the portal UI, and the Stripe webhook all stay exactly as they are.
+- Where a rental's balance renders as a credit (negative owed), label it **"Prepaid credit"** with a short helper note: "Payment received ahead of charges — applies automatically as time accrues."
+- No change to `rentalCanonicalOwed`, `rentalTimeCharge`, payments, extensions, the webhook, the portal, or any aggregation. Pure labeling/tooltip on the existing displayed value.
 
-## Verification
-After the change, reload `/portal/<token>` and confirm it renders the single reservation across the three tabs instead of redirecting to login.
+## Out of scope
+
+Balance engine math, extension logic, payment recording, the portal, the P&L/Monthly reports, and the "Send Portal Link" flow all stay unchanged.
