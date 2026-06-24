@@ -260,6 +260,20 @@ function matchRental(rentals: RentalWindow[], chargeDate: string, today: string)
   return null;
 }
 
+type PaymentInsert = {
+  id: string;
+  rental_id: string;
+  driver_id: string;
+  amount: number;
+  kind: string;
+  status: string;
+  method: string;
+  due_date: string;
+  paid_date: string;
+  stripe_charge_id: string;
+  stripe_payment_intent_id: string | null;
+};
+
 export const importStripeCharges = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -289,7 +303,7 @@ export const importStripeCharges = createServerFn({ method: "POST" })
 
       const lines: ImportChargeLine[] = [];
       let chargesFound = 0;
-      const toInsert: Record<string, unknown>[] = [];
+      const toInsert: PaymentInsert[] = [];
 
       for (const driver of drivers) {
         // 2. Driver's reservations (matching windows).
