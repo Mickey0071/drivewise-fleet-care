@@ -480,6 +480,58 @@ function RentalsPage() {
                   })()}
                 </div>
                 {(() => {
+                  const { periods, rate, weekly } = rentalPostedPeriods(r);
+                  const timeCharge = rentalTimeCharge(r);
+                  const received = rentalPaymentsReceived(r.id);
+                  const prior = rentalPriorBalance(r);
+                  const discount = rentalDiscountTotal(r);
+                  const credit = rentalCredit(r.id);
+                  const unit = weekly ? "week" : "day";
+                  return (
+                    <details className="mt-2 rounded-md border border-border bg-muted/20 px-3 py-2 text-xs">
+                      <summary className="cursor-pointer select-none uppercase tracking-wide text-muted-foreground">
+                        How this balance is calculated
+                      </summary>
+                      <div className="mt-2 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span>Time on rent: {periods} {unit}{periods === 1 ? "" : "s"} × {fmtMoney(rate)}</span>
+                          <span className="font-medium text-foreground">{fmtMoney(timeCharge)}</span>
+                        </div>
+                        {prior > 0 && (
+                          <div className="flex items-center justify-between">
+                            <span>Prior balance carried forward</span>
+                            <span className="font-medium text-foreground">{fmtMoney(prior)}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span>Payments received (cash + Stripe)</span>
+                          <span className="font-medium text-emerald-600 dark:text-emerald-400">− {fmtMoney(received)}</span>
+                        </div>
+                        {discount > 0 && (
+                          <div className="flex items-center justify-between">
+                            <span>Discounts / waived</span>
+                            <span className="font-medium text-emerald-600 dark:text-emerald-400">− {fmtMoney(discount)}</span>
+                          </div>
+                        )}
+                        {credit > 0 && (
+                          <div className="flex items-center justify-between">
+                            <span>Credit on file</span>
+                            <span className="font-medium text-emerald-600 dark:text-emerald-400">− {fmtMoney(credit)}</span>
+                          </div>
+                        )}
+                        <div className="mt-1 flex items-center justify-between border-t border-border pt-1">
+                          <span className="font-medium text-foreground">Balance</span>
+                          <span className="font-semibold text-foreground">{fmtMoney(rentalBalance(r))}</span>
+                        </div>
+                        <p className="pt-1 text-[11px] text-muted-foreground">
+                          The time charge grows on its own as days/weeks pass. Sent or signed
+                          extension links do not count until the Stripe payment actually clears.
+                        </p>
+                      </div>
+                    </details>
+                  );
+                })()}
+                {(() => {
                   const vOwed = rentalViolationsUnpaid(r.id);
                   if (vOwed <= 0) return null;
                   return (
