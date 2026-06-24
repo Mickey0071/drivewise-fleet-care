@@ -518,7 +518,7 @@ function RentalsPage() {
                         )}
                         {credit > 0 && (
                           <div className="flex items-center justify-between">
-                            <span>Credit on file</span>
+                            <span>Prepaid credit</span>
                             <span className="font-medium text-emerald-600 dark:text-emerald-400">− {fmtMoney(credit)}</span>
                           </div>
                         )}
