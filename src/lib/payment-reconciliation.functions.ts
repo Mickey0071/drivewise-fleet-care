@@ -272,6 +272,7 @@ type PaymentInsert = {
   paid_date: string;
   stripe_charge_id: string;
   stripe_payment_intent_id: string | null;
+  note: string | null;
 };
 
 export const importStripeCharges = createServerFn({ method: "POST" })
@@ -400,6 +401,24 @@ export const importStripeCharges = createServerFn({ method: "POST" })
                 daysApart((p.paid_date ?? p.due_date).slice(0, 10), chargeDate) <= 3,
             );
             if (dup) {
+              // Per policy: KEEP BOTH. Record the real Stripe charge anyway,
+              // but flag it for manual review so the admin can decide whether
+              // the coinciding manual/cash row was actually this same payment.
+              const paymentId = `PM-RC-${ch.id.slice(-16)}`;
+              toInsert.push({
+                id: paymentId,
+                rental_id: rental.id,
+                driver_id: driver.id,
+                amount,
+                kind: "charge",
+                status: "paid",
+                method: "Stripe",
+                due_date: chargeDate,
+                paid_date: chargeDate,
+                stripe_charge_id: ch.id,
+                stripe_payment_intent_id: pi,
+                note: `NEEDS REVIEW: possible duplicate of manual ${dup.method ?? "cash"} payment of $${amount.toFixed(2)} on/near ${chargeDate}.`,
+              });
               lines.push({
                 charge_id: ch.id,
                 payment_intent_id: pi,
@@ -408,7 +427,9 @@ export const importStripeCharges = createServerFn({ method: "POST" })
                 rental_id: rental.id,
                 driver_id: driver.id,
                 status: "possible_cash_duplicate",
-                detail: `A manual ${dup.method ?? "cash"} payment of $${amount.toFixed(2)} already exists near this date — skipped to avoid double-counting.`,
+                detail: data.commit
+                  ? `A manual ${dup.method ?? "cash"} payment of $${amount.toFixed(2)} exists near this date — Stripe charge recorded and flagged for review (both kept).`
+                  : `A manual ${dup.method ?? "cash"} payment of $${amount.toFixed(2)} exists near this date — Stripe charge will be recorded and flagged for review (both kept).`,
               });
               continue;
             }
@@ -426,6 +447,7 @@ export const importStripeCharges = createServerFn({ method: "POST" })
               paid_date: chargeDate,
               stripe_charge_id: ch.id,
               stripe_payment_intent_id: pi,
+              note: null,
             });
             lines.push({
               charge_id: ch.id,
