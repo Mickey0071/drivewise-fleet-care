@@ -1529,6 +1529,121 @@ async function handleWebhook(req: Request, env: StripeEnv) {
   }
 }
 
+// Safety net for one-time / external charges (payment links, store/GHL
+// integrations) that succeed WITHOUT a rental_id in metadata. These create a
+// new Stripe customer per charge, so we cannot match by customer id. Instead we
+// resolve the driver by email/phone in the charge metadata, then attach the
+// charge to whichever of that driver's reservations covers the charge date.
+// Idempotent: upsertStripePaymentRow dedupes strictly on stripe_charge_id, so a
+// charge already recorded by checkout.session.completed is corrected in place,
+// never duplicated.
+async function handleChargeSucceeded(charge: any, env: StripeEnv, eventId?: string | null) {
+  if (!charge?.id || charge.status !== "succeeded" || !charge.paid) return;
+  // Refunded charges are handled by the refund flow.
+  if ((charge.amount_refunded ?? 0) >= (charge.amount ?? 0)) return;
+
+  const sb = getSupabase();
+
+  // If this charge is already recorded, nothing to do (keeps it idempotent and
+  // avoids extra work for our own checkout charges handled elsewhere).
+  const { data: already } = await sb
+    .from("payments")
+    .select("id")
+    .eq("stripe_charge_id", charge.id)
+    .maybeSingle();
+  if (already?.id) return;
+
+  const meta = charge.metadata || {};
+  const amount = Number(((charge.amount ?? 0) / 100).toFixed(2));
+  const chargeDate = new Date((charge.created ?? Date.now() / 1000) * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const piId =
+    typeof charge.payment_intent === "string"
+      ? charge.payment_intent
+      : (charge.payment_intent?.id ?? null);
+
+  // 1. Resolve the rental. Prefer explicit metadata; otherwise resolve the
+  //    driver by email/phone and match a reservation window to the charge date.
+  let rentalId: string | null = meta.rental_id || meta.reservation_id || null;
+  let driverId: string | null = meta.driver_id || null;
+
+  if (!rentalId) {
+    const email: string | null = meta.customerEmail || meta.email || charge.receipt_email || null;
+    const phoneRaw: string | null = meta.customerPhone || meta.phone || null;
+    const phone = phoneRaw ? phoneRaw.replace(/\D/g, "").slice(-10) : null;
+
+    let driver: any = null;
+    if (email) {
+      const { data } = await sb
+        .from("drivers")
+        .select("id, email, phone")
+        .ilike("email", email)
+        .maybeSingle();
+      driver = data;
+    }
+    if (!driver && phone) {
+      const { data } = await sb
+        .from("drivers")
+        .select("id, email, phone")
+        .ilike("phone", `%${phone}%`)
+        .limit(1)
+        .maybeSingle();
+      driver = data;
+    }
+    if (!driver) {
+      console.warn(`[webhook:charge] no driver match for charge ${charge.id} — left unrecorded`);
+      return;
+    }
+    driverId = driver.id;
+
+    const { data: rentals } = await sb
+      .from("rentals")
+      .select("id, start_date, end_date, returned_at, reservation_status")
+      .eq("driver_id", driver.id);
+    const today = new Date().toISOString().slice(0, 10);
+    const candidates = (rentals || []).filter((r: any) => {
+      if (!r.start_date) return false;
+      const start = String(r.start_date).slice(0, 10);
+      const end = String(r.returned_at ?? r.end_date ?? today).slice(0, 10);
+      return chargeDate >= start && chargeDate <= end;
+    });
+    // Prefer an active reservation, then the most recently started.
+    candidates.sort((a: any, b: any) => {
+      const act = (r: any) => (r.reservation_status === "active" ? 1 : 0);
+      if (act(b) !== act(a)) return act(b) - act(a);
+      return String(b.start_date).localeCompare(String(a.start_date));
+    });
+    rentalId = candidates[0]?.id ?? null;
+    if (!rentalId) {
+      console.warn(
+        `[webhook:charge] charge ${charge.id} (${chargeDate}) matched driver ${driver.id} but no reservation window — left unrecorded`,
+      );
+      return;
+    }
+  }
+
+  if (!rentalId || !driverId) return;
+
+  const paymentId = `PM-CS-${charge.id.slice(-16)}`;
+  const recordedId = await upsertStripePaymentRow({
+    id: paymentId,
+    rentalId,
+    driverId,
+    amount,
+    dueDate: chargeDate,
+    paidDate: chargeDate,
+    note: "Auto-recorded from Stripe charge.succeeded (no rental metadata).",
+    stripeChargeId: charge.id,
+    stripePaymentIntentId: piId,
+    stripeEventId: eventId ?? null,
+    kind: "charge",
+  });
+
+  // Remove a redundant scheduled placeholder for the same period, if any.
+  await reconcileScheduledDuplicate(rentalId, amount, chargeDate, recordedId);
+}
+
 export const Route = createFileRoute("/api/public/payments/webhook")({
   server: {
     handlers: {
