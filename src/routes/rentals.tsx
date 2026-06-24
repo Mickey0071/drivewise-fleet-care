@@ -9,7 +9,7 @@ import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, 
 import { extensionSignatureStatus } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
 import { rentalNextDueDate } from "@/lib/mock/store";
-import { rentalPostedPeriods, rentalTimeCharge, rentalPaymentsReceived, rentalPriorBalance, rentalDiscountTotal, rentalPeriodRate } from "@/lib/mock/store";
+import { rentalPostedPeriods, rentalTimeCharge, rentalPaymentsReceived, rentalPriorBalance, rentalDiscountTotal } from "@/lib/mock/store";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReportActions } from "@/components/app/ReportActions";
