@@ -257,7 +257,11 @@ function PnLDashboard() {
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Total Revenue" value={fmtMoney(data.totalRevenue)} />
-        <Kpi label="Total Expenses" value={fmtMoney(data.totalExpenses)} />
+        <Kpi
+          label="Total Expenses"
+          value={fmtMoney(data.totalExpenses)}
+          sub={`Operational ${fmtMoney(data.operationalExpenses)} + Maintenance ${fmtMoney(data.maintenanceExpenses)} = Total ${fmtMoney(data.totalExpenses)}`}
+        />
         <Kpi label="Net Profit" value={fmtMoney(data.net)} accent={data.net >= 0 ? "pos" : "neg"} />
         <Kpi label="Profit Margin" value={`${data.margin.toFixed(1)}%`} accent={data.margin >= 0 ? "pos" : "neg"} />
         <Kpi label="Fleet Utilization" value={`${data.fleetUtilization.toFixed(1)}%`} />
@@ -265,6 +269,16 @@ function PnLDashboard() {
         <Kpi label="Avg Net / Vehicle" value={fmtMoney(data.avgNetPerVehicle)} accent={data.avgNetPerVehicle >= 0 ? "pos" : "neg"} />
         <Kpi label="Active Vehicles" value={`${data.activeVehicles.length} / ${vehicles.length}`} />
       </div>
+
+      {data.pendingMaintenance > 0 && (
+        <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>
+            {fmtMoney(data.pendingMaintenance)} in pending maintenance is not yet
+            counted as an expense (will count once completed).
+          </span>
+        </div>
+      )}
 
       {/* Trend chart */}
       <Card>
