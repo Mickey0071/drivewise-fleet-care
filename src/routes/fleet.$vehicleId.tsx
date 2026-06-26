@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { vehicleById, rentals, maintenance, violations, inspections, payments, expenses, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
+import { vehicleById, rentals, maintenance, violations, inspections, payments, expenses, driverById, fmtDate, fmtMoney, type Expense } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
-import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, updateVehicle, completeRepair, deleteMaintenance, deleteWorkOrder, updateWorkOrder, useStoreVersion } from "@/lib/mock/store";
+import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, updateVehicle, completeRepair, deleteMaintenance, deleteWorkOrder, updateWorkOrder, deleteExpense, useStoreVersion } from "@/lib/mock/store";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2 } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +63,7 @@ function VehicleDetail() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
+  const [editExpense, setEditExpense] = useState<Expense | null>(null);
   // Live last-inspection data (reflects approved runner inspections from the backend).
   const [liveInsp, setLiveInsp] = useState<{ at: string | null; mileage: number | null; status: string | null } | null>(null);
   useEffect(() => {
@@ -516,7 +517,7 @@ function VehicleDetail() {
               <div className="text-xs text-muted-foreground">Total spent on this vehicle</div>
               <div className="text-2xl font-bold">{fmtMoney(vehExpenseTotal)}</div>
             </div>
-            <Button size="sm" onClick={() => setExpenseOpen(true)}>Add expense</Button>
+             <Button size="sm" onClick={() => { setEditExpense(null); setExpenseOpen(true); }}>Add expense</Button>
           </div>
           {Object.keys(vehExpenseByCat).length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -532,7 +533,19 @@ function VehicleDetail() {
               <Row key={e.id}
                 title={e.category}
                 sub={`${fmtDate(e.date)}${e.vendor ? ` · ${e.vendor}` : ""}${e.notes ? ` · ${e.notes}` : ""}`}
-                right={<span className="font-medium">{fmtMoney(e.amount)}</span>} />
+                right={
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{fmtMoney(e.amount)}</span>
+                    <Button variant="ghost" size="icon" className="h-8 w-8"
+                      onClick={() => { setEditExpense(e); setExpenseOpen(true); }} title="Edit expense">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                      onClick={() => { if (window.confirm("Delete this expense?")) deleteExpense(e.id); }} title="Delete expense">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                } />
             ))}
           </Section>
         </TabsContent>
@@ -668,7 +681,8 @@ function VehicleDetail() {
       />
       <ExpenseDialog
         open={expenseOpen}
-        onOpenChange={setExpenseOpen}
+        onOpenChange={(o) => { setExpenseOpen(o); if (!o) setEditExpense(null); }}
+        expense={editExpense}
         defaultVehicleId={v.id}
       />
       <CreateWorkOrderDialog
