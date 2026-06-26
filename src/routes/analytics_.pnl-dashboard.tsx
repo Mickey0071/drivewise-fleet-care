@@ -212,6 +212,7 @@ function PnLDashboard() {
 
     return {
       periodDays, totalRevenue, totalExpenses, net, margin,
+      operationalExpenses, maintenanceExpenses, pendingMaintenance,
       perVehicle, activeVehicles, fleetUtilization, avgDaysRented, avgNetPerVehicle,
       categories, buckets, best: best as Bucket | null, worst: worst as Bucket | null,
       pyRevenue, pyExpenses, pyNet: pyRevenue - pyExpenses, hasPriorYear: pyRevenue > 0 || pyExpenses > 0,
