@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { ReportActions } from "@/components/app/ReportActions";
 import { useStoreVersion } from "@/lib/mock/store";
 import {
-  payments, expenses, rentals, vehicles, vehicleById, fmtMoney,
+  payments, expenses, maintenance, rentals, vehicles, vehicleById, fmtMoney,
 } from "@/lib/mock/data";
 import { TrendingUp, TrendingDown, Trophy, AlertTriangle } from "lucide-react";
 
@@ -91,7 +91,20 @@ function PnLDashboard() {
 
     // ---- Expenses by date ----
     const periodExpenses = expenses.filter(e => inRange(e.date, from, to));
-    const totalExpenses = periodExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+    // Operational expenses exclude rows auto-generated from a completed
+    // maintenance record (those are counted via the maintenance table below)
+    // to avoid double-counting.
+    const operationalExpenses = periodExpenses.reduce(
+      (s, e) => s + (e.maintenanceId ? 0 : (e.amount || 0)), 0);
+    // Completed maintenance / service-log costs in range.
+    const maintenanceExpenses = maintenance
+      .filter(m => !!m.dateCompleted && inRange(m.dateCompleted, from, to))
+      .reduce((s, m) => s + (m.cost || 0), 0);
+    // Pending (not-yet-completed) maintenance — shown as a warning, not counted.
+    const pendingMaintenance = maintenance
+      .filter(m => !m.dateCompleted)
+      .reduce((s, m) => s + (m.cost || 0), 0);
+    const totalExpenses = operationalExpenses + maintenanceExpenses;
 
     const net = totalRevenue - totalExpenses;
     const margin = totalRevenue > 0 ? (net / totalRevenue) * 100 : 0;
@@ -199,6 +212,7 @@ function PnLDashboard() {
 
     return {
       periodDays, totalRevenue, totalExpenses, net, margin,
+      operationalExpenses, maintenanceExpenses, pendingMaintenance,
       perVehicle, activeVehicles, fleetUtilization, avgDaysRented, avgNetPerVehicle,
       categories, buckets, best: best as Bucket | null, worst: worst as Bucket | null,
       pyRevenue, pyExpenses, pyNet: pyRevenue - pyExpenses, hasPriorYear: pyRevenue > 0 || pyExpenses > 0,
@@ -243,7 +257,11 @@ function PnLDashboard() {
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Total Revenue" value={fmtMoney(data.totalRevenue)} />
-        <Kpi label="Total Expenses" value={fmtMoney(data.totalExpenses)} />
+        <Kpi
+          label="Total Expenses"
+          value={fmtMoney(data.totalExpenses)}
+          sub={`Operational ${fmtMoney(data.operationalExpenses)} + Maintenance ${fmtMoney(data.maintenanceExpenses)} = Total ${fmtMoney(data.totalExpenses)}`}
+        />
         <Kpi label="Net Profit" value={fmtMoney(data.net)} accent={data.net >= 0 ? "pos" : "neg"} />
         <Kpi label="Profit Margin" value={`${data.margin.toFixed(1)}%`} accent={data.margin >= 0 ? "pos" : "neg"} />
         <Kpi label="Fleet Utilization" value={`${data.fleetUtilization.toFixed(1)}%`} />
@@ -251,6 +269,16 @@ function PnLDashboard() {
         <Kpi label="Avg Net / Vehicle" value={fmtMoney(data.avgNetPerVehicle)} accent={data.avgNetPerVehicle >= 0 ? "pos" : "neg"} />
         <Kpi label="Active Vehicles" value={`${data.activeVehicles.length} / ${vehicles.length}`} />
       </div>
+
+      {data.pendingMaintenance > 0 && (
+        <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>
+            {fmtMoney(data.pendingMaintenance)} in pending maintenance is not yet
+            counted as an expense (will count once completed).
+          </span>
+        </div>
+      )}
 
       {/* Trend chart */}
       <Card>
@@ -379,12 +407,13 @@ function PnLDashboard() {
   );
 }
 
-function Kpi({ label, value, accent }: { label: string; value: string; accent?: "pos" | "neg" }) {
+function Kpi({ label, value, accent, sub }: { label: string; value: string; accent?: "pos" | "neg"; sub?: string }) {
   return (
     <Card>
       <CardContent className="p-4">
         <div className="text-xs text-muted-foreground">{label}</div>
         <div className={`mt-1 text-xl font-bold ${accent === "pos" ? "text-emerald-600" : accent === "neg" ? "text-destructive" : ""}`}>{value}</div>
+        {sub && <div className="mt-1 text-[11px] leading-tight text-muted-foreground">{sub}</div>}
       </CardContent>
     </Card>
   );
