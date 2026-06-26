@@ -407,12 +407,13 @@ function PnLDashboard() {
   );
 }
 
-function Kpi({ label, value, accent }: { label: string; value: string; accent?: "pos" | "neg" }) {
+function Kpi({ label, value, accent, sub }: { label: string; value: string; accent?: "pos" | "neg"; sub?: string }) {
   return (
     <Card>
       <CardContent className="p-4">
         <div className="text-xs text-muted-foreground">{label}</div>
         <div className={`mt-1 text-xl font-bold ${accent === "pos" ? "text-emerald-600" : accent === "neg" ? "text-destructive" : ""}`}>{value}</div>
+        {sub && <div className="mt-1 text-[11px] leading-tight text-muted-foreground">{sub}</div>}
       </CardContent>
     </Card>
   );
