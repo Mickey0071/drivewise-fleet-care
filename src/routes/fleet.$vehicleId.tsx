@@ -533,7 +533,19 @@ function VehicleDetail() {
               <Row key={e.id}
                 title={e.category}
                 sub={`${fmtDate(e.date)}${e.vendor ? ` · ${e.vendor}` : ""}${e.notes ? ` · ${e.notes}` : ""}`}
-                right={<span className="font-medium">{fmtMoney(e.amount)}</span>} />
+                right={
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{fmtMoney(e.amount)}</span>
+                    <Button variant="ghost" size="icon" className="h-8 w-8"
+                      onClick={() => { setEditExpense(e); setExpenseOpen(true); }} title="Edit expense">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                      onClick={() => { if (window.confirm("Delete this expense?")) deleteExpense(e.id); }} title="Delete expense">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                } />
             ))}
           </Section>
         </TabsContent>
