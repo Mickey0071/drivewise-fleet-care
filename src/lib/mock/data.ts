@@ -95,7 +95,7 @@ export interface Driver {
 export interface Rental {
   id: string; vehicleId: string; driverId: string; startDate: string;
   endDate?: string; weeklyRate: number; depositPaid: number;
-  paymentStatus: PayStatus; notes?: string;
+  paymentStatus: PayStatus; notes?: string; notesUpdatedAt?: string;
   billingPeriod?: "daily" | "weekly" | "monthly";
   rate?: number;
   /** Daily rentals: number of initial days covered by the deposit before
