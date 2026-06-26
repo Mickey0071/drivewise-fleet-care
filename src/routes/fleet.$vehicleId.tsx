@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { vehicleById, rentals, maintenance, violations, inspections, payments, expenses, driverById, fmtDate, fmtMoney } from "@/lib/mock/data";
+import { vehicleById, rentals, maintenance, violations, inspections, payments, expenses, driverById, fmtDate, fmtMoney, type Expense } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
-import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, updateVehicle, completeRepair, deleteMaintenance, deleteWorkOrder, updateWorkOrder, useStoreVersion } from "@/lib/mock/store";
+import { isVehicleBookable, uploadVehiclePhoto, updateVehicleImage, updateVehicle, completeRepair, deleteMaintenance, deleteWorkOrder, updateWorkOrder, deleteExpense, useStoreVersion } from "@/lib/mock/store";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2 } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +63,7 @@ function VehicleDetail() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
+  const [editExpense, setEditExpense] = useState<Expense | null>(null);
   // Live last-inspection data (reflects approved runner inspections from the backend).
   const [liveInsp, setLiveInsp] = useState<{ at: string | null; mileage: number | null; status: string | null } | null>(null);
   useEffect(() => {
