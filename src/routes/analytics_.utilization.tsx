@@ -11,7 +11,7 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from "@/components/ui/table";
 import { useStoreVersion } from "@/lib/mock/store";
-import { rentals, vehicles, vehicleById, type Rental } from "@/lib/mock/data";
+import { rentals, vehicles, type Rental } from "@/lib/mock/data";
 import { Car, Activity, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/analytics_/utilization")({
@@ -198,7 +198,7 @@ function Page() {
                 formatter={(v: number, _n, p: any) => [`${v}% (${p.payload.count} cars)`, "Utilization"]}
                 labelFormatter={(l) => `Day ${l}`}
               />
-              <Bar dataKey="pct" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="pct" fill="var(--primary)" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
