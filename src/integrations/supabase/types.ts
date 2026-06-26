@@ -2089,6 +2089,7 @@ export type Database = {
           name_match_status: string | null
           name_mismatch_flag: boolean
           notes: string | null
+          notes_updated_at: string | null
           paid_days_window: number
           payer_id_image_url: string | null
           payer_name_extracted: string | null
@@ -2174,6 +2175,7 @@ export type Database = {
           name_match_status?: string | null
           name_mismatch_flag?: boolean
           notes?: string | null
+          notes_updated_at?: string | null
           paid_days_window?: number
           payer_id_image_url?: string | null
           payer_name_extracted?: string | null
@@ -2259,6 +2261,7 @@ export type Database = {
           name_match_status?: string | null
           name_mismatch_flag?: boolean
           notes?: string | null
+          notes_updated_at?: string | null
           paid_days_window?: number
           payer_id_image_url?: string | null
           payer_name_extracted?: string | null
