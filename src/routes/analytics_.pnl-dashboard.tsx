@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { ReportActions } from "@/components/app/ReportActions";
 import { useStoreVersion } from "@/lib/mock/store";
 import {
-  payments, expenses, rentals, vehicles, vehicleById, fmtMoney,
+  payments, expenses, maintenance, rentals, vehicles, vehicleById, fmtMoney,
 } from "@/lib/mock/data";
 import { TrendingUp, TrendingDown, Trophy, AlertTriangle } from "lucide-react";
 
