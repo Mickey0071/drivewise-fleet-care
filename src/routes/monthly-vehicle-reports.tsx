@@ -21,6 +21,7 @@ import {
 } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { TrendingUp, TrendingDown, Wallet, Printer, Download } from "lucide-react";
+import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
 
 export const Route = createFileRoute("/monthly-vehicle-reports")({
   head: () => ({ meta: [{ title: "Monthly Vehicle Reports — Camauto Rentals" }] }),
