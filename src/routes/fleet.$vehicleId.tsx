@@ -517,7 +517,7 @@ function VehicleDetail() {
               <div className="text-xs text-muted-foreground">Total spent on this vehicle</div>
               <div className="text-2xl font-bold">{fmtMoney(vehExpenseTotal)}</div>
             </div>
-            <Button size="sm" onClick={() => setExpenseOpen(true)}>Add expense</Button>
+             <Button size="sm" onClick={() => { setEditExpense(null); setExpenseOpen(true); }}>Add expense</Button>
           </div>
           {Object.keys(vehExpenseByCat).length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -681,7 +681,8 @@ function VehicleDetail() {
       />
       <ExpenseDialog
         open={expenseOpen}
-        onOpenChange={setExpenseOpen}
+        onOpenChange={(o) => { setExpenseOpen(o); if (!o) setEditExpense(null); }}
+        expense={editExpense}
         defaultVehicleId={v.id}
       />
       <CreateWorkOrderDialog
