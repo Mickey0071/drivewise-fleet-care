@@ -21,6 +21,7 @@ import {
 } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { TrendingUp, TrendingDown, Wallet, Printer, Download } from "lucide-react";
+import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
 
 export const Route = createFileRoute("/monthly-vehicle-reports")({
   head: () => ({ meta: [{ title: "Monthly Vehicle Reports — Camauto Rentals" }] }),
@@ -423,24 +424,57 @@ function printVehicleReport(r: VehicleReport, ym: string) {
     r.plate,
   )} — ${esc(monthLabel(ym))}</title>
     <style>
-      body{font-family:system-ui,Arial,sans-serif;margin:32px;color:#111}
-      h1{font-size:20px;margin:0 0 4px}
-      h2{font-size:14px;margin:20px 0 6px;border-bottom:1px solid #ddd;padding-bottom:4px}
-      .sub{color:#666;margin-bottom:16px}
+      *{box-sizing:border-box}
+      body{font-family:'Helvetica Neue',Arial,sans-serif;margin:0;padding:40px;color:#1a1a1a;background:#fff}
+      .header{display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid #111;padding-bottom:16px;margin-bottom:24px}
+      .brand{display:flex;align-items:center;gap:14px}
+      .brand img{height:52px;width:auto;object-fit:contain}
+      .brand .co{font-size:18px;font-weight:700;letter-spacing:.5px}
+      .brand .tag{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1.5px}
+      .doc{text-align:right}
+      .doc .t{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#444}
+      .doc .d{font-size:12px;color:#777;margin-top:2px}
+      h1{font-size:22px;margin:0 0 2px}
+      .plate{display:inline-block;border:1px solid #ccc;border-radius:4px;padding:2px 8px;font-size:13px;color:#555;font-weight:600;margin-left:8px;vertical-align:middle}
+      .net-banner{display:flex;justify-content:space-between;align-items:center;background:#f6f7f9;border-radius:8px;padding:14px 18px;margin:18px 0 26px}
+      .net-banner .lbl{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#666}
+      .net-banner .val{font-size:24px;font-weight:700}
+      .pos{color:#047857}.neg{color:#b91c1c}
+      h2{font-size:13px;margin:24px 0 8px;text-transform:uppercase;letter-spacing:1px;color:#111;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
       table{width:100%;border-collapse:collapse;font-size:13px}
-      td,th{padding:4px 6px}
-      .totals td{font-weight:600;border-top:1px solid #ddd}
-      ul{margin:0;padding-left:18px;font-size:13px}
+      td,th{padding:7px 8px}
+      tbody tr:nth-child(even){background:#fafafa}
+      th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#888;border-bottom:1px solid #e5e7eb}
+      .totals td{font-weight:700;border-top:2px solid #111;font-size:14px}
+      ul{margin:0;padding-left:18px;font-size:13px;line-height:1.7}
+      .footer{margin-top:36px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#999;text-align:center}
     </style></head><body>
-    <h1>${esc(r.title)} <span style="color:#666;font-weight:400">${esc(r.plate)}</span></h1>
-    <div class="sub">Monthly Vehicle Report — ${esc(monthLabel(ym))}</div>
+    <div class="header">
+      <div class="brand">
+        <img src="${CAMAUTO_LOGO_BASE64}" alt="Camauto Rentals" />
+        <div>
+          <div class="co">Camauto Rentals</div>
+          <div class="tag">Vehicle Performance Report</div>
+        </div>
+      </div>
+      <div class="doc">
+        <div class="t">Monthly Statement</div>
+        <div class="d">${esc(monthLabel(ym))}</div>
+      </div>
+    </div>
+    <h1>${esc(r.title)}<span class="plate">${esc(r.plate)}</span></h1>
+    <div class="net-banner">
+      <span class="lbl">Net for ${esc(monthLabel(ym))}</span>
+      <span class="val ${r.net >= 0 ? "pos" : "neg"}">${fmtMoney(r.net)}</span>
+    </div>
     <h2>Income · ${fmtMoney(r.income)}</h2>
-    <table><tr><td>Rental</td><td style="text-align:right">${fmtMoney(r.rentalIncome)}</td></tr>
-    ${r.extensionIncome > 0 ? `<tr><td>Extensions</td><td style="text-align:right">${fmtMoney(r.extensionIncome)}</td></tr>` : ""}</table>
+    <table><tbody><tr><td>Rental</td><td style="text-align:right">${fmtMoney(r.rentalIncome)}</td></tr>
+    ${r.extensionIncome > 0 ? `<tr><td>Extensions</td><td style="text-align:right">${fmtMoney(r.extensionIncome)}</td></tr>` : ""}</tbody></table>
     <h2>Renters</h2><ul>${renters}</ul>
     <h2>Expenses · ${fmtMoney(r.expenseTotal)}</h2>
-    <table><tr><th style="text-align:left">Item</th><th style="text-align:left">Date</th><th style="text-align:right">Amount</th></tr>${exp}</table>
-    <table class="totals"><tr><td>Net</td><td style="text-align:right">${fmtMoney(r.net)}</td></tr></table>
+    <table><thead><tr><th>Item</th><th>Date</th><th style="text-align:right">Amount</th></tr></thead><tbody>${exp}</tbody></table>
+    <table class="totals"><tbody><tr><td>Net</td><td style="text-align:right" class="${r.net >= 0 ? "pos" : "neg"}">${fmtMoney(r.net)}</td></tr></tbody></table>
+    <div class="footer">Camauto Rentals · Generated ${esc(fmtDate(new Date().toISOString().slice(0, 10)))} · Confidential</div>
     </body></html>`);
   w.document.close();
   w.focus();
