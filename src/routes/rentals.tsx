@@ -1920,7 +1920,7 @@ function RentalCardTabs({ rental }: { rental: Rental }) {
   useEffect(() => { setNotes(rental.notes ?? ""); }, [rental.id, rental.notes]);
   const notesDirty = notes !== (rental.notes ?? "");
   function saveNotes() {
-    updateRental(rental.id, { notes: notes.trim() || undefined });
+    updateRental(rental.id, { notes: notes.trim() || undefined, notesUpdatedAt: new Date().toISOString() });
     toast.success("Notes saved");
   }
   return (
@@ -1977,6 +1977,11 @@ function RentalCardTabs({ rental }: { rental: Rental }) {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
+          {rental.notesUpdatedAt && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Last updated {new Date(rental.notesUpdatedAt).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}
+            </p>
+          )}
         </div>
       </TabsContent>
       <TabsContent value="accident" className="mt-2">
