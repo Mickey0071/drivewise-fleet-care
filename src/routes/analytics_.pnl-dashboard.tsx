@@ -91,7 +91,20 @@ function PnLDashboard() {
 
     // ---- Expenses by date ----
     const periodExpenses = expenses.filter(e => inRange(e.date, from, to));
-    const totalExpenses = periodExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+    // Operational expenses exclude rows auto-generated from a completed
+    // maintenance record (those are counted via the maintenance table below)
+    // to avoid double-counting.
+    const operationalExpenses = periodExpenses.reduce(
+      (s, e) => s + (e.maintenanceId ? 0 : (e.amount || 0)), 0);
+    // Completed maintenance / service-log costs in range.
+    const maintenanceExpenses = maintenance
+      .filter(m => !!m.dateCompleted && inRange(m.dateCompleted, from, to))
+      .reduce((s, m) => s + (m.cost || 0), 0);
+    // Pending (not-yet-completed) maintenance — shown as a warning, not counted.
+    const pendingMaintenance = maintenance
+      .filter(m => !m.dateCompleted)
+      .reduce((s, m) => s + (m.cost || 0), 0);
+    const totalExpenses = operationalExpenses + maintenanceExpenses;
 
     const net = totalRevenue - totalExpenses;
     const margin = totalRevenue > 0 ? (net / totalRevenue) * 100 : 0;
