@@ -90,6 +90,7 @@ function CreateTaskPage() {
   const [runnerPhone, setRunnerPhone] = useState("");
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState("medium");
+  const [runnerPay, setRunnerPay] = useState("");
   const [vehicleId, setVehicleId] = useState<string>("none");
   const [customerId, setCustomerId] = useState<string>("none");
   const [location, setLocation] = useState("");
@@ -207,6 +208,7 @@ function CreateTaskPage() {
           rmVehicleId: null,
           rmMileage: null,
           rmItems: [],
+          runnerPay: runnerPay.trim() === "" ? null : Number(runnerPay),
         },
       });
       if (res.smsStatus === "sent") toast.success(`✓ Task sent to ${runnerName.trim()}`);
@@ -214,7 +216,7 @@ function CreateTaskPage() {
       setRunnerName(""); setRunnerPhone(""); setTitle(""); setPriority("medium");
       setVehicleId("none"); setCustomerId("none"); setLocation(""); setScheduledAt("");
       setInstructions(""); setTemplate(""); setItems([newItem()]);
-      setRequiresPhotos(false); setPhotosCount("2"); setRmItems([]);
+      setRequiresPhotos(false); setPhotosCount("2"); setRmItems([]); setRunnerPay("");
     } catch (e: any) {
       toast.error(e?.message || "Failed to create task");
     } finally {
@@ -253,6 +255,12 @@ function CreateTaskPage() {
                 </label>
               ))}
             </RadioGroup>
+          </div>
+          <div className="max-w-[220px]">
+            <Label>Runner Pay ($)</Label>
+            <Input className="mt-1" type="number" min={0} step="0.01" inputMode="decimal"
+              value={runnerPay} onChange={(e) => setRunnerPay(e.target.value)} placeholder="75.00" />
+            <p className="mt-1 text-xs text-muted-foreground">Amount offered to the runner for this mission.</p>
           </div>
         </CardContent>
       </Card>
