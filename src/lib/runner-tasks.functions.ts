@@ -145,6 +145,7 @@ export const createRunnerTask = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const link = `${originFromEnv()}/runner-task/${token}`;
+    const acceptLink = `${link}?accept=1`;
     const vehicleLine = data.vehicleLabel ? `\nVehicle: ${data.vehicleLabel}` : "";
     const whenLine = data.scheduledAt
       ? `\nWhen: ${new Date(data.scheduledAt).toLocaleString("en-US")}`
@@ -153,7 +154,8 @@ export const createRunnerTask = createServerFn({ method: "POST" })
       `Hi ${data.runnerName}, Camauto Rentals has a task for you: ${data.title}.` +
       vehicleLine +
       whenLine +
-      `\n\nOpen it on your phone: ${link}`;
+      `\n\nTap to accept the task: ${acceptLink}` +
+      `\n\nOr open it on your phone: ${link}`;
     let smsStatus: "sent" | "failed" = "sent";
     try {
       await sendSms(data.runnerPhone, msg, data.runnerName);
