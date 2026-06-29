@@ -29,6 +29,7 @@ export interface RunnerTaskSummary {
   submittedAt: string | null;
   reviewedAt: string | null;
   photoCount: number;
+  runnerPay: number | null;
 }
 
 export interface RunnerTaskReport extends RunnerTaskSummary {
@@ -63,6 +64,7 @@ function summarize(row: any): RunnerTaskSummary {
     submittedAt: row.submitted_at ?? null,
     reviewedAt: row.reviewed_at ?? null,
     photoCount: Array.isArray(row.photo_urls) ? row.photo_urls.length : 0,
+    runnerPay: row.runner_pay != null ? Number(row.runner_pay) : null,
   };
 }
 
