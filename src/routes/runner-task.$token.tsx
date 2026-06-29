@@ -197,6 +197,11 @@ function RunnerTaskPage() {
               Thanks{task.runnerName ? `, ${task.runnerName}` : ""}! You've accepted this task.
             </p>
             <p className="text-sm text-muted-foreground">{task.title}</p>
+            {task.runnerPay != null && (
+              <p className="text-base font-bold text-green-700 dark:text-green-400">
+                💰 Your Pay: ${task.runnerPay.toFixed(2)}
+              </p>
+            )}
             <Button className="mt-2 w-full" onClick={() => setAcceptedConfirm(false)}>
               View Task
             </Button>
