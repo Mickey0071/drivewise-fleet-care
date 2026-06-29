@@ -2499,12 +2499,14 @@ export type Database = {
       }
       runner_tasks: {
         Row: {
+          accepted_at: string | null
           assigned_at: string
           assigned_by: string | null
           checklist: Json
           checklist_results: Json | null
           completed_at: string | null
           completion: Json | null
+          completion_ack_at: string | null
           created_at: string
           customer_id: string | null
           details: Json
@@ -2538,12 +2540,14 @@ export type Database = {
           vehicle_id: string | null
         }
         Insert: {
+          accepted_at?: string | null
           assigned_at?: string
           assigned_by?: string | null
           checklist?: Json
           checklist_results?: Json | null
           completed_at?: string | null
           completion?: Json | null
+          completion_ack_at?: string | null
           created_at?: string
           customer_id?: string | null
           details?: Json
@@ -2577,12 +2581,14 @@ export type Database = {
           vehicle_id?: string | null
         }
         Update: {
+          accepted_at?: string | null
           assigned_at?: string
           assigned_by?: string | null
           checklist?: Json
           checklist_results?: Json | null
           completed_at?: string | null
           completion?: Json | null
+          completion_ack_at?: string | null
           created_at?: string
           customer_id?: string | null
           details?: Json
