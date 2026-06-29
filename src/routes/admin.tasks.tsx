@@ -111,7 +111,7 @@ function TasksList() {
             <Button
               size="sm"
               variant={t.status === "submitted" ? "default" : "outline"}
-              disabled={!["submitted", "approved", "rejected"].includes(t.status)}
+              disabled={!["submitted", "approved", "rejected", "complete"].includes(t.status)}
               onClick={() => setOpenId(t.id)}
             >
               View Full Report
