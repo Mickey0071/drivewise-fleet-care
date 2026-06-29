@@ -96,14 +96,19 @@ function PnLDashboard() {
     // to avoid double-counting.
     const operationalExpenses = periodExpenses.reduce(
       (s, e) => s + (e.maintenanceId ? 0 : (e.amount || 0)), 0);
+    // Effective cost for a maintenance/repair row: prefer the explicit cost,
+    // but fall back to parts + labor fields when cost was never rolled up
+    // (repair rows often store partsCost/laborCost only).
+    const maintCost = (m: typeof maintenance[number]) =>
+      (m.cost || 0) > 0 ? (m.cost || 0) : ((m.partsCost || 0) + (m.laborCost || 0));
     // Completed maintenance / service-log costs in range.
     const maintenanceExpenses = maintenance
       .filter(m => !!m.dateCompleted && inRange(m.dateCompleted, from, to))
-      .reduce((s, m) => s + (m.cost || 0), 0);
+      .reduce((s, m) => s + maintCost(m), 0);
     // Pending (not-yet-completed) maintenance — shown as a warning, not counted.
     const pendingMaintenance = maintenance
       .filter(m => !m.dateCompleted)
-      .reduce((s, m) => s + (m.cost || 0), 0);
+      .reduce((s, m) => s + maintCost(m), 0);
     const totalExpenses = operationalExpenses + maintenanceExpenses;
 
     const net = totalRevenue - totalExpenses;
