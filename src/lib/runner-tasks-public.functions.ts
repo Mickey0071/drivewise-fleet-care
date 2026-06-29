@@ -6,7 +6,7 @@ const ADMIN_NOTIFY_PHONE = "267-221-3977";
 const PHOTO_BUCKET = "runner-task-photos";
 
 export interface PublicRunnerTask {
-  state: "ok" | "submitted" | "cancelled" | "expired" | "invalid";
+  state: "ok" | "submitted" | "complete" | "cancelled" | "expired" | "invalid";
   task?: {
     id: string;
     title: string;
@@ -23,6 +23,9 @@ export interface PublicRunnerTask {
     requiresPhotos: boolean;
     photosCountRequired: number;
     submittedAt: string | null;
+    status: string;
+    acceptedAt: string | null;
+    completedAt: string | null;
   };
 }
 
@@ -44,6 +47,9 @@ function mapTask(row: any): PublicRunnerTask["task"] {
     requiresPhotos: !!row.requires_photos,
     photosCountRequired: row.photos_count_required ?? 0,
     submittedAt: row.submitted_at ?? null,
+    status: row.status ?? "sent",
+    acceptedAt: row.accepted_at ?? null,
+    completedAt: row.completed_at ?? null,
   };
 }
 
@@ -64,11 +70,93 @@ export const getRunnerTaskByToken = createServerFn({ method: "GET" })
       .maybeSingle();
     if (!row) return { state: "invalid" };
     if (row.status === "submitted") return { state: "submitted", task: mapTask(row) };
+    if (row.status === "complete") return { state: "complete", task: mapTask(row) };
     if (row.status === "cancelled" || row.status === "archived")
       return { state: "cancelled", task: mapTask(row) };
     if (row.token_expires_at && new Date(row.token_expires_at).getTime() < Date.now())
       return { state: "expired" };
     return { state: "ok", task: mapTask(row) };
+  });
+
+/** Public: runner taps the accept link to confirm the task. No auth required. */
+export const acceptRunnerTask = createServerFn({ method: "POST" })
+  .inputValidator((d: { token: string }) => {
+    const token = (d?.token ?? "").trim();
+    if (!token || token.length > 80 || !/^[a-f0-9]+$/i.test(token)) throw new Error("Invalid token");
+    return { token };
+  })
+  .handler(async ({ data }) => {
+    const { data: row, error } = await supabaseAdmin
+      .from("runner_tasks")
+      .select("*")
+      .eq("token", data.token)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("This task link is no longer valid.");
+    if (row.status === "cancelled" || row.status === "archived")
+      throw new Error("This task has been cancelled.");
+    if (row.token_expires_at && new Date(row.token_expires_at).getTime() < Date.now())
+      throw new Error("This task link has expired.");
+
+    // Idempotent: only move forward from a not-yet-accepted state.
+    if (!row.accepted_at && !["submitted", "complete"].includes(row.status)) {
+      const acceptedAt = new Date().toISOString();
+      const { error: updErr } = await supabaseAdmin
+        .from("runner_tasks")
+        .update({ status: "accepted", accepted_at: acceptedAt })
+        .eq("id", row.id);
+      if (updErr) throw new Error(updErr.message);
+    }
+    return { ok: true as const, runnerName: row.runner_name as string };
+  });
+
+/** Public: runner marks the task complete. Sends an SMS alert to admin. No auth required. */
+export const completeRunnerTask = createServerFn({ method: "POST" })
+  .inputValidator((d: { token: string }) => {
+    const token = (d?.token ?? "").trim();
+    if (!token || token.length > 80 || !/^[a-f0-9]+$/i.test(token)) throw new Error("Invalid token");
+    return { token };
+  })
+  .handler(async ({ data }) => {
+    const { data: row, error } = await supabaseAdmin
+      .from("runner_tasks")
+      .select("*")
+      .eq("token", data.token)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("This task link is no longer valid.");
+    if (row.status === "cancelled" || row.status === "archived")
+      throw new Error("This task has been cancelled.");
+    if (row.status === "complete") throw new Error("This task is already complete.");
+    if (row.token_expires_at && new Date(row.token_expires_at).getTime() < Date.now())
+      throw new Error("This task link has expired.");
+
+    const completedAt = new Date().toISOString();
+    const { error: updErr } = await supabaseAdmin
+      .from("runner_tasks")
+      .update({
+        status: "complete",
+        completed_at: completedAt,
+        submitted_at: row.submitted_at ?? completedAt,
+        completion_ack_at: null,
+      })
+      .eq("id", row.id);
+    if (updErr) throw new Error(updErr.message);
+
+    // Notify admin: SMS + dashboard alert (alert is read from the unacknowledged row).
+    try {
+      const details = (row.details ?? {}) as Record<string, any>;
+      const vehicle = details.vehicleLabel ? ` — ${details.vehicleLabel}` : "";
+      await sendSms(
+        ADMIN_NOTIFY_PHONE,
+        `Task complete: ${row.title} — ${row.runner_name}${vehicle}`,
+        "Camauto Admin",
+      );
+    } catch (e) {
+      console.error("admin complete-notify SMS failed", e);
+    }
+
+    return { ok: true as const, runnerName: row.runner_name as string };
   });
 
 /** Public: submit a runner task. No auth required. */
