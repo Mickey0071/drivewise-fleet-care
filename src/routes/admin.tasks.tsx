@@ -37,6 +37,9 @@ function statusBadge(status: string) {
   const map: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
     submitted: { label: "Submitted", variant: "default" },
     sent: { label: "Sent", variant: "secondary" },
+    assigned: { label: "Sent", variant: "secondary" },
+    accepted: { label: "Accepted", variant: "default" },
+    complete: { label: "Complete", variant: "default" },
     approved: { label: "Approved", variant: "default" },
     rejected: { label: "Rejected", variant: "destructive" },
     cancelled: { label: "Cancelled", variant: "destructive" },
@@ -108,7 +111,7 @@ function TasksList() {
             <Button
               size="sm"
               variant={t.status === "submitted" ? "default" : "outline"}
-              disabled={!["submitted", "approved", "rejected"].includes(t.status)}
+              disabled={!["submitted", "approved", "rejected", "complete"].includes(t.status)}
               onClick={() => setOpenId(t.id)}
             >
               View Full Report

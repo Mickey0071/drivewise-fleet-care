@@ -16,6 +16,7 @@ import { VerificationAlertsCard } from "@/components/app/VerificationAlertsCard"
 import { PendingApprovalsCard } from "@/components/app/PendingApprovalsCard";
 import { PartsQuotedCard } from "@/components/app/PartsQuotedCard";
 import { NewDiagnosisAlertCard } from "@/components/app/NewDiagnosisAlertCard";
+import { CompletedTaskAlerts } from "@/components/app/CompletedTaskAlerts";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
@@ -210,6 +211,8 @@ function Index() {
       />
 
       {role === "admin" && <PendingPaymentReviews />}
+
+      {role === "admin" && <CompletedTaskAlerts />}
 
       {role === "admin" && <VerificationAlertsCard />}
 

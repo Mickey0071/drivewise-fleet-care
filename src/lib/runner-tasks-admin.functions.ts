@@ -268,6 +268,56 @@ export const rejectRmTask = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export interface CompletedTaskAlert {
+  id: string;
+  title: string;
+  runnerName: string | null;
+  vehicleLabel: string | null;
+  completedAt: string | null;
+}
+
+/** Admin: completed runner tasks that haven't been acknowledged on the dashboard yet. */
+export const listCompletedTaskAlerts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<CompletedTaskAlert[]> => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const { data, error } = await supabase
+      .from("runner_tasks")
+      .select("id, title, runner_name, completed_at, details")
+      .eq("status", "complete")
+      .is("completion_ack_at", null)
+      .order("completed_at", { ascending: false })
+      .limit(50);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row: any) => ({
+      id: row.id,
+      title: row.title ?? "Task",
+      runnerName: row.runner_name ?? null,
+      vehicleLabel: (row.details ?? {})?.vehicleLabel ?? null,
+      completedAt: row.completed_at ?? null,
+    }));
+  });
+
+/** Admin: dismiss a completed-task dashboard alert. */
+export const acknowledgeCompletedTask = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => {
+    const id = String(d?.id ?? "").trim();
+    if (!id || id.length > 80) throw new Error("Invalid task id");
+    return { id };
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+    const { error } = await supabase
+      .from("runner_tasks")
+      .update({ completion_ack_at: new Date().toISOString() })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export interface RunnerHistoryEntry {
   phone: string;
   name: string;

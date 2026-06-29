@@ -144,6 +144,32 @@ function PortalPage() {
                 </div>
               </CardContent>
             </Card>
+            {data.tasks && data.tasks.length > 0 && (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Tasks</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {data.tasks.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between gap-3 rounded-md border p-2">
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{t.title}</div>
+                        {t.vehicleLabel && (
+                          <div className="truncate text-xs text-muted-foreground">{t.vehicleLabel}</div>
+                        )}
+                      </div>
+                      <span className="shrink-0 rounded-full border px-2 py-0.5 text-xs capitalize text-muted-foreground">
+                        {t.status === "sent" || t.status === "assigned"
+                          ? "Sent"
+                          : t.status === "complete"
+                            ? "Complete"
+                            : t.status}
+                      </span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Tab 2 — Extensions */}

@@ -134,7 +134,7 @@ export const getPortalData = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!rental) throw new Error("Reservation not found.");
 
-    const [{ data: vehicle }, { data: payRows }, { data: extRows }, { data: reqRows }] =
+    const [{ data: vehicle }, { data: payRows }, { data: extRows }, { data: reqRows }, { data: taskRows }] =
       await Promise.all([
         supabaseAdmin
           .from("vehicles")
@@ -159,6 +159,14 @@ export const getPortalData = createServerFn({ method: "POST" })
           )
           .eq("rental_id", rentalId)
           .order("created_at", { ascending: true }),
+        supabaseAdmin
+          .from("runner_tasks")
+          .select("id, title, status, scheduled_at, completed_at, details")
+          .eq("customer_id", (rental as any).driver_id)
+          .not("token", "is", null)
+          .not("status", "in", "(cancelled,archived)")
+          .order("created_at", { ascending: false })
+          .limit(50),
       ]);
 
     const rentalRow = rental as unknown as RentalRow;
@@ -242,6 +250,14 @@ export const getPortalData = createServerFn({ method: "POST" })
         nextDueDate: nextDueDate(rentalRow, allPays),
       },
       extensions: [...extensions, ...linkSent],
+      tasks: (taskRows ?? []).map((t: any) => ({
+        id: t.id as string,
+        title: t.title ?? "Task",
+        status: t.status ?? "sent",
+        scheduledAt: t.scheduled_at ?? null,
+        completedAt: t.completed_at ?? null,
+        vehicleLabel: (t.details ?? {})?.vehicleLabel ?? null,
+      })),
     };
   });
 
