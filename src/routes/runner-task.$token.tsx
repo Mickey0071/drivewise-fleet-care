@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { useState, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useRef, useEffect } from "react";
 import {
   Loader2, MapPin, Phone, Calendar, Car, Camera, Upload, X,
-  Check, CircleSlash, AlertTriangle, CheckCircle2,
+  Check, CircleSlash, AlertTriangle, CheckCircle2, ThumbsUp,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,11 +16,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
 import { compressImage } from "@/lib/image-compress";
-import { getRunnerTaskByToken, submitRunnerTask } from "@/lib/runner-tasks-public.functions";
+import {
+  getRunnerTaskByToken, submitRunnerTask, acceptRunnerTask, completeRunnerTask,
+} from "@/lib/runner-tasks-public.functions";
 
 export const Route = createFileRoute("/runner-task/$token")({
   head: () => ({ meta: [{ title: "Camauto Rentals Task" }] }),
   ssr: false,
+  validateSearch: (s: Record<string, unknown>) => ({
+    accept: s.accept === "1" || s.accept === 1 || s.accept === true,
+  }),
   component: RunnerTaskPage,
 });
 
@@ -72,8 +77,12 @@ function Message({ title, body }: { title: string; body: string }) {
 
 function RunnerTaskPage() {
   const { token } = Route.useParams();
+  const { accept } = Route.useSearch();
+  const qc = useQueryClient();
   const fetchTask = useServerFn(getRunnerTaskByToken);
   const submitFn = useServerFn(submitRunnerTask);
+  const acceptFn = useServerFn(acceptRunnerTask);
+  const completeFn = useServerFn(completeRunnerTask);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["runner-task", token],
@@ -88,7 +97,29 @@ function RunnerTaskPage() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const [doneMode, setDoneMode] = useState<"submitted" | "complete">("submitted");
+  const [accepting, setAccepting] = useState(false);
+  const [acceptedConfirm, setAcceptedConfirm] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const taskData = data?.task;
+  const isAccepted = !!taskData?.acceptedAt || taskData?.status === "accepted";
+
+  // Auto-accept when the runner opens the SMS "accept" link.
+  useEffect(() => {
+    if (data?.state === "ok" && accept && taskData && !isAccepted && !accepting) {
+      setAccepting(true);
+      acceptFn({ data: { token } })
+        .then(() => {
+          setAcceptedConfirm(true);
+          qc.invalidateQueries({ queryKey: ["runner-task", token] });
+        })
+        .catch((e: any) => toast.error(e?.message || "Could not accept task"))
+        .finally(() => setAccepting(false));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.state, accept, isAccepted]);
 
   if (isLoading) {
     return (
@@ -119,6 +150,28 @@ function RunnerTaskPage() {
       />
     );
   }
+  if (data.state === "complete") {
+    const t = data.task;
+    const when = t?.completedAt ? new Date(t.completedAt).toLocaleString("en-US") : "";
+    return (
+      <Shell>
+        <Card>
+          <CardContent className="space-y-3 py-10 text-center">
+            <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
+            <h2 className="text-lg font-semibold">✓ Task Complete</h2>
+            <p className="text-sm font-medium">{t?.title}</p>
+            {t?.vehicleLabel && <p className="text-sm text-muted-foreground">{t.vehicleLabel}</p>}
+            <p className="text-sm text-muted-foreground">
+              Marked complete{when ? ` on ${when}` : ""}. This task is now read-only.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Questions? Contact Camauto Rentals at {SUPPORT_PHONE}.
+            </p>
+          </CardContent>
+        </Card>
+      </Shell>
+    );
+  }
   if (data.state === "cancelled") {
     return (
       <Message
@@ -131,6 +184,27 @@ function RunnerTaskPage() {
   const task = data.task!;
   const checklist = task.checklist as CL[];
   const isRm = task.type === "routine_maintenance";
+  const needsChecklistFlow = checklist.length > 0 || task.requiresPhotos;
+
+  if (acceptedConfirm) {
+    return (
+      <Shell>
+        <Card>
+          <CardContent className="space-y-3 py-10 text-center">
+            <ThumbsUp className="mx-auto h-12 w-12 text-green-600" />
+            <h2 className="text-lg font-semibold">Task Accepted</h2>
+            <p className="text-sm">
+              Thanks{task.runnerName ? `, ${task.runnerName}` : ""}! You've accepted this task.
+            </p>
+            <p className="text-sm text-muted-foreground">{task.title}</p>
+            <Button className="mt-2 w-full" onClick={() => setAcceptedConfirm(false)}>
+              View Task
+            </Button>
+          </CardContent>
+        </Card>
+      </Shell>
+    );
+  }
 
   if (done) {
     return (
@@ -138,8 +212,12 @@ function RunnerTaskPage() {
         <Card>
           <CardContent className="space-y-3 py-10 text-center">
             <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
-            <h2 className="text-lg font-semibold">Task Submitted</h2>
-            <p className="text-sm">Thank you, {done}! Your task has been submitted.</p>
+            <h2 className="text-lg font-semibold">
+              {doneMode === "complete" ? "Task Complete" : "Task Submitted"}
+            </h2>
+            <p className="text-sm">
+              Thank you, {done}! Your task has been {doneMode === "complete" ? "marked complete" : "submitted"}.
+            </p>
             <p className="text-sm text-muted-foreground">Camauto Rentals has been notified.</p>
             <Button className="mt-2 w-full" onClick={() => window.close()}>Close</Button>
           </CardContent>
@@ -192,10 +270,38 @@ function RunnerTaskPage() {
         },
       });
       setDone(res.runnerName || task.runnerName || "there");
+      setDoneMode("submitted");
     } catch (e: any) {
       toast.error(e?.message || "Submission failed");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleAccept() {
+    setAccepting(true);
+    try {
+      const res = await acceptFn({ data: { token } });
+      setAcceptedConfirm(true);
+      qc.invalidateQueries({ queryKey: ["runner-task", token] });
+      void res;
+    } catch (e: any) {
+      toast.error(e?.message || "Could not accept task");
+    } finally {
+      setAccepting(false);
+    }
+  }
+
+  async function handleComplete() {
+    setCompleting(true);
+    try {
+      const res = await completeFn({ data: { token } });
+      setDone(res.runnerName || task.runnerName || "there");
+      setDoneMode("complete");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not mark complete");
+    } finally {
+      setCompleting(false);
     }
   }
 
@@ -213,6 +319,17 @@ function RunnerTaskPage() {
   return (
     <Shell>
       <p className="text-center text-sm font-medium text-muted-foreground">{task.title}</p>
+
+      {/* Accept status / action */}
+      {isAccepted ? (
+        <div className="flex items-center justify-center gap-2 rounded-md border border-green-600/40 bg-green-600/10 py-2 text-sm font-medium text-green-700 dark:text-green-400">
+          <CheckCircle2 className="h-4 w-4" /> Task accepted
+        </div>
+      ) : (
+        <Button className="h-11 w-full" variant="outline" disabled={accepting} onClick={handleAccept}>
+          {accepting ? <Loader2 className="h-5 w-5 animate-spin" /> : <><ThumbsUp className="mr-1 h-4 w-4" /> Accept Task</>}
+        </Button>
+      )}
 
       {/* Task info */}
       <Card>
@@ -345,9 +462,15 @@ function RunnerTaskPage() {
         </CardContent>
       </Card>
 
-      <Button className="h-12 w-full text-base" disabled={submitting} onClick={handleSubmit}>
-        {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Submit Task"}
-      </Button>
+      {needsChecklistFlow ? (
+        <Button className="h-12 w-full text-base" disabled={submitting} onClick={handleSubmit}>
+          {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Submit Task"}
+        </Button>
+      ) : (
+        <Button className="h-12 w-full text-base" disabled={completing} onClick={handleComplete}>
+          {completing ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CheckCircle2 className="mr-1 h-5 w-5" /> Mark Complete</>}
+        </Button>
+      )}
       <div className="pb-8" />
 
       <CameraCaptureDialog
