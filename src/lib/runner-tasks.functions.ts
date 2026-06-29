@@ -50,6 +50,7 @@ export const createRunnerTask = createServerFn({ method: "POST" })
     rmVehicleId?: string | null;
     rmMileage?: number | null;
     rmItems?: RmTaskItem[];
+    runnerPay?: number | null;
   }) => {
     const runnerName = (d.runnerName ?? "").trim();
     if (!runnerName || runnerName.length > 120) throw new Error("Runner name is required");
@@ -77,6 +78,12 @@ export const createRunnerTask = createServerFn({ method: "POST" })
       }))
       .filter((i) => i.label.trim().length > 0)
       .slice(0, 60);
+    let runnerPay: number | null = null;
+    if (d.runnerPay != null && d.runnerPay !== ("" as any)) {
+      const n = Number(d.runnerPay);
+      if (!Number.isFinite(n) || n < 0) throw new Error("Enter a valid runner pay amount");
+      runnerPay = Math.round(n * 100) / 100;
+    }
     return {
       runnerName,
       runnerPhone,
@@ -97,6 +104,7 @@ export const createRunnerTask = createServerFn({ method: "POST" })
       rmVehicleId: d.rmVehicleId ? String(d.rmVehicleId).slice(0, 80) : null,
       rmMileage: d.rmMileage != null ? Number(d.rmMileage) : null,
       rmItems,
+      runnerPay,
     };
   })
   .handler(async ({ data, context }) => {
@@ -121,6 +129,7 @@ export const createRunnerTask = createServerFn({ method: "POST" })
         checklist: data.checklist as any,
         requires_photos: data.requiresPhotos,
         photos_count_required: data.photosCountRequired,
+        runner_pay: data.runnerPay,
         details: {
           vehicleLabel: data.vehicleLabel || null,
           customerName: data.customerName,
@@ -146,16 +155,12 @@ export const createRunnerTask = createServerFn({ method: "POST" })
 
     const link = `${originFromEnv()}/runner-task/${token}`;
     const acceptLink = `${link}?accept=1`;
-    const vehicleLine = data.vehicleLabel ? `\nVehicle: ${data.vehicleLabel}` : "";
-    const whenLine = data.scheduledAt
-      ? `\nWhen: ${new Date(data.scheduledAt).toLocaleString("en-US")}`
-      : "";
+    const vehiclePart = data.vehicleLabel ? ` | Vehicle: ${data.vehicleLabel}` : "";
+    const payPart =
+      data.runnerPay != null ? ` | Pay: $${data.runnerPay.toFixed(2)}` : "";
     const msg =
-      `Hi ${data.runnerName}, Camauto Rentals has a task for you: ${data.title}.` +
-      vehicleLine +
-      whenLine +
-      `\n\nTap to accept the task: ${acceptLink}` +
-      `\n\nOr open it on your phone: ${link}`;
+      `🚗 New Mission — ${data.title}${vehiclePart}${payPart}` +
+      ` | Tap to accept: ${acceptLink}`;
     let smsStatus: "sent" | "failed" = "sent";
     try {
       await sendSms(data.runnerPhone, msg, data.runnerName);
