@@ -94,6 +94,11 @@ function TasksList() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-semibold">{t.title}</span>
                 {statusBadge(t.status)}
+                {t.runnerPay != null && (
+                  <Badge variant="outline" className="gap-1 text-success">
+                    💰 ${t.runnerPay.toFixed(2)}
+                  </Badge>
+                )}
                 {t.reviewedAt && (
                   <Badge variant="outline" className="gap-1 text-success">
                     <BadgeCheck className="h-3 w-3" /> Reviewed
