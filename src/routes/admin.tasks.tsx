@@ -318,6 +318,7 @@ function ReportBody({ report, onPhoto }: { report: RunnerTaskReport; onPhoto: (u
       <section className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         <h3 className="col-span-full text-base font-semibold">{report.title}</h3>
         <Field label="Runner" value={`${report.runnerName ?? "—"} · ${report.runnerPhone ?? "—"}`} />
+        {report.runnerPay != null && <Field label="Runner Pay" value={`$${report.runnerPay.toFixed(2)}`} />}
         {report.vehicleLabel && <Field label="Vehicle" value={report.vehicleLabel} />}
         {report.customerName && (
           <Field label="Customer" value={`${report.customerName}${report.customerPhone ? ` · ${report.customerPhone}` : ""}`} />
