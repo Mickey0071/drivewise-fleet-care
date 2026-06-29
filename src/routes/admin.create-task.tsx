@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, X, Loader2, Send } from "lucide-react";
+import { Plus, X, Loader2, Send, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app/PageHeader";
@@ -16,6 +16,7 @@ import { vehicles, drivers } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { createRunnerTask } from "@/lib/runner-tasks.functions";
 import { createRmCardLink } from "@/lib/rm-cards.functions";
+import { listRunners, saveRunner, deleteRunner, type SavedRunner } from "@/lib/runners.functions";
 import { computeScheduledItems } from "@/lib/maintenance-utils";
 import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 
@@ -85,9 +86,14 @@ function CreateTaskPage() {
   useStoreVersion();
   const sendFn = useServerFn(createRunnerTask);
   const sendRmFn = useServerFn(createRmCardLink);
+  const listRunnersFn = useServerFn(listRunners);
+  const saveRunnerFn = useServerFn(saveRunner);
+  const deleteRunnerFn = useServerFn(deleteRunner);
 
   const [runnerName, setRunnerName] = useState("");
   const [runnerPhone, setRunnerPhone] = useState("");
+  const [savedRunners, setSavedRunners] = useState<SavedRunner[]>([]);
+  const [selectedRunner, setSelectedRunner] = useState<string>("");
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState("medium");
   const [runnerPay, setRunnerPay] = useState("");
@@ -104,6 +110,53 @@ function CreateTaskPage() {
   const [sending, setSending] = useState(false);
 
   const isRm = template ? TEMPLATES[template]?.type === "routine_maintenance" : false;
+
+  async function refreshRunners() {
+    try {
+      setSavedRunners(await listRunnersFn());
+    } catch {
+      /* ignore */
+    }
+  }
+
+  useEffect(() => {
+    refreshRunners();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function pickRunner(id: string) {
+    setSelectedRunner(id);
+    const r = savedRunners.find((x) => x.id === id);
+    if (r) {
+      setRunnerName(r.name);
+      setRunnerPhone(formatPhone(r.phone));
+    }
+  }
+
+  async function saveCurrentRunner() {
+    if (!runnerName.trim()) { toast.error("Enter a runner name first"); return; }
+    if (runnerPhone.replace(/\D/g, "").length < 10) { toast.error("Enter a valid runner phone first"); return; }
+    try {
+      const saved = await saveRunnerFn({ data: { name: runnerName.trim(), phone: runnerPhone.trim() } });
+      toast.success(`Saved ${saved.name} to the runner list`);
+      await refreshRunners();
+      setSelectedRunner(saved.id);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save runner");
+    }
+  }
+
+  async function removeRunner() {
+    if (!selectedRunner) return;
+    try {
+      await deleteRunnerFn({ data: { id: selectedRunner } });
+      toast.success("Runner removed");
+      setSelectedRunner("");
+      await refreshRunners();
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to remove runner");
+    }
+  }
 
   const vehicleOptions = useMemo(
     () => vehicles.map((v) => ({ id: v.id, label: `${v.year} ${v.make} ${v.model} · ${v.plate}` })),
@@ -231,6 +284,27 @@ function CreateTaskPage() {
       <Card>
         <CardHeader><CardTitle className="text-base">Basic info</CardTitle></CardHeader>
         <CardContent className="space-y-4">
+          <div>
+            <Label>Saved runners</Label>
+            <div className="mt-1 flex items-center gap-2">
+              <Select value={selectedRunner} onValueChange={pickRunner}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder={savedRunners.length ? "Choose a saved runner" : "No saved runners yet"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {savedRunners.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>{r.name} · {formatPhone(r.phone)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedRunner && (
+                <Button type="button" variant="ghost" size="icon" onClick={removeRunner} title="Remove saved runner">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">Pick a runner to auto-fill the name and phone below.</p>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label>Runner name *</Label>
@@ -242,6 +316,9 @@ function CreateTaskPage() {
                 onChange={(e) => setRunnerPhone(formatPhone(e.target.value))} placeholder="(267) 555-1234" />
             </div>
           </div>
+          <Button type="button" variant="outline" size="sm" onClick={saveCurrentRunner}>
+            <Save className="h-4 w-4" /> Save runner to list
+          </Button>
           <div>
             <Label>Task title *</Label>
             <Input className="mt-1" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Pick up vehicle from customer" />
