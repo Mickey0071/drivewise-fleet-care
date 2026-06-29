@@ -331,6 +331,15 @@ function RunnerTaskPage() {
         </Button>
       )}
 
+      {/* Pay offered */}
+      {task.runnerPay != null && (
+        <div className="rounded-md border border-green-600/40 bg-green-600/10 py-3 text-center">
+          <p className="text-lg font-bold text-green-700 dark:text-green-400">
+            💰 Your Pay: ${task.runnerPay.toFixed(2)}
+          </p>
+        </div>
+      )}
+
       {/* Task info */}
       <Card>
         <CardHeader className="flex flex-row items-start justify-between space-y-0">
