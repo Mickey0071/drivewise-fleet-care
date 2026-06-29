@@ -26,6 +26,7 @@ export interface PublicRunnerTask {
     status: string;
     acceptedAt: string | null;
     completedAt: string | null;
+    runnerPay: number | null;
   };
 }
 
@@ -50,6 +51,7 @@ function mapTask(row: any): PublicRunnerTask["task"] {
     status: row.status ?? "sent",
     acceptedAt: row.accepted_at ?? null,
     completedAt: row.completed_at ?? null,
+    runnerPay: row.runner_pay != null ? Number(row.runner_pay) : null,
   };
 }
 

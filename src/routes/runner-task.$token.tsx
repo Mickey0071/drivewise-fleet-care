@@ -197,6 +197,11 @@ function RunnerTaskPage() {
               Thanks{task.runnerName ? `, ${task.runnerName}` : ""}! You've accepted this task.
             </p>
             <p className="text-sm text-muted-foreground">{task.title}</p>
+            {task.runnerPay != null && (
+              <p className="text-base font-bold text-green-700 dark:text-green-400">
+                💰 Your Pay: ${task.runnerPay.toFixed(2)}
+              </p>
+            )}
             <Button className="mt-2 w-full" onClick={() => setAcceptedConfirm(false)}>
               View Task
             </Button>
@@ -329,6 +334,15 @@ function RunnerTaskPage() {
         <Button className="h-11 w-full" variant="outline" disabled={accepting} onClick={handleAccept}>
           {accepting ? <Loader2 className="h-5 w-5 animate-spin" /> : <><ThumbsUp className="mr-1 h-4 w-4" /> Accept Task</>}
         </Button>
+      )}
+
+      {/* Pay offered */}
+      {task.runnerPay != null && (
+        <div className="rounded-md border border-green-600/40 bg-green-600/10 py-3 text-center">
+          <p className="text-lg font-bold text-green-700 dark:text-green-400">
+            💰 Your Pay: ${task.runnerPay.toFixed(2)}
+          </p>
+        </div>
       )}
 
       {/* Task info */}

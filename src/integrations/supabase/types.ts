@@ -2527,6 +2527,7 @@ export type Database = {
           runner_id: string | null
           runner_name: string | null
           runner_notes: string | null
+          runner_pay: number | null
           runner_phone: string | null
           scheduled_at: string | null
           sent_at: string | null
@@ -2568,6 +2569,7 @@ export type Database = {
           runner_id?: string | null
           runner_name?: string | null
           runner_notes?: string | null
+          runner_pay?: number | null
           runner_phone?: string | null
           scheduled_at?: string | null
           sent_at?: string | null
@@ -2609,6 +2611,7 @@ export type Database = {
           runner_id?: string | null
           runner_name?: string | null
           runner_notes?: string | null
+          runner_pay?: number | null
           runner_phone?: string | null
           scheduled_at?: string | null
           sent_at?: string | null
