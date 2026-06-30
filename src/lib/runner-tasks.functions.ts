@@ -154,13 +154,12 @@ export const createRunnerTask = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const link = `${originFromEnv()}/runner-task/${token}`;
-    const acceptLink = `${link}?accept=1`;
     const vehiclePart = data.vehicleLabel ? ` | Vehicle: ${data.vehicleLabel}` : "";
     const payPart =
       data.runnerPay != null ? ` | Pay: $${data.runnerPay.toFixed(2)}` : "";
     const msg =
       `🚗 New Mission — ${data.title}${vehiclePart}${payPart}` +
-      ` | Tap to accept: ${acceptLink}`;
+      ` | Tap to view task and accept: ${link}`;
     let smsStatus: "sent" | "failed" = "sent";
     try {
       await sendSms(data.runnerPhone, msg, data.runnerName);
