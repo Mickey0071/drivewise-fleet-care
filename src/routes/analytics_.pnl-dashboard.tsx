@@ -239,7 +239,7 @@ function PnLDashboard() {
       categories, buckets, best: best as Bucket | null, worst: worst as Bucket | null,
       pyRevenue, pyExpenses, pyNet: pyRevenue - pyExpenses, hasPriorYear: pyRevenue > 0 || pyExpenses > 0,
     };
-  }, [from, to, mode]);
+  }, [from, to, mode, legacyRevenue, legacyExpenses]);
 
   const csvRows = data.perVehicle
     .filter(v => v.rev > 0 || v.daysRented > 0)
