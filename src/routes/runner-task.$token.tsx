@@ -77,7 +77,6 @@ function Message({ title, body }: { title: string; body: string }) {
 
 function RunnerTaskPage() {
   const { token } = Route.useParams();
-  const { accept } = Route.useSearch();
   const qc = useQueryClient();
   const fetchTask = useServerFn(getRunnerTaskByToken);
   const submitFn = useServerFn(submitRunnerTask);
@@ -105,21 +104,6 @@ function RunnerTaskPage() {
 
   const taskData = data?.task;
   const isAccepted = !!taskData?.acceptedAt || taskData?.status === "accepted";
-
-  // Auto-accept when the runner opens the SMS "accept" link.
-  useEffect(() => {
-    if (data?.state === "ok" && accept && taskData && !isAccepted && !accepting) {
-      setAccepting(true);
-      acceptFn({ data: { token } })
-        .then(() => {
-          setAcceptedConfirm(true);
-          qc.invalidateQueries({ queryKey: ["runner-task", token] });
-        })
-        .catch((e: any) => toast.error(e?.message || "Could not accept task"))
-        .finally(() => setAccepting(false));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.state, accept, isAccepted]);
 
   if (isLoading) {
     return (
