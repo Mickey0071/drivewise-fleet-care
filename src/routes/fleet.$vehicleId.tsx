@@ -117,6 +117,17 @@ function VehicleDetail() {
     .filter(e => e.vehicleId === v.id)
     .sort((a, b) => b.date.localeCompare(a.date));
   const vehExpenseTotal = vehExpenses.reduce((s, e) => s + e.amount, 0);
+  // "Total spent on this vehicle" = operational expenses + completed repairs.
+  // Completed repairs sometimes auto-post into the expense ledger (rows tagged
+  // with maintenanceId); to avoid double-counting we exclude those expense rows
+  // and instead use the maintenance table's effectiveRepairCost fallback.
+  const opExpenseTotal = vehExpenses
+    .filter(e => !e.maintenanceId)
+    .reduce((s, e) => s + e.amount, 0);
+  const completedRepairTotal = vMx
+    .filter(m => m.status === "complete" || !!m.dateCompleted)
+    .reduce((s, m) => s + effectiveRepairCost(m), 0);
+  const totalSpentOnVehicle = opExpenseTotal + completedRepairTotal;
   const vehExpenseByCat = vehExpenses.reduce<Record<string, number>>((acc, e) => {
     acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc;
   }, {});
