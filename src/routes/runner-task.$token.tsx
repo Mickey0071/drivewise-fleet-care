@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import {
   Loader2, MapPin, Phone, Calendar, Car, Camera, Upload, X,
   Check, CircleSlash, AlertTriangle, CheckCircle2, ThumbsUp,
@@ -282,9 +282,23 @@ function RunnerTaskPage() {
   }
 
   async function handleComplete() {
+    if (!runnerNotes.trim()) {
+      toast.error("Notes are required to complete the task");
+      return;
+    }
+    if (photos.length < 1) {
+      toast.error("Add at least one photo to complete the task");
+      return;
+    }
     setCompleting(true);
     try {
-      const res = await completeFn({ data: { token } });
+      const res = await completeFn({
+        data: {
+          token,
+          runnerNotes: runnerNotes.trim(),
+          photos: photos.map((dataUrl) => ({ dataUrl })),
+        },
+      });
       setDone(res.runnerName || task.runnerName || "there");
       setDoneMode("complete");
     } catch (e: any) {
