@@ -1,23 +1,54 @@
-## Context
+## Goal
+On the Fleet vehicle detail page, in the **Renter History** tab, make each renter expandable so clicking them reveals every reservation they have had on that vehicle, with a **Download Report** button per reservation that exports a full-detail PDF.
 
-"Ford Tester" reservation **R-586** shows an **$8 credit**. This is mathematically correct, not a bug:
+## Background
+The application already has a complete rental-report PDF pipeline:
+- `src/lib/rental-report.functions.ts` → `exportRentalReportPdf(rentalId)` gathers rental, vehicle, driver, payments, extensions, violations, inspections, charges, and images from Supabase and returns a base64 PDF.
+- `src/components/pdf/RentalReportPDF.tsx` renders a professional branded PDF with all sections.
 
-- The canonical balance engine charges only for **time the car has actually been out**: `owed = time charge + prior balance − payments received − discounts`.
-- R-586 (daily, $1/day, started 6/21): only ~$2 has posted so far (first 2 days deposit-covered, then $1/day).
-- Payments received = **$10** ($2 base + an **$8 extension** prepaid via Stripe 6/22).
-- `$2 − $10 = −$8` → displayed as an **$8 credit**.
+This plan reuses that existing infrastructure with zero backend changes.
 
-The renter prepaid an extension for days that haven't elapsed yet. As days accrue, the time charge climbs and the credit naturally burns down to $0. The formula is working as designed.
+## What will change
 
-## Decision
+### 1. UI — Renter History tab (`src/routes/fleet.$vehicleId.tsx`)
+Replace the current flat list of `uniqueRenters` (which links away to `/drivers`) with an **expandable card per renter**.
 
-Leave the balance engine and all numbers exactly as they are. Make a **presentation-only** clarification so a negative balance reads as prepaid money rather than a mystery "credit."
+- **Collapsed state:** show renter name, rental count, first start date, total paid (same data as today).
+- **Expanded state:** show a compact table of that renter’s reservations for this vehicle:
+  - Reservation ID
+  - Start date → End date (or "open")
+  - Rate / billing period
+  - Payment status
+  - **Download Report** button
 
-## Change (display only)
+- The existing flat "Rental history" section can be removed or replaced since the grouped view covers it.
 
-- Where a rental's balance renders as a credit (negative owed), label it **"Prepaid credit"** with a short helper note: "Payment received ahead of charges — applies automatically as time accrues."
-- No change to `rentalCanonicalOwed`, `rentalTimeCharge`, payments, extensions, the webhook, the portal, or any aggregation. Pure labeling/tooltip on the existing displayed value.
+### 2. PDF download wiring
+- Import `exportRentalReportPdf` from `@/lib/rental-report.functions.ts`.
+- Use `useServerFn(exportRentalReportPdf)` in the Fleet vehicle component.
+- On button click: call with `{ rentalId: <reservation.id> }`.
+- On response: decode `base64`, create a Blob (`application/pdf`), and trigger a download with the provided `filename`.
+- On error (e.g. rental not found in Supabase): show a `toast.error` stating the report is only available for cloud-synced reservations.
 
-## Out of scope
+## Technical details
 
-Balance engine math, extension logic, payment recording, the portal, the P&L/Monthly reports, and the "Send Portal Link" flow all stay unchanged.
+### Component changes
+- `src/routes/fleet.$vehicleId.tsx`
+  - Add `useState` to track which renter is expanded.
+  - Add `useServerFn` call for `exportRentalReportPdf`.
+  - Replace the `uniqueRenters` map and the flat "Rental history" section inside `TabsContent value="renters"`.
+
+### No schema / server changes
+- The `exportRentalReportPdf` server function already queries:
+  - `rentals`, `vehicles`, `drivers`, `payments`, `violations`, `inspections`, `rental_extensions`, `rental_charges`
+  - and already embeds license/selfie/signature images.
+- It already requires admin auth and returns `{ filename, mime, base64 }`.
+
+## Acceptance criteria
+1. On `/fleet/<vehicleId>?tab=renters`, each renter appears as a clickable row.
+2. Clicking a renter expands inline to show all their reservations for that vehicle.
+3. Each reservation has a **Download Report** button.
+4. Clicking it downloads a PDF named like `R-123_John_Doe_report.pdf`.
+5. The PDF contains: Renter info, Vehicle info, Rental period, Extensions, Inspections, Violations, Payments, Charges, Totals, and embedded images.
+6. No other tabs or pages are affected.
+7. If a reservation is not in Supabase, the button shows a clear error instead of crashing.
