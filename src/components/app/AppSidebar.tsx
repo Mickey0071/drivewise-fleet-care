@@ -250,7 +250,7 @@ export function AppSidebar() {
             </div>
           </div>
         )}
-        {renderGroup("Dashboard", filter(adminItems).filter(i => i.url === "/"))}
+        {renderGroup("Dashboard", search(filter(adminItems).filter(i => i.url === "/")))}
         {primaryGroups.map(renderCollapsibleGroup)}
         {renderGroup("More — Operations", leftover(adminItems).filter(i => i.url !== "/"))}
         {renderGroup("More — Finance", leftover(financeItems))}
