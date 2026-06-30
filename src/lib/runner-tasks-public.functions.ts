@@ -101,23 +101,41 @@ export const acceptRunnerTask = createServerFn({ method: "POST" })
       throw new Error("This task link has expired.");
 
     // Idempotent: only move forward from a not-yet-accepted state.
-    if (!row.accepted_at && !["submitted", "complete"].includes(row.status)) {
+    const newlyAccepted = !row.accepted_at && !["submitted", "complete"].includes(row.status);
+    if (newlyAccepted) {
       const acceptedAt = new Date().toISOString();
       const { error: updErr } = await supabaseAdmin
         .from("runner_tasks")
         .update({ status: "accepted", accepted_at: acceptedAt })
         .eq("id", row.id);
       if (updErr) throw new Error(updErr.message);
+
+      // Notify admin that the runner accepted the task.
+      try {
+        await sendSms(
+          ADMIN_NOTIFY_PHONE,
+          `Task accepted: ${row.title} — ${row.runner_name}`,
+          "Camauto Admin",
+        );
+      } catch (e) {
+        console.error("admin accept-notify SMS failed", e);
+      }
     }
     return { ok: true as const, runnerName: row.runner_name as string };
   });
 
-/** Public: runner marks the task complete. Sends an SMS alert to admin. No auth required. */
+/** Public: runner marks the task complete with required notes + photos. Sends an SMS alert to admin. No auth required. */
 export const completeRunnerTask = createServerFn({ method: "POST" })
-  .inputValidator((d: { token: string }) => {
+  .inputValidator((d: { token: string; runnerNotes?: string; photos?: { dataUrl: string }[] }) => {
     const token = (d?.token ?? "").trim();
     if (!token || token.length > 80 || !/^[a-f0-9]+$/i.test(token)) throw new Error("Invalid token");
-    return { token };
+    const runnerNotes = String(d?.runnerNotes ?? "").trim().slice(0, 4000);
+    if (!runnerNotes) throw new Error("Notes are required to complete the task.");
+    const photos = (Array.isArray(d?.photos) ? d.photos : [])
+      .filter((p) => typeof p?.dataUrl === "string" && p.dataUrl.startsWith("data:image/"))
+      .slice(0, 20);
+    if (photos.length < 1) throw new Error("At least one photo is required to complete the task.");
+    return { token, runnerNotes, photos };
   })
   .handler(async ({ data }) => {
     const { data: row, error } = await supabaseAdmin
@@ -133,6 +151,23 @@ export const completeRunnerTask = createServerFn({ method: "POST" })
     if (row.token_expires_at && new Date(row.token_expires_at).getTime() < Date.now())
       throw new Error("This task link has expired.");
 
+    // Upload completion photos via admin client.
+    const existingPaths: string[] = Array.isArray(row.photo_urls) ? row.photo_urls : [];
+    const photoPaths: string[] = [...existingPaths];
+    for (let i = 0; i < data.photos.length; i++) {
+      const m = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(data.photos[i].dataUrl);
+      if (!m) continue;
+      const mime = m[1];
+      const ext = mime.split("/")[1].replace("jpeg", "jpg");
+      const bytes = Buffer.from(m[2], "base64");
+      const path = `${row.id}/${Date.now()}_${i}.${ext}`;
+      const { error: upErr } = await supabaseAdmin.storage
+        .from(PHOTO_BUCKET)
+        .upload(path, bytes, { contentType: mime, upsert: false });
+      if (upErr) throw new Error(`Photo upload failed: ${upErr.message}`);
+      photoPaths.push(path);
+    }
+
     const completedAt = new Date().toISOString();
     const { error: updErr } = await supabaseAdmin
       .from("runner_tasks")
@@ -141,6 +176,8 @@ export const completeRunnerTask = createServerFn({ method: "POST" })
         completed_at: completedAt,
         submitted_at: row.submitted_at ?? completedAt,
         completion_ack_at: null,
+        runner_notes: data.runnerNotes,
+        photo_urls: photoPaths,
       })
       .eq("id", row.id);
     if (updErr) throw new Error(updErr.message);
@@ -151,7 +188,7 @@ export const completeRunnerTask = createServerFn({ method: "POST" })
       const vehicle = details.vehicleLabel ? ` — ${details.vehicleLabel}` : "";
       await sendSms(
         ADMIN_NOTIFY_PHONE,
-        `Task complete: ${row.title} — ${row.runner_name}${vehicle}`,
+        `Task complete: ${row.title} — ${row.runner_name}${vehicle} (photos & notes attached)`,
         "Camauto Admin",
       );
     } catch (e) {

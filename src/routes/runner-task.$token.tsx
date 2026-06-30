@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import {
   Loader2, MapPin, Phone, Calendar, Car, Camera, Upload, X,
   Check, CircleSlash, AlertTriangle, CheckCircle2, ThumbsUp,
@@ -77,7 +77,6 @@ function Message({ title, body }: { title: string; body: string }) {
 
 function RunnerTaskPage() {
   const { token } = Route.useParams();
-  const { accept } = Route.useSearch();
   const qc = useQueryClient();
   const fetchTask = useServerFn(getRunnerTaskByToken);
   const submitFn = useServerFn(submitRunnerTask);
@@ -105,21 +104,6 @@ function RunnerTaskPage() {
 
   const taskData = data?.task;
   const isAccepted = !!taskData?.acceptedAt || taskData?.status === "accepted";
-
-  // Auto-accept when the runner opens the SMS "accept" link.
-  useEffect(() => {
-    if (data?.state === "ok" && accept && taskData && !isAccepted && !accepting) {
-      setAccepting(true);
-      acceptFn({ data: { token } })
-        .then(() => {
-          setAcceptedConfirm(true);
-          qc.invalidateQueries({ queryKey: ["runner-task", token] });
-        })
-        .catch((e: any) => toast.error(e?.message || "Could not accept task"))
-        .finally(() => setAccepting(false));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.state, accept, isAccepted]);
 
   if (isLoading) {
     return (
@@ -185,6 +169,11 @@ function RunnerTaskPage() {
   const checklist = task.checklist as CL[];
   const isRm = task.type === "routine_maintenance";
   const needsChecklistFlow = checklist.length > 0 || task.requiresPhotos;
+  // The simple "Mark Complete" flow (no checklist) requires notes + at least one photo.
+  const completeFlow = !needsChecklistFlow;
+  const showPhotoCard = task.requiresPhotos || completeFlow;
+  const photosNeeded = task.requiresPhotos ? task.photosCountRequired : 1;
+  const completeDisabled = completing || !runnerNotes.trim() || photos.length < 1;
 
   if (acceptedConfirm) {
     return (
@@ -298,9 +287,23 @@ function RunnerTaskPage() {
   }
 
   async function handleComplete() {
+    if (!runnerNotes.trim()) {
+      toast.error("Notes are required to complete the task");
+      return;
+    }
+    if (photos.length < 1) {
+      toast.error("Add at least one photo to complete the task");
+      return;
+    }
     setCompleting(true);
     try {
-      const res = await completeFn({ data: { token } });
+      const res = await completeFn({
+        data: {
+          token,
+          runnerNotes: runnerNotes.trim(),
+          photos: photos.map((dataUrl) => ({ dataUrl })),
+        },
+      });
       setDone(res.runnerName || task.runnerName || "there");
       setDoneMode("complete");
     } catch (e: any) {
@@ -325,15 +328,11 @@ function RunnerTaskPage() {
     <Shell>
       <p className="text-center text-sm font-medium text-muted-foreground">{task.title}</p>
 
-      {/* Accept status / action */}
-      {isAccepted ? (
+      {/* Accept status banner (action button is at the bottom of the detail page) */}
+      {isAccepted && (
         <div className="flex items-center justify-center gap-2 rounded-md border border-green-600/40 bg-green-600/10 py-2 text-sm font-medium text-green-700 dark:text-green-400">
           <CheckCircle2 className="h-4 w-4" /> Task accepted
         </div>
-      ) : (
-        <Button className="h-11 w-full" variant="outline" disabled={accepting} onClick={handleAccept}>
-          {accepting ? <Loader2 className="h-5 w-5 animate-spin" /> : <><ThumbsUp className="mr-1 h-4 w-4" /> Accept Task</>}
-        </Button>
       )}
 
       {/* Pay offered */}
@@ -387,6 +386,18 @@ function RunnerTaskPage() {
         </CardContent>
       </Card>
 
+      {!isAccepted ? (
+        <>
+          <p className="text-center text-sm text-muted-foreground">
+            Review the task details above, then tap Accept Task to confirm.
+          </p>
+          <Button className="h-12 w-full text-base" disabled={accepting} onClick={handleAccept}>
+            {accepting ? <Loader2 className="h-5 w-5 animate-spin" /> : <><ThumbsUp className="mr-1 h-5 w-5" /> Accept Task</>}
+          </Button>
+          <div className="pb-8" />
+        </>
+      ) : (
+      <>
       {/* Checklist */}
       {checklist.length > 0 && (
         <Card>
@@ -423,10 +434,10 @@ function RunnerTaskPage() {
       )}
 
       {/* Photos */}
-      {task.requiresPhotos && (
+      {showPhotoCard && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Photos Required ({task.photosCountRequired} needed)</CardTitle>
+            <CardTitle className="text-base">Photos Required ({photosNeeded} needed)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
@@ -440,7 +451,7 @@ function RunnerTaskPage() {
                 onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = ""; }} />
             </div>
             <p className="text-xs text-muted-foreground">
-              {photos.length} of {task.photosCountRequired} uploaded
+              {photos.length} of {photosNeeded} uploaded
             </p>
             {photos.length > 0 && (
               <div className="grid grid-cols-3 gap-2">
@@ -464,7 +475,11 @@ function RunnerTaskPage() {
 
       {/* Runner notes */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Additional Notes (optional)</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">
+            {completeFlow ? "Notes (required)" : "Additional Notes (optional)"}
+          </CardTitle>
+        </CardHeader>
         <CardContent>
           <Label className="sr-only">Notes</Label>
           <Textarea
@@ -481,11 +496,13 @@ function RunnerTaskPage() {
           {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Submit Task"}
         </Button>
       ) : (
-        <Button className="h-12 w-full text-base" disabled={completing} onClick={handleComplete}>
+        <Button className="h-12 w-full text-base" disabled={completeDisabled} onClick={handleComplete}>
           {completing ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CheckCircle2 className="mr-1 h-5 w-5" /> Mark Complete</>}
         </Button>
       )}
       <div className="pb-8" />
+      </>
+      )}
 
       <CameraCaptureDialog
         open={cameraOpen}
