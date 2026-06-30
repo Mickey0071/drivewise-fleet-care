@@ -81,6 +81,8 @@ const primaryGroups: Group[] = [
     items: [
       { title: "Vehicles", url: "/fleet", icon: Car, roles: ALL_ROLES },
       { title: "Maintenance/Repairs", url: "/maintenance", icon: Wrench, roles: ALL_ROLES },
+      { title: "Parts", url: "/admin/parts", icon: Package, roles: ALL_ROLES },
+      { title: "Inspections", url: "/inspections", icon: ClipboardCheck, roles: ALL_ROLES },
       { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ALL_ROLES },
     ],
   },
@@ -91,6 +93,7 @@ const primaryGroups: Group[] = [
       { title: "Expenses", url: "/admin/expenses", icon: Receipt, roles: ALL_ROLES },
       { title: "Vehicle Profitability", url: "/analytics/profitability", icon: BarChart3, roles: ALL_ROLES },
       { title: "Prior Period Adjustment", url: "/analytics/pnl-dashboard#prior-period-adjustment", icon: DollarSign, roles: ALL_ROLES },
+      { title: "Analytics", url: "/analytics", icon: BarChart3, roles: ALL_ROLES },
       { title: "Payroll", url: "/payroll", icon: Banknote, roles: ALL_ROLES },
     ],
   },
@@ -98,6 +101,7 @@ const primaryGroups: Group[] = [
     key: "staff", label: "Staff", icon: UsersRound, defaultOpen: true,
     items: [
       { title: "Staff Directory", url: "/admin/users", icon: UsersRound, roles: ALL_ROLES },
+      { title: "Create Task", url: "/admin/create-task", icon: ClipboardList, roles: ALL_ROLES },
       { title: "Runner Dispatch", url: "/admin/tasks", icon: ClipboardList, roles: ALL_ROLES },
     ],
   },
