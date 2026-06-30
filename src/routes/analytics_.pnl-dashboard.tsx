@@ -468,6 +468,80 @@ function PnLDashboard() {
         </CardContent>
       </Card>
 
+      {/* Repair cost breakdown (from maintenance table) */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">Repair Cost Breakdown</CardTitle></CardHeader>
+        <CardContent className="space-y-6">
+          {data.repairTickets.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No completed repairs in this period.</p>
+          ) : (
+            <>
+              {/* Roll-up by repair type across the fleet */}
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  By repair type (fleet-wide)
+                </div>
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b text-left text-muted-foreground">
+                    <th className="py-2">Repair type</th>
+                    <th className="py-2 text-right">Total</th>
+                    <th className="py-2 text-right">% of repairs</th>
+                    <th className="py-2 text-right">Fleet-wide</th>
+                  </tr></thead>
+                  <tbody>
+                    {data.repairRollup.map(r => (
+                      <tr key={r.type} className="border-b last:border-0">
+                        <td className="py-2">{r.type}</td>
+                        <td className="py-2 text-right font-medium">{fmtMoney(r.total)}</td>
+                        <td className="py-2 text-right text-muted-foreground">
+                          {((r.total / (data.totalRepairCost || 1)) * 100).toFixed(0)}%
+                        </td>
+                        <td className="py-2 text-right text-muted-foreground">
+                          {fmtMoney(r.total)} across {r.vehicleCount} {r.vehicleCount === 1 ? "vehicle" : "vehicles"}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="border-t font-semibold">
+                      <td className="py-2">Total repair spend</td>
+                      <td className="py-2 text-right">{fmtMoney(data.totalRepairCost)}</td>
+                      <td className="py-2 text-right text-muted-foreground">100%</td>
+                      <td className="py-2" />
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Individual repair tickets */}
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Individual repair tickets
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b text-left text-muted-foreground">
+                      <th className="py-2">Vehicle</th>
+                      <th className="py-2">Repair issue</th>
+                      <th className="py-2 text-right">Cost</th>
+                      <th className="py-2 text-right">Completed</th>
+                    </tr></thead>
+                    <tbody>
+                      {data.repairTickets.map(t => (
+                        <tr key={t.id} className="border-b last:border-0">
+                          <td className="py-2">{t.vehicle}</td>
+                          <td className="py-2">{t.issue}</td>
+                          <td className="py-2 text-right font-medium">{fmtMoney(t.cost)}</td>
+                          <td className="py-2 text-right text-muted-foreground">{t.date || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Per-vehicle breakdown */}
       <Card>
         <CardHeader><CardTitle className="text-base">Per-Vehicle Breakdown</CardTitle></CardHeader>
