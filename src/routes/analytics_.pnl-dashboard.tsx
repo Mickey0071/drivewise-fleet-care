@@ -189,6 +189,33 @@ function PnLDashboard() {
     periodExpenses.forEach(e => { catMap[e.category || "Uncategorized"] = (catMap[e.category || "Uncategorized"] || 0) + (e.amount || 0); });
     const categories = Object.entries(catMap).map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount);
 
+    // ---- Repair cost breakdown (completed repairs in range, from the maintenance table) ----
+    const completedRepairs = maintenance.filter(
+      m => !!m.dateCompleted && inRange(m.dateCompleted, from, to),
+    );
+    const repairTickets = completedRepairs
+      .map(m => ({
+        id: m.id,
+        vehicle: vLabel(m.vehicleId),
+        type: m.problemCategory || m.serviceType || "Repair",
+        issue: m.issueDescription || m.selectedSolution?.name || m.serviceType || "Repair",
+        cost: maintCost(m),
+        date: (m.completionDate || m.dateCompleted || "").slice(0, 10),
+      }))
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+    const totalRepairCost = repairTickets.reduce((s, t) => s + t.cost, 0);
+    // Roll-up: tally repeated repair types across all vehicles.
+    const rollMap: Record<string, { total: number; vehicles: Set<string> }> = {};
+    completedRepairs.forEach(m => {
+      const key = m.problemCategory || m.serviceType || "Repair";
+      if (!rollMap[key]) rollMap[key] = { total: 0, vehicles: new Set() };
+      rollMap[key].total += maintCost(m);
+      rollMap[key].vehicles.add(m.vehicleId);
+    });
+    const repairRollup = Object.entries(rollMap)
+      .map(([type, v]) => ({ type, total: v.total, vehicleCount: v.vehicles.size }))
+      .sort((a, b) => b.total - a.total);
+
     // ---- Time-series buckets ----
     type Bucket = { label: string; from: string; to: string; revenue: number; expenses: number; net: number };
     const buckets: Bucket[] = [];
@@ -244,6 +271,7 @@ function PnLDashboard() {
       operationalExpenses, maintenanceExpenses, pendingMaintenance,
       perVehicle, activeVehicles, fleetUtilization, avgDaysRented, avgNetPerVehicle,
       categories, buckets, best: best as Bucket | null, worst: worst as Bucket | null,
+      repairTickets, repairRollup, totalRepairCost,
       pyRevenue, pyExpenses, pyNet: pyRevenue - pyExpenses, hasPriorYear: pyRevenue > 0 || pyExpenses > 0,
     };
   }, [from, to, mode, legacyRevenue, legacyExpenses]);
@@ -363,9 +391,9 @@ function PnLDashboard() {
                 <XAxis dataKey="label" fontSize={12} /><YAxis fontSize={12} />
                 <Tooltip formatter={(v: number) => fmtMoney(v)} />
                 <Legend />
-                <Line type="monotone" dataKey="revenue" name="Revenue" stroke="hsl(var(--primary))" strokeWidth={2} />
-                <Line type="monotone" dataKey="expenses" name="Expenses" stroke="hsl(var(--destructive))" strokeWidth={2} />
-                <Line type="monotone" dataKey="net" name="Net" stroke="hsl(var(--chart-2, 142 71% 45%))" strokeWidth={2} />
+                <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="expenses" name="Expenses" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="net" name="Net" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
             ) : (
               <BarChart data={data.buckets}>
@@ -373,8 +401,8 @@ function PnLDashboard() {
                 <XAxis dataKey="label" fontSize={12} /><YAxis fontSize={12} />
                 <Tooltip formatter={(v: number) => fmtMoney(v)} />
                 <Legend />
-                <Bar dataKey="revenue" name="Revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expenses" name="Expenses" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" name="Revenue" fill="#16a34a" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expenses" name="Expenses" fill="#dc2626" radius={[4, 4, 0, 0]} />
               </BarChart>
             )}
           </ResponsiveContainer>
@@ -436,6 +464,80 @@ function PnLDashboard() {
                 ))}
               </tbody>
             </table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Repair cost breakdown (from maintenance table) */}
+      <Card>
+        <CardHeader><CardTitle className="text-base">Repair Cost Breakdown</CardTitle></CardHeader>
+        <CardContent className="space-y-6">
+          {data.repairTickets.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No completed repairs in this period.</p>
+          ) : (
+            <>
+              {/* Roll-up by repair type across the fleet */}
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  By repair type (fleet-wide)
+                </div>
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b text-left text-muted-foreground">
+                    <th className="py-2">Repair type</th>
+                    <th className="py-2 text-right">Total</th>
+                    <th className="py-2 text-right">% of repairs</th>
+                    <th className="py-2 text-right">Fleet-wide</th>
+                  </tr></thead>
+                  <tbody>
+                    {data.repairRollup.map(r => (
+                      <tr key={r.type} className="border-b last:border-0">
+                        <td className="py-2">{r.type}</td>
+                        <td className="py-2 text-right font-medium">{fmtMoney(r.total)}</td>
+                        <td className="py-2 text-right text-muted-foreground">
+                          {((r.total / (data.totalRepairCost || 1)) * 100).toFixed(0)}%
+                        </td>
+                        <td className="py-2 text-right text-muted-foreground">
+                          {fmtMoney(r.total)} across {r.vehicleCount} {r.vehicleCount === 1 ? "vehicle" : "vehicles"}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="border-t font-semibold">
+                      <td className="py-2">Total repair spend</td>
+                      <td className="py-2 text-right">{fmtMoney(data.totalRepairCost)}</td>
+                      <td className="py-2 text-right text-muted-foreground">100%</td>
+                      <td className="py-2" />
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Individual repair tickets */}
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Individual repair tickets
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b text-left text-muted-foreground">
+                      <th className="py-2">Vehicle</th>
+                      <th className="py-2">Repair issue</th>
+                      <th className="py-2 text-right">Cost</th>
+                      <th className="py-2 text-right">Completed</th>
+                    </tr></thead>
+                    <tbody>
+                      {data.repairTickets.map(t => (
+                        <tr key={t.id} className="border-b last:border-0">
+                          <td className="py-2">{t.vehicle}</td>
+                          <td className="py-2">{t.issue}</td>
+                          <td className="py-2 text-right font-medium">{fmtMoney(t.cost)}</td>
+                          <td className="py-2 text-right text-muted-foreground">{t.date || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
