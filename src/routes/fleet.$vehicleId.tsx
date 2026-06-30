@@ -32,7 +32,7 @@ import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 import type { Maintenance, WorkOrder } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
-import { lastServiceFor, computeVehicleAlerts } from "@/lib/maintenance-utils";
+import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost } from "@/lib/maintenance-utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
@@ -108,7 +108,7 @@ function VehicleDetail() {
   const vPayments = payments.filter(p => rentalIds.has(p.rentalId));
 
   const incomeTotal = vPayments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
-  const maintenanceTotal = vMx.reduce((s, m) => s + m.cost, 0);
+  const maintenanceTotal = vMx.reduce((s, m) => s + effectiveRepairCost(m), 0);
   const violationTotal = vViol.reduce((s, x) => s + x.amount, 0);
   // Expense ledger is the canonical source for vehicle-tied spend (parts, labour,
   // fuel, etc.). Completed repairs auto-post here, so we don't add maintenance.cost
@@ -497,7 +497,7 @@ function VehicleDetail() {
                             <TableCell className="font-medium">{m.serviceType}</TableCell>
                             <TableCell>{fmtDate(m.completionDate?.slice(0, 10) ?? m.dateCompleted)}</TableCell>
                             <TableCell className="text-right">{(m.mileageAtService ?? 0).toLocaleString()} mi</TableCell>
-                            <TableCell className="text-right">{fmtMoney(m.cost)}</TableCell>
+                            <TableCell className="text-right">{fmtMoney(effectiveRepairCost(m))}</TableCell>
                             <TableCell>{m.completedBy || m.vendor || "—"}</TableCell>
                           </TableRow>
                         ))}
@@ -575,7 +575,7 @@ function VehicleDetail() {
                 const mechanic = m.completedBy || m.vendor || "—";
                 const parts = m.partsCost ?? m.selectedSolution?.partsCost ?? 0;
                 const labor = m.laborCost ?? m.selectedSolution?.laborCost ?? 0;
-                const total = m.cost ?? parts + labor;
+                const total = effectiveRepairCost(m);
                 return (
                   <div key={m.id} className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
                     <div className="min-w-0">
