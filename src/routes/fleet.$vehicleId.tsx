@@ -526,7 +526,7 @@ function VehicleDetail() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="text-xs text-muted-foreground">Total spent on this vehicle</div>
-              <div className="text-2xl font-bold">{fmtMoney(vehExpenseTotal)}</div>
+              <div className="text-2xl font-bold">{fmtMoney(totalSpentOnVehicle)}</div>
             </div>
              <Button size="sm" onClick={() => { setEditExpense(null); setExpenseOpen(true); }}>Add expense</Button>
           </div>
