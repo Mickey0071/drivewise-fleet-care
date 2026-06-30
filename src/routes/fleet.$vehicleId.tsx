@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,7 @@ import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2 } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2, ChevronDown, Download } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 import type { Maintenance, WorkOrder } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost } from "@/lib/maintenance-utils";
+import { exportRentalReportPdf } from "@/lib/rental-report.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
@@ -63,6 +65,8 @@ function VehicleDetail() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
+  const [expandedRenter, setExpandedRenter] = useState<string | null>(null);
+  const exportPdf = useServerFn(exportRentalReportPdf);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
   // Live last-inspection data (reflects approved runner inspections from the backend).
   const [liveInsp, setLiveInsp] = useState<{ at: string | null; mileage: number | null; status: string | null } | null>(null);
@@ -157,6 +161,24 @@ function VehicleDetail() {
       (b.completionDate ?? b.dateCompleted ?? "").localeCompare(a.completionDate ?? a.dateCompleted ?? ""),
     );
   const todayStr = new Date().toISOString().slice(0, 10);
+  async function downloadReport(rentalId: string) {
+    try {
+      const res = await exportPdf({ data: { rentalId } });
+      const bytes = Uint8Array.from(atob(res.base64), c => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: res.mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Report downloaded");
+    } catch (e: any) {
+      toast.error("Download failed", { description: e?.message ?? "Could not generate report" });
+    }
+  }
   function openStatusLabel(m: Maintenance): string {
     const wo = woById(m.sourceWorkOrderId);
     const due = wo?.scheduledDate ?? m.nextServiceDue;
@@ -612,20 +634,47 @@ function VehicleDetail() {
 
         <TabsContent value="renters" className="mt-4 space-y-4">
           <Section title={`Renters of this vehicle (${uniqueRenters.length})`}>
-            {uniqueRenters.length === 0 ? <Empty/> : uniqueRenters.map(u => (
-              <Link key={u.driverId} to="/drivers" className="block">
-                <Row
-                  title={u.driver?.fullName ?? u.driverId}
-                  sub={`${u.count} rental${u.count === 1 ? "" : "s"} · first started ${fmtDate(u.firstStart)}`}
-                  right={<span className="font-medium">{fmtMoney(u.totalPaid)} paid</span>}
-                />
-              </Link>
-            ))}
-          </Section>
-          <Section title="Rental history">
-            {vRentals.length === 0 ? <Empty/> : vRentals.map(r => (
-              <Row key={r.id} title={driverById(r.driverId)?.fullName ?? r.driverId} sub={`${fmtDate(r.startDate)} → ${r.endDate ? fmtDate(r.endDate) : "open"} · ${fmtMoney(r.weeklyRate)}/wk`} right={<StatusBadge status={r.paymentStatus} />} />
-            ))}
+            {uniqueRenters.length === 0 ? <Empty/> : uniqueRenters.map(u => {
+              const isOpen = expandedRenter === u.driverId;
+              const rs = vRentals.filter(r => r.driverId === u.driverId).sort((a, b) => b.startDate.localeCompare(a.startDate));
+              return (
+                <div key={u.driverId} className="rounded-md border border-border bg-card overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedRenter(isOpen ? null : u.driverId)}
+                    className="flex w-full items-center justify-between px-3 py-2 text-left"
+                  >
+                    <div>
+                      <div className="text-sm font-medium">{u.driver?.fullName ?? u.driverId}</div>
+                      <div className="text-xs text-muted-foreground">{u.count} rental{u.count === 1 ? "" : "s"} · first started {fmtDate(u.firstStart)} · {fmtMoney(u.totalPaid)} paid</div>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  {isOpen && (
+                    <div className="border-t border-border px-3 py-3">
+                      {rs.length === 0 ? <Empty/> : (
+                        <div className="space-y-2">
+                          {rs.map(r => (
+                            <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2">
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium">{r.id}</div>
+                                <div className="text-xs text-muted-foreground">{fmtDate(r.startDate)} → {r.endDate ? fmtDate(r.endDate) : "open"} · {fmtMoney(r.weeklyRate)}/wk</div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <StatusBadge status={r.paymentStatus} />
+                                <Button variant="outline" size="sm" onClick={() => downloadReport(r.id)}>
+                                  <Download className="mr-1 h-3.5 w-3.5" />Report
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </Section>
         </TabsContent>
 
