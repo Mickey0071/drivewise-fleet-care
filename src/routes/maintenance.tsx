@@ -46,6 +46,7 @@ import {
   scheduledRemainingLabel,
   isScheduleConfigured,
   type ScheduledItem,
+  effectiveRepairCost,
 } from "@/lib/maintenance-utils";
 import type { Maintenance } from "@/lib/mock/data";
 import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
