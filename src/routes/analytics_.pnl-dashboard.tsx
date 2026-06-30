@@ -277,6 +277,47 @@ function PnLDashboard() {
       </div>
 
       {/* KPI cards */}
+      {/* Prior Period Adjustment */}
+      <Card className="border-dashed">
+        <CardHeader>
+          <CardTitle className="text-base">Prior Period Adjustment</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Manually add legacy figures from before this system. These are added on top of the
+            current-period totals above and persist across reloads.
+          </p>
+          <div className="flex flex-wrap items-end gap-4">
+            <div>
+              <Label className="text-xs">Legacy Revenue</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={legacyRevenue || ""}
+                onChange={e => setLegacyRevenue(Number(e.target.value) || 0)}
+                className="h-9 w-40"
+                placeholder="0.00"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Legacy Expenses</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={legacyExpenses || ""}
+                onChange={e => setLegacyExpenses(Number(e.target.value) || 0)}
+                className="h-9 w-40"
+                placeholder="0.00"
+              />
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Adds {fmtMoney(legacyRevenue)} revenue and {fmtMoney(legacyExpenses)} expenses to the totals.
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* KPI cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="Total Revenue" value={fmtMoney(data.totalRevenue)} />
         <Kpi
