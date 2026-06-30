@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,7 @@ import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2 } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2, ChevronDown, Download } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 import type { Maintenance, WorkOrder } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost } from "@/lib/maintenance-utils";
+import { exportRentalReportPdf } from "@/lib/rental-report.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
