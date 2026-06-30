@@ -20,6 +20,50 @@ import logo from "@/assets/camauto-logo.jpeg";
 type Item = { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] };
 type Group = { key: string; label: string; icon: typeof LayoutDashboard; items: Item[]; defaultOpen?: boolean };
 
+function CollapsibleGroup({
+  group, collapsed, items, renderItems,
+}: {
+  group: Group;
+  collapsed: boolean;
+  items: Item[];
+  renderItems: (items: Item[]) => React.ReactNode;
+}) {
+  const storageKey = `sidebar-group:${group.key}`;
+  const [open, setOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return group.defaultOpen ?? true;
+    const stored = window.localStorage.getItem(storageKey);
+    return stored === null ? (group.defaultOpen ?? true) : stored === "1";
+  });
+  const toggle = (next: boolean) => {
+    setOpen(next);
+    try { window.localStorage.setItem(storageKey, next ? "1" : "0"); } catch { /* ignore */ }
+  };
+
+  if (collapsed) {
+    // Icon-only mode: render items flat so they stay reachable.
+    return (
+      <SidebarGroup>
+        <SidebarGroupContent>{renderItems(items)}</SidebarGroupContent>
+      </SidebarGroup>
+    );
+  }
+
+  return (
+    <Collapsible open={open} onOpenChange={toggle}>
+      <SidebarGroup>
+        <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground">
+          <group.icon className="h-4 w-4 shrink-0" />
+          <span className="flex-1 text-left uppercase tracking-wide">{group.label}</span>
+          <ChevronRight className={`h-4 w-4 shrink-0 transition-transform duration-200 ${open ? "rotate-90" : ""}`} />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarGroupContent>{renderItems(items)}</SidebarGroupContent>
+        </CollapsibleContent>
+      </SidebarGroup>
+    </Collapsible>
+  );
+}
+
 const ALL_ROLES: AppRole[] = ["admin"];
 
 // New top-level collapsible groups (navigation reorganization)
