@@ -117,6 +117,21 @@ function VehicleDetail() {
     .filter(e => e.vehicleId === v.id)
     .sort((a, b) => b.date.localeCompare(a.date));
   const vehExpenseTotal = vehExpenses.reduce((s, e) => s + e.amount, 0);
+  // "Total spent on this vehicle" = operational expenses + completed repairs.
+  // When a repair is completed its cost auto-posts into the expense ledger
+  // (category Parts/Labour/Repair & Maintenance, notes "Repair <id> completed …").
+  // To avoid double-counting we exclude ONLY those auto-posted rows and count
+  // the repair once via the maintenance table's effectiveRepairCost fallback.
+  // Manual expenses linked to a ticket (e.g. tow, cleaning) are kept.
+  const isAutoPostedRepairRow = (e: { maintenanceId?: string; notes?: string | null }) =>
+    !!e.maintenanceId && /Repair\s+.*\bcompleted\b/i.test(e.notes ?? "");
+  const opExpenseTotal = vehExpenses
+    .filter(e => !isAutoPostedRepairRow(e))
+    .reduce((s, e) => s + e.amount, 0);
+  const completedRepairTotal = vMx
+    .filter(m => m.status === "complete" || !!m.dateCompleted)
+    .reduce((s, m) => s + effectiveRepairCost(m), 0);
+  const totalSpentOnVehicle = opExpenseTotal + completedRepairTotal;
   const vehExpenseByCat = vehExpenses.reduce<Record<string, number>>((acc, e) => {
     acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc;
   }, {});
@@ -515,7 +530,7 @@ function VehicleDetail() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="text-xs text-muted-foreground">Total spent on this vehicle</div>
-              <div className="text-2xl font-bold">{fmtMoney(vehExpenseTotal)}</div>
+              <div className="text-2xl font-bold">{fmtMoney(totalSpentOnVehicle)}</div>
             </div>
              <Button size="sm" onClick={() => { setEditExpense(null); setExpenseOpen(true); }}>Add expense</Button>
           </div>
