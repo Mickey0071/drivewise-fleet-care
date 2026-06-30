@@ -18,6 +18,9 @@ import type { Driver } from "@/lib/mock/data";
 import { toast } from "sonner";
 import { US_STATES, formatAddressBlock, formatFullName } from "@/lib/us-states";
 import { RenterDetailDialog } from "@/components/app/RenterDetailDialog";
+import { useServerFn } from "@tanstack/react-start";
+import { uploadDriverLicense } from "@/lib/driver-license.functions";
+import { Upload, IdCard } from "lucide-react";
 
 export const Route = createFileRoute("/drivers")({
   head: () => ({ meta: [{ title: "Renters — Camauto Rentals" }] }),
@@ -205,15 +208,48 @@ function BlockRenterDialog({ driver, onClose }: { driver: Driver | null; onClose
 function EditRenterInner({ driver, onClose }: { driver: Driver | null; onClose: () => void }) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [dlState, setDlState] = useState("");
+  const [licenseImageUrl, setLicenseImageUrl] = useState<string | undefined>(undefined);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const uploadLicenseFn = useServerFn(uploadDriverLicense);
 
   const open = !!driver;
   useEffect(() => {
     if (driver) {
       setPhone(driver.phone ?? "");
       setEmail(driver.email ?? "");
+      setLicenseNumber(driver.licenseNumber ?? "");
+      setDlState(driver.dlState ?? "");
+      setLicenseImageUrl(driver.licenseImageUrl);
     }
   }, [driver]);
+
+  async function onPickLicense(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !driver) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please choose an image file"); return; }
+    if (file.size > 8 * 1024 * 1024) { toast.error("Image must be under 8MB"); return; }
+    setUploading(true);
+    try {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("Could not read file"));
+        reader.readAsDataURL(file);
+      });
+      const res = await uploadLicenseFn({ data: { driverId: driver.id, dataUrl } });
+      setLicenseImageUrl(res.url);
+      await updateDriver(driver.id, { licenseImageUrl: res.url });
+      toast.success("Driver's license uploaded");
+    } catch (e: any) {
+      toast.error("Upload failed", { description: e?.message ?? "Try again" });
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function save() {
     if (!driver) return;
@@ -228,7 +264,12 @@ function EditRenterInner({ driver, onClose }: { driver: Driver | null; onClose: 
     }
     setSaving(true);
     try {
-      await updateDriver(driver.id, { phone: trimmedPhone, email: trimmedEmail });
+      await updateDriver(driver.id, {
+        phone: trimmedPhone,
+        email: trimmedEmail,
+        licenseNumber: licenseNumber.trim(),
+        dlState: dlState || undefined,
+      });
       toast.success("Renter updated");
       onClose();
     } catch (e: any) {
@@ -252,6 +293,39 @@ function EditRenterInner({ driver, onClose }: { driver: Driver | null; onClose: 
           <div>
             <Label>Email</Label>
             <Input type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-2">
+              <Label>DL number</Label>
+              <Input value={licenseNumber} onChange={e => setLicenseNumber(e.target.value)} placeholder="D1234567" />
+            </div>
+            <div>
+              <Label>DL state</Label>
+              <Select value={dlState} onValueChange={setDlState}>
+                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  {US_STATES.map(s => <SelectItem key={s.code} value={s.code}>{s.code}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Driver's license image</Label>
+            {licenseImageUrl ? (
+              <a href={licenseImageUrl} target="_blank" rel="noreferrer" className="block">
+                <img src={licenseImageUrl} alt="Driver's license" className="max-h-44 w-full rounded-md border object-contain" />
+              </a>
+            ) : (
+              <div className="flex items-center gap-2 rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                <IdCard className="h-4 w-4" /> No license image on file
+              </div>
+            )}
+            <label className="inline-flex">
+              <input type="file" accept="image/*" className="hidden" onChange={onPickLicense} disabled={uploading} />
+              <span className="inline-flex cursor-pointer items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted">
+                <Upload className="h-4 w-4" /> {uploading ? "Uploading…" : licenseImageUrl ? "Replace license image" : "Upload license image"}
+              </span>
+            </label>
           </div>
         </div>
         <DialogFooter>
