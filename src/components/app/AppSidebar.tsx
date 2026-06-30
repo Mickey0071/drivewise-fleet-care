@@ -2,12 +2,14 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
   Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature, Bell, CalendarPlus, BarChart3, DatabaseBackup, Package, Upload, Database,
-  Gauge,
+  Gauge, ChevronRight, Handshake,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { unreadReportCount, useStoreVersion } from "@/lib/mock/store";
 import { rentals } from "@/lib/mock/data";
@@ -16,6 +18,60 @@ import { Button } from "@/components/ui/button";
 import logo from "@/assets/camauto-logo.jpeg";
 
 type Item = { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] };
+type Group = { key: string; label: string; icon: typeof LayoutDashboard; items: Item[]; defaultOpen?: boolean };
+
+const ALL_ROLES: AppRole[] = ["admin"];
+
+// New top-level collapsible groups (navigation reorganization)
+const primaryGroups: Group[] = [
+  {
+    key: "reservations", label: "Reservations", icon: FileText, defaultOpen: true,
+    items: [
+      { title: "Active Reservations", url: "/rentals", icon: FileText, roles: ALL_ROLES },
+      { title: "Calendar", url: "/calendar", icon: Calendar, roles: ALL_ROLES },
+      { title: "Client Portal Activity", url: "/driver-portal", icon: IdCard, roles: ALL_ROLES },
+    ],
+  },
+  {
+    key: "fleet", label: "Fleet", icon: Car, defaultOpen: true,
+    items: [
+      { title: "Vehicles", url: "/fleet", icon: Car, roles: ALL_ROLES },
+      { title: "Maintenance/Repairs", url: "/maintenance", icon: Wrench, roles: ALL_ROLES },
+      { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ALL_ROLES },
+    ],
+  },
+  {
+    key: "pnl", label: "P&L/Expenses", icon: TrendingUp, defaultOpen: true,
+    items: [
+      { title: "P&L Dashboard", url: "/analytics/pnl-dashboard", icon: TrendingUp, roles: ALL_ROLES },
+      { title: "Expenses", url: "/admin/expenses", icon: Receipt, roles: ALL_ROLES },
+      { title: "Vehicle Profitability", url: "/analytics/profitability", icon: BarChart3, roles: ALL_ROLES },
+      { title: "Prior Period Adjustment", url: "/analytics/pnl-dashboard#prior-period-adjustment", icon: DollarSign, roles: ALL_ROLES },
+      { title: "Payroll", url: "/payroll", icon: Banknote, roles: ALL_ROLES },
+    ],
+  },
+  {
+    key: "staff", label: "Staff", icon: UsersRound, defaultOpen: true,
+    items: [
+      { title: "Staff Directory", url: "/admin/users", icon: UsersRound, roles: ALL_ROLES },
+      { title: "Runner Dispatch", url: "/admin/tasks", icon: ClipboardList, roles: ALL_ROLES },
+    ],
+  },
+  {
+    key: "jv", label: "JV", icon: Handshake, defaultOpen: true,
+    items: [
+      { title: "JV Units", url: "/jv-units", icon: Car, roles: ALL_ROLES },
+      { title: "JV Contracts", url: "/jv-contracts", icon: FileSignature, roles: ALL_ROLES },
+      { title: "JV Payouts", url: "/jv-payouts", icon: Banknote, roles: ALL_ROLES },
+    ],
+  },
+];
+
+// URLs surfaced inside the primary groups — excluded from the "More" lists to avoid duplicates.
+const primaryUrls = new Set(
+  primaryGroups.flatMap(g => g.items.map(i => i.url.split("#")[0])),
+);
+
 const adminItems: Item[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["admin"] },
   { title: "Fleet Snapshot", url: "/fleet-snapshot", icon: Gauge, roles: ["admin"] },
@@ -63,38 +119,54 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const isActive = (url: string) => url === "/" ? path === "/" : path.startsWith(url);
+  const isActive = (rawUrl: string) => {
+    const url = rawUrl.split("#")[0];
+    return url === "/" ? path === "/" : path.startsWith(url);
+  };
   useStoreVersion();
   const unread = unreadReportCount();
   const pendingReviewCount = rentals.filter(r => r.staffReviewStatus === "pending").length;
   const { role, user, signOut } = useAuth();
   const filter = (items: Item[]) => role ? items.filter(i => i.roles.includes(role)) : [];
 
+  const renderItems = (items: Item[]) => (
+    <SidebarMenu>
+      {items.map((item) => (
+        <SidebarMenuItem key={item.title}>
+          <SidebarMenuButton asChild isActive={isActive(item.url)}>
+            <Link to={item.url} className="flex items-center gap-3">
+              <item.icon className="h-4 w-4 shrink-0" />
+              {!collapsed && <span className="flex-1">{item.title}</span>}
+              {!collapsed && item.url === "/runner-reports" && unread > 0 && (
+                <Badge variant="default" className="h-5 px-1.5 text-[10px]">{unread}</Badge>
+              )}
+              {!collapsed && item.url === "/pending-agreements" && pendingReviewCount > 0 && (
+                <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">{pendingReviewCount}</Badge>
+              )}
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  );
+
+  const renderCollapsibleGroup = (group: Group) => {
+    const items = filter(group.items);
+    if (items.length === 0) return null;
+    return <CollapsibleGroup key={group.key} group={group} collapsed={collapsed} renderItems={renderItems} items={items} />;
+  };
+
   const renderGroup = (label: string, items: Item[]) => items.length === 0 ? null : (
     <SidebarGroup>
       {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/60">{label}</SidebarGroupLabel>}
       <SidebarGroupContent>
-        <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.url}>
-              <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                <Link to={item.url} className="flex items-center gap-3">
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  {!collapsed && <span className="flex-1">{item.title}</span>}
-                  {!collapsed && item.url === "/runner-reports" && unread > 0 && (
-                    <Badge variant="default" className="h-5 px-1.5 text-[10px]">{unread}</Badge>
-                  )}
-                  {!collapsed && item.url === "/pending-agreements" && pendingReviewCount > 0 && (
-                    <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">{pendingReviewCount}</Badge>
-                  )}
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+        {renderItems(items)}
       </SidebarGroupContent>
     </SidebarGroup>
   );
+
+  // Leftover items (not surfaced in the primary groups) stay accessible below.
+  const leftover = (items: Item[]) => filter(items).filter(i => !primaryUrls.has(i.url));
 
   return (
     <Sidebar collapsible="icon">
@@ -111,10 +183,12 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
       <SidebarContent>
-        {renderGroup("Operations", filter(adminItems))}
-        {renderGroup("Finance", filter(financeItems))}
-        {renderGroup("Portals", filter(portalItems))}
-        {renderGroup("Settings", filter(settingsItems))}
+        {renderGroup("Dashboard", filter(adminItems).filter(i => i.url === "/"))}
+        {primaryGroups.map(renderCollapsibleGroup)}
+        {renderGroup("More — Operations", leftover(adminItems).filter(i => i.url !== "/"))}
+        {renderGroup("More — Finance", leftover(financeItems))}
+        {renderGroup("More — Portals", leftover(portalItems))}
+        {renderGroup("More — Settings", leftover(settingsItems))}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-3">
         {!collapsed && user && (
