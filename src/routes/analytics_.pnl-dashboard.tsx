@@ -189,6 +189,33 @@ function PnLDashboard() {
     periodExpenses.forEach(e => { catMap[e.category || "Uncategorized"] = (catMap[e.category || "Uncategorized"] || 0) + (e.amount || 0); });
     const categories = Object.entries(catMap).map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount);
 
+    // ---- Repair cost breakdown (completed repairs in range, from the maintenance table) ----
+    const completedRepairs = maintenance.filter(
+      m => !!m.dateCompleted && inRange(m.dateCompleted, from, to),
+    );
+    const repairTickets = completedRepairs
+      .map(m => ({
+        id: m.id,
+        vehicle: vLabel(m.vehicleId),
+        type: m.problemCategory || m.serviceType || "Repair",
+        issue: m.issueDescription || m.selectedSolution?.name || m.serviceType || "Repair",
+        cost: maintCost(m),
+        date: (m.completionDate || m.dateCompleted || "").slice(0, 10),
+      }))
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+    const totalRepairCost = repairTickets.reduce((s, t) => s + t.cost, 0);
+    // Roll-up: tally repeated repair types across all vehicles.
+    const rollMap: Record<string, { total: number; vehicles: Set<string> }> = {};
+    completedRepairs.forEach(m => {
+      const key = m.problemCategory || m.serviceType || "Repair";
+      if (!rollMap[key]) rollMap[key] = { total: 0, vehicles: new Set() };
+      rollMap[key].total += maintCost(m);
+      rollMap[key].vehicles.add(m.vehicleId);
+    });
+    const repairRollup = Object.entries(rollMap)
+      .map(([type, v]) => ({ type, total: v.total, vehicleCount: v.vehicles.size }))
+      .sort((a, b) => b.total - a.total);
+
     // ---- Time-series buckets ----
     type Bucket = { label: string; from: string; to: string; revenue: number; expenses: number; net: number };
     const buckets: Bucket[] = [];
@@ -244,6 +271,7 @@ function PnLDashboard() {
       operationalExpenses, maintenanceExpenses, pendingMaintenance,
       perVehicle, activeVehicles, fleetUtilization, avgDaysRented, avgNetPerVehicle,
       categories, buckets, best: best as Bucket | null, worst: worst as Bucket | null,
+      repairTickets, repairRollup, totalRepairCost,
       pyRevenue, pyExpenses, pyNet: pyRevenue - pyExpenses, hasPriorYear: pyRevenue > 0 || pyExpenses > 0,
     };
   }, [from, to, mode, legacyRevenue, legacyExpenses]);
