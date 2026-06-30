@@ -163,7 +163,16 @@ function PnLPage() {
     const revenue = payments
       .filter(p => p.status === "paid" && rentalIds.has(p.rentalId))
       .reduce((s, p) => s + p.amount, 0);
-    const expense = expenses.filter(e => e.vehicleId === v.id).reduce((s, e) => s + e.amount, 0);
+    // Combined spend = operational expenses (excluding auto-posted repair rows)
+    // + completed repair/maintenance costs via effectiveRepairCost. Same
+    // definition as the vehicle detail page's "Total spent on this vehicle".
+    const opExpense = expenses
+      .filter(e => e.vehicleId === v.id && inPnlRange(e.date) && !isAutoPostedRepairRow(e))
+      .reduce((s, e) => s + e.amount, 0);
+    const repairExpense = maintenance
+      .filter(m => m.vehicleId === v.id && isCompletedRepair(m) && inPnlRange(m.dateCompleted ?? ""))
+      .reduce((s, m) => s + effectiveRepairCost(m), 0);
+    const expense = opExpense + repairExpense;
     const profit = revenue - expense;
     const roi = expense > 0 ? (profit / expense) * 100 : null;
     return { vehicle: v, revenue, expense, profit, roi };
