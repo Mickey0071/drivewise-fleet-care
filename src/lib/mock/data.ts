@@ -70,6 +70,8 @@ export interface Driver {
   lastName?: string;
   // License extras
   dlState?: string;
+  // Uploaded driver-license image (signed URL to private storage)
+  licenseImageUrl?: string;
   // Address parts
   streetAddress?: string;
   aptUnit?: string;

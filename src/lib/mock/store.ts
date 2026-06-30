@@ -67,6 +67,7 @@ const fromDriver = (r: any) => ({
   middleInitial: r.middle_initial ?? undefined,
   lastName: r.last_name ?? undefined,
   dlState: r.dl_state ?? undefined,
+  licenseImageUrl: r.license_image_url ?? undefined,
   streetAddress: r.street_address ?? undefined,
   aptUnit: r.apt_unit ?? undefined,
   city: r.city ?? undefined,
