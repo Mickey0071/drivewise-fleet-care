@@ -391,9 +391,9 @@ function PnLDashboard() {
                 <XAxis dataKey="label" fontSize={12} /><YAxis fontSize={12} />
                 <Tooltip formatter={(v: number) => fmtMoney(v)} />
                 <Legend />
-                <Line type="monotone" dataKey="revenue" name="Revenue" stroke="hsl(var(--primary))" strokeWidth={2} />
-                <Line type="monotone" dataKey="expenses" name="Expenses" stroke="hsl(var(--destructive))" strokeWidth={2} />
-                <Line type="monotone" dataKey="net" name="Net" stroke="hsl(var(--chart-2, 142 71% 45%))" strokeWidth={2} />
+                <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="expenses" name="Expenses" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="net" name="Net" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>
             ) : (
               <BarChart data={data.buckets}>
@@ -401,8 +401,8 @@ function PnLDashboard() {
                 <XAxis dataKey="label" fontSize={12} /><YAxis fontSize={12} />
                 <Tooltip formatter={(v: number) => fmtMoney(v)} />
                 <Legend />
-                <Bar dataKey="revenue" name="Revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expenses" name="Expenses" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="revenue" name="Revenue" fill="#16a34a" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expenses" name="Expenses" fill="#dc2626" radius={[4, 4, 0, 0]} />
               </BarChart>
             )}
           </ResponsiveContainer>
