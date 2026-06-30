@@ -18,6 +18,9 @@ import type { Driver } from "@/lib/mock/data";
 import { toast } from "sonner";
 import { US_STATES, formatAddressBlock, formatFullName } from "@/lib/us-states";
 import { RenterDetailDialog } from "@/components/app/RenterDetailDialog";
+import { useServerFn } from "@tanstack/react-start";
+import { uploadDriverLicense } from "@/lib/driver-license.functions";
+import { Upload, IdCard } from "lucide-react";
 
 export const Route = createFileRoute("/drivers")({
   head: () => ({ meta: [{ title: "Renters — Camauto Rentals" }] }),
