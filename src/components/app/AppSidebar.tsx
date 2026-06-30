@@ -9,7 +9,7 @@ import {
   SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { unreadReportCount, useStoreVersion } from "@/lib/mock/store";
 import { rentals } from "@/lib/mock/data";
@@ -26,7 +26,7 @@ function CollapsibleGroup({
   group: Group;
   collapsed: boolean;
   items: Item[];
-  renderItems: (items: Item[]) => React.ReactNode;
+  renderItems: (items: Item[]) => ReactNode;
 }) {
   const storageKey = `sidebar-group:${group.key}`;
   const [open, setOpen] = useState<boolean>(() => {
