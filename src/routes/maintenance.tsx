@@ -46,6 +46,7 @@ import {
   scheduledRemainingLabel,
   isScheduleConfigured,
   type ScheduledItem,
+  effectiveRepairCost,
 } from "@/lib/maintenance-utils";
 import type { Maintenance } from "@/lib/mock/data";
 import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
@@ -233,7 +234,7 @@ function MaintenancePage() {
   const completedThisMonth = completedRepairs.filter(
     m => (m.completionDate ?? m.dateCompleted ?? "").slice(0, 7) === monthKey,
   );
-  const completedThisMonthTotal = completedThisMonth.reduce((s, m) => s + (m.cost ?? 0), 0);
+  const completedThisMonthTotal = completedThisMonth.reduce((s, m) => s + effectiveRepairCost(m), 0);
 
   // Scheduled maintenance (derived from per-vehicle Alert Settings)
   const dueSoon = dueSoonScheduledItems(vehicles);
@@ -470,7 +471,7 @@ function MaintenancePage() {
               ) : (
                 <ul className="divide-y divide-border">
                   {phase3.map(m => {
-                    const total = m.cost ?? 0;
+                    const total = effectiveRepairCost(m);
                     const paid = m.amountPaid ?? 0;
                     const balance = Math.max(0, total - paid);
                     const open = expandedId === m.id;
@@ -544,7 +545,7 @@ function MaintenancePage() {
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
-                        <span className="text-sm font-medium">{fmtMoney(m.cost)}</span>
+                        <span className="text-sm font-medium">{fmtMoney(effectiveRepairCost(m))}</span>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -797,7 +798,7 @@ function MaintenancePage() {
                               </td>
                               <td className="px-4 py-2">{m.selectedSolution?.name ?? m.serviceType}</td>
                               <td className="px-4 py-2">{m.completedBy || m.vendor || "—"}</td>
-                              <td className="px-4 py-2 text-right font-medium">{fmtMoney(m.cost)}</td>
+                              <td className="px-4 py-2 text-right font-medium">{fmtMoney(effectiveRepairCost(m))}</td>
                               <td className="px-4 py-2">{fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}</td>
                               <td className="px-4 py-2 text-right">
                                 <Button
@@ -1024,10 +1025,9 @@ const REPAIR_STATUS_LABEL: Record<string, string> = {
   complete: "Complete",
 };
 
-/** Display-only total: actual parts+labor, falling back to `cost` when both are 0. */
+/** Display-only total: prefers explicit cost, falls back to parts+labor. */
 function totalCostFor(m: Maintenance): number {
-  const pl = (m.partsCost ?? 0) + (m.laborCost ?? 0);
-  return pl > 0 ? pl : (m.cost ?? 0);
+  return effectiveRepairCost(m);
 }
 
 function RepairRow({ m, open, onToggle, onDelete, job }: { m: Maintenance; open: boolean; onToggle: () => void; onDelete: () => void; job?: MechanicJobRow }) {

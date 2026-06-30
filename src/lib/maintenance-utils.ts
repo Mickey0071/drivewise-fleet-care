@@ -14,6 +14,18 @@ export function isServiceLogRecord(m: Maintenance): boolean {
   return !!m.dateCompleted && !isIssueRecord(m);
 }
 
+// Effective cost for a maintenance/repair row. Prefer the explicit `cost`,
+// but fall back to parts + labor when `cost` was never rolled up (null/zero).
+// Use this everywhere a repair cost is displayed or summed so totals stay
+// consistent across the fleet card, P&L, and repair history views.
+export function effectiveRepairCost(m: Maintenance): number {
+  const cost = Number(m.cost) || 0;
+  if (cost > 0) return cost;
+  const parts = Number(m.partsCost ?? m.selectedSolution?.partsCost) || 0;
+  const labor = Number(m.laborCost ?? m.selectedSolution?.laborCost) || 0;
+  return parts + labor;
+}
+
 // Most recent completed routine service for a vehicle.
 export function lastServiceFor(list: Maintenance[], vehicleId: string): Maintenance | undefined {
   return list

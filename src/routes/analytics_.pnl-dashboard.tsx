@@ -140,8 +140,15 @@ function PnLDashboard() {
         .filter(p => rentalVehicle.get(p.rentalId) === v.id)
         .reduce((s, p) => s + (p.amount || 0), 0);
       const exp = periodExpenses
-        .filter(e => e.vehicleId === v.id)
+        .filter(e => e.vehicleId === v.id && !e.maintenanceId)
         .reduce((s, e) => s + (e.amount || 0), 0);
+      // Add completed maintenance/repair costs for this vehicle using the same
+      // parts+labor fallback as the fleet-wide total (and exclude the
+      // auto-posted maintenance expense rows above to avoid double-counting).
+      const maint = maintenance
+        .filter(m => m.vehicleId === v.id && !!m.dateCompleted && inRange(m.dateCompleted, from, to))
+        .reduce((s, m) => s + maintCost(m), 0);
+      const vehExp = exp + maint;
       let daysRented = 0;
       let bestMonth = "";
       const monthDays: Record<string, number> = {};
@@ -168,7 +175,7 @@ function PnLDashboard() {
         }
       }
       const utilization = Math.min(100, (daysRented / periodDays) * 100);
-      return { id: v.id, label: vLabel(v.id), rev, exp, net: rev - exp, daysRented, utilization, bestMonth };
+      return { id: v.id, label: vLabel(v.id), rev, exp: vehExp, net: rev - vehExp, daysRented, utilization, bestMonth };
     });
 
     const activeVehicles = perVehicle.filter(v => v.rev > 0 || v.daysRented > 0);
