@@ -29,6 +29,9 @@ import { Route as MonthlyVehicleReportsRouteImport } from './routes/monthly-vehi
 import { Route as MigratedReservationsRouteImport } from './routes/migrated-reservations'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as JvUnitsRouteImport } from './routes/jv-units'
+import { Route as JvPayoutsRouteImport } from './routes/jv-payouts'
+import { Route as JvContractsRouteImport } from './routes/jv-contracts'
 import { Route as InsuranceRouteImport } from './routes/insurance'
 import { Route as InspectionsRouteImport } from './routes/inspections'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
@@ -200,6 +203,21 @@ const MaintenanceRoute = MaintenanceRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JvUnitsRoute = JvUnitsRouteImport.update({
+  id: '/jv-units',
+  path: '/jv-units',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JvPayoutsRoute = JvPayoutsRouteImport.update({
+  id: '/jv-payouts',
+  path: '/jv-payouts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JvContractsRoute = JvContractsRouteImport.update({
+  id: '/jv-contracts',
+  path: '/jv-contracts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InsuranceRoute = InsuranceRouteImport.update({
@@ -586,6 +604,9 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/inspections': typeof InspectionsRoute
   '/insurance': typeof InsuranceRoute
+  '/jv-contracts': typeof JvContractsRoute
+  '/jv-payouts': typeof JvPayoutsRoute
+  '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
@@ -680,6 +701,9 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/inspections': typeof InspectionsRoute
   '/insurance': typeof InsuranceRoute
+  '/jv-contracts': typeof JvContractsRoute
+  '/jv-payouts': typeof JvPayoutsRoute
+  '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
@@ -775,6 +799,9 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/inspections': typeof InspectionsRoute
   '/insurance': typeof InsuranceRoute
+  '/jv-contracts': typeof JvContractsRoute
+  '/jv-payouts': typeof JvPayoutsRoute
+  '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
@@ -871,6 +898,9 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/inspections'
     | '/insurance'
+    | '/jv-contracts'
+    | '/jv-payouts'
+    | '/jv-units'
     | '/login'
     | '/maintenance'
     | '/migrated-reservations'
@@ -965,6 +995,9 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/inspections'
     | '/insurance'
+    | '/jv-contracts'
+    | '/jv-payouts'
+    | '/jv-units'
     | '/login'
     | '/maintenance'
     | '/migrated-reservations'
@@ -1059,6 +1092,9 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/inspections'
     | '/insurance'
+    | '/jv-contracts'
+    | '/jv-payouts'
+    | '/jv-units'
     | '/login'
     | '/maintenance'
     | '/migrated-reservations'
@@ -1154,6 +1190,9 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InspectionsRoute: typeof InspectionsRoute
   InsuranceRoute: typeof InsuranceRoute
+  JvContractsRoute: typeof JvContractsRoute
+  JvPayoutsRoute: typeof JvPayoutsRoute
+  JvUnitsRoute: typeof JvUnitsRoute
   LoginRoute: typeof LoginRoute
   MaintenanceRoute: typeof MaintenanceRoute
   MigratedReservationsRoute: typeof MigratedReservationsRoute
@@ -1374,6 +1413,27 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/jv-units': {
+      id: '/jv-units'
+      path: '/jv-units'
+      fullPath: '/jv-units'
+      preLoaderRoute: typeof JvUnitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/jv-payouts': {
+      id: '/jv-payouts'
+      path: '/jv-payouts'
+      fullPath: '/jv-payouts'
+      preLoaderRoute: typeof JvPayoutsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/jv-contracts': {
+      id: '/jv-contracts'
+      path: '/jv-contracts'
+      fullPath: '/jv-contracts'
+      preLoaderRoute: typeof JvContractsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/insurance': {
@@ -1918,6 +1978,9 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   InspectionsRoute: InspectionsRoute,
   InsuranceRoute: InsuranceRoute,
+  JvContractsRoute: JvContractsRoute,
+  JvPayoutsRoute: JvPayoutsRoute,
+  JvUnitsRoute: JvUnitsRoute,
   LoginRoute: LoginRoute,
   MaintenanceRoute: MaintenanceRoute,
   MigratedReservationsRoute: MigratedReservationsRoute,
@@ -2001,13 +2064,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
