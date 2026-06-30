@@ -502,6 +502,30 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                       <div className="sm:col-span-2"><Label htmlFor="nd-email">Email</Label><Input id="nd-email" type="email" value={newDriver.email} onChange={e => setNewDriver({ ...newDriver, email: e.target.value })} /></div>
                       <div className="sm:col-span-2"><Label htmlFor="nd-dob">Date of birth</Label><Input id="nd-dob" type="date" value={newDriver.dateOfBirth} onChange={e => setNewDriver({ ...newDriver, dateOfBirth: e.target.value })} /></div>
                     </div>
+                    {nameMatches.length > 0 && (
+                      <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2">
+                        <div className="mb-1 flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                          <Search className="h-3 w-3" /> Existing customers match this name — pick one to avoid duplicates
+                        </div>
+                        <div className="divide-y rounded-md border bg-card">
+                          {nameMatches.map(d => (
+                            <button
+                              key={d.id}
+                              type="button"
+                              onClick={() => { setDriverId(d.id); setShowAddDriver(false); setNewDriver(emptyDriver); }}
+                              className="flex w-full items-center gap-2 p-2 text-left text-sm transition hover:bg-muted/50"
+                            >
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <span className="flex-1">
+                                <span className="font-medium">{d.fullName}</span>
+                                <span className="ml-2 text-xs text-muted-foreground">{d.phone} · {d.email}</span>
+                              </span>
+                              <Check className="h-4 w-4 text-primary opacity-0" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground pt-2">License</div>
                     <div className="grid gap-3 sm:grid-cols-6">
                       <div className="sm:col-span-3"><Label htmlFor="nd-lic">DL number</Label><Input id="nd-lic" value={newDriver.licenseNumber} onChange={e => setNewDriver({ ...newDriver, licenseNumber: e.target.value })} /></div>
