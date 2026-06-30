@@ -161,6 +161,24 @@ function VehicleDetail() {
       (b.completionDate ?? b.dateCompleted ?? "").localeCompare(a.completionDate ?? a.dateCompleted ?? ""),
     );
   const todayStr = new Date().toISOString().slice(0, 10);
+  async function downloadReport(rentalId: string) {
+    try {
+      const res = await exportPdf({ data: { rentalId } });
+      const bytes = Uint8Array.from(atob(res.base64), c => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: res.mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Report downloaded");
+    } catch (e: any) {
+      toast.error("Download failed", { description: e?.message ?? "Could not generate report" });
+    }
+  }
   function openStatusLabel(m: Maintenance): string {
     const wo = woById(m.sourceWorkOrderId);
     const due = wo?.scheduledDate ?? m.nextServiceDue;
