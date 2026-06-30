@@ -80,6 +80,22 @@ function PnLDashboard() {
   const [customFrom, setCustomFrom] = useState<string>(iso(new Date(new Date().getFullYear(), new Date().getMonth(), 1)));
   const [customTo, setCustomTo] = useState<string>(iso(new Date()));
 
+  // Prior Period Adjustment — manual legacy figures, persisted in localStorage.
+  const [legacyRevenue, setLegacyRevenue] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    return Number(window.localStorage.getItem("pnl_legacy_revenue") || 0) || 0;
+  });
+  const [legacyExpenses, setLegacyExpenses] = useState<number>(() => {
+    if (typeof window === "undefined") return 0;
+    return Number(window.localStorage.getItem("pnl_legacy_expenses") || 0) || 0;
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("pnl_legacy_revenue", String(legacyRevenue));
+  }, [legacyRevenue]);
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("pnl_legacy_expenses", String(legacyExpenses));
+  }, [legacyExpenses]);
+
   const { from, to } = useMemo(() => rangeFor(mode, customFrom, customTo), [mode, customFrom, customTo]);
 
   const data = useMemo(() => {
@@ -87,7 +103,8 @@ function PnLDashboard() {
 
     // ---- Revenue: paid payments by paid date ----
     const paidPayments = payments.filter(p => p.status === "paid" && inRange(p.paidDate, from, to));
-    const totalRevenue = paidPayments.reduce((s, p) => s + (p.amount || 0), 0);
+    const currentRevenue = paidPayments.reduce((s, p) => s + (p.amount || 0), 0);
+    const totalRevenue = currentRevenue + legacyRevenue;
 
     // ---- Expenses by date ----
     const periodExpenses = expenses.filter(e => inRange(e.date, from, to));
@@ -109,7 +126,7 @@ function PnLDashboard() {
     const pendingMaintenance = maintenance
       .filter(m => !m.dateCompleted)
       .reduce((s, m) => s + maintCost(m), 0);
-    const totalExpenses = operationalExpenses + maintenanceExpenses;
+    const totalExpenses = operationalExpenses + maintenanceExpenses + legacyExpenses;
 
     const net = totalRevenue - totalExpenses;
     const margin = totalRevenue > 0 ? (net / totalRevenue) * 100 : 0;
