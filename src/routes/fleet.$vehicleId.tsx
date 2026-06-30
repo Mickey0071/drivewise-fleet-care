@@ -118,11 +118,15 @@ function VehicleDetail() {
     .sort((a, b) => b.date.localeCompare(a.date));
   const vehExpenseTotal = vehExpenses.reduce((s, e) => s + e.amount, 0);
   // "Total spent on this vehicle" = operational expenses + completed repairs.
-  // Completed repairs sometimes auto-post into the expense ledger (rows tagged
-  // with maintenanceId); to avoid double-counting we exclude those expense rows
-  // and instead use the maintenance table's effectiveRepairCost fallback.
+  // When a repair is completed its cost auto-posts into the expense ledger
+  // (category Parts/Labour/Repair & Maintenance, notes "Repair <id> completed …").
+  // To avoid double-counting we exclude ONLY those auto-posted rows and count
+  // the repair once via the maintenance table's effectiveRepairCost fallback.
+  // Manual expenses linked to a ticket (e.g. tow, cleaning) are kept.
+  const isAutoPostedRepairRow = (e: { maintenanceId?: string; notes?: string | null }) =>
+    !!e.maintenanceId && /Repair\s+.*\bcompleted\b/i.test(e.notes ?? "");
   const opExpenseTotal = vehExpenses
-    .filter(e => !e.maintenanceId)
+    .filter(e => !isAutoPostedRepairRow(e))
     .reduce((s, e) => s + e.amount, 0);
   const completedRepairTotal = vMx
     .filter(m => m.status === "complete" || !!m.dateCompleted)
