@@ -169,6 +169,11 @@ function RunnerTaskPage() {
   const checklist = task.checklist as CL[];
   const isRm = task.type === "routine_maintenance";
   const needsChecklistFlow = checklist.length > 0 || task.requiresPhotos;
+  // The simple "Mark Complete" flow (no checklist) requires notes + at least one photo.
+  const completeFlow = !needsChecklistFlow;
+  const showPhotoCard = task.requiresPhotos || completeFlow;
+  const photosNeeded = task.requiresPhotos ? task.photosCountRequired : 1;
+  const completeDisabled = completing || !runnerNotes.trim() || photos.length < 1;
 
   if (acceptedConfirm) {
     return (
