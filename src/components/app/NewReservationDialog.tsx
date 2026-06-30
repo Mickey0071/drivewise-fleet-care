@@ -148,6 +148,16 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     [drvQ]
   );
 
+  // As the user types a name into the "New client" form, surface existing
+  // customers from the database so they can pick instead of creating a dupe.
+  const nameMatches = useMemo(() => {
+    const typed = `${newDriver.firstName} ${newDriver.lastName}`.trim().toLowerCase();
+    if (typed.length < 2) return [];
+    return drivers
+      .filter(d => d.status !== "suspended" && d.fullName.toLowerCase().includes(typed))
+      .slice(0, 6);
+  }, [newDriver.firstName, newDriver.lastName]);
+
   function reset() {
     setStep(0); setVehicleId(null); setDriverId(null);
     setStartDate(""); setEndDate(""); setRate(0); setBillingPeriod("weekly");
