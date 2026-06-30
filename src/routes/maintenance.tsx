@@ -1025,10 +1025,9 @@ const REPAIR_STATUS_LABEL: Record<string, string> = {
   complete: "Complete",
 };
 
-/** Display-only total: actual parts+labor, falling back to `cost` when both are 0. */
+/** Display-only total: prefers explicit cost, falls back to parts+labor. */
 function totalCostFor(m: Maintenance): number {
-  const pl = (m.partsCost ?? 0) + (m.laborCost ?? 0);
-  return pl > 0 ? pl : (m.cost ?? 0);
+  return effectiveRepairCost(m);
 }
 
 function RepairRow({ m, open, onToggle, onDelete, job }: { m: Maintenance; open: boolean; onToggle: () => void; onDelete: () => void; job?: MechanicJobRow }) {
