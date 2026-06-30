@@ -179,6 +179,7 @@ export type Database = {
           insurance_on_file: boolean
           last_name: string | null
           license_expiry: string
+          license_image_url: string | null
           license_number: string
           middle_initial: string | null
           next_auto_charge_date: string | null
@@ -222,6 +223,7 @@ export type Database = {
           insurance_on_file?: boolean
           last_name?: string | null
           license_expiry: string
+          license_image_url?: string | null
           license_number: string
           middle_initial?: string | null
           next_auto_charge_date?: string | null
@@ -265,6 +267,7 @@ export type Database = {
           insurance_on_file?: boolean
           last_name?: string | null
           license_expiry?: string
+          license_image_url?: string | null
           license_number?: string
           middle_initial?: string | null
           next_auto_charge_date?: string | null
