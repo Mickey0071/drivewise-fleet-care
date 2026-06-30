@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2 } from "lucide-react";
 import { vehicleById, fmtMoney, fmtDate, type Maintenance } from "@/lib/mock/data";
+import { effectiveRepairCost } from "@/lib/maintenance-utils";
 
 interface Props {
   open: boolean;
@@ -24,7 +25,7 @@ export function CompletedRepairDetailDialog({ open, onOpenChange, record }: Prop
   const v = vehicleById(record.vehicleId);
   const parts = record.partsCost ?? record.selectedSolution?.partsCost ?? 0;
   const labor = record.laborCost ?? record.selectedSolution?.laborCost ?? 0;
-  const total = record.cost ?? parts + labor;
+  const total = effectiveRepairCost(record);
   const estimate = record.selectedSolution?.totalCost;
   const issue = record.issueDescription || record.selectedSolution?.name || record.serviceType;
 
