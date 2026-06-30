@@ -11,6 +11,8 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 import { unreadReportCount, useStoreVersion } from "@/lib/mock/store";
 import { rentals } from "@/lib/mock/data";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
@@ -176,6 +178,10 @@ export function AppSidebar() {
   const pendingReviewCount = rentals.filter(r => r.staffReviewStatus === "pending").length;
   const { role, user, signOut } = useAuth();
   const filter = (items: Item[]) => role ? items.filter(i => i.roles.includes(role)) : [];
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const search = (items: Item[]) =>
+    q ? items.filter(i => i.title.toLowerCase().includes(q)) : items;
 
   const renderItems = (items: Item[]) => (
     <SidebarMenu>
@@ -199,7 +205,7 @@ export function AppSidebar() {
   );
 
   const renderCollapsibleGroup = (group: Group) => {
-    const items = filter(group.items);
+    const items = search(filter(group.items));
     if (items.length === 0) return null;
     return <CollapsibleGroup key={group.key} group={group} collapsed={collapsed} renderItems={renderItems} items={items} />;
   };
@@ -214,7 +220,7 @@ export function AppSidebar() {
   );
 
   // Leftover items (not surfaced in the primary groups) stay accessible below.
-  const leftover = (items: Item[]) => filter(items).filter(i => !primaryUrls.has(i.url));
+  const leftover = (items: Item[]) => search(filter(items)).filter(i => !primaryUrls.has(i.url));
 
   return (
     <Sidebar collapsible="icon">
@@ -231,7 +237,20 @@ export function AppSidebar() {
         </Link>
       </SidebarHeader>
       <SidebarContent>
-        {renderGroup("Dashboard", filter(adminItems).filter(i => i.url === "/"))}
+        {!collapsed && (
+          <div className="px-2 pt-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-sidebar-foreground/50" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search menu..."
+                className="h-8 pl-8 text-sm"
+              />
+            </div>
+          </div>
+        )}
+        {renderGroup("Dashboard", search(filter(adminItems).filter(i => i.url === "/")))}
         {primaryGroups.map(renderCollapsibleGroup)}
         {renderGroup("More — Operations", leftover(adminItems).filter(i => i.url !== "/"))}
         {renderGroup("More — Finance", leftover(financeItems))}
