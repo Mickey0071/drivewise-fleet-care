@@ -97,6 +97,7 @@ const toDriver = (d: any) => ({
   middle_initial: d.middleInitial ?? null,
   last_name: d.lastName ?? null,
   dl_state: d.dlState ?? null,
+  license_image_url: d.licenseImageUrl ?? null,
   street_address: d.streetAddress ?? null,
   apt_unit: d.aptUnit ?? null,
   city: d.city ?? null,
@@ -2023,6 +2024,7 @@ export function updateDriver(id: string, fields: Partial<Omit<Driver, "id">>) {
   if (fields.middleInitial !== undefined) patch.middle_initial = fields.middleInitial ?? null;
   if (fields.lastName !== undefined) patch.last_name = fields.lastName ?? null;
   if (fields.dlState !== undefined) patch.dl_state = fields.dlState ?? null;
+  if (fields.licenseImageUrl !== undefined) patch.license_image_url = fields.licenseImageUrl ?? null;
   if (fields.streetAddress !== undefined) patch.street_address = fields.streetAddress ?? null;
   if (fields.aptUnit !== undefined) patch.apt_unit = fields.aptUnit ?? null;
   if (fields.city !== undefined) patch.city = fields.city ?? null;
