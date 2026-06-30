@@ -26,6 +26,21 @@ export function effectiveRepairCost(m: Maintenance): number {
   return parts + labor;
 }
 
+// A repair is "completed" once it has a completion date or status. Use this
+// everywhere completed repair costs are summed so totals stay consistent.
+export function isCompletedRepair(m: Maintenance): boolean {
+  return m.status === "complete" || !!m.dateCompleted;
+}
+
+// When a repair is completed its cost auto-posts into the expense ledger
+// (notes like "Repair <id> completed …"). Those rows must be excluded from
+// operational-expense sums so the repair is only counted once via the
+// maintenance table's effectiveRepairCost. Single source of truth shared by
+// the vehicle detail page and the P&L dashboard.
+export function isAutoPostedRepairRow(e: { maintenanceId?: string; notes?: string | null }): boolean {
+  return !!e.maintenanceId && /Repair\s+.*\bcompleted\b/i.test(e.notes ?? "");
+}
+
 // Most recent completed routine service for a vehicle.
 export function lastServiceFor(list: Maintenance[], vehicleId: string): Maintenance | undefined {
   return list

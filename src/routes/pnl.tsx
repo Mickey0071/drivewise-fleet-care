@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { payments, expenses, payrollRuns, staffById, vehicles, vehicleById, driverById, rentals, violations, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { maintenance } from "@/lib/mock/data";
-import { isServiceLogRecord, isIssueRecord } from "@/lib/maintenance-utils";
+import { isServiceLogRecord, isIssueRecord, effectiveRepairCost, isCompletedRepair, isAutoPostedRepairRow } from "@/lib/maintenance-utils";
 import { Users, CreditCard, Banknote, TrendingUp, TrendingDown, Trophy, AlertTriangle } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 import { downloadPnLExcel } from "@/lib/pnl-excel";
@@ -83,15 +83,22 @@ function PnLPage() {
     const ensureE = (k: string) => (expByMonth[k] ??= { maintenance: 0, payroll: 0, other: 0 });
     expenses.forEach(e => {
       if (!inRange(e.date)) return;
+      // Skip auto-posted repair rows — those are counted via the maintenance
+      // table below (using effectiveRepairCost) to avoid double-counting.
+      if (isAutoPostedRepairRow(e)) return;
       const b = ensureE(ymKey(e.date));
       const c = e.category.toLowerCase();
       if (c.includes("maint")) b.maintenance += e.amount;
       else if (c.includes("payroll")) b.payroll += e.amount;
       else b.other += e.amount;
     });
-    // Maintenance table (separate source for service records)
-    // Avoid double-counting: only add maintenance records that aren't already in expenses
-    // (kept off by default — expenses is the canonical ledger)
+    // Completed repairs/maintenance from the maintenance table — the single
+    // source for repair cost (operational auto-posted rows were skipped above).
+    // Uses effectiveRepairCost so rows that only carry parts+labor still count.
+    maintenance.forEach(m => {
+      if (!isCompletedRepair(m) || !inRange(m.dateCompleted ?? undefined)) return;
+      ensureE(ymKey(m.dateCompleted!)).maintenance += effectiveRepairCost(m);
+    });
 
     const incomeRows = Object.entries(incomeByMonth)
       .map(([k, v]) => ({ ym: k, ...v, total: v.rental + v.extensions + v.violations }))
@@ -156,7 +163,16 @@ function PnLPage() {
     const revenue = payments
       .filter(p => p.status === "paid" && rentalIds.has(p.rentalId))
       .reduce((s, p) => s + p.amount, 0);
-    const expense = expenses.filter(e => e.vehicleId === v.id).reduce((s, e) => s + e.amount, 0);
+    // Combined spend = operational expenses (excluding auto-posted repair rows)
+    // + completed repair/maintenance costs via effectiveRepairCost. Same
+    // definition as the vehicle detail page's "Total spent on this vehicle".
+    const opExpense = expenses
+      .filter(e => e.vehicleId === v.id && inPnlRange(e.date) && !isAutoPostedRepairRow(e))
+      .reduce((s, e) => s + e.amount, 0);
+    const repairExpense = maintenance
+      .filter(m => m.vehicleId === v.id && isCompletedRepair(m) && inPnlRange(m.dateCompleted ?? ""))
+      .reduce((s, m) => s + effectiveRepairCost(m), 0);
+    const expense = opExpense + repairExpense;
     const profit = revenue - expense;
     const roi = expense > 0 ? (profit / expense) * 100 : null;
     return { vehicle: v, revenue, expense, profit, roi };
