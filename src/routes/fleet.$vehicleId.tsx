@@ -458,13 +458,16 @@ function VehicleDetail() {
             <Stat label="ROI" value={roiPct == null ? "—" : `${roiPct.toFixed(0)}%`} />
           </div>
           <Section title="Income (payments collected)">
-            {vPayments.length === 0 ? <Empty/> : vPayments.map(p => (
-              <Row key={p.id} title={fmtMoney(p.amount)} sub={`${driverById(p.driverId)?.fullName ?? p.driverId} · due ${fmtDate(p.dueDate)}`} right={<StatusBadge status={p.status} />} />
+            {fin.incomeLineItems.length === 0 ? <Empty/> : fin.incomeLineItems.map(p => (
+              <Row key={p.id} title={fmtMoney(p.amount)} sub={`${p.renterName} · ${fmtDate(p.date)}`} right={<span className="text-xs text-muted-foreground">{p.method ?? "paid"}</span>} />
             ))}
           </Section>
-          <Section title="Expense breakdown">
-            <Row title="Maintenance and repairs" sub={`${vMx.length} service record${vMx.length === 1 ? "" : "s"}`} right={<span className="font-medium">{fmtMoney(maintenanceTotal)}</span>} />
-            <Row title="Violations and impound costs" sub={`${vViol.length} vehicle charge${vViol.length === 1 ? "" : "s"}`} right={<span className="font-medium">{fmtMoney(violationTotal)}</span>} />
+          <Section title={`Expense breakdown (${expenseItems.length})`}>
+            {expenseItems.length === 0 ? <Empty/> : expenseItems.map(e => (
+              <Row key={`${e.source}-${e.id}`} title={e.description}
+                sub={`${fmtDate(e.date)} · ${e.category}`}
+                right={<span className="font-medium">{fmtMoney(e.amount)}</span>} />
+            ))}
           </Section>
           <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/pnl">Open full P&amp;L report →</Link></Button>
         </TabsContent>
