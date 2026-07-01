@@ -14,8 +14,6 @@ import {
   payments,
   driverById,
   vehicleById,
-  expenses,
-  maintenance,
   fmtMoney,
   fmtDate,
 } from "@/lib/mock/data";
