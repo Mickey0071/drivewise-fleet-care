@@ -14,7 +14,7 @@ import { useStoreVersion } from "@/lib/mock/store";
 import {
   payments, expenses, maintenance, rentals, vehicles, vehicleById, fmtMoney,
 } from "@/lib/mock/data";
-import { TrendingUp, TrendingDown, Trophy, AlertTriangle } from "lucide-react";
+import { TrendingUp, TrendingDown, Trophy, AlertTriangle, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/analytics_/pnl-dashboard")({
   head: () => ({ meta: [{ title: "P&L Dashboard — Camauto Rentals" }] }),
