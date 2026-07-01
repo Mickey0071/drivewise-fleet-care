@@ -8,6 +8,7 @@ import { vehicles, fmtMoney } from "@/lib/mock/data";
 import { maintenance as maintenanceList } from "@/lib/mock/data";
 import { fmtDate, rentals, payments, expenses } from "@/lib/mock/data";
 import { lastServiceFor } from "@/lib/maintenance-utils";
+import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { computeVehicleAlerts, isScheduleConfigured } from "@/lib/maintenance-utils";
 import { carImage } from "@/lib/mock/carImages";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -203,7 +204,7 @@ function FleetPage() {
                 </div>
                 {expenseTotal > 0 && (
                   <div className="mt-1 text-[11px] text-muted-foreground">
-                    Parts {fmtMoney(byCat["Parts"] ?? 0)} · Labour {fmtMoney(byCat["Labour"] ?? 0)} · Other {fmtMoney(expenseTotal - (byCat["Parts"] ?? 0) - (byCat["Labour"] ?? 0))}
+                    Repairs {fmtMoney(byCat.repair + byCat.maintenance)} · Violations {fmtMoney(byCat.violation)} · Other {fmtMoney(byCat.manual)}
                   </div>
                 )}
               </CardContent>
