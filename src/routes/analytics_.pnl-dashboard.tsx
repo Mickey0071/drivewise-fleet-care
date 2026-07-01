@@ -513,18 +513,54 @@ function PnLDashboard() {
                     <th className="py-2">Repair type</th>
                     <th className="py-2 text-right">Total</th>
                     <th className="py-2 text-right">% of repairs</th>
-                    <th className="py-2 text-right">Fleet-wide</th>
+                    <th className="py-2 text-right">Vehicles</th>
                   </tr></thead>
                   <tbody>
                     {data.repairRollup.map(r => (
                       <tr key={r.type} className="border-b last:border-0">
-                        <td className="py-2">{r.type}</td>
+                        <td className="py-2">
+                          {editingType === r.type ? (
+                            <span className="flex items-center gap-1">
+                              <Input
+                                autoFocus
+                                value={editingValue}
+                                onChange={(e) => setEditingValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveTypeTitle(r.type);
+                                  if (e.key === "Escape") setEditingType(null);
+                                }}
+                                className="h-7 w-40 text-sm"
+                              />
+                              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => saveTypeTitle(r.type)}>Save</Button>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="group inline-flex items-center gap-1 text-left hover:underline"
+                              onClick={() => { setEditingType(r.type); setEditingValue(typeTitles[r.type] || r.type); }}
+                              title="Click to rename"
+                            >
+                              {typeTitles[r.type] || r.type}
+                              <Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-60" />
+                            </button>
+                          )}
+                        </td>
                         <td className="py-2 text-right font-medium">{fmtMoney(r.total)}</td>
                         <td className="py-2 text-right text-muted-foreground">
                           {((r.total / (data.totalRepairCost || 1)) * 100).toFixed(0)}%
                         </td>
-                        <td className="py-2 text-right text-muted-foreground">
-                          {fmtMoney(r.total)} across {r.vehicleCount} {r.vehicleCount === 1 ? "vehicle" : "vehicles"}
+                        <td className="py-2">
+                          <div className="flex flex-wrap justify-end gap-1.5">
+                            {r.vehicles.map(v => (
+                              <span
+                                key={v.name}
+                                className="inline-flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-0.5 text-xs"
+                              >
+                                <span className="font-medium">{v.name}</span>
+                                <span className="text-muted-foreground">{fmtMoney(v.amount)}</span>
+                              </span>
+                            ))}
+                          </div>
                         </td>
                       </tr>
                     ))}
