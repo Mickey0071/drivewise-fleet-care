@@ -14,7 +14,7 @@ import { useStoreVersion } from "@/lib/mock/store";
 import {
   payments, expenses, maintenance, rentals, vehicles, vehicleById, fmtMoney,
 } from "@/lib/mock/data";
-import { TrendingUp, TrendingDown, Trophy, AlertTriangle } from "lucide-react";
+import { TrendingUp, TrendingDown, Trophy, AlertTriangle, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/analytics_/pnl-dashboard")({
   head: () => ({ meta: [{ title: "P&L Dashboard — Camauto Rentals" }] }),
@@ -95,6 +95,25 @@ function PnLDashboard() {
   useEffect(() => {
     if (typeof window !== "undefined") window.localStorage.setItem("pnl_legacy_expenses", String(legacyExpenses));
   }, [legacyExpenses]);
+
+  // Editable repair-type titles — overrides keyed by the original repair type,
+  // persisted in localStorage.
+  const [typeTitles, setTypeTitles] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
+    try { return JSON.parse(window.localStorage.getItem("pnl_repair_type_titles") || "{}"); }
+    catch { return {}; }
+  });
+  const [editingType, setEditingType] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  function saveTypeTitle(originalType: string) {
+    const next = { ...typeTitles };
+    const trimmed = editingValue.trim();
+    if (!trimmed || trimmed === originalType) delete next[originalType];
+    else next[originalType] = trimmed;
+    setTypeTitles(next);
+    if (typeof window !== "undefined") window.localStorage.setItem("pnl_repair_type_titles", JSON.stringify(next));
+    setEditingType(null);
+  }
 
   const { from, to } = useMemo(() => rangeFor(mode, customFrom, customTo), [mode, customFrom, customTo]);
 
@@ -205,15 +224,23 @@ function PnLDashboard() {
       .sort((a, b) => (a.date < b.date ? 1 : -1));
     const totalRepairCost = repairTickets.reduce((s, t) => s + t.cost, 0);
     // Roll-up: tally repeated repair types across all vehicles.
-    const rollMap: Record<string, { total: number; vehicles: Set<string> }> = {};
+    const rollMap: Record<string, { total: number; vehicles: Map<string, number> }> = {};
     completedRepairs.forEach(m => {
       const key = m.problemCategory || m.serviceType || "Repair";
-      if (!rollMap[key]) rollMap[key] = { total: 0, vehicles: new Set() };
+      if (!rollMap[key]) rollMap[key] = { total: 0, vehicles: new Map() };
       rollMap[key].total += maintCost(m);
-      rollMap[key].vehicles.add(m.vehicleId);
+      const label = vLabel(m.vehicleId);
+      rollMap[key].vehicles.set(label, (rollMap[key].vehicles.get(label) || 0) + maintCost(m));
     });
     const repairRollup = Object.entries(rollMap)
-      .map(([type, v]) => ({ type, total: v.total, vehicleCount: v.vehicles.size }))
+      .map(([type, v]) => ({
+        type,
+        total: v.total,
+        vehicleCount: v.vehicles.size,
+        vehicles: Array.from(v.vehicles.entries())
+          .map(([name, amount]) => ({ name, amount }))
+          .sort((a, b) => b.amount - a.amount),
+      }))
       .sort((a, b) => b.total - a.total);
 
     // ---- Time-series buckets ----
@@ -479,25 +506,61 @@ function PnLDashboard() {
               {/* Roll-up by repair type across the fleet */}
               <div>
                 <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  By repair type (fleet-wide)
+                  By repair type
                 </div>
                 <table className="w-full text-sm">
                   <thead><tr className="border-b text-left text-muted-foreground">
                     <th className="py-2">Repair type</th>
                     <th className="py-2 text-right">Total</th>
                     <th className="py-2 text-right">% of repairs</th>
-                    <th className="py-2 text-right">Fleet-wide</th>
+                    <th className="py-2 text-right">Vehicles</th>
                   </tr></thead>
                   <tbody>
                     {data.repairRollup.map(r => (
                       <tr key={r.type} className="border-b last:border-0">
-                        <td className="py-2">{r.type}</td>
+                        <td className="py-2">
+                          {editingType === r.type ? (
+                            <span className="flex items-center gap-1">
+                              <Input
+                                autoFocus
+                                value={editingValue}
+                                onChange={(e) => setEditingValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveTypeTitle(r.type);
+                                  if (e.key === "Escape") setEditingType(null);
+                                }}
+                                className="h-7 w-40 text-sm"
+                              />
+                              <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => saveTypeTitle(r.type)}>Save</Button>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="group inline-flex items-center gap-1 text-left hover:underline"
+                              onClick={() => { setEditingType(r.type); setEditingValue(typeTitles[r.type] || r.type); }}
+                              title="Click to rename"
+                            >
+                              {typeTitles[r.type] || r.type}
+                              <Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-60" />
+                            </button>
+                          )}
+                        </td>
                         <td className="py-2 text-right font-medium">{fmtMoney(r.total)}</td>
                         <td className="py-2 text-right text-muted-foreground">
                           {((r.total / (data.totalRepairCost || 1)) * 100).toFixed(0)}%
                         </td>
-                        <td className="py-2 text-right text-muted-foreground">
-                          {fmtMoney(r.total)} across {r.vehicleCount} {r.vehicleCount === 1 ? "vehicle" : "vehicles"}
+                        <td className="py-2">
+                          <div className="flex flex-wrap justify-end gap-1.5">
+                            {r.vehicles.map(v => (
+                              <span
+                                key={v.name}
+                                className="inline-flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-0.5 text-xs"
+                              >
+                                <span className="font-medium">{v.name}</span>
+                                <span className="text-muted-foreground">{fmtMoney(v.amount)}</span>
+                              </span>
+                            ))}
+                          </div>
                         </td>
                       </tr>
                     ))}
