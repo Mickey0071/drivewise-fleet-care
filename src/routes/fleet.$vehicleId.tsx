@@ -578,25 +578,39 @@ function VehicleDetail() {
               ))}
             </div>
           )}
-          <Section title={`Expenses (${vehExpenses.length})`}>
-            {vehExpenses.length === 0 ? <Empty/> : vehExpenses.map(e => (
-              <Row key={e.id}
-                title={e.category}
-                sub={`${fmtDate(e.date)}${e.vendor ? ` · ${e.vendor}` : ""}${e.notes ? ` · ${e.notes}` : ""}`}
+          <Section title={`Expenses (${expenseItems.length})`}>
+            {expenseItems.length === 0 ? <Empty/> : expenseItems.map(item => {
+              // Only manually-added operational expenses are editable here;
+              // repairs/maintenance live in the Maintenance module and
+              // violations in the Violations module.
+              const manual = item.source === "manual"
+                ? expenses.find(e => e.id === item.id)
+                : undefined;
+              return (
+              <Row key={`${item.source}-${item.id}`}
+                title={item.description}
+                sub={`${fmtDate(item.date)} · ${item.category}`}
                 right={
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{fmtMoney(e.amount)}</span>
-                    <Button variant="ghost" size="icon" className="h-8 w-8"
-                      onClick={() => { setEditExpense(e); setExpenseOpen(true); }} title="Edit expense">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                      onClick={() => { if (window.confirm("Delete this expense?")) deleteExpense(e.id); }} title="Delete expense">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <span className="font-medium">{fmtMoney(item.amount)}</span>
+                    {manual ? (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-8 w-8"
+                          onClick={() => { setEditExpense(manual); setExpenseOpen(true); }} title="Edit expense">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                          onClick={() => { if (window.confirm("Delete this expense?")) deleteExpense(item.id); }} title="Delete expense">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground capitalize">{item.source}</span>
+                    )}
                   </div>
                 } />
-            ))}
+              );
+            })}
           </Section>
         </TabsContent>
 
