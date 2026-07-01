@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { vehicles, fmtMoney } from "@/lib/mock/data";
 import { maintenance as maintenanceList } from "@/lib/mock/data";
-import { fmtDate, rentals, payments, expenses } from "@/lib/mock/data";
+import { fmtDate, rentals } from "@/lib/mock/data";
 import { lastServiceFor } from "@/lib/maintenance-utils";
 import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { computeVehicleAlerts, isScheduleConfigured } from "@/lib/maintenance-utils";
