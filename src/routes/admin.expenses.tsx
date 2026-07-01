@@ -146,6 +146,8 @@ function ExpensesAdminPage() {
             <select className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
               <option value="">All categories</option>
+              <option value="Repair">Repair</option>
+              <option value="Maintenance">Maintenance</option>
               {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
             </select>
             <Input placeholder="Search vendor / description…" className="w-56" value={search} onChange={(e) => setSearch(e.target.value)} />
