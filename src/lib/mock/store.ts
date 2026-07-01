@@ -2738,6 +2738,7 @@ export function saveRepairDiagnosis(
   }
   m.status = "pending_complete";
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  if (typeof input.mileageAtService === "number") applyOdometerReading(m.vehicleId, m.mileageAtService);
   syncVehicleOpenIssues(m.vehicleId);
   emit();
   return m;
