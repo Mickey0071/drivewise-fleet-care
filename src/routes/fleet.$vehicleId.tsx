@@ -34,6 +34,7 @@ import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 import type { Maintenance, WorkOrder, Rental } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost } from "@/lib/maintenance-utils";
+import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { exportRentalReportPdf } from "@/lib/rental-report.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { toast } from "sonner";
@@ -114,37 +115,21 @@ function VehicleDetail() {
   const rentalIds = new Set(vRentals.map(r => r.id));
   const vPayments = payments.filter(p => rentalIds.has(p.rentalId));
 
-  const incomeTotal = vPayments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
-  const maintenanceTotal = vMx.reduce((s, m) => s + effectiveRepairCost(m), 0);
-  const violationTotal = vViol.reduce((s, x) => s + x.amount, 0);
-  // Expense ledger is the canonical source for vehicle-tied spend (parts, labour,
-  // fuel, etc.). Completed repairs auto-post here, so we don't add maintenance.cost
-  // on top (that would double-count).
-  const vehExpenses = expenses
-    .filter(e => e.vehicleId === v.id)
-    .sort((a, b) => b.date.localeCompare(a.date));
-  const vehExpenseTotal = vehExpenses.reduce((s, e) => s + e.amount, 0);
-  // "Total spent on this vehicle" = operational expenses + completed repairs.
-  // When a repair is completed its cost auto-posts into the expense ledger
-  // (category Parts/Labour/Repair & Maintenance, notes "Repair <id> completed …").
-  // To avoid double-counting we exclude ONLY those auto-posted rows and count
-  // the repair once via the maintenance table's effectiveRepairCost fallback.
-  // Manual expenses linked to a ticket (e.g. tow, cleaning) are kept.
-  const isAutoPostedRepairRow = (e: { maintenanceId?: string; notes?: string | null }) =>
-    !!e.maintenanceId && /Repair\s+.*\bcompleted\b/i.test(e.notes ?? "");
-  const opExpenseTotal = vehExpenses
-    .filter(e => !isAutoPostedRepairRow(e))
-    .reduce((s, e) => s + e.amount, 0);
-  const completedRepairTotal = vMx
-    .filter(m => m.status === "complete" || !!m.dateCompleted)
-    .reduce((s, m) => s + effectiveRepairCost(m), 0);
-  const totalSpentOnVehicle = opExpenseTotal + completedRepairTotal;
-  const vehExpenseByCat = vehExpenses.reduce<Record<string, number>>((acc, e) => {
+  // UNIFIED FINANCIAL ENGINE — the only source of money figures on this page.
+  // The Analytics summary cards, the Expenses tab total, the fleet card, and
+  // the P&L report all read from getVehicleFinancials so they always agree.
+  const fin = getVehicleFinancials(v.id);
+  const incomeTotal = fin.totalIncome;
+  const expenseTotal = fin.totalExpenses;
+  const netTotal = fin.netPnl;
+  const roiPct = fin.roi;
+  const totalSpentOnVehicle = fin.totalExpenses;
+  // Expense line items (all sources) drive both the Analytics breakdown and the
+  // Expenses tab list. Category roll-up for the pills.
+  const expenseItems = fin.expenseLineItems;
+  const vehExpenseByCat = expenseItems.reduce<Record<string, number>>((acc, e) => {
     acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc;
   }, {});
-  const expenseTotal = vehExpenseTotal + violationTotal;
-  const netTotal = incomeTotal - expenseTotal;
-  const roiPct = expenseTotal > 0 ? (netTotal / expenseTotal) * 100 : null;
   const activeRental = vRentals.find(r => !r.endDate && ((r.reservationStatus ?? "active") === "active" || r.reservationStatus === "pending")) ?? vRentals[0];
   const bookable = isVehicleBookable(v.id);
   const activeDriver = activeRental ? driverById(activeRental.driverId) : null;
@@ -471,13 +456,16 @@ function VehicleDetail() {
             <Stat label="ROI" value={roiPct == null ? "—" : `${roiPct.toFixed(0)}%`} />
           </div>
           <Section title="Income (payments collected)">
-            {vPayments.length === 0 ? <Empty/> : vPayments.map(p => (
-              <Row key={p.id} title={fmtMoney(p.amount)} sub={`${driverById(p.driverId)?.fullName ?? p.driverId} · due ${fmtDate(p.dueDate)}`} right={<StatusBadge status={p.status} />} />
+            {fin.incomeLineItems.length === 0 ? <Empty/> : fin.incomeLineItems.map(p => (
+              <Row key={p.id} title={fmtMoney(p.amount)} sub={`${p.renterName} · ${fmtDate(p.date)}`} right={<span className="text-xs text-muted-foreground">{p.method ?? "paid"}</span>} />
             ))}
           </Section>
-          <Section title="Expense breakdown">
-            <Row title="Maintenance and repairs" sub={`${vMx.length} service record${vMx.length === 1 ? "" : "s"}`} right={<span className="font-medium">{fmtMoney(maintenanceTotal)}</span>} />
-            <Row title="Violations and impound costs" sub={`${vViol.length} vehicle charge${vViol.length === 1 ? "" : "s"}`} right={<span className="font-medium">{fmtMoney(violationTotal)}</span>} />
+          <Section title={`Expense breakdown (${expenseItems.length})`}>
+            {expenseItems.length === 0 ? <Empty/> : expenseItems.map(e => (
+              <Row key={`${e.source}-${e.id}`} title={e.description}
+                sub={`${fmtDate(e.date)} · ${e.category}`}
+                right={<span className="font-medium">{fmtMoney(e.amount)}</span>} />
+            ))}
           </Section>
           <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/pnl">Open full P&amp;L report →</Link></Button>
         </TabsContent>
@@ -588,25 +576,39 @@ function VehicleDetail() {
               ))}
             </div>
           )}
-          <Section title={`Expenses (${vehExpenses.length})`}>
-            {vehExpenses.length === 0 ? <Empty/> : vehExpenses.map(e => (
-              <Row key={e.id}
-                title={e.category}
-                sub={`${fmtDate(e.date)}${e.vendor ? ` · ${e.vendor}` : ""}${e.notes ? ` · ${e.notes}` : ""}`}
+          <Section title={`Expenses (${expenseItems.length})`}>
+            {expenseItems.length === 0 ? <Empty/> : expenseItems.map(item => {
+              // Only manually-added operational expenses are editable here;
+              // repairs/maintenance live in the Maintenance module and
+              // violations in the Violations module.
+              const manual = item.source === "manual"
+                ? expenses.find(e => e.id === item.id)
+                : undefined;
+              return (
+              <Row key={`${item.source}-${item.id}`}
+                title={item.description}
+                sub={`${fmtDate(item.date)} · ${item.category}`}
                 right={
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{fmtMoney(e.amount)}</span>
-                    <Button variant="ghost" size="icon" className="h-8 w-8"
-                      onClick={() => { setEditExpense(e); setExpenseOpen(true); }} title="Edit expense">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                      onClick={() => { if (window.confirm("Delete this expense?")) deleteExpense(e.id); }} title="Delete expense">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <span className="font-medium">{fmtMoney(item.amount)}</span>
+                    {manual ? (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-8 w-8"
+                          onClick={() => { setEditExpense(manual); setExpenseOpen(true); }} title="Edit expense">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                          onClick={() => { if (window.confirm("Delete this expense?")) deleteExpense(item.id); }} title="Delete expense">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground capitalize">{item.source}</span>
+                    )}
                   </div>
                 } />
-            ))}
+              );
+            })}
           </Section>
         </TabsContent>
 

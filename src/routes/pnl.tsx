@@ -6,6 +6,7 @@ import { payments, expenses, payrollRuns, staffById, vehicles, vehicleById, driv
 import { useStoreVersion } from "@/lib/mock/store";
 import { maintenance } from "@/lib/mock/data";
 import { isServiceLogRecord, isIssueRecord, effectiveRepairCost, isCompletedRepair, isAutoPostedRepairRow } from "@/lib/maintenance-utils";
+import { getFleetFinancials } from "@/lib/vehicle-financials";
 import { Users, CreditCard, Banknote, TrendingUp, TrendingDown, Trophy, AlertTriangle } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 import { downloadPnLExcel } from "@/lib/pnl-excel";
@@ -157,26 +158,19 @@ function PnLPage() {
   const trendMax = Math.max(1, ...data.trend.map(t => Math.max(t.income, t.expense)));
 
   // Per-vehicle P&L (revenue mapped via rental → driver_id → paid payments)
-  const perVehicle = vehicles.map(v => {
-    const vehicleRentals = rentals.filter(r => r.vehicleId === v.id);
-    const rentalIds = new Set(vehicleRentals.map(r => r.id));
-    const revenue = payments
-      .filter(p => p.status === "paid" && rentalIds.has(p.rentalId))
-      .reduce((s, p) => s + p.amount, 0);
-    // Combined spend = operational expenses (excluding auto-posted repair rows)
-    // + completed repair/maintenance costs via effectiveRepairCost. Same
-    // definition as the vehicle detail page's "Total spent on this vehicle".
-    const opExpense = expenses
-      .filter(e => e.vehicleId === v.id && inPnlRange(e.date) && !isAutoPostedRepairRow(e))
-      .reduce((s, e) => s + e.amount, 0);
-    const repairExpense = maintenance
-      .filter(m => m.vehicleId === v.id && isCompletedRepair(m) && inPnlRange(m.dateCompleted ?? ""))
-      .reduce((s, m) => s + effectiveRepairCost(m), 0);
-    const expense = opExpense + repairExpense;
-    const profit = revenue - expense;
-    const roi = expense > 0 ? (profit / expense) * 100 : null;
-    return { vehicle: v, revenue, expense, profit, roi };
-  }).sort((a, b) => b.profit - a.profit);
+  // Per-vehicle P&L — read straight from the unified engine so every row
+  // matches that vehicle's own Analytics/P&L tab exactly (income, expenses
+  // across manual + repair/maintenance + violations, net, ROI).
+  const perVehicle = getFleetFinancials({ from: rangeFrom || undefined, to: rangeTo || undefined })
+    .perVehicle
+    .map(({ vehicle, financials }) => ({
+      vehicle,
+      revenue: financials.totalIncome,
+      expense: financials.totalExpenses,
+      profit: financials.netPnl,
+      roi: financials.roi,
+    }))
+    .sort((a, b) => b.profit - a.profit);
 
   return (
     <div>

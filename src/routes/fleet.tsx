@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { vehicles, fmtMoney } from "@/lib/mock/data";
 import { maintenance as maintenanceList } from "@/lib/mock/data";
-import { fmtDate, rentals, payments, expenses } from "@/lib/mock/data";
+import { fmtDate, rentals } from "@/lib/mock/data";
 import { lastServiceFor } from "@/lib/maintenance-utils";
+import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { computeVehicleAlerts, isScheduleConfigured } from "@/lib/maintenance-utils";
 import { carImage } from "@/lib/mock/carImages";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -77,13 +78,13 @@ function FleetPage() {
             r => r.vehicleId === v.id && (r.reservationStatus ?? "active") === "active" && !r.returnedAt,
           );
           const openEnded = !!onRent && !onRent.endDate;
-          const rentalIds = new Set(rentals.filter(r => r.vehicleId === v.id).map(r => r.id));
-          const revenue = payments.filter(p => rentalIds.has(p.rentalId) && p.status === "paid").reduce((s, p) => s + p.amount, 0);
-          const vehExpenses = expenses.filter(e => e.vehicleId === v.id);
-          const expenseTotal = vehExpenses.reduce((s, e) => s + e.amount, 0);
-          const byCat = vehExpenses.reduce<Record<string, number>>((acc, e) => { acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc; }, {});
-          const netProfit = revenue - expenseTotal;
-          const roiPct = expenseTotal > 0 ? (netProfit / expenseTotal) * 100 : null;
+          // Unified financial engine — identical numbers on every screen.
+          const fin = getVehicleFinancials(v.id);
+          const revenue = fin.totalIncome;
+          const expenseTotal = fin.totalExpenses;
+          const byCat = fin.expenseBySource;
+          const netProfit = fin.netPnl;
+          const roiPct = fin.roi;
           return (
           <Card
             key={v.id}
@@ -203,7 +204,7 @@ function FleetPage() {
                 </div>
                 {expenseTotal > 0 && (
                   <div className="mt-1 text-[11px] text-muted-foreground">
-                    Parts {fmtMoney(byCat["Parts"] ?? 0)} · Labour {fmtMoney(byCat["Labour"] ?? 0)} · Other {fmtMoney(expenseTotal - (byCat["Parts"] ?? 0) - (byCat["Labour"] ?? 0))}
+                    Repairs {fmtMoney(byCat.repair + byCat.maintenance)} · Violations {fmtMoney(byCat.violation)} · Other {fmtMoney(byCat.manual)}
                   </div>
                 )}
               </CardContent>
