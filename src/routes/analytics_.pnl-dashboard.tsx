@@ -503,6 +503,33 @@ function PnLDashboard() {
             <p className="text-sm text-muted-foreground">No completed repairs in this period.</p>
           ) : (
             <>
+              {/* Individual repair tickets */}
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Individual repair tickets
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="border-b text-left text-muted-foreground">
+                      <th className="py-2">Vehicle</th>
+                      <th className="py-2">Repair issue</th>
+                      <th className="py-2 text-right">Cost</th>
+                      <th className="py-2 text-right">Completed</th>
+                    </tr></thead>
+                    <tbody>
+                      {data.repairTickets.map(t => (
+                        <tr key={t.id} className="border-b last:border-0">
+                          <td className="py-2">{t.vehicle}</td>
+                          <td className="py-2">{t.issue}</td>
+                          <td className="py-2 text-right font-medium">{fmtMoney(t.cost)}</td>
+                          <td className="py-2 text-right text-muted-foreground">{t.date || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               {/* Roll-up by repair type across the fleet */}
               <div>
                 <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -572,33 +599,6 @@ function PnLDashboard() {
                     </tr>
                   </tbody>
                 </table>
-              </div>
-
-              {/* Individual repair tickets */}
-              <div>
-                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Individual repair tickets
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b text-left text-muted-foreground">
-                      <th className="py-2">Vehicle</th>
-                      <th className="py-2">Repair issue</th>
-                      <th className="py-2 text-right">Cost</th>
-                      <th className="py-2 text-right">Completed</th>
-                    </tr></thead>
-                    <tbody>
-                      {data.repairTickets.map(t => (
-                        <tr key={t.id} className="border-b last:border-0">
-                          <td className="py-2">{t.vehicle}</td>
-                          <td className="py-2">{t.issue}</td>
-                          <td className="py-2 text-right font-medium">{fmtMoney(t.cost)}</td>
-                          <td className="py-2 text-right text-muted-foreground">{t.date || "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
               </div>
             </>
           )}
