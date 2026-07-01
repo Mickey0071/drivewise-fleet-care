@@ -506,7 +506,7 @@ function PnLDashboard() {
               {/* Roll-up by repair type across the fleet */}
               <div>
                 <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  By repair type (fleet-wide)
+                  By repair type
                 </div>
                 <table className="w-full text-sm">
                   <thead><tr className="border-b text-left text-muted-foreground">
