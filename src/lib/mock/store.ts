@@ -2058,10 +2058,7 @@ export function addInspection(input: Omit<Inspection, "id">) {
   inspections.push(insp);
   cloudWrite("inspection:insert", supabase.from("inspections").insert(toInspection(insp)));
   const v = vehicles.find(v => v.id === input.vehicleId);
-  if (v && input.mileage) {
-    v.mileage = input.mileage;
-    cloudWrite("vehicle:update", supabase.from("vehicles").update({ mileage: input.mileage }).eq("id", v.id));
-  }
+  applyOdometerReading(input.vehicleId, input.mileage);
   // If this is a passing post-return inspection, lift the inspection hold so
   // the vehicle becomes bookable again. Failing inspections leave the vehicle
   // in the "inspection" status and flag has_open_issues via the DB trigger.
@@ -2113,16 +2110,25 @@ function syncVehicleOpenIssues(vehicleId: string) {
   }
 }
 
+/** Update a vehicle's current mileage from the latest odometer reading captured
+ *  during an inspection or maintenance/service entry. The most recent reading
+ *  always wins (a newly entered reading is treated as the current truth), so a
+ *  stray high value can be corrected by simply logging the real number again. */
+function applyOdometerReading(vehicleId: string, mileage?: number | null) {
+  if (typeof mileage !== "number" || !Number.isFinite(mileage) || mileage <= 0) return;
+  const v = vehicles.find(x => x.id === vehicleId);
+  if (!v || v.mileage === mileage) return;
+  v.mileage = mileage;
+  cloudWrite("vehicle:update", supabase.from("vehicles").update({ mileage }).eq("id", v.id));
+}
+
 export function addMaintenance(input: Omit<Maintenance, "id">) {
   const rec: Maintenance = { id: nextMaintenanceId(), ...input };
   maintenance.push(rec);
   cloudWrite("maintenance:insert", supabase.from("maintenance").insert(toMaintenance(rec)));
   const v = vehicles.find(v => v.id === input.vehicleId);
   if (v) {
-    if (input.mileageAtService && input.mileageAtService > v.mileage) {
-      v.mileage = input.mileageAtService;
-      cloudWrite("vehicle:update", supabase.from("vehicles").update({ mileage: v.mileage }).eq("id", v.id));
-    }
+    applyOdometerReading(v.id, input.mileageAtService);
     if (input.nextServiceDue) {
       v.nextServiceDue = input.nextServiceDue;
       cloudWrite("vehicle:update", supabase.from("vehicles").update({ next_service_due: v.nextServiceDue }).eq("id", v.id));
@@ -2162,6 +2168,7 @@ export function updateMaintenance(id: string, patch: Partial<Maintenance>) {
   if (!m) return;
   Object.assign(m, patch);
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  if (patch.mileageAtService !== undefined) applyOdometerReading(m.vehicleId, patch.mileageAtService);
   // Completing (or reopening) a ticket flips the vehicle availability flag.
   syncVehicleOpenIssues(m.vehicleId);
   emit();
@@ -2731,6 +2738,7 @@ export function saveRepairDiagnosis(
   }
   m.status = "pending_complete";
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  if (typeof input.mileageAtService === "number") applyOdometerReading(m.vehicleId, m.mileageAtService);
   syncVehicleOpenIssues(m.vehicleId);
   emit();
   return m;
