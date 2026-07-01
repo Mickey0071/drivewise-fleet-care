@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Download } from "lucide-react";
-import { expenses, vehicles, vehicleById, fmtMoney, fmtDate, type Expense } from "@/lib/mock/data";
+import { vehicles, vehicleById, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { downloadCSV } from "@/lib/exports";
 import { useExpenseCategories } from "@/hooks/use-expense-categories";
+import { buildCombinedExpenses, type CombinedExpense } from "@/lib/combined-expenses";
 
 interface Props {
   open: boolean;
@@ -30,7 +31,7 @@ export function ExpenseReportDialog({ open, onOpenChange }: Props) {
   const [groupBy, setGroupBy] = useState<GroupBy>("category");
 
   const filtered = useMemo(() => {
-    return expenses.filter((e) => {
+    return buildCombinedExpenses().filter((e) => {
       if (from && e.date < from) return false;
       if (to && e.date > to) return false;
       if (category && e.category !== category) return false;
@@ -41,7 +42,7 @@ export function ExpenseReportDialog({ open, onOpenChange }: Props) {
   }, [from, to, category, vehicleId]);
 
   const groups = useMemo(() => {
-    const map = new Map<string, { items: Expense[]; total: number }>();
+    const map = new Map<string, { items: CombinedExpense[]; total: number }>();
     for (const e of filtered) {
       const key = groupBy === "category" ? e.category
         : groupBy === "vehicle" ? vehicleLabel(e.vehicleId)
@@ -61,7 +62,7 @@ export function ExpenseReportDialog({ open, onOpenChange }: Props) {
       ["Date", "Category", "Amount", "Vehicle", "Vendor", "Payment", "Description"],
       filtered.map((e) => [
         e.date, e.category, e.amount, vehicleLabel(e.vehicleId),
-        e.vendor ?? "", e.paymentMethod ?? "", e.notes ?? "",
+        e.vendor ?? "", e.expense?.paymentMethod ?? "", e.notes ?? "",
       ]),
     );
   }
@@ -89,6 +90,8 @@ export function ExpenseReportDialog({ open, onOpenChange }: Props) {
               <select className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
                 value={category} onChange={(e) => setCategory(e.target.value)}>
                 <option value="">All</option>
+                <option value="Repair">Repair</option>
+                <option value="Maintenance">Maintenance</option>
                 {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </div>

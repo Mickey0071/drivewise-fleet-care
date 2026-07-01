@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { expenses, vehicleById, fmtMoney, fmtDate, type Expense } from "@/lib/mock/data";
+import { vehicleById, fmtMoney, fmtDate, type Expense } from "@/lib/mock/data";
 import { deleteExpense, useStoreVersion } from "@/lib/mock/store";
+import { buildCombinedExpenses } from "@/lib/combined-expenses";
 import { useAuth } from "@/hooks/use-auth";
 import { useExpenseCategories } from "@/hooks/use-expense-categories";
 import { ExpenseDialog } from "@/components/app/ExpenseDialog";
@@ -23,7 +24,7 @@ type RangeTab = "all" | "month" | "year" | "custom";
 type SortKey = "date" | "amount" | "category";
 
 function ExpensesAdminPage() {
-  useStoreVersion();
+  const storeVersion = useStoreVersion();
   const { role } = useAuth();
   const { categories } = useExpenseCategories();
   const [rangeTab, setRangeTab] = useState<RangeTab>("all");
@@ -51,9 +52,11 @@ function ExpensesAdminPage() {
     return true;
   };
 
+  const combined = useMemo(() => buildCombinedExpenses(), [storeVersion, categories.length]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const list = expenses.filter((e) => {
+    const list = combined.filter((e) => {
       if (!inRange(e.date)) return false;
       if (categoryFilter && e.category !== categoryFilter) return false;
       if (q) {
@@ -71,10 +74,10 @@ function ExpensesAdminPage() {
     });
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, categoryFilter, rangeTab, from, to, sortKey, sortDir]);
+  }, [combined, search, categoryFilter, rangeTab, from, to, sortKey, sortDir]);
 
   const stats = useMemo(() => {
-    const thisMonth = expenses.filter((e) => e.date >= monthStart);
+    const thisMonth = combined.filter((e) => e.date >= monthStart);
     const monthTotal = thisMonth.reduce((s, e) => s + e.amount, 0);
     const byCat = new Map<string, number>();
     for (const e of thisMonth) byCat.set(e.category, (byCat.get(e.category) ?? 0) + e.amount);
@@ -83,7 +86,7 @@ function ExpensesAdminPage() {
     const vehTied = thisMonth.filter((e) => e.vehicleId).reduce((s, e) => s + e.amount, 0);
     return { monthTotal, topCat, topVal, vehTied, general: monthTotal - vehTied };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expenses.length, rangeTab]);
+  }, [combined, rangeTab]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -143,6 +146,8 @@ function ExpensesAdminPage() {
             <select className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
               <option value="">All categories</option>
+              <option value="Repair">Repair</option>
+              <option value="Maintenance">Maintenance</option>
               {categories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
             </select>
             <Input placeholder="Search vendor / description…" className="w-56" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -170,7 +175,12 @@ function ExpensesAdminPage() {
                 return (
                   <TableRow key={e.id}>
                     <TableCell className="whitespace-nowrap">{fmtDate(e.date)}</TableCell>
-                    <TableCell><span className="rounded-full bg-muted px-2 py-0.5 text-xs">{e.category}</span></TableCell>
+                    <TableCell>
+                      <span className={`rounded-full px-2 py-0.5 text-xs ${
+                        e.source === "repair" ? "bg-destructive/10 text-destructive"
+                        : e.source === "maintenance" ? "bg-amber-500/10 text-amber-600"
+                        : "bg-muted"}`}>{e.category}</span>
+                    </TableCell>
                     <TableCell className="text-right font-medium">{fmtMoney(e.amount)}</TableCell>
                     <TableCell className="whitespace-nowrap text-xs">
                       {v ? <Link to="/fleet/$vehicleId" params={{ vehicleId: v.id }} className="text-primary hover:underline">{v.plate}</Link> : <span className="text-muted-foreground">—</span>}
@@ -178,15 +188,19 @@ function ExpensesAdminPage() {
                     <TableCell className="text-xs">{e.vendor ?? "—"}</TableCell>
                     <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">{e.notes ?? "—"}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(e); setDialogOpen(true); }}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                          onClick={() => { if (confirm("Delete this expense?")) deleteExpense(e.id); }}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {e.editable && e.expense ? (
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(e.expense!); setDialogOpen(true); }}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                            onClick={() => { if (confirm("Delete this expense?")) deleteExpense(e.id); }}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">In Maintenance</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

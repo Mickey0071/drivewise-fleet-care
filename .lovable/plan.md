@@ -1,54 +1,45 @@
-## Goal
-On the Fleet vehicle detail page, in the **Renter History** tab, make each renter expandable so clicking them reveals every reservation they have had on that vehicle, with a **Download Report** button per reservation that exports a full-detail PDF.
+## Problem
 
-## Background
-The application already has a complete rental-report PDF pipeline:
-- `src/lib/rental-report.functions.ts` → `exportRentalReportPdf(rentalId)` gathers rental, vehicle, driver, payments, extensions, violations, inspections, charges, and images from Supabase and returns a base64 PDF.
-- `src/components/pdf/RentalReportPDF.tsx` renders a professional branded PDF with all sections.
+The Expense Tracker (`/admin/expenses`) only reads the `expenses` table. Completed repairs and maintenance logged in the maintenance module don't show up (or show inconsistently), so the totals don't match what the vehicle detail page and P&L dashboard already show. You want one accurate list of everything spent, with repairs and maintenance split into their own buckets alongside the categories you create.
 
-This plan reuses that existing infrastructure with zero backend changes.
+## What I'll change
 
-## What will change
+Only the Expense Tracker page (`src/routes/admin.expenses.tsx`) — presentation only. No changes to the balance formula, maintenance module, or how repairs are stored.
 
-### 1. UI — Renter History tab (`src/routes/fleet.$vehicleId.tsx`)
-Replace the current flat list of `uniqueRenters` (which links away to `/drivers`) with an **expandable card per renter**.
+### 1. Merge maintenance/repairs into the expense list
 
-- **Collapsed state:** show renter name, rental count, first start date, total paid (same data as today).
-- **Expanded state:** show a compact table of that renter’s reservations for this vehicle:
-  - Reservation ID
-  - Start date → End date (or "open")
-  - Rate / billing period
-  - Payment status
-  - **Download Report** button
+Build a single combined list from two sources, reusing the shared helpers already used by the P&L dashboard and vehicle detail page so numbers agree everywhere:
 
-- The existing flat "Rental history" section can be removed or replaced since the grouped view covers it.
+- **Operational expenses** — all rows from the `expenses` table, EXCEPT auto-posted repair rows (`isAutoPostedRepairRow`) so a completed repair is never counted twice.
+- **Completed repairs & maintenance** — every completed maintenance row (`isCompletedRepair`), valued with `effectiveRepairCost` (uses `cost`, or falls back to `parts_cost + labor_cost`).
 
-### 2. PDF download wiring
-- Import `exportRentalReportPdf` from `@/lib/rental-report.functions.ts`.
-- Use `useServerFn(exportRentalReportPdf)` in the Fleet vehicle component.
-- On button click: call with `{ rentalId: <reservation.id> }`.
-- On response: decode `base64`, create a Blob (`application/pdf`), and trigger a download with the provided `filename`.
-- On error (e.g. rental not found in Supabase): show a `toast.error` stating the report is only available for cloud-synced reservations.
+Each maintenance-sourced line is auto-labeled:
+- **Repair** when it's a repair ticket (`isIssueRecord`)
+- **Maintenance** when it's a routine service-log row (`isServiceLogRecord`)
 
-## Technical details
+Operational rows keep their existing user-assigned category (Parts, Fuel, Tolls, and any custom category you create — that flow is unchanged).
 
-### Component changes
-- `src/routes/fleet.$vehicleId.tsx`
-  - Add `useState` to track which renter is expanded.
-  - Add `useServerFn` call for `exportRentalReportPdf`.
-  - Replace the `uniqueRenters` map and the flat "Rental history" section inside `TabsContent value="renters"`.
+### 2. Category filtering & summary
 
-### No schema / server changes
-- The `exportRentalReportPdf` server function already queries:
-  - `rentals`, `vehicles`, `drivers`, `payments`, `violations`, `inspections`, `rental_extensions`, `rental_charges`
-  - and already embeds license/selfie/signature images.
-- It already requires admin auth and returns `{ filename, mime, base64 }`.
+- The category dropdown gains **Repair** and **Maintenance** as their own buckets alongside your custom categories, so you can filter to exactly one.
+- The three summary cards (This Month, Top Category, Vehicle-Tied / General) recalculate off the combined list, so "This Month Expenses" finally includes repairs + maintenance.
+- Search, date range (All / Month / Year / Custom), and sort (date / amount / category) all operate on the combined list.
 
-## Acceptance criteria
-1. On `/fleet/<vehicleId>?tab=renters`, each renter appears as a clickable row.
-2. Clicking a renter expands inline to show all their reservations for that vehicle.
-3. Each reservation has a **Download Report** button.
-4. Clicking it downloads a PDF named like `R-123_John_Doe_report.pdf`.
-5. The PDF contains: Renter info, Vehicle info, Rental period, Extensions, Inspections, Violations, Payments, Charges, Totals, and embedded images.
-6. No other tabs or pages are affected.
-7. If a reservation is not in Supabase, the button shows a clear error instead of crashing.
+### 3. Row behavior
+
+- Repair/Maintenance lines link to the vehicle and show the issue/service description, vendor, and completed date — but their Edit/Delete buttons are hidden, since they're owned by the maintenance module (editing happens there). Operational expense rows keep full Add / Edit / Delete.
+- A small source tag ("Repair", "Maintenance", or the expense category) makes each row's origin obvious.
+
+### 4. CSV / report export
+
+The existing report/CSV path exports the combined list so a downloaded report matches the on-screen totals.
+
+## Result
+
+The Expense Tracker becomes the single accurate view of all money out — operational expenses + repairs + maintenance — split into Repair and Maintenance buckets plus your custom categories, with no double-counting, matching the vehicle detail page and P&L dashboard.
+
+## Technical notes
+
+- Reuses `effectiveRepairCost`, `isCompletedRepair`, `isIssueRecord`, `isServiceLogRecord`, `isAutoPostedRepairRow` from `src/lib/maintenance-utils.ts`.
+- Combined rows built in a `useMemo` normalizing both sources into one `{ id, category, amount, date, vehicleId, vendor, notes, source }` shape.
+- No schema or store logic changes; read/presentation change confined to `admin.expenses.tsx`.
