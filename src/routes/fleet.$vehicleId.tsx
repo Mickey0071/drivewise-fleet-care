@@ -68,6 +68,8 @@ function VehicleDetail() {
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [expandedRenter, setExpandedRenter] = useState<string | null>(null);
   const exportPdf = useServerFn(exportRentalReportPdf);
+  const genAgreementPdf = useServerFn(generateAgreementPdf);
+  const [agreementLoadingId, setAgreementLoadingId] = useState<string | null>(null);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
   // Live last-inspection data (reflects approved runner inspections from the backend).
   const [liveInsp, setLiveInsp] = useState<{ at: string | null; mileage: number | null; status: string | null } | null>(null);
