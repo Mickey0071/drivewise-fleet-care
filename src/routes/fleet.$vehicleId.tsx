@@ -182,6 +182,26 @@ function VehicleDetail() {
       toast.error("Download failed", { description: e?.message ?? "Could not generate report" });
     }
   }
+  async function downloadAgreement(rental: Rental) {
+    if (rental.agreementPdfUrl) {
+      window.open(rental.agreementPdfUrl, "_blank", "noopener");
+      return;
+    }
+    setAgreementLoadingId(rental.id);
+    try {
+      const res = await genAgreementPdf({ data: { rentalId: rental.id } });
+      if (res?.url) {
+        window.open(res.url, "_blank", "noopener");
+        toast.success("Agreement PDF generated");
+      } else {
+        toast.error("Could not generate agreement", { description: res?.error ?? "Unknown error" });
+      }
+    } catch (e: any) {
+      toast.error("Could not generate agreement", { description: e?.message ?? "Unknown error" });
+    } finally {
+      setAgreementLoadingId(null);
+    }
+  }
   function openStatusLabel(m: Maintenance): string {
     const wo = woById(m.sourceWorkOrderId);
     const due = wo?.scheduledDate ?? m.nextServiceDue;
