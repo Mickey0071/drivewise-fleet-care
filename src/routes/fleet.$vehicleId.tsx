@@ -114,37 +114,23 @@ function VehicleDetail() {
   const rentalIds = new Set(vRentals.map(r => r.id));
   const vPayments = payments.filter(p => rentalIds.has(p.rentalId));
 
-  const incomeTotal = vPayments.filter(p => p.status === "paid").reduce((s, p) => s + p.amount, 0);
-  const maintenanceTotal = vMx.reduce((s, m) => s + effectiveRepairCost(m), 0);
-  const violationTotal = vViol.reduce((s, x) => s + x.amount, 0);
-  // Expense ledger is the canonical source for vehicle-tied spend (parts, labour,
-  // fuel, etc.). Completed repairs auto-post here, so we don't add maintenance.cost
-  // on top (that would double-count).
-  const vehExpenses = expenses
-    .filter(e => e.vehicleId === v.id)
-    .sort((a, b) => b.date.localeCompare(a.date));
-  const vehExpenseTotal = vehExpenses.reduce((s, e) => s + e.amount, 0);
-  // "Total spent on this vehicle" = operational expenses + completed repairs.
-  // When a repair is completed its cost auto-posts into the expense ledger
-  // (category Parts/Labour/Repair & Maintenance, notes "Repair <id> completed …").
-  // To avoid double-counting we exclude ONLY those auto-posted rows and count
-  // the repair once via the maintenance table's effectiveRepairCost fallback.
-  // Manual expenses linked to a ticket (e.g. tow, cleaning) are kept.
-  const isAutoPostedRepairRow = (e: { maintenanceId?: string; notes?: string | null }) =>
-    !!e.maintenanceId && /Repair\s+.*\bcompleted\b/i.test(e.notes ?? "");
-  const opExpenseTotal = vehExpenses
-    .filter(e => !isAutoPostedRepairRow(e))
-    .reduce((s, e) => s + e.amount, 0);
-  const completedRepairTotal = vMx
-    .filter(m => m.status === "complete" || !!m.dateCompleted)
-    .reduce((s, m) => s + effectiveRepairCost(m), 0);
-  const totalSpentOnVehicle = opExpenseTotal + completedRepairTotal;
-  const vehExpenseByCat = vehExpenses.reduce<Record<string, number>>((acc, e) => {
+  // UNIFIED FINANCIAL ENGINE — the only source of money figures on this page.
+  // The Analytics summary cards, the Expenses tab total, the fleet card, and
+  // the P&L report all read from getVehicleFinancials so they always agree.
+  const fin = getVehicleFinancials(v.id);
+  const incomeTotal = fin.totalIncome;
+  const expenseTotal = fin.totalExpenses;
+  const netTotal = fin.netPnl;
+  const roiPct = fin.roi;
+  const totalSpentOnVehicle = fin.totalExpenses;
+  const maintenanceTotal = fin.expenseBySource.repair + fin.expenseBySource.maintenance;
+  const violationTotal = fin.expenseBySource.violation;
+  // Expense line items (all sources) drive both the Analytics breakdown and the
+  // Expenses tab list. Category roll-up for the pills.
+  const expenseItems = fin.expenseLineItems;
+  const vehExpenseByCat = expenseItems.reduce<Record<string, number>>((acc, e) => {
     acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc;
   }, {});
-  const expenseTotal = vehExpenseTotal + violationTotal;
-  const netTotal = incomeTotal - expenseTotal;
-  const roiPct = expenseTotal > 0 ? (netTotal / expenseTotal) * 100 : null;
   const activeRental = vRentals.find(r => !r.endDate && ((r.reservationStatus ?? "active") === "active" || r.reservationStatus === "pending")) ?? vRentals[0];
   const bookable = isVehicleBookable(v.id);
   const activeDriver = activeRental ? driverById(activeRental.driverId) : null;
