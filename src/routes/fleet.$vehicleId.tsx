@@ -685,6 +685,9 @@ function VehicleDetail() {
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 <StatusBadge status={r.paymentStatus} />
+                                <Button variant="outline" size="sm" onClick={() => downloadAgreement(r)} disabled={agreementLoadingId === r.id}>
+                                  <FileText className="mr-1 h-3.5 w-3.5" />{agreementLoadingId === r.id ? "…" : "Agreement"}
+                                </Button>
                                 <Button variant="outline" size="sm" onClick={() => downloadReport(r.id)}>
                                   <Download className="mr-1 h-3.5 w-3.5" />Report
                                 </Button>
