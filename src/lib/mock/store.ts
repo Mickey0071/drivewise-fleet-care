@@ -2168,6 +2168,7 @@ export function updateMaintenance(id: string, patch: Partial<Maintenance>) {
   if (!m) return;
   Object.assign(m, patch);
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  if (patch.mileageAtService !== undefined) applyOdometerReading(m.vehicleId, patch.mileageAtService);
   // Completing (or reopening) a ticket flips the vehicle availability flag.
   syncVehicleOpenIssues(m.vehicleId);
   emit();
