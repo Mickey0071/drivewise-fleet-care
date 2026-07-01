@@ -175,7 +175,12 @@ function ExpensesAdminPage() {
                 return (
                   <TableRow key={e.id}>
                     <TableCell className="whitespace-nowrap">{fmtDate(e.date)}</TableCell>
-                    <TableCell><span className="rounded-full bg-muted px-2 py-0.5 text-xs">{e.category}</span></TableCell>
+                    <TableCell>
+                      <span className={`rounded-full px-2 py-0.5 text-xs ${
+                        e.source === "repair" ? "bg-destructive/10 text-destructive"
+                        : e.source === "maintenance" ? "bg-amber-500/10 text-amber-600"
+                        : "bg-muted"}`}>{e.category}</span>
+                    </TableCell>
                     <TableCell className="text-right font-medium">{fmtMoney(e.amount)}</TableCell>
                     <TableCell className="whitespace-nowrap text-xs">
                       {v ? <Link to="/fleet/$vehicleId" params={{ vehicleId: v.id }} className="text-primary hover:underline">{v.plate}</Link> : <span className="text-muted-foreground">—</span>}
@@ -183,15 +188,19 @@ function ExpensesAdminPage() {
                     <TableCell className="text-xs">{e.vendor ?? "—"}</TableCell>
                     <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">{e.notes ?? "—"}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(e); setDialogOpen(true); }}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                          onClick={() => { if (confirm("Delete this expense?")) deleteExpense(e.id); }}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {e.editable && e.expense ? (
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditing(e.expense!); setDialogOpen(true); }}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                            onClick={() => { if (confirm("Delete this expense?")) deleteExpense(e.id); }}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">In Maintenance</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
