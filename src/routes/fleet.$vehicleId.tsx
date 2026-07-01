@@ -35,6 +35,7 @@ import type { Maintenance, WorkOrder } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost } from "@/lib/maintenance-utils";
 import { exportRentalReportPdf } from "@/lib/rental-report.functions";
+import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
