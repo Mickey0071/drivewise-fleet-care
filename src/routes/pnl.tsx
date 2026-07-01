@@ -6,6 +6,7 @@ import { payments, expenses, payrollRuns, staffById, vehicles, vehicleById, driv
 import { useStoreVersion } from "@/lib/mock/store";
 import { maintenance } from "@/lib/mock/data";
 import { isServiceLogRecord, isIssueRecord, effectiveRepairCost, isCompletedRepair, isAutoPostedRepairRow } from "@/lib/maintenance-utils";
+import { getFleetFinancials } from "@/lib/vehicle-financials";
 import { Users, CreditCard, Banknote, TrendingUp, TrendingDown, Trophy, AlertTriangle } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 import { downloadPnLExcel } from "@/lib/pnl-excel";
