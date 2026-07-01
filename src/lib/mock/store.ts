@@ -2113,6 +2113,18 @@ function syncVehicleOpenIssues(vehicleId: string) {
   }
 }
 
+/** Update a vehicle's current mileage from the latest odometer reading captured
+ *  during an inspection or maintenance/service entry. The most recent reading
+ *  always wins (a newly entered reading is treated as the current truth), so a
+ *  stray high value can be corrected by simply logging the real number again. */
+function applyOdometerReading(vehicleId: string, mileage?: number | null) {
+  if (typeof mileage !== "number" || !Number.isFinite(mileage) || mileage <= 0) return;
+  const v = vehicles.find(x => x.id === vehicleId);
+  if (!v || v.mileage === mileage) return;
+  v.mileage = mileage;
+  cloudWrite("vehicle:update", supabase.from("vehicles").update({ mileage }).eq("id", v.id));
+}
+
 export function addMaintenance(input: Omit<Maintenance, "id">) {
   const rec: Maintenance = { id: nextMaintenanceId(), ...input };
   maintenance.push(rec);
