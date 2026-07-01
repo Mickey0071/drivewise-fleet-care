@@ -31,10 +31,11 @@ import { EditMaintenanceDialog } from "@/components/app/EditMaintenanceDialog";
 import { ExpenseDialog } from "@/components/app/ExpenseDialog";
 import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import { RmHistoryTab } from "@/components/app/RmHistoryTab";
-import type { Maintenance, WorkOrder } from "@/lib/mock/data";
+import type { Maintenance, WorkOrder, Rental } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost } from "@/lib/maintenance-utils";
 import { exportRentalReportPdf } from "@/lib/rental-report.functions";
+import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
@@ -67,6 +68,8 @@ function VehicleDetail() {
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [expandedRenter, setExpandedRenter] = useState<string | null>(null);
   const exportPdf = useServerFn(exportRentalReportPdf);
+  const genAgreementPdf = useServerFn(generateAgreementPdf);
+  const [agreementLoadingId, setAgreementLoadingId] = useState<string | null>(null);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
   // Live last-inspection data (reflects approved runner inspections from the backend).
   const [liveInsp, setLiveInsp] = useState<{ at: string | null; mileage: number | null; status: string | null } | null>(null);
@@ -177,6 +180,26 @@ function VehicleDetail() {
       toast.success("Report downloaded");
     } catch (e: any) {
       toast.error("Download failed", { description: e?.message ?? "Could not generate report" });
+    }
+  }
+  async function downloadAgreement(rental: Rental) {
+    if (rental.agreementPdfUrl) {
+      window.open(rental.agreementPdfUrl, "_blank", "noopener");
+      return;
+    }
+    setAgreementLoadingId(rental.id);
+    try {
+      const res = await genAgreementPdf({ data: { rentalId: rental.id } });
+      if (res?.url) {
+        window.open(res.url, "_blank", "noopener");
+        toast.success("Agreement PDF generated");
+      } else {
+        toast.error("Could not generate agreement", { description: res?.error ?? "Unknown error" });
+      }
+    } catch (e: any) {
+      toast.error("Could not generate agreement", { description: e?.message ?? "Unknown error" });
+    } finally {
+      setAgreementLoadingId(null);
     }
   }
   function openStatusLabel(m: Maintenance): string {
@@ -662,6 +685,9 @@ function VehicleDetail() {
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 <StatusBadge status={r.paymentStatus} />
+                                <Button variant="outline" size="sm" onClick={() => downloadAgreement(r)} disabled={agreementLoadingId === r.id}>
+                                  <FileText className="mr-1 h-3.5 w-3.5" />{agreementLoadingId === r.id ? "…" : "Agreement"}
+                                </Button>
                                 <Button variant="outline" size="sm" onClick={() => downloadReport(r.id)}>
                                   <Download className="mr-1 h-3.5 w-3.5" />Report
                                 </Button>
