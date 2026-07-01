@@ -132,33 +132,20 @@ function MonthlyVehicleReportsPage() {
           });
         });
 
-        // Expenses tagged to this vehicle
-        const expenseLines: ExpenseLine[] = [];
-        expenses.forEach((e) => {
-          if (e.vehicleId !== v.id || !inMonth(e.date)) return;
-          expenseLines.push({
-            label: e.category,
-            vendor: e.vendor,
+        // UNIFIED ENGINE — expenses (manual + repair/maintenance + violations)
+        // and income come from getVehicleFinancials so this printable report
+        // matches the vehicle's Analytics/P&L tab and the global P&L report.
+        const fin = getVehicleFinancials(v.id, { from: start, to: end });
+        const expenseLines: ExpenseLine[] = fin.expenseLineItems
+          .map((e) => ({
+            label: `${e.category} — ${e.description}`,
             date: e.date,
             amount: e.amount,
-          });
-        });
-        // Maintenance / repair costs for this vehicle
-        maintenance.forEach((m) => {
-          const date = m.completionDate ?? m.dateCompleted;
-          if (m.vehicleId !== v.id || !inMonth(date)) return;
-          if (!m.cost) return;
-          expenseLines.push({
-            label: m.serviceType || "Maintenance",
-            vendor: m.vendor,
-            date: date ?? "",
-            amount: m.cost,
-          });
-        });
-        expenseLines.sort((a, b) => a.date.localeCompare(b.date));
+          }))
+          .sort((a, b) => a.date.localeCompare(b.date));
 
-        const income = rentalIncome + extensionIncome;
-        const expenseTotal = expenseLines.reduce((s, e) => s + e.amount, 0);
+        const income = fin.totalIncome;
+        const expenseTotal = fin.totalExpenses;
         const v2 = vehicleById(v.id);
         const title = `${v2?.year ?? ""} ${v2?.make ?? ""} ${v2?.model ?? ""}`.trim();
 
