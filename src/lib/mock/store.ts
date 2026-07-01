@@ -2128,10 +2128,7 @@ export function addMaintenance(input: Omit<Maintenance, "id">) {
   cloudWrite("maintenance:insert", supabase.from("maintenance").insert(toMaintenance(rec)));
   const v = vehicles.find(v => v.id === input.vehicleId);
   if (v) {
-    if (input.mileageAtService && input.mileageAtService > v.mileage) {
-      v.mileage = input.mileageAtService;
-      cloudWrite("vehicle:update", supabase.from("vehicles").update({ mileage: v.mileage }).eq("id", v.id));
-    }
+    applyOdometerReading(v.id, input.mileageAtService);
     if (input.nextServiceDue) {
       v.nextServiceDue = input.nextServiceDue;
       cloudWrite("vehicle:update", supabase.from("vehicles").update({ next_service_due: v.nextServiceDue }).eq("id", v.id));
