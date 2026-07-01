@@ -205,15 +205,23 @@ function PnLDashboard() {
       .sort((a, b) => (a.date < b.date ? 1 : -1));
     const totalRepairCost = repairTickets.reduce((s, t) => s + t.cost, 0);
     // Roll-up: tally repeated repair types across all vehicles.
-    const rollMap: Record<string, { total: number; vehicles: Set<string> }> = {};
+    const rollMap: Record<string, { total: number; vehicles: Map<string, number> }> = {};
     completedRepairs.forEach(m => {
       const key = m.problemCategory || m.serviceType || "Repair";
-      if (!rollMap[key]) rollMap[key] = { total: 0, vehicles: new Set() };
+      if (!rollMap[key]) rollMap[key] = { total: 0, vehicles: new Map() };
       rollMap[key].total += maintCost(m);
-      rollMap[key].vehicles.add(m.vehicleId);
+      const label = vLabel(m.vehicleId);
+      rollMap[key].vehicles.set(label, (rollMap[key].vehicles.get(label) || 0) + maintCost(m));
     });
     const repairRollup = Object.entries(rollMap)
-      .map(([type, v]) => ({ type, total: v.total, vehicleCount: v.vehicles.size }))
+      .map(([type, v]) => ({
+        type,
+        total: v.total,
+        vehicleCount: v.vehicles.size,
+        vehicles: Array.from(v.vehicles.entries())
+          .map(([name, amount]) => ({ name, amount }))
+          .sort((a, b) => b.amount - a.amount),
+      }))
       .sort((a, b) => b.total - a.total);
 
     // ---- Time-series buckets ----
