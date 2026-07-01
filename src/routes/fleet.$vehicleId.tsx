@@ -124,8 +124,6 @@ function VehicleDetail() {
   const netTotal = fin.netPnl;
   const roiPct = fin.roi;
   const totalSpentOnVehicle = fin.totalExpenses;
-  const maintenanceTotal = fin.expenseBySource.repair + fin.expenseBySource.maintenance;
-  const violationTotal = fin.expenseBySource.violation;
   // Expense line items (all sources) drive both the Analytics breakdown and the
   // Expenses tab list. Category roll-up for the pills.
   const expenseItems = fin.expenseLineItems;
