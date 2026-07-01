@@ -24,7 +24,7 @@ type RangeTab = "all" | "month" | "year" | "custom";
 type SortKey = "date" | "amount" | "category";
 
 function ExpensesAdminPage() {
-  useStoreVersion();
+  const storeVersion = useStoreVersion();
   const { role } = useAuth();
   const { categories } = useExpenseCategories();
   const [rangeTab, setRangeTab] = useState<RangeTab>("all");
@@ -52,7 +52,7 @@ function ExpensesAdminPage() {
     return true;
   };
 
-  const combined = useMemo(() => buildCombinedExpenses(), [useStoreVersion.length, categories.length]);
+  const combined = useMemo(() => buildCombinedExpenses(), [storeVersion, categories.length]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
