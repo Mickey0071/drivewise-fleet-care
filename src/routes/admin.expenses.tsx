@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { expenses, vehicleById, fmtMoney, fmtDate, type Expense } from "@/lib/mock/data";
+import { vehicleById, fmtMoney, fmtDate, type Expense } from "@/lib/mock/data";
 import { deleteExpense, useStoreVersion } from "@/lib/mock/store";
+import { buildCombinedExpenses } from "@/lib/combined-expenses";
 import { useAuth } from "@/hooks/use-auth";
 import { useExpenseCategories } from "@/hooks/use-expense-categories";
 import { ExpenseDialog } from "@/components/app/ExpenseDialog";
@@ -51,9 +52,11 @@ function ExpensesAdminPage() {
     return true;
   };
 
+  const combined = useMemo(() => buildCombinedExpenses(), [useStoreVersion.length, categories.length]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const list = expenses.filter((e) => {
+    const list = combined.filter((e) => {
       if (!inRange(e.date)) return false;
       if (categoryFilter && e.category !== categoryFilter) return false;
       if (q) {
@@ -71,10 +74,10 @@ function ExpensesAdminPage() {
     });
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, categoryFilter, rangeTab, from, to, sortKey, sortDir]);
+  }, [combined, search, categoryFilter, rangeTab, from, to, sortKey, sortDir]);
 
   const stats = useMemo(() => {
-    const thisMonth = expenses.filter((e) => e.date >= monthStart);
+    const thisMonth = combined.filter((e) => e.date >= monthStart);
     const monthTotal = thisMonth.reduce((s, e) => s + e.amount, 0);
     const byCat = new Map<string, number>();
     for (const e of thisMonth) byCat.set(e.category, (byCat.get(e.category) ?? 0) + e.amount);
@@ -83,7 +86,7 @@ function ExpensesAdminPage() {
     const vehTied = thisMonth.filter((e) => e.vehicleId).reduce((s, e) => s + e.amount, 0);
     return { monthTotal, topCat, topVal, vehTied, general: monthTotal - vehTied };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expenses.length, rangeTab]);
+  }, [combined, rangeTab]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
