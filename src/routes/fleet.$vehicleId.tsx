@@ -31,7 +31,7 @@ import { EditMaintenanceDialog } from "@/components/app/EditMaintenanceDialog";
 import { ExpenseDialog } from "@/components/app/ExpenseDialog";
 import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import { RmHistoryTab } from "@/components/app/RmHistoryTab";
-import type { Maintenance, WorkOrder } from "@/lib/mock/data";
+import type { Maintenance, WorkOrder, Rental } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost } from "@/lib/maintenance-utils";
 import { exportRentalReportPdf } from "@/lib/rental-report.functions";
