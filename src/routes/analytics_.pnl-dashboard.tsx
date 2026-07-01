@@ -96,6 +96,25 @@ function PnLDashboard() {
     if (typeof window !== "undefined") window.localStorage.setItem("pnl_legacy_expenses", String(legacyExpenses));
   }, [legacyExpenses]);
 
+  // Editable repair-type titles — overrides keyed by the original repair type,
+  // persisted in localStorage.
+  const [typeTitles, setTypeTitles] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
+    try { return JSON.parse(window.localStorage.getItem("pnl_repair_type_titles") || "{}"); }
+    catch { return {}; }
+  });
+  const [editingType, setEditingType] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  function saveTypeTitle(originalType: string) {
+    const next = { ...typeTitles };
+    const trimmed = editingValue.trim();
+    if (!trimmed || trimmed === originalType) delete next[originalType];
+    else next[originalType] = trimmed;
+    setTypeTitles(next);
+    if (typeof window !== "undefined") window.localStorage.setItem("pnl_repair_type_titles", JSON.stringify(next));
+    setEditingType(null);
+  }
+
   const { from, to } = useMemo(() => rangeFor(mode, customFrom, customTo), [mode, customFrom, customTo]);
 
   const data = useMemo(() => {
