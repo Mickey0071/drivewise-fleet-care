@@ -34,6 +34,7 @@ import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 import type { Maintenance, WorkOrder, Rental } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost } from "@/lib/maintenance-utils";
+import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { exportRentalReportPdf } from "@/lib/rental-report.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { toast } from "sonner";
