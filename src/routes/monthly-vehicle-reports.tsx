@@ -375,6 +375,144 @@ function SummaryCard({ label, value, icon }: { label: string; value: string; ico
   );
 }
 
+function ShareReportDialog({
+  report,
+  ym,
+  onClose,
+}: {
+  report: VehicleReport | null;
+  ym: string;
+  onClose: () => void;
+}) {
+  const send = useServerFn(sendVehicleReport);
+  const [channel, setChannel] = useState<"email" | "sms" | "both">("email");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const open = report !== null;
+
+  async function handleSend() {
+    if (!report) return;
+    if ((channel === "email" || channel === "both") && !email.includes("@")) {
+      toast.error("Enter a valid email address.");
+      return;
+    }
+    if ((channel === "sms" || channel === "both") && !phone.trim()) {
+      toast.error("Enter a phone number.");
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await send({
+        data: {
+          channel,
+          email: email.trim() || undefined,
+          phone: phone.trim() || undefined,
+          recipientName: name.trim() || undefined,
+          subject: `${report.title} (${report.plate}) — ${monthLabel(ym)} Statement`,
+          html: buildVehicleReportHtml(report, ym),
+          smsText: vehicleReportSmsText(report, ym),
+        },
+      });
+      if (res.errors.length) {
+        toast.error(res.errors.join(" "));
+      } else {
+        const parts: string[] = [];
+        if (res.emailSent) parts.push("email");
+        if (res.smsSent) parts.push("text");
+        toast.success(`Report sent via ${parts.join(" & ")}.`);
+        onClose();
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send report.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Send report</DialogTitle>
+          <DialogDescription>
+            {report
+              ? `${report.title} (${report.plate}) — ${monthLabel(ym)}`
+              : ""}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Send via</Label>
+            <Select value={channel} onValueChange={(v) => setChannel(v as typeof channel)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="sms">Text message</SelectItem>
+                <SelectItem value="both">Email & Text</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="share-name">Recipient name (optional)</Label>
+            <Input
+              id="share-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Jane Doe"
+            />
+          </div>
+          {(channel === "email" || channel === "both") && (
+            <div className="space-y-1.5">
+              <Label htmlFor="share-email">Email</Label>
+              <Input
+                id="share-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="recipient@example.com"
+              />
+            </div>
+          )}
+          {(channel === "sms" || channel === "both") && (
+            <div className="space-y-1.5">
+              <Label htmlFor="share-phone">Phone</Label>
+              <Input
+                id="share-phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="(555) 123-4567"
+              />
+              <p className="text-xs text-muted-foreground">
+                Text messages include a summary; email includes the full report.
+              </p>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={sending}>
+            Cancel
+          </Button>
+          <Button onClick={handleSend} disabled={sending}>
+            <Send className="mr-1.5 h-4 w-4" />
+            {sending ? "Sending…" : "Send"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-2">
