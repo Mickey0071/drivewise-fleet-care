@@ -157,7 +157,7 @@ function MonthlyVehicleReportsPage() {
         const fin = getVehicleFinancials(v.id, { from: start, to: end });
         const expenseLines: ExpenseLine[] = fin.expenseLineItems
           .map((e) => ({
-            label: `${e.category} — ${e.description}`,
+            label: repairFixLabel(e),
             date: e.date,
             amount: e.amount,
           }))
