@@ -1,13 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ReportActions } from "@/components/app/ReportActions";
 import { Button } from "@/components/ui/button";
 import { downloadCSV } from "@/lib/exports";
+import { sendVehicleReport } from "@/lib/vehicle-report-send.functions";
 import {
   vehicles,
   rentals,
@@ -19,7 +37,7 @@ import {
 } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { getVehicleFinancials } from "@/lib/vehicle-financials";
-import { TrendingUp, TrendingDown, Wallet, Printer, Download } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Printer, Download, Send } from "lucide-react";
 import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
 
 export const Route = createFileRoute("/monthly-vehicle-reports")({
