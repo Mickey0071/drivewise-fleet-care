@@ -35,6 +35,7 @@ import {
   fmtMoney,
   fmtDate,
 } from "@/lib/mock/data";
+import { maintenance } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { TrendingUp, TrendingDown, Wallet, Printer, Download, Send } from "lucide-react";
@@ -46,6 +47,30 @@ export const Route = createFileRoute("/monthly-vehicle-reports")({
 });
 
 const currentMonth = () => new Date().toISOString().slice(0, 7);
+
+const maintenanceById = new Map(maintenance.map((m) => [m.id, m]));
+
+/**
+ * For the monthly report, repair/maintenance lines should lead with WHAT WAS
+ * REPAIRED (the solution / service performed), not the reported issue.
+ * Manual expenses and violations keep their normal "Category — description".
+ */
+function repairFixLabel(e: {
+  id: string;
+  category: string;
+  description: string;
+  source: string;
+}): string {
+  if (e.source === "repair" || e.source === "maintenance") {
+    const m = maintenanceById.get(e.id);
+    const fixed =
+      m?.selectedSolution?.name?.trim() ||
+      m?.serviceType?.trim() ||
+      e.description;
+    return fixed;
+  }
+  return `${e.category} — ${e.description}`;
+}
 function monthLabel(ym: string) {
   const [y, m] = ym.split("-").map(Number);
   return new Date(Date.UTC(y, (m ?? 1) - 1, 1)).toLocaleDateString("en-US", {
@@ -156,7 +181,7 @@ function MonthlyVehicleReportsPage() {
         const fin = getVehicleFinancials(v.id, { from: start, to: end });
         const expenseLines: ExpenseLine[] = fin.expenseLineItems
           .map((e) => ({
-            label: `${e.category} — ${e.description}`,
+            label: repairFixLabel(e),
             date: e.date,
             amount: e.amount,
           }))
