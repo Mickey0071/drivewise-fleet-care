@@ -1,13 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ReportActions } from "@/components/app/ReportActions";
 import { Button } from "@/components/ui/button";
 import { downloadCSV } from "@/lib/exports";
+import { sendVehicleReport } from "@/lib/vehicle-report-send.functions";
 import {
   vehicles,
   rentals,
@@ -19,7 +37,7 @@ import {
 } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { getVehicleFinancials } from "@/lib/vehicle-financials";
-import { TrendingUp, TrendingDown, Wallet, Printer, Download } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Printer, Download, Send } from "lucide-react";
 import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
 
 export const Route = createFileRoute("/monthly-vehicle-reports")({
@@ -70,6 +88,7 @@ function MonthlyVehicleReportsPage() {
   useStoreVersion();
   const [ym, setYm] = useState<string>(currentMonth());
   const [showAll, setShowAll] = useState(false);
+  const [shareTarget, setShareTarget] = useState<VehicleReport | null>(null);
 
   const reports = useMemo<VehicleReport[]>(() => {
     const { start, end } = monthBounds(ym);
@@ -273,6 +292,10 @@ function MonthlyVehicleReportsPage() {
                     <Printer className="mr-1.5 h-4 w-4" />
                     Print
                   </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShareTarget(r)}>
+                    <Send className="mr-1.5 h-4 w-4" />
+                    Send
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="grid gap-6 md:grid-cols-3">
@@ -328,6 +351,12 @@ function MonthlyVehicleReportsPage() {
           ))}
         </div>
       )}
+
+      <ShareReportDialog
+        report={shareTarget}
+        ym={ym}
+        onClose={() => setShareTarget(null)}
+      />
     </div>
   );
 }
@@ -343,6 +372,144 @@ function SummaryCard({ label, value, icon }: { label: string; value: string; ico
         {icon}
       </CardContent>
     </Card>
+  );
+}
+
+function ShareReportDialog({
+  report,
+  ym,
+  onClose,
+}: {
+  report: VehicleReport | null;
+  ym: string;
+  onClose: () => void;
+}) {
+  const send = useServerFn(sendVehicleReport);
+  const [channel, setChannel] = useState<"email" | "sms" | "both">("email");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const open = report !== null;
+
+  async function handleSend() {
+    if (!report) return;
+    if ((channel === "email" || channel === "both") && !email.includes("@")) {
+      toast.error("Enter a valid email address.");
+      return;
+    }
+    if ((channel === "sms" || channel === "both") && !phone.trim()) {
+      toast.error("Enter a phone number.");
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await send({
+        data: {
+          channel,
+          email: email.trim() || undefined,
+          phone: phone.trim() || undefined,
+          recipientName: name.trim() || undefined,
+          subject: `${report.title} (${report.plate}) — ${monthLabel(ym)} Statement`,
+          html: buildVehicleReportHtml(report, ym),
+          smsText: vehicleReportSmsText(report, ym),
+        },
+      });
+      if (res.errors.length) {
+        toast.error(res.errors.join(" "));
+      } else {
+        const parts: string[] = [];
+        if (res.emailSent) parts.push("email");
+        if (res.smsSent) parts.push("text");
+        toast.success(`Report sent via ${parts.join(" & ")}.`);
+        onClose();
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send report.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Send report</DialogTitle>
+          <DialogDescription>
+            {report
+              ? `${report.title} (${report.plate}) — ${monthLabel(ym)}`
+              : ""}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Send via</Label>
+            <Select value={channel} onValueChange={(v) => setChannel(v as typeof channel)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="sms">Text message</SelectItem>
+                <SelectItem value="both">Email & Text</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="share-name">Recipient name (optional)</Label>
+            <Input
+              id="share-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Jane Doe"
+            />
+          </div>
+          {(channel === "email" || channel === "both") && (
+            <div className="space-y-1.5">
+              <Label htmlFor="share-email">Email</Label>
+              <Input
+                id="share-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="recipient@example.com"
+              />
+            </div>
+          )}
+          {(channel === "sms" || channel === "both") && (
+            <div className="space-y-1.5">
+              <Label htmlFor="share-phone">Phone</Label>
+              <Input
+                id="share-phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="(555) 123-4567"
+              />
+              <p className="text-xs text-muted-foreground">
+                Text messages include a summary; email includes the full report.
+              </p>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={sending}>
+            Cancel
+          </Button>
+          <Button onClick={handleSend} disabled={sending}>
+            <Send className="mr-1.5 h-4 w-4" />
+            {sending ? "Sending…" : "Send"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -380,8 +547,7 @@ function vehicleCsv(r: VehicleReport, ym: string) {
   };
 }
 
-function printVehicleReport(r: VehicleReport, ym: string) {
-  if (typeof window === "undefined") return;
+function buildVehicleReportHtml(r: VehicleReport, ym: string): string {
   const esc = (s: string) =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const renters = r.renters.length
@@ -404,9 +570,7 @@ function printVehicleReport(r: VehicleReport, ym: string) {
         )
         .join("")
     : `<tr><td colspan="3">—</td></tr>`;
-  const w = window.open("", "_blank", "width=800,height=900");
-  if (!w) return;
-  w.document.write(`<!doctype html><html><head><title>${esc(r.title)} ${esc(
+  return `<!doctype html><html><head><title>${esc(r.title)} ${esc(
     r.plate,
   )} — ${esc(monthLabel(ym))}</title>
     <style>
@@ -461,7 +625,24 @@ function printVehicleReport(r: VehicleReport, ym: string) {
     <table><thead><tr><th>Item</th><th>Date</th><th style="text-align:right">Amount</th></tr></thead><tbody>${exp}</tbody></table>
     <table class="totals"><tbody><tr><td>Net</td><td style="text-align:right" class="${r.net >= 0 ? "pos" : "neg"}">${fmtMoney(r.net)}</td></tr></tbody></table>
     <div class="footer">Camauto Rentals · Generated ${esc(fmtDate(new Date().toISOString().slice(0, 10)))} · Confidential</div>
-    </body></html>`);
+    </body></html>`;
+}
+
+function vehicleReportSmsText(r: VehicleReport, ym: string): string {
+  return [
+    `Camauto Rentals — ${r.title} (${r.plate})`,
+    `${monthLabel(ym)} statement`,
+    `Income: ${fmtMoney(r.income)}`,
+    `Expenses: ${fmtMoney(r.expenseTotal)}`,
+    `Net: ${fmtMoney(r.net)}`,
+  ].join("\n");
+}
+
+function printVehicleReport(r: VehicleReport, ym: string) {
+  if (typeof window === "undefined") return;
+  const w = window.open("", "_blank", "width=800,height=900");
+  if (!w) return;
+  w.document.write(buildVehicleReportHtml(r, ym));
   w.document.close();
   w.focus();
   setTimeout(() => w.print(), 300);
