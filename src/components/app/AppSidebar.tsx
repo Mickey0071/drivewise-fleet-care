@@ -86,12 +86,14 @@ const primaryGroups: Group[] = [
       { title: "Parts", url: "/admin/parts", icon: Package, roles: ALL_ROLES },
       { title: "Inspections", url: "/inspections", icon: ClipboardCheck, roles: ALL_ROLES },
       { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ALL_ROLES },
+      { title: "Monthly Vehicle Reports", url: "/monthly-vehicle-reports", icon: FileText, roles: ALL_ROLES },
     ],
   },
   {
     key: "pnl", label: "P&L/Expenses", icon: TrendingUp, defaultOpen: true,
     items: [
       { title: "P&L Dashboard", url: "/analytics/pnl-dashboard", icon: TrendingUp, roles: ALL_ROLES },
+      { title: "P&L", url: "/pnl", icon: TrendingUp, roles: ALL_ROLES },
       { title: "Expenses", url: "/admin/expenses", icon: Receipt, roles: ALL_ROLES },
       { title: "Vehicle Profitability", url: "/analytics/profitability", icon: BarChart3, roles: ALL_ROLES },
       { title: "Prior Period Adjustment", url: "/analytics/pnl-dashboard#prior-period-adjustment", icon: DollarSign, roles: ALL_ROLES },
