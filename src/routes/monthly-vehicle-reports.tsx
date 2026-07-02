@@ -35,6 +35,7 @@ import {
   fmtMoney,
   fmtDate,
 } from "@/lib/mock/data";
+import { maintenance } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { TrendingUp, TrendingDown, Wallet, Printer, Download, Send } from "lucide-react";
