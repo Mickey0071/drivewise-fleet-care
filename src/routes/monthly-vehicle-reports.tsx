@@ -292,6 +292,10 @@ function MonthlyVehicleReportsPage() {
                     <Printer className="mr-1.5 h-4 w-4" />
                     Print
                   </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShareTarget(r)}>
+                    <Send className="mr-1.5 h-4 w-4" />
+                    Send
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="grid gap-6 md:grid-cols-3">
