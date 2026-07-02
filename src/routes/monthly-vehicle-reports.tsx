@@ -398,8 +398,7 @@ function vehicleCsv(r: VehicleReport, ym: string) {
   };
 }
 
-function printVehicleReport(r: VehicleReport, ym: string) {
-  if (typeof window === "undefined") return;
+function buildVehicleReportHtml(r: VehicleReport, ym: string): string {
   const esc = (s: string) =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const renters = r.renters.length
@@ -422,9 +421,7 @@ function printVehicleReport(r: VehicleReport, ym: string) {
         )
         .join("")
     : `<tr><td colspan="3">—</td></tr>`;
-  const w = window.open("", "_blank", "width=800,height=900");
-  if (!w) return;
-  w.document.write(`<!doctype html><html><head><title>${esc(r.title)} ${esc(
+  return `<!doctype html><html><head><title>${esc(r.title)} ${esc(
     r.plate,
   )} — ${esc(monthLabel(ym))}</title>
     <style>
@@ -479,7 +476,24 @@ function printVehicleReport(r: VehicleReport, ym: string) {
     <table><thead><tr><th>Item</th><th>Date</th><th style="text-align:right">Amount</th></tr></thead><tbody>${exp}</tbody></table>
     <table class="totals"><tbody><tr><td>Net</td><td style="text-align:right" class="${r.net >= 0 ? "pos" : "neg"}">${fmtMoney(r.net)}</td></tr></tbody></table>
     <div class="footer">Camauto Rentals · Generated ${esc(fmtDate(new Date().toISOString().slice(0, 10)))} · Confidential</div>
-    </body></html>`);
+    </body></html>`;
+}
+
+function vehicleReportSmsText(r: VehicleReport, ym: string): string {
+  return [
+    `Camauto Rentals — ${r.title} (${r.plate})`,
+    `${monthLabel(ym)} statement`,
+    `Income: ${fmtMoney(r.income)}`,
+    `Expenses: ${fmtMoney(r.expenseTotal)}`,
+    `Net: ${fmtMoney(r.net)}`,
+  ].join("\n");
+}
+
+function printVehicleReport(r: VehicleReport, ym: string) {
+  if (typeof window === "undefined") return;
+  const w = window.open("", "_blank", "width=800,height=900");
+  if (!w) return;
+  w.document.write(buildVehicleReportHtml(r, ym));
   w.document.close();
   w.focus();
   setTimeout(() => w.print(), 300);
