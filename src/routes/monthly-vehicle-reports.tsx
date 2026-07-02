@@ -88,6 +88,7 @@ function MonthlyVehicleReportsPage() {
   useStoreVersion();
   const [ym, setYm] = useState<string>(currentMonth());
   const [showAll, setShowAll] = useState(false);
+  const [shareTarget, setShareTarget] = useState<VehicleReport | null>(null);
 
   const reports = useMemo<VehicleReport[]>(() => {
     const { start, end } = monthBounds(ym);
