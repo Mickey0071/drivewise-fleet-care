@@ -351,6 +351,12 @@ function MonthlyVehicleReportsPage() {
           ))}
         </div>
       )}
+
+      <ShareReportDialog
+        report={shareTarget}
+        ym={ym}
+        onClose={() => setShareTarget(null)}
+      />
     </div>
   );
 }
