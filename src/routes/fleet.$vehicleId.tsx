@@ -516,7 +516,7 @@ function VehicleDetail() {
                           const est = wo?.estimatedCost ?? m.cost ?? 0;
                           return (
                             <TableRow key={m.id}>
-                              <TableCell className="font-medium">{m.serviceType}</TableCell>
+                              <TableCell className="font-medium">{repairDisplayTitle(m)}</TableCell>
                               <TableCell>{fmtDate(scheduled)}</TableCell>
                               <TableCell className="text-right">{fmtMoney(est)}</TableCell>
                               <TableCell><StatusBadge status={openStatusLabel(m)} /></TableCell>
@@ -550,7 +550,7 @@ function VehicleDetail() {
                       <TableBody>
                         {completedMaint.map(m => (
                           <TableRow key={m.id}>
-                            <TableCell className="font-medium">{m.serviceType}</TableCell>
+                            <TableCell className="font-medium">{repairDisplayTitle(m)}</TableCell>
                             <TableCell>{fmtDate(m.completionDate?.slice(0, 10) ?? m.dateCompleted)}</TableCell>
                             <TableCell className="text-right">{(m.mileageAtService ?? 0).toLocaleString()} mi</TableCell>
                             <TableCell className="text-right">{fmtMoney(effectiveRepairCost(m))}</TableCell>
