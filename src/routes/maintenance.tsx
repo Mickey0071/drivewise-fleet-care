@@ -104,16 +104,35 @@ function MaintenancePage() {
   }
 
   // --- Phase 2 (Diagnose) per-record inputs ---
-  const [diagInputs, setDiagInputs] = useState<Record<string, { partsNeeded: string; partsCost: string; laborCost: string; mileage: string }>>({});
-  const diagFor = (m: Maintenance) =>
+  type SplitEntry = { diagnosis: string; partsNeeded: string; partsCost: string; laborCost: string };
+  type DiagInput = {
+    diagnosis: string;
+    partsNeeded: string;
+    partsCost: string;
+    laborCost: string;
+    mileage: string;
+    splitEnabled: boolean;
+    extraSplits: SplitEntry[];
+  };
+  const [diagInputs, setDiagInputs] = useState<Record<string, DiagInput>>({});
+  const diagFor = (m: Maintenance): DiagInput =>
     diagInputs[m.id] ?? {
+      diagnosis: m.diagnosisTitle ?? "",
       partsNeeded: m.diagnosisNotes ?? "",
       partsCost: m.partsCost ? String(m.partsCost) : "",
       laborCost: m.laborCost ? String(m.laborCost) : "",
       mileage: m.mileageAtService ? String(m.mileageAtService) : "",
+      splitEnabled: false,
+      extraSplits: [],
     };
-  const setDiag = (id: string, patch: Partial<{ partsNeeded: string; partsCost: string; laborCost: string; mileage: string }>) =>
+  const setDiag = (id: string, patch: Partial<DiagInput>) =>
     setDiagInputs(prev => ({ ...prev, [id]: { ...diagFor(maintenance.find(x => x.id === id)!), ...prev[id], ...patch } }));
+  const emptySplit = (): SplitEntry => ({ diagnosis: "", partsNeeded: "", partsCost: "", laborCost: "" });
+  const setSplit = (id: string, idx: number, patch: Partial<SplitEntry>) => {
+    const cur = diagFor(maintenance.find(x => x.id === id)!);
+    const extraSplits = cur.extraSplits.map((s, i) => (i === idx ? { ...s, ...patch } : s));
+    setDiag(id, { extraSplits });
+  };
 
   function handleSaveDiagnosis(m: Maintenance) {
     const d = diagFor(m);
@@ -123,7 +142,26 @@ function MaintenancePage() {
       toast.error("Complete parts info to save");
       return;
     }
-    saveRepairDiagnosis(m.id, { partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mileageAtService: parseInt(d.mileage, 10) || 0 });
+    const mileage = parseInt(d.mileage, 10) || 0;
+    if (d.splitEnabled && d.extraSplits.length > 0) {
+      const first = { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour };
+      const rest = d.extraSplits
+        .filter(s => s.diagnosis.trim() || s.partsNeeded.trim())
+        .map(s => ({
+          diagnosis: s.diagnosis,
+          partsNeeded: s.partsNeeded,
+          partsCost: parseFloat(s.partsCost) || 0,
+          laborCost: parseFloat(s.laborCost) || 0,
+        }));
+      if (rest.length === 0) {
+        toast.error("Add details to the extra repair, or turn off split");
+        return;
+      }
+      saveRepairDiagnosis(m.id, { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mileageAtService: mileage, splits: [first, ...rest] });
+      toast.success(`Split into ${rest.length + 1} repair tickets — moved to Complete`);
+      return;
+    }
+    saveRepairDiagnosis(m.id, { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mileageAtService: mileage });
     toast.success("Diagnosis saved — moved to Complete");
   }
 
