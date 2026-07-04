@@ -33,7 +33,7 @@ import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 import type { Maintenance, WorkOrder, Rental } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
-import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost } from "@/lib/maintenance-utils";
+import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost, repairDisplayTitle, repairReportedIssue, repairSplitLabel } from "@/lib/maintenance-utils";
 import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { exportRentalReportPdf } from "@/lib/rental-report.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
@@ -350,7 +350,15 @@ function VehicleDetail() {
             {openIssues.map(m => (
               <div key={m.id} className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">{m.serviceType}</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium">{repairDisplayTitle(m)}</span>
+                    {repairSplitLabel(m) && (
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">🔗 {repairSplitLabel(m)}</span>
+                    )}
+                  </div>
+                  {(m.diagnosisTitle ?? "").trim() && repairReportedIssue(m) && repairReportedIssue(m) !== repairDisplayTitle(m) && (
+                    <div className="mt-0.5 text-xs text-muted-foreground">Reported: {repairReportedIssue(m)}</div>
+                  )}
                   {m.notes && <div className="mt-0.5 whitespace-pre-line text-xs text-muted-foreground">{m.notes}</div>}
                   <div className="mt-0.5 text-xs text-muted-foreground">Opened {fmtDate(m.createdAt?.slice(0, 10))}</div>
                 </div>
@@ -508,7 +516,7 @@ function VehicleDetail() {
                           const est = wo?.estimatedCost ?? m.cost ?? 0;
                           return (
                             <TableRow key={m.id}>
-                              <TableCell className="font-medium">{m.serviceType}</TableCell>
+                              <TableCell className="font-medium">{repairDisplayTitle(m)}</TableCell>
                               <TableCell>{fmtDate(scheduled)}</TableCell>
                               <TableCell className="text-right">{fmtMoney(est)}</TableCell>
                               <TableCell><StatusBadge status={openStatusLabel(m)} /></TableCell>
@@ -542,7 +550,7 @@ function VehicleDetail() {
                       <TableBody>
                         {completedMaint.map(m => (
                           <TableRow key={m.id}>
-                            <TableCell className="font-medium">{m.serviceType}</TableCell>
+                            <TableCell className="font-medium">{repairDisplayTitle(m)}</TableCell>
                             <TableCell>{fmtDate(m.completionDate?.slice(0, 10) ?? m.dateCompleted)}</TableCell>
                             <TableCell className="text-right">{(m.mileageAtService ?? 0).toLocaleString()} mi</TableCell>
                             <TableCell className="text-right">{fmtMoney(effectiveRepairCost(m))}</TableCell>
@@ -633,7 +641,7 @@ function VehicleDetail() {
               <p className="text-sm text-muted-foreground">No repair history.</p>
             ) : (
               completedRepairs.map(m => {
-                const issue = m.issueDescription || m.selectedSolution?.name || m.serviceType;
+                const issue = repairDisplayTitle(m);
                 const mechanic = m.completedBy || m.vendor || "—";
                 const parts = m.partsCost ?? m.selectedSolution?.partsCost ?? 0;
                 const labor = m.laborCost ?? m.selectedSolution?.laborCost ?? 0;
@@ -642,6 +650,9 @@ function VehicleDetail() {
                   <div key={m.id} className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
                     <div className="min-w-0">
                       <div className="text-sm font-medium truncate">{issue}</div>
+                      {repairSplitLabel(m) && (
+                        <div className="text-[11px] text-muted-foreground">🔗 {repairSplitLabel(m)}</div>
+                      )}
                       <div className="text-xs text-muted-foreground">
                         {fmtDate(m.completionDate ?? m.dateCompleted)} · {mechanic}
                       </div>

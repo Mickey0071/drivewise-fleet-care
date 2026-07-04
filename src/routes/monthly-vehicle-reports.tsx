@@ -64,6 +64,7 @@ function repairFixLabel(e: {
   if (e.source === "repair" || e.source === "maintenance") {
     const m = maintenanceById.get(e.id);
     const fixed =
+      m?.diagnosisTitle?.trim() ||
       m?.selectedSolution?.name?.trim() ||
       m?.serviceType?.trim() ||
       e.description;

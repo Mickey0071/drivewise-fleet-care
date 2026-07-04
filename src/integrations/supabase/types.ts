@@ -1068,6 +1068,7 @@ export type Database = {
           deposit_processed: boolean | null
           deposit_required: number | null
           diagnosis_notes: string | null
+          diagnosis_title: string | null
           down_payment: number
           id: string
           inspection_id: string | null
@@ -1081,6 +1082,7 @@ export type Database = {
           mileage_at_service: number
           next_service_due: string
           notes: string | null
+          original_issue_id: string | null
           parts_cost: number
           parts_list: Json | null
           problem_category: string | null
@@ -1092,6 +1094,8 @@ export type Database = {
           source: string
           source_inspection_id: string | null
           source_work_order_id: string | null
+          split_index: number | null
+          split_total: number | null
           status: string | null
           updated_at: string
           vehicle_id: string
@@ -1124,6 +1128,7 @@ export type Database = {
           deposit_processed?: boolean | null
           deposit_required?: number | null
           diagnosis_notes?: string | null
+          diagnosis_title?: string | null
           down_payment?: number
           id: string
           inspection_id?: string | null
@@ -1137,6 +1142,7 @@ export type Database = {
           mileage_at_service?: number
           next_service_due?: string
           notes?: string | null
+          original_issue_id?: string | null
           parts_cost?: number
           parts_list?: Json | null
           problem_category?: string | null
@@ -1148,6 +1154,8 @@ export type Database = {
           source?: string
           source_inspection_id?: string | null
           source_work_order_id?: string | null
+          split_index?: number | null
+          split_total?: number | null
           status?: string | null
           updated_at?: string
           vehicle_id: string
@@ -1180,6 +1188,7 @@ export type Database = {
           deposit_processed?: boolean | null
           deposit_required?: number | null
           diagnosis_notes?: string | null
+          diagnosis_title?: string | null
           down_payment?: number
           id?: string
           inspection_id?: string | null
@@ -1193,6 +1202,7 @@ export type Database = {
           mileage_at_service?: number
           next_service_due?: string
           notes?: string | null
+          original_issue_id?: string | null
           parts_cost?: number
           parts_list?: Json | null
           problem_category?: string | null
@@ -1204,6 +1214,8 @@ export type Database = {
           source?: string
           source_inspection_id?: string | null
           source_work_order_id?: string | null
+          split_index?: number | null
+          split_total?: number | null
           status?: string | null
           updated_at?: string
           vehicle_id?: string

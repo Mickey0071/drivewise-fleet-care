@@ -14,6 +14,37 @@ export function isServiceLogRecord(m: Maintenance): boolean {
   return !!m.dateCompleted && !isIssueRecord(m);
 }
 
+// ---------------------------------------------------------------------------
+// Repair ticket title / reported-issue helpers.
+//
+// Chain: Reported Issue (symptom) → Diagnosis (becomes the title) → repair work.
+// Once a diagnosis exists it becomes the ticket's display title everywhere; the
+// original reported issue is preserved separately. Falls back to the reported
+// issue (then serviceType) when no diagnosis has been entered yet.
+// ---------------------------------------------------------------------------
+
+/** The reported symptom the ticket was opened with. */
+export function repairReportedIssue(m: Maintenance): string {
+  return (m.issueDescription ?? m.serviceType ?? "").trim();
+}
+
+/** Display title: the diagnosis when present, otherwise the reported issue. */
+export function repairDisplayTitle(m: Maintenance): string {
+  const diag = (m.diagnosisTitle ?? "").trim();
+  if (diag) return diag;
+  const sol = (m.selectedSolution?.name ?? "").trim();
+  if (sol) return sol;
+  return repairReportedIssue(m) || "Repair";
+}
+
+/** Small linked indicator for split tickets, e.g. "1 of 2 from original issue". */
+export function repairSplitLabel(m: Maintenance): string | null {
+  if (m.splitTotal && m.splitTotal > 1 && m.splitIndex) {
+    return `${m.splitIndex} of ${m.splitTotal} from original issue`;
+  }
+  return null;
+}
+
 // Effective cost for a maintenance/repair row. Prefer the explicit `cost`,
 // but fall back to parts + labor when `cost` was never rolled up (null/zero).
 // Use this everywhere a repair cost is displayed or summed so totals stay

@@ -660,6 +660,10 @@ const fromMaintenance = (r: any): Maintenance => ({
   customerNotes: r.customer_notes ?? undefined,
   problemCategory: r.problem_category ?? undefined,
   diagnosisNotes: r.diagnosis_notes ?? undefined,
+  diagnosisTitle: r.diagnosis_title ?? undefined,
+  originalIssueId: r.original_issue_id ?? undefined,
+  splitIndex: r.split_index != null ? Number(r.split_index) : undefined,
+  splitTotal: r.split_total != null ? Number(r.split_total) : undefined,
   createdFromIssue: !!r.created_from_issue,
   solutions: r.solutions ?? undefined,
   selectedSolution: r.selected_solution ?? undefined,
@@ -695,6 +699,10 @@ const toMaintenance = (m: Maintenance) => ({
   customer_notes: m.customerNotes ?? null,
   problem_category: m.problemCategory ?? null,
   diagnosis_notes: m.diagnosisNotes ?? null,
+  diagnosis_title: m.diagnosisTitle ?? null,
+  original_issue_id: m.originalIssueId ?? null,
+  split_index: m.splitIndex ?? null,
+  split_total: m.splitTotal ?? null,
   created_from_issue: m.createdFromIssue ?? false,
   solutions: (m.solutions ?? null) as any,
   selected_solution: (m.selectedSolution ?? null) as any,
@@ -2379,7 +2387,13 @@ export function completeRepair(
   // --- Log the completed repair to the vehicle's fleet-card repair history,
   //     and capture scorecard analytics data. ---
   const partsList = m.diagnosisNotes ?? null;
-  const issueText = m.issueDescription || m.selectedSolution?.name || m.serviceType;
+  // Log the diagnosis (display title) as the repair history "issue" so the
+  // fleet card shows what was repaired, not the raw reported symptom.
+  const issueText =
+    (m.diagnosisTitle ?? "").trim() ||
+    m.selectedSolution?.name ||
+    m.issueDescription ||
+    m.serviceType;
   let daysInRepair = 0;
   if (m.createdAt) {
     const start = new Date(m.createdAt).getTime();
@@ -2721,24 +2735,95 @@ export function moveRepairToDiagnose(id: string) {
 /** Phase 2 → Phase 3: save diagnosis (parts needed + costs) and move to Complete. */
 export function saveRepairDiagnosis(
   id: string,
-  input: { partsNeeded: string; partsCost: number; laborCost: number; mileageAtService?: number },
+  input: {
+    partsNeeded: string;
+    partsCost: number;
+    laborCost: number;
+    mileageAtService?: number;
+    /** Diagnosis text — becomes the ticket's display title. */
+    diagnosis?: string;
+    /**
+     * When the mechanic found multiple problems, pass one entry per problem to
+     * split into separate repair tickets. The first entry stays on this ticket;
+     * each additional entry becomes a new ticket sharing the reported issue.
+     */
+    splits?: Array<{ diagnosis: string; partsNeeded: string; partsCost: number; laborCost: number }>;
+  },
 ) {
   const m = maintenance.find(x => x.id === id);
   if (!m) return;
+
+  const mileage =
+    typeof input.mileageAtService === "number" ? Math.max(0, input.mileageAtService) : undefined;
+
+  // ---- Multi-problem split path ----
+  const splits = (input.splits ?? []).filter(s => s.diagnosis.trim() || s.partsNeeded.trim());
+  if (splits.length >= 2) {
+    const total = splits.length;
+    const applyEntry = (
+      rec: Maintenance,
+      entry: { diagnosis: string; partsNeeded: string; partsCost: number; laborCost: number },
+      index: number,
+    ) => {
+      const parts = Math.max(0, entry.partsCost || 0);
+      const labor = Math.max(0, entry.laborCost || 0);
+      const cost = parts + labor;
+      rec.diagnosisTitle = entry.diagnosis.trim() || undefined;
+      rec.diagnosisNotes = entry.partsNeeded.trim();
+      rec.partsCost = parts;
+      rec.laborCost = labor;
+      rec.cost = cost;
+      rec.balance = Math.max(0, cost - (rec.amountPaid ?? 0));
+      if (mileage != null) rec.mileageAtService = mileage;
+      rec.status = "pending_complete";
+      rec.originalIssueId = m.id;
+      rec.splitIndex = index + 1;
+      rec.splitTotal = total;
+    };
+
+    // First entry stays on the original ticket.
+    applyEntry(m, splits[0], 0);
+    cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+
+    // Remaining entries become new tickets sharing the reported issue.
+    for (let i = 1; i < splits.length; i++) {
+      const rec: Maintenance = {
+        ...m,
+        id: nextMaintenanceId(),
+        amountPaid: 0,
+        downPayment: 0,
+        completedBy: undefined,
+        completionDate: undefined,
+        dateCompleted: undefined as unknown as string,
+        mechanicName: undefined,
+        mechanicNotes: undefined,
+        createdAt: new Date().toISOString(),
+      };
+      applyEntry(rec, splits[i], i);
+      maintenance.push(rec);
+      cloudWrite("maintenance:insert", supabase.from("maintenance").insert(toMaintenance(rec)));
+    }
+
+    if (mileage != null) applyOdometerReading(m.vehicleId, mileage);
+    syncVehicleOpenIssues(m.vehicleId);
+    emit();
+    return m;
+  }
+
+  // ---- Single-ticket path ----
   const parts = Math.max(0, input.partsCost || 0);
   const labor = Math.max(0, input.laborCost || 0);
   const total = parts + labor;
+  if (input.diagnosis !== undefined) m.diagnosisTitle = input.diagnosis.trim() || undefined;
   m.diagnosisNotes = input.partsNeeded.trim();
   m.partsCost = parts;
   m.laborCost = labor;
   m.cost = total;
   m.balance = Math.max(0, total - (m.amountPaid ?? 0));
-  if (typeof input.mileageAtService === "number") {
-    m.mileageAtService = Math.max(0, input.mileageAtService);
-  }
+  if (mileage != null) m.mileageAtService = mileage;
   m.status = "pending_complete";
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
-  if (typeof input.mileageAtService === "number") applyOdometerReading(m.vehicleId, m.mileageAtService);
+  if (mileage != null) applyOdometerReading(m.vehicleId, mileage);
   syncVehicleOpenIssues(m.vehicleId);
   emit();
   return m;

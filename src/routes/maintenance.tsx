@@ -28,6 +28,7 @@ import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, recordRe
 import type { RepairCompletionSummary } from "@/lib/mock/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +48,9 @@ import {
   isScheduleConfigured,
   type ScheduledItem,
   effectiveRepairCost,
+  repairDisplayTitle,
+  repairReportedIssue,
+  repairSplitLabel,
 } from "@/lib/maintenance-utils";
 import type { Maintenance } from "@/lib/mock/data";
 import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
@@ -104,16 +108,35 @@ function MaintenancePage() {
   }
 
   // --- Phase 2 (Diagnose) per-record inputs ---
-  const [diagInputs, setDiagInputs] = useState<Record<string, { partsNeeded: string; partsCost: string; laborCost: string; mileage: string }>>({});
-  const diagFor = (m: Maintenance) =>
+  type SplitEntry = { diagnosis: string; partsNeeded: string; partsCost: string; laborCost: string };
+  type DiagInput = {
+    diagnosis: string;
+    partsNeeded: string;
+    partsCost: string;
+    laborCost: string;
+    mileage: string;
+    splitEnabled: boolean;
+    extraSplits: SplitEntry[];
+  };
+  const [diagInputs, setDiagInputs] = useState<Record<string, DiagInput>>({});
+  const diagFor = (m: Maintenance): DiagInput =>
     diagInputs[m.id] ?? {
+      diagnosis: m.diagnosisTitle ?? "",
       partsNeeded: m.diagnosisNotes ?? "",
       partsCost: m.partsCost ? String(m.partsCost) : "",
       laborCost: m.laborCost ? String(m.laborCost) : "",
       mileage: m.mileageAtService ? String(m.mileageAtService) : "",
+      splitEnabled: false,
+      extraSplits: [],
     };
-  const setDiag = (id: string, patch: Partial<{ partsNeeded: string; partsCost: string; laborCost: string; mileage: string }>) =>
+  const setDiag = (id: string, patch: Partial<DiagInput>) =>
     setDiagInputs(prev => ({ ...prev, [id]: { ...diagFor(maintenance.find(x => x.id === id)!), ...prev[id], ...patch } }));
+  const emptySplit = (): SplitEntry => ({ diagnosis: "", partsNeeded: "", partsCost: "", laborCost: "" });
+  const setSplit = (id: string, idx: number, patch: Partial<SplitEntry>) => {
+    const cur = diagFor(maintenance.find(x => x.id === id)!);
+    const extraSplits = cur.extraSplits.map((s, i) => (i === idx ? { ...s, ...patch } : s));
+    setDiag(id, { extraSplits });
+  };
 
   function handleSaveDiagnosis(m: Maintenance) {
     const d = diagFor(m);
@@ -123,7 +146,26 @@ function MaintenancePage() {
       toast.error("Complete parts info to save");
       return;
     }
-    saveRepairDiagnosis(m.id, { partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mileageAtService: parseInt(d.mileage, 10) || 0 });
+    const mileage = parseInt(d.mileage, 10) || 0;
+    if (d.splitEnabled && d.extraSplits.length > 0) {
+      const first = { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour };
+      const rest = d.extraSplits
+        .filter(s => s.diagnosis.trim() || s.partsNeeded.trim())
+        .map(s => ({
+          diagnosis: s.diagnosis,
+          partsNeeded: s.partsNeeded,
+          partsCost: parseFloat(s.partsCost) || 0,
+          laborCost: parseFloat(s.laborCost) || 0,
+        }));
+      if (rest.length === 0) {
+        toast.error("Add details to the extra repair, or turn off split");
+        return;
+      }
+      saveRepairDiagnosis(m.id, { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mileageAtService: mileage, splits: [first, ...rest] });
+      toast.success(`Split into ${rest.length + 1} repair tickets — moved to Complete`);
+      return;
+    }
+    saveRepairDiagnosis(m.id, { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mileageAtService: mileage });
     toast.success("Diagnosis saved — moved to Complete");
   }
 
@@ -408,6 +450,18 @@ function MaintenancePage() {
                         </div>
                       )}
                       <div>
+                        <Label className="text-[11px]">Diagnosis (becomes the ticket title)</Label>
+                        <Textarea
+                          className="mt-1 min-h-[44px] text-xs"
+                          placeholder="What's actually wrong, e.g. Worn front brake pads & warped rotors"
+                          value={d.diagnosis}
+                          onChange={(e) => setDiag(m.id, { diagnosis: e.target.value })}
+                        />
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          Reported issue: {m.issueDescription ?? m.serviceType ?? "—"}
+                        </p>
+                      </div>
+                      <div>
                         <Label className="text-[11px]">Parts needed</Label>
                         <Textarea
                           className="mt-1 min-h-[52px] text-xs"
@@ -436,8 +490,53 @@ function MaintenancePage() {
                       <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs font-medium">
                         <span>Total</span><span>{fmtMoney(total)}</span>
                       </div>
+                      {/* Multiple problems → split into separate repair tickets */}
+                      <label className="flex items-center gap-2 pt-1 text-[11px] text-foreground">
+                        <Checkbox
+                          checked={d.splitEnabled}
+                          onCheckedChange={(c: boolean | "indeterminate") =>
+                            setDiag(m.id, {
+                              splitEnabled: !!c,
+                              extraSplits: c && d.extraSplits.length === 0 ? [emptySplit()] : d.extraSplits,
+                            })
+                          }
+                        />
+                        Multiple problems — split into separate repair tickets
+                      </label>
+                      {d.splitEnabled && (
+                        <div className="space-y-2 rounded-md border border-dashed border-blue-500/40 bg-blue-500/5 p-2">
+                          <p className="text-[10px] text-muted-foreground">
+                            Each extra repair keeps the same reported issue and gets its own diagnosis, parts &amp; costs.
+                          </p>
+                          {d.extraSplits.map((s, i) => (
+                            <div key={i} className="space-y-1.5 rounded border border-border bg-card p-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-medium text-muted-foreground">Repair {i + 2}</span>
+                                <Button size="sm" variant="ghost" className="h-6 px-1 text-[10px]"
+                                  onClick={() => setDiag(m.id, { extraSplits: d.extraSplits.filter((_, j) => j !== i) })}>
+                                  Remove
+                                </Button>
+                              </div>
+                              <Textarea className="min-h-[36px] text-xs" placeholder="Diagnosis (title)"
+                                value={s.diagnosis} onChange={(e) => setSplit(m.id, i, { diagnosis: e.target.value })} />
+                              <Textarea className="min-h-[36px] text-xs" placeholder="Parts needed"
+                                value={s.partsNeeded} onChange={(e) => setSplit(m.id, i, { partsNeeded: e.target.value })} />
+                              <div className="flex gap-2">
+                                <Input className="h-8 flex-1" type="number" min="0" step="0.01" placeholder="Parts $"
+                                  value={s.partsCost} onChange={(e) => setSplit(m.id, i, { partsCost: e.target.value })} />
+                                <Input className="h-8 flex-1" type="number" min="0" step="0.01" placeholder="Labour $"
+                                  value={s.laborCost} onChange={(e) => setSplit(m.id, i, { laborCost: e.target.value })} />
+                              </div>
+                            </div>
+                          ))}
+                          <Button size="sm" variant="outline" className="w-full text-xs"
+                            onClick={() => setDiag(m.id, { extraSplits: [...d.extraSplits, emptySplit()] })}>
+                            + Add another repair
+                          </Button>
+                        </div>
+                      )}
                             <Button size="sm" className="w-full" onClick={() => handleSaveDiagnosis(m)}>
-                              Save Diagnosis →
+                              {d.splitEnabled && d.extraSplits.length > 0 ? "Save & Split →" : "Save Diagnosis →"}
                             </Button>
                           </div>
                         )}
@@ -541,7 +640,7 @@ function MaintenancePage() {
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
                         <div className="truncate text-xs text-muted-foreground">
-                          {m.selectedSolution?.name ?? m.serviceType} · {fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}
+                          {repairDisplayTitle(m)} · {fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
@@ -796,7 +895,7 @@ function MaintenancePage() {
                                 <div className="font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
                                 <div className="text-xs text-muted-foreground">Tag #{v?.plate ?? "—"}</div>
                               </td>
-                              <td className="px-4 py-2">{m.selectedSolution?.name ?? m.serviceType}</td>
+                              <td className="px-4 py-2">{repairDisplayTitle(m)}</td>
                               <td className="px-4 py-2">{m.completedBy || m.vendor || "—"}</td>
                               <td className="px-4 py-2 text-right font-medium">{fmtMoney(effectiveRepairCost(m))}</td>
                               <td className="px-4 py-2">{fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}</td>
@@ -1033,7 +1132,10 @@ function totalCostFor(m: Maintenance): number {
 function RepairRow({ m, open, onToggle, onDelete, job }: { m: Maintenance; open: boolean; onToggle: () => void; onDelete: () => void; job?: MechanicJobRow }) {
   const v = vehicleById(m.vehicleId);
   const name = v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId;
-  const issue = m.issueDescription ?? m.serviceType;
+  const title = repairDisplayTitle(m);
+  const reported = repairReportedIssue(m);
+  const hasDiagnosis = !!(m.diagnosisTitle ?? "").trim();
+  const splitLabel = repairSplitLabel(m);
   const statusLabel = m.status ? (REPAIR_STATUS_LABEL[m.status] ?? m.status) : null;
   const total = totalCostFor(m);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -1055,11 +1157,17 @@ function RepairRow({ m, open, onToggle, onDelete, job }: { m: Maintenance; open:
               {m.problemCategory && (
                 <Badge variant="outline" className="text-[10px]">{m.problemCategory}</Badge>
               )}
+              {splitLabel && (
+                <Badge variant="secondary" className="text-[10px]">🔗 {splitLabel}</Badge>
+              )}
               {m.isRentalBlocking && (
                 <Badge variant="destructive" className="text-[10px]">Off road</Badge>
               )}
             </span>
-            <span className="block truncate text-xs text-muted-foreground">{issue}</span>
+            <span className="block truncate text-xs font-medium text-foreground">{title}</span>
+            {hasDiagnosis && reported && reported !== title && (
+              <span className="block truncate text-[11px] text-muted-foreground">Reported: {reported}</span>
+            )}
             <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
               {statusLabel && <span className="font-medium text-foreground">{statusLabel}</span>}
               {total > 0 && <span>{fmtMoney(total)}</span>}
