@@ -1129,7 +1129,10 @@ function totalCostFor(m: Maintenance): number {
 function RepairRow({ m, open, onToggle, onDelete, job }: { m: Maintenance; open: boolean; onToggle: () => void; onDelete: () => void; job?: MechanicJobRow }) {
   const v = vehicleById(m.vehicleId);
   const name = v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId;
-  const issue = m.issueDescription ?? m.serviceType;
+  const title = repairDisplayTitle(m);
+  const reported = repairReportedIssue(m);
+  const hasDiagnosis = !!(m.diagnosisTitle ?? "").trim();
+  const splitLabel = repairSplitLabel(m);
   const statusLabel = m.status ? (REPAIR_STATUS_LABEL[m.status] ?? m.status) : null;
   const total = totalCostFor(m);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -1151,11 +1154,17 @@ function RepairRow({ m, open, onToggle, onDelete, job }: { m: Maintenance; open:
               {m.problemCategory && (
                 <Badge variant="outline" className="text-[10px]">{m.problemCategory}</Badge>
               )}
+              {splitLabel && (
+                <Badge variant="secondary" className="text-[10px]">🔗 {splitLabel}</Badge>
+              )}
               {m.isRentalBlocking && (
                 <Badge variant="destructive" className="text-[10px]">Off road</Badge>
               )}
             </span>
-            <span className="block truncate text-xs text-muted-foreground">{issue}</span>
+            <span className="block truncate text-xs font-medium text-foreground">{title}</span>
+            {hasDiagnosis && reported && reported !== title && (
+              <span className="block truncate text-[11px] text-muted-foreground">Reported: {reported}</span>
+            )}
             <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
               {statusLabel && <span className="font-medium text-foreground">{statusLabel}</span>}
               {total > 0 && <span>{fmtMoney(total)}</span>}
