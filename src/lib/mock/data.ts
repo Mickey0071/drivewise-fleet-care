@@ -225,6 +225,15 @@ export interface Maintenance {
   problemCategory?: string;
   /** Diagnosis notes added by an admin before moving to an open repair. */
   diagnosisNotes?: string;
+  /** Diagnosis text. Once set, this becomes the repair's display title
+   *  everywhere while `issueDescription` is preserved as the reported issue. */
+  diagnosisTitle?: string;
+  /** When this ticket was split from a multi-problem diagnosis, the id of the
+   *  originating repair ticket. Shared by every sibling (incl. the original). */
+  originalIssueId?: string;
+  /** Position within a split set (1-based) and the total number of siblings. */
+  splitIndex?: number;
+  splitTotal?: number;
   /** True when this repair started life as a reported issue. */
   createdFromIssue?: boolean;
   solutions?: RepairSolution[];
