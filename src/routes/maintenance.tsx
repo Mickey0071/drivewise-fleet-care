@@ -491,7 +491,7 @@ function MaintenancePage() {
                       <label className="flex items-center gap-2 pt-1 text-[11px] text-foreground">
                         <Checkbox
                           checked={d.splitEnabled}
-                          onCheckedChange={(c) =>
+                          onCheckedChange={(c: boolean | "indeterminate") =>
                             setDiag(m.id, {
                               splitEnabled: !!c,
                               extraSplits: c && d.extraSplits.length === 0 ? [emptySplit()] : d.extraSplits,
