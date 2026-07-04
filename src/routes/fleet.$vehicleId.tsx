@@ -350,7 +350,15 @@ function VehicleDetail() {
             {openIssues.map(m => (
               <div key={m.id} className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">{m.serviceType}</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-medium">{repairDisplayTitle(m)}</span>
+                    {repairSplitLabel(m) && (
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">🔗 {repairSplitLabel(m)}</span>
+                    )}
+                  </div>
+                  {(m.diagnosisTitle ?? "").trim() && repairReportedIssue(m) && repairReportedIssue(m) !== repairDisplayTitle(m) && (
+                    <div className="mt-0.5 text-xs text-muted-foreground">Reported: {repairReportedIssue(m)}</div>
+                  )}
                   {m.notes && <div className="mt-0.5 whitespace-pre-line text-xs text-muted-foreground">{m.notes}</div>}
                   <div className="mt-0.5 text-xs text-muted-foreground">Opened {fmtDate(m.createdAt?.slice(0, 10))}</div>
                 </div>
