@@ -640,7 +640,7 @@ function MaintenancePage() {
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
                         <div className="truncate text-xs text-muted-foreground">
-                          {m.selectedSolution?.name ?? m.serviceType} · {fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}
+                          {repairDisplayTitle(m)} · {fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
@@ -895,7 +895,7 @@ function MaintenancePage() {
                                 <div className="font-medium">{v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
                                 <div className="text-xs text-muted-foreground">Tag #{v?.plate ?? "—"}</div>
                               </td>
-                              <td className="px-4 py-2">{m.selectedSolution?.name ?? m.serviceType}</td>
+                              <td className="px-4 py-2">{repairDisplayTitle(m)}</td>
                               <td className="px-4 py-2">{m.completedBy || m.vendor || "—"}</td>
                               <td className="px-4 py-2 text-right font-medium">{fmtMoney(effectiveRepairCost(m))}</td>
                               <td className="px-4 py-2">{fmtDate((m.completionDate ?? m.dateCompleted)?.slice(0, 10))}</td>
