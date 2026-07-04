@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2 } from "lucide-react";
 import { vehicleById, fmtMoney, fmtDate, type Maintenance } from "@/lib/mock/data";
-import { effectiveRepairCost } from "@/lib/maintenance-utils";
+import { effectiveRepairCost, repairDisplayTitle, repairReportedIssue, repairSplitLabel } from "@/lib/maintenance-utils";
 
 interface Props {
   open: boolean;
@@ -27,7 +27,9 @@ export function CompletedRepairDetailDialog({ open, onOpenChange, record }: Prop
   const labor = record.laborCost ?? record.selectedSolution?.laborCost ?? 0;
   const total = effectiveRepairCost(record);
   const estimate = record.selectedSolution?.totalCost;
-  const issue = record.issueDescription || record.selectedSolution?.name || record.serviceType;
+  const title = repairDisplayTitle(record);
+  const reported = repairReportedIssue(record);
+  const splitLabel = repairSplitLabel(record);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -47,7 +49,13 @@ export function CompletedRepairDetailDialog({ open, onOpenChange, record }: Prop
               <Badge className="bg-green-600 text-white hover:bg-green-600">✓ Completed</Badge>
             </div>
             <div className="text-xs text-muted-foreground">Tag #{v?.plate ?? "—"}</div>
-            <div className="pt-1"><span className="text-muted-foreground">Issue: </span>{issue}</div>
+            <div className="pt-1"><span className="text-muted-foreground">Repair: </span>{title}</div>
+            {reported && reported !== title && (
+              <div><span className="text-muted-foreground">Reported issue: </span>{reported}</div>
+            )}
+            {splitLabel && (
+              <div className="text-xs text-muted-foreground">🔗 {splitLabel}</div>
+            )}
             <div>
               <span className="text-muted-foreground">Completed: </span>
               {fmtDate((record.completionDate ?? record.dateCompleted)?.slice(0, 10))}
