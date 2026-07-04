@@ -48,6 +48,9 @@ import {
   isScheduleConfigured,
   type ScheduledItem,
   effectiveRepairCost,
+  repairDisplayTitle,
+  repairReportedIssue,
+  repairSplitLabel,
 } from "@/lib/maintenance-utils";
 import type { Maintenance } from "@/lib/mock/data";
 import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
