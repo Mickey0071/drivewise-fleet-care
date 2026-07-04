@@ -446,6 +446,18 @@ function MaintenancePage() {
                         </div>
                       )}
                       <div>
+                        <Label className="text-[11px]">Diagnosis (becomes the ticket title)</Label>
+                        <Textarea
+                          className="mt-1 min-h-[44px] text-xs"
+                          placeholder="What's actually wrong, e.g. Worn front brake pads & warped rotors"
+                          value={d.diagnosis}
+                          onChange={(e) => setDiag(m.id, { diagnosis: e.target.value })}
+                        />
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          Reported issue: {m.issueDescription ?? m.serviceType ?? "—"}
+                        </p>
+                      </div>
+                      <div>
                         <Label className="text-[11px]">Parts needed</Label>
                         <Textarea
                           className="mt-1 min-h-[52px] text-xs"
@@ -474,8 +486,53 @@ function MaintenancePage() {
                       <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs font-medium">
                         <span>Total</span><span>{fmtMoney(total)}</span>
                       </div>
+                      {/* Multiple problems → split into separate repair tickets */}
+                      <label className="flex items-center gap-2 pt-1 text-[11px] text-foreground">
+                        <Checkbox
+                          checked={d.splitEnabled}
+                          onCheckedChange={(c) =>
+                            setDiag(m.id, {
+                              splitEnabled: !!c,
+                              extraSplits: c && d.extraSplits.length === 0 ? [emptySplit()] : d.extraSplits,
+                            })
+                          }
+                        />
+                        Multiple problems — split into separate repair tickets
+                      </label>
+                      {d.splitEnabled && (
+                        <div className="space-y-2 rounded-md border border-dashed border-blue-500/40 bg-blue-500/5 p-2">
+                          <p className="text-[10px] text-muted-foreground">
+                            Each extra repair keeps the same reported issue and gets its own diagnosis, parts &amp; costs.
+                          </p>
+                          {d.extraSplits.map((s, i) => (
+                            <div key={i} className="space-y-1.5 rounded border border-border bg-card p-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-medium text-muted-foreground">Repair {i + 2}</span>
+                                <Button size="sm" variant="ghost" className="h-6 px-1 text-[10px]"
+                                  onClick={() => setDiag(m.id, { extraSplits: d.extraSplits.filter((_, j) => j !== i) })}>
+                                  Remove
+                                </Button>
+                              </div>
+                              <Textarea className="min-h-[36px] text-xs" placeholder="Diagnosis (title)"
+                                value={s.diagnosis} onChange={(e) => setSplit(m.id, i, { diagnosis: e.target.value })} />
+                              <Textarea className="min-h-[36px] text-xs" placeholder="Parts needed"
+                                value={s.partsNeeded} onChange={(e) => setSplit(m.id, i, { partsNeeded: e.target.value })} />
+                              <div className="flex gap-2">
+                                <Input className="h-8 flex-1" type="number" min="0" step="0.01" placeholder="Parts $"
+                                  value={s.partsCost} onChange={(e) => setSplit(m.id, i, { partsCost: e.target.value })} />
+                                <Input className="h-8 flex-1" type="number" min="0" step="0.01" placeholder="Labour $"
+                                  value={s.laborCost} onChange={(e) => setSplit(m.id, i, { laborCost: e.target.value })} />
+                              </div>
+                            </div>
+                          ))}
+                          <Button size="sm" variant="outline" className="w-full text-xs"
+                            onClick={() => setDiag(m.id, { extraSplits: [...d.extraSplits, emptySplit()] })}>
+                            + Add another repair
+                          </Button>
+                        </div>
+                      )}
                             <Button size="sm" className="w-full" onClick={() => handleSaveDiagnosis(m)}>
-                              Save Diagnosis →
+                              {d.splitEnabled && d.extraSplits.length > 0 ? "Save & Split →" : "Save Diagnosis →"}
                             </Button>
                           </div>
                         )}
