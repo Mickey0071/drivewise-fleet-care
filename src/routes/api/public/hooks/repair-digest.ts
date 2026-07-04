@@ -46,7 +46,7 @@ export const Route = createFileRoute("/api/public/hooks/repair-digest")({
 
         const { data: openRepairs, error } = await supabaseAdmin
           .from("maintenance")
-          .select("id, vehicle_id, service_type, issue_description, status")
+          .select("id, vehicle_id, service_type, issue_description, diagnosis_title, status")
           .in("status", ["reported", "diagnosing", "pending_complete", "open", "in_progress"])
           .order("created_at", { ascending: true });
         if (error) {
@@ -76,7 +76,7 @@ export const Route = createFileRoute("/api/public/hooks/repair-digest")({
           .slice(0, 20)
           .map((r) => {
             const veh = vehiclesById.get(r.vehicle_id) || r.vehicle_id;
-            const issue = (r.issue_description || r.service_type || "Repair").toString();
+            const issue = (r.diagnosis_title || r.issue_description || r.service_type || "Repair").toString();
             return `• ${veh} — ${issue}`;
           })
           .join("\n");
