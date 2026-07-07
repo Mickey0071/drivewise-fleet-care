@@ -21,8 +21,20 @@ function daysBetween(fromISO: string, toISO: string): number {
   return Math.max(0, Math.round((b - a) / 86400000));
 }
 
+// ---------- Unicode bold helpers (SMS has no markdown) ----------
+// Sans-serif bold: letters and digits.
+function boldChar(ch: string): string {
+  const c = ch.codePointAt(0)!;
+  if (ch >= "0" && ch <= "9") return String.fromCodePoint(0x1d7ec + (c - 48));
+  if (ch >= "A" && ch <= "Z") return String.fromCodePoint(0x1d5d4 + (c - 65));
+  if (ch >= "a" && ch <= "z") return String.fromCodePoint(0x1d5ee + (c - 97));
+  return ch;
+}
+function bold(s: string): string {
+  return Array.from(s).map(boldChar).join("");
+}
 function money(n: number): string {
-  return `$${Math.round(n)}`;
+  return `$${bold(String(Math.round(n)))}`;
 }
 
 export const Route = createFileRoute("/api/public/hooks/daily-reports")({
@@ -53,39 +65,27 @@ export const Route = createFileRoute("/api/public/hooks/daily-reports")({
 
         const vehicleLabel = (v: any) =>
           v ? `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}`.replace(/\s+/g, " ").trim() : "Vehicle";
+        // 🚗 [Year Make Model] — [Plate]
+        const vehicleHeader = (v: any) => {
+          const name = vehicleLabel(v);
+          const plate = v?.plate ? ` — ${v.plate}` : "";
+          return `🚗 ${name}${plate}`;
+        };
 
-        // ========== REPORT 1: PAST DUE ==========
-        const [{ data: duePayments }, { data: dueViolations }, { data: dueExtensions }] = await Promise.all([
-          supabaseAdmin
-            .from("payments")
-            .select("driver_id, rental_id, amount, due_date, status")
-            .neq("status", "paid")
-            .lt("due_date", today),
-          supabaseAdmin
-            .from("violations")
-            .select("driver_id, vehicle_id, total_amount, date_issued, status, paid_at")
-            .neq("status", "paid")
-            .is("paid_at", null)
-            .lt("date_issued", today),
-          supabaseAdmin
-            .from("extension_requests")
-            .select("rental_id, additional_amount, previous_end_date, new_end_date, status, paid_at")
-            .is("paid_at", null)
-            .lt("previous_end_date", today),
-        ]);
+        // ========== SECTION 1: PAST DUES ==========
+        const { data: duePayments } = await supabaseAdmin
+          .from("payments")
+          .select("driver_id, rental_id, amount, due_date, status")
+          .neq("status", "paid")
+          .lt("due_date", today);
 
-        type PastDueRow = { rentalId: string; name: string; phone: string; amount: number; dueISO: string; vehicle: string };
+        type PastDueRow = { name: string; amount: number; dueISO: string; veh: any };
         const pastDueRows: PastDueRow[] = [];
-        const violationRows: PastDueRow[] = [];
 
         // Only include reservations that are ON RENT (active).
-        // Exclude returned, canceled, pending, and paid reservations.
         const includedStatuses = new Set(["active"]);
         const isEligibleRental = (rental: any) =>
           !!rental && includedStatuses.has((rental.reservation_status ?? "").toLowerCase());
-
-        const vehShort = (v: any) =>
-          v ? `${v.make ?? ""} ${v.model ?? ""}`.replace(/\s+/g, " ").trim() || "—" : "—";
 
         for (const p of duePayments ?? []) {
           const drv = driversById.get(p.driver_id);
@@ -93,131 +93,95 @@ export const Route = createFileRoute("/api/public/hooks/daily-reports")({
           if (!isEligibleRental(rental)) continue;
           const veh = rental ? vehiclesById.get(rental.vehicle_id) : undefined;
           pastDueRows.push({
-            rentalId: p.rental_id ?? "—",
             name: drv?.full_name ?? "Unknown",
-            phone: drv?.phone ?? "N/A",
             amount: Number(p.amount) || 0,
             dueISO: p.due_date,
-            vehicle: vehShort(veh),
-          });
-        }
-        // NOTE: Unpaid extension requests are intentionally excluded from PAST DUE.
-        // They duplicate the rental's payment balance and generate noisy rows.
-        void dueExtensions;
-        // Violations are tracked separately (not tied to reservation status)
-        for (const v of dueViolations ?? []) {
-          const drv = v.driver_id ? driversById.get(v.driver_id) : undefined;
-          const veh = v.vehicle_id ? vehiclesById.get(v.vehicle_id) : undefined;
-          violationRows.push({
-            rentalId: "—",
-            name: drv?.full_name ?? "Unknown",
-            phone: drv?.phone ?? "N/A",
-            amount: Number(v.total_amount) || 0,
-            dueISO: v.date_issued,
-            vehicle: vehShort(veh),
+            veh,
           });
         }
 
-        const pastDueLines = pastDueRows.map((r) => {
+        const pastDueBlocks = pastDueRows.map((r) => {
           const overdue = daysBetween(r.dueISO.slice(0, 10), today);
-          const dayLabel = `${overdue} day${overdue === 1 ? "" : "s"} overdue`;
-          return `${r.rentalId} | ${r.name} | ${r.vehicle} | ${dayLabel} | ${money(r.amount)}`;
-        });
-        const violationLines = violationRows.map((r) => {
-          const overdue = daysBetween(r.dueISO.slice(0, 10), today);
-          const dayLabel = `${overdue} day${overdue === 1 ? "" : "s"} overdue`;
-          return `${r.name} | ${r.vehicle} | ${dayLabel} | ${money(r.amount)}`;
+          const dayLabel = `${overdue} day${overdue === 1 ? "" : "s"}`;
+          return (
+            `${vehicleHeader(r.veh)}\n` +
+            `Renter: ${r.name}\n` +
+            `${bold("Past due")}: ${money(r.amount)} (${dayLabel})`
+          );
         });
         const pastDueTotal = pastDueRows.reduce((s, r) => s + r.amount, 0);
-        const activeRentalCount = (rentals ?? []).filter(
-          (r) => (r.reservation_status ?? "").toLowerCase() === "active"
-        ).length;
-        const pastDueMsg =
-          `CAMAUTO DAILY REPORT - ${dateLabel}\n\n` +
-          `PAST DUE:\n` +
-          (pastDueLines.length ? pastDueLines.join("\n") : "None") +
-          `\n\n` +
-          `VIOLATIONS:\n` +
-          (violationLines.length ? violationLines.join("\n") : "None") +
-          `\n\n` +
-          `FLEET STATUS:\n` +
-          `Active Rentals: ${activeRentalCount}\n` +
-          `Total Overdue: ${money(pastDueTotal)}`;
 
-        // ========== REPORT 2: CAR REPORTS ==========
-        const downVehicleIds = new Set<string>();
-        const carLines: string[] = [];
-
-        // Open maintenance issues
+        // ========== Maintenance: split into ACTIVE REPAIRS vs UNDIAGNOSED ISSUES ==========
         const { data: openMaint } = await supabaseAdmin
           .from("maintenance")
-          .select("vehicle_id, service_type, vendor, next_service_due, date_completed")
-          .is("date_completed", null);
+          .select("vehicle_id, service_type, issue_description, diagnosis_title, status, vendor, next_service_due, date_completed")
+          .is("date_completed", null)
+          .order("created_at", { ascending: true });
 
-        const maintByVehicle = new Map<string, any>();
+        const ACTIVE = new Set(["diagnosing", "pending_complete", "in_progress"]);
+        const UNDIAGNOSED = new Set(["reported", "open"]);
+
+        const activeRepairBlocks: string[] = [];
+        const issueBlocks: string[] = [];
+
         for (const m of openMaint ?? []) {
-          if (!maintByVehicle.has(m.vehicle_id)) maintByVehicle.set(m.vehicle_id, m);
-        }
-
-        // Open-ended (indefinite) active rentals
-        const openEndedByVehicle = new Map<string, any>();
-        for (const r of rentals ?? []) {
-          if (r.reservation_status === "active" && !r.returned_at && !r.end_date) {
-            openEndedByVehicle.set(r.vehicle_id, r);
+          const v = vehiclesById.get(m.vehicle_id);
+          const status = (m.status ?? "").toLowerCase();
+          const header = vehicleHeader(v);
+          if (ACTIVE.has(status)) {
+            const label = (m.diagnosis_title || m.issue_description || m.service_type || "Repair").toString();
+            activeRepairBlocks.push(
+              `${header}\n` +
+                `Repair: ${label}\n` +
+                `Status: ${status === "pending_complete" ? "Awaiting completion" : status === "diagnosing" ? "Diagnosing" : "In progress"}`,
+            );
+          } else if (UNDIAGNOSED.has(status)) {
+            const label = (m.issue_description || m.service_type || "Reported issue").toString();
+            issueBlocks.push(
+              `${header}\n` +
+                `Issue: ${label}\n` +
+                `Status: Awaiting diagnosis`,
+            );
           }
         }
 
-        for (const v of vehicles ?? []) {
-          const label = `${vehicleLabel(v)} (Tag #${v.plate})`;
-          const isDoNotRent = (v.status ?? "").toLowerCase().includes("do_not_rent") ||
-            (v.status ?? "").toLowerCase().includes("down") ||
-            (v.status ?? "").toLowerCase() === "maintenance";
+        // ========== Build the morning report ==========
+        const section = (title: string, blocks: string[], empty: string) =>
+          `${title}\n${blocks.length ? blocks.join("\n\n") : empty}`;
 
-          if (maintByVehicle.has(v.id)) {
-            const m = maintByVehicle.get(v.id);
-            carLines.push(`${label} | ${m.service_type} | ${m.vendor ?? "Pending"} | Est. Return ${fmtDate(m.next_service_due)}`);
-            downVehicleIds.add(v.id);
-          } else if (openEndedByVehicle.has(v.id)) {
-            const r = openEndedByVehicle.get(v.id);
-            const drv = driversById.get(r.driver_id);
-            carLines.push(`${label} | On rent - No return date | Customer: ${drv?.full_name ?? "Unknown"} | Since ${fmtDate(r.start_date)}`);
-            downVehicleIds.add(v.id);
-          } else if (v.has_open_issues || isDoNotRent) {
-            carLines.push(`${label} | Down - ${v.status ?? "Needs attention"}`);
-            downVehicleIds.add(v.id);
-          }
-        }
+        const activeRentalCount = (rentals ?? []).filter(
+          (r) => (r.reservation_status ?? "").toLowerCase() === "active",
+        ).length;
 
-        const totalVehicles = (vehicles ?? []).length;
-        const availableCount = Math.max(0, totalVehicles - downVehicleIds.size);
-        const carMsg =
-          `CAR REPORTS - ${dateLabel}\n\n` +
-          (carLines.length ? carLines.join("\n") + "\n\n" : "No vehicles down.\n\n") +
-          `Total Down: ${downVehicleIds.size} vehicle${downVehicleIds.size === 1 ? "" : "s"}\n` +
-          `Available: ${availableCount} vehicle${availableCount === 1 ? "" : "s"}`;
+        const morningMsg =
+          `CAMAUTO MORNING REPORT — ${dateLabel}\n\n` +
+          section("PAST DUES", pastDueBlocks, "None") +
+          `\n\n` +
+          section("ACTIVE REPAIRS", activeRepairBlocks, "None") +
+          `\n\n` +
+          section("VEHICLE ISSUES (awaiting diagnosis)", issueBlocks, "None") +
+          `\n\n` +
+          `SUMMARY\n` +
+          `Active Rentals: ${bold(String(activeRentalCount))}\n` +
+          `Total Past Due: ${money(pastDueTotal)}`;
 
         // ---------- Send ----------
         const results: Record<string, unknown> = {};
         try {
-          await sendSms(REPORT_RECIPIENT, pastDueMsg, "Management");
-          results.pastDue = "sent";
+          await sendSms(REPORT_RECIPIENT, morningMsg, "Management");
+          results.morning = "sent";
         } catch (e: any) {
-          results.pastDue = `error: ${e?.message ?? String(e)}`;
-        }
-        try {
-          await sendSms(REPORT_RECIPIENT, carMsg, "Management");
-          results.carReports = "sent";
-        } catch (e: any) {
-          results.carReports = `error: ${e?.message ?? String(e)}`;
+          results.morning = `error: ${e?.message ?? String(e)}`;
         }
 
         return Response.json({
           ok: true,
           date: today,
           past_due_count: pastDueRows.length,
-          down_count: downVehicleIds.size,
-          available_count: availableCount,
+          active_repair_count: activeRepairBlocks.length,
+          issue_count: issueBlocks.length,
           results,
+          sample: morningMsg,
         });
       },
     },
