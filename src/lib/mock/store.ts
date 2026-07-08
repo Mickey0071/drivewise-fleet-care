@@ -2828,7 +2828,7 @@ function moveIssueToOpenRepairImpl(id: string) {
 // Used by the Maintenance "Active Repairs" board.
 // ---------------------------------------------------------------------------
 /** [+ Create Repair] — admin opens a repair manually. Phase 1 (reported). */
-export function createManualRepair(vehicleId: string, issueDescription: string, takeOffRental = true, problemCategory?: string) {
+export function createManualRepair(vehicleId: string, issueDescription: string, takeOffRental = true, problemCategory?: string, lineItems?: RepairLineItem[]) {
   const issue = issueDescription.trim();
   const v = vehicles.find(x => x.id === vehicleId);
   const rec: Maintenance = {
@@ -2850,6 +2850,14 @@ export function createManualRepair(vehicleId: string, issueDescription: string, 
     balance: 0,
     createdAt: new Date().toISOString(),
   };
+  if (lineItems && lineItems.length > 0) {
+    rec.lineItems = lineItems.map(it => ({
+      ...it,
+      partsCost: Math.max(0, Number(it.partsCost) || 0),
+      laborCost: Math.max(0, Number(it.laborCost) || 0),
+      status: "open",
+    }));
+  }
   maintenance.push(rec);
   cloudWrite("maintenance:insert", supabase.from("maintenance").insert(toMaintenance(rec)));
   if (v) syncVehicleOpenIssues(v.id);
