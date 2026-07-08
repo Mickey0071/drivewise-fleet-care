@@ -2541,6 +2541,31 @@ export function saveRepairLineItems(id: string, items: RepairLineItem[]) {
 }
 
 /**
+ * Phase 2 → Phase 3 for a multi-item ticket: save all diagnosed line items on
+ * ONE ticket (no split) and move it to Complete, where each item is completed
+ * and logged individually.
+ */
+export function saveRepairDiagnosisLineItems(id: string, items: RepairLineItem[], mileageAtService?: number) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  m.lineItems = items.map(it => ({
+    ...it,
+    partsCost: Math.max(0, Number(it.partsCost) || 0),
+    laborCost: Math.max(0, Number(it.laborCost) || 0),
+    status: "open",
+  }));
+  recomputeTicketFromLineItems(m);
+  if (typeof mileageAtService === "number") m.mileageAtService = Math.max(0, mileageAtService);
+  m.diagnosisTitle = m.lineItems[0]?.title || m.diagnosisTitle;
+  m.diagnosisNotes = m.lineItems.map(it => it.title).join("; ");
+  m.status = "pending_complete";
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
+  return m;
+}
+
+/**
  * Complete a single line item on a multi-item ticket. Logs the item to the
  * vehicle's fleet-card repair history and posts its cost to P&L. When the last
  * open item is completed, the ticket itself is marked complete.
