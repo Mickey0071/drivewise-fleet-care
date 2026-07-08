@@ -271,6 +271,8 @@ export interface Maintenance {
   depositProcessed?: boolean;
   /** When the deposit was processed. */
   depositDate?: string;
+  /** Multiple repair items handled under this single ticket (additive). */
+  lineItems?: RepairLineItem[];
 }
 export type RepairStatus = "reported" | "diagnosing" | "open" | "pending_deposit" | "pending_complete" | "in_progress" | "complete";
 export interface RepairSolution {
@@ -278,6 +280,26 @@ export interface RepairSolution {
   partsCost: number;
   laborCost: number;
   totalCost: number;
+}
+/**
+ * A single repair line item within one maintenance ticket. Lets one ticket
+ * (one car in the shop) carry many individually-priced problems that flow
+ * through diagnosis and are completed one at a time.
+ */
+export interface RepairLineItem {
+  id: string;
+  /** Short title of what's wrong / what to repair. */
+  title: string;
+  problemCategory?: string;
+  /** Parts needed / diagnosis notes for this item. */
+  partsNeeded?: string;
+  partsCost: number;
+  laborCost: number;
+  status: "open" | "complete";
+  completedAt?: string;
+  completedBy?: string;
+  mechanicName?: string;
+  notes?: string;
 }
 export interface Inspection {
   id: string; vehicleId: string; rentalId: string;

@@ -25,6 +25,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
 import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, recordRepairPaymentRaw, completeRepair, reverseRepairToDiagnose, deleteRepair } from "@/lib/mock/store";
+import { saveRepairDiagnosisLineItems, completeRepairLineItem, lineItemTotals } from "@/lib/mock/store";
+import type { RepairLineItem } from "@/lib/mock/data";
 import type { RepairCompletionSummary } from "@/lib/mock/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -72,6 +74,8 @@ function MaintenancePage() {
   const [createIssue, setCreateIssue] = useState("");
   const [createCategory, setCreateCategory] = useState("");
   const [createTakeOffRental, setCreateTakeOffRental] = useState(true);
+  // Additional "what's wrong" items entered alongside the primary issue.
+  const [createExtraItems, setCreateExtraItems] = useState<string[]>([]);
 
   // Which repair line is expanded (one at a time, across all phases)
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -98,12 +102,26 @@ function MaintenancePage() {
     if (!createVehicleId) { toast.error("Select a vehicle"); return; }
     if (!createIssue.trim()) { toast.error("Describe the issue"); return; }
     if (!createCategory) { toast.error("Select a problem category"); return; }
-    createManualRepair(createVehicleId, createIssue, createTakeOffRental, createCategory);
+    const extras = createExtraItems.map(t => t.trim()).filter(Boolean);
+    const lineItems: RepairLineItem[] | undefined =
+      extras.length > 0
+        ? [createIssue.trim(), ...extras].map((title, i) => ({
+            id: `li${Date.now()}_${i}`,
+            title,
+            problemCategory: createCategory,
+            partsCost: 0,
+            laborCost: 0,
+            status: "open" as const,
+          }))
+        : undefined;
+    const summaryIssue = lineItems ? [createIssue.trim(), ...extras].join("; ") : createIssue;
+    createManualRepair(createVehicleId, summaryIssue, createTakeOffRental, createCategory, lineItems);
     setCreateOpen(false);
     setCreateVehicleId("");
     setCreateIssue("");
     setCreateCategory("");
     setCreateTakeOffRental(true);
+    setCreateExtraItems([]);
     toast.success("Repair created — added to Phase 1");
   }
 
@@ -117,6 +135,8 @@ function MaintenancePage() {
     mileage: string;
     splitEnabled: boolean;
     extraSplits: SplitEntry[];
+    /** When true (with multiple problems), keep them as line items on ONE ticket. */
+    oneTicket: boolean;
   };
   const [diagInputs, setDiagInputs] = useState<Record<string, DiagInput>>({});
   const diagFor = (m: Maintenance): DiagInput =>
@@ -128,6 +148,7 @@ function MaintenancePage() {
       mileage: m.mileageAtService ? String(m.mileageAtService) : "",
       splitEnabled: false,
       extraSplits: [],
+      oneTicket: false,
     };
   const setDiag = (id: string, patch: Partial<DiagInput>) =>
     setDiagInputs(prev => ({ ...prev, [id]: { ...diagFor(maintenance.find(x => x.id === id)!), ...prev[id], ...patch } }));
@@ -161,6 +182,21 @@ function MaintenancePage() {
         toast.error("Add details to the extra repair, or turn off split");
         return;
       }
+      if (d.oneTicket) {
+        // Keep all problems as line items on ONE ticket.
+        const items: RepairLineItem[] = [first, ...rest].map((s, i) => ({
+          id: `li${Date.now()}_${i}`,
+          title: s.diagnosis.trim() || `Repair ${i + 1}`,
+          problemCategory: m.problemCategory,
+          partsNeeded: s.partsNeeded.trim() || undefined,
+          partsCost: s.partsCost,
+          laborCost: s.laborCost,
+          status: "open",
+        }));
+        saveRepairDiagnosisLineItems(m.id, items, mileage);
+        toast.success(`${items.length} repair items saved on one ticket — moved to Complete`);
+        return;
+      }
       saveRepairDiagnosis(m.id, { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mileageAtService: mileage, splits: [first, ...rest] });
       toast.success(`Split into ${rest.length + 1} repair tickets — moved to Complete`);
       return;
@@ -172,6 +208,29 @@ function MaintenancePage() {
   // --- Phase 3 (Complete) payment inputs ---
   const [payInputs, setPayInputs] = useState<Record<string, string>>({});
   const [payOpenId, setPayOpenId] = useState<string | null>(null);
+
+  // --- Phase 3 per-item completion (multi-item tickets) ---
+  const [itemDraft, setItemDraft] = useState<Record<string, { partsCost: string; laborCost: string; mechanicName: string; notes: string }>>({});
+  const itemDraftFor = (item: RepairLineItem) =>
+    itemDraft[item.id] ?? {
+      partsCost: item.partsCost ? String(item.partsCost) : "",
+      laborCost: item.laborCost ? String(item.laborCost) : "",
+      mechanicName: "",
+      notes: "",
+    };
+  function handleCompleteItem(m: Maintenance, item: RepairLineItem) {
+    const d = itemDraftFor(item);
+    const res = completeRepairLineItem(m.id, item.id, {
+      partsCost: parseFloat(d.partsCost) || 0,
+      laborCost: parseFloat(d.laborCost) || 0,
+      mechanicName: d.mechanicName.trim() || undefined,
+      notes: d.notes.trim() || undefined,
+      completedBy: adminName,
+    });
+    setItemDraft(prev => { const n = { ...prev }; delete n[item.id]; return n; });
+    if (res?.allComplete) toast.success("✓ All items complete — repair closed & logged to the vehicle");
+    else toast.success("✓ Item completed & logged to the vehicle");
+  }
 
   function handleProcessPayment(m: Maintenance) {
     const amt = parseFloat(payInputs[m.id] ?? "");
@@ -505,13 +564,25 @@ function MaintenancePage() {
                       </label>
                       {d.splitEnabled && (
                         <div className="space-y-2 rounded-md border border-dashed border-blue-500/40 bg-blue-500/5 p-2">
+                          <div className="flex flex-col gap-1 rounded border border-border bg-card p-2 text-[11px]">
+                            <label className="flex items-center gap-2">
+                              <input type="radio" checked={!d.oneTicket} onChange={() => setDiag(m.id, { oneTicket: false })} />
+                              Separate tickets (one per problem)
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input type="radio" checked={d.oneTicket} onChange={() => setDiag(m.id, { oneTicket: true })} />
+                              One ticket — multiple items (complete individually)
+                            </label>
+                          </div>
                           <p className="text-[10px] text-muted-foreground">
-                            Each extra repair keeps the same reported issue and gets its own diagnosis, parts &amp; costs.
+                            {d.oneTicket
+                              ? "All problems stay on this single ticket. Each item is priced and completed individually."
+                              : "Each extra repair keeps the same reported issue and gets its own diagnosis, parts & costs."}
                           </p>
                           {d.extraSplits.map((s, i) => (
                             <div key={i} className="space-y-1.5 rounded border border-border bg-card p-2">
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-medium text-muted-foreground">Repair {i + 2}</span>
+                                <span className="text-[10px] font-medium text-muted-foreground">{d.oneTicket ? `Item ${i + 2}` : `Repair ${i + 2}`}</span>
                                 <Button size="sm" variant="ghost" className="h-6 px-1 text-[10px]"
                                   onClick={() => setDiag(m.id, { extraSplits: d.extraSplits.filter((_, j) => j !== i) })}>
                                   Remove
@@ -531,12 +602,12 @@ function MaintenancePage() {
                           ))}
                           <Button size="sm" variant="outline" className="w-full text-xs"
                             onClick={() => setDiag(m.id, { extraSplits: [...d.extraSplits, emptySplit()] })}>
-                            + Add another repair
+                            {d.oneTicket ? "+ Add another item" : "+ Add another repair"}
                           </Button>
                         </div>
                       )}
                             <Button size="sm" className="w-full" onClick={() => handleSaveDiagnosis(m)}>
-                              {d.splitEnabled && d.extraSplits.length > 0 ? "Save & Split →" : "Save Diagnosis →"}
+                              {d.splitEnabled && d.extraSplits.length > 0 ? (d.oneTicket ? "Save Items →" : "Save & Split →") : "Save Diagnosis →"}
                             </Button>
                           </div>
                         )}
@@ -579,6 +650,60 @@ function MaintenancePage() {
                         <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} job={sentJobByMaint.get(m.id) ?? submittedJobByMaint.get(m.id)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
+                    {m.lineItems && m.lineItems.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs font-medium">
+                          <span>Repair items</span>
+                          <span className="text-muted-foreground">
+                            {m.lineItems.filter(it => it.status === "complete").length} of {m.lineItems.length} done
+                          </span>
+                        </div>
+                        {m.lineItems.map(item => {
+                          const dr = itemDraftFor(item);
+                          return (
+                            <div key={item.id} className={`rounded-md border p-2 ${item.status === "complete" ? "border-green-600/40 bg-green-500/5" : "border-border"}`}>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-medium">{item.title}</span>
+                                {item.status === "complete" ? (
+                                  <span className="flex items-center gap-1 text-[11px] text-green-600">
+                                    <CheckCircle2 className="h-3.5 w-3.5" /> Done
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] text-muted-foreground">{fmtMoney((Number(item.partsCost) || 0) + (Number(item.laborCost) || 0))}</span>
+                                )}
+                              </div>
+                              {item.status === "complete" ? (
+                                <p className="mt-1 text-[10px] text-muted-foreground">
+                                  {fmtMoney((Number(item.partsCost) || 0) + (Number(item.laborCost) || 0))}
+                                  {item.completedAt ? ` · ${new Date(item.completedAt).toLocaleString("en-US")}` : ""}
+                                  {item.mechanicName ? ` · ${item.mechanicName}` : ""}
+                                </p>
+                              ) : (
+                                <div className="mt-2 space-y-1.5">
+                                  <div className="flex gap-2">
+                                    <Input className="h-7 flex-1 text-xs" type="number" min="0" step="0.01" placeholder="Parts $"
+                                      value={dr.partsCost} onChange={(e) => setItemDraft(prev => ({ ...prev, [item.id]: { ...itemDraftFor(item), ...prev[item.id], partsCost: e.target.value } }))} />
+                                    <Input className="h-7 flex-1 text-xs" type="number" min="0" step="0.01" placeholder="Labour $"
+                                      value={dr.laborCost} onChange={(e) => setItemDraft(prev => ({ ...prev, [item.id]: { ...itemDraftFor(item), ...prev[item.id], laborCost: e.target.value } }))} />
+                                  </div>
+                                  <Input className="h-7 text-xs" placeholder="Mechanic (optional)"
+                                    value={dr.mechanicName} onChange={(e) => setItemDraft(prev => ({ ...prev, [item.id]: { ...itemDraftFor(item), ...prev[item.id], mechanicName: e.target.value } }))} />
+                                  <Input className="h-7 text-xs" placeholder="Notes (optional)"
+                                    value={dr.notes} onChange={(e) => setItemDraft(prev => ({ ...prev, [item.id]: { ...itemDraftFor(item), ...prev[item.id], notes: e.target.value } }))} />
+                                  <Button size="sm" className="w-full" onClick={() => handleCompleteItem(m, item)}>
+                                    Mark item complete
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs font-medium">
+                          <span>Ticket total</span><span>{fmtMoney(lineItemTotals(m.lineItems).total)}</span>
+                        </div>
+                      </div>
+                    ) : (
+                    <>
                     {m.diagnosisNotes && (
                       <div className="mt-1 text-xs text-muted-foreground">
                         <span className="font-medium text-foreground">Parts used:</span> {m.diagnosisNotes}
@@ -603,6 +728,8 @@ function MaintenancePage() {
                     <Button size="sm" className="w-full" disabled={balance > 0} onClick={() => handleCompleteRepair(m)}>
                       Complete Repair
                     </Button>
+                    </>
+                    )}
                           </div>
                         )}
                       </li>
@@ -953,6 +1080,7 @@ function MaintenancePage() {
             plate={v?.plate}
             issue={sendForRecord.issueDescription ?? sendForRecord.serviceType ?? ""}
             adminName={adminName}
+            prefillItems={(sendForRecord.lineItems ?? []).filter(it => it.status !== "complete").map(it => it.title)}
             onSent={refreshJobs}
           />
         );
@@ -968,7 +1096,7 @@ function MaintenancePage() {
         onSubmitted={refreshRmCards}
       />
 
-      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateCategory(""); setCreateTakeOffRental(true); } }}>
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateCategory(""); setCreateTakeOffRental(true); setCreateExtraItems([]); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create Repair</DialogTitle>
@@ -989,6 +1117,21 @@ function MaintenancePage() {
               <Label htmlFor="create-issue">Issue</Label>
               <Input id="create-issue" value={createIssue} maxLength={200}
                 onChange={(e) => setCreateIssue(e.target.value)} placeholder="What's wrong?" />
+              {createExtraItems.map((val, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input value={val} maxLength={200} placeholder={`Additional item ${i + 2}`}
+                    onChange={(e) => setCreateExtraItems(prev => prev.map((v, j) => (j === i ? e.target.value : v)))} />
+                  <Button variant="ghost" size="icon" className="shrink-0 text-destructive"
+                    onClick={() => setCreateExtraItems(prev => prev.filter((_, j) => j !== i))}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" className="w-fit"
+                onClick={() => setCreateExtraItems(prev => [...prev, ""])}>
+                <Plus className="mr-1 h-4 w-4" /> Add another item
+              </Button>
+              <p className="text-xs text-muted-foreground">Add every problem on this car under one ticket.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="create-category">Problem category</Label>

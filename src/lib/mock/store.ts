@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { rentals, vehicles, payments, drivers, inspections, maintenance, expenses, vehiclePhotos, insuranceEntries, insuranceChecklist, violations, staff, payrollRuns, repairTypes, serviceTypes, workOrders, type Rental, type RentalExtension, type Driver, type Inspection, type Payment, type Maintenance, type Expense, type VehiclePhoto, type InsuranceEntry, type InsuranceChecklistItem, type Violation, type Staff, type PayrollRun, type RepairType, type ServiceType, type WorkOrder, type RepairSolution } from "./data";
+import type { RepairLineItem } from "./data";
 import { supabase } from "@/integrations/supabase/client";
 import { computeScheduledItems, type ScheduledItem } from "@/lib/maintenance-utils";
 
@@ -687,6 +688,7 @@ const fromMaintenance = (r: any): Maintenance => ({
   depositAmount: r.deposit_amount != null ? Number(r.deposit_amount) : undefined,
   depositProcessed: !!r.deposit_processed,
   depositDate: r.deposit_date ?? undefined,
+  lineItems: Array.isArray(r.line_items) ? (r.line_items as RepairLineItem[]) : undefined,
 });
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
@@ -727,6 +729,7 @@ const toMaintenance = (m: Maintenance) => ({
   deposit_amount: m.depositAmount ?? 0,
   deposit_processed: m.depositProcessed ?? false,
   deposit_date: m.depositDate ?? null,
+  line_items: (m.lineItems ?? []) as any,
 });
 
 // ---- staff ----
@@ -2493,6 +2496,164 @@ export function completeRepair(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Multi-item repair tickets (line items)
+// One ticket (one car in the shop) can carry many individually-priced repair
+// items that are completed one at a time. Each completed item is logged to the
+// vehicle's fleet-card repair history individually and posted to P&L.
+// ---------------------------------------------------------------------------
+
+/** Sum a ticket's line items into {parts, labor, total}. */
+export function lineItemTotals(items: RepairLineItem[] | undefined): { parts: number; labor: number; total: number } {
+  const list = items ?? [];
+  const parts = list.reduce((s, it) => s + (Number(it.partsCost) || 0), 0);
+  const labor = list.reduce((s, it) => s + (Number(it.laborCost) || 0), 0);
+  return { parts, labor, total: parts + labor };
+}
+
+/** Recompute a ticket's parts/labor/cost/balance from its line items. */
+function recomputeTicketFromLineItems(m: Maintenance) {
+  if (!m.lineItems || m.lineItems.length === 0) return;
+  const { parts, labor, total } = lineItemTotals(m.lineItems);
+  m.partsCost = parts;
+  m.laborCost = labor;
+  m.cost = total;
+  m.balance = Math.max(0, total - (m.amountPaid ?? 0));
+}
+
+/** Save/replace the full set of line items on a ticket (diagnosis editor). */
+export function saveRepairLineItems(id: string, items: RepairLineItem[]) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  m.lineItems = items.map(it => ({
+    ...it,
+    partsCost: Math.max(0, Number(it.partsCost) || 0),
+    laborCost: Math.max(0, Number(it.laborCost) || 0),
+    status: it.status === "complete" ? "complete" : "open",
+  }));
+  recomputeTicketFromLineItems(m);
+  // Keep the ticket's display title in sync with the first item when unset.
+  if (!m.diagnosisTitle && m.lineItems.length > 0) m.diagnosisTitle = m.lineItems[0].title;
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
+  return m;
+}
+
+/**
+ * Phase 2 → Phase 3 for a multi-item ticket: save all diagnosed line items on
+ * ONE ticket (no split) and move it to Complete, where each item is completed
+ * and logged individually.
+ */
+export function saveRepairDiagnosisLineItems(id: string, items: RepairLineItem[], mileageAtService?: number) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m) return;
+  m.lineItems = items.map(it => ({
+    ...it,
+    partsCost: Math.max(0, Number(it.partsCost) || 0),
+    laborCost: Math.max(0, Number(it.laborCost) || 0),
+    status: "open",
+  }));
+  recomputeTicketFromLineItems(m);
+  if (typeof mileageAtService === "number") m.mileageAtService = Math.max(0, mileageAtService);
+  m.diagnosisTitle = m.lineItems[0]?.title || m.diagnosisTitle;
+  m.diagnosisNotes = m.lineItems.map(it => it.title).join("; ");
+  m.status = "pending_complete";
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
+  return m;
+}
+
+/**
+ * Complete a single line item on a multi-item ticket. Logs the item to the
+ * vehicle's fleet-card repair history and posts its cost to P&L. When the last
+ * open item is completed, the ticket itself is marked complete.
+ */
+export function completeRepairLineItem(
+  ticketId: string,
+  itemId: string,
+  opts?: { partsCost?: number; laborCost?: number; mechanicName?: string; notes?: string; completedBy?: string },
+): { allComplete: boolean } | undefined {
+  const m = maintenance.find(x => x.id === ticketId);
+  if (!m || !m.lineItems) return;
+  const item = m.lineItems.find(x => x.id === itemId);
+  if (!item || item.status === "complete") return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const parts = Math.max(0, opts?.partsCost ?? item.partsCost ?? 0);
+  const labor = Math.max(0, opts?.laborCost ?? item.laborCost ?? 0);
+  const total = parts + labor;
+  const completedBy = opts?.completedBy?.trim() || "Admin";
+  const mechanicName = opts?.mechanicName?.trim() || m.mechanicName || undefined;
+
+  item.partsCost = parts;
+  item.laborCost = labor;
+  item.status = "complete";
+  item.completedAt = new Date().toISOString();
+  item.completedBy = completedBy;
+  item.mechanicName = mechanicName;
+  if (opts?.notes?.trim()) item.notes = opts.notes.trim();
+
+  recomputeTicketFromLineItems(m);
+  m.amountPaid = lineItemTotals(m.lineItems.filter(x => x.status === "complete")).total;
+  m.balance = Math.max(0, (m.cost ?? 0) - m.amountPaid);
+
+  // Log this item individually to the vehicle's fleet-card repair history.
+  cloudWrite(
+    "repair_history:insert",
+    supabase.from("repair_history").insert({
+      vehicle_id: m.vehicleId,
+      maintenance_id: m.id,
+      repair_date: today,
+      issue: item.title,
+      parts: item.partsNeeded ?? null,
+      parts_cost: parts,
+      labor_cost: labor,
+      total_cost: total,
+      mechanic_name: mechanicName ?? null,
+      completed_by: completedBy,
+      notes: item.notes ?? null,
+    } as never),
+  );
+  cloudWrite(
+    "repair_scorecard:insert",
+    supabase.from("repair_scorecard").insert({
+      vehicle_id: m.vehicleId,
+      maintenance_id: m.id,
+      repair_date: today,
+      cost: total,
+      issue_category: item.problemCategory || "general",
+      days_in_repair: 0,
+    } as never),
+  );
+
+  // Post this item's cost to P&L.
+  if (total > 0) {
+    if (parts > 0 && labor > 0) {
+      addExpense({ category: "Parts", amount: parts, date: today, vehicleId: m.vehicleId, maintenanceId: m.id, vendor: mechanicName, notes: `Repair ${m.id} — ${item.title} (parts)` });
+      addExpense({ category: "Labour", amount: labor, date: today, vehicleId: m.vehicleId, maintenanceId: m.id, vendor: mechanicName, notes: `Repair ${m.id} — ${item.title} (labour)` });
+    } else {
+      addExpense({ category: "Repair & Maintenance", amount: total, date: today, vehicleId: m.vehicleId, maintenanceId: m.id, vendor: mechanicName, notes: `Repair ${m.id} — ${item.title}` });
+    }
+  }
+
+  const allComplete = m.lineItems.every(x => x.status === "complete");
+  if (allComplete) {
+    m.status = "complete";
+    m.dateCompleted = today;
+    m.completionDate = new Date().toISOString();
+    m.completedBy = completedBy;
+    if (mechanicName) m.mechanicName = mechanicName;
+    m.balance = 0;
+  }
+
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", ticketId));
+  syncVehicleOpenIssues(m.vehicleId);
+  emit();
+  return { allComplete };
+}
+
 /** Toggle whether an open repair blocks the vehicle from new bookings. */
 export function setRepairRentalBlocking(id: string, blocking: boolean) {
   const m = maintenance.find(x => x.id === id);
@@ -2692,7 +2853,7 @@ function moveIssueToOpenRepairImpl(id: string) {
 // Used by the Maintenance "Active Repairs" board.
 // ---------------------------------------------------------------------------
 /** [+ Create Repair] — admin opens a repair manually. Phase 1 (reported). */
-export function createManualRepair(vehicleId: string, issueDescription: string, takeOffRental = true, problemCategory?: string) {
+export function createManualRepair(vehicleId: string, issueDescription: string, takeOffRental = true, problemCategory?: string, lineItems?: RepairLineItem[]) {
   const issue = issueDescription.trim();
   const v = vehicles.find(x => x.id === vehicleId);
   const rec: Maintenance = {
@@ -2714,6 +2875,14 @@ export function createManualRepair(vehicleId: string, issueDescription: string, 
     balance: 0,
     createdAt: new Date().toISOString(),
   };
+  if (lineItems && lineItems.length > 0) {
+    rec.lineItems = lineItems.map(it => ({
+      ...it,
+      partsCost: Math.max(0, Number(it.partsCost) || 0),
+      laborCost: Math.max(0, Number(it.laborCost) || 0),
+      status: "open",
+    }));
+  }
   maintenance.push(rec);
   cloudWrite("maintenance:insert", supabase.from("maintenance").insert(toMaintenance(rec)));
   if (v) syncVehicleOpenIssues(v.id);

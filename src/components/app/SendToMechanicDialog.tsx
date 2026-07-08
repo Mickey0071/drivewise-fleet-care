@@ -69,6 +69,7 @@ export function SendToMechanicDialog({
   plate,
   issue,
   adminName,
+  prefillItems,
   onSent,
 }: {
   open: boolean;
@@ -79,6 +80,7 @@ export function SendToMechanicDialog({
   plate?: string;
   issue: string;
   adminName?: string;
+  prefillItems?: string[];
   onSent: () => void;
 }) {
   const sendFn = useServerFn(createMechanicJob);
@@ -101,6 +103,16 @@ export function SendToMechanicDialog({
       .select("id, name, phone, service_type")
       .order("name", { ascending: true })
       .then(({ data }) => setVendors((data ?? []) as VendorOption[]));
+  }, [open]);
+
+  // Pre-seed the checklist from the ticket's repair line items when opened.
+  useEffect(() => {
+    if (!open) return;
+    const items = (prefillItems ?? []).map(s => s.trim()).filter(Boolean);
+    if (items.length > 0) {
+      setIncludeChecklist(true);
+      setCustomItems(items.map(label => newItem(label)));
+    }
   }, [open]);
 
   function pickVendor(value: string) {
