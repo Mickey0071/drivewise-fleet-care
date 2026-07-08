@@ -1986,6 +1986,7 @@ function NewViolationDialog({
     setSelectedRentalId("");
     setManualOverride(false);
     setManualQuery("");
+    setSelectedVehicleId("");
   };
   const analyzeDataUrl = async (dataUrl: string) => {
     setThumbnail(dataUrl);
