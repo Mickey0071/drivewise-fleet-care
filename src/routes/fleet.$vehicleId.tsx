@@ -651,7 +651,8 @@ function VehicleDetail() {
                 const labor = m.laborCost ?? m.selectedSolution?.laborCost ?? 0;
                 const total = effectiveRepairCost(m);
                 return (
-                  <div key={m.id} className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
+                  <div key={m.id} className="rounded-md border border-border bg-card px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <div className="text-sm font-medium truncate">{issue}</div>
                       {repairSplitLabel(m) && (
