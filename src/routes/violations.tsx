@@ -2338,7 +2338,15 @@ function NewViolationDialog({
                 </div>
                 <div>
                   <Label>Violation Date</Label>
-                  <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                  <Input
+                    type="date"
+                    value={date}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setDate(newDate);
+                      if (selectedVehicleId) void doVehicleLookup(selectedVehicleId, newDate);
+                    }}
+                  />
                 </div>
               </div>
 
