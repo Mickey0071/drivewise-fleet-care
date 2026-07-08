@@ -729,6 +729,7 @@ const toMaintenance = (m: Maintenance) => ({
   deposit_amount: m.depositAmount ?? 0,
   deposit_processed: m.depositProcessed ?? false,
   deposit_date: m.depositDate ?? null,
+  line_items: (m.lineItems ?? []) as any,
 });
 
 // ---- staff ----
