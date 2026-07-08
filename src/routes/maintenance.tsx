@@ -182,6 +182,21 @@ function MaintenancePage() {
         toast.error("Add details to the extra repair, or turn off split");
         return;
       }
+      if (d.oneTicket) {
+        // Keep all problems as line items on ONE ticket.
+        const items: RepairLineItem[] = [first, ...rest].map((s, i) => ({
+          id: `li${Date.now()}_${i}`,
+          title: s.diagnosis.trim() || `Repair ${i + 1}`,
+          problemCategory: m.problemCategory,
+          partsNeeded: s.partsNeeded.trim() || undefined,
+          partsCost: s.partsCost,
+          laborCost: s.laborCost,
+          status: "open",
+        }));
+        saveRepairDiagnosisLineItems(m.id, items, mileage);
+        toast.success(`${items.length} repair items saved on one ticket — moved to Complete`);
+        return;
+      }
       saveRepairDiagnosis(m.id, { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mileageAtService: mileage, splits: [first, ...rest] });
       toast.success(`Split into ${rest.length + 1} repair tickets — moved to Complete`);
       return;
