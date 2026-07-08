@@ -1,56 +1,39 @@
-# Master Fix: One Unified Financial Engine
+## Goal
 
-## The problem (confirmed in code)
-Each screen computes vehicle money its own way, so numbers disagree:
+Two things, per your instructions:
+1. **Clean up Lakeisha's double bill** (rental R-593) and **fix the root cause** so extensions stop leaving a duplicate weekly charge.
+2. **Stop all automatic card charges** — a card is only charged when a **Charge Card** button is pushed (by you) or when the renter pays a link themselves. No silent auto-pull out of anyone's account.
 
-| Screen | Expenses formula today |
-|---|---|
-| Fleet card (`fleet.tsx`) | operational `expenses` rows only — no repairs, no violations, and double-counts auto-posted repair rows |
-| Vehicle Analytics tab (`fleet.$vehicleId.tsx`) | all `expenses` + violations — but the "Total spent" tile on the *same page* uses ops + completed repairs (no violations) |
-| P&L report (`pnl.tsx`) | ops (excl. auto-posted) + completed repairs, no violations, date-filtered |
+## What's actually happening
 
-Income is more consistent (paid payments on the vehicle's rentals) but each screen re-derives it.
+**The double bill (Lakeisha / R-593):**
+- At signing, the system pre-creates upcoming weekly placeholder charges marked "late" (e.g. `PM-R-593-20260706`, due 07-06).
+- When an extension is created via the admin extension link, it **pre-applies** the extension: inserts its own `EXTPAY-…` charge for the same 07-06→07-13 week, advances the end date, and logs it.
+- The extension flow (and the webhook's "pre-applied" reconcile branch) **never removes the overlapping weekly placeholder**. So the week ends up with two charges — the paid `EXTPAY` and the leftover unpaid `PM-R-593-20260706` "late" row. That leftover is the phantom duplicate.
 
-## The fix: `getVehicleFinancials(vehicleId)`
+The webhook already has a `reconcileScheduledDuplicate()` helper that deletes an overlapping unpaid placeholder, but it is skipped on the pre-applied extension path, which is the path these extensions use.
 
-New file `src/lib/vehicle-financials.ts` — the single source of truth. One pure function, called by every screen and report. Because it derives everything live from the existing records, it is automatically retroactive (no data migration needed — recalculation happens on every render across all history).
+**The auto-pay:**
+- `src/routes/api/public/hooks/auto-extension-links.ts` is a cron job that, in addition to texting/emailing the extension link, **charges the saved card off-session automatically** (`off_session: true, confirm: true`). This is the only unattended, no-button charge in the app.
+- All other off-session charges are behind explicit buttons: `chargeCardOnFile` (the "Charge Card" button on the reservation card) and `chargeViolation` (admin violation action). Renter link payments are the renter pressing pay. Those all stay.
 
-### Data sources (client store, hydrated from the backend)
-- **Income** → `payments` table: paid payments (`status === "paid"`) on any rental whose `vehicleId` matches, excluding `kind === "credit"` (money-on-file, not collected revenue). Includes rent + violation payments.
-- **Expenses** — combined from all cost tables linked to the vehicle:
-  - `expenses` table (manual: tow, fuel, cleaning, parts, labour), **excluding auto-posted repair rows** (`isAutoPostedRepairRow`) to avoid double-counting.
-  - `maintenance` table: completed repairs/service, valued with `effectiveRepairCost` (`cost`, falling back to parts+labour).
-  - `violations` table: `amount` per row (tickets / PPA / impound).
+## Changes
 
-### Returned shape
-```text
-{
-  vehicleId,
-  totalIncome,                 // sum of income line items
-  totalExpenses,               // sum of expense line items
-  netPnl,                      // totalIncome - totalExpenses
-  roi,                         // totalExpenses>0 ? netPnl/totalExpenses*100 : null
-  incomeLineItems:  [{ date, renterName, amount, method, rentalId }],
-  expenseLineItems: [{ date, category, description, amount, source }],
-  // source ∈ "manual" | "repair" | "maintenance" | "violation"
-}
-```
-Guarantee: `sum(expenseLineItems.amount) === totalExpenses` and `sum(incomeLineItems.amount) === totalIncome`, by construction.
+### 1. Data cleanup (one-time)
+- Delete the leftover unpaid duplicate `PM-R-593-20260706` (status "late", no Stripe charge) on rental R-593. The real paid extension charge (`EXTPAY-…`) stays.
+- Scan for any other rentals with the same pattern (an unpaid "late"/"missed" placeholder that overlaps a paid extension for the same period and amount) and clear those too, so this cleanup isn't just Lakeisha.
 
-An optional `{ from, to }` date filter is supported for the P&L report's date range; when omitted it returns all-time (used by fleet card, vehicle tab, expense tab).
+### 2. Root-cause fix — extensions clear the overlapping weekly placeholder
+- In `src/lib/extension-link.functions.ts` (`createExtensionLink`): after inserting the `EXTPAY` charge and advancing the end date, delete any overlapping **unpaid** scheduled placeholder (status "late"/"missed", no Stripe charge, same amount, due date within the covered period). Same rule the webhook helper already uses.
+- In `src/routes/api/public/payments/webhook.ts`: in the **pre-applied extension** branch (where it reconciles `applied_payment_id`/`rental_extension_id` and returns early), also call `reconcileScheduledDuplicate(...)` before returning, so a link-paid pre-applied extension clears the overlap too.
 
-## Screens/reports rewired to call it (no screen keeps its own math)
-- **A. Fleet card** (`fleet.tsx`) — Income / Expenses / Net from the engine.
-- **B. Vehicle Analytics/P&L tab** (`fleet.$vehicleId.tsx`) — summary cards + itemized income list + flat expense line-item list all from the engine; the "Total spent" tile uses the same `totalExpenses`.
-- **C. Vehicle Expenses tab** — total = engine `totalExpenses`; list = engine `expenseLineItems` (manual + repairs + violations), replacing the ops-only list.
-- **D. Global P&L report** (`pnl.tsx`) — per-vehicle rows and fleet totals = sum of engine results; category subtotals derived from `expenseLineItems`.
-- **E. Printable reports** (`monthly-vehicle-reports.tsx` and vehicle PDF export) — pull the same engine output.
+### 3. Turn off automatic charging
+- In `src/routes/api/public/hooks/auto-extension-links.ts`: remove the off-session auto-charge block (the `stripe.paymentIntents.create({ off_session: true, confirm: true })` path and the "auto-renewed" success handling). The cron will still send the extension link/reminder so the renter can sign and pay themselves; it will no longer pull money on its own.
+- Leave the explicit button paths untouched: `chargeCardOnFile` ("Charge Card" button), `chargeViolation` (admin action), and renter-initiated link/checkout payments.
 
-## Explicitly NOT touched
-Payment collection, reservation logic, and the balance engine (`rentalCanonicalOwed`, `rentalTimeCharge`, `rentalPaymentsReceived`, etc.) are untouched. This is a reporting/aggregation layer only.
-
-## Step 4 — Validation
-After wiring, I'll output a side-by-side for **V-116 (2015 Nissan Altima Bro, B66WUV)** showing Income, Expenses, Net P&L, ROI identical across the fleet card, Analytics tab, Expenses tab total, and the P&L report row.
-
-## One decision to confirm
-For **income**, the spec says "all payments collected (status = paid)." I plan to include rent + violation payments and exclude only `credit` (money-on-file). If you'd rather income mean rent-only (exclude violation payments too), tell me and I'll scope it that way. Otherwise I proceed as above.
+## Technical notes
+- Placeholder cleanup only ever deletes rows with `stripe_charge_id IS NULL` and `paid_date IS NULL`, so no real/paid payment is ever removed.
+- No schema changes. Data cleanup runs as a data update; code changes are in the three files above.
+- After the change, extensions produce exactly one charge line per period, and cards are charged only on an explicit button press or a renter-completed payment link.
+</content>
+<parameter name="summary">Clean up Lakeisha's duplicate charge + fix extensions leaving overlapping weekly placeholders, and disable the automatic off-session card charge so cards are only charged via an explicit Charge Card button or renter-paid link.
