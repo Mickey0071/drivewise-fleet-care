@@ -564,6 +564,7 @@ export interface RentalOption {
   reservation_status: string | null;
   source?: "live" | "migrated";
   agreement_on_file?: boolean;
+  agreement_pdf_url?: string | null;
   driver_phone?: string | null;
   driver_email?: string | null;
   /** Plate was not stored on the legacy row; inferred from the fleet by vehicle/year. */
