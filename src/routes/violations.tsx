@@ -1930,12 +1930,20 @@ function NewViolationDialog({
   const create = useServerFn(createViolation);
   const analyze = useServerFn(analyzeViolationPhoto);
   const listRentals = useServerFn(listRentalsForViolation);
+  const lookupByVehicle = useServerFn(lookupRentalByVehicle);
+  const listFleet = useServerFn(listFleetVehicles);
 
   const { data: rentalOptions = [] } = useQuery({
     queryKey: ["rentals-for-violation"],
     queryFn: () => listRentals(),
     enabled: open,
   });
+  const { data: fleetVehicles = [] } = useQuery({
+    queryKey: ["fleet-vehicles-for-violation"],
+    queryFn: () => listFleet(),
+    enabled: open,
+  });
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
   const [selectedRentalId, setSelectedRentalId] = useState<string>("");
   const [manualOverride, setManualOverride] = useState(false);
   const [manualQuery, setManualQuery] = useState("");
