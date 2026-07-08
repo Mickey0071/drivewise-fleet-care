@@ -42,6 +42,7 @@ import {
   type ViolationRow,
 } from "@/lib/violations.functions";
 import { listRentalsForViolation } from "@/lib/violations.functions";
+import { lookupRentalByVehicle, listFleetVehicles } from "@/lib/violations.functions";
 import {
   changeViolationStatus,
   listViolationHistory,
