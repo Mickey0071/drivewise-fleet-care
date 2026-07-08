@@ -16,7 +16,10 @@ import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2, ChevronDown, Download } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2, ChevronDown, Download, CheckCircle2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { listCompletedTasksForVehicle } from "@/lib/runner-tasks-admin.functions";
+import { taskTypeLabel } from "@/lib/task-types";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
@@ -432,6 +435,7 @@ function VehicleDetail() {
           <TabsTrigger value="rm">RM History</TabsTrigger>
           <TabsTrigger value="renters">Renter History ({uniqueRenters.length})</TabsTrigger>
           <TabsTrigger value="other">Violations &amp; Inspections</TabsTrigger>
+          <TabsTrigger value="tasks">Completed Tasks</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
         </TabsList>
 
@@ -735,6 +739,10 @@ function VehicleDetail() {
         </TabsContent>
         <TabsContent value="notes" className="mt-4">
           <VehicleNotesTab vehicleId={v.id} notes={v.notes} />
+        </TabsContent>
+
+        <TabsContent value="tasks" className="mt-4">
+          <CompletedTasksTab vehicleId={v.id} />
         </TabsContent>
       </Tabs>
       <NewReservationDialog
