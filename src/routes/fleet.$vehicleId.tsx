@@ -828,6 +828,63 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return <Card><CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader><CardContent className="space-y-2">{children}</CardContent></Card>;
 }
 
+function CompletedTasksTab({ vehicleId }: { vehicleId: string }) {
+  const fetchTasks = useServerFn(listCompletedTasksForVehicle);
+  const { data: tasks = [], isLoading } = useQuery({
+    queryKey: ["vehicle-completed-tasks", vehicleId],
+    queryFn: () => fetchTasks({ data: { vehicleId } }),
+  });
+
+  if (isLoading) {
+    return <div className="py-12 text-center text-muted-foreground">Loading tasks…</div>;
+  }
+  if (tasks.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
+          <ClipboardList className="h-8 w-8" />
+          <div>No completed tasks for this vehicle yet.</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">Completed Tasks ({tasks.length})</CardTitle></CardHeader>
+      <CardContent>
+        <ol className="relative space-y-5 border-l border-border pl-6">
+          {tasks.map((t) => {
+            const when = t.completedAt ?? t.submittedAt;
+            return (
+              <li key={t.id} className="relative">
+                <span className="absolute -left-[31px] flex h-5 w-5 items-center justify-center rounded-full bg-success/15 text-success">
+                  <CheckCircle2 className="h-4 w-4" />
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{t.title}</span>
+                  <Badge variant="outline">{taskTypeLabel(t.type)}</Badge>
+                </div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {when ? new Date(when).toLocaleString("en-US") : "—"}
+                  {t.runnerName ? ` · by ${t.runnerName}` : ""}
+                  {t.location ? ` · ${t.location}` : ""}
+                </div>
+                {t.runnerNotes && (
+                  <div className="mt-1 whitespace-pre-wrap text-sm">{t.runnerNotes}</div>
+                )}
+                {t.photoCount > 0 && (
+                  <div className="mt-1 text-xs text-muted-foreground">{t.photoCount} photo{t.photoCount === 1 ? "" : "s"}</div>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </CardContent>
+    </Card>
+  );
+}
+
 function VehicleNotesTab({ vehicleId, notes }: { vehicleId: string; notes?: string }) {
   const [value, setValue] = useState(notes ?? "");
   useEffect(() => { setValue(notes ?? ""); }, [vehicleId, notes]);
