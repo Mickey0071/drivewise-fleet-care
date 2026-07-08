@@ -16,7 +16,10 @@ import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2, ChevronDown, Download } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2, ChevronDown, Download, CheckCircle2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { listCompletedTasksForVehicle } from "@/lib/runner-tasks-admin.functions";
+import { taskTypeLabel } from "@/lib/task-types";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
@@ -432,6 +435,7 @@ function VehicleDetail() {
           <TabsTrigger value="rm">RM History</TabsTrigger>
           <TabsTrigger value="renters">Renter History ({uniqueRenters.length})</TabsTrigger>
           <TabsTrigger value="other">Violations &amp; Inspections</TabsTrigger>
+          <TabsTrigger value="tasks">Completed Tasks</TabsTrigger>
           <TabsTrigger value="notes">Notes</TabsTrigger>
         </TabsList>
 
@@ -736,6 +740,10 @@ function VehicleDetail() {
         <TabsContent value="notes" className="mt-4">
           <VehicleNotesTab vehicleId={v.id} notes={v.notes} />
         </TabsContent>
+
+        <TabsContent value="tasks" className="mt-4">
+          <CompletedTasksTab vehicleId={v.id} />
+        </TabsContent>
       </Tabs>
       <NewReservationDialog
         open={reserveOpen}
@@ -818,6 +826,63 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <Card><CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader><CardContent className="space-y-2">{children}</CardContent></Card>;
+}
+
+function CompletedTasksTab({ vehicleId }: { vehicleId: string }) {
+  const fetchTasks = useServerFn(listCompletedTasksForVehicle);
+  const { data: tasks = [], isLoading } = useQuery({
+    queryKey: ["vehicle-completed-tasks", vehicleId],
+    queryFn: () => fetchTasks({ data: { vehicleId } }),
+  });
+
+  if (isLoading) {
+    return <div className="py-12 text-center text-muted-foreground">Loading tasks…</div>;
+  }
+  if (tasks.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-2 py-12 text-center text-muted-foreground">
+          <ClipboardList className="h-8 w-8" />
+          <div>No completed tasks for this vehicle yet.</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">Completed Tasks ({tasks.length})</CardTitle></CardHeader>
+      <CardContent>
+        <ol className="relative space-y-5 border-l border-border pl-6">
+          {tasks.map((t) => {
+            const when = t.completedAt ?? t.submittedAt;
+            return (
+              <li key={t.id} className="relative">
+                <span className="absolute -left-[31px] flex h-5 w-5 items-center justify-center rounded-full bg-success/15 text-success">
+                  <CheckCircle2 className="h-4 w-4" />
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{t.title}</span>
+                  <Badge variant="outline">{taskTypeLabel(t.type)}</Badge>
+                </div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {when ? new Date(when).toLocaleString("en-US") : "—"}
+                  {t.runnerName ? ` · by ${t.runnerName}` : ""}
+                  {t.location ? ` · ${t.location}` : ""}
+                </div>
+                {t.runnerNotes && (
+                  <div className="mt-1 whitespace-pre-wrap text-sm">{t.runnerNotes}</div>
+                )}
+                {t.photoCount > 0 && (
+                  <div className="mt-1 text-xs text-muted-foreground">{t.photoCount} photo{t.photoCount === 1 ? "" : "s"}</div>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </CardContent>
+    </Card>
+  );
 }
 
 function VehicleNotesTab({ vehicleId, notes }: { vehicleId: string; notes?: string }) {

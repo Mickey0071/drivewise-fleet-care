@@ -384,3 +384,50 @@ export const getRunnerHistory = createServerFn({ method: "GET" })
 
     return Array.from(groups.values()).sort((a, b) => b.totalTasks - a.totalTasks);
   });
+export interface CompletedVehicleTask {
+  id: string;
+  title: string;
+  type: string;
+  status: string;
+  runnerName: string | null;
+  runnerPhone: string | null;
+  location: string | null;
+  completedAt: string | null;
+  submittedAt: string | null;
+  runnerNotes: string | null;
+  photoCount: number;
+}
+
+/** List completed tasks for a single vehicle, newest first. */
+export const listCompletedTasksForVehicle = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { vehicleId: string }) => {
+    if (!d?.vehicleId) throw new Error("vehicleId is required");
+    return d;
+  })
+  .handler(async ({ data, context }): Promise<CompletedVehicleTask[]> => {
+    const { supabase } = context;
+    const { data: rows, error } = await supabase
+      .from("runner_tasks")
+      .select(
+        "id, title, type, status, runner_name, runner_phone, location, completed_at, submitted_at, runner_notes, photo_urls",
+      )
+      .eq("vehicle_id", data.vehicleId)
+      .in("status", ["complete", "approved"])
+      .order("completed_at", { ascending: false, nullsFirst: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((row: any) => ({
+      id: row.id,
+      title: row.title ?? "Task",
+      type: row.type ?? "custom",
+      status: row.status ?? "complete",
+      runnerName: row.runner_name ?? null,
+      runnerPhone: row.runner_phone ?? null,
+      location: row.location ?? null,
+      completedAt: row.completed_at ?? null,
+      submittedAt: row.submitted_at ?? null,
+      runnerNotes: row.runner_notes ?? null,
+      photoCount: Array.isArray(row.photo_urls) ? row.photo_urls.length : 0,
+    }));
+  });
