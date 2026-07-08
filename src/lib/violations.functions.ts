@@ -290,6 +290,28 @@ export const lookupRentalByPlate = createServerFn({ method: "POST" })
     };
   });
 
+export interface FleetVehicleOption {
+  id: string;
+  plate: string | null;
+  label: string;
+}
+
+/** Full fleet list for the violation vehicle-selector dropdown. */
+export const listFleetVehicles = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async (): Promise<FleetVehicleOption[]> => {
+    const { data, error } = await supabaseAdmin
+      .from("vehicles")
+      .select("id, plate, make, model, year")
+      .order("make", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((v) => ({
+      id: v.id,
+      plate: v.plate ?? null,
+      label: `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}${v.plate ? ` (${v.plate})` : ""}`.trim(),
+    }));
+  });
+
 /**
  * Match a rental by explicit vehicle selection + violation date. Mirrors
  * `lookupRentalByPlate` but keyed on `vehicle_id` (chosen from the fleet
