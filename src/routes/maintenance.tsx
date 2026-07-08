@@ -209,6 +209,29 @@ function MaintenancePage() {
   const [payInputs, setPayInputs] = useState<Record<string, string>>({});
   const [payOpenId, setPayOpenId] = useState<string | null>(null);
 
+  // --- Phase 3 per-item completion (multi-item tickets) ---
+  const [itemDraft, setItemDraft] = useState<Record<string, { partsCost: string; laborCost: string; mechanicName: string; notes: string }>>({});
+  const itemDraftFor = (item: RepairLineItem) =>
+    itemDraft[item.id] ?? {
+      partsCost: item.partsCost ? String(item.partsCost) : "",
+      laborCost: item.laborCost ? String(item.laborCost) : "",
+      mechanicName: "",
+      notes: "",
+    };
+  function handleCompleteItem(m: Maintenance, item: RepairLineItem) {
+    const d = itemDraftFor(item);
+    const res = completeRepairLineItem(m.id, item.id, {
+      partsCost: parseFloat(d.partsCost) || 0,
+      laborCost: parseFloat(d.laborCost) || 0,
+      mechanicName: d.mechanicName.trim() || undefined,
+      notes: d.notes.trim() || undefined,
+      completedBy: adminName,
+    });
+    setItemDraft(prev => { const n = { ...prev }; delete n[item.id]; return n; });
+    if (res?.allComplete) toast.success("✓ All items complete — repair closed & logged to the vehicle");
+    else toast.success("✓ Item completed & logged to the vehicle");
+  }
+
   function handleProcessPayment(m: Maintenance) {
     const amt = parseFloat(payInputs[m.id] ?? "");
     if (!(amt > 0)) { toast.error("Enter a payment amount"); return; }
