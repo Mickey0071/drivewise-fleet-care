@@ -687,6 +687,7 @@ const fromMaintenance = (r: any): Maintenance => ({
   depositAmount: r.deposit_amount != null ? Number(r.deposit_amount) : undefined,
   depositProcessed: !!r.deposit_processed,
   depositDate: r.deposit_date ?? undefined,
+  lineItems: Array.isArray(r.line_items) ? (r.line_items as RepairLineItem[]) : undefined,
 });
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
