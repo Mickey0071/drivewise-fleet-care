@@ -685,6 +685,7 @@ function VehicleDetail() {
                       ))}
                     </div>
                   )}
+                  </div>
                 );
               })
             )}
