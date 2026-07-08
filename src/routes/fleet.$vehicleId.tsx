@@ -666,6 +666,24 @@ function VehicleDetail() {
                       <Button variant="outline" size="sm" onClick={() => setCompletedRepair(m)}>View Details</Button>
                     </div>
                   </div>
+                  {m.lineItems && m.lineItems.length > 0 && (
+                    <div className="mt-2 space-y-1 border-t border-border pt-2">
+                      {m.lineItems.map(item => (
+                        <div key={item.id} className="flex items-center justify-between gap-2 text-xs">
+                          <div className="min-w-0">
+                            <span className="truncate font-medium">• {item.title}</span>
+                            <span className="ml-1 text-muted-foreground">
+                              {item.completedAt ? new Date(item.completedAt).toLocaleString("en-US") : ""}
+                              {item.mechanicName ? ` · ${item.mechanicName}` : ""}
+                            </span>
+                          </div>
+                          <span className="shrink-0 text-muted-foreground">
+                            {fmtMoney((Number(item.partsCost) || 0) + (Number(item.laborCost) || 0))}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 );
               })
             )}
