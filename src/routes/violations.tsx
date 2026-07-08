@@ -2088,6 +2088,31 @@ function NewViolationDialog({
     await analyzeDataUrl(dataUrl);
   };
 
+  const doVehicleLookup = async (vehicleIdArg?: string, dateArg?: string) => {
+    const vId = (vehicleIdArg ?? selectedVehicleId).trim();
+    const d = dateArg ?? date;
+    if (!vId || !d) return;
+    setLookingUp(true);
+    try {
+      const r = await lookupByVehicle({ data: { vehicleId: vId, date: d } });
+      setLookupResult(r);
+      setManualOverride(false);
+      const allIds = r.matches.map((m) => m.rental.id);
+      setSelectedRentalId(allIds.length === 1 ? allIds[0] : "");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Lookup failed");
+    } finally {
+      setLookingUp(false);
+    }
+  };
+
+  const onVehicleChange = (vId: string) => {
+    setSelectedVehicleId(vId);
+    const v = fleetVehicles.find((f) => f.id === vId);
+    if (v?.plate) setPlate(v.plate.toUpperCase());
+    void doVehicleLookup(vId, date);
+  };
+
   const doLookup = async (plateArg?: string, dateArg?: string) => {
     const p = (plateArg ?? plate).trim();
     const d = dateArg ?? date;
