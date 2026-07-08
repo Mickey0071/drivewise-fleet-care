@@ -290,6 +290,111 @@ export const lookupRentalByPlate = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * Match a rental by explicit vehicle selection + violation date. Mirrors
+ * `lookupRentalByPlate` but keyed on `vehicle_id` (chosen from the fleet
+ * dropdown) instead of an OCR'd/typed plate. Returns the same shape the
+ * New Violation dialog already consumes so the single/multi/no-match UI
+ * flows work identically.
+ */
+export const lookupRentalByVehicle = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { vehicleId: string; date: string }) => {
+    const vehicleId = (input.vehicleId || "").trim();
+    const date = (input.date || "").trim();
+    if (!vehicleId) throw new Error("Vehicle required");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Date must be YYYY-MM-DD");
+    return { vehicleId, date };
+  })
+  .handler(async ({ data }): Promise<PlateLookupResult> => {
+    const { vehicleId, date } = data;
+    const today = new Date().toISOString().slice(0, 10);
+    // Calendar-date inclusive range test. Open-ended rentals (no end date)
+    // are treated as active through today: end_date IS NULL OR end_date >= date.
+    const covers = (start: string | null, end: string | null): boolean => {
+      if (start && start > date) return false;
+      const effectiveEnd = end || today;
+      if (effectiveEnd < date) return false;
+      return true;
+    };
+
+    const { data: vehicle } = await supabaseAdmin
+      .from("vehicles")
+      .select("id, plate, make, model, year")
+      .eq("id", vehicleId)
+      .maybeSingle();
+    if (!vehicle) {
+      return {
+        vehicleFound: false,
+        vehicle: null,
+        matches: [],
+        found: false,
+        ambiguous: false,
+        matchConfidence: 0,
+        confidenceLabel: "Vehicle not in fleet",
+        reason: `No vehicle with id ${vehicleId}`,
+        legacyMatches: [],
+      };
+    }
+
+    const { data: rentals } = await supabaseAdmin
+      .from("rentals")
+      .select("id, driver_id, start_date, end_date, returned_at")
+      .eq("vehicle_id", vehicle.id)
+      .order("start_date", { ascending: false })
+      .limit(50);
+    const active = (rentals ?? []).filter((r) => covers(r.start_date ?? null, r.end_date ?? null));
+
+    if (active.length === 0) {
+      return {
+        vehicleFound: true,
+        vehicle,
+        matches: [],
+        found: false,
+        ambiguous: false,
+        matchConfidence: 40,
+        confidenceLabel: "No active rental found for this vehicle on this date",
+        reason: `No rental covers ${date} on this vehicle`,
+        legacyMatches: [],
+      };
+    }
+
+    const driverIds = Array.from(
+      new Set(active.map((r) => r.driver_id).filter(Boolean)),
+    ) as string[];
+    const { data: drivers } = driverIds.length
+      ? await supabaseAdmin
+          .from("drivers")
+          .select("id, full_name, phone, email")
+          .in("id", driverIds)
+      : { data: [] as { id: string; full_name: string; phone: string; email: string }[] };
+    const dMap = new Map((drivers ?? []).map((d) => [d.id, d]));
+
+    const matches: PlateMatch[] = active.map((r) => ({
+      rental: {
+        id: r.id,
+        driver_id: r.driver_id ?? null,
+        start_date: r.start_date,
+        end_date: r.end_date ?? null,
+      },
+      driver: r.driver_id ? dMap.get(r.driver_id) ?? null : null,
+    }));
+
+    const ambiguous = matches.length > 1;
+    return {
+      vehicleFound: true,
+      vehicle,
+      matches,
+      found: true,
+      ambiguous,
+      matchConfidence: ambiguous ? 70 : 95,
+      confidenceLabel: ambiguous
+        ? `${matches.length} rentals overlap this date — choose the renter`
+        : "Vehicle + date match",
+      legacyMatches: [],
+    };
+  });
+
 export const createViolation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
