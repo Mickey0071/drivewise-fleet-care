@@ -756,6 +756,15 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv, eventId?: s
         console.log(
           `[webhook:ext] Reconciled pre-applied extension ${extReqRow.rental_extension_id} for rental ${rentalRow.id} (charge ${extReqRow.applied_payment_id} marked paid; end date unchanged).`,
         );
+        // Clear any pre-scheduled weekly placeholder that this extension
+        // covers, so a link-paid pre-applied extension doesn't leave behind
+        // a phantom duplicate "late" charge for the same period.
+        await reconcileScheduledDuplicate(
+          rentalRow.id,
+          amountDollars,
+          today,
+          extReqRow.applied_payment_id,
+        );
         return;
       }
 

@@ -150,6 +150,25 @@ export const createExtensionLink = createServerFn({ method: "POST" })
     // Advance the rental end date.
     await supabaseAdmin.from("rentals").update({ end_date: newEndIso }).eq("id", rental.id);
 
+    // Clear any pre-scheduled weekly/daily placeholder charges that this
+    // extension now covers. The auto-scheduler seeds upcoming periods as
+    // unpaid "late"/"missed" PM-<rental>-<date> rows; leaving them behind
+    // after an extension covers the same period produces a phantom duplicate
+    // charge. Only ever remove unpaid rows with no real Stripe charge.
+    {
+      const prevEndIso = rental.end_date ? String(rental.end_date).slice(0, 10) : today;
+      await supabaseAdmin
+        .from("payments")
+        .delete()
+        .eq("rental_id", rental.id)
+        .in("status", ["late", "missed"])
+        .is("paid_date", null)
+        .is("stripe_charge_id", null)
+        .like("id", "PM-%")
+        .gt("due_date", prevEndIso)
+        .lte("due_date", newEndIso);
+    }
+
     // Link the request to the applied records so the webhook reconciles
     // (marks paid) instead of applying the extension a second time.
     await supabaseAdmin.from("extension_requests").update({
