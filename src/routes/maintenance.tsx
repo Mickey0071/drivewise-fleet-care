@@ -25,6 +25,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
 import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, recordRepairPaymentRaw, completeRepair, reverseRepairToDiagnose, deleteRepair } from "@/lib/mock/store";
+import { saveRepairDiagnosisLineItems, completeRepairLineItem, lineItemTotals } from "@/lib/mock/store";
+import type { RepairLineItem } from "@/lib/mock/data";
 import type { RepairCompletionSummary } from "@/lib/mock/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
