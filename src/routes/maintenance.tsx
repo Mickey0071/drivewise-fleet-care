@@ -541,13 +541,25 @@ function MaintenancePage() {
                       </label>
                       {d.splitEnabled && (
                         <div className="space-y-2 rounded-md border border-dashed border-blue-500/40 bg-blue-500/5 p-2">
+                          <div className="flex flex-col gap-1 rounded border border-border bg-card p-2 text-[11px]">
+                            <label className="flex items-center gap-2">
+                              <input type="radio" checked={!d.oneTicket} onChange={() => setDiag(m.id, { oneTicket: false })} />
+                              Separate tickets (one per problem)
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input type="radio" checked={d.oneTicket} onChange={() => setDiag(m.id, { oneTicket: true })} />
+                              One ticket — multiple items (complete individually)
+                            </label>
+                          </div>
                           <p className="text-[10px] text-muted-foreground">
-                            Each extra repair keeps the same reported issue and gets its own diagnosis, parts &amp; costs.
+                            {d.oneTicket
+                              ? "All problems stay on this single ticket. Each item is priced and completed individually."
+                              : "Each extra repair keeps the same reported issue and gets its own diagnosis, parts & costs."}
                           </p>
                           {d.extraSplits.map((s, i) => (
                             <div key={i} className="space-y-1.5 rounded border border-border bg-card p-2">
                               <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-medium text-muted-foreground">Repair {i + 2}</span>
+                                <span className="text-[10px] font-medium text-muted-foreground">{d.oneTicket ? `Item ${i + 2}` : `Repair ${i + 2}`}</span>
                                 <Button size="sm" variant="ghost" className="h-6 px-1 text-[10px]"
                                   onClick={() => setDiag(m.id, { extraSplits: d.extraSplits.filter((_, j) => j !== i) })}>
                                   Remove
