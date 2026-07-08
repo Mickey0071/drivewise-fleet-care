@@ -986,7 +986,7 @@ function MaintenancePage() {
         onSubmitted={refreshRmCards}
       />
 
-      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateCategory(""); setCreateTakeOffRental(true); } }}>
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateCategory(""); setCreateTakeOffRental(true); setCreateExtraItems([]); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create Repair</DialogTitle>
@@ -1007,6 +1007,21 @@ function MaintenancePage() {
               <Label htmlFor="create-issue">Issue</Label>
               <Input id="create-issue" value={createIssue} maxLength={200}
                 onChange={(e) => setCreateIssue(e.target.value)} placeholder="What's wrong?" />
+              {createExtraItems.map((val, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input value={val} maxLength={200} placeholder={`Additional item ${i + 2}`}
+                    onChange={(e) => setCreateExtraItems(prev => prev.map((v, j) => (j === i ? e.target.value : v)))} />
+                  <Button variant="ghost" size="icon" className="shrink-0 text-destructive"
+                    onClick={() => setCreateExtraItems(prev => prev.filter((_, j) => j !== i))}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" className="w-fit"
+                onClick={() => setCreateExtraItems(prev => [...prev, ""])}>
+                <Plus className="mr-1 h-4 w-4" /> Add another item
+              </Button>
+              <p className="text-xs text-muted-foreground">Add every problem on this car under one ticket.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="create-category">Problem category</Label>
