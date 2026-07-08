@@ -2301,6 +2301,25 @@ function NewViolationDialog({
               </div>
 
               <div>
+                <Label>Vehicle</Label>
+                <Select value={selectedVehicleId} onValueChange={onVehicleChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select the vehicle to auto-match the renter…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fleetVehicles.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.label || v.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Pick the vehicle and set the violation date to auto-match the rental on that date.
+                </p>
+              </div>
+
+              <div>
                 <Label>EZPass Ref # (from the EZPass document)</Label>
                 <Input
                   value={citationNumber}
