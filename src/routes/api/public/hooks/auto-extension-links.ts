@@ -223,70 +223,12 @@ export const Route = createFileRoute("/api/public/hooks/auto-extension-links")({
               });
             }
 
-            // Attempt an off-session auto-charge of the saved card. The renter
-            // still has the link above to decline before/after.
-            let autoCharged = false;
-            let chargeError: string | null = null;
-            if (drv?.stripe_customer_id && drv?.stripe_payment_method_id) {
-              const { data: veh } = await supabaseAdmin
-                .from("vehicles")
-                .select("daily_rate, weekly_rate")
-                .eq("id", r.vehicle_id)
-                .maybeSingle();
-              const amount = resolvePeriodRate(
-                isDaily,
-                { billing_period: r.billing_period as any, rate: r.rate as any, weekly_rate: r.weekly_rate as any },
-                (veh as any) ?? null,
-              );
-              if (amount > 0) {
-                try {
-                  const pi = await stripe.paymentIntents.create({
-                    amount: Math.round(amount * 100),
-                    currency: "usd",
-                    customer: drv.stripe_customer_id as string,
-                    payment_method: drv.stripe_payment_method_id as string,
-                    off_session: true,
-                    confirm: true,
-                    metadata: {
-                      kind: "auto_renew",
-                      rental_id: r.id,
-                      offer_token: token,
-                      period_label: isDaily ? "day" : "week",
-                    },
-                  });
-                  if (pi.status === "succeeded") {
-                    const newEnd = await applyAutoExtension({
-                      rentalId: r.id,
-                      driverId: r.driver_id as string,
-                      isDaily,
-                      amount,
-                      prevEndDate: r.end_date ? String(r.end_date).slice(0, 10) : null,
-                      paymentIntentId: pi.id,
-                    });
-                    autoCharged = true;
-                    await supabaseAdmin
-                      .from("auto_extension_offers")
-                      .update({ status: "consumed", auto_pay_enabled: true, consumed_at: new Date().toISOString() })
-                      .eq("token", token);
-                    if (drv?.phone) {
-                      await notifyRenter({
-                        phone: drv.phone,
-                        email: drv.email ?? null,
-                        name: drv.full_name,
-                        sms: `Camauto: Your rental was auto-renewed (+1 ${isDaily ? "day" : "week"}, $${amount.toFixed(2)}). New return date: ${newEnd}. Reply or call 1-866-625-5550 to stop auto-renew.`,
-                        emailSubject: "Your rental was auto-renewed",
-                        emailHeading: "Rental auto-renewed",
-                        emailIntro: `We charged your card on file $${amount.toFixed(2)} and extended your rental to ${newEnd}.`,
-                      });
-                    }
-                  } else {
-                    chargeError = `payment_intent_status_${pi.status}`;
-                  }
-                } catch (e: any) {
-                  chargeError = e?.message ?? String(e);
-                }
-              }
-            }
+            // NOTE: Automatic off-session card charging has been disabled.
+            // Cards are only ever charged when someone explicitly presses the
+            // "Charge Card" button (chargeCardOnFile) or when the renter pays
+            // the extension link themselves. This cron only sends the link.
+            const autoCharged = false;
+            const chargeError: string | null = null;
 
             await supabaseAdmin
               .from("rentals")
