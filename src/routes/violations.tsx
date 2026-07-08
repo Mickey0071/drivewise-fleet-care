@@ -42,6 +42,7 @@ import {
   type ViolationRow,
 } from "@/lib/violations.functions";
 import { listRentalsForViolation } from "@/lib/violations.functions";
+import { lookupRentalByVehicle, listFleetVehicles } from "@/lib/violations.functions";
 import {
   changeViolationStatus,
   listViolationHistory,
@@ -1929,12 +1930,20 @@ function NewViolationDialog({
   const create = useServerFn(createViolation);
   const analyze = useServerFn(analyzeViolationPhoto);
   const listRentals = useServerFn(listRentalsForViolation);
+  const lookupByVehicle = useServerFn(lookupRentalByVehicle);
+  const listFleet = useServerFn(listFleetVehicles);
 
   const { data: rentalOptions = [] } = useQuery({
     queryKey: ["rentals-for-violation"],
     queryFn: () => listRentals(),
     enabled: open,
   });
+  const { data: fleetVehicles = [] } = useQuery({
+    queryKey: ["fleet-vehicles-for-violation"],
+    queryFn: () => listFleet(),
+    enabled: open,
+  });
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>("");
   const [selectedRentalId, setSelectedRentalId] = useState<string>("");
   const [manualOverride, setManualOverride] = useState(false);
   const [manualQuery, setManualQuery] = useState("");
@@ -1977,6 +1986,7 @@ function NewViolationDialog({
     setSelectedRentalId("");
     setManualOverride(false);
     setManualQuery("");
+    setSelectedVehicleId("");
   };
   const analyzeDataUrl = async (dataUrl: string) => {
     setThumbnail(dataUrl);
@@ -2076,6 +2086,31 @@ function NewViolationDialog({
       r.readAsDataURL(file);
     });
     await analyzeDataUrl(dataUrl);
+  };
+
+  const doVehicleLookup = async (vehicleIdArg?: string, dateArg?: string) => {
+    const vId = (vehicleIdArg ?? selectedVehicleId).trim();
+    const d = dateArg ?? date;
+    if (!vId || !d) return;
+    setLookingUp(true);
+    try {
+      const r = await lookupByVehicle({ data: { vehicleId: vId, date: d } });
+      setLookupResult(r);
+      setManualOverride(false);
+      const allIds = r.matches.map((m) => m.rental.id);
+      setSelectedRentalId(allIds.length === 1 ? allIds[0] : "");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Lookup failed");
+    } finally {
+      setLookingUp(false);
+    }
+  };
+
+  const onVehicleChange = (vId: string) => {
+    setSelectedVehicleId(vId);
+    const v = fleetVehicles.find((f) => f.id === vId);
+    if (v?.plate) setPlate(v.plate.toUpperCase());
+    void doVehicleLookup(vId, date);
   };
 
   const doLookup = async (plateArg?: string, dateArg?: string) => {
@@ -2266,6 +2301,25 @@ function NewViolationDialog({
               </div>
 
               <div>
+                <Label>Vehicle</Label>
+                <Select value={selectedVehicleId} onValueChange={onVehicleChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select the vehicle to auto-match the renter…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fleetVehicles.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.label || v.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Pick the vehicle and set the violation date to auto-match the rental on that date.
+                </p>
+              </div>
+
+              <div>
                 <Label>EZPass Ref # (from the EZPass document)</Label>
                 <Input
                   value={citationNumber}
@@ -2284,7 +2338,15 @@ function NewViolationDialog({
                 </div>
                 <div>
                   <Label>Violation Date</Label>
-                  <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                  <Input
+                    type="date"
+                    value={date}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setDate(newDate);
+                      if (selectedVehicleId) void doVehicleLookup(selectedVehicleId, newDate);
+                    }}
+                  />
                 </div>
               </div>
 
@@ -2378,6 +2440,19 @@ function NewViolationDialog({
                           <div className="text-xs text-muted-foreground">
                             {picked.start_date} → {picked.end_date || "ongoing"}
                           </div>
+                          {picked.agreement_pdf_url && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="mt-2 h-7 px-2 text-xs"
+                              onClick={() =>
+                                window.open(picked.agreement_pdf_url as string, "_blank", "noopener")
+                              }
+                            >
+                              📄 View Agreement
+                            </Button>
+                          )}
                         </div>
                       )}
 
