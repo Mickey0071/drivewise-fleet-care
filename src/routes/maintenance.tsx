@@ -72,6 +72,8 @@ function MaintenancePage() {
   const [createIssue, setCreateIssue] = useState("");
   const [createCategory, setCreateCategory] = useState("");
   const [createTakeOffRental, setCreateTakeOffRental] = useState(true);
+  // Additional "what's wrong" items entered alongside the primary issue.
+  const [createExtraItems, setCreateExtraItems] = useState<string[]>([]);
 
   // Which repair line is expanded (one at a time, across all phases)
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -98,12 +100,26 @@ function MaintenancePage() {
     if (!createVehicleId) { toast.error("Select a vehicle"); return; }
     if (!createIssue.trim()) { toast.error("Describe the issue"); return; }
     if (!createCategory) { toast.error("Select a problem category"); return; }
-    createManualRepair(createVehicleId, createIssue, createTakeOffRental, createCategory);
+    const extras = createExtraItems.map(t => t.trim()).filter(Boolean);
+    const lineItems: RepairLineItem[] | undefined =
+      extras.length > 0
+        ? [createIssue.trim(), ...extras].map((title, i) => ({
+            id: `li${Date.now()}_${i}`,
+            title,
+            problemCategory: createCategory,
+            partsCost: 0,
+            laborCost: 0,
+            status: "open" as const,
+          }))
+        : undefined;
+    const summaryIssue = lineItems ? [createIssue.trim(), ...extras].join("; ") : createIssue;
+    createManualRepair(createVehicleId, summaryIssue, createTakeOffRental, createCategory, lineItems);
     setCreateOpen(false);
     setCreateVehicleId("");
     setCreateIssue("");
     setCreateCategory("");
     setCreateTakeOffRental(true);
+    setCreateExtraItems([]);
     toast.success("Repair created — added to Phase 1");
   }
 
