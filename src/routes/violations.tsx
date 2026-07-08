@@ -2440,6 +2440,19 @@ function NewViolationDialog({
                           <div className="text-xs text-muted-foreground">
                             {picked.start_date} → {picked.end_date || "ongoing"}
                           </div>
+                          {picked.agreement_pdf_url && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="mt-2 h-7 px-2 text-xs"
+                              onClick={() =>
+                                window.open(picked.agreement_pdf_url as string, "_blank", "noopener")
+                              }
+                            >
+                              📄 View Agreement
+                            </Button>
+                          )}
                         </div>
                       )}
 
