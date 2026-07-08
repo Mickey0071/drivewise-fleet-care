@@ -271,6 +271,8 @@ export interface Maintenance {
   depositProcessed?: boolean;
   /** When the deposit was processed. */
   depositDate?: string;
+  /** Multiple repair items handled under this single ticket (additive). */
+  lineItems?: RepairLineItem[];
 }
 export type RepairStatus = "reported" | "diagnosing" | "open" | "pending_deposit" | "pending_complete" | "in_progress" | "complete";
 export interface RepairSolution {
