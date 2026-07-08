@@ -650,6 +650,60 @@ function MaintenancePage() {
                         <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} job={sentJobByMaint.get(m.id) ?? submittedJobByMaint.get(m.id)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
+                    {m.lineItems && m.lineItems.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs font-medium">
+                          <span>Repair items</span>
+                          <span className="text-muted-foreground">
+                            {m.lineItems.filter(it => it.status === "complete").length} of {m.lineItems.length} done
+                          </span>
+                        </div>
+                        {m.lineItems.map(item => {
+                          const dr = itemDraftFor(item);
+                          return (
+                            <div key={item.id} className={`rounded-md border p-2 ${item.status === "complete" ? "border-green-600/40 bg-green-500/5" : "border-border"}`}>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-medium">{item.title}</span>
+                                {item.status === "complete" ? (
+                                  <span className="flex items-center gap-1 text-[11px] text-green-600">
+                                    <CheckCircle2 className="h-3.5 w-3.5" /> Done
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] text-muted-foreground">{fmtMoney((Number(item.partsCost) || 0) + (Number(item.laborCost) || 0))}</span>
+                                )}
+                              </div>
+                              {item.status === "complete" ? (
+                                <p className="mt-1 text-[10px] text-muted-foreground">
+                                  {fmtMoney((Number(item.partsCost) || 0) + (Number(item.laborCost) || 0))}
+                                  {item.completedAt ? ` · ${new Date(item.completedAt).toLocaleString("en-US")}` : ""}
+                                  {item.mechanicName ? ` · ${item.mechanicName}` : ""}
+                                </p>
+                              ) : (
+                                <div className="mt-2 space-y-1.5">
+                                  <div className="flex gap-2">
+                                    <Input className="h-7 flex-1 text-xs" type="number" min="0" step="0.01" placeholder="Parts $"
+                                      value={dr.partsCost} onChange={(e) => setItemDraft(prev => ({ ...prev, [item.id]: { ...itemDraftFor(item), ...prev[item.id], partsCost: e.target.value } }))} />
+                                    <Input className="h-7 flex-1 text-xs" type="number" min="0" step="0.01" placeholder="Labour $"
+                                      value={dr.laborCost} onChange={(e) => setItemDraft(prev => ({ ...prev, [item.id]: { ...itemDraftFor(item), ...prev[item.id], laborCost: e.target.value } }))} />
+                                  </div>
+                                  <Input className="h-7 text-xs" placeholder="Mechanic (optional)"
+                                    value={dr.mechanicName} onChange={(e) => setItemDraft(prev => ({ ...prev, [item.id]: { ...itemDraftFor(item), ...prev[item.id], mechanicName: e.target.value } }))} />
+                                  <Input className="h-7 text-xs" placeholder="Notes (optional)"
+                                    value={dr.notes} onChange={(e) => setItemDraft(prev => ({ ...prev, [item.id]: { ...itemDraftFor(item), ...prev[item.id], notes: e.target.value } }))} />
+                                  <Button size="sm" className="w-full" onClick={() => handleCompleteItem(m, item)}>
+                                    Mark item complete
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs font-medium">
+                          <span>Ticket total</span><span>{fmtMoney(lineItemTotals(m.lineItems).total)}</span>
+                        </div>
+                      </div>
+                    ) : (
+                    <>
                     {m.diagnosisNotes && (
                       <div className="mt-1 text-xs text-muted-foreground">
                         <span className="font-medium text-foreground">Parts used:</span> {m.diagnosisNotes}
@@ -674,6 +728,8 @@ function MaintenancePage() {
                     <Button size="sm" className="w-full" disabled={balance > 0} onClick={() => handleCompleteRepair(m)}>
                       Complete Repair
                     </Button>
+                    </>
+                    )}
                           </div>
                         )}
                       </li>
