@@ -610,6 +610,7 @@ export const listRentalsForViolation = createServerFn({ method: "GET" })
         reservation_status: (r as any).returned_at ? "returned" : r.reservation_status ?? null,
         source: "live",
         agreement_on_file: Boolean((r as any).agreement_pdf_url),
+        agreement_pdf_url: ((r as any).agreement_pdf_url as string) ?? null,
       };
     });
 
