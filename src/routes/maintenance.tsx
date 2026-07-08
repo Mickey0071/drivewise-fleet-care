@@ -1080,6 +1080,7 @@ function MaintenancePage() {
             plate={v?.plate}
             issue={sendForRecord.issueDescription ?? sendForRecord.serviceType ?? ""}
             adminName={adminName}
+            prefillItems={(sendForRecord.lineItems ?? []).filter(it => it.status !== "complete").map(it => it.title)}
             onSent={refreshJobs}
           />
         );
