@@ -579,12 +579,12 @@ function MaintenancePage() {
                           ))}
                           <Button size="sm" variant="outline" className="w-full text-xs"
                             onClick={() => setDiag(m.id, { extraSplits: [...d.extraSplits, emptySplit()] })}>
-                            + Add another repair
+                            {d.oneTicket ? "+ Add another item" : "+ Add another repair"}
                           </Button>
                         </div>
                       )}
                             <Button size="sm" className="w-full" onClick={() => handleSaveDiagnosis(m)}>
-                              {d.splitEnabled && d.extraSplits.length > 0 ? "Save & Split →" : "Save Diagnosis →"}
+                              {d.splitEnabled && d.extraSplits.length > 0 ? (d.oneTicket ? "Save Items →" : "Save & Split →") : "Save Diagnosis →"}
                             </Button>
                           </div>
                         )}
