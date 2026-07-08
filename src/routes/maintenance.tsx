@@ -135,6 +135,8 @@ function MaintenancePage() {
     mileage: string;
     splitEnabled: boolean;
     extraSplits: SplitEntry[];
+    /** When true (with multiple problems), keep them as line items on ONE ticket. */
+    oneTicket: boolean;
   };
   const [diagInputs, setDiagInputs] = useState<Record<string, DiagInput>>({});
   const diagFor = (m: Maintenance): DiagInput =>
@@ -146,6 +148,7 @@ function MaintenancePage() {
       mileage: m.mileageAtService ? String(m.mileageAtService) : "",
       splitEnabled: false,
       extraSplits: [],
+      oneTicket: false,
     };
   const setDiag = (id: string, patch: Partial<DiagInput>) =>
     setDiagInputs(prev => ({ ...prev, [id]: { ...diagFor(maintenance.find(x => x.id === id)!), ...prev[id], ...patch } }));
