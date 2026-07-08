@@ -1075,6 +1075,7 @@ export type Database = {
           is_rental_blocking: boolean
           issue_description: string | null
           labor_cost: number
+          line_items: Json
           mechanic_name: string | null
           mechanic_notes: string | null
           mechanic_phone: string | null
@@ -1135,6 +1136,7 @@ export type Database = {
           is_rental_blocking?: boolean
           issue_description?: string | null
           labor_cost?: number
+          line_items?: Json
           mechanic_name?: string | null
           mechanic_notes?: string | null
           mechanic_phone?: string | null
@@ -1195,6 +1197,7 @@ export type Database = {
           is_rental_blocking?: boolean
           issue_description?: string | null
           labor_cost?: number
+          line_items?: Json
           mechanic_name?: string | null
           mechanic_notes?: string | null
           mechanic_phone?: string | null
