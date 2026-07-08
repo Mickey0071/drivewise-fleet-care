@@ -3308,7 +3308,15 @@ export type Database = {
           violation_time?: string | null
           workflow_stage?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "violations_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       work_orders: {
         Row: {
