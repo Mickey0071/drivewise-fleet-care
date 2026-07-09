@@ -118,6 +118,11 @@ export async function applyRmSubmission(input: {
     last_rm_date: nowIso,
     last_rm_mileage: mileage,
   };
+  // Roll the vehicle's current odometer forward from this RM reading.
+  // Increase-only: only advance when the new reading is higher than on record.
+  if (typeof input.mileage === "number" && input.mileage > ((v as any).mileage ?? 0)) {
+    vehicleUpdate.mileage = input.mileage;
+  }
   if (failed.length > 0) {
     vehicleUpdate.has_open_issues = true;
     vehicleUpdate.status = "maintenance";

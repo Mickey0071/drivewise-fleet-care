@@ -161,10 +161,24 @@ export const closeoutRental = createServerFn({ method: "POST" })
       throw new Error("Failed to close out rental: returned status did not persist");
     }
 
-    // Flip vehicle back to available immediately after the rental is returned.
+    // Flip vehicle back to available and roll the return odometer forward.
+    // Increase-only: only advance the vehicle's current mileage when the
+    // return reading is higher than what's on record (odometers only go up).
+    const { data: curVehicle } = await supabaseAdmin
+      .from("vehicles")
+      .select("mileage")
+      .eq("id", rental.vehicle_id)
+      .maybeSingle();
+    const vehiclePatch: { status: string; mileage?: number } = { status: "available" };
+    if (
+      typeof data.mileage_in === "number" &&
+      data.mileage_in > (curVehicle?.mileage ?? 0)
+    ) {
+      vehiclePatch.mileage = data.mileage_in;
+    }
     const { data: updatedVehicle, error: vehicleErr } = await supabaseAdmin
       .from("vehicles")
-      .update({ status: "available" })
+      .update(vehiclePatch)
       .eq("id", rental.vehicle_id)
       .select("id, status")
       .maybeSingle();
