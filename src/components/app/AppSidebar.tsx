@@ -396,10 +396,53 @@ export function AppSidebar() {
                 className="h-8 pl-8 text-sm"
               />
             </div>
+            <Button
+              variant={editing ? "default" : "outline"}
+              size="sm"
+              className="mt-2 w-full"
+              onClick={() => {
+                if (editing) {
+                  save({ ...layout, locked: true });
+                  setEditing(false);
+                } else {
+                  setEditing(true);
+                }
+              }}
+              title={editing ? "Lock the sidebar layout" : "Rearrange the sidebar"}
+            >
+              {editing ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
+              <span className="ml-1">{editing ? "Lock layout" : "Edit layout"}</span>
+            </Button>
           </div>
         )}
         {renderGroup("Dashboard", search(filter(adminItems).filter(i => i.url === "/")))}
-        {primaryGroups.map(renderCollapsibleGroup)}
+        {editing && !collapsed && !q ? (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleGroupDragEnd}>
+            <SortableContext
+              items={orderedGroups.map((g) => `group:${g.key}`)}
+              strategy={verticalListSortingStrategy}
+            >
+              {orderedGroups.map((group) => {
+                const items = orderItems(group, filter(group.items));
+                if (items.length === 0) return null;
+                return (
+                  <EditableGroupBlock
+                    key={group.key}
+                    group={group}
+                    items={items}
+                    isActive={isActive}
+                    unread={unread}
+                    pendingReviewCount={pendingReviewCount}
+                    sensors={sensors}
+                    onReorderItems={handleReorderItems}
+                  />
+                );
+              })}
+            </SortableContext>
+          </DndContext>
+        ) : (
+          orderedGroups.map(renderCollapsibleGroup)
+        )}
         {renderGroup("More — Operations", leftover(adminItems).filter(i => i.url !== "/"))}
         {renderGroup("More — Finance", leftover(financeItems))}
         {renderGroup("More — Portals", leftover(portalItems))}
