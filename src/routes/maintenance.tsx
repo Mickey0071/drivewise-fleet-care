@@ -1110,7 +1110,7 @@ function MaintenancePage() {
         onSubmitted={refreshRmCards}
       />
 
-      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateCategory(""); setCreateTakeOffRental(true); setCreateExtraItems([]); } }}>
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateCategory(""); setCreateTakeOffRental(true); setCreateExtraItems([]); setCreateRoutineItems([]); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create Repair</DialogTitle>
@@ -1127,6 +1127,33 @@ function MaintenancePage() {
                 </SelectContent>
               </Select>
             </div>
+            {createVehicleId && (() => {
+              const veh = vehicles.find(v => v.id === createVehicleId);
+              const routine = veh ? computeScheduledItems(veh) : [];
+              if (routine.length === 0) return null;
+              const statusLabel = (s: string) =>
+                s === "overdue" ? "overdue" : s === "due_soon" ? "due soon" : "upcoming";
+              return (
+                <div className="space-y-2 rounded-md border border-border p-3">
+                  <Label>Routine maintenance for this vehicle</Label>
+                  <p className="text-xs text-muted-foreground">Tap to add a scheduled task as an editable repair item.</p>
+                  <div className="space-y-1.5">
+                    {routine.map(item => (
+                      <label key={item.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={createRoutineItems.includes(item.label)}
+                          onCheckedChange={() => toggleRoutineItem(item.label)}
+                        />
+                        <span className="flex-1">{item.label}</span>
+                        <span className={`text-xs ${item.status === "overdue" ? "text-destructive" : "text-muted-foreground"}`}>
+                          {statusLabel(item.status)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
             <div className="space-y-2">
               <Label htmlFor="create-issue">Issue</Label>
               <Input id="create-issue" value={createIssue} maxLength={200}
