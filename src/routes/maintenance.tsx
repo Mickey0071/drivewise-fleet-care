@@ -102,12 +102,15 @@ function MaintenancePage() {
 
   function submitCreateRepair() {
     if (!createVehicleId) { toast.error("Select a vehicle"); return; }
-    if (!createIssue.trim()) { toast.error("Describe the issue"); return; }
-    if (!createCategory) { toast.error("Select a problem category"); return; }
+    const routine = createRoutineItems.map(t => t.trim()).filter(Boolean);
     const extras = createExtraItems.map(t => t.trim()).filter(Boolean);
+    const primary = createIssue.trim();
+    const titles = [...routine, ...(primary ? [primary] : []), ...extras];
+    if (titles.length === 0) { toast.error("Describe the issue or add a routine task"); return; }
+    if (!createCategory) { toast.error("Select a problem category"); return; }
     const lineItems: RepairLineItem[] | undefined =
-      extras.length > 0
-        ? [createIssue.trim(), ...extras].map((title, i) => ({
+      titles.length > 1
+        ? titles.map((title, i) => ({
             id: `li${Date.now()}_${i}`,
             title,
             problemCategory: createCategory,
@@ -116,7 +119,7 @@ function MaintenancePage() {
             status: "open" as const,
           }))
         : undefined;
-    const summaryIssue = lineItems ? [createIssue.trim(), ...extras].join("; ") : createIssue;
+    const summaryIssue = lineItems ? titles.join("; ") : titles[0];
     createManualRepair(createVehicleId, summaryIssue, createTakeOffRental, createCategory, lineItems);
     setCreateOpen(false);
     setCreateVehicleId("");
@@ -124,6 +127,7 @@ function MaintenancePage() {
     setCreateCategory("");
     setCreateTakeOffRental(true);
     setCreateExtraItems([]);
+    setCreateRoutineItems([]);
     toast.success("Repair created — added to Phase 1");
   }
 
