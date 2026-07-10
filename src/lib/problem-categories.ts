@@ -11,6 +11,7 @@ export const PROBLEM_CATEGORIES = [
   "Tires & wheels",
   "Electrical",
   "Body & glass",
+  "Routine / scheduled",
   "Other",
 ] as const;
 

@@ -76,6 +76,8 @@ function MaintenancePage() {
   const [createTakeOffRental, setCreateTakeOffRental] = useState(true);
   // Additional "what's wrong" items entered alongside the primary issue.
   const [createExtraItems, setCreateExtraItems] = useState<string[]>([]);
+  // Routine maintenance tasks (labels) pulled into this ticket from the vehicle's schedule.
+  const [createRoutineItems, setCreateRoutineItems] = useState<string[]>([]);
 
   // Which repair line is expanded (one at a time, across all phases)
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -100,12 +102,15 @@ function MaintenancePage() {
 
   function submitCreateRepair() {
     if (!createVehicleId) { toast.error("Select a vehicle"); return; }
-    if (!createIssue.trim()) { toast.error("Describe the issue"); return; }
-    if (!createCategory) { toast.error("Select a problem category"); return; }
+    const routine = createRoutineItems.map(t => t.trim()).filter(Boolean);
     const extras = createExtraItems.map(t => t.trim()).filter(Boolean);
+    const primary = createIssue.trim();
+    const titles = [...routine, ...(primary ? [primary] : []), ...extras];
+    if (titles.length === 0) { toast.error("Describe the issue or add a routine task"); return; }
+    if (!createCategory) { toast.error("Select a problem category"); return; }
     const lineItems: RepairLineItem[] | undefined =
-      extras.length > 0
-        ? [createIssue.trim(), ...extras].map((title, i) => ({
+      titles.length > 1
+        ? titles.map((title, i) => ({
             id: `li${Date.now()}_${i}`,
             title,
             problemCategory: createCategory,
@@ -114,7 +119,7 @@ function MaintenancePage() {
             status: "open" as const,
           }))
         : undefined;
-    const summaryIssue = lineItems ? [createIssue.trim(), ...extras].join("; ") : createIssue;
+    const summaryIssue = lineItems ? titles.join("; ") : titles[0];
     createManualRepair(createVehicleId, summaryIssue, createTakeOffRental, createCategory, lineItems);
     setCreateOpen(false);
     setCreateVehicleId("");
@@ -122,7 +127,16 @@ function MaintenancePage() {
     setCreateCategory("");
     setCreateTakeOffRental(true);
     setCreateExtraItems([]);
+    setCreateRoutineItems([]);
     toast.success("Repair created — added to Phase 1");
+  }
+
+  function toggleRoutineItem(label: string) {
+    setCreateRoutineItems(prev => {
+      const next = prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label];
+      if (next.length > 0 && !createCategory) setCreateCategory("Routine / scheduled");
+      return next;
+    });
   }
 
   // --- Phase 2 (Diagnose) per-record inputs ---
@@ -1096,7 +1110,7 @@ function MaintenancePage() {
         onSubmitted={refreshRmCards}
       />
 
-      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateCategory(""); setCreateTakeOffRental(true); setCreateExtraItems([]); } }}>
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateCategory(""); setCreateTakeOffRental(true); setCreateExtraItems([]); setCreateRoutineItems([]); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create Repair</DialogTitle>
@@ -1113,6 +1127,33 @@ function MaintenancePage() {
                 </SelectContent>
               </Select>
             </div>
+            {createVehicleId && (() => {
+              const veh = vehicles.find(v => v.id === createVehicleId);
+              const routine = veh ? computeScheduledItems(veh) : [];
+              if (routine.length === 0) return null;
+              const statusLabel = (s: string) =>
+                s === "overdue" ? "overdue" : s === "due_soon" ? "due soon" : "upcoming";
+              return (
+                <div className="space-y-2 rounded-md border border-border p-3">
+                  <Label>Routine maintenance for this vehicle</Label>
+                  <p className="text-xs text-muted-foreground">Tap to add a scheduled task as an editable repair item.</p>
+                  <div className="space-y-1.5">
+                    {routine.map(item => (
+                      <label key={item.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={createRoutineItems.includes(item.label)}
+                          onCheckedChange={() => toggleRoutineItem(item.label)}
+                        />
+                        <span className="flex-1">{item.label}</span>
+                        <span className={`text-xs ${item.status === "overdue" ? "text-destructive" : "text-muted-foreground"}`}>
+                          {statusLabel(item.status)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
             <div className="space-y-2">
               <Label htmlFor="create-issue">Issue</Label>
               <Input id="create-issue" value={createIssue} maxLength={200}
