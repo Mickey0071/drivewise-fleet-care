@@ -1,51 +1,49 @@
 ## Goal
 
-Let you rearrange the left sidebar — both the category groups (Reservations, Fleet, P&L, Staff, JV) and the links inside each group — by dragging, then **lock** the layout so it stops being draggable. Your custom arrangement is saved to your account so it follows you across devices/browsers. (The Fleet screen's own search bar is left untouched — it stays a fleet filter.)
+On the **Parts** page, add a "Record part purchase" form that logs the purchase straight into expenses — no repair ticket required — so it flows into the P&L and every expense chart. Each purchase is linked to a **vehicle**, a **technician**, a **supplier**, a **part cost**, and a **labor-to-repair price**.
 
 ## How it works for you
 
-1. A small control appears at the top of the sidebar: an **Edit layout** button (pencil/unlock icon).
-2. Click **Edit layout** → drag handles appear. You can:
-   - Drag whole category groups up/down to reorder them.
-   - Drag individual links within a group to reorder them.
-3. Click **Lock** → dragging is disabled, the arrangement is frozen, and it's saved.
-4. Next time you sign in (any device), the sidebar loads in your saved order and stays locked until you hit Edit layout again.
+A new card appears on the Parts page: **Record a part purchase**. You fill in:
+- **Vehicle** (required) — dropdown of fleet vehicles
+- **Technician** (required) — name field with suggestions from technicians used before
+- **Supplier** — where the part was purchased
+- **Part name / description**
+- **Part cost** ($)
+- **Labor to repair** ($)
+- **Date** (defaults to today)
+- **Notes** (optional)
+
+On **Save**, it creates two expense entries (matching how repair tickets already post), both tied to the same vehicle/technician/supplier/date:
+- a **Parts** expense = part cost
+- a **Labour** expense = labor-to-repair price
+
+Because these go through the same expense pipeline as everything else, they immediately show up in the Expense Logger, P&L dashboard, vehicle profitability, and all expense charts. No maintenance/repair ticket is created.
 
 ## What gets built
 
-### 1. Persistence (cross-device) — backend
-Create a per-user preferences table so the layout follows your account:
+### `src/routes/admin.parts.tsx`
+- Add a new `RecordPartPurchase` card alongside the existing inquiry UI (adjust the page grid to fit it).
+- Fields as above, using existing UI primitives (`Input`, `Select`, `Label`, `Textarea`, `Button`).
+- Vehicle dropdown sourced from the mock/store `vehicles` list (same source the Expenses page uses).
+- Technician input backed by a `<datalist>` of previously used technician names (derived from existing `maintenance` records' `mechanicName` plus any prior part-purchase technicians).
+- Client-side validation with zod: vehicle required, technician required (trimmed, non-empty, max length), part cost and labor each ≥ 0 with at least one > 0, date valid, notes/supplier length-capped.
 
-```text
-public.user_ui_prefs
-  user_id  uuid  (PK, references auth user id)
-  sidebar_layout  jsonb   -- { groupOrder: [...], itemOrder: { groupKey: [urls...] }, locked: bool }
-  updated_at  timestamptz
-```
-- RLS: each user can only read/write their own row (`auth.uid() = user_id`).
-- GRANTs for `authenticated` + `service_role` in the same migration.
-
-### 2. Load/save layout
-- On sidebar mount, read the current user's `sidebar_layout` (via the Supabase client, RLS-scoped).
-- Save on **Lock** (and when reordering in edit mode) with an upsert.
-- If no saved row exists, fall back to the current default order.
-
-### 3. Sidebar drag-and-drop + lock (`src/components/app/AppSidebar.tsx`)
-- Add `editMode`/`locked` state plus an **Edit layout / Lock** toggle button near the top of `SidebarContent`.
-- Apply the saved `groupOrder` to reorder `primaryGroups`, and saved `itemOrder` to reorder links within each group before rendering.
-- Add drag-and-drop:
-  - Group-level reordering of the collapsible groups.
-  - Item-level reordering within each group's menu.
-  - Drag handles only visible/active in edit mode; disabled when locked.
-- Keep existing behavior intact: role filtering, menu search, collapse-to-icons, badges, and the per-group open/closed memory.
+### Expense creation (reuse existing pipeline)
+- Call `addExpense` from `src/lib/mock/store.ts` twice:
+  - `{ category: "Parts", amount: partCost, date, vehicleId, vendor: supplier, notes: "Part: <name> · Tech: <technician>" }`
+  - `{ category: "Labour", amount: laborPrice, date, vehicleId, vendor: supplier, notes: "Labor · Tech: <technician>" }`
+- These reuse the exact categories (`Parts`, `Labour`) that completed repairs already post, so the parts-vs-labor breakdown in charts stays consistent.
+- Rows with amount `0` are skipped (e.g. if labor is left blank).
+- Await `cloudReady` so the write reaches the backend, then toast success and reset the form.
 
 ## Technical notes
 
-- Drag-and-drop: use `@dnd-kit/core` + `@dnd-kit/sortable` (lightweight, keyboard-accessible). Added via package install.
-- Reordering merges saved order with defaults so newly added routes still appear (any group/link not in the saved order is appended at the end).
-- Writes go through the RLS-protected table using the browser Supabase client; no service role needed.
-- The Fleet page search bar is out of scope and unchanged.
+- No schema/migration changes — the existing `expenses` table already has `vehicle_id`, `category`, `amount`, `date`, `vendor`, and `notes`, and `addExpense` persists to it via the current cloud-write path.
+- Technician is stored in the expense **notes** (there is no technician table today); **supplier** uses the existing `vendor` field. This keeps per-vehicle profitability and vendor-based views working unchanged.
+- The P&L and expense charts already aggregate from `expenses` + completed maintenance via `buildCombinedExpenses`, so no chart code needs to change — new rows appear automatically.
 
 ## Out of scope
-- No change to the Fleet screen search behavior.
-- No change to which links exist or their routes — only their order and the lock state.
+- No new technician table or supplier management.
+- No repair ticket / maintenance record is created for these purchases.
+- No changes to how existing repair tickets post expenses.
