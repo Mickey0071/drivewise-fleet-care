@@ -76,6 +76,8 @@ function MaintenancePage() {
   const [createTakeOffRental, setCreateTakeOffRental] = useState(true);
   // Additional "what's wrong" items entered alongside the primary issue.
   const [createExtraItems, setCreateExtraItems] = useState<string[]>([]);
+  // Routine maintenance tasks (labels) pulled into this ticket from the vehicle's schedule.
+  const [createRoutineItems, setCreateRoutineItems] = useState<string[]>([]);
 
   // Which repair line is expanded (one at a time, across all phases)
   const [expandedId, setExpandedId] = useState<string | null>(null);
