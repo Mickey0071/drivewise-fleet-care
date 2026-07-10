@@ -131,6 +131,14 @@ function MaintenancePage() {
     toast.success("Repair created — added to Phase 1");
   }
 
+  function toggleRoutineItem(label: string) {
+    setCreateRoutineItems(prev => {
+      const next = prev.includes(label) ? prev.filter(l => l !== label) : [...prev, label];
+      if (next.length > 0 && !createCategory) setCreateCategory("Routine / scheduled");
+      return next;
+    });
+  }
+
   // --- Phase 2 (Diagnose) per-record inputs ---
   type SplitEntry = { diagnosis: string; partsNeeded: string; partsCost: string; laborCost: string };
   type DiagInput = {
