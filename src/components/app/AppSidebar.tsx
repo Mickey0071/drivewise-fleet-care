@@ -302,6 +302,35 @@ export function AppSidebar() {
   const search = (items: Item[]) =>
     q ? items.filter(i => i.title.toLowerCase().includes(q)) : items;
 
+  // Per-user sidebar arrangement (order + lock), synced across devices.
+  const { layout, save } = useSidebarLayout();
+  const [editing, setEditing] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // Apply the saved order to a group's items (new links append at the end).
+  const orderItems = (group: Group, items: Item[]) =>
+    applyOrder(items, (i) => i.url, layout.itemOrder[group.key]);
+
+  // Groups in the user's saved order (new groups append at the end).
+  const orderedGroups = applyOrder(primaryGroups, (g) => g.key, layout.groupOrder);
+
+  const handleGroupDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const keys = orderedGroups.map((g) => g.key);
+    const from = keys.indexOf(String(active.id).replace(/^group:/, ""));
+    const to = keys.indexOf(String(over.id).replace(/^group:/, ""));
+    if (from < 0 || to < 0) return;
+    save({ ...layout, groupOrder: arrayMove(keys, from, to) });
+  };
+
+  const handleReorderItems = (groupKey: string, orderedUrls: string[]) => {
+    save({ ...layout, itemOrder: { ...layout.itemOrder, [groupKey]: orderedUrls } });
+  };
+
   const renderItems = (items: Item[]) => (
     <SidebarMenu>
       {items.map((item) => (
@@ -324,7 +353,7 @@ export function AppSidebar() {
   );
 
   const renderCollapsibleGroup = (group: Group) => {
-    const items = search(filter(group.items));
+    const items = orderItems(group, search(filter(group.items)));
     if (items.length === 0) return null;
     return <CollapsibleGroup key={group.key} group={group} collapsed={collapsed} renderItems={renderItems} items={items} />;
   };
