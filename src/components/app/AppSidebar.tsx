@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
   Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature, Bell, CalendarPlus, BarChart3, DatabaseBackup, Package, Upload, Database,
-  Gauge, ChevronRight, Handshake,
+  Gauge, ChevronRight, Handshake, GripVertical, Lock, LockOpen,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -18,6 +18,16 @@ import { rentals } from "@/lib/mock/data";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/camauto-logo.jpeg";
+import {
+  DndContext, closestCenter, PointerSensor, KeyboardSensor,
+  useSensor, useSensors, type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, verticalListSortingStrategy, arrayMove,
+  useSortable, sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useSidebarLayout, applyOrder } from "@/hooks/use-sidebar-layout";
 
 type Item = { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] };
 type Group = { key: string; label: string; icon: typeof LayoutDashboard; items: Item[]; defaultOpen?: boolean };
@@ -67,6 +77,113 @@ function CollapsibleGroup({
 }
 
 const ALL_ROLES: AppRole[] = ["admin"];
+
+// ---- Drag-and-drop building blocks for the "Edit layout" mode ----
+
+function SortableLink({
+  item, isActive, unread, pendingReviewCount,
+}: {
+  item: Item;
+  isActive: (url: string) => boolean;
+  unread: number;
+  pendingReviewCount: number;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: item.url });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <SidebarMenuItem ref={setNodeRef} style={style}>
+      <div className="flex items-center gap-1 rounded-md border border-dashed border-sidebar-border/60 bg-sidebar-accent/30 px-1">
+        <button
+          type="button"
+          className="cursor-grab touch-none px-0.5 text-sidebar-foreground/50 hover:text-sidebar-foreground"
+          {...attributes}
+          {...listeners}
+          aria-label={`Reorder ${item.title}`}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
+        <div className="flex flex-1 items-center gap-2 py-1.5 text-sm">
+          <item.icon className="h-4 w-4 shrink-0" />
+          <span className="flex-1">{item.title}</span>
+          {item.url === "/runner-reports" && unread > 0 && (
+            <Badge variant="default" className="h-5 px-1.5 text-[10px]">{unread}</Badge>
+          )}
+          {item.url === "/pending-agreements" && pendingReviewCount > 0 && (
+            <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">{pendingReviewCount}</Badge>
+          )}
+        </div>
+      </div>
+    </SidebarMenuItem>
+  );
+}
+
+function EditableGroupBlock({
+  group, items, isActive, unread, pendingReviewCount, sensors, onReorderItems,
+}: {
+  group: Group;
+  items: Item[];
+  isActive: (url: string) => boolean;
+  unread: number;
+  pendingReviewCount: number;
+  sensors: ReturnType<typeof useSensors>;
+  onReorderItems: (groupKey: string, orderedUrls: string[]) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: `group:${group.key}` });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  const handleItemDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const urls = items.map((i) => i.url);
+    const from = urls.indexOf(String(active.id));
+    const to = urls.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    onReorderItems(group.key, arrayMove(urls, from, to));
+  };
+  return (
+    <SidebarGroup ref={setNodeRef} style={style}>
+      <div className="flex items-center gap-2 rounded-md bg-sidebar-accent px-2 py-1.5 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/80">
+        <button
+          type="button"
+          className="cursor-grab touch-none text-sidebar-foreground/60 hover:text-sidebar-foreground"
+          {...attributes}
+          {...listeners}
+          aria-label={`Reorder ${group.label} section`}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <group.icon className="h-4 w-4" />
+        <span className="flex-1">{group.label}</span>
+      </div>
+      <SidebarGroupContent>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
+          <SortableContext items={items.map((i) => i.url)} strategy={verticalListSortingStrategy}>
+            <SidebarMenu>
+              {items.map((item) => (
+                <SortableLink
+                  key={item.url}
+                  item={item}
+                  isActive={isActive}
+                  unread={unread}
+                  pendingReviewCount={pendingReviewCount}
+                />
+              ))}
+            </SidebarMenu>
+          </SortableContext>
+        </DndContext>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
 
 // New top-level collapsible groups (navigation reorganization)
 const primaryGroups: Group[] = [
@@ -185,6 +302,35 @@ export function AppSidebar() {
   const search = (items: Item[]) =>
     q ? items.filter(i => i.title.toLowerCase().includes(q)) : items;
 
+  // Per-user sidebar arrangement (order + lock), synced across devices.
+  const { layout, save } = useSidebarLayout();
+  const [editing, setEditing] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // Apply the saved order to a group's items (new links append at the end).
+  const orderItems = (group: Group, items: Item[]) =>
+    applyOrder(items, (i) => i.url, layout.itemOrder[group.key]);
+
+  // Groups in the user's saved order (new groups append at the end).
+  const orderedGroups = applyOrder(primaryGroups, (g) => g.key, layout.groupOrder);
+
+  const handleGroupDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const keys = orderedGroups.map((g) => g.key);
+    const from = keys.indexOf(String(active.id).replace(/^group:/, ""));
+    const to = keys.indexOf(String(over.id).replace(/^group:/, ""));
+    if (from < 0 || to < 0) return;
+    save({ ...layout, groupOrder: arrayMove(keys, from, to) });
+  };
+
+  const handleReorderItems = (groupKey: string, orderedUrls: string[]) => {
+    save({ ...layout, itemOrder: { ...layout.itemOrder, [groupKey]: orderedUrls } });
+  };
+
   const renderItems = (items: Item[]) => (
     <SidebarMenu>
       {items.map((item) => (
@@ -207,7 +353,7 @@ export function AppSidebar() {
   );
 
   const renderCollapsibleGroup = (group: Group) => {
-    const items = search(filter(group.items));
+    const items = orderItems(group, search(filter(group.items)));
     if (items.length === 0) return null;
     return <CollapsibleGroup key={group.key} group={group} collapsed={collapsed} renderItems={renderItems} items={items} />;
   };
@@ -250,10 +396,53 @@ export function AppSidebar() {
                 className="h-8 pl-8 text-sm"
               />
             </div>
+            <Button
+              variant={editing ? "default" : "outline"}
+              size="sm"
+              className="mt-2 w-full"
+              onClick={() => {
+                if (editing) {
+                  save({ ...layout, locked: true });
+                  setEditing(false);
+                } else {
+                  setEditing(true);
+                }
+              }}
+              title={editing ? "Lock the sidebar layout" : "Rearrange the sidebar"}
+            >
+              {editing ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
+              <span className="ml-1">{editing ? "Lock layout" : "Edit layout"}</span>
+            </Button>
           </div>
         )}
         {renderGroup("Dashboard", search(filter(adminItems).filter(i => i.url === "/")))}
-        {primaryGroups.map(renderCollapsibleGroup)}
+        {editing && !collapsed && !q ? (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleGroupDragEnd}>
+            <SortableContext
+              items={orderedGroups.map((g) => `group:${g.key}`)}
+              strategy={verticalListSortingStrategy}
+            >
+              {orderedGroups.map((group) => {
+                const items = orderItems(group, filter(group.items));
+                if (items.length === 0) return null;
+                return (
+                  <EditableGroupBlock
+                    key={group.key}
+                    group={group}
+                    items={items}
+                    isActive={isActive}
+                    unread={unread}
+                    pendingReviewCount={pendingReviewCount}
+                    sensors={sensors}
+                    onReorderItems={handleReorderItems}
+                  />
+                );
+              })}
+            </SortableContext>
+          </DndContext>
+        ) : (
+          orderedGroups.map(renderCollapsibleGroup)
+        )}
         {renderGroup("More — Operations", leftover(adminItems).filter(i => i.url !== "/"))}
         {renderGroup("More — Finance", leftover(financeItems))}
         {renderGroup("More — Portals", leftover(portalItems))}
