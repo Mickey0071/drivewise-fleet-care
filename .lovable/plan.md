@@ -1,33 +1,51 @@
-# Unified Mileage → Vehicle → Routine Maintenance
-
 ## Goal
-Whenever mileage is entered anywhere in the app, it updates the vehicle's single "current mileage" value (only if higher), so it shows consistently on fleet cards, in maintenance routines, and automatically drives routine-maintenance alerts (oil change miles-remaining, etc.).
 
-## Current state
-- The vehicle's `mileage` is the single source of truth. Routine-maintenance alerts (`computeVehicleAlerts` in `src/lib/maintenance-utils.ts`) already read `v.mileage`, so keeping that value fresh is what "accounts it toward routine maintenance."
-- A helper `applyOdometerReading(vehicleId, mileage)` in `src/lib/mock/store.ts` already propagates readings from inspections and service/maintenance logs.
-- Gaps: (1) it uses "latest value wins" instead of increase-only; (2) rental returns, RM cards, and runner RM tasks capture mileage but never push it to the vehicle.
+Let you rearrange the left sidebar — both the category groups (Reservations, Fleet, P&L, Staff, JV) and the links inside each group — by dragging, then **lock** the layout so it stops being draggable. Your custom arrangement is saved to your account so it follows you across devices/browsers. (The Fleet screen's own search bar is left untouched — it stays a fleet filter.)
 
-## Changes
+## How it works for you
 
-### 1. Increase-only rule
-Update `applyOdometerReading` so a new reading only overwrites `vehicle.mileage` when it is strictly greater than the current value (still ignores null/0/negatives). This protects the routine-maintenance math from typos and stale readings. All existing callers (inspections, service logs, maintenance edits) inherit this automatically.
+1. A small control appears at the top of the sidebar: an **Edit layout** button (pencil/unlock icon).
+2. Click **Edit layout** → drag handles appear. You can:
+   - Drag whole category groups up/down to reorder them.
+   - Drag individual links within a group to reorder them.
+3. Click **Lock** → dragging is disabled, the arrangement is frozen, and it's saved.
+4. Next time you sign in (any device), the sidebar loads in your saved order and stays locked until you hit Edit layout again.
 
-### 2. Wire the missing entry points to the vehicle
-These are server functions that write directly to the database, so each needs an increase-only update to `vehicles.mileage` in the same handler (read current mileage, write back only if the new value is higher):
-- **Rental returns** — `src/lib/return.functions.ts`: after saving `mileage_in`, bump `vehicles.mileage`.
-- **RM cards** — `src/lib/rm-cards.functions.ts`: when `mileage_at_inspection` is recorded, bump `vehicles.mileage`.
-- **Runner RM tasks** — `src/lib/runner-tasks-admin.functions.ts`: when an RM task's mileage is submitted/approved, bump `vehicles.mileage`.
-- **Fleet card manual edit** — confirm `updateVehicle` mileage edits also route through the increase-only rule (currently a direct set); align it so manual edits follow the same guard, while still allowing an explicit correction path.
-- **Inspections & service logs** — already covered; no change beyond inheriting the increase-only rule.
+## What gets built
 
-### 3. Keep routine maintenance in sync
-No new alert logic needed — once `vehicle.mileage` is current, `computeVehicleAlerts` recomputes oil-change and mileage-based alerts on the fleet card and maintenance views automatically. Oil-change baselines (`lastMileage`) continue to reset only when an oil-change service is logged (existing behavior at store lines ~1864/2444).
+### 1. Persistence (cross-device) — backend
+Create a per-user preferences table so the layout follows your account:
 
-## Out of scope
-- No schema/migration changes (all fields already exist).
-- No change to how rentals store `mileage_out`/`mileage_in` for billing; we only additionally propagate to the vehicle.
+```text
+public.user_ui_prefs
+  user_id  uuid  (PK, references auth user id)
+  sidebar_layout  jsonb   -- { groupOrder: [...], itemOrder: { groupKey: [urls...] }, locked: bool }
+  updated_at  timestamptz
+```
+- RLS: each user can only read/write their own row (`auth.uid() = user_id`).
+- GRANTs for `authenticated` + `service_role` in the same migration.
+
+### 2. Load/save layout
+- On sidebar mount, read the current user's `sidebar_layout` (via the Supabase client, RLS-scoped).
+- Save on **Lock** (and when reordering in edit mode) with an upsert.
+- If no saved row exists, fall back to the current default order.
+
+### 3. Sidebar drag-and-drop + lock (`src/components/app/AppSidebar.tsx`)
+- Add `editMode`/`locked` state plus an **Edit layout / Lock** toggle button near the top of `SidebarContent`.
+- Apply the saved `groupOrder` to reorder `primaryGroups`, and saved `itemOrder` to reorder links within each group before rendering.
+- Add drag-and-drop:
+  - Group-level reordering of the collapsible groups.
+  - Item-level reordering within each group's menu.
+  - Drag handles only visible/active in edit mode; disabled when locked.
+- Keep existing behavior intact: role filtering, menu search, collapse-to-icons, badges, and the per-group open/closed memory.
 
 ## Technical notes
-- Increase-only guard lives in one place for the local store (`applyOdometerReading`) and is mirrored inline in each server function that writes to the DB directly.
-- Server-function updates use the existing `supabaseAdmin`/authenticated client already in those files; each does a read-then-conditional-update on `vehicles.mileage`.
+
+- Drag-and-drop: use `@dnd-kit/core` + `@dnd-kit/sortable` (lightweight, keyboard-accessible). Added via package install.
+- Reordering merges saved order with defaults so newly added routes still appear (any group/link not in the saved order is appended at the end).
+- Writes go through the RLS-protected table using the browser Supabase client; no service role needed.
+- The Fleet page search bar is out of scope and unchanged.
+
+## Out of scope
+- No change to the Fleet screen search behavior.
+- No change to which links exist or their routes — only their order and the lock state.
