@@ -14,11 +14,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Send, CheckCircle2 } from "lucide-react";
+import { Plus, Send, CheckCircle2, Wrench } from "lucide-react";
 import {
   listPartsSuppliers, addPartsSupplier, createPartInquiry,
   listPartInquiries, closePartInquiry,
 } from "@/lib/parts.functions";
+import { z } from "zod";
+import { vehicles, maintenance, expenses } from "@/lib/mock/data";
+import { addExpense, useStoreVersion } from "@/lib/mock/store";
 
 export const Route = createFileRoute("/admin/parts")({
   head: () => ({ meta: [{ title: "Parts — Camauto Rentals" }] }),
@@ -46,10 +49,178 @@ function PartsPage() {
     <div>
       <PageHeader title="Parts" subtitle="Send a part to a supplier and get a price back — no login needed for them" />
       <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
-        <NewInquiry />
+        <div className="space-y-6">
+          <RecordPartPurchase />
+          <NewInquiry />
+        </div>
         <InquiryList />
       </div>
     </div>
+  );
+}
+
+const purchaseSchema = z.object({
+  vehicleId: z.string().min(1, "Pick a vehicle"),
+  technician: z.string().trim().min(1, "Technician is required").max(120),
+  supplier: z.string().trim().max(120).optional(),
+  partName: z.string().trim().max(200).optional(),
+  partCost: z.number().min(0, "Part cost can't be negative"),
+  laborCost: z.number().min(0, "Labor can't be negative"),
+  date: z.string().min(1, "Pick a date"),
+  notes: z.string().trim().max(800).optional(),
+});
+
+function RecordPartPurchase() {
+  useStoreVersion();
+  const [vehicleId, setVehicleId] = useState("");
+  const [technician, setTechnician] = useState("");
+  const [supplier, setSupplier] = useState("");
+  const [partName, setPartName] = useState("");
+  const [partCost, setPartCost] = useState("");
+  const [laborCost, setLaborCost] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  // Suggest technicians used before (from repairs and prior part purchases).
+  const technicianOptions = Array.from(new Set([
+    ...maintenance.map((m) => m.mechanicName?.trim()).filter((n): n is string => !!n),
+    ...expenses
+      .filter((e) => e.notes?.includes("Tech: "))
+      .map((e) => e.notes!.split("Tech: ")[1]?.trim())
+      .filter((n): n is string => !!n),
+  ])).sort((a, b) => a.localeCompare(b));
+
+  const sortedVehicles = [...vehicles].sort((a, b) =>
+    (a.plate || "").localeCompare(b.plate || ""));
+
+  function reset() {
+    setVehicleId(""); setTechnician(""); setSupplier(""); setPartName("");
+    setPartCost(""); setLaborCost(""); setNotes("");
+    setDate(new Date().toISOString().slice(0, 10));
+  }
+
+  async function handleSave() {
+    const parsed = purchaseSchema.safeParse({
+      vehicleId,
+      technician,
+      supplier: supplier || undefined,
+      partName: partName || undefined,
+      partCost: parseFloat(partCost) || 0,
+      laborCost: parseFloat(laborCost) || 0,
+      date,
+      notes: notes || undefined,
+    });
+    if (!parsed.success) {
+      return toast.error(parsed.error.issues[0]?.message ?? "Check your entries");
+    }
+    const d = parsed.data;
+    if (d.partCost <= 0 && d.laborCost <= 0) {
+      return toast.error("Enter a part cost or labor amount");
+    }
+    setSaving(true);
+    try {
+      const techNote = `Tech: ${d.technician}`;
+      const partLabel = d.partName ? `Part: ${d.partName} · ` : "Part · ";
+      const writes: Promise<unknown>[] = [];
+      if (d.partCost > 0) {
+        const row = addExpense({
+          category: "Parts", amount: d.partCost, date: d.date,
+          vehicleId: d.vehicleId, vendor: d.supplier || undefined,
+          notes: `${partLabel}${techNote}${d.notes ? ` · ${d.notes}` : ""}`,
+        });
+        writes.push((row as { cloudReady?: Promise<unknown> }).cloudReady ?? Promise.resolve());
+      }
+      if (d.laborCost > 0) {
+        const row = addExpense({
+          category: "Labour", amount: d.laborCost, date: d.date,
+          vehicleId: d.vehicleId, vendor: d.supplier || undefined,
+          notes: `Labor · ${techNote}${d.notes ? ` · ${d.notes}` : ""}`,
+        });
+        writes.push((row as { cloudReady?: Promise<unknown> }).cloudReady ?? Promise.resolve());
+      }
+      await Promise.all(writes);
+      toast.success("Part purchase logged to expenses");
+      reset();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to log purchase");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Wrench className="h-4 w-4" /> Record a part purchase
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Logs straight to expenses & P&L — no repair ticket needed.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div>
+          <Label className="mb-1.5 block text-xs">Vehicle *</Label>
+          <Select value={vehicleId} onValueChange={setVehicleId}>
+            <SelectTrigger><SelectValue placeholder="Select a vehicle" /></SelectTrigger>
+            <SelectContent>
+              {sortedVehicles.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  {v.plate ? `${v.plate} · ` : ""}{v.year} {v.make} {v.model}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="mb-1.5 block text-xs">Technician *</Label>
+          <Input
+            list="technician-options"
+            placeholder="Who did the work"
+            value={technician}
+            onChange={(e) => setTechnician(e.target.value)}
+          />
+          <datalist id="technician-options">
+            {technicianOptions.map((t) => <option key={t} value={t} />)}
+          </datalist>
+        </div>
+        <div>
+          <Label className="mb-1.5 block text-xs">Supplier</Label>
+          <Input placeholder="Where the part was bought" value={supplier}
+            onChange={(e) => setSupplier(e.target.value)} />
+        </div>
+        <div>
+          <Label className="mb-1.5 block text-xs">Part name / description</Label>
+          <Input placeholder="e.g. Front brake pads" value={partName}
+            onChange={(e) => setPartName(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="mb-1.5 block text-xs">Part cost ($)</Label>
+            <Input type="number" min="0" step="0.01" placeholder="0.00" value={partCost}
+              onChange={(e) => setPartCost(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs">Labor to repair ($)</Label>
+            <Input type="number" min="0" step="0.01" placeholder="0.00" value={laborCost}
+              onChange={(e) => setLaborCost(e.target.value)} />
+          </div>
+        </div>
+        <div>
+          <Label className="mb-1.5 block text-xs">Date</Label>
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
+        <div>
+          <Label className="mb-1.5 block text-xs">Notes</Label>
+          <Textarea rows={2} placeholder="Optional" value={notes}
+            onChange={(e) => setNotes(e.target.value)} />
+        </div>
+        <Button className="w-full" onClick={handleSave} disabled={saving}>
+          <Plus className="h-4 w-4" /> {saving ? "Saving…" : "Log purchase"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
