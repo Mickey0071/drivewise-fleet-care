@@ -78,6 +78,113 @@ function CollapsibleGroup({
 
 const ALL_ROLES: AppRole[] = ["admin"];
 
+// ---- Drag-and-drop building blocks for the "Edit layout" mode ----
+
+function SortableLink({
+  item, isActive, unread, pendingReviewCount,
+}: {
+  item: Item;
+  isActive: (url: string) => boolean;
+  unread: number;
+  pendingReviewCount: number;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: item.url });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <SidebarMenuItem ref={setNodeRef} style={style}>
+      <div className="flex items-center gap-1 rounded-md border border-dashed border-sidebar-border/60 bg-sidebar-accent/30 px-1">
+        <button
+          type="button"
+          className="cursor-grab touch-none px-0.5 text-sidebar-foreground/50 hover:text-sidebar-foreground"
+          {...attributes}
+          {...listeners}
+          aria-label={`Reorder ${item.title}`}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
+        <div className="flex flex-1 items-center gap-2 py-1.5 text-sm">
+          <item.icon className="h-4 w-4 shrink-0" />
+          <span className="flex-1">{item.title}</span>
+          {item.url === "/runner-reports" && unread > 0 && (
+            <Badge variant="default" className="h-5 px-1.5 text-[10px]">{unread}</Badge>
+          )}
+          {item.url === "/pending-agreements" && pendingReviewCount > 0 && (
+            <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">{pendingReviewCount}</Badge>
+          )}
+        </div>
+      </div>
+    </SidebarMenuItem>
+  );
+}
+
+function EditableGroupBlock({
+  group, items, isActive, unread, pendingReviewCount, sensors, onReorderItems,
+}: {
+  group: Group;
+  items: Item[];
+  isActive: (url: string) => boolean;
+  unread: number;
+  pendingReviewCount: number;
+  sensors: ReturnType<typeof useSensors>;
+  onReorderItems: (groupKey: string, orderedUrls: string[]) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: `group:${group.key}` });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  const handleItemDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const urls = items.map((i) => i.url);
+    const from = urls.indexOf(String(active.id));
+    const to = urls.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    onReorderItems(group.key, arrayMove(urls, from, to));
+  };
+  return (
+    <SidebarGroup ref={setNodeRef} style={style}>
+      <div className="flex items-center gap-2 rounded-md bg-sidebar-accent px-2 py-1.5 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/80">
+        <button
+          type="button"
+          className="cursor-grab touch-none text-sidebar-foreground/60 hover:text-sidebar-foreground"
+          {...attributes}
+          {...listeners}
+          aria-label={`Reorder ${group.label} section`}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <group.icon className="h-4 w-4" />
+        <span className="flex-1">{group.label}</span>
+      </div>
+      <SidebarGroupContent>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
+          <SortableContext items={items.map((i) => i.url)} strategy={verticalListSortingStrategy}>
+            <SidebarMenu>
+              {items.map((item) => (
+                <SortableLink
+                  key={item.url}
+                  item={item}
+                  isActive={isActive}
+                  unread={unread}
+                  pendingReviewCount={pendingReviewCount}
+                />
+              ))}
+            </SidebarMenu>
+          </SortableContext>
+        </DndContext>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+}
+
 // New top-level collapsible groups (navigation reorganization)
 const primaryGroups: Group[] = [
   {
