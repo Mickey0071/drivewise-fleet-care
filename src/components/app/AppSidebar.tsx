@@ -349,21 +349,6 @@ export function AppSidebar() {
     </SidebarMenu>
   );
 
-  const renderCollapsibleGroup = (group: Group) => {
-    const items = orderItems(group, search(filter(group.items)));
-    if (items.length === 0) return null;
-    return <CollapsibleGroup key={group.key} group={group} collapsed={collapsed} renderItems={renderItems} items={items} />;
-  };
-
-  const renderGroup = (label: string, items: Item[]) => items.length === 0 ? null : (
-    <SidebarGroup>
-      {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/60">{label}</SidebarGroupLabel>}
-      <SidebarGroupContent>
-        {renderItems(items)}
-      </SidebarGroupContent>
-    </SidebarGroup>
-  );
-
   // Leftover items (not surfaced in the primary groups) stay accessible below.
   const leftover = (items: Item[]) => search(filter(items)).filter(i => !primaryUrls.has(i.url));
 
