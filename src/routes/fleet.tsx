@@ -570,3 +570,133 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
     </Dialog>
   );
 }
+
+/** Compact card for a sold / archived vehicle: preserved lifetime stats + restore. */
+function ArchivedVehicleCard({ vehicleId, onOpen }: { vehicleId: string; onOpen: () => void }) {
+  const v = vehicles.find(x => x.id === vehicleId);
+  if (!v) return null;
+  const fin = getVehicleFinancials(v.id);
+  const vehicleRentals = rentals.filter(r => r.vehicleId === v.id);
+  const driverNames = Array.from(
+    new Set(
+      vehicleRentals
+        .map(r => driverById(r.driverId)?.fullName)
+        .filter((n): n is string => !!n),
+    ),
+  );
+  return (
+    <Card className="overflow-hidden">
+      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-t-xl bg-muted">
+        <img
+          src={v.imageUrl ?? carImage(v.model)}
+          alt={`${v.year} ${v.make} ${v.model}`}
+          loading="lazy"
+          className="h-full w-full object-cover opacity-80"
+        />
+        <div className="absolute right-2 top-2">
+          <Badge variant="secondary"><Archive className="mr-1 h-3 w-3" /> Sold / archived</Badge>
+        </div>
+      </div>
+      <CardContent className="p-4">
+        <div className="text-xs text-muted-foreground">{v.id} · Tag #{v.plate}</div>
+        <div className="mt-0.5 font-semibold">{v.year} {v.make} {v.model}</div>
+        <div className="mt-1 text-xs text-muted-foreground">
+          {v.soldDate ? `Sold ${fmtDate(v.soldDate)}` : "Archived"}
+          {v.salePrice != null ? ` · ${fmtMoney(v.salePrice)}` : ""}
+        </div>
+        {v.archiveNotes && (
+          <div className="mt-1 text-xs text-muted-foreground">{v.archiveNotes}</div>
+        )}
+        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-2 text-xs">
+          <div><div className="text-muted-foreground">Lifetime income</div><div className="font-semibold">{fmtMoney(fin.totalIncome)}</div></div>
+          <div><div className="text-muted-foreground">Lifetime expenses</div><div className="font-semibold">{fmtMoney(fin.totalExpenses)}</div></div>
+          <div><div className="text-muted-foreground">Net</div><div className={`font-semibold ${fin.netPnl < 0 ? "text-destructive" : ""}`}>{fmtMoney(fin.netPnl)}</div></div>
+          <div><div className="text-muted-foreground">Rentals</div><div className="font-semibold">{vehicleRentals.length}</div></div>
+        </div>
+        {driverNames.length > 0 && (
+          <div className="mt-2 text-[11px] text-muted-foreground">
+            Past drivers: {driverNames.slice(0, 5).join(", ")}{driverNames.length > 5 ? ` +${driverNames.length - 5}` : ""}
+          </div>
+        )}
+      </CardContent>
+      <div className="flex gap-2 border-t border-border bg-muted/30 p-2">
+        <Button variant="outline" size="sm" className="flex-1" onClick={onOpen}>Profile</Button>
+        <Button
+          size="sm"
+          className="flex-1"
+          onClick={async () => {
+            try {
+              await unarchiveVehicle(v.id);
+              toast.success("Restored to fleet");
+            } catch (e: any) {
+              toast.error(e?.message ?? "Failed to restore");
+            }
+          }}
+        >
+          <RotateCcw className="mr-1 h-4 w-4" /> Restore
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+/** Dialog to mark a vehicle as sold: sale date, optional price, notes. */
+function ArchiveVehicleDialog({ vehicleId, onClose }: { vehicleId: string | null; onClose: () => void }) {
+  const v = vehicleId ? vehicles.find(x => x.id === vehicleId) : null;
+  const [soldDate, setSoldDate] = useState(new Date().toISOString().slice(0, 10));
+  const [salePrice, setSalePrice] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!vehicleId) return;
+    setSaving(true);
+    try {
+      await archiveVehicle(vehicleId, {
+        soldDate,
+        salePrice: salePrice ? parseFloat(salePrice) : undefined,
+        notes: notes.trim() || undefined,
+      });
+      toast.success("Vehicle archived — history kept, removed from active analytics");
+      setSalePrice(""); setNotes("");
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to archive");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!vehicleId} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Mark as sold / archive</DialogTitle>
+        </DialogHeader>
+        {v && (
+          <p className="text-sm text-muted-foreground">
+            {v.year} {v.make} {v.model} · Tag #{v.plate}. Its income, expenses and driver history stay counted in overall totals, but it's removed from the active fleet and its per-fleet analytics (days rented, averages, utilization).
+          </p>
+        )}
+        <div className="space-y-3">
+          <div>
+            <Label className="mb-1.5 block text-xs">Sale / archive date</Label>
+            <Input type="date" value={soldDate} onChange={e => setSoldDate(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs">Sale price ($) — optional</Label>
+            <Input type="number" min="0" step="0.01" placeholder="0.00" value={salePrice} onChange={e => setSalePrice(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs">Notes — optional</Label>
+            <Textarea rows={2} placeholder="Buyer, reason, etc." value={notes} onChange={e => setNotes(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Archiving…" : "Archive vehicle"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
