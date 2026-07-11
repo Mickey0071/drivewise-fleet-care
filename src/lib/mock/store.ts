@@ -2740,8 +2740,8 @@ export function completeRepairLineItem(
     } as never),
   );
 
-  // Post this item's cost to P&L.
-  if (total > 0) {
+  // Post this item's cost to P&L (unless it was already posted when added).
+  if (total > 0 && !item.expensePosted) {
     if (parts > 0 && labor > 0) {
       addExpense({ category: "Parts", amount: parts, date: today, vehicleId: m.vehicleId, maintenanceId: m.id, vendor: mechanicName, notes: `Repair ${m.id} — ${item.title} (parts)` });
       addExpense({ category: "Labour", amount: labor, date: today, vehicleId: m.vehicleId, maintenanceId: m.id, vendor: mechanicName, notes: `Repair ${m.id} — ${item.title} (labour)` });
