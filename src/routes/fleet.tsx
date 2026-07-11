@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { vehicles, fmtMoney } from "@/lib/mock/data";
 import { maintenance as maintenanceList } from "@/lib/mock/data";
-import { fmtDate, rentals } from "@/lib/mock/data";
+import { fmtDate, rentals, driverById } from "@/lib/mock/data";
 import { lastServiceFor } from "@/lib/maintenance-utils";
 import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { computeVehicleAlerts, isScheduleConfigured } from "@/lib/maintenance-utils";
@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addVehicle, isVehicleBookable, awaitingPostReturnInspection, updateVehicleImage, uploadVehiclePhoto, useStoreVersion, openRepairsForVehicle } from "@/lib/mock/store";
+import { addVehicle, isVehicleBookable, awaitingPostReturnInspection, updateVehicleImage, uploadVehiclePhoto, useStoreVersion, openRepairsForVehicle, activeVehicles, archivedVehicles, archiveVehicle, unarchiveVehicle } from "@/lib/mock/store";
 import { toast } from "sonner";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ExpenseDialog } from "@/components/app/ExpenseDialog";
@@ -23,7 +23,8 @@ import { SendRmTaskDialog } from "@/components/app/SendRmTaskDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehiclePhotosDialog } from "@/components/app/VehiclePhotosDialog";
-import { Share2, Camera, Pencil, Images, Plus, Wrench } from "lucide-react";
+import { Share2, Camera, Pencil, Images, Plus, Wrench, Archive, RotateCcw } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 
@@ -31,6 +32,7 @@ export const Route = createFileRoute("/fleet")({
   head: () => ({ meta: [{ title: "Fleet — Camauto Rentals" }] }),
   validateSearch: (search: Record<string, unknown>) => ({
     status: (search.status as "available" | "rented" | "inspection" | "maintenance" | "impound" | undefined) ?? undefined,
+    view: (search.view as "archived" | undefined) ?? undefined,
   }),
   component: FleetPage,
 });
@@ -44,27 +46,59 @@ function FleetPage() {
   const [photosVehicleId, setPhotosVehicleId] = useState<string | null>(null);
   const [expenseVehicleId, setExpenseVehicleId] = useState<string | null>(null);
   const [rmVehicleId, setRmVehicleId] = useState<string | null>(null);
+  const [archiveVehicleId, setArchiveVehicleId] = useState<string | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { status } = Route.useSearch();
+  const { status, view } = Route.useSearch();
   const navigate = Route.useNavigate();
   const goto = useNavigate();
 
   if (pathname !== "/fleet") return <Outlet />;
 
-  const filtered = status === "available" ? vehicles.filter(v => isVehicleBookable(v.id)) : status ? vehicles.filter(v => v.status === status) : vehicles;
+  const showArchived = view === "archived";
+  const activeFleet = activeVehicles();
+  const archived = archivedVehicles();
+  const filtered = showArchived
+    ? archived
+    : status === "available"
+      ? activeFleet.filter(v => isVehicleBookable(v.id))
+      : status
+        ? activeFleet.filter(v => v.status === status)
+        : activeFleet;
   return (
     <div>
       <PageHeader
         title="Fleet Manager"
-        subtitle={status ? `${filtered.length} ${status} vehicle${filtered.length === 1 ? "" : "s"}` : `${vehicles.length} vehicles in service`}
+        subtitle={showArchived ? `${archived.length} sold / archived vehicle${archived.length === 1 ? "" : "s"}` : status ? `${filtered.length} ${status} vehicle${filtered.length === 1 ? "" : "s"}` : `${activeFleet.length} vehicles in service`}
         action={<Button onClick={() => setOpen(true)}>+ Add Vehicle</Button>}
       />
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Button size="sm" variant={showArchived ? "outline" : "default"} onClick={() => navigate({ search: {} })}>
+          Active fleet
+        </Button>
+        <Button size="sm" variant={showArchived ? "default" : "outline"} onClick={() => navigate({ search: { view: "archived" } })}>
+          <Archive className="mr-1 h-4 w-4" /> Sold / Archived ({archived.length})
+        </Button>
+      </div>
       {status && (
         <div className="mb-4 flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
           <span>Filtered by status: <span className="font-medium capitalize">{status}</span></span>
           <Button size="sm" variant="ghost" onClick={() => navigate({ search: { status: undefined } })}>Clear</Button>
         </div>
       )}
+      {showArchived ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {archived.length === 0 && (
+            <p className="col-span-full py-12 text-center text-sm text-muted-foreground">No sold or archived vehicles yet.</p>
+          )}
+          {archived.map(v => (
+            <ArchivedVehicleCard
+              key={v.id}
+              vehicleId={v.id}
+              onOpen={() => goto({ to: "/fleet/$vehicleId", params: { vehicleId: v.id } })}
+            />
+          ))}
+        </div>
+      ) : (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map(v => {
           const openIssueCount = maintenanceList.filter(m => m.vehicleId === v.id && !m.dateCompleted).length;
@@ -262,6 +296,14 @@ function FleetPage() {
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setArchiveVehicleId(v.id)}
+                title="Mark as sold / archive"
+              >
+                <Archive className="h-4 w-4" />
+              </Button>
+              <Button
                 size="sm"
                 className="flex-1"
                 disabled={!isVehicleBookable(v.id)}
@@ -274,6 +316,7 @@ function FleetPage() {
           );
         })}
       </div>
+      )}
       <AddVehicleDialog open={open} onClose={() => setOpen(false)} />
       <NewReservationDialog
         open={!!reserveVehicleId}
@@ -305,6 +348,10 @@ function FleetPage() {
         open={!!rmVehicleId}
         onOpenChange={(o) => { if (!o) setRmVehicleId(null); }}
         vehicle={rmVehicleId ? vehicles.find(v => v.id === rmVehicleId) ?? null : null}
+      />
+      <ArchiveVehicleDialog
+        vehicleId={archiveVehicleId}
+        onClose={() => setArchiveVehicleId(null)}
       />
     </div>
   );
