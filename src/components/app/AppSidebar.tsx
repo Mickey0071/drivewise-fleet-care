@@ -5,7 +5,7 @@ import {
   Gauge, ChevronRight, Handshake, GripVertical, Lock, LockOpen,
 } from "lucide-react";
 import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -314,13 +314,10 @@ export function AppSidebar() {
   const orderItems = (group: Group, items: Item[]) =>
     applyOrder(items, (i) => i.url, layout.itemOrder[group.key]);
 
-  // Groups in the user's saved order (new groups append at the end).
-  const orderedGroups = applyOrder(primaryGroups, (g) => g.key, layout.groupOrder);
-
   const handleGroupDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const keys = orderedGroups.map((g) => g.key);
+    const keys = orderedBlocks.map((b) => b.group.key);
     const from = keys.indexOf(String(active.id).replace(/^group:/, ""));
     const to = keys.indexOf(String(over.id).replace(/^group:/, ""));
     if (from < 0 || to < 0) return;
@@ -352,23 +349,37 @@ export function AppSidebar() {
     </SidebarMenu>
   );
 
-  const renderCollapsibleGroup = (group: Group) => {
-    const items = orderItems(group, search(filter(group.items)));
-    if (items.length === 0) return null;
-    return <CollapsibleGroup key={group.key} group={group} collapsed={collapsed} renderItems={renderItems} items={items} />;
-  };
-
-  const renderGroup = (label: string, items: Item[]) => items.length === 0 ? null : (
-    <SidebarGroup>
-      {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/60">{label}</SidebarGroupLabel>}
-      <SidebarGroupContent>
-        {renderItems(items)}
-      </SidebarGroupContent>
-    </SidebarGroup>
-  );
-
   // Leftover items (not surfaced in the primary groups) stay accessible below.
   const leftover = (items: Item[]) => search(filter(items)).filter(i => !primaryUrls.has(i.url));
+
+  // Every sidebar section (Dashboard, primary folders, and the "More" lists)
+  // is a draggable block so a folder can be dropped anywhere in the sidebar.
+  type Block = { group: Group; items: Item[] };
+  const blocksRaw: Block[] = [
+    {
+      group: { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, defaultOpen: true, items: [] },
+      items: search(filter(adminItems)).filter(i => i.url === "/"),
+    },
+    ...primaryGroups.map((g) => ({ group: g, items: search(filter(g.items)) })),
+    {
+      group: { key: "more-ops", label: "More — Operations", icon: ClipboardList, defaultOpen: false, items: [] },
+      items: leftover(adminItems).filter(i => i.url !== "/"),
+    },
+    {
+      group: { key: "more-finance", label: "More — Finance", icon: TrendingUp, defaultOpen: false, items: [] },
+      items: leftover(financeItems),
+    },
+    {
+      group: { key: "more-portals", label: "More — Portals", icon: IdCard, defaultOpen: false, items: [] },
+      items: leftover(portalItems),
+    },
+    {
+      group: { key: "more-settings", label: "More — Settings", icon: UsersRound, defaultOpen: false, items: [] },
+      items: leftover(settingsItems),
+    },
+  ].map((b) => ({ ...b, items: orderItems(b.group, b.items) }));
+  // Blocks in the user's saved order (new blocks append at the end).
+  const orderedBlocks = applyOrder(blocksRaw, (b) => b.group.key, layout.groupOrder);
 
   return (
     <Sidebar collapsible="icon">
@@ -415,15 +426,13 @@ export function AppSidebar() {
             </Button>
           </div>
         )}
-        {renderGroup("Dashboard", search(filter(adminItems).filter(i => i.url === "/")))}
         {editing && !collapsed && !q ? (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleGroupDragEnd}>
             <SortableContext
-              items={orderedGroups.map((g) => `group:${g.key}`)}
+              items={orderedBlocks.map((b) => `group:${b.group.key}`)}
               strategy={verticalListSortingStrategy}
             >
-              {orderedGroups.map((group) => {
-                const items = orderItems(group, filter(group.items));
+              {orderedBlocks.map(({ group, items }) => {
                 if (items.length === 0) return null;
                 return (
                   <EditableGroupBlock
@@ -441,12 +450,12 @@ export function AppSidebar() {
             </SortableContext>
           </DndContext>
         ) : (
-          orderedGroups.map(renderCollapsibleGroup)
+          orderedBlocks.map(({ group, items }) =>
+            items.length === 0 ? null : (
+              <CollapsibleGroup key={group.key} group={group} collapsed={collapsed} renderItems={renderItems} items={items} />
+            ),
+          )
         )}
-        {renderGroup("More — Operations", leftover(adminItems).filter(i => i.url !== "/"))}
-        {renderGroup("More — Finance", leftover(financeItems))}
-        {renderGroup("More — Portals", leftover(portalItems))}
-        {renderGroup("More — Settings", leftover(settingsItems))}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-3">
         {!collapsed && user && (
