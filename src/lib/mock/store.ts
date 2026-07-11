@@ -41,6 +41,7 @@ const fromVehicle = (r: any) => ({
   hasOpenIssues: !!r.has_open_issues,
   maintenanceSettings: r.maintenance_settings ?? undefined,
 });
+// archived flags appended below in the mapper via Object.assign at read time
 const toVehicle = (v: any) => ({
   id: v.id, make: v.make, model: v.model, year: v.year, vin: v.vin,
   plate: v.plate, mileage: v.mileage, status: v.status, risk_tier: v.riskTier,
