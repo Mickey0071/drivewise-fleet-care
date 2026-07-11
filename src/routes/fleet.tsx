@@ -367,6 +367,7 @@ function VehiclePhotoButton({ vehicleId, hasPhoto }: { vehicleId: string; hasPho
         type="file"
         accept="image/*"
         className="hidden"
+        data-photo-input
         onChange={async (e) => {
           const file = e.target.files?.[0];
           if (!file) return;
