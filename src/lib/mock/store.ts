@@ -2646,6 +2646,42 @@ export function saveRepairDiagnosisLineItems(id: string, items: RepairLineItem[]
  * vehicle's fleet-card repair history and posts its cost to P&L. When the last
  * open item is completed, the ticket itself is marked complete.
  */
+
+/**
+ * Append a parts/labour line to an in-queue ticket AND post its cost to
+ * expenses/P&L immediately (so dashboards update right away). The item is
+ * flagged so completing it later does not double-post.
+ */
+export function addRepairLineItemToTicket(
+  ticketId: string,
+  item: RepairLineItem,
+  opts?: { date?: string; vendor?: string },
+) {
+  const m = maintenance.find(x => x.id === ticketId);
+  if (!m) return;
+  const date = opts?.date || new Date().toISOString().slice(0, 10);
+  const parts = Math.max(0, Number(item.partsCost) || 0);
+  const labor = Math.max(0, Number(item.laborCost) || 0);
+  const vendor = opts?.vendor || item.mechanicName;
+  const expenseIds: string[] = [];
+  if (parts > 0) {
+    const row = addExpense({ category: "Parts", amount: parts, date, vehicleId: m.vehicleId, maintenanceId: m.id, vendor, notes: `Repair ${m.id} — ${item.title} (parts)` });
+    expenseIds.push(row.id);
+  }
+  if (labor > 0) {
+    const row = addExpense({ category: "Labour", amount: labor, date, vehicleId: m.vehicleId, maintenanceId: m.id, vendor, notes: `Repair ${m.id} — ${item.title} (labour)` });
+    expenseIds.push(row.id);
+  }
+  const newItem: RepairLineItem = {
+    ...item,
+    partsCost: parts,
+    laborCost: labor,
+    expensePosted: expenseIds.length > 0,
+    expenseIds: expenseIds.length > 0 ? expenseIds : undefined,
+  };
+  return saveRepairLineItems(ticketId, [...(m.lineItems ?? []), newItem]);
+}
+
 export function completeRepairLineItem(
   ticketId: string,
   itemId: string,
