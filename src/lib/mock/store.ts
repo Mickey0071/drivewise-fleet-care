@@ -40,8 +40,11 @@ const fromVehicle = (r: any) => ({
   insuranceExpiry: r.insurance_expiry ?? undefined,
   hasOpenIssues: !!r.has_open_issues,
   maintenanceSettings: r.maintenance_settings ?? undefined,
+  archived: !!r.archived,
+  soldDate: r.sold_date ?? undefined,
+  salePrice: r.sale_price != null ? Number(r.sale_price) : undefined,
+  archiveNotes: r.archive_notes ?? undefined,
 });
-// archived flags appended below in the mapper via Object.assign at read time
 const toVehicle = (v: any) => ({
   id: v.id, make: v.make, model: v.model, year: v.year, vin: v.vin,
   plate: v.plate, mileage: v.mileage, status: v.status, risk_tier: v.riskTier,
@@ -57,6 +60,10 @@ const toVehicle = (v: any) => ({
   registration_expiry: v.registrationExpiry ?? null,
   insurance_expiry: v.insuranceExpiry ?? null,
   maintenance_settings: v.maintenanceSettings ?? {},
+  archived: !!v.archived,
+  sold_date: v.soldDate ?? null,
+  sale_price: v.salePrice ?? null,
+  archive_notes: v.archiveNotes ?? null,
 });
 const fromDriver = (r: any) => ({
   id: r.id, fullName: r.full_name, phone: r.phone, email: r.email,
