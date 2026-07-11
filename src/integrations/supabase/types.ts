@@ -2943,6 +2943,8 @@ export type Database = {
       }
       vehicles: {
         Row: {
+          archive_notes: string | null
+          archived: boolean
           color: string | null
           created_at: string
           current_location: string | null
@@ -2973,10 +2975,12 @@ export type Database = {
           repo_location: string | null
           risk_tier: string
           rm_history: Json
+          sale_price: number | null
           seats: number | null
           shop_dropoff_at: string | null
           shop_est_return: string | null
           shop_vendor: string | null
+          sold_date: string | null
           status: string
           transmission: string | null
           updated_at: string
@@ -2985,6 +2989,8 @@ export type Database = {
           year: number
         }
         Insert: {
+          archive_notes?: string | null
+          archived?: boolean
           color?: string | null
           created_at?: string
           current_location?: string | null
@@ -3015,10 +3021,12 @@ export type Database = {
           repo_location?: string | null
           risk_tier?: string
           rm_history?: Json
+          sale_price?: number | null
           seats?: number | null
           shop_dropoff_at?: string | null
           shop_est_return?: string | null
           shop_vendor?: string | null
+          sold_date?: string | null
           status?: string
           transmission?: string | null
           updated_at?: string
@@ -3027,6 +3035,8 @@ export type Database = {
           year: number
         }
         Update: {
+          archive_notes?: string | null
+          archived?: boolean
           color?: string | null
           created_at?: string
           current_location?: string | null
@@ -3057,10 +3067,12 @@ export type Database = {
           repo_location?: string | null
           risk_tier?: string
           rm_history?: Json
+          sale_price?: number | null
           seats?: number | null
           shop_dropoff_at?: string | null
           shop_est_return?: string | null
           shop_vendor?: string | null
+          sold_date?: string | null
           status?: string
           transmission?: string | null
           updated_at?: string
