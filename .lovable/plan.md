@@ -1,38 +1,44 @@
 ## Goal
 
-In the **Create Repair** dialog on the Maintenance page, add an optional **Routine Maintenance** section. Once a vehicle is picked, its due/upcoming scheduled tasks (oil change, battery test, alternator test, inspection, custom alerts) can be added into the ticket with one tap. Each added task becomes a normal, editable line item — you can rename it, add more items, set problem category, and later fill in parts/labor in the Diagnose phase like any repair.
+In the **Record a part purchase** form on the Parts page, add an option to attach the part to an **existing repair ticket that's still in queue** — a ticket in the **Reported (issue)** or **Diagnosing** stage. When a ticket is chosen, the part + labor is added to that ticket as an editable line item (so it flows through the normal Diagnose → Complete pipeline). When no ticket is chosen, it keeps working exactly as today (standalone expense → P&L).
 
 ## What you'll see
 
 ```text
-Create Repair
- ├─ Vehicle:        [ 2021 Toyota Camry · ABC123 ▼ ]
- ├─ Routine maintenance for this vehicle   (appears after a vehicle is chosen)
- │    ☐ Oil Change          — overdue
- │    ☐ Battery Test        — due in 5 days
- │    ☐ Alternator Test     — upcoming
- │    ☐ Inspection          — due in 12 days
- │    (checking one drops it into the Issue list below, editable)
- ├─ Issue:          [ What's wrong? ]
- │    + additional items (routine picks land here, fully editable)
- ├─ Problem category: [ ▼ ]  (auto-set to "Routine / scheduled" when a routine task is added)
- └─ Take off rental availability?  [switch]
+Record a part purchase
+ ├─ Vehicle *:        [ ABC123 · 2021 Toyota Camry ▼ ]
+ ├─ Add to a repair ticket   (appears after a vehicle is chosen)
+ │    ( ) No ticket — log as a standalone expense
+ │    (•) Front brake noise        — Diagnosing
+ │    ( ) Check-engine light        — Reported
+ ├─ Technician *:     [ ... ]
+ ├─ Supplier:         [ ... ]
+ ├─ Part name:        [ Front brake pads ]
+ ├─ Part cost ($):    [ .. ]   Labor to repair ($): [ .. ]
+ ├─ Date / Notes
+ └─ [ Add to ticket ]  (button label switches when a ticket is selected)
 ```
 
 ## Behavior
 
-- The routine list is built from the selected vehicle's existing scheduled settings (via `computeScheduledItems`), showing each task's label and status (overdue / due soon / upcoming).
-- Checking a routine task adds its label (e.g. "Oil Change") as an editable line item in the Issue area. Unchecking removes it. You can still type free-text issues and mix routine + repair items on one ticket.
-- When at least one routine task is added and no category is chosen yet, the Problem category defaults to a new **"Routine / scheduled"** option so these group cleanly in analytics; you can override it.
-- On Create, everything is saved through the existing `createManualRepair` line-item flow — so routine items flow into Phase 1 → Diagnose → Complete exactly like repairs, and remain editable (title, parts, labor, cost) throughout the ticket.
-- No change to how scheduled reminders themselves are computed; this only lets you pull a routine task into a repair ticket.
+- After a vehicle is picked, the form lists that vehicle's open in-queue tickets (status **reported** or **diagnosing**), each with its display title and a stage badge. A "No ticket — standalone expense" option is selected by default so current behavior is unchanged.
+- **When a ticket is selected:** the part becomes a new editable line item on that ticket — title = part name (or "Part"), `partsNeeded` = supplier/notes, `partsCost` = part cost, `laborCost` = labor-to-repair, status `open`. It's appended to the ticket's existing `lineItems`, and the ticket's parts/labor/cost/balance recompute automatically. The item is fully editable later in the ticket's Diagnose editor. Because completed line items post to P&L when the ticket is worked, no separate expense row is created (avoids double-counting).
+- **When no ticket is selected:** behaves exactly as today — writes Parts and/or Labour expense rows straight to expenses/P&L.
+- Technician stays required in both modes; when a ticket is chosen the technician is saved onto the line item's `mechanicName`/notes.
+- Toast and button copy adapt ("Added to ticket" vs "Part purchase logged to expenses").
 
 ## Technical details
 
-- **`src/routes/maintenance.tsx`** — In the Create Repair `Dialog` (around lines 1104–1140), add a routine-maintenance block rendered when `createVehicleId` is set. Compute items with `computeScheduledItems(vehicles.find(v => v.id === createVehicleId))`. Track selected routine labels in a new `createRoutineItems` state; render checkboxes. Selecting merges the label into the same `createExtraItems`/issue pipeline used by `submitCreateRepair` (lines 101–126), so no store changes are required. Default `createCategory` to the new routine category when a routine item is picked and none is set. Reset the new state in the dialog `onOpenChange` cleanup.
-- **`src/lib/problem-categories.ts`** — Add `"Routine / scheduled"` to the `PROBLEM_CATEGORIES` list so it appears in `ProblemCategorySelect` and analytics grouping.
-- No database/schema/migration changes — routine items reuse the existing `maintenance` table + `line_items` JSON via `createManualRepair`.
+- **`src/routes/admin.parts.tsx`** (`RecordPartPurchase`):
+  - Import `openRepairsForVehicle`, `saveRepairLineItems` from `@/lib/mock/store`, and `repairDisplayTitle` from `@/lib/maintenance-utils`; import `RepairLineItem` type from `@/lib/mock/data`.
+  - Add `ticketId` state (default `""` = no ticket). Compute `openTickets = vehicleId ? openRepairsForVehicle(vehicleId).filter(t => t.status === "reported" || t.status === "diagnosing") : []`. Render a Select (or radio list) shown only when a vehicle is chosen, with a "No ticket — standalone expense" first option plus one option per ticket labeled `repairDisplayTitle(t)` + a stage tag.
+  - In `handleSave`, branch on `ticketId`:
+    - If set: build a `RepairLineItem` (`id: crypto.randomUUID()`, `title`, `problemCategory` left undefined, `partsNeeded`, `partsCost`, `laborCost`, `status: "open"`, `mechanicName: technician`), read the ticket's current `lineItems ?? []`, and call `saveRepairLineItems(ticketId, [...existing, newItem])`. Do **not** call `addExpense` in this branch.
+    - If empty: keep the existing `addExpense` Parts/Labour logic unchanged.
+  - Reset `ticketId` in `reset()`; clear it when `vehicleId` changes (a ticket from another vehicle shouldn't stay selected).
+- No database/schema/migration changes — reuses the existing `maintenance.lineItems` flow via `saveRepairLineItems`, which already writes to the backend and recomputes totals.
 
 ## Out of scope
 
-- Does not auto-mark the scheduled task "complete" when the repair closes (kept separate to avoid double-logging). Can be a follow-up if wanted.
+- Does not create a new ticket from the Parts page (only attaches to existing in-queue tickets); use "No ticket" for one-off purchases.
+- Does not auto-complete the line item — it stays open and editable inside the ticket like any diagnosed item.

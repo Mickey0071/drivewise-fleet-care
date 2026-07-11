@@ -21,7 +21,9 @@ import {
 } from "@/lib/parts.functions";
 import { z } from "zod";
 import { vehicles, maintenance, expenses } from "@/lib/mock/data";
-import { addExpense, useStoreVersion } from "@/lib/mock/store";
+import type { RepairLineItem } from "@/lib/mock/data";
+import { addExpense, useStoreVersion, openRepairsForVehicle, saveRepairLineItems } from "@/lib/mock/store";
+import { repairDisplayTitle } from "@/lib/maintenance-utils";
 
 export const Route = createFileRoute("/admin/parts")({
   head: () => ({ meta: [{ title: "Parts — Camauto Rentals" }] }),
@@ -73,6 +75,7 @@ const purchaseSchema = z.object({
 function RecordPartPurchase() {
   useStoreVersion();
   const [vehicleId, setVehicleId] = useState("");
+  const [ticketId, setTicketId] = useState("");
   const [technician, setTechnician] = useState("");
   const [supplier, setSupplier] = useState("");
   const [partName, setPartName] = useState("");
@@ -94,10 +97,22 @@ function RecordPartPurchase() {
   const sortedVehicles = [...vehicles].sort((a, b) =>
     (a.plate || "").localeCompare(b.plate || ""));
 
+  // In-queue tickets (reported / diagnosing) the part can be attached to.
+  const openTickets = vehicleId
+    ? openRepairsForVehicle(vehicleId).filter(
+        (t) => t.status === "reported" || t.status === "diagnosing",
+      )
+    : [];
+
   function reset() {
-    setVehicleId(""); setTechnician(""); setSupplier(""); setPartName("");
+    setVehicleId(""); setTicketId(""); setTechnician(""); setSupplier(""); setPartName("");
     setPartCost(""); setLaborCost(""); setNotes("");
     setDate(new Date().toISOString().slice(0, 10));
+  }
+
+  function handleVehicleChange(id: string) {
+    setVehicleId(id);
+    setTicketId(""); // ticket from another vehicle shouldn't stay selected
   }
 
   async function handleSave() {
@@ -122,6 +137,32 @@ function RecordPartPurchase() {
     try {
       const techNote = `Tech: ${d.technician}`;
       const partLabel = d.partName ? `Part: ${d.partName} · ` : "Part · ";
+
+      // Attach to an existing in-queue repair ticket as a line item.
+      if (ticketId) {
+        const ticket = maintenance.find((m) => m.id === ticketId);
+        if (!ticket) {
+          setSaving(false);
+          return toast.error("That ticket is no longer available");
+        }
+        const newItem: RepairLineItem = {
+          id: crypto.randomUUID(),
+          title: d.partName || "Part",
+          partsNeeded: [d.supplier ? `Supplier: ${d.supplier}` : "", d.notes ?? ""]
+            .filter(Boolean)
+            .join(" · ") || undefined,
+          partsCost: d.partCost,
+          laborCost: d.laborCost,
+          status: "open",
+          mechanicName: d.technician,
+        };
+        saveRepairLineItems(ticketId, [...(ticket.lineItems ?? []), newItem]);
+        toast.success("Part added to repair ticket");
+        reset();
+        setSaving(false);
+        return;
+      }
+
       const writes: Promise<unknown>[] = [];
       if (d.partCost > 0) {
         const row = addExpense({
@@ -162,7 +203,7 @@ function RecordPartPurchase() {
       <CardContent className="space-y-3">
         <div>
           <Label className="mb-1.5 block text-xs">Vehicle *</Label>
-          <Select value={vehicleId} onValueChange={setVehicleId}>
+          <Select value={vehicleId} onValueChange={handleVehicleChange}>
             <SelectTrigger><SelectValue placeholder="Select a vehicle" /></SelectTrigger>
             <SelectContent>
               {sortedVehicles.map((v) => (
@@ -173,6 +214,22 @@ function RecordPartPurchase() {
             </SelectContent>
           </Select>
         </div>
+        {vehicleId && openTickets.length > 0 && (
+          <div>
+            <Label className="mb-1.5 block text-xs">Add to a repair ticket</Label>
+            <Select value={ticketId || "none"} onValueChange={(v) => setTicketId(v === "none" ? "" : v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No ticket — standalone expense</SelectItem>
+                {openTickets.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {repairDisplayTitle(t)} — {t.status === "reported" ? "Reported" : "Diagnosing"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div>
           <Label className="mb-1.5 block text-xs">Technician *</Label>
           <Input
@@ -217,7 +274,7 @@ function RecordPartPurchase() {
             onChange={(e) => setNotes(e.target.value)} />
         </div>
         <Button className="w-full" onClick={handleSave} disabled={saving}>
-          <Plus className="h-4 w-4" /> {saving ? "Saving…" : "Log purchase"}
+          <Plus className="h-4 w-4" /> {saving ? "Saving…" : ticketId ? "Add to ticket" : "Log purchase"}
         </Button>
       </CardContent>
     </Card>
