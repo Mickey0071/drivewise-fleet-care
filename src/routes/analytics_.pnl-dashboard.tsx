@@ -298,6 +298,7 @@ function PnLDashboard() {
       periodDays, totalRevenue, totalExpenses, net, margin,
       operationalExpenses, maintenanceExpenses, pendingMaintenance,
       perVehicle, activeVehicles, fleetUtilization, avgDaysRented, avgNetPerVehicle,
+      fleetSize: activeFleet.length,
       categories, buckets, best: best as Bucket | null, worst: worst as Bucket | null,
       repairTickets, repairRollup, totalRepairCost,
       pyRevenue, pyExpenses, pyNet: pyRevenue - pyExpenses, hasPriorYear: pyRevenue > 0 || pyExpenses > 0,
