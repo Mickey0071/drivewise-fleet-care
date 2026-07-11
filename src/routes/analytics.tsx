@@ -66,7 +66,7 @@ function AnalyticsHub() {
     }
     return fleetRate;
   }
-  const anyVehicleRate = vehicles.some(v => (v.dailyRate && v.dailyRate > 0) || (v.weeklyRate && v.weeklyRate > 0));
+  const anyVehicleRate = activeVehicles().some(v => (v.dailyRate && v.dailyRate > 0) || (v.weeklyRate && v.weeklyRate > 0));
   const rateCaption = anyVehicleRate
     ? `Using each vehicle's own daily rate (weekly ÷ 7 where only a weekly rate exists); falling back to the fleet default of ${fmtMoney(fleetRate)}/day.`
     : `No per-vehicle rate found — using the fleet default of ${fmtMoney(fleetRate)}/day for all vehicles.`;
@@ -194,7 +194,7 @@ function AnalyticsHub() {
     <div>
       <PageHeader
         title="Repair Analytics"
-        subtitle={`Current month · ${vehicles.length} vehicles`}
+        subtitle={`Current month · ${activeVehicles().length} vehicles`}
         action={
           <div className="flex items-center gap-2">
             <Label htmlFor="fleetRate" className="whitespace-nowrap text-sm text-muted-foreground">
