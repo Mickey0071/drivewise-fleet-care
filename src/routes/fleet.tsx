@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { vehicles, fmtMoney } from "@/lib/mock/data";
 import { maintenance as maintenanceList } from "@/lib/mock/data";
-import { fmtDate, rentals } from "@/lib/mock/data";
+import { fmtDate, rentals, driverById } from "@/lib/mock/data";
 import { lastServiceFor } from "@/lib/maintenance-utils";
 import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { computeVehicleAlerts, isScheduleConfigured } from "@/lib/maintenance-utils";
@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addVehicle, isVehicleBookable, awaitingPostReturnInspection, updateVehicleImage, uploadVehiclePhoto, useStoreVersion, openRepairsForVehicle } from "@/lib/mock/store";
+import { addVehicle, isVehicleBookable, awaitingPostReturnInspection, updateVehicleImage, uploadVehiclePhoto, useStoreVersion, openRepairsForVehicle, activeVehicles, archivedVehicles, archiveVehicle, unarchiveVehicle } from "@/lib/mock/store";
 import { toast } from "sonner";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { ExpenseDialog } from "@/components/app/ExpenseDialog";
@@ -23,7 +23,8 @@ import { SendRmTaskDialog } from "@/components/app/SendRmTaskDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehiclePhotosDialog } from "@/components/app/VehiclePhotosDialog";
-import { Share2, Camera, Pencil, Images, Plus, Wrench } from "lucide-react";
+import { Share2, Camera, Pencil, Images, Plus, Wrench, Archive, RotateCcw } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 
@@ -31,6 +32,7 @@ export const Route = createFileRoute("/fleet")({
   head: () => ({ meta: [{ title: "Fleet — Camauto Rentals" }] }),
   validateSearch: (search: Record<string, unknown>) => ({
     status: (search.status as "available" | "rented" | "inspection" | "maintenance" | "impound" | undefined) ?? undefined,
+    view: (search.view as "archived" | undefined) ?? undefined,
   }),
   component: FleetPage,
 });
@@ -44,27 +46,59 @@ function FleetPage() {
   const [photosVehicleId, setPhotosVehicleId] = useState<string | null>(null);
   const [expenseVehicleId, setExpenseVehicleId] = useState<string | null>(null);
   const [rmVehicleId, setRmVehicleId] = useState<string | null>(null);
+  const [archiveVehicleId, setArchiveVehicleId] = useState<string | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const { status } = Route.useSearch();
+  const { status, view } = Route.useSearch();
   const navigate = Route.useNavigate();
   const goto = useNavigate();
 
   if (pathname !== "/fleet") return <Outlet />;
 
-  const filtered = status === "available" ? vehicles.filter(v => isVehicleBookable(v.id)) : status ? vehicles.filter(v => v.status === status) : vehicles;
+  const showArchived = view === "archived";
+  const activeFleet = activeVehicles();
+  const archived = archivedVehicles();
+  const filtered = showArchived
+    ? archived
+    : status === "available"
+      ? activeFleet.filter(v => isVehicleBookable(v.id))
+      : status
+        ? activeFleet.filter(v => v.status === status)
+        : activeFleet;
   return (
     <div>
       <PageHeader
         title="Fleet Manager"
-        subtitle={status ? `${filtered.length} ${status} vehicle${filtered.length === 1 ? "" : "s"}` : `${vehicles.length} vehicles in service`}
+        subtitle={showArchived ? `${archived.length} sold / archived vehicle${archived.length === 1 ? "" : "s"}` : status ? `${filtered.length} ${status} vehicle${filtered.length === 1 ? "" : "s"}` : `${activeFleet.length} vehicles in service`}
         action={<Button onClick={() => setOpen(true)}>+ Add Vehicle</Button>}
       />
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Button size="sm" variant={showArchived ? "outline" : "default"} onClick={() => navigate({ search: {} })}>
+          Active fleet
+        </Button>
+        <Button size="sm" variant={showArchived ? "default" : "outline"} onClick={() => navigate({ search: { view: "archived" } })}>
+          <Archive className="mr-1 h-4 w-4" /> Sold / Archived ({archived.length})
+        </Button>
+      </div>
       {status && (
         <div className="mb-4 flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
           <span>Filtered by status: <span className="font-medium capitalize">{status}</span></span>
           <Button size="sm" variant="ghost" onClick={() => navigate({ search: { status: undefined } })}>Clear</Button>
         </div>
       )}
+      {showArchived ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {archived.length === 0 && (
+            <p className="col-span-full py-12 text-center text-sm text-muted-foreground">No sold or archived vehicles yet.</p>
+          )}
+          {archived.map(v => (
+            <ArchivedVehicleCard
+              key={v.id}
+              vehicleId={v.id}
+              onOpen={() => goto({ to: "/fleet/$vehicleId", params: { vehicleId: v.id } })}
+            />
+          ))}
+        </div>
+      ) : (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map(v => {
           const openIssueCount = maintenanceList.filter(m => m.vehicleId === v.id && !m.dateCompleted).length;
@@ -262,6 +296,14 @@ function FleetPage() {
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setArchiveVehicleId(v.id)}
+                title="Mark as sold / archive"
+              >
+                <Archive className="h-4 w-4" />
+              </Button>
+              <Button
                 size="sm"
                 className="flex-1"
                 disabled={!isVehicleBookable(v.id)}
@@ -274,6 +316,7 @@ function FleetPage() {
           );
         })}
       </div>
+      )}
       <AddVehicleDialog open={open} onClose={() => setOpen(false)} />
       <NewReservationDialog
         open={!!reserveVehicleId}
@@ -305,6 +348,10 @@ function FleetPage() {
         open={!!rmVehicleId}
         onOpenChange={(o) => { if (!o) setRmVehicleId(null); }}
         vehicle={rmVehicleId ? vehicles.find(v => v.id === rmVehicleId) ?? null : null}
+      />
+      <ArchiveVehicleDialog
+        vehicleId={archiveVehicleId}
+        onClose={() => setArchiveVehicleId(null)}
       />
     </div>
   );
@@ -517,6 +564,136 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
         <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t bg-background px-3 py-2 sm:flex-row">
           <Button variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
           <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Add vehicle"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Compact card for a sold / archived vehicle: preserved lifetime stats + restore. */
+function ArchivedVehicleCard({ vehicleId, onOpen }: { vehicleId: string; onOpen: () => void }) {
+  const v = vehicles.find(x => x.id === vehicleId);
+  if (!v) return null;
+  const fin = getVehicleFinancials(v.id);
+  const vehicleRentals = rentals.filter(r => r.vehicleId === v.id);
+  const driverNames = Array.from(
+    new Set(
+      vehicleRentals
+        .map(r => driverById(r.driverId)?.fullName)
+        .filter((n): n is string => !!n),
+    ),
+  );
+  return (
+    <Card className="overflow-hidden">
+      <div className="relative aspect-[16/10] w-full overflow-hidden rounded-t-xl bg-muted">
+        <img
+          src={v.imageUrl ?? carImage(v.model)}
+          alt={`${v.year} ${v.make} ${v.model}`}
+          loading="lazy"
+          className="h-full w-full object-cover opacity-80"
+        />
+        <div className="absolute right-2 top-2">
+          <Badge variant="secondary"><Archive className="mr-1 h-3 w-3" /> Sold / archived</Badge>
+        </div>
+      </div>
+      <CardContent className="p-4">
+        <div className="text-xs text-muted-foreground">{v.id} · Tag #{v.plate}</div>
+        <div className="mt-0.5 font-semibold">{v.year} {v.make} {v.model}</div>
+        <div className="mt-1 text-xs text-muted-foreground">
+          {v.soldDate ? `Sold ${fmtDate(v.soldDate)}` : "Archived"}
+          {v.salePrice != null ? ` · ${fmtMoney(v.salePrice)}` : ""}
+        </div>
+        {v.archiveNotes && (
+          <div className="mt-1 text-xs text-muted-foreground">{v.archiveNotes}</div>
+        )}
+        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-2 text-xs">
+          <div><div className="text-muted-foreground">Lifetime income</div><div className="font-semibold">{fmtMoney(fin.totalIncome)}</div></div>
+          <div><div className="text-muted-foreground">Lifetime expenses</div><div className="font-semibold">{fmtMoney(fin.totalExpenses)}</div></div>
+          <div><div className="text-muted-foreground">Net</div><div className={`font-semibold ${fin.netPnl < 0 ? "text-destructive" : ""}`}>{fmtMoney(fin.netPnl)}</div></div>
+          <div><div className="text-muted-foreground">Rentals</div><div className="font-semibold">{vehicleRentals.length}</div></div>
+        </div>
+        {driverNames.length > 0 && (
+          <div className="mt-2 text-[11px] text-muted-foreground">
+            Past drivers: {driverNames.slice(0, 5).join(", ")}{driverNames.length > 5 ? ` +${driverNames.length - 5}` : ""}
+          </div>
+        )}
+      </CardContent>
+      <div className="flex gap-2 border-t border-border bg-muted/30 p-2">
+        <Button variant="outline" size="sm" className="flex-1" onClick={onOpen}>Profile</Button>
+        <Button
+          size="sm"
+          className="flex-1"
+          onClick={async () => {
+            try {
+              await unarchiveVehicle(v.id);
+              toast.success("Restored to fleet");
+            } catch (e: any) {
+              toast.error(e?.message ?? "Failed to restore");
+            }
+          }}
+        >
+          <RotateCcw className="mr-1 h-4 w-4" /> Restore
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+/** Dialog to mark a vehicle as sold: sale date, optional price, notes. */
+function ArchiveVehicleDialog({ vehicleId, onClose }: { vehicleId: string | null; onClose: () => void }) {
+  const v = vehicleId ? vehicles.find(x => x.id === vehicleId) : null;
+  const [soldDate, setSoldDate] = useState(new Date().toISOString().slice(0, 10));
+  const [salePrice, setSalePrice] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!vehicleId) return;
+    setSaving(true);
+    try {
+      await archiveVehicle(vehicleId, {
+        soldDate,
+        salePrice: salePrice ? parseFloat(salePrice) : undefined,
+        notes: notes.trim() || undefined,
+      });
+      toast.success("Vehicle archived — history kept, removed from active analytics");
+      setSalePrice(""); setNotes("");
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to archive");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!vehicleId} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Mark as sold / archive</DialogTitle>
+        </DialogHeader>
+        {v && (
+          <p className="text-sm text-muted-foreground">
+            {v.year} {v.make} {v.model} · Tag #{v.plate}. Its income, expenses and driver history stay counted in overall totals, but it's removed from the active fleet and its per-fleet analytics (days rented, averages, utilization).
+          </p>
+        )}
+        <div className="space-y-3">
+          <div>
+            <Label className="mb-1.5 block text-xs">Sale / archive date</Label>
+            <Input type="date" value={soldDate} onChange={e => setSoldDate(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs">Sale price ($) — optional</Label>
+            <Input type="number" min="0" step="0.01" placeholder="0.00" value={salePrice} onChange={e => setSalePrice(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs">Notes — optional</Label>
+            <Textarea rows={2} placeholder="Buyer, reason, etc." value={notes} onChange={e => setNotes(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Archiving…" : "Archive vehicle"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

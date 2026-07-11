@@ -20,6 +20,11 @@ export interface Vehicle {
   insuranceExpiry?: string;
   hasOpenIssues?: boolean;
   maintenanceSettings?: MaintenanceSettings;
+  /** Sold / archived: kept for history but excluded from active-fleet analytics. */
+  archived?: boolean;
+  soldDate?: string;
+  salePrice?: number;
+  archiveNotes?: string;
 }
 
 export interface OilChangeSetting {

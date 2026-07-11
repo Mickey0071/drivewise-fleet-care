@@ -40,6 +40,10 @@ const fromVehicle = (r: any) => ({
   insuranceExpiry: r.insurance_expiry ?? undefined,
   hasOpenIssues: !!r.has_open_issues,
   maintenanceSettings: r.maintenance_settings ?? undefined,
+  archived: !!r.archived,
+  soldDate: r.sold_date ?? undefined,
+  salePrice: r.sale_price != null ? Number(r.sale_price) : undefined,
+  archiveNotes: r.archive_notes ?? undefined,
 });
 const toVehicle = (v: any) => ({
   id: v.id, make: v.make, model: v.model, year: v.year, vin: v.vin,
@@ -56,6 +60,10 @@ const toVehicle = (v: any) => ({
   registration_expiry: v.registrationExpiry ?? null,
   insurance_expiry: v.insuranceExpiry ?? null,
   maintenance_settings: v.maintenanceSettings ?? {},
+  archived: !!v.archived,
+  sold_date: v.soldDate ?? null,
+  sale_price: v.salePrice ?? null,
+  archive_notes: v.archiveNotes ?? null,
 });
 const fromDriver = (r: any) => ({
   id: r.id, fullName: r.full_name, phone: r.phone, email: r.email,
@@ -524,6 +532,7 @@ export function isVehicleBookable(
 ) {
   const vehicle = vehicles.find(v => v.id === vehicleId);
   if (!vehicle) return false;
+  if (vehicle.archived) return false;
   if (vehicle.status === "maintenance" || vehicle.status === "impound" || vehicle.status === "rented") return false;
   // An open maintenance issue (repair ticket) blocks the vehicle from rentals
   // until the ticket is marked completed.
@@ -1916,6 +1925,71 @@ function _setVehicleAvailabilityOverride(vehicleId: string, available: boolean, 
 
 export function deleteVehicle(id: string) {
   const idx = vehicles.findIndex(x => x.id === id);
+  return _deleteVehicleImpl(id, idx);
+}
+
+/** Non-archived (active) fleet — used for all active-fleet analytics & pickers. */
+export function activeVehicles(): Vehicle[] {
+  return vehicles.filter(v => !v.archived);
+}
+
+/** Sold / archived vehicles, most recently sold first. */
+export function archivedVehicles(): Vehicle[] {
+  return vehicles
+    .filter(v => v.archived)
+    .sort((a, b) => (b.soldDate ?? "").localeCompare(a.soldDate ?? ""));
+}
+
+/** Mark a vehicle as sold and remove it from the active fleet (history kept). */
+export function archiveVehicle(
+  id: string,
+  opts?: { soldDate?: string; salePrice?: number; notes?: string },
+) {
+  const v = vehicles.find(x => x.id === id);
+  if (!v) return Promise.reject(new Error("Vehicle not found"));
+  v.archived = true;
+  v.soldDate = opts?.soldDate || new Date().toISOString().slice(0, 10);
+  v.salePrice = opts?.salePrice;
+  v.archiveNotes = opts?.notes;
+  v.status = "available";
+  v.hasOpenIssues = false;
+  const cloudReady = cloudWrite(
+    "vehicle:archive",
+    supabase.from("vehicles").update({
+      archived: true,
+      sold_date: v.soldDate,
+      sale_price: v.salePrice ?? null,
+      archive_notes: v.archiveNotes ?? null,
+      status: "available",
+      has_open_issues: false,
+    }).eq("id", id),
+  );
+  emit();
+  return cloudReady;
+}
+
+/** Restore a sold vehicle back into the active fleet. */
+export function unarchiveVehicle(id: string) {
+  const v = vehicles.find(x => x.id === id);
+  if (!v) return Promise.reject(new Error("Vehicle not found"));
+  v.archived = false;
+  v.soldDate = undefined;
+  v.salePrice = undefined;
+  v.archiveNotes = undefined;
+  const cloudReady = cloudWrite(
+    "vehicle:unarchive",
+    supabase.from("vehicles").update({
+      archived: false,
+      sold_date: null,
+      sale_price: null,
+      archive_notes: null,
+    }).eq("id", id),
+  );
+  emit();
+  return cloudReady;
+}
+
+function _deleteVehicleImpl(id: string, idx: number) {
   if (idx < 0) return Promise.reject(new Error("Vehicle not found"));
   const removed = vehicles[idx];
   vehicles.splice(idx, 1);

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { useStoreVersion } from "@/lib/mock/store";
 import { rentals, vehicles, type Rental } from "@/lib/mock/data";
+import { activeVehicles } from "@/lib/mock/store";
 import { Car, Activity, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/analytics_/utilization")({
@@ -61,8 +62,11 @@ function Page() {
   useStoreVersion();
   const [period, setPeriod] = useState<Period>(30);
 
+  // Active (non-archived) fleet drives every utilization metric below.
+  const activeFleet = useMemo(() => activeVehicles(), [vehicles.length]);
+
   // ----- CURRENT UTILIZATION (live) -----
-  const totalFleet = vehicles.length;
+  const totalFleet = activeFleet.length;
   const activeVehicleIds = useMemo(() => {
     const ids = new Set<string>();
     for (const r of rentals) if (coversDay(r, today)) ids.add(r.vehicleId);
@@ -109,7 +113,7 @@ function Page() {
 
   // ----- PER-VEHICLE BREAKDOWN (selected period) -----
   const perVehicle = useMemo(() => {
-    return vehicles.map((v) => {
+    return activeFleet.map((v) => {
       let daysRented = 0;
       for (let i = 0; i < periodDays; i++) {
         const d = addDays(periodFrom, i);
@@ -127,11 +131,11 @@ function Page() {
         pct,
       };
     }).sort((a, b) => b.pct - a.pct);
-  }, [vehicles.length, rentals.length, periodFrom, periodDays]);
+  }, [activeFleet, rentals.length, periodFrom, periodDays]);
 
   // ----- IDLE RIGHT NOW -----
   const idleNow = useMemo(() => {
-    return vehicles
+    return activeFleet
       .filter((v) => !activeVehicleIds.has(v.id))
       .map((v) => {
         let lastEnd: string | null = null;
@@ -148,7 +152,7 @@ function Page() {
         };
       })
       .sort((a, b) => (b.daysSince ?? Infinity) - (a.daysSince ?? Infinity) === 0 ? 0 : (b.daysSince ?? 99999) - (a.daysSince ?? 99999));
-  }, [vehicles.length, rentals.length, activeVehicleIds]);
+  }, [activeFleet, rentals.length, activeVehicleIds]);
 
   const periodLabel = period === 0 ? "All time" : `Last ${period} days`;
 

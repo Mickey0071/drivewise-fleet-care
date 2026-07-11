@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ReportActions } from "@/components/app/ReportActions";
-import { useStoreVersion } from "@/lib/mock/store";
+import { useStoreVersion, activeVehicles as getActiveFleet } from "@/lib/mock/store";
 import {
-  payments, expenses, maintenance, rentals, vehicles, vehicleById, fmtMoney,
+  payments, expenses, maintenance, rentals, vehicleById, fmtMoney,
 } from "@/lib/mock/data";
 import { TrendingUp, TrendingDown, Trophy, AlertTriangle, Pencil } from "lucide-react";
 
@@ -154,7 +154,8 @@ function PnLDashboard() {
     const rentalVehicle = new Map(rentals.map(r => [r.id, r.vehicleId]));
 
     // ---- Per vehicle ----
-    const perVehicle = vehicles.map(v => {
+    const activeFleet = getActiveFleet();
+    const perVehicle = activeFleet.map(v => {
       const rev = paidPayments
         .filter(p => rentalVehicle.get(p.rentalId) === v.id)
         .reduce((s, p) => s + (p.amount || 0), 0);
@@ -199,9 +200,9 @@ function PnLDashboard() {
 
     const activeVehicles = perVehicle.filter(v => v.rev > 0 || v.daysRented > 0);
     const totalDaysRented = perVehicle.reduce((s, v) => s + v.daysRented, 0);
-    const fleetUtilization = (totalDaysRented / (vehicles.length * periodDays)) * 100;
-    const avgDaysRented = vehicles.length ? totalDaysRented / vehicles.length : 0;
-    const avgNetPerVehicle = vehicles.length ? net / vehicles.length : 0;
+    const fleetUtilization = (totalDaysRented / ((activeFleet.length || 1) * periodDays)) * 100;
+    const avgDaysRented = activeFleet.length ? totalDaysRented / activeFleet.length : 0;
+    const avgNetPerVehicle = activeFleet.length ? net / activeFleet.length : 0;
 
     // ---- Expense category breakdown ----
     const catMap: Record<string, number> = {};
@@ -297,6 +298,7 @@ function PnLDashboard() {
       periodDays, totalRevenue, totalExpenses, net, margin,
       operationalExpenses, maintenanceExpenses, pendingMaintenance,
       perVehicle, activeVehicles, fleetUtilization, avgDaysRented, avgNetPerVehicle,
+      fleetSize: activeFleet.length,
       categories, buckets, best: best as Bucket | null, worst: worst as Bucket | null,
       repairTickets, repairRollup, totalRepairCost,
       pyRevenue, pyExpenses, pyNet: pyRevenue - pyExpenses, hasPriorYear: pyRevenue > 0 || pyExpenses > 0,
@@ -392,7 +394,7 @@ function PnLDashboard() {
         <Kpi label="Fleet Utilization" value={`${data.fleetUtilization.toFixed(1)}%`} />
         <Kpi label="Avg Days / Vehicle" value={data.avgDaysRented.toFixed(1)} />
         <Kpi label="Avg Net / Vehicle" value={fmtMoney(data.avgNetPerVehicle)} accent={data.avgNetPerVehicle >= 0 ? "pos" : "neg"} />
-        <Kpi label="Active Vehicles" value={`${data.activeVehicles.length} / ${vehicles.length}`} />
+        <Kpi label="Active Vehicles" value={`${data.activeVehicles.length} / ${data.fleetSize}`} />
       </div>
 
       {data.pendingMaintenance > 0 && (
