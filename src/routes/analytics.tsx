@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useStoreVersion } from "@/lib/mock/store";
 import { vehicles, maintenance, vehicleById, fmtMoney } from "@/lib/mock/data";
+import { activeVehicles } from "@/lib/mock/store";
 import type { Maintenance } from "@/lib/mock/data";
 import { listPendingApprovals } from "@/lib/repair-actions.functions";
 
