@@ -22,7 +22,7 @@ import {
 import { z } from "zod";
 import { vehicles, maintenance, expenses } from "@/lib/mock/data";
 import type { RepairLineItem } from "@/lib/mock/data";
-import { addExpense, useStoreVersion, openRepairsForVehicle, saveRepairLineItems } from "@/lib/mock/store";
+import { addExpense, useStoreVersion, openRepairsForVehicle, addRepairLineItemToTicket } from "@/lib/mock/store";
 import { repairDisplayTitle } from "@/lib/maintenance-utils";
 
 export const Route = createFileRoute("/admin/parts")({
@@ -156,8 +156,8 @@ function RecordPartPurchase() {
           status: "open",
           mechanicName: d.technician,
         };
-        saveRepairLineItems(ticketId, [...(ticket.lineItems ?? []), newItem]);
-        toast.success("Part added to repair ticket");
+        addRepairLineItemToTicket(ticketId, newItem, { date: d.date, vendor: d.supplier || undefined });
+        toast.success("Part added to ticket & posted to P&L");
         reset();
         setSaving(false);
         return;

@@ -305,6 +305,10 @@ export interface RepairLineItem {
   completedBy?: string;
   mechanicName?: string;
   notes?: string;
+  /** True once this item's cost has already been posted to expenses/P&L. */
+  expensePosted?: boolean;
+  /** Expense rows created for this item (parts/labour), to avoid double-posting. */
+  expenseIds?: string[];
 }
 export interface Inspection {
   id: string; vehicleId: string; rentalId: string;
