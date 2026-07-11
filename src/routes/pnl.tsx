@@ -683,7 +683,7 @@ function RepairTrends() {
       return d.slice(0, 10) >= since;
     };
 
-    return vehicles.map(v => {
+    return vehicles.filter(v => !v.archived).map(v => {
       const repairs = maintenance.filter(
         m => m.vehicleId === v.id && !!m.dateCompleted && isIssueRecord(m) && inRange(m.dateCompleted),
       );
@@ -808,7 +808,7 @@ function MaintenanceCostBreakdown() {
       return d.slice(0, 10) >= since;
     };
 
-    return vehicles.map(v => {
+    return vehicles.filter(v => !v.archived).map(v => {
       const vMx = maintenance.filter(m => m.vehicleId === v.id && !!m.dateCompleted && inRange(m.dateCompleted));
       const service = vMx.filter(isServiceLogRecord);
       const repairsList = vMx.filter(m => isIssueRecord(m));
@@ -956,7 +956,7 @@ function VehicleProfitability() {
       return d.slice(0, 10) >= since;
     };
 
-    return vehicles.map(v => {
+    return vehicles.filter(v => !v.archived).map(v => {
       const rentalIds = new Set(rentals.filter(r => r.vehicleId === v.id).map(r => r.id));
       const revenue = payments
         .filter(p => p.status === "paid" && rentalIds.has(p.rentalId) && inRange(p.paidDate ?? p.dueDate))
