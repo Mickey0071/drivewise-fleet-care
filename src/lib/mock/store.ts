@@ -532,6 +532,7 @@ export function isVehicleBookable(
 ) {
   const vehicle = vehicles.find(v => v.id === vehicleId);
   if (!vehicle) return false;
+  if (vehicle.archived) return false;
   if (vehicle.status === "maintenance" || vehicle.status === "impound" || vehicle.status === "rented") return false;
   // An open maintenance issue (repair ticket) blocks the vehicle from rentals
   // until the ticket is marked completed.
