@@ -394,7 +394,7 @@ function PnLDashboard() {
         <Kpi label="Fleet Utilization" value={`${data.fleetUtilization.toFixed(1)}%`} />
         <Kpi label="Avg Days / Vehicle" value={data.avgDaysRented.toFixed(1)} />
         <Kpi label="Avg Net / Vehicle" value={fmtMoney(data.avgNetPerVehicle)} accent={data.avgNetPerVehicle >= 0 ? "pos" : "neg"} />
-        <Kpi label="Active Vehicles" value={`${data.activeVehicles.length} / ${vehicles.length}`} />
+        <Kpi label="Active Vehicles" value={`${data.activeVehicles.length} / ${data.fleetSize}`} />
       </div>
 
       {data.pendingMaintenance > 0 && (
