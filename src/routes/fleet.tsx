@@ -88,6 +88,15 @@ function FleetPage() {
           <Archive className="mr-1 h-4 w-4" /> Sold / Archived ({archived.length})
         </Button>
       </div>
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search vehicles by ID, make, model, or plate…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
       {status && (
         <div className="mb-4 flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
           <span>Filtered by status: <span className="font-medium capitalize">{status}</span></span>
