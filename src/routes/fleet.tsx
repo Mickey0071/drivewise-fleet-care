@@ -105,10 +105,12 @@ function FleetPage() {
       )}
       {showArchived ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {archived.length === 0 && (
-            <p className="col-span-full py-12 text-center text-sm text-muted-foreground">No sold or archived vehicles yet.</p>
+          {filtered.length === 0 && (
+            <p className="col-span-full py-12 text-center text-sm text-muted-foreground">
+              {q ? "No archived vehicles match your search." : "No sold or archived vehicles yet."}
+            </p>
           )}
-          {archived.map(v => (
+          {filtered.map(v => (
             <ArchivedVehicleCard
               key={v.id}
               vehicleId={v.id}
