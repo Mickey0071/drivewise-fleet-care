@@ -107,6 +107,15 @@ function FleetPage() {
           const openRepairs = openRepairsForVehicle(v.id);
           const blockingRepairs = openRepairs.filter(r => r.isRentalBlocking);
           const nonBlockingRepairs = openRepairs.filter(r => !r.isRentalBlocking);
+          // Proactive notes: notes logged on repairs that were NOT taken off rental —
+          // "keep an eye on this before it fails" reminders.
+          const proactiveNotes = nonBlockingRepairs
+            .filter(r => !!r.notes?.trim())
+            .map(r => ({
+              id: r.id,
+              title: r.issueDescription || r.serviceType || "Note",
+              note: (r.notes ?? "").trim().split("\n").filter(Boolean).pop() ?? "",
+            }));
           const lastSvc = lastServiceFor(maintenanceList, v.id);
           const alerts = computeVehicleAlerts(v);
           const scheduleConfigured = isScheduleConfigured(v);
