@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download, Smartphone, Percent } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download, Smartphone, Percent, CreditCard } from "lucide-react";
 import { Search as SearchIcon, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { LayoutDashboard } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -46,6 +46,7 @@ import { sendRentalSms } from "@/lib/rental-sms.functions";
 import { chargeViolation } from "@/lib/violation-charge.functions";
 import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
+import { sendCardRequest } from "@/lib/card-request.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { downloadClientPacket } from "@/lib/client-packet.functions";
@@ -136,6 +137,29 @@ function RentalsPage() {
   const [receiptRegenId, setReceiptRegenId] = useState<string | null>(null);
   const downloadPacketFn = useServerFn(downloadClientPacket);
   const [packetDownloadingId, setPacketDownloadingId] = useState<string | null>(null);
+  const sendCardRequestFn = useServerFn(sendCardRequest);
+  const sendCardLink = async (r: Rental, via: "sms" | "email") => {
+    try {
+      await ensureRentalSynced(r.id);
+      const res = await sendCardRequestFn({
+        data: {
+          rentalId: r.id,
+          sendSms: via === "sms",
+          sendEmail: via === "email",
+          origin: getPublicAppOrigin(),
+        },
+      });
+      toast.success(
+        via === "sms" ? "Card link texted to renter" : "Card link emailed to renter",
+        { description: "Not a charge — asks the renter to add a card on file." },
+      );
+      return res;
+    } catch (e) {
+      toast.error("Could not send card link", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    }
+  };
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<"id" | "name" | "vehicle" | "start" | "end" | "status" | "balance">("status");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -595,16 +619,46 @@ function RentalsPage() {
                           <div className="mt-0.5 text-xs text-muted-foreground">Status: Active ✓</div>
                         )}
                       </div>
-                      <Button size="sm" variant="outline" onClick={() => setAddCardRental(r)}>
-                        Add/Update Card
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            Add/Update Card <ChevronDown className="ml-1 h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuItem onClick={() => setAddCardRental(r)}>
+                            <CreditCard className="mr-2 h-4 w-4" /> Enter card manually
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => sendCardLink(r, "sms")}>
+                            <MessageSquare className="mr-2 h-4 w-4" /> Text card link to renter
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => sendCardLink(r, "email")}>
+                            <Mail className="mr-2 h-4 w-4" /> Email card link to renter
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-sm text-muted-foreground">No card on file</div>
-                      <Button size="sm" variant="outline" onClick={() => setAddCardRental(r)}>
-                        Add/Update Card
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            Add/Update Card <ChevronDown className="ml-1 h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuItem onClick={() => setAddCardRental(r)}>
+                            <CreditCard className="mr-2 h-4 w-4" /> Enter card manually
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => sendCardLink(r, "sms")}>
+                            <MessageSquare className="mr-2 h-4 w-4" /> Text card link to renter
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => sendCardLink(r, "email")}>
+                            <Mail className="mr-2 h-4 w-4" /> Email card link to renter
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   )}
                 </div>

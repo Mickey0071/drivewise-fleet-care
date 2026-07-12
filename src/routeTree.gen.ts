@@ -90,6 +90,7 @@ import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as AdminCategorizeRepairsRouteImport } from './routes/admin.categorize-repairs'
 import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
 import { Route as AdminBackfillPlatesRouteImport } from './routes/admin.backfill-plates'
+import { Route as AddCardTokenRouteImport } from './routes/add-card.$token'
 import { Route as AccidentReportTokenRouteImport } from './routes/accident-report.$token'
 import { Route as RepairDeclineTokenRouteImport } from './routes/repair.decline.$token'
 import { Route as RepairAcceptTokenRouteImport } from './routes/repair.accept.$token'
@@ -511,6 +512,11 @@ const AdminBackfillPlatesRoute = AdminBackfillPlatesRouteImport.update({
   path: '/admin/backfill-plates',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AddCardTokenRoute = AddCardTokenRouteImport.update({
+  id: '/add-card/$token',
+  path: '/add-card/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AccidentReportTokenRoute = AccidentReportTokenRouteImport.update({
   id: '/accident-report/$token',
   path: '/accident-report/$token',
@@ -628,6 +634,7 @@ export interface FileRoutesByFullPath {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/accident-report/$token': typeof AccidentReportTokenRoute
+  '/add-card/$token': typeof AddCardTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
@@ -725,6 +732,7 @@ export interface FileRoutesByTo {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/accident-report/$token': typeof AccidentReportTokenRoute
+  '/add-card/$token': typeof AddCardTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
@@ -823,6 +831,7 @@ export interface FileRoutesById {
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/accident-report/$token': typeof AccidentReportTokenRoute
+  '/add-card/$token': typeof AddCardTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
@@ -922,6 +931,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/accident-report/$token'
+    | '/add-card/$token'
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
@@ -1019,6 +1029,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/accident-report/$token'
+    | '/add-card/$token'
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
@@ -1116,6 +1127,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/violations'
     | '/accident-report/$token'
+    | '/add-card/$token'
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
@@ -1214,6 +1226,7 @@ export interface RootRouteChildren {
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
   AccidentReportTokenRoute: typeof AccidentReportTokenRoute
+  AddCardTokenRoute: typeof AddCardTokenRoute
   AdminBackfillPlatesRoute: typeof AdminBackfillPlatesRoute
   AdminBackupsRoute: typeof AdminBackupsRoute
   AdminCategorizeRepairsRoute: typeof AdminCategorizeRepairsRoute
@@ -1842,6 +1855,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBackfillPlatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/add-card/$token': {
+      id: '/add-card/$token'
+      path: '/add-card/$token'
+      fullPath: '/add-card/$token'
+      preLoaderRoute: typeof AddCardTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/accident-report/$token': {
       id: '/accident-report/$token'
       path: '/accident-report/$token'
@@ -2002,6 +2022,7 @@ const rootRouteChildren: RootRouteChildren = {
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
   AccidentReportTokenRoute: AccidentReportTokenRoute,
+  AddCardTokenRoute: AddCardTokenRoute,
   AdminBackfillPlatesRoute: AdminBackfillPlatesRoute,
   AdminBackupsRoute: AdminBackupsRoute,
   AdminCategorizeRepairsRoute: AdminCategorizeRepairsRoute,
