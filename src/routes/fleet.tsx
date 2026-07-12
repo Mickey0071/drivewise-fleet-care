@@ -107,6 +107,15 @@ function FleetPage() {
           const openRepairs = openRepairsForVehicle(v.id);
           const blockingRepairs = openRepairs.filter(r => r.isRentalBlocking);
           const nonBlockingRepairs = openRepairs.filter(r => !r.isRentalBlocking);
+          // Proactive notes: notes logged on repairs that were NOT taken off rental —
+          // "keep an eye on this before it fails" reminders.
+          const proactiveNotes = nonBlockingRepairs
+            .filter(r => !!r.notes?.trim())
+            .map(r => ({
+              id: r.id,
+              title: r.issueDescription || r.serviceType || "Note",
+              note: (r.notes ?? "").trim().split("\n").filter(Boolean).pop() ?? "",
+            }));
           const lastSvc = lastServiceFor(maintenanceList, v.id);
           const alerts = computeVehicleAlerts(v);
           const scheduleConfigured = isScheduleConfigured(v);
@@ -219,6 +228,22 @@ function FleetPage() {
                       </div>
                     ))}
                   </div>
+                )}
+                {proactiveNotes.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setRepairPanelVehicleId(v.id);
+                    }}
+                    className="mt-2 block w-full space-y-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-left hover:bg-amber-500/20"
+                  >
+                    {proactiveNotes.map(n => (
+                      <div key={n.id} className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                        📝 Watch — {n.title}: <span className="font-normal">{n.note}</span>
+                      </div>
+                    ))}
+                  </button>
                 )}
                 {!scheduleConfigured && (
                   <button
