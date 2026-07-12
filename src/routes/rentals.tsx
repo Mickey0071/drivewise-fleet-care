@@ -138,6 +138,28 @@ function RentalsPage() {
   const downloadPacketFn = useServerFn(downloadClientPacket);
   const [packetDownloadingId, setPacketDownloadingId] = useState<string | null>(null);
   const sendCardRequestFn = useServerFn(sendCardRequest);
+  const sendCardLink = async (r: Rental, via: "sms" | "email") => {
+    try {
+      await ensureRentalSynced(r.id);
+      const res = await sendCardRequestFn({
+        data: {
+          rentalId: r.id,
+          sendSms: via === "sms",
+          sendEmail: via === "email",
+          origin: getPublicAppOrigin(),
+        },
+      });
+      toast.success(
+        via === "sms" ? "Card link texted to renter" : "Card link emailed to renter",
+        { description: "Not a charge — asks the renter to add a card on file." },
+      );
+      return res;
+    } catch (e) {
+      toast.error("Could not send card link", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    }
+  };
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<"id" | "name" | "vehicle" | "start" | "end" | "status" | "balance">("status");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
