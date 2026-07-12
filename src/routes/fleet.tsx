@@ -49,7 +49,8 @@ function FleetPage() {
   const [rmVehicleId, setRmVehicleId] = useState<string | null>(null);
   const [archiveVehicleId, setArchiveVehicleId] = useState<string | null>(null);
   const [repairPanelVehicleId, setRepairPanelVehicleId] = useState<string | null>(null);
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const [searchQuery, setSearchQuery] = useState("");
+  const pathname = useRouterState({ select: (state) => state.location.location.pathname });
   const { status, view } = Route.useSearch();
   const navigate = Route.useNavigate();
   const goto = useNavigate();
