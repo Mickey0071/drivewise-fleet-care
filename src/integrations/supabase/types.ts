@@ -149,6 +149,39 @@ export type Database = {
         }
         Relationships: []
       }
+      card_requests: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          driver_id: string
+          expires_at: string
+          id: string
+          rental_id: string | null
+          status: string
+          token: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          driver_id: string
+          expires_at?: string
+          id?: string
+          rental_id?: string | null
+          status?: string
+          token: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          driver_id?: string
+          expires_at?: string
+          id?: string
+          rental_id?: string | null
+          status?: string
+          token?: string
+        }
+        Relationships: []
+      }
       drivers: {
         Row: {
           address: string | null
