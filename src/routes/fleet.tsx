@@ -24,7 +24,7 @@ import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehiclePhotosDialog } from "@/components/app/VehiclePhotosDialog";
 import { VehicleRepairPanelDialog } from "@/components/app/VehicleRepairPanelDialog";
-import { Share2, Camera, Pencil, Images, Plus, Wrench, Archive, RotateCcw } from "lucide-react";
+import { Share2, Camera, Pencil, Images, Plus, Wrench, Archive, RotateCcw, Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
