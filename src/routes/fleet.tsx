@@ -120,6 +120,11 @@ function FleetPage() {
         </div>
       ) : (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {filtered.length === 0 && (
+          <p className="col-span-full py-12 text-center text-sm text-muted-foreground">
+            {q ? "No vehicles match your search." : "No vehicles in this view."}
+          </p>
+        )}
         {filtered.map(v => {
           const openIssueCount = maintenanceList.filter(m => m.vehicleId === v.id && !m.dateCompleted).length;
           const openRepairs = openRepairsForVehicle(v.id);
