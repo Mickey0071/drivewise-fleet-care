@@ -597,16 +597,46 @@ function RentalsPage() {
                           <div className="mt-0.5 text-xs text-muted-foreground">Status: Active ✓</div>
                         )}
                       </div>
-                      <Button size="sm" variant="outline" onClick={() => setAddCardRental(r)}>
-                        Add/Update Card
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            Add/Update Card <ChevronDown className="ml-1 h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuItem onClick={() => setAddCardRental(r)}>
+                            <CreditCard className="mr-2 h-4 w-4" /> Enter card manually
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => sendCardLink(r, "sms")}>
+                            <MessageSquare className="mr-2 h-4 w-4" /> Text card link to renter
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => sendCardLink(r, "email")}>
+                            <Mail className="mr-2 h-4 w-4" /> Email card link to renter
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-sm text-muted-foreground">No card on file</div>
-                      <Button size="sm" variant="outline" onClick={() => setAddCardRental(r)}>
-                        Add/Update Card
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            Add/Update Card <ChevronDown className="ml-1 h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuItem onClick={() => setAddCardRental(r)}>
+                            <CreditCard className="mr-2 h-4 w-4" /> Enter card manually
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => sendCardLink(r, "sms")}>
+                            <MessageSquare className="mr-2 h-4 w-4" /> Text card link to renter
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => sendCardLink(r, "email")}>
+                            <Mail className="mr-2 h-4 w-4" /> Email card link to renter
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   )}
                 </div>
