@@ -338,6 +338,11 @@ function FleetPage() {
         onOpenChange={(o) => { if (!o) setShareVehicleId(null); }}
         vehicle={shareVehicleId ? vehicles.find(v => v.id === shareVehicleId) ?? null : null}
       />
+      <VehicleRepairPanelDialog
+        vehicleId={repairPanelVehicleId}
+        open={!!repairPanelVehicleId}
+        onOpenChange={(o) => { if (!o) setRepairPanelVehicleId(null); }}
+      />
       <EditVehicleDialog
         open={!!editVehicleId}
         onOpenChange={(o) => { if (!o) setEditVehicleId(null); }}
