@@ -24,7 +24,7 @@ import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehiclePhotosDialog } from "@/components/app/VehiclePhotosDialog";
 import { VehicleRepairPanelDialog } from "@/components/app/VehicleRepairPanelDialog";
-import { Share2, Camera, Pencil, Images, Plus, Wrench, Archive, RotateCcw } from "lucide-react";
+import { Share2, Camera, Pencil, Images, Plus, Wrench, Archive, RotateCcw, Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
@@ -49,6 +49,7 @@ function FleetPage() {
   const [rmVehicleId, setRmVehicleId] = useState<string | null>(null);
   const [archiveVehicleId, setArchiveVehicleId] = useState<string | null>(null);
   const [repairPanelVehicleId, setRepairPanelVehicleId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { status, view } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -59,13 +60,19 @@ function FleetPage() {
   const showArchived = view === "archived";
   const activeFleet = activeVehicles();
   const archived = archivedVehicles();
-  const filtered = showArchived
+  const statusFiltered = showArchived
     ? archived
     : status === "available"
       ? activeFleet.filter(v => isVehicleBookable(v.id))
       : status
         ? activeFleet.filter(v => v.status === status)
         : activeFleet;
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = q
+    ? statusFiltered.filter(v =>
+        `${v.id} ${v.make} ${v.model} ${v.plate} ${v.year}`.toLowerCase().includes(q)
+      )
+    : statusFiltered;
   return (
     <div>
       <PageHeader
@@ -81,6 +88,15 @@ function FleetPage() {
           <Archive className="mr-1 h-4 w-4" /> Sold / Archived ({archived.length})
         </Button>
       </div>
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search vehicles by ID, make, model, or plate…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
       {status && (
         <div className="mb-4 flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
           <span>Filtered by status: <span className="font-medium capitalize">{status}</span></span>
@@ -89,10 +105,12 @@ function FleetPage() {
       )}
       {showArchived ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {archived.length === 0 && (
-            <p className="col-span-full py-12 text-center text-sm text-muted-foreground">No sold or archived vehicles yet.</p>
+          {filtered.length === 0 && (
+            <p className="col-span-full py-12 text-center text-sm text-muted-foreground">
+              {q ? "No archived vehicles match your search." : "No sold or archived vehicles yet."}
+            </p>
           )}
-          {archived.map(v => (
+          {filtered.map(v => (
             <ArchivedVehicleCard
               key={v.id}
               vehicleId={v.id}
@@ -102,6 +120,11 @@ function FleetPage() {
         </div>
       ) : (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {filtered.length === 0 && (
+          <p className="col-span-full py-12 text-center text-sm text-muted-foreground">
+            {q ? "No vehicles match your search." : "No vehicles in this view."}
+          </p>
+        )}
         {filtered.map(v => {
           const openIssueCount = maintenanceList.filter(m => m.vehicleId === v.id && !m.dateCompleted).length;
           const openRepairs = openRepairsForVehicle(v.id);
