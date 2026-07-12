@@ -46,6 +46,7 @@ import { sendRentalSms } from "@/lib/rental-sms.functions";
 import { chargeViolation } from "@/lib/violation-charge.functions";
 import { useAgreementSettings } from "@/lib/agreementSettings";
 import { sendSigningLink, getSigningLink } from "@/lib/sign.functions";
+import { sendCardRequest } from "@/lib/card-request.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { generateReceiptPdf } from "@/lib/receipt.functions";
 import { downloadClientPacket } from "@/lib/client-packet.functions";
