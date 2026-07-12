@@ -229,6 +229,22 @@ function FleetPage() {
                     ))}
                   </div>
                 )}
+                {proactiveNotes.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setRepairPanelVehicleId(v.id);
+                    }}
+                    className="mt-2 block w-full space-y-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-left hover:bg-amber-500/20"
+                  >
+                    {proactiveNotes.map(n => (
+                      <div key={n.id} className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                        📝 Watch — {n.title}: <span className="font-normal">{n.note}</span>
+                      </div>
+                    ))}
+                  </button>
+                )}
                 {!scheduleConfigured && (
                   <button
                     type="button"
