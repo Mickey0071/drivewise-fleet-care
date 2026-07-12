@@ -23,6 +23,7 @@ import { SendRmTaskDialog } from "@/components/app/SendRmTaskDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehiclePhotosDialog } from "@/components/app/VehiclePhotosDialog";
+import { VehicleRepairPanelDialog } from "@/components/app/VehicleRepairPanelDialog";
 import { Share2, Camera, Pencil, Images, Plus, Wrench, Archive, RotateCcw } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +48,7 @@ function FleetPage() {
   const [expenseVehicleId, setExpenseVehicleId] = useState<string | null>(null);
   const [rmVehicleId, setRmVehicleId] = useState<string | null>(null);
   const [archiveVehicleId, setArchiveVehicleId] = useState<string | null>(null);
+  const [repairPanelVehicleId, setRepairPanelVehicleId] = useState<string | null>(null);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { status, view } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -277,6 +279,14 @@ function FleetPage() {
               >
                 Profile
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); setRepairPanelVehicleId(v.id); }}
+                title="View & manage repairs"
+              >
+                <Wrench className="mr-1 h-4 w-4" /> Repairs{openRepairs.length > 0 ? ` (${openRepairs.length})` : ""}
+              </Button>
               {isVehicleBookable(v.id) && (
                 <Button
                   variant="outline"
@@ -327,6 +337,11 @@ function FleetPage() {
         open={!!shareVehicleId}
         onOpenChange={(o) => { if (!o) setShareVehicleId(null); }}
         vehicle={shareVehicleId ? vehicles.find(v => v.id === shareVehicleId) ?? null : null}
+      />
+      <VehicleRepairPanelDialog
+        vehicleId={repairPanelVehicleId}
+        open={!!repairPanelVehicleId}
+        onOpenChange={(o) => { if (!o) setRepairPanelVehicleId(null); }}
       />
       <EditVehicleDialog
         open={!!editVehicleId}
