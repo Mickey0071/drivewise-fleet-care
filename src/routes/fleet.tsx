@@ -60,13 +60,19 @@ function FleetPage() {
   const showArchived = view === "archived";
   const activeFleet = activeVehicles();
   const archived = archivedVehicles();
-  const filtered = showArchived
+  const statusFiltered = showArchived
     ? archived
     : status === "available"
       ? activeFleet.filter(v => isVehicleBookable(v.id))
       : status
         ? activeFleet.filter(v => v.status === status)
         : activeFleet;
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = q
+    ? statusFiltered.filter(v =>
+        `${v.id} ${v.make} ${v.model} ${v.plate} ${v.year}`.toLowerCase().includes(q)
+      )
+    : statusFiltered;
   return (
     <div>
       <PageHeader
