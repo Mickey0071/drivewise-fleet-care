@@ -282,7 +282,7 @@ function FleetPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setRepairPanelVehicleId(v.id)}
+                onClick={(e) => { e.stopPropagation(); setRepairPanelVehicleId(v.id); }}
                 title="View & manage repairs"
               >
                 <Wrench className="mr-1 h-4 w-4" /> Repairs{openRepairs.length > 0 ? ` (${openRepairs.length})` : ""}
