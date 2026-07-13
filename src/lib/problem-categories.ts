@@ -12,6 +12,7 @@ export const PROBLEM_CATEGORIES = [
   "Electrical",
   "Body & glass",
   "Routine / scheduled",
+  "Wear & tear",
   "Other",
 ] as const;
 
