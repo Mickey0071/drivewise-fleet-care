@@ -70,7 +70,7 @@ function FleetPage() {
   const q = searchQuery.trim().toLowerCase();
   const filtered = q
     ? statusFiltered.filter(v =>
-        `${v.id} ${v.make} ${v.model} ${v.plate} ${v.year}`.toLowerCase().includes(q)
+        `${v.id} ${v.make} ${v.model} ${v.plate} ${v.year} ${v.vin} ${v.notes ?? ""}`.toLowerCase().includes(q)
       )
     : statusFiltered;
   return (
