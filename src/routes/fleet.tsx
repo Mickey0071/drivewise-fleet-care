@@ -70,7 +70,7 @@ function FleetPage() {
   const q = searchQuery.trim().toLowerCase();
   const filtered = q
     ? statusFiltered.filter(v =>
-        `${v.id} ${v.make} ${v.model} ${v.plate} ${v.year}`.toLowerCase().includes(q)
+        `${v.id} ${v.make} ${v.model} ${v.plate} ${v.year} ${v.vin} ${v.notes ?? ""}`.toLowerCase().includes(q)
       )
     : statusFiltered;
   return (
@@ -91,7 +91,7 @@ function FleetPage() {
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search vehicles by ID, make, model, or plate…"
+          placeholder="Search cars by name, plate, VIN, or ID…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
