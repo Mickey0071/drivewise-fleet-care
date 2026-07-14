@@ -568,6 +568,18 @@ function MaintenancePage() {
                             value={d.laborCost} onChange={(e) => setDiag(m.id, { laborCost: e.target.value })} />
                         </div>
                       </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Label className="text-[11px]">Diagnosing mechanic</Label>
+                          <Input className="mt-1 h-8 text-xs" placeholder="e.g. Jose"
+                            value={d.mechanicName} onChange={(e) => setDiag(m.id, { mechanicName: e.target.value })} />
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-[11px]">Parts source</Label>
+                          <Input className="mt-1 h-8 text-xs" placeholder="Where did the part come from?"
+                            value={d.partsSupplier} onChange={(e) => setDiag(m.id, { partsSupplier: e.target.value })} />
+                        </div>
+                      </div>
                       <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs font-medium">
                         <span>Total</span><span>{fmtMoney(total)}</span>
                       </div>
