@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ReportActions } from "@/components/app/ReportActions";
-import { vehicles, vehicleById, insuranceEntries, fmtDate, fmtMoney, type InsuranceEntry, type InsuranceClaimType } from "@/lib/mock/data";
+import { vehicles, activeVehicles, vehicleById, insuranceEntries, fmtDate, fmtMoney, type InsuranceEntry, type InsuranceClaimType } from "@/lib/mock/data";
 import {
   addInsuranceEntry, updateInsuranceEntry, deleteInsuranceEntry,
   getChecklistFor, updateChecklistItem, addChecklistItem, deleteChecklistItem,
@@ -189,7 +189,7 @@ function InsurancePage() {
               <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
                 <option value="">— Policy-wide / overhead —</option>
-                {vehicles.map(v => <option key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</option>)}
+                {activeVehicles().map(v => <option key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -263,7 +263,7 @@ function InsurancePage() {
               <select className="h-9 rounded-md border border-input bg-background px-2 text-xs"
                 value={filterVehicle} onChange={(e) => setFilterVehicle(e.target.value)}>
                 <option value="">All vehicles</option>
-                {vehicles.map(v => <option key={v.id} value={v.id}>{v.plate}</option>)}
+                {activeVehicles().map(v => <option key={v.id} value={v.id}>{v.plate}</option>)}
               </select>
             </div>
           </CardHeader>

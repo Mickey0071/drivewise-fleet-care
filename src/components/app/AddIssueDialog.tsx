@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { vehicles } from "@/lib/mock/data";
+import { vehicles, activeVehicles } from "@/lib/mock/data";
 import { addMaintenance, addExpense, useStoreVersion } from "@/lib/mock/store";
 import { RepairTypeCombobox } from "@/components/app/RepairTypeCombobox";
 import { VendorCombobox } from "@/components/app/VendorCombobox";
@@ -154,7 +154,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
               <Select value={vehicleId} onValueChange={setVehicleId}>
                 <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
                 <SelectContent>
-                  {vehicles.map(v => (
+                  {activeVehicles().map(v => (
                     <SelectItem key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</SelectItem>
                   ))}
                 </SelectContent>

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Download } from "lucide-react";
-import { vehicles, vehicleById, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { activeVehicles, vehicleById, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { downloadCSV } from "@/lib/exports";
 import { useExpenseCategories } from "@/hooks/use-expense-categories";
 import { buildCombinedExpenses, type CombinedExpense } from "@/lib/combined-expenses";
@@ -101,7 +101,7 @@ export function ExpenseReportDialog({ open, onOpenChange }: Props) {
                 value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
                 <option value="">All</option>
                 <option value="__general">General (no vehicle)</option>
-                {vehicles.map((v) => <option key={v.id} value={v.id}>{v.plate}</option>)}
+                {activeVehicles().map((v) => <option key={v.id} value={v.id}>{v.plate}</option>)}
               </select>
             </div>
             <div>

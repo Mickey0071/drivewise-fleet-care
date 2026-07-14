@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { vehicles } from "@/lib/mock/data";
+import { activeVehicles } from "@/lib/mock/data";
 import { addMaintenance, useStoreVersion } from "@/lib/mock/store";
 import { ServiceTypeCombobox } from "@/components/app/ServiceTypeCombobox";
 import { toast } from "sonner";
@@ -78,7 +78,7 @@ export function LogServiceDialog({ open, onOpenChange, initialVehicleId }: Props
             <Select value={vehicleId} onValueChange={setVehicleId}>
               <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
               <SelectContent>
-                {vehicles.map(v => (
+                {activeVehicles().map(v => (
                   <SelectItem key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</SelectItem>
                 ))}
               </SelectContent>

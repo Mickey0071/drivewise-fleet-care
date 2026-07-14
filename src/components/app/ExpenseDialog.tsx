@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Paperclip, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { vehicles, maintenance, type Expense } from "@/lib/mock/data";
+import { activeVehicles, maintenance, type Expense } from "@/lib/mock/data";
 import { addExpense, updateExpense, uploadExpenseReceipt } from "@/lib/mock/store";
 import { useExpenseCategories } from "@/hooks/use-expense-categories";
 
@@ -200,7 +200,7 @@ export function ExpenseDialog({ open, onOpenChange, expense, defaultVehicleId, o
                   <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                     value={vehicleId} onChange={(e) => { setVehicleId(e.target.value); setMaintenanceId(""); }}>
                     <option value="">— Select a vehicle —</option>
-                    {vehicles.map((v) => (
+                    {activeVehicles().map((v) => (
                       <option key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</option>
                     ))}
                   </select>
