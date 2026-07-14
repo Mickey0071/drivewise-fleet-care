@@ -263,6 +263,66 @@ function MaintenancePage() {
     toast.success(`Payment of ${fmtMoney(amt)} recorded`);
   }
 
+  // --- Phase 3 pre-complete adjustments (single-repair tickets) ---
+  type AdjustDraft = { partsCost: string; laborCost: string; mechanicName: string; partsSupplier: string };
+  const [adjustDraft, setAdjustDraft] = useState<Record<string, AdjustDraft>>({});
+  const adjustFor = (m: Maintenance): AdjustDraft =>
+    adjustDraft[m.id] ?? {
+      partsCost: m.partsCost != null ? String(m.partsCost) : "",
+      laborCost: m.laborCost != null ? String(m.laborCost) : "",
+      mechanicName: m.mechanicName ?? "",
+      partsSupplier: m.vendor && m.vendor !== "Pending assignment" ? m.vendor : "",
+    };
+  const setAdjust = (id: string, patch: Partial<AdjustDraft>) =>
+    setAdjustDraft(prev => ({ ...prev, [id]: { ...adjustFor(maintenance.find(x => x.id === id)!), ...prev[id], ...patch } }));
+  function handleSaveAdjustments(m: Maintenance) {
+    const d = adjustFor(m);
+    updateRepairAdjustments(m.id, {
+      partsCost: parseFloat(d.partsCost) || 0,
+      laborCost: parseFloat(d.laborCost) || 0,
+      mechanicName: d.mechanicName,
+      vendor: d.partsSupplier,
+    });
+    toast.success("Adjustments saved");
+  }
+
+  // --- Phase 3 line item edits + new-item add ---
+  const [itemEdits, setItemEdits] = useState<Record<string, { partsSupplier: string }>>({});
+  const itemEditFor = (item: RepairLineItem) =>
+    itemEdits[item.id] ?? { partsSupplier: item.partsSupplier ?? "" };
+  function handleSaveItemChanges(m: Maintenance, item: RepairLineItem) {
+    const d = itemDraftFor(item);
+    const e = itemEditFor(item);
+    updateRepairLineItem(m.id, item.id, {
+      partsCost: parseFloat(d.partsCost) || 0,
+      laborCost: parseFloat(d.laborCost) || 0,
+      mechanicName: d.mechanicName,
+      notes: d.notes,
+      partsSupplier: e.partsSupplier,
+    });
+    toast.success("Item updated");
+  }
+  type NewItemDraft = { title: string; partsCost: string; laborCost: string; mechanicName: string; partsSupplier: string; partsNeeded: string };
+  const [newItemDraft, setNewItemDraft] = useState<Record<string, NewItemDraft>>({});
+  const [newItemOpen, setNewItemOpen] = useState<Record<string, boolean>>({});
+  const newItemFor = (id: string): NewItemDraft =>
+    newItemDraft[id] ?? { title: "", partsCost: "", laborCost: "", mechanicName: "", partsSupplier: "", partsNeeded: "" };
+  function handleAddNewItem(m: Maintenance) {
+    const d = newItemFor(m.id);
+    if (!d.title.trim()) { toast.error("Item title required"); return; }
+    addRepairLineItem(m.id, {
+      title: d.title.trim(),
+      partsNeeded: d.partsNeeded.trim() || undefined,
+      partsCost: parseFloat(d.partsCost) || 0,
+      laborCost: parseFloat(d.laborCost) || 0,
+      mechanicName: d.mechanicName.trim() || undefined,
+      partsSupplier: d.partsSupplier.trim() || undefined,
+    });
+    setNewItemDraft(prev => { const n = { ...prev }; delete n[m.id]; return n; });
+    setNewItemOpen(prev => ({ ...prev, [m.id]: false }));
+    toast.success("Item added");
+  }
+
   // Completion summary dialog
   const [completeRecord, setCompleteRecord] = useState<Maintenance | null>(null);
   const [mechanicName, setMechanicName] = useState("");
