@@ -187,7 +187,7 @@ function MaintenancePage() {
     }
     const mileage = parseInt(d.mileage, 10) || 0;
     if (d.splitEnabled && d.extraSplits.length > 0) {
-      const first = { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour };
+      const first = { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mechanicName: d.mechanicName, vendor: d.partsSupplier };
       const rest = d.extraSplits
         .filter(s => s.diagnosis.trim() || s.partsNeeded.trim())
         .map(s => ({
@@ -195,6 +195,8 @@ function MaintenancePage() {
           partsNeeded: s.partsNeeded,
           partsCost: parseFloat(s.partsCost) || 0,
           laborCost: parseFloat(s.laborCost) || 0,
+          mechanicName: s.mechanicName,
+          vendor: s.partsSupplier,
         }));
       if (rest.length === 0) {
         toast.error("Add details to the extra repair, or turn off split");
@@ -209,17 +211,19 @@ function MaintenancePage() {
           partsNeeded: s.partsNeeded.trim() || undefined,
           partsCost: s.partsCost,
           laborCost: s.laborCost,
+          mechanicName: s.mechanicName?.trim() || undefined,
+          partsSupplier: s.vendor?.trim() || undefined,
           status: "open",
         }));
         saveRepairDiagnosisLineItems(m.id, items, mileage);
         toast.success(`${items.length} repair items saved on one ticket — moved to Complete`);
         return;
       }
-      saveRepairDiagnosis(m.id, { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mileageAtService: mileage, splits: [first, ...rest] });
+      saveRepairDiagnosis(m.id, { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mileageAtService: mileage, mechanicName: d.mechanicName, vendor: d.partsSupplier, splits: [first, ...rest] });
       toast.success(`Split into ${rest.length + 1} repair tickets — moved to Complete`);
       return;
     }
-    saveRepairDiagnosis(m.id, { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mileageAtService: mileage });
+    saveRepairDiagnosis(m.id, { diagnosis: d.diagnosis, partsNeeded: d.partsNeeded, partsCost: parts, laborCost: labour, mileageAtService: mileage, mechanicName: d.mechanicName, vendor: d.partsSupplier });
     toast.success("Diagnosis saved — moved to Complete");
   }
 
