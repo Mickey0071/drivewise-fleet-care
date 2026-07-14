@@ -3098,12 +3098,16 @@ export function saveRepairDiagnosis(
     mileageAtService?: number;
     /** Diagnosis text — becomes the ticket's display title. */
     diagnosis?: string;
+    /** Diagnosing mechanic's name. */
+    mechanicName?: string;
+    /** Where the part(s) came from. Stored in `vendor`. */
+    vendor?: string;
     /**
      * When the mechanic found multiple problems, pass one entry per problem to
      * split into separate repair tickets. The first entry stays on this ticket;
      * each additional entry becomes a new ticket sharing the reported issue.
      */
-    splits?: Array<{ diagnosis: string; partsNeeded: string; partsCost: number; laborCost: number }>;
+    splits?: Array<{ diagnosis: string; partsNeeded: string; partsCost: number; laborCost: number; mechanicName?: string; vendor?: string }>;
   },
 ) {
   const m = maintenance.find(x => x.id === id);
@@ -3118,7 +3122,7 @@ export function saveRepairDiagnosis(
     const total = splits.length;
     const applyEntry = (
       rec: Maintenance,
-      entry: { diagnosis: string; partsNeeded: string; partsCost: number; laborCost: number },
+      entry: { diagnosis: string; partsNeeded: string; partsCost: number; laborCost: number; mechanicName?: string; vendor?: string },
       index: number,
     ) => {
       const parts = Math.max(0, entry.partsCost || 0);
@@ -3135,6 +3139,8 @@ export function saveRepairDiagnosis(
       rec.originalIssueId = m.id;
       rec.splitIndex = index + 1;
       rec.splitTotal = total;
+      if (entry.mechanicName !== undefined) rec.mechanicName = entry.mechanicName.trim() || undefined;
+      if (entry.vendor !== undefined && entry.vendor.trim()) rec.vendor = entry.vendor.trim();
     };
 
     // First entry stays on the original ticket.
@@ -3178,6 +3184,8 @@ export function saveRepairDiagnosis(
   m.balance = Math.max(0, total - (m.amountPaid ?? 0));
   if (mileage != null) m.mileageAtService = mileage;
   m.status = "pending_complete";
+  if (input.mechanicName !== undefined) m.mechanicName = input.mechanicName.trim() || undefined;
+  if (input.vendor !== undefined && input.vendor.trim()) m.vendor = input.vendor.trim();
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
   if (mileage != null) applyOdometerReading(m.vehicleId, mileage);
   syncVehicleOpenIssues(m.vehicleId);
