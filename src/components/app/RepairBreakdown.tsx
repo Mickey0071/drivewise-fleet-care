@@ -131,6 +131,7 @@ export function RepairBreakdownEditorDialog({ open, onOpenChange, record }: Edit
   }
 
   function save() {
+    if (!record) return;
     const cleanParts = parts
       .filter(p => p.name.trim().length > 0)
       .map(({ _dirty, ...p }) => ({ ...p, cost: Number(p.cost) || 0 }));
