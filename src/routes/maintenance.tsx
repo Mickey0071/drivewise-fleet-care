@@ -797,9 +797,9 @@ function MaintenancePage() {
                                     <Button size="sm" variant="outline" className="flex-1" onClick={() => handleSaveItemChanges(m, item)}>
                                       Save changes
                                     </Button>
-                                  <Button size="sm" className="w-full" onClick={() => handleCompleteItem(m, item)}>
-                                    Mark item complete
-                                  </Button>
+                                    <Button size="sm" className="flex-1" onClick={() => handleCompleteItem(m, item)}>
+                                      Mark complete
+                                    </Button>
                                   </div>
                                 </div>
                               )}
