@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
-import { vehicles, fmtMoney, type RepairSolution } from "@/lib/mock/data";
+import { activeVehicles, fmtMoney, type RepairSolution } from "@/lib/mock/data";
 import { createRepair } from "@/lib/mock/store";
 import { sendNewRepairAlert } from "@/lib/repair-alert.functions";
 import { toast } from "sonner";
@@ -87,7 +87,7 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
               <Select value={vehicleId} onValueChange={setVehicleId}>
                 <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
                 <SelectContent>
-                  {vehicles.map(v => (
+                  {activeVehicles().map(v => (
                     <SelectItem key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</SelectItem>
                   ))}
                 </SelectContent>
