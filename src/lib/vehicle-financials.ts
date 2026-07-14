@@ -147,14 +147,56 @@ export function getVehicleFinancials(
     if (!inRange(date, range)) continue;
     const amount = effectiveRepairCost(m);
     const source: ExpenseSource = isIssueRecord(m) ? "repair" : "maintenance";
-    expenseLineItems.push({
-      id: m.id,
-      date,
-      category: source === "repair" ? "Repair" : "Maintenance",
-      description: maintenanceLabel(m),
-      amount,
-      source,
-    });
+    const label = maintenanceLabel(m);
+    const partsTotal = Number(m.partsCost ?? m.selectedSolution?.partsCost ?? 0);
+    const laborTotal = Number(m.laborCost ?? m.selectedSolution?.laborCost ?? 0);
+    // Break out into Parts / Labor rows so the expense list mirrors the
+    // repair breakdown. Fall back to a single lumped row when neither
+    // parts nor labor was recorded (e.g. legacy rolled-up cost).
+    if (partsTotal > 0 || laborTotal > 0) {
+      if (partsTotal > 0) {
+        expenseLineItems.push({
+          id: `${m.id}::parts`,
+          date,
+          category: "Parts",
+          description: `${label}${m.vendor ? ` · ${m.vendor}` : ""}`,
+          amount: partsTotal,
+          source,
+        });
+      }
+      if (laborTotal > 0) {
+        expenseLineItems.push({
+          id: `${m.id}::labor`,
+          date,
+          category: "Labor",
+          description: `${label}${m.mechanicName || m.completedBy ? ` · ${m.mechanicName || m.completedBy}` : ""}`,
+          amount: laborTotal,
+          source,
+        });
+      }
+      // If the aggregate `cost` exceeded parts+labor (e.g. rounding, fees),
+      // capture the remainder so totals stay identical.
+      const remainder = amount - partsTotal - laborTotal;
+      if (Math.abs(remainder) >= 0.01) {
+        expenseLineItems.push({
+          id: `${m.id}::other`,
+          date,
+          category: source === "repair" ? "Repair" : "Maintenance",
+          description: `${label} (other)`,
+          amount: remainder,
+          source,
+        });
+      }
+    } else {
+      expenseLineItems.push({
+        id: m.id,
+        date,
+        category: source === "repair" ? "Repair" : "Maintenance",
+        description: label,
+        amount,
+        source,
+      });
+    }
   }
 
   // 3. Violations / impound charges tied to the vehicle.
