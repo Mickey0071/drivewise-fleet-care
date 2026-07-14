@@ -632,6 +632,12 @@ function MaintenancePage() {
                                 <Input className="h-8 flex-1" type="number" min="0" step="0.01" placeholder="Labour $"
                                   value={s.laborCost} onChange={(e) => setSplit(m.id, i, { laborCost: e.target.value })} />
                               </div>
+                              <div className="flex gap-2">
+                                <Input className="h-8 flex-1 text-xs" placeholder="Mechanic"
+                                  value={s.mechanicName} onChange={(e) => setSplit(m.id, i, { mechanicName: e.target.value })} />
+                                <Input className="h-8 flex-1 text-xs" placeholder="Parts source"
+                                  value={s.partsSupplier} onChange={(e) => setSplit(m.id, i, { partsSupplier: e.target.value })} />
+                              </div>
                             </div>
                           ))}
                           <Button size="sm" variant="outline" className="w-full text-xs"
