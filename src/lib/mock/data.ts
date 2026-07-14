@@ -437,6 +437,11 @@ export const repairTypes: RepairType[] = [];
 export const serviceTypes: ServiceType[] = [];
 
 export const vehicles: Vehicle[] = [];
+
+/** Active (non-archived) fleet for pickers and search. */
+export function activeVehicles(): Vehicle[] {
+  return vehicles.filter((v) => !v.archived);
+}
 export const drivers: Driver[] = [];
 export const rentals: Rental[] = [];
 export const payments: Payment[] = [];

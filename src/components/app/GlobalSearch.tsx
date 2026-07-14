@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator,
 } from "@/components/ui/command";
-import { vehicles, drivers, rentals } from "@/lib/mock/data";
+import { activeVehicles, drivers, rentals } from "@/lib/mock/data";
 
 const navItems = [
   { label: "Dashboard", to: "/", icon: TrendingUp },
@@ -69,7 +69,7 @@ export function GlobalSearch() {
           </CommandGroup>
           <CommandSeparator />
           <CommandGroup heading="Vehicles">
-            {vehicles.map((v) => (
+            {activeVehicles().map((v) => (
               <CommandItem
                 key={v.id}
                 value={`${v.id} ${v.make} ${v.model} ${v.plate}`}

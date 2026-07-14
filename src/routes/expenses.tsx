@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { expenses, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
+import { expenses, activeVehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { addExpense, deleteExpense, uploadExpenseReceipt, useStoreVersion } from "@/lib/mock/store";
 import { Paperclip, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
@@ -138,7 +138,7 @@ function ExpensesPage() {
                 onChange={(e) => setVehicleId(e.target.value)}
               >
                 <option value="">— Overhead / not tied to a vehicle —</option>
-                {vehicles.map(v => (
+                {activeVehicles().map(v => (
                   <option key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</option>
                 ))}
               </select>
