@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { vehicles, drivers } from "@/lib/mock/data";
+import { vehicles, activeVehicles, drivers } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { createRunnerTask } from "@/lib/runner-tasks.functions";
 import { createRmCardLink } from "@/lib/rm-cards.functions";
@@ -159,7 +159,7 @@ function CreateTaskPage() {
   }
 
   const vehicleOptions = useMemo(
-    () => vehicles.map((v) => ({ id: v.id, label: `${v.year} ${v.make} ${v.model} · ${v.plate}` })),
+    () => activeVehicles().map((v) => ({ id: v.id, label: `${v.year} ${v.make} ${v.model} · ${v.plate}` })),
     [],
   );
   const customerOptions = useMemo(

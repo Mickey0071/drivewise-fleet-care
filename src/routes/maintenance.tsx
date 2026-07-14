@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { maintenance, vehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
+import { maintenance, vehicles, activeVehicles, vehicleById, fmtDate, fmtMoney } from "@/lib/mock/data";
 import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame, RotateCcw, Trash2, Car, ClipboardCheck } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
 
@@ -1121,7 +1121,7 @@ function MaintenancePage() {
               <Select value={createVehicleId} onValueChange={setCreateVehicleId}>
                 <SelectTrigger><SelectValue placeholder="Select a vehicle" /></SelectTrigger>
                 <SelectContent>
-                  {vehicles.map(v => (
+                  {activeVehicles().map(v => (
                     <SelectItem key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</SelectItem>
                   ))}
                 </SelectContent>
