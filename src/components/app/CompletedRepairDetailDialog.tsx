@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle2 } from "lucide-react";
 import { vehicleById, fmtMoney, fmtDate, type Maintenance } from "@/lib/mock/data";
 import { effectiveRepairCost, repairDisplayTitle, repairReportedIssue, repairSplitLabel } from "@/lib/maintenance-utils";
+import { RepairBreakdownView, EditBreakdownButton } from "@/components/app/RepairBreakdown";
 
 interface Props {
   open: boolean;
@@ -67,11 +68,15 @@ export function CompletedRepairDetailDialog({ open, onOpenChange, record }: Prop
           </div>
 
           {/* Cost breakdown */}
-          <div className="rounded-md border border-border bg-muted/30 p-3">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cost breakdown</div>
-            <div className="space-y-1">
-              <Row label="Parts" value={fmtMoney(parts)} />
-              <Row label="Labor" value={fmtMoney(labor)} />
+          <div className="rounded-md border border-border bg-muted/30 p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cost breakdown</div>
+              <EditBreakdownButton record={record} />
+            </div>
+            <RepairBreakdownView record={record} />
+            <div className="space-y-1 border-t border-border pt-2">
+              <Row label="Parts total" value={fmtMoney(parts)} />
+              <Row label="Labor total" value={fmtMoney(labor)} />
               <Row label="Total" value={fmtMoney(total)} strong />
               {estimate != null && estimate !== total && (
                 <div className="pt-1 text-xs text-muted-foreground">Estimated: {fmtMoney(estimate)}</div>
