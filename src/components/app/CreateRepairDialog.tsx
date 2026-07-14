@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
-import { activeVehicles, fmtMoney, type RepairSolution } from "@/lib/mock/data";
+import { vehicles, activeVehicles, fmtMoney, type RepairSolution } from "@/lib/mock/data";
 import { createRepair } from "@/lib/mock/store";
 import { sendNewRepairAlert } from "@/lib/repair-alert.functions";
 import { toast } from "sonner";

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { activeVehicles } from "@/lib/mock/data";
+import { vehicles, activeVehicles } from "@/lib/mock/data";
 import { addMaintenance, addExpense, useStoreVersion } from "@/lib/mock/store";
 import { RepairTypeCombobox } from "@/components/app/RepairTypeCombobox";
 import { VendorCombobox } from "@/components/app/VendorCombobox";
