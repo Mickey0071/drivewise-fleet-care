@@ -25,7 +25,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useStoreVersion, markScheduledComplete } from "@/lib/mock/store";
 import { createManualRepair, moveRepairToDiagnose, saveRepairDiagnosis, recordRepairPaymentRaw, completeRepair, reverseRepairToDiagnose, deleteRepair } from "@/lib/mock/store";
-import { saveRepairDiagnosisLineItems, completeRepairLineItem, lineItemTotals } from "@/lib/mock/store";
+import { saveRepairDiagnosisLineItems, completeRepairLineItem, lineItemTotals, updateRepairAdjustments, updateRepairLineItem, addRepairLineItem } from "@/lib/mock/store";
 import type { RepairLineItem } from "@/lib/mock/data";
 import type { RepairCompletionSummary } from "@/lib/mock/store";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -140,13 +140,15 @@ function MaintenancePage() {
   }
 
   // --- Phase 2 (Diagnose) per-record inputs ---
-  type SplitEntry = { diagnosis: string; partsNeeded: string; partsCost: string; laborCost: string };
+  type SplitEntry = { diagnosis: string; partsNeeded: string; partsCost: string; laborCost: string; mechanicName: string; partsSupplier: string };
   type DiagInput = {
     diagnosis: string;
     partsNeeded: string;
     partsCost: string;
     laborCost: string;
     mileage: string;
+    mechanicName: string;
+    partsSupplier: string;
     splitEnabled: boolean;
     extraSplits: SplitEntry[];
     /** When true (with multiple problems), keep them as line items on ONE ticket. */
@@ -160,13 +162,15 @@ function MaintenancePage() {
       partsCost: m.partsCost ? String(m.partsCost) : "",
       laborCost: m.laborCost ? String(m.laborCost) : "",
       mileage: m.mileageAtService ? String(m.mileageAtService) : "",
+      mechanicName: m.mechanicName ?? "",
+      partsSupplier: m.vendor && m.vendor !== "Pending assignment" ? m.vendor : "",
       splitEnabled: false,
       extraSplits: [],
       oneTicket: false,
     };
   const setDiag = (id: string, patch: Partial<DiagInput>) =>
     setDiagInputs(prev => ({ ...prev, [id]: { ...diagFor(maintenance.find(x => x.id === id)!), ...prev[id], ...patch } }));
-  const emptySplit = (): SplitEntry => ({ diagnosis: "", partsNeeded: "", partsCost: "", laborCost: "" });
+  const emptySplit = (): SplitEntry => ({ diagnosis: "", partsNeeded: "", partsCost: "", laborCost: "", mechanicName: "", partsSupplier: "" });
   const setSplit = (id: string, idx: number, patch: Partial<SplitEntry>) => {
     const cur = diagFor(maintenance.find(x => x.id === id)!);
     const extraSplits = cur.extraSplits.map((s, i) => (i === idx ? { ...s, ...patch } : s));
