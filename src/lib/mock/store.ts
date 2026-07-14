@@ -1934,7 +1934,14 @@ export function deleteVehicle(id: string) {
 
 /** Non-archived (active) fleet — used for all active-fleet analytics & pickers. */
 export function activeVehicles(): Vehicle[] {
-  return vehicles.filter(v => !v.archived);
+  return vehicles
+    .filter(v => !v.archived)
+    .sort(
+      (a, b) =>
+        (b.year ?? 0) - (a.year ?? 0) ||
+        (a.make ?? "").localeCompare(b.make ?? "") ||
+        (a.model ?? "").localeCompare(b.model ?? ""),
+    );
 }
 
 /** Sold / archived vehicles, most recently sold first. */
