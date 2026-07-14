@@ -246,6 +246,8 @@ function DiagnosingCard({ m }: { m: Maintenance }) {
   const [partsCost, setPartsCost] = useState(m.partsCost ? String(m.partsCost) : "");
   const [laborCost, setLaborCost] = useState(m.laborCost ? String(m.laborCost) : "");
   const [mileage, setMileage] = useState(m.mileageAtService ? String(m.mileageAtService) : "");
+  const [mechanicName, setMechanicName] = useState(m.mechanicName ?? "");
+  const [partsSupplier, setPartsSupplier] = useState(m.vendor && m.vendor !== "Pending assignment" ? m.vendor : "");
 
   function save() {
     const parts = parseFloat(partsCost) || 0;
@@ -260,6 +262,8 @@ function DiagnosingCard({ m }: { m: Maintenance }) {
       partsCost: parts,
       laborCost: labour,
       mileageAtService: parseInt(mileage, 10) || undefined,
+      mechanicName,
+      vendor: partsSupplier,
     });
     toast.success("Diagnosis saved — moved to Complete");
   }
@@ -288,6 +292,16 @@ function DiagnosingCard({ m }: { m: Maintenance }) {
           <div>
             <Label className="text-xs">Mileage</Label>
             <Input type="number" value={mileage} onChange={(e) => setMileage(e.target.value)} className="text-sm" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label className="text-xs">Diagnosing mechanic</Label>
+            <Input value={mechanicName} onChange={(e) => setMechanicName(e.target.value)} placeholder="e.g. Jose" className="text-sm" />
+          </div>
+          <div>
+            <Label className="text-xs">Parts source</Label>
+            <Input value={partsSupplier} onChange={(e) => setPartsSupplier(e.target.value)} placeholder="Where the part came from" className="text-sm" />
           </div>
         </div>
         <Button size="sm" onClick={save}>Save diagnosis</Button>
