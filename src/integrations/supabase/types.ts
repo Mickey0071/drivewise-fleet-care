@@ -1107,6 +1107,7 @@ export type Database = {
           inspection_id: string | null
           is_rental_blocking: boolean
           issue_description: string | null
+          labor_breakdown: Json
           labor_cost: number
           line_items: Json
           mechanic_name: string | null
@@ -1117,6 +1118,7 @@ export type Database = {
           next_service_due: string
           notes: string | null
           original_issue_id: string | null
+          parts_breakdown: Json
           parts_cost: number
           parts_list: Json | null
           problem_category: string | null
@@ -1168,6 +1170,7 @@ export type Database = {
           inspection_id?: string | null
           is_rental_blocking?: boolean
           issue_description?: string | null
+          labor_breakdown?: Json
           labor_cost?: number
           line_items?: Json
           mechanic_name?: string | null
@@ -1178,6 +1181,7 @@ export type Database = {
           next_service_due?: string
           notes?: string | null
           original_issue_id?: string | null
+          parts_breakdown?: Json
           parts_cost?: number
           parts_list?: Json | null
           problem_category?: string | null
@@ -1229,6 +1233,7 @@ export type Database = {
           inspection_id?: string | null
           is_rental_blocking?: boolean
           issue_description?: string | null
+          labor_breakdown?: Json
           labor_cost?: number
           line_items?: Json
           mechanic_name?: string | null
@@ -1239,6 +1244,7 @@ export type Database = {
           next_service_due?: string
           notes?: string | null
           original_issue_id?: string | null
+          parts_breakdown?: Json
           parts_cost?: number
           parts_list?: Json | null
           problem_category?: string | null

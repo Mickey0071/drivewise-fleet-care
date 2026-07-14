@@ -698,6 +698,8 @@ const fromMaintenance = (r: any): Maintenance => ({
   depositProcessed: !!r.deposit_processed,
   depositDate: r.deposit_date ?? undefined,
   lineItems: Array.isArray(r.line_items) ? (r.line_items as RepairLineItem[]) : undefined,
+  partsBreakdown: Array.isArray(r.parts_breakdown) ? r.parts_breakdown : undefined,
+  laborBreakdown: Array.isArray(r.labor_breakdown) ? r.labor_breakdown : undefined,
 });
 const toMaintenance = (m: Maintenance) => ({
   id: m.id, vehicle_id: m.vehicleId, service_type: m.serviceType,
@@ -739,6 +741,8 @@ const toMaintenance = (m: Maintenance) => ({
   deposit_processed: m.depositProcessed ?? false,
   deposit_date: m.depositDate ?? null,
   line_items: (m.lineItems ?? []) as any,
+  parts_breakdown: (m.partsBreakdown ?? []) as any,
+  labor_breakdown: (m.laborBreakdown ?? []) as any,
 });
 
 // ---- staff ----

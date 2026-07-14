@@ -1,38 +1,57 @@
 ## Goal
 
-On a reservation, let staff request a card on file two ways from one button:
-1. **Enter card manually** — the existing secure Stripe form (unchanged).
-2. **Send card link to renter** — text (and optionally email) the customer a secure link where they add their own card. The message clearly states it is **not a charge**, just a card on file to hold the reservation.
+On the Fleet vehicle detail page (and Maintenance log), break every repair down into itemized **Parts** and **Labor** so you can see, for each repair, exactly which part was used, where it came from, when, and who did the work.
 
-No money is ever moved by this flow — it uses a Stripe SetupIntent (save card only), exactly like the current manual "Add/Update Card" flow.
+## The gap today
 
-## What changes for you
+The `Maintenance` record only stores rolled-up totals — `partsCost`, `laborCost`, a single `vendor` string, and (optionally) `mechanicName`. There is no list of individual parts, no supplier per part, and labor is one number. That's why the fuel gauge repair on the Altima shows a total but no breakdown.
 
-The **Add/Update Card** button on each reservation card (Rentals page) becomes a small dropdown:
-- **Enter card manually** → opens the current card form.
-- **Text card link to renter** → sends an SMS with the secure add-card link.
-- **Email card link to renter** → emails the same link (only if an email is on file).
+## What I'll build
 
-The renter opens the link on their phone, sees copy like *"Camauto Rentals just needs a card on file to hold your reservation — this is not a charge,"* enters their card, and it saves straight onto their profile. Once saved, the reservation card shows the card on file just as it does today.
+### 1. Extend the repair data model (`src/lib/mock/data.ts`)
 
-## How it works (technical)
+Add two optional fields to `Maintenance`:
 
-**1. New storage — `card_requests` table (migration)**
-Columns: `id`, `token` (unique), `driver_id`, `rental_id`, `status` (`pending` / `completed` / `expired`), `created_at`, `expires_at`, `completed_at`. RLS enabled; no anon/authenticated policies needed because the public page is served through service-role server functions. Include GRANTs (`authenticated` for staff reads if surfaced later, `service_role` all).
+- `partsBreakdown?: { id, name, supplier?, cost, purchaseDate?, notes? }[]`
+- `laborBreakdown?: { id, mechanicName, cost, workDate?, hours?, notes? }[]`
 
-**2. New server functions — `src/lib/card-request.functions.ts`**
-- `sendCardRequest` (auth, `requireSupabaseAuth`): looks up the rental's driver, mints a token, inserts a `card_requests` row (e.g. 7-day expiry), builds `/add-card/<token>` on the public origin, and sends via `notifyRenter` (SMS + branded email) with the "not a charge / card on file to hold" copy. Supports `sendSms` / `sendEmail` flags.
-- `getCardRequestByToken` (public, no auth): resolves the token via `supabaseAdmin`; returns `{ found, expired, status, renterName }`.
-- `createCardRequestSetupIntent` (public, no auth): mirrors `createDriverSetupIntent` but keyed by token — ensures the driver's Stripe customer exists and returns a SetupIntent `clientSecret`.
-- `saveCardRequestCard` (public, no auth): mirrors `saveDriverCard` — attaches the payment method, saves `card_last4`/`brand`/`exp` onto the driver, and marks the `card_requests` row `completed`.
+Existing `partsCost` / `laborCost` stay as the roll-up (auto-summed from the breakdown when present).
 
-These reuse the existing Stripe helpers (`createStripeClient`) and the same driver card columns the manual flow already writes, so the saved card appears identically on the reservation card.
+### 2. Repair History card (Fleet › vehicle › Repair History)
 
-**3. New public page — `src/routes/add-card.$token.tsx`**
-Token-based, no login. Mirrors the structure of `verify-card.$token.tsx`: branded header, loading/invalid/expired/completed states, and a Stripe `Elements` + `PaymentElement` form (reusing the `CardForm` pattern from `AddCardDialog`). Prominent reassurance text that this is **not a charge**, only a card on file to hold the reservation. On success shows a "Card saved — you're all set" confirmation.
+Each repair card expands to show two sub-sections:
 
-**4. Rentals page — `src/routes/rentals.tsx`**
-Replace the two `Add/Update Card` buttons (card-on-file present and absent branches) with a `DropdownMenu` (pattern already used for "Send agreement") offering **Enter card manually**, **Text card link to renter**, and **Email card link to renter**. The manual item keeps `setAddCardRental(r)`; the send items call `sendCardRequest` with `getPublicAppOrigin()` and toast success/failure. `AddCardDialog` stays as-is.
+```text
+Fuel gauge repair              $340
+Nov 12, 2025 · Joe's Auto
+─────────────────────────────────
+Parts                          $180
+  • Fuel gauge sender  — AutoZone   $120   Nov 10
+  • Wiring harness clip — Amazon     $60   Nov 10
+Labor                          $160
+  • Mike R.            2 hrs        $160   Nov 12
+```
+
+Falls back gracefully to today's single-line summary when a repair has no breakdown yet.
+
+### 3. Expenses tab (Fleet › vehicle › Expenses)
+
+Repair-sourced rows split into two lines — one `Parts` row and one `Labor` row — each with vendor/mechanic in the subtitle, so the category pills at the top correctly show "Parts: $X · Labor: $Y" instead of one lumped "Repair" bucket.
+
+### 4. Maintenance page detail dialog (`CompletedRepairDetailDialog`)
+
+Same Parts / Labor itemized breakdown appears inside "View Details" so techs and admins see the same structure from either entry point.
+
+### 5. Editing
+
+- The existing "Add expense" / repair-completion forms get Parts and Labor line-item editors (add row → part name, supplier, cost, date; mechanic, cost, date). Users can add multiple parts or multiple labor entries per repair.
+- Old repairs without a breakdown remain viewable; you can edit them to add itemized data retroactively.
 
 ## Out of scope
-- No automatic charging or holds are placed — this only saves a card. (Actual authorization holds would be a separate request.)
+
+- I won't touch the P&L totals math — the sum stays identical; only the presentation splits.
+- No supplier/parts-catalog table; supplier is free text on each part row (matches how `vendor` works today). Say the word if you want a proper suppliers list later.
+
+## One clarifying question
+
+Where should the itemized breakdown be entered — on the **repair completion form** in the Maintenance module (mechanic/admin fills it when marking complete), or as a separate **"Edit breakdown"** action on the Repair History card, or **both**?

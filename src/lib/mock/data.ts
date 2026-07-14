@@ -278,6 +278,28 @@ export interface Maintenance {
   depositDate?: string;
   /** Multiple repair items handled under this single ticket (additive). */
   lineItems?: RepairLineItem[];
+  /** Itemized parts used in this repair (part name, supplier, cost, date). */
+  partsBreakdown?: PartBreakdownItem[];
+  /** Itemized labor entries for this repair (mechanic, hours, cost, date). */
+  laborBreakdown?: LaborBreakdownItem[];
+}
+/** A single part used in a repair. */
+export interface PartBreakdownItem {
+  id: string;
+  name: string;
+  supplier?: string;
+  cost: number;
+  purchaseDate?: string;
+  notes?: string;
+}
+/** A single labor entry for a repair. */
+export interface LaborBreakdownItem {
+  id: string;
+  mechanicName: string;
+  cost: number;
+  hours?: number;
+  workDate?: string;
+  notes?: string;
 }
 export type RepairStatus = "reported" | "diagnosing" | "open" | "pending_deposit" | "pending_complete" | "in_progress" | "complete";
 export interface RepairSolution {

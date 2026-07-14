@@ -34,6 +34,7 @@ import { EditMaintenanceDialog } from "@/components/app/EditMaintenanceDialog";
 import { ExpenseDialog } from "@/components/app/ExpenseDialog";
 import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import { RmHistoryTab } from "@/components/app/RmHistoryTab";
+import { RepairBreakdownView, EditBreakdownButton } from "@/components/app/RepairBreakdown";
 import type { Maintenance, WorkOrder, Rental } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost, repairDisplayTitle, repairReportedIssue, repairSplitLabel } from "@/lib/maintenance-utils";
@@ -665,6 +666,12 @@ function VehicleDetail() {
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="font-medium">{fmtMoney(total)}</span>
                       <Button variant="outline" size="sm" onClick={() => setCompletedRepair(m)}>View Details</Button>
+                    </div>
+                  </div>
+                  <div className="mt-2 rounded-md border border-border bg-muted/30 p-2">
+                    <RepairBreakdownView record={m} />
+                    <div className="mt-2 flex justify-end">
+                      <EditBreakdownButton record={m} />
                     </div>
                   </div>
                   {m.lineItems && m.lineItems.length > 0 && (
