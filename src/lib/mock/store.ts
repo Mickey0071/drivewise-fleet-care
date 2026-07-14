@@ -2653,6 +2653,70 @@ export function saveRepairDiagnosisLineItems(id: string, items: RepairLineItem[]
 }
 
 /**
+ * Phase 3 · Complete Pending Approval: adjust repair fields (parts/labor cost,
+ * mechanic, parts source) before the admin presses "Complete Repair". Only
+ * applies while status is pending_complete.
+ */
+export function updateRepairAdjustments(
+  id: string,
+  patch: { partsCost?: number; laborCost?: number; mechanicName?: string; vendor?: string },
+) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m || m.status !== "pending_complete") return;
+  if (typeof patch.partsCost === "number") m.partsCost = Math.max(0, patch.partsCost);
+  if (typeof patch.laborCost === "number") m.laborCost = Math.max(0, patch.laborCost);
+  if (patch.mechanicName !== undefined) m.mechanicName = patch.mechanicName.trim() || undefined;
+  if (patch.vendor !== undefined) m.vendor = patch.vendor.trim() || m.vendor;
+  const total = (m.partsCost ?? 0) + (m.laborCost ?? 0);
+  m.cost = total;
+  m.balance = Math.max(0, total - (m.amountPaid ?? 0));
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  emit();
+  return m;
+}
+
+/** Phase 3: patch a single line item in place (edit costs/mechanic/supplier). */
+export function updateRepairLineItem(
+  id: string,
+  itemId: string,
+  patch: Partial<Pick<RepairLineItem, "title" | "partsCost" | "laborCost" | "mechanicName" | "partsSupplier" | "partsNeeded" | "notes">>,
+) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m || m.status !== "pending_complete" || !m.lineItems) return;
+  const item = m.lineItems.find(x => x.id === itemId);
+  if (!item || item.status === "complete") return;
+  if (patch.title !== undefined) item.title = patch.title;
+  if (typeof patch.partsCost === "number") item.partsCost = Math.max(0, patch.partsCost);
+  if (typeof patch.laborCost === "number") item.laborCost = Math.max(0, patch.laborCost);
+  if (patch.mechanicName !== undefined) item.mechanicName = patch.mechanicName?.trim() || undefined;
+  if (patch.partsSupplier !== undefined) item.partsSupplier = patch.partsSupplier?.trim() || undefined;
+  if (patch.partsNeeded !== undefined) item.partsNeeded = patch.partsNeeded?.trim() || undefined;
+  if (patch.notes !== undefined) item.notes = patch.notes?.trim() || undefined;
+  recomputeTicketFromLineItems(m);
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  emit();
+  return m;
+}
+
+/** Phase 3: append a brand-new line item to a pending_complete ticket. */
+export function addRepairLineItem(id: string, item: Omit<RepairLineItem, "id" | "status">) {
+  const m = maintenance.find(x => x.id === id);
+  if (!m || m.status !== "pending_complete") return;
+  const newItem: RepairLineItem = {
+    ...item,
+    id: `li${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    partsCost: Math.max(0, Number(item.partsCost) || 0),
+    laborCost: Math.max(0, Number(item.laborCost) || 0),
+    status: "open",
+  };
+  m.lineItems = [...(m.lineItems ?? []), newItem];
+  recomputeTicketFromLineItems(m);
+  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
+  emit();
+  return m;
+}
+
+/**
  * Complete a single line item on a multi-item ticket. Logs the item to the
  * vehicle's fleet-card repair history and posts its cost to P&L. When the last
  * open item is completed, the ticket itself is marked complete.
