@@ -788,11 +788,19 @@ function MaintenancePage() {
                                   </div>
                                   <Input className="h-7 text-xs" placeholder="Mechanic (optional)"
                                     value={dr.mechanicName} onChange={(e) => setItemDraft(prev => ({ ...prev, [item.id]: { ...itemDraftFor(item), ...prev[item.id], mechanicName: e.target.value } }))} />
+                                  <Input className="h-7 text-xs" placeholder="Parts source (optional)"
+                                    value={itemEditFor(item).partsSupplier}
+                                    onChange={(e) => setItemEdits(prev => ({ ...prev, [item.id]: { ...itemEditFor(item), partsSupplier: e.target.value } }))} />
                                   <Input className="h-7 text-xs" placeholder="Notes (optional)"
                                     value={dr.notes} onChange={(e) => setItemDraft(prev => ({ ...prev, [item.id]: { ...itemDraftFor(item), ...prev[item.id], notes: e.target.value } }))} />
+                                  <div className="flex gap-2">
+                                    <Button size="sm" variant="outline" className="flex-1" onClick={() => handleSaveItemChanges(m, item)}>
+                                      Save changes
+                                    </Button>
                                   <Button size="sm" className="w-full" onClick={() => handleCompleteItem(m, item)}>
                                     Mark item complete
                                   </Button>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -801,6 +809,39 @@ function MaintenancePage() {
                         <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs font-medium">
                           <span>Ticket total</span><span>{fmtMoney(lineItemTotals(m.lineItems).total)}</span>
                         </div>
+                        {/* Add another item (Phase 3 pre-complete) */}
+                        {newItemOpen[m.id] ? (
+                          <div className="space-y-1.5 rounded-md border border-dashed border-green-600/40 bg-green-500/5 p-2">
+                            <Input className="h-7 text-xs" placeholder="Item title" value={newItemFor(m.id).title}
+                              onChange={(e) => setNewItemDraft(prev => ({ ...prev, [m.id]: { ...newItemFor(m.id), title: e.target.value } }))} />
+                            <Input className="h-7 text-xs" placeholder="Parts needed (optional)" value={newItemFor(m.id).partsNeeded}
+                              onChange={(e) => setNewItemDraft(prev => ({ ...prev, [m.id]: { ...newItemFor(m.id), partsNeeded: e.target.value } }))} />
+                            <div className="flex gap-2">
+                              <Input className="h-7 flex-1 text-xs" type="number" min="0" step="0.01" placeholder="Parts $" value={newItemFor(m.id).partsCost}
+                                onChange={(e) => setNewItemDraft(prev => ({ ...prev, [m.id]: { ...newItemFor(m.id), partsCost: e.target.value } }))} />
+                              <Input className="h-7 flex-1 text-xs" type="number" min="0" step="0.01" placeholder="Labour $" value={newItemFor(m.id).laborCost}
+                                onChange={(e) => setNewItemDraft(prev => ({ ...prev, [m.id]: { ...newItemFor(m.id), laborCost: e.target.value } }))} />
+                            </div>
+                            <div className="flex gap-2">
+                              <Input className="h-7 flex-1 text-xs" placeholder="Mechanic" value={newItemFor(m.id).mechanicName}
+                                onChange={(e) => setNewItemDraft(prev => ({ ...prev, [m.id]: { ...newItemFor(m.id), mechanicName: e.target.value } }))} />
+                              <Input className="h-7 flex-1 text-xs" placeholder="Parts source" value={newItemFor(m.id).partsSupplier}
+                                onChange={(e) => setNewItemDraft(prev => ({ ...prev, [m.id]: { ...newItemFor(m.id), partsSupplier: e.target.value } }))} />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="ghost" className="flex-1 text-xs" onClick={() => setNewItemOpen(prev => ({ ...prev, [m.id]: false }))}>
+                                Cancel
+                              </Button>
+                              <Button size="sm" className="flex-1 text-xs" onClick={() => handleAddNewItem(m)}>
+                                Add item
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => setNewItemOpen(prev => ({ ...prev, [m.id]: true }))}>
+                            + Add another item
+                          </Button>
+                        )}
                       </div>
                     ) : (
                     <>
@@ -809,6 +850,41 @@ function MaintenancePage() {
                         <span className="font-medium text-foreground">Parts used:</span> {m.diagnosisNotes}
                       </div>
                     )}
+                    {/* Adjust before completing (single-repair tickets) */}
+                    <div className="space-y-1.5 rounded-md border border-dashed border-green-600/40 bg-green-500/5 p-2">
+                      <div className="text-[11px] font-medium text-green-700 dark:text-green-400">Adjust before completing</div>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Label className="text-[10px]">Parts $</Label>
+                          <Input className="mt-0.5 h-7 text-xs" type="number" min="0" step="0.01"
+                            value={adjustFor(m).partsCost}
+                            onChange={(e) => setAdjust(m.id, { partsCost: e.target.value })} />
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-[10px]">Labour $</Label>
+                          <Input className="mt-0.5 h-7 text-xs" type="number" min="0" step="0.01"
+                            value={adjustFor(m).laborCost}
+                            onChange={(e) => setAdjust(m.id, { laborCost: e.target.value })} />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Label className="text-[10px]">Mechanic</Label>
+                          <Input className="mt-0.5 h-7 text-xs"
+                            value={adjustFor(m).mechanicName}
+                            onChange={(e) => setAdjust(m.id, { mechanicName: e.target.value })} />
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-[10px]">Parts source</Label>
+                          <Input className="mt-0.5 h-7 text-xs"
+                            value={adjustFor(m).partsSupplier}
+                            onChange={(e) => setAdjust(m.id, { partsSupplier: e.target.value })} />
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => handleSaveAdjustments(m)}>
+                        Save adjustments
+                      </Button>
+                    </div>
                     <div className="space-y-0.5 rounded bg-muted/40 p-2 text-xs">
                       <div className="flex justify-between"><span>Total</span><span>{fmtMoney(total)}</span></div>
                       <div className="flex justify-between"><span>Paid</span><span>{fmtMoney(paid)}</span></div>
