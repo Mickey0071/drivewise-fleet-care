@@ -326,6 +326,8 @@ export interface RepairLineItem {
   completedAt?: string;
   completedBy?: string;
   mechanicName?: string;
+  /** Where the part came from for this line item. */
+  partsSupplier?: string;
   notes?: string;
   /** True once this item's cost has already been posted to expenses/P&L. */
   expensePosted?: boolean;

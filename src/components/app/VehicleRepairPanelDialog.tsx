@@ -19,6 +19,9 @@ import {
   saveRepairDiagnosis,
   completeRepair,
   completeRepairLineItem,
+  updateRepairAdjustments,
+  updateRepairLineItem,
+  addRepairLineItem,
   updateMaintenance,
   lineItemTotals,
 } from "@/lib/mock/store";
@@ -243,6 +246,8 @@ function DiagnosingCard({ m }: { m: Maintenance }) {
   const [partsCost, setPartsCost] = useState(m.partsCost ? String(m.partsCost) : "");
   const [laborCost, setLaborCost] = useState(m.laborCost ? String(m.laborCost) : "");
   const [mileage, setMileage] = useState(m.mileageAtService ? String(m.mileageAtService) : "");
+  const [mechanicName, setMechanicName] = useState(m.mechanicName ?? "");
+  const [partsSupplier, setPartsSupplier] = useState(m.vendor && m.vendor !== "Pending assignment" ? m.vendor : "");
 
   function save() {
     const parts = parseFloat(partsCost) || 0;
@@ -257,6 +262,8 @@ function DiagnosingCard({ m }: { m: Maintenance }) {
       partsCost: parts,
       laborCost: labour,
       mileageAtService: parseInt(mileage, 10) || undefined,
+      mechanicName,
+      vendor: partsSupplier,
     });
     toast.success("Diagnosis saved — moved to Complete");
   }
@@ -287,6 +294,16 @@ function DiagnosingCard({ m }: { m: Maintenance }) {
             <Input type="number" value={mileage} onChange={(e) => setMileage(e.target.value)} className="text-sm" />
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label className="text-xs">Diagnosing mechanic</Label>
+            <Input value={mechanicName} onChange={(e) => setMechanicName(e.target.value)} placeholder="e.g. Jose" className="text-sm" />
+          </div>
+          <div>
+            <Label className="text-xs">Parts source</Label>
+            <Input value={partsSupplier} onChange={(e) => setPartsSupplier(e.target.value)} placeholder="Where the part came from" className="text-sm" />
+          </div>
+        </div>
         <Button size="sm" onClick={save}>Save diagnosis</Button>
       </div>
       <NoteBox m={m} />
@@ -299,6 +316,36 @@ function CompleteCard({ m, adminName }: { m: Maintenance; adminName: string }) {
   const hasItems = items.length > 0;
   const [mechanicName, setMechanicName] = useState(m.mechanicName ?? "");
   const [notes, setNotes] = useState("");
+  // Adjustable pre-complete fields (single-repair path)
+  const [partsCostAdj, setPartsCostAdj] = useState(m.partsCost != null ? String(m.partsCost) : "");
+  const [laborCostAdj, setLaborCostAdj] = useState(m.laborCost != null ? String(m.laborCost) : "");
+  const [partsSupplier, setPartsSupplier] = useState(m.vendor && m.vendor !== "Pending assignment" ? m.vendor : "");
+  // Add-another-item state (multi-item path)
+  const [newItemOpen, setNewItemOpen] = useState(false);
+  const [newItem, setNewItem] = useState({ title: "", partsCost: "", laborCost: "", mechanicName: "", partsSupplier: "" });
+
+  function saveAdjustments() {
+    updateRepairAdjustments(m.id, {
+      partsCost: parseFloat(partsCostAdj) || 0,
+      laborCost: parseFloat(laborCostAdj) || 0,
+      mechanicName,
+      vendor: partsSupplier,
+    });
+    toast.success("Adjustments saved");
+  }
+  function addItem() {
+    if (!newItem.title.trim()) { toast.error("Item title required"); return; }
+    addRepairLineItem(m.id, {
+      title: newItem.title.trim(),
+      partsCost: parseFloat(newItem.partsCost) || 0,
+      laborCost: parseFloat(newItem.laborCost) || 0,
+      mechanicName: newItem.mechanicName.trim() || undefined,
+      partsSupplier: newItem.partsSupplier.trim() || undefined,
+    });
+    setNewItem({ title: "", partsCost: "", laborCost: "", mechanicName: "", partsSupplier: "" });
+    setNewItemOpen(false);
+    toast.success("Item added");
+  }
 
   function complete() {
     const summary = completeRepair(m.id, {
@@ -329,9 +376,52 @@ function CompleteCard({ m, adminName }: { m: Maintenance; adminName: string }) {
           <div className="text-right text-xs text-muted-foreground">
             Total {fmtMoney(lineItemTotals(items).total)}
           </div>
+          {newItemOpen ? (
+            <div className="space-y-1.5 rounded-md border border-dashed border-green-600/40 bg-green-500/5 p-2">
+              <Input placeholder="Item title" className="h-8 text-sm" value={newItem.title}
+                onChange={(e) => setNewItem(v => ({ ...v, title: e.target.value }))} />
+              <div className="flex gap-2">
+                <Input type="number" placeholder="Parts $" className="h-8 text-sm" value={newItem.partsCost}
+                  onChange={(e) => setNewItem(v => ({ ...v, partsCost: e.target.value }))} />
+                <Input type="number" placeholder="Labour $" className="h-8 text-sm" value={newItem.laborCost}
+                  onChange={(e) => setNewItem(v => ({ ...v, laborCost: e.target.value }))} />
+              </div>
+              <div className="flex gap-2">
+                <Input placeholder="Mechanic" className="h-8 text-sm" value={newItem.mechanicName}
+                  onChange={(e) => setNewItem(v => ({ ...v, mechanicName: e.target.value }))} />
+                <Input placeholder="Parts source" className="h-8 text-sm" value={newItem.partsSupplier}
+                  onChange={(e) => setNewItem(v => ({ ...v, partsSupplier: e.target.value }))} />
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="ghost" className="flex-1" onClick={() => setNewItemOpen(false)}>Cancel</Button>
+                <Button size="sm" className="flex-1" onClick={addItem}>Add item</Button>
+              </div>
+            </div>
+          ) : (
+            <Button size="sm" variant="outline" className="w-full" onClick={() => setNewItemOpen(true)}>+ Add another item</Button>
+          )}
         </div>
       ) : (
         <div className="mt-2 grid gap-2">
+          {/* Adjust before completing */}
+          <div className="space-y-1.5 rounded-md border border-dashed border-green-600/40 bg-green-500/5 p-2">
+            <div className="text-xs font-medium text-green-700 dark:text-green-400">Adjust before completing</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-[10px]">Parts $</Label>
+                <Input type="number" className="h-8 text-sm" value={partsCostAdj} onChange={(e) => setPartsCostAdj(e.target.value)} />
+              </div>
+              <div>
+                <Label className="text-[10px]">Labour $</Label>
+                <Input type="number" className="h-8 text-sm" value={laborCostAdj} onChange={(e) => setLaborCostAdj(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-[10px]">Parts source</Label>
+              <Input className="h-8 text-sm" value={partsSupplier} onChange={(e) => setPartsSupplier(e.target.value)} />
+            </div>
+            <Button size="sm" variant="outline" className="w-full" onClick={saveAdjustments}>Save adjustments</Button>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label className="text-xs">Mechanic</Label>
@@ -360,6 +450,8 @@ function LineItemRow({ m, itemId, adminName }: { m: Maintenance; itemId: string;
   const item = (m.lineItems ?? []).find(x => x.id === itemId);
   const [partsCost, setPartsCost] = useState(item?.partsCost ? String(item.partsCost) : "");
   const [laborCost, setLaborCost] = useState(item?.laborCost ? String(item.laborCost) : "");
+  const [mechanic, setMechanic] = useState(item?.mechanicName ?? "");
+  const [partsSupplier, setPartsSupplier] = useState(item?.partsSupplier ?? "");
   if (!item) return null;
   const done = item.status === "complete";
   return (
@@ -369,29 +461,55 @@ function LineItemRow({ m, itemId, adminName }: { m: Maintenance; itemId: string;
         {done && <Badge variant="outline" className="text-[10px]">Done · {fmtMoney((item.partsCost ?? 0) + (item.laborCost ?? 0))}</Badge>}
       </div>
       {!done && (
-        <div className="mt-1.5 flex items-end gap-2">
-          <div className="flex-1">
-            <Label className="text-[10px]">Parts $</Label>
-            <Input type="number" value={partsCost} onChange={(e) => setPartsCost(e.target.value)} className="h-8 text-sm" />
+        <div className="mt-1.5 space-y-1.5">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Label className="text-[10px]">Parts $</Label>
+              <Input type="number" value={partsCost} onChange={(e) => setPartsCost(e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div className="flex-1">
+              <Label className="text-[10px]">Labour $</Label>
+              <Input type="number" value={laborCost} onChange={(e) => setLaborCost(e.target.value)} className="h-8 text-sm" />
+            </div>
           </div>
-          <div className="flex-1">
-            <Label className="text-[10px]">Labour $</Label>
-            <Input type="number" value={laborCost} onChange={(e) => setLaborCost(e.target.value)} className="h-8 text-sm" />
+          <div className="flex gap-2">
+            <Input placeholder="Mechanic" value={mechanic} onChange={(e) => setMechanic(e.target.value)} className="h-8 text-sm" />
+            <Input placeholder="Parts source" value={partsSupplier} onChange={(e) => setPartsSupplier(e.target.value)} className="h-8 text-sm" />
           </div>
-          <Button
-            size="sm"
-            onClick={() => {
-              const res = completeRepairLineItem(m.id, item.id, {
-                partsCost: parseFloat(partsCost) || 0,
-                laborCost: parseFloat(laborCost) || 0,
-                completedBy: adminName,
-              });
-              if (res?.allComplete) toast.success("✓ All items complete — repair closed");
-              else toast.success("✓ Item completed & logged");
-            }}
-          >
-            Done
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                updateRepairLineItem(m.id, item.id, {
+                  partsCost: parseFloat(partsCost) || 0,
+                  laborCost: parseFloat(laborCost) || 0,
+                  mechanicName: mechanic,
+                  partsSupplier,
+                });
+                toast.success("Item updated");
+              }}
+            >
+              Save changes
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={() => {
+                const res = completeRepairLineItem(m.id, item.id, {
+                  partsCost: parseFloat(partsCost) || 0,
+                  laborCost: parseFloat(laborCost) || 0,
+                  mechanicName: mechanic.trim() || undefined,
+                  completedBy: adminName,
+                });
+                if (res?.allComplete) toast.success("✓ All items complete — repair closed");
+                else toast.success("✓ Item completed & logged");
+              }}
+            >
+              Done
+            </Button>
+          </div>
         </div>
       )}
     </div>
