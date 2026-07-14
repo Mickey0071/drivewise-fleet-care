@@ -1,57 +1,49 @@
 ## Goal
 
-On the Fleet vehicle detail page (and Maintenance log), break every repair down into itemized **Parts** and **Labor** so you can see, for each repair, exactly which part was used, where it came from, when, and who did the work.
+Capture the diagnosing mechanic and parts source (with costs) during **Phase 2 · Diagnose**, and let the admin adjust or add parts/labor in **Phase 3 · Complete Pending Approval** right up until "Complete Repair" is pressed. Payment processing behavior stays the same.
 
-## The gap today
+## Phase 2 · Diagnose — new fields
 
-The `Maintenance` record only stores rolled-up totals — `partsCost`, `laborCost`, a single `vendor` string, and (optionally) `mechanicName`. There is no list of individual parts, no supplier per part, and labor is one number. That's why the fuel gauge repair on the Altima shows a total but no breakdown.
+For each repair (and each extra split/line item), add two inputs alongside the existing Parts $ / Labour $:
 
-## What I'll build
+- **Diagnosing mechanic** — free‑text, saved to the maintenance record's `mechanicName` (and per line item on a one‑ticket‑multi‑item diagnosis).
+- **Parts source / supplier** — free‑text ("Where did we get the part from?"), saved to `vendor` on the maintenance record. For a multi‑item ticket, saved per line item.
 
-### 1. Extend the repair data model (`src/lib/mock/data.ts`)
+Nothing else in Phase 2 changes: same "Save Diagnosis →" / "Save & Split →" / "Save Items →" buttons, same move to Phase 3.
 
-Add two optional fields to `Maintenance`:
+## Phase 3 · Complete Pending Approval — pre‑complete adjustments
 
-- `partsBreakdown?: { id, name, supplier?, cost, purchaseDate?, notes? }[]`
-- `laborBreakdown?: { id, mechanicName, cost, workDate?, hours?, notes? }[]`
+Add an **Adjust before completing** section inside each Phase 3 card, above the existing Total / Paid / Balance box and "Complete Repair" button. Nothing runs until the admin explicitly saves an adjustment.
 
-Existing `partsCost` / `laborCost` stay as the roll-up (auto-summed from the breakdown when present).
+Two variants, matching how the repair was diagnosed:
 
-### 2. Repair History card (Fleet › vehicle › Repair History)
+1. **Single‑repair tickets** (no line items):
+   - Editable fields: Parts $, Labour $, Mechanic, Parts source.
+   - "Add itemized part" opens the existing parts/labor breakdown editor (already in the app) so extra parts or labor lines can be appended; totals auto‑roll into Parts $ / Labour $.
+   - "Save adjustments" persists changes to the maintenance record.
 
-Each repair card expands to show two sub-sections:
+2. **Multi‑item tickets** (line items):
+   - Every not‑yet‑completed item already has editable Parts $, Labour $, Mechanic, Notes — add a **Parts source** field to that same row.
+   - New "+ Add another item" button appends a fresh line item (title, parts $, labour $, mechanic, supplier) that flows through the same "Mark item complete" path.
+   - Editing an item's fields no longer requires marking it complete — a "Save item changes" action stores edits in place.
 
-```text
-Fuel gauge repair              $340
-Nov 12, 2025 · Joe's Auto
-─────────────────────────────────
-Parts                          $180
-  • Fuel gauge sender  — AutoZone   $120   Nov 10
-  • Wiring harness clip — Amazon     $60   Nov 10
-Labor                          $160
-  • Mike R.            2 hrs        $160   Nov 12
-```
+Payment box, "Process Payment", and "Complete Repair" work exactly as they do today; the Complete button remains disabled until balance is $0.
 
-Falls back gracefully to today's single-line summary when a repair has no breakdown yet.
+## Where the same view appears
 
-### 3. Expenses tab (Fleet › vehicle › Expenses)
+The Fleet Card repair panel (`VehicleRepairPanelDialog`) shows the same Phase 2 / Phase 3 UI. All Phase 2 and Phase 3 additions above are mirrored there so the flow is identical from either entry point.
 
-Repair-sourced rows split into two lines — one `Parts` row and one `Labor` row — each with vendor/mechanic in the subtitle, so the category pills at the top correctly show "Parts: $X · Labor: $Y" instead of one lumped "Repair" bucket.
+## Technical notes
 
-### 4. Maintenance page detail dialog (`CompletedRepairDetailDialog`)
+- **Types (`src/lib/mock/data.ts`)**: add optional `partsSupplier?: string` to `RepairLineItem`. `Maintenance.mechanicName` and `Maintenance.vendor` already exist and are re‑used for the Phase 2 additions — no schema migration needed for the base fields. Add `parts_supplier` (text) to line‑item JSON via the existing `line_items` jsonb column on `maintenance` (no DDL required — jsonb payload).
+- **Store (`src/lib/mock/store.ts`)**:
+  - Extend `saveRepairDiagnosis` input with `mechanicName?` and `vendor?`, writing them to the record (and to each split ticket when splitting).
+  - Extend `saveRepairDiagnosisLineItems` items with `mechanicName?` and `partsSupplier?`.
+  - Add `updateRepairAdjustments(id, { partsCost?, laborCost?, mechanicName?, vendor? })` for single‑repair Phase 3 edits.
+  - Add `updateRepairLineItem(id, itemId, patch)` and `addRepairLineItem(id, item)` for multi‑item Phase 3 edits/adds (only allowed while `status === "pending_complete"`).
+- **UI (`src/routes/maintenance.tsx` and `src/components/app/VehicleRepairPanelDialog.tsx`)**:
+  - Extend the Phase 2 `DiagInput` / `SplitEntry` state with `mechanicName` and `partsSupplier`, render two inputs, pass them into the save calls.
+  - Add the Phase 3 "Adjust before completing" block described above; reuse the existing `RepairBreakdownEditorDialog` for itemized parts/labor breakdown adds.
+- Repair History, Expenses split (Parts / Labor), and P&L math already read from `partsCost` / `laborCost` / `vendor` / `mechanicName`, so no changes are needed there — the new values flow through automatically.
 
-Same Parts / Labor itemized breakdown appears inside "View Details" so techs and admins see the same structure from either entry point.
-
-### 5. Editing
-
-- The existing "Add expense" / repair-completion forms get Parts and Labor line-item editors (add row → part name, supplier, cost, date; mechanic, cost, date). Users can add multiple parts or multiple labor entries per repair.
-- Old repairs without a breakdown remain viewable; you can edit them to add itemized data retroactively.
-
-## Out of scope
-
-- I won't touch the P&L totals math — the sum stays identical; only the presentation splits.
-- No supplier/parts-catalog table; supplier is free text on each part row (matches how `vendor` works today). Say the word if you want a proper suppliers list later.
-
-## One clarifying question
-
-Where should the itemized breakdown be entered — on the **repair completion form** in the Maintenance module (mechanic/admin fills it when marking complete), or as a separate **"Edit breakdown"** action on the Repair History card, or **both**?
+No database migration required (line‑item edits ride the existing `line_items` jsonb column; mechanic/vendor already have columns).
