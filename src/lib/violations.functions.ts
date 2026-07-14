@@ -303,6 +303,7 @@ export const listFleetVehicles = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin
       .from("vehicles")
       .select("id, plate, make, model, year")
+      .eq("archived", false)
       .order("make", { ascending: true });
     if (error) throw new Error(error.message);
     return (data ?? []).map((v) => ({
