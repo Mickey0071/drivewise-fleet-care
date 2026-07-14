@@ -440,7 +440,14 @@ export const vehicles: Vehicle[] = [];
 
 /** Active (non-archived) fleet for pickers and search. */
 export function activeVehicles(): Vehicle[] {
-  return vehicles.filter((v) => !v.archived);
+  return vehicles
+    .filter((v) => !v.archived)
+    .sort(
+      (a, b) =>
+        (b.year ?? 0) - (a.year ?? 0) ||
+        (a.make ?? "").localeCompare(b.make ?? "") ||
+        (a.model ?? "").localeCompare(b.model ?? ""),
+    );
 }
 export const drivers: Driver[] = [];
 export const rentals: Rental[] = [];
