@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { vehicles, drivers, vehicleById, fmtMoney, fmtDate, maintenance } from "@/lib/mock/data";
+import { vehicles, activeVehicles, drivers, vehicleById, fmtMoney, fmtDate, maintenance } from "@/lib/mock/data";
 import { addRental, hasConflict, addDriver, getActiveRentalForDriver, isVehicleBookable, markReturnedAwaitingInspection, awaitingPostReturnInspection, useStoreVersion, checkVehicleOverlapInDb } from "@/lib/mock/store";
 import { useAuth } from "@/hooks/use-auth";
 import { Link } from "@tanstack/react-router";
@@ -112,7 +112,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   }, [vehicleId, startDate, endDate, isAdmin, inspectionOverride]);
 
   const availableVehicles = useMemo(
-    () => vehicles.filter(v => {
+    () => activeVehicles().filter(v => {
       const bookable = startDate
         ? isVehicleBookable(v.id, startDate, endDate || null)
         : isVehicleBookable(v.id);
