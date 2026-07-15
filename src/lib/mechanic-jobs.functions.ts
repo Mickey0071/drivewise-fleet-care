@@ -28,6 +28,7 @@ export interface ChecklistResult {
 }
 export interface PartItem {
   name: string;
+  qty?: number;
   price: number;
   labor?: number;
 }
@@ -47,6 +48,9 @@ export interface MechanicJobRow {
   labour_cost: number;
   estimated_hours: number | null;
   mechanic_notes: string | null;
+  mechanic_recommendations: string | null;
+  completed_by_kind: "mechanic" | "admin" | null;
+  completed_by_name: string | null;
   token: string;
   status: "sent" | "submitted" | "cancelled";
   sent_at: string;
