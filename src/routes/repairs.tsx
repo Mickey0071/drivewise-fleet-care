@@ -84,6 +84,9 @@ function RepairsPage() {
   const [createExtraItems, setCreateExtraItems] = useState<string[]>([]);
   // Routine maintenance tasks (labels) pulled into this ticket from the vehicle's schedule.
   const [createRoutineItems, setCreateRoutineItems] = useState<string[]>([]);
+  // True when this ticket was opened from the /maintenance dashboard — the
+  // items are scheduled tasks due for check, not reported problems.
+  const [createFromMaintenance, setCreateFromMaintenance] = useState(false);
 
   // Auto-open create dialog when arriving with search params (e.g. from
   // /maintenance → Schedule Mechanic).
@@ -95,6 +98,7 @@ function RepairsPage() {
       if (arr.length > 0) {
         setCreateRoutineItems(arr);
         setCreateCategory("Routine / scheduled");
+        setCreateFromMaintenance(true);
       }
     }
     setCreateOpen(true);
@@ -1296,10 +1300,17 @@ function RepairsPage() {
         onSubmitted={refreshRmCards}
       />
 
-      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateCategory(""); setCreateTakeOffRental(true); setCreateExtraItems([]); setCreateRoutineItems([]); } }}>
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) { setCreateVehicleId(""); setCreateIssue(""); setCreateCategory(""); setCreateTakeOffRental(true); setCreateExtraItems([]); setCreateRoutineItems([]); setCreateFromMaintenance(false); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Create Repair</DialogTitle>
+            <DialogTitle>
+              {createFromMaintenance ? "Scheduled Maintenance Ticket" : "Create Repair"}
+            </DialogTitle>
+            {createFromMaintenance && (
+              <p className="text-xs text-muted-foreground">
+                These items are due for check based on the maintenance schedule — not reported problems. Adjust the list, then send to a mechanic.
+              </p>
+            )}
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -1321,8 +1332,14 @@ function RepairsPage() {
                 s === "overdue" ? "overdue" : s === "due_soon" ? "due soon" : "upcoming";
               return (
                 <div className="space-y-2 rounded-md border border-border p-3">
-                  <Label>Routine maintenance for this vehicle</Label>
-                  <p className="text-xs text-muted-foreground">Tap to add a scheduled task as an editable repair item.</p>
+                  <Label>
+                    {createFromMaintenance ? "Items due for this vehicle" : "Routine maintenance for this vehicle"}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {createFromMaintenance
+                      ? "Pre-selected from the maintenance dashboard. Uncheck any that shouldn't be on this ticket."
+                      : "Tap to add a scheduled task as an editable repair item."}
+                  </p>
                   <div className="space-y-1.5">
                     {routine.map(item => (
                       <label key={item.key} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -1341,9 +1358,12 @@ function RepairsPage() {
               );
             })()}
             <div className="space-y-2">
-              <Label htmlFor="create-issue">Issue</Label>
+              <Label htmlFor="create-issue">
+                {createFromMaintenance ? "Additional issue (optional)" : "Issue"}
+              </Label>
               <Input id="create-issue" value={createIssue} maxLength={200}
-                onChange={(e) => setCreateIssue(e.target.value)} placeholder="What's wrong?" />
+                onChange={(e) => setCreateIssue(e.target.value)}
+                placeholder={createFromMaintenance ? "Anything else to check while it's in?" : "What's wrong?"} />
               {createExtraItems.map((val, i) => (
                 <div key={i} className="flex gap-2">
                   <Input value={val} maxLength={200} placeholder={`Additional item ${i + 2}`}
@@ -1358,13 +1378,19 @@ function RepairsPage() {
                 onClick={() => setCreateExtraItems(prev => [...prev, ""])}>
                 <Plus className="mr-1 h-4 w-4" /> Add another item
               </Button>
-              <p className="text-xs text-muted-foreground">Add every problem on this car under one ticket.</p>
+              <p className="text-xs text-muted-foreground">
+                {createFromMaintenance
+                  ? "Optional — add any reported problems to bundle onto the same visit."
+                  : "Add every problem on this car under one ticket."}
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="create-category">Problem category</Label>
-              <ProblemCategorySelect id="create-category" value={createCategory} onChange={setCreateCategory} />
-              <p className="text-xs text-muted-foreground">Required — used to group repairs in analytics.</p>
-            </div>
+            {!createFromMaintenance && (
+              <div className="space-y-2">
+                <Label htmlFor="create-category">Problem category</Label>
+                <ProblemCategorySelect id="create-category" value={createCategory} onChange={setCreateCategory} />
+                <p className="text-xs text-muted-foreground">Required — used to group repairs in analytics.</p>
+              </div>
+            )}
             <div className="flex items-center justify-between rounded-md border border-border p-3">
               <div className="space-y-0.5">
                 <Label htmlFor="take-off-rental">Take off rental availability?</Label>
@@ -1377,7 +1403,9 @@ function RepairsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={submitCreateRepair}>Create</Button>
+            <Button onClick={submitCreateRepair}>
+              {createFromMaintenance ? "Create Maintenance Ticket" : "Create"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
