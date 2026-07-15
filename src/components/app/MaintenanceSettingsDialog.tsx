@@ -138,6 +138,29 @@ export function MaintenanceSettingsDialog({
     }
     if (cleanTasks.battery?.lastDone) settings.batteryLastDone = cleanTasks.battery.lastDone;
     if (cleanTasks.alternator?.lastDone) settings.alternatorLastDone = cleanTasks.alternator.lastDone;
+    // Tires / Brakes / Alignment / Inspection sync
+    if (cleanTasks.tires) {
+      const t = cleanTasks.tires;
+      if (t.lastDone) {
+        settings.tiresLastDone = t.lastDone;
+        settings.tiresLastMileage = Number(oilLastMileage) || vehicle.mileage || undefined;
+      }
+      if (t.miles) settings.tiresIntervalMiles = t.miles;
+      if (t.months) settings.tiresIntervalMonths = t.months;
+    }
+    if (cleanTasks.brakes?.lastDone) {
+      settings.brakesLastDone = cleanTasks.brakes.lastDone;
+      if (cleanTasks.brakes.months) settings.brakesIntervalMonths = cleanTasks.brakes.months;
+    }
+    if (cleanTasks.alignment?.lastDone) {
+      settings.alignmentLastDone = cleanTasks.alignment.lastDone;
+      if (cleanTasks.alignment.months) settings.alignmentIntervalMonths = cleanTasks.alignment.months;
+    }
+    if (cleanTasks.inspection?.lastDone) {
+      const last = new Date(`${cleanTasks.inspection.lastDone}T00:00:00`);
+      last.setFullYear(last.getFullYear() + (cleanTasks.inspection.months ? Math.round(cleanTasks.inspection.months / 12) || 1 : 1));
+      settings.inspectionExpiry = last.toISOString().slice(0, 10);
+    }
 
     try {
       await updateVehicle(vehicle.id, {
