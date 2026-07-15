@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as VendorsRouteImport } from './routes/vendors'
 import { Route as SmsLogRouteImport } from './routes/sms-log'
@@ -108,6 +109,11 @@ import { Route as ApiPublicHooksMonthlyBackupRouteImport } from './routes/api/pu
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
 import { Route as ApiPublicHooksAutoExtensionLinksRouteImport } from './routes/api/public/hooks/auto-extension-links'
 
+const WaitlistRoute = WaitlistRouteImport.update({
+  id: '/waitlist',
+  path: '/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ViolationsRoute = ViolationsRouteImport.update({
   id: '/violations',
   path: '/violations',
@@ -647,6 +653,7 @@ export interface FileRoutesByFullPath {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/waitlist': typeof WaitlistRoute
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
@@ -747,6 +754,7 @@ export interface FileRoutesByTo {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/waitlist': typeof WaitlistRoute
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
@@ -848,6 +856,7 @@ export interface FileRoutesById {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/waitlist': typeof WaitlistRoute
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
@@ -950,6 +959,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/waitlist'
     | '/accident-report/$token'
     | '/add-card/$token'
     | '/admin/backfill-plates'
@@ -1050,6 +1060,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/waitlist'
     | '/accident-report/$token'
     | '/add-card/$token'
     | '/admin/backfill-plates'
@@ -1150,6 +1161,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/waitlist'
     | '/accident-report/$token'
     | '/add-card/$token'
     | '/admin/backfill-plates'
@@ -1251,6 +1263,7 @@ export interface RootRouteChildren {
   SmsLogRoute: typeof SmsLogRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
+  WaitlistRoute: typeof WaitlistRoute
   AccidentReportTokenRoute: typeof AccidentReportTokenRoute
   AddCardTokenRoute: typeof AddCardTokenRoute
   AdminBackfillPlatesRoute: typeof AdminBackfillPlatesRoute
@@ -1315,6 +1328,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/waitlist': {
+      id: '/waitlist'
+      path: '/waitlist'
+      fullPath: '/waitlist'
+      preLoaderRoute: typeof WaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/violations': {
       id: '/violations'
       path: '/violations'
@@ -2063,6 +2083,7 @@ const rootRouteChildren: RootRouteChildren = {
   SmsLogRoute: SmsLogRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
+  WaitlistRoute: WaitlistRoute,
   AccidentReportTokenRoute: AccidentReportTokenRoute,
   AddCardTokenRoute: AddCardTokenRoute,
   AdminBackfillPlatesRoute: AdminBackfillPlatesRoute,
