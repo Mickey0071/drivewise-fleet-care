@@ -28,6 +28,7 @@ import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as MyRentalsRouteImport } from './routes/my-rentals'
 import { Route as MonthlyVehicleReportsRouteImport } from './routes/monthly-vehicle-reports'
 import { Route as MigratedReservationsRouteImport } from './routes/migrated-reservations'
+import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JvUnitsRouteImport } from './routes/jv-units'
 import { Route as JvPayoutsRouteImport } from './routes/jv-payouts'
@@ -199,6 +200,11 @@ const MonthlyVehicleReportsRoute = MonthlyVehicleReportsRouteImport.update({
 const MigratedReservationsRoute = MigratedReservationsRouteImport.update({
   id: '/migrated-reservations',
   path: '/migrated-reservations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MaintenanceRoute = MaintenanceRouteImport.update({
+  id: '/maintenance',
+  path: '/maintenance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -614,6 +620,7 @@ export interface FileRoutesByFullPath {
   '/jv-payouts': typeof JvPayoutsRoute
   '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
+  '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
@@ -712,6 +719,7 @@ export interface FileRoutesByTo {
   '/jv-payouts': typeof JvPayoutsRoute
   '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
+  '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
@@ -811,6 +819,7 @@ export interface FileRoutesById {
   '/jv-payouts': typeof JvPayoutsRoute
   '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
+  '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
@@ -911,6 +920,7 @@ export interface FileRouteTypes {
     | '/jv-payouts'
     | '/jv-units'
     | '/login'
+    | '/maintenance'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
     | '/my-rentals'
@@ -1009,6 +1019,7 @@ export interface FileRouteTypes {
     | '/jv-payouts'
     | '/jv-units'
     | '/login'
+    | '/maintenance'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
     | '/my-rentals'
@@ -1107,6 +1118,7 @@ export interface FileRouteTypes {
     | '/jv-payouts'
     | '/jv-units'
     | '/login'
+    | '/maintenance'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
     | '/my-rentals'
@@ -1206,6 +1218,7 @@ export interface RootRouteChildren {
   JvPayoutsRoute: typeof JvPayoutsRoute
   JvUnitsRoute: typeof JvUnitsRoute
   LoginRoute: typeof LoginRoute
+  MaintenanceRoute: typeof MaintenanceRoute
   MigratedReservationsRoute: typeof MigratedReservationsRoute
   MonthlyVehicleReportsRoute: typeof MonthlyVehicleReportsRoute
   MyRentalsRoute: typeof MyRentalsRouteWithChildren
@@ -1419,6 +1432,13 @@ declare module '@tanstack/react-router' {
       path: '/migrated-reservations'
       fullPath: '/migrated-reservations'
       preLoaderRoute: typeof MigratedReservationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/maintenance': {
+      id: '/maintenance'
+      path: '/maintenance'
+      fullPath: '/maintenance'
+      preLoaderRoute: typeof MaintenanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -2002,6 +2022,7 @@ const rootRouteChildren: RootRouteChildren = {
   JvPayoutsRoute: JvPayoutsRoute,
   JvUnitsRoute: JvUnitsRoute,
   LoginRoute: LoginRoute,
+  MaintenanceRoute: MaintenanceRoute,
   MigratedReservationsRoute: MigratedReservationsRoute,
   MonthlyVehicleReportsRoute: MonthlyVehicleReportsRoute,
   MyRentalsRoute: MyRentalsRouteWithChildren,
