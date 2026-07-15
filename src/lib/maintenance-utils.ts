@@ -443,7 +443,8 @@ export function computeAllFixedItems(v: Vehicle, now: Date = new Date()): Schedu
   for (const it of base) if (it.type !== "custom") by.set(it.type, it);
 
   // Tires
-  if (!by.has("tires")) {
+  {
+    if (!by.has("tires")) {
     const lastMileage = s.tiresLastMileage;
     const last = parseDay(s.tiresLastDone);
     const intervalMiles = s.tiresIntervalMiles ?? TIRES_DEFAULT_MILES;
@@ -467,6 +468,12 @@ export function computeAllFixedItems(v: Vehicle, now: Date = new Date()): Schedu
         dueDate, dueMileage, milesRemaining, daysRemaining,
         status: classify(daysRemaining, milesRemaining),
       });
+    } else {
+      by.set("tires", {
+        key: `${v.id}-tires`, vehicleId: v.id, type: "tires", label: "Tire Rotation",
+        status: "upcoming", unconfigured: true,
+      });
+    }
     }
   }
 
@@ -481,6 +488,11 @@ export function computeAllFixedItems(v: Vehicle, now: Date = new Date()): Schedu
         key: `${v.id}-brakes`, vehicleId: v.id, type: "brakes", label: "Brakes",
         dueDate: due.toISOString().slice(0, 10), daysRemaining,
         status: classify(daysRemaining),
+      });
+    } else {
+      by.set("brakes", {
+        key: `${v.id}-brakes`, vehicleId: v.id, type: "brakes", label: "Brakes",
+        status: "upcoming", unconfigured: true,
       });
     }
   }
@@ -497,8 +509,26 @@ export function computeAllFixedItems(v: Vehicle, now: Date = new Date()): Schedu
         dueDate: due.toISOString().slice(0, 10), daysRemaining,
         status: classify(daysRemaining),
       });
+    } else {
+      by.set("alignment", {
+        key: `${v.id}-alignment`, vehicleId: v.id, type: "alignment", label: "Alignment",
+        status: "upcoming", unconfigured: true,
+      });
     }
   }
+
+  // Fill placeholder rows for the other required items when missing.
+  const ensure = (type: ScheduledType, label: string) => {
+    if (!by.has(type)) {
+      by.set(type, {
+        key: `${v.id}-${type}`, vehicleId: v.id, type, label,
+        status: "upcoming", unconfigured: true,
+      });
+    }
+  };
+  ensure("oil", "Oil Change");
+  ensure("battery", "Battery Test");
+  ensure("inspection", "NJ Inspection");
 
   return Array.from(by.values()).concat(base.filter(it => it.type === "custom"));
 }
