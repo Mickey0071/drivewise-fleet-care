@@ -36,9 +36,10 @@ function MechanicJobPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [results, setResults] = useState<Record<string, { result: ResultState; notes: string }>>({});
-  const [parts, setParts] = useState<PartItem[]>([{ name: "", price: 0, labor: 0 }]);
+  const [parts, setParts] = useState<PartItem[]>([{ name: "", qty: 1, price: 0, labor: 0 }]);
   const [hours, setHours] = useState("");
   const [notes, setNotes] = useState("");
+  const [recommendations, setRecommendations] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -58,7 +59,10 @@ function MechanicJobPage() {
   }, [token, fetchFn]);
 
   const items: ChecklistItem[] = data?.found ? data.job.checklistItems : [];
-  const partsTotal = useMemo(() => parts.reduce((s, p) => s + (Number(p.price) || 0), 0), [parts]);
+  const partsTotal = useMemo(
+    () => parts.reduce((s, p) => s + (Number(p.price) || 0) * (Number(p.qty) || 1), 0),
+    [parts],
+  );
   const laborTotal = useMemo(() => parts.reduce((s, p) => s + (Number(p.labor) || 0), 0), [parts]);
 
   function setItem(id: string, patch: Partial<{ result: ResultState; notes: string }>) {
@@ -67,15 +71,22 @@ function MechanicJobPage() {
       return { ...prev, [id]: { ...base, ...patch } };
     });
   }
-  function addPart() { setParts((p) => [...p, { name: "", price: 0, labor: 0 }]); }
+  function addPart() { setParts((p) => [...p, { name: "", qty: 1, price: 0, labor: 0 }]); }
   function removePart(i: number) { setParts((p) => p.filter((_, idx) => idx !== i)); }
   function setPart(i: number, patch: Partial<PartItem>) {
     setParts((p) => p.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
   }
 
   async function handleSubmit() {
-    const cleanParts = parts.filter((p) => p.name.trim() && (Number(p.price) || 0) >= 0).map((p) => ({ name: p.name.trim(), price: Number(p.price) || 0, labor: Number(p.labor) || 0 }));
-    const pTotal = cleanParts.reduce((s, p) => s + p.price, 0);
+    const cleanParts = parts
+      .filter((p) => p.name.trim() && (Number(p.price) || 0) >= 0)
+      .map((p) => ({
+        name: p.name.trim(),
+        qty: Math.max(1, Math.floor(Number(p.qty) || 1)),
+        price: Number(p.price) || 0,
+        labor: Number(p.labor) || 0,
+      }));
+    const pTotal = cleanParts.reduce((s, p) => s + p.price * (p.qty || 1), 0);
     const lTotal = cleanParts.reduce((s, p) => s + (p.labor || 0), 0);
     if (items.length > 0) {
       const completedAny = items.some((it) => {
@@ -100,6 +111,7 @@ function MechanicJobPage() {
           labourCost: 0,
           estimatedHours: hours ? parseFloat(hours) : null,
           mechanicNotes: notes,
+          mechanicRecommendations: recommendations,
         },
       });
       setDone(true);
