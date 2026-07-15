@@ -379,7 +379,9 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
     const origin = originFromEnv();
     const partsLinesSms =
       data.partsList.length > 0
-        ? `\nParts:\n${data.partsList.map((p) => `• ${p.name} — $${p.price.toFixed(2)}`).join("\n")}\nParts total: $${data.partsTotal.toFixed(2)}`
+        ? `\nParts:\n${data.partsList
+            .map((p) => `• ${p.name}${(p.qty ?? 1) > 1 ? ` × ${p.qty}` : ""} — $${(p.price * (p.qty ?? 1)).toFixed(2)}`)
+            .join("\n")}\nParts total: $${data.partsTotal.toFixed(2)}`
         : "";
     const adminMsg =
       `✓ ${job.mechanic_name} submitted diagnosis for ${vehicleLabel}${vehiclePlate ? ` (Plate: ${vehiclePlate})` : ""}.\n` +
