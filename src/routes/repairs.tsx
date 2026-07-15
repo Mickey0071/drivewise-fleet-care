@@ -91,7 +91,7 @@ function RepairsPage() {
     if (!search.openCreate) return;
     if (search.vehicleId) setCreateVehicleId(search.vehicleId);
     if (search.items) {
-      const arr = search.items.split(",").map(s => s.trim()).filter(Boolean);
+      const arr = search.items.split(",").map((s: string) => s.trim()).filter(Boolean);
       if (arr.length > 0) {
         setCreateRoutineItems(arr);
         setCreateCategory("Routine / scheduled");
