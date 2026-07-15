@@ -59,12 +59,18 @@ import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
 
 export const Route = createFileRoute("/repairs")({
   head: () => ({ meta: [{ title: "Repairs — Camauto Rentals" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    vehicleId: typeof s.vehicleId === "string" ? s.vehicleId : undefined,
+    items: typeof s.items === "string" ? s.items : undefined,
+    openCreate: s.openCreate === "1" || s.openCreate === true ? true : undefined,
+  }),
   component: RepairsPage,
 });
 
 function RepairsPage() {
   useStoreVersion();
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [tab, setTab] = useState("scheduled");
   const [detailRecord, setDetailRecord] = useState<Maintenance | null>(null);
 
@@ -78,6 +84,24 @@ function RepairsPage() {
   const [createExtraItems, setCreateExtraItems] = useState<string[]>([]);
   // Routine maintenance tasks (labels) pulled into this ticket from the vehicle's schedule.
   const [createRoutineItems, setCreateRoutineItems] = useState<string[]>([]);
+
+  // Auto-open create dialog when arriving with search params (e.g. from
+  // /maintenance → Schedule Mechanic).
+  useEffect(() => {
+    if (!search.openCreate) return;
+    if (search.vehicleId) setCreateVehicleId(search.vehicleId);
+    if (search.items) {
+      const arr = search.items.split(",").map(s => s.trim()).filter(Boolean);
+      if (arr.length > 0) {
+        setCreateRoutineItems(arr);
+        setCreateCategory("Routine / scheduled");
+      }
+    }
+    setCreateOpen(true);
+    // Clear the search so re-mounts don't reopen.
+    navigate({ to: "/repairs", search: {} as never, replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Which repair line is expanded (one at a time, across all phases)
   const [expandedId, setExpandedId] = useState<string | null>(null);
