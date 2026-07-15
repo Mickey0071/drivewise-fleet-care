@@ -65,6 +65,7 @@ const PUBLIC_ROUTES = [
   "/part-quote",
   "/repair/accept",
   "/repair/decline",
+  "/waitlist",
 ];
 
 function NotFoundComponent() {
