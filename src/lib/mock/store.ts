@@ -1790,8 +1790,6 @@ function nextVehicleId() {
   return `V-${n + 1}`;
 }
 
-import type { Vehicle } from "./data";
-
 export function addVehicle(input: Omit<Vehicle, "id" | "status" | "mileage" | "riskTier"> & Partial<Pick<Vehicle, "status" | "mileage" | "riskTier">>) {
   const vehicle: Vehicle = {
     id: nextVehicleId(),
