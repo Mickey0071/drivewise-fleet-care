@@ -35,8 +35,9 @@ export function MaintenanceActionDialog({
   const flaggedNames = flagged.map((i) => i.label);
 
   if (!vehicle) return null;
+  const v = vehicle;
 
-  const label = `${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.plate ? ` · ${vehicle.plate}` : ""}`;
+  const label = `${v.year} ${v.make} ${v.model}${v.plate ? ` · ${v.plate}` : ""}`;
   const summary =
     overdue.length > 0
       ? `${overdue.length} item${overdue.length === 1 ? "" : "s"} overdue`
@@ -45,7 +46,7 @@ export function MaintenanceActionDialog({
         : "All clear";
 
   const activeRental = rentals.find(
-    (r) => r.vehicleId === vehicle.id && (r.reservationStatus ?? "active") === "active",
+    (r) => r.vehicleId === v.id && (r.reservationStatus ?? "active") === "active",
   );
 
   function scheduleMechanic() {
@@ -60,7 +61,7 @@ export function MaintenanceActionDialog({
     navigate({
       to: "/admin/create-task",
       search: {
-        vehicleId: vehicle.id,
+        vehicleId: v.id,
         item: itemParam,
         preset: "maintenance_item",
         items: flaggedNames.join(","),
@@ -82,7 +83,7 @@ export function MaintenanceActionDialog({
 
   function openVehicle() {
     onClose();
-    navigate({ to: "/fleet/$vehicleId", params: { vehicleId: vehicle.id } });
+    navigate({ to: "/fleet/$vehicleId", params: { vehicleId: v.id } });
   }
 
   return (
