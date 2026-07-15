@@ -422,6 +422,95 @@ export function computeScheduledItems(v: Vehicle, now: Date = new Date()): Sched
   return items;
 }
 
+// Default intervals for the fixed maintenance items when the vehicle doesn't
+// have per-item overrides configured yet.
+const TIRES_DEFAULT_MILES = 5000;
+const TIRES_DEFAULT_MONTHS = 6;
+const BRAKES_DEFAULT_MONTHS = 12;
+const ALIGNMENT_DEFAULT_MONTHS = 6;
+
+/** All six default maintenance items for a vehicle, filling gaps with defaults.
+ *  Never mutates the passed vehicle. Used by the fleet-wide overview so that
+ *  every vehicle shows every column even if the admin hasn't opened the
+ *  Maintenance Settings dialog yet. */
+export function computeAllFixedItems(v: Vehicle, now: Date = new Date()): ScheduledItem[] {
+  const base = computeScheduledItems(v, now);
+  const s = v.maintenanceSettings ?? {};
+  const today = startOfDay(now);
+  const by = new Map<ScheduledType, ScheduledItem>();
+  for (const it of base) if (it.type !== "custom") by.set(it.type, it);
+
+  // Tires
+  if (!by.has("tires")) {
+    const lastMileage = s.tiresLastMileage;
+    const last = parseDay(s.tiresLastDone);
+    const intervalMiles = s.tiresIntervalMiles ?? TIRES_DEFAULT_MILES;
+    const intervalMonths = s.tiresIntervalMonths ?? TIRES_DEFAULT_MONTHS;
+    let milesRemaining: number | undefined;
+    let daysRemaining: number | undefined;
+    let dueDate: string | undefined;
+    let dueMileage: number | undefined;
+    if (lastMileage != null) {
+      dueMileage = lastMileage + intervalMiles;
+      milesRemaining = dueMileage - v.mileage;
+    }
+    if (last) {
+      const due = addMonths(last, intervalMonths);
+      dueDate = due.toISOString().slice(0, 10);
+      daysRemaining = daysBetween(due, today);
+    }
+    if (last || lastMileage != null) {
+      by.set("tires", {
+        key: `${v.id}-tires`, vehicleId: v.id, type: "tires", label: "Tire Rotation",
+        dueDate, dueMileage, milesRemaining, daysRemaining,
+        status: classify(daysRemaining, milesRemaining),
+      });
+    }
+  }
+
+  // Brakes
+  if (!by.has("brakes")) {
+    const last = parseDay(s.brakesLastDone);
+    if (last) {
+      const intervalMonths = s.brakesIntervalMonths ?? BRAKES_DEFAULT_MONTHS;
+      const due = addMonths(last, intervalMonths);
+      const daysRemaining = daysBetween(due, today);
+      by.set("brakes", {
+        key: `${v.id}-brakes`, vehicleId: v.id, type: "brakes", label: "Brakes",
+        dueDate: due.toISOString().slice(0, 10), daysRemaining,
+        status: classify(daysRemaining),
+      });
+    }
+  }
+
+  // Alignment
+  if (!by.has("alignment")) {
+    const last = parseDay(s.alignmentLastDone);
+    if (last) {
+      const intervalMonths = s.alignmentIntervalMonths ?? ALIGNMENT_DEFAULT_MONTHS;
+      const due = addMonths(last, intervalMonths);
+      const daysRemaining = daysBetween(due, today);
+      by.set("alignment", {
+        key: `${v.id}-alignment`, vehicleId: v.id, type: "alignment", label: "Alignment",
+        dueDate: due.toISOString().slice(0, 10), daysRemaining,
+        status: classify(daysRemaining),
+      });
+    }
+  }
+
+  return Array.from(by.values()).concat(base.filter(it => it.type === "custom"));
+}
+
+/** Fixed columns for the fleet-wide overview, in display order. */
+export const FLEET_ITEM_TYPES: { type: ScheduledType; label: string }[] = [
+  { type: "oil", label: "Oil Change" },
+  { type: "tires", label: "Tires" },
+  { type: "inspection", label: "NJ Inspection" },
+  { type: "battery", label: "Battery" },
+  { type: "brakes", label: "Brakes" },
+  { type: "alignment", label: "Alignment" },
+];
+
 /** Scheduled items that are overdue or due soon, most urgent first. */
 export function dueSoonScheduledItems(list: Vehicle[], now: Date = new Date()): ScheduledItem[] {
   return list
