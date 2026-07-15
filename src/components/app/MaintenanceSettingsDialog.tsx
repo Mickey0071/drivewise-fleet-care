@@ -22,7 +22,11 @@ type TaskDef = {
 };
 const TASK_DEFS: TaskDef[] = [
   { key: "oil", label: "Oil Change", showMiles: true, showMonths: true, defMiles: 3000, defMonths: 3, required: true },
+  { key: "tires", label: "Tire Rotation", showMiles: true, showMonths: true, defMiles: 5000, defMonths: 6 },
+  { key: "alignment", label: "Alignment", showMiles: false, showMonths: true, defMonths: 6 },
   { key: "battery", label: "Battery Test", showMiles: false, showMonths: true, defMonths: 12, required: true },
+  { key: "brakes", label: "Brakes", showMiles: false, showMonths: true, defMonths: 12 },
+  { key: "inspection", label: "NJ Inspection", showMiles: false, showMonths: true, defMonths: 12 },
   { key: "alternator", label: "Alternator Test", showMiles: false, showMonths: true, defMonths: 12, required: true },
   { key: "transmission", label: "Transmission Road Test", showMiles: true, showMonths: true, defMiles: 5000, defMonths: 6 },
   { key: "safety", label: "Safety Inspection", showMiles: true, showMonths: true, defMiles: 3000, defMonths: 6 },
@@ -134,6 +138,29 @@ export function MaintenanceSettingsDialog({
     }
     if (cleanTasks.battery?.lastDone) settings.batteryLastDone = cleanTasks.battery.lastDone;
     if (cleanTasks.alternator?.lastDone) settings.alternatorLastDone = cleanTasks.alternator.lastDone;
+    // Tires / Brakes / Alignment / Inspection sync
+    if (cleanTasks.tires) {
+      const t = cleanTasks.tires;
+      if (t.lastDone) {
+        settings.tiresLastDone = t.lastDone;
+        settings.tiresLastMileage = Number(oilLastMileage) || vehicle.mileage || undefined;
+      }
+      if (t.miles) settings.tiresIntervalMiles = t.miles;
+      if (t.months) settings.tiresIntervalMonths = t.months;
+    }
+    if (cleanTasks.brakes?.lastDone) {
+      settings.brakesLastDone = cleanTasks.brakes.lastDone;
+      if (cleanTasks.brakes.months) settings.brakesIntervalMonths = cleanTasks.brakes.months;
+    }
+    if (cleanTasks.alignment?.lastDone) {
+      settings.alignmentLastDone = cleanTasks.alignment.lastDone;
+      if (cleanTasks.alignment.months) settings.alignmentIntervalMonths = cleanTasks.alignment.months;
+    }
+    if (cleanTasks.inspection?.lastDone) {
+      const last = new Date(`${cleanTasks.inspection.lastDone}T00:00:00`);
+      last.setFullYear(last.getFullYear() + (cleanTasks.inspection.months ? Math.round(cleanTasks.inspection.months / 12) || 1 : 1));
+      settings.inspectionExpiry = last.toISOString().slice(0, 10);
+    }
 
     try {
       await updateVehicle(vehicle.id, {

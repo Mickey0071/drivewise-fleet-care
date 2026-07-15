@@ -15,6 +15,7 @@ import { Route as SmsLogRouteImport } from './routes/sms-log'
 import { Route as SelfAgreementRouteImport } from './routes/self-agreement'
 import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RepairsRouteImport } from './routes/repairs'
 import { Route as RentalsRouteImport } from './routes/rentals'
 import { Route as RentalAgreementRouteImport } from './routes/rental-agreement'
 import { Route as RefundApprovalsRouteImport } from './routes/refund-approvals'
@@ -81,6 +82,7 @@ import { Route as AdminPaymentReconciliationRouteImport } from './routes/admin.p
 import { Route as AdminPartsRouteImport } from './routes/admin.parts'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminMalibuPlateReviewRouteImport } from './routes/admin.malibu-plate-review'
+import { Route as AdminMaintenanceNotificationsRouteImport } from './routes/admin.maintenance-notifications'
 import { Route as AdminImportLegacyRouteImport } from './routes/admin.import-legacy'
 import { Route as AdminImportDataRouteImport } from './routes/admin.import-data'
 import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
@@ -134,6 +136,11 @@ const RunnerReportsRoute = RunnerReportsRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepairsRoute = RepairsRouteImport.update({
+  id: '/repairs',
+  path: '/repairs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RentalsRoute = RentalsRouteImport.update({
@@ -467,6 +474,12 @@ const AdminMalibuPlateReviewRoute = AdminMalibuPlateReviewRouteImport.update({
   path: '/admin/malibu-plate-review',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminMaintenanceNotificationsRoute =
+  AdminMaintenanceNotificationsRouteImport.update({
+    id: '/admin/maintenance-notifications',
+    path: '/admin/maintenance-notifications',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AdminImportLegacyRoute = AdminImportLegacyRouteImport.update({
   id: '/admin/import-legacy',
   path: '/admin/import-legacy',
@@ -627,6 +640,7 @@ export interface FileRoutesByFullPath {
   '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
+  '/repairs': typeof RepairsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/self-agreement': typeof SelfAgreementRoute
@@ -644,6 +658,7 @@ export interface FileRoutesByFullPath {
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
+  '/admin/maintenance-notifications': typeof AdminMaintenanceNotificationsRoute
   '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
@@ -725,6 +740,7 @@ export interface FileRoutesByTo {
   '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
+  '/repairs': typeof RepairsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/self-agreement': typeof SelfAgreementRoute
@@ -742,6 +758,7 @@ export interface FileRoutesByTo {
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
+  '/admin/maintenance-notifications': typeof AdminMaintenanceNotificationsRoute
   '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
@@ -824,6 +841,7 @@ export interface FileRoutesById {
   '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
+  '/repairs': typeof RepairsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/self-agreement': typeof SelfAgreementRoute
@@ -841,6 +859,7 @@ export interface FileRoutesById {
   '/admin/extensions': typeof AdminExtensionsRoute
   '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
+  '/admin/maintenance-notifications': typeof AdminMaintenanceNotificationsRoute
   '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
@@ -924,6 +943,7 @@ export interface FileRouteTypes {
     | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
+    | '/repairs'
     | '/reset-password'
     | '/runner-reports'
     | '/self-agreement'
@@ -941,6 +961,7 @@ export interface FileRouteTypes {
     | '/admin/extensions'
     | '/admin/import-data'
     | '/admin/import-legacy'
+    | '/admin/maintenance-notifications'
     | '/admin/malibu-plate-review'
     | '/admin/notifications'
     | '/admin/parts'
@@ -1022,6 +1043,7 @@ export interface FileRouteTypes {
     | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
+    | '/repairs'
     | '/reset-password'
     | '/runner-reports'
     | '/self-agreement'
@@ -1039,6 +1061,7 @@ export interface FileRouteTypes {
     | '/admin/extensions'
     | '/admin/import-data'
     | '/admin/import-legacy'
+    | '/admin/maintenance-notifications'
     | '/admin/malibu-plate-review'
     | '/admin/notifications'
     | '/admin/parts'
@@ -1120,6 +1143,7 @@ export interface FileRouteTypes {
     | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
+    | '/repairs'
     | '/reset-password'
     | '/runner-reports'
     | '/self-agreement'
@@ -1137,6 +1161,7 @@ export interface FileRouteTypes {
     | '/admin/extensions'
     | '/admin/import-data'
     | '/admin/import-legacy'
+    | '/admin/maintenance-notifications'
     | '/admin/malibu-plate-review'
     | '/admin/notifications'
     | '/admin/parts'
@@ -1219,6 +1244,7 @@ export interface RootRouteChildren {
   RefundApprovalsRoute: typeof RefundApprovalsRoute
   RentalAgreementRoute: typeof RentalAgreementRoute
   RentalsRoute: typeof RentalsRoute
+  RepairsRoute: typeof RepairsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RunnerReportsRoute: typeof RunnerReportsRoute
   SelfAgreementRoute: typeof SelfAgreementRoute
@@ -1236,6 +1262,7 @@ export interface RootRouteChildren {
   AdminExtensionsRoute: typeof AdminExtensionsRoute
   AdminImportDataRoute: typeof AdminImportDataRoute
   AdminImportLegacyRoute: typeof AdminImportLegacyRoute
+  AdminMaintenanceNotificationsRoute: typeof AdminMaintenanceNotificationsRoute
   AdminMalibuPlateReviewRoute: typeof AdminMalibuPlateReviewRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminPartsRoute: typeof AdminPartsRoute
@@ -1328,6 +1355,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/repairs': {
+      id: '/repairs'
+      path: '/repairs'
+      fullPath: '/repairs'
+      preLoaderRoute: typeof RepairsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rentals': {
@@ -1792,6 +1826,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMalibuPlateReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/maintenance-notifications': {
+      id: '/admin/maintenance-notifications'
+      path: '/admin/maintenance-notifications'
+      fullPath: '/admin/maintenance-notifications'
+      preLoaderRoute: typeof AdminMaintenanceNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/import-legacy': {
       id: '/admin/import-legacy'
       path: '/admin/import-legacy'
@@ -2015,6 +2056,7 @@ const rootRouteChildren: RootRouteChildren = {
   RefundApprovalsRoute: RefundApprovalsRoute,
   RentalAgreementRoute: RentalAgreementRoute,
   RentalsRoute: RentalsRoute,
+  RepairsRoute: RepairsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RunnerReportsRoute: RunnerReportsRoute,
   SelfAgreementRoute: SelfAgreementRoute,
@@ -2032,6 +2074,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminExtensionsRoute: AdminExtensionsRoute,
   AdminImportDataRoute: AdminImportDataRoute,
   AdminImportLegacyRoute: AdminImportLegacyRoute,
+  AdminMaintenanceNotificationsRoute: AdminMaintenanceNotificationsRoute,
   AdminMalibuPlateReviewRoute: AdminMalibuPlateReviewRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminPartsRoute: AdminPartsRoute,

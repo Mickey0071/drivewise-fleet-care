@@ -45,7 +45,11 @@ export type ScheduledTaskKey =
   | "alternator"
   | "transmission"
   | "safety"
-  | "overall";
+  | "overall"
+  | "tires"
+  | "brakes"
+  | "alignment"
+  | "inspection";
 export interface ScheduledTask {
   enabled: boolean;
   /** Interval in miles (optional). */
@@ -62,6 +66,19 @@ export interface MaintenanceSettings {
   alternatorLastDone?: string;
   customAlerts?: CustomMaintenanceAlert[];
   scheduledTasks?: Partial<Record<ScheduledTaskKey, ScheduledTask>>;
+  // Tire rotation
+  tiresLastDone?: string;
+  tiresLastMileage?: number;
+  tiresIntervalMiles?: number;
+  tiresIntervalMonths?: number;
+  // Brakes inspection
+  brakesLastDone?: string;
+  brakesIntervalMonths?: number;
+  // Alignment
+  alignmentLastDone?: string;
+  alignmentIntervalMonths?: number;
+  // Time (epoch ms) an overdue-SMS was last sent per item key so we don't spam.
+  lastOverdueNotifiedAt?: Partial<Record<string, number>>;
 }
 export interface Driver {
   id: string; fullName: string; phone: string; email: string;
