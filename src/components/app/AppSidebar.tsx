@@ -301,6 +301,13 @@ export function AppSidebar() {
   useStoreVersion();
   const unread = unreadReportCount();
   const pendingReviewCount = rentals.filter(r => r.staffReviewStatus === "pending").length;
+  const countNewWl = useServerFn(countNewWaitlistEntries);
+  const { data: wlNewData } = useQuery({
+    queryKey: ["waitlist-new-count"],
+    queryFn: () => countNewWl(),
+    refetchInterval: 60_000,
+  });
+  const waitlistNew = wlNewData?.count ?? 0;
   const { role, user, signOut } = useAuth();
   const filter = (items: Item[]) => role ? items.filter(i => i.roles.includes(role)) : [];
   const [query, setQuery] = useState("");
@@ -347,6 +354,9 @@ export function AppSidebar() {
               )}
               {!collapsed && item.url === "/pending-agreements" && pendingReviewCount > 0 && (
                 <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">{pendingReviewCount}</Badge>
+              )}
+              {!collapsed && item.url === "/admin/waitlist" && waitlistNew > 0 && (
+                <Badge className="h-5 bg-primary px-1.5 text-[10px] text-primary-foreground">{waitlistNew}</Badge>
               )}
             </Link>
           </SidebarMenuButton>
