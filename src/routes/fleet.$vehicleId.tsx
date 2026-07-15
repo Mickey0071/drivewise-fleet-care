@@ -569,7 +569,7 @@ function VehicleDetail() {
               </Tabs>
             </CardContent>
           </Card>
-          <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/maintenance">Open maintenance log →</Link></Button>
+          <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/repairs">Open maintenance log →</Link></Button>
         </TabsContent>
 
         <TabsContent value="expenses" className="mt-4 space-y-4">

@@ -29,7 +29,7 @@ export function PendingApprovalsCard() {
         {pending.map((p: any) => (
           <Link
             key={p.id}
-            to="/maintenance"
+            to="/repairs"
             className="flex items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:bg-muted/40"
           >
             <span className="truncate">{p.issue_description || p.service_type || "Repair"}{p.mechanic_name ? ` — ${p.mechanic_name}` : ""}</span>

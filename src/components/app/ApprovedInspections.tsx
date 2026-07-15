@@ -81,7 +81,7 @@ export function ApprovedInspections() {
           Recently approved inspections
         </CardTitle>
         <Button variant="ghost" size="sm" asChild>
-          <Link to="/maintenance">View all inspections</Link>
+          <Link to="/repairs">View all inspections</Link>
         </Button>
       </CardHeader>
       <CardContent className="space-y-2">

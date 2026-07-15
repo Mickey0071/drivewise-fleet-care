@@ -253,7 +253,7 @@ function Index() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard label="Available" value={counts.available} tone="success" icon={Car} to="/fleet" search={{ status: "available" }} />
         <StatCard label="Rented" value={counts.rented} tone="info" icon={Car} to="/fleet" search={{ status: "rented" }} />
-        <StatCard label="Maintenance" value={counts.maintenance} tone="warning" icon={Wrench} to="/maintenance" />
+        <StatCard label="Maintenance" value={counts.maintenance} tone="warning" icon={Wrench} to="/repairs" />
         <StatCard label="Pending" value={counts.pending} tone="warning" icon={Clock} to="/rentals" />
         <StatCard label="Impound" value={counts.impound} tone="danger" icon={AlertTriangle} to="/fleet" search={{ status: "impound" }} />
       </div>
@@ -320,7 +320,7 @@ function Index() {
       <Card className="mt-6">
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">Maintenance alerts (service log)</CardTitle>
-          <Button variant="ghost" size="sm" asChild><Link to="/maintenance">View log</Link></Button>
+          <Button variant="ghost" size="sm" asChild><Link to="/repairs">View log</Link></Button>
         </CardHeader>
         <CardContent className="space-y-2">
           {dedupedServiceAlerts.length === 0 && <p className="text-sm text-muted-foreground">No vehicles past service due.</p>}
