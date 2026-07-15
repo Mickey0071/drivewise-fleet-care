@@ -77,6 +77,7 @@ import { Route as AnalyticsPnlDashboardRouteImport } from './routes/analytics_.p
 import { Route as AnalyticsFailuresRouteImport } from './routes/analytics_.failures'
 import { Route as AnalyticsCostsRouteImport } from './routes/analytics_.costs'
 import { Route as AnalyticsBreakevenRouteImport } from './routes/analytics_.breakeven'
+import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminPaymentReconciliationRouteImport } from './routes/admin.payment-reconciliation'
@@ -449,6 +450,11 @@ const AnalyticsBreakevenRoute = AnalyticsBreakevenRouteImport.update({
   path: '/analytics/breakeven',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminWaitlistRoute = AdminWaitlistRouteImport.update({
+  id: '/admin/waitlist',
+  path: '/admin/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
@@ -672,6 +678,7 @@ export interface FileRoutesByFullPath {
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/waitlist': typeof AdminWaitlistRoute
   '/analytics/breakeven': typeof AnalyticsBreakevenRoute
   '/analytics/costs': typeof AnalyticsCostsRoute
   '/analytics/failures': typeof AnalyticsFailuresRoute
@@ -773,6 +780,7 @@ export interface FileRoutesByTo {
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/waitlist': typeof AdminWaitlistRoute
   '/analytics/breakeven': typeof AnalyticsBreakevenRoute
   '/analytics/costs': typeof AnalyticsCostsRoute
   '/analytics/failures': typeof AnalyticsFailuresRoute
@@ -875,6 +883,7 @@ export interface FileRoutesById {
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/waitlist': typeof AdminWaitlistRoute
   '/analytics_/breakeven': typeof AnalyticsBreakevenRoute
   '/analytics_/costs': typeof AnalyticsCostsRoute
   '/analytics_/failures': typeof AnalyticsFailuresRoute
@@ -978,6 +987,7 @@ export interface FileRouteTypes {
     | '/admin/payment-reconciliation'
     | '/admin/tasks'
     | '/admin/users'
+    | '/admin/waitlist'
     | '/analytics/breakeven'
     | '/analytics/costs'
     | '/analytics/failures'
@@ -1079,6 +1089,7 @@ export interface FileRouteTypes {
     | '/admin/payment-reconciliation'
     | '/admin/tasks'
     | '/admin/users'
+    | '/admin/waitlist'
     | '/analytics/breakeven'
     | '/analytics/costs'
     | '/analytics/failures'
@@ -1180,6 +1191,7 @@ export interface FileRouteTypes {
     | '/admin/payment-reconciliation'
     | '/admin/tasks'
     | '/admin/users'
+    | '/admin/waitlist'
     | '/analytics_/breakeven'
     | '/analytics_/costs'
     | '/analytics_/failures'
@@ -1282,6 +1294,7 @@ export interface RootRouteChildren {
   AdminPaymentReconciliationRoute: typeof AdminPaymentReconciliationRoute
   AdminTasksRoute: typeof AdminTasksRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  AdminWaitlistRoute: typeof AdminWaitlistRoute
   AnalyticsBreakevenRoute: typeof AnalyticsBreakevenRoute
   AnalyticsCostsRoute: typeof AnalyticsCostsRoute
   AnalyticsFailuresRoute: typeof AnalyticsFailuresRoute
@@ -1804,6 +1817,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsBreakevenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/waitlist': {
+      id: '/admin/waitlist'
+      path: '/admin/waitlist'
+      fullPath: '/admin/waitlist'
+      preLoaderRoute: typeof AdminWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/admin/users'
@@ -2102,6 +2122,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminPaymentReconciliationRoute: AdminPaymentReconciliationRoute,
   AdminTasksRoute: AdminTasksRoute,
   AdminUsersRoute: AdminUsersRoute,
+  AdminWaitlistRoute: AdminWaitlistRoute,
   AnalyticsBreakevenRoute: AnalyticsBreakevenRoute,
   AnalyticsCostsRoute: AnalyticsCostsRoute,
   AnalyticsFailuresRoute: AnalyticsFailuresRoute,
