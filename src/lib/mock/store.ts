@@ -1865,7 +1865,7 @@ export function setVehicleAvailabilityOverride(vehicleId: string, available: boo
  * "last done" marker on the vehicle's Alert Settings. Clears the alert. */
 export function markScheduledComplete(
   vehicleId: string,
-  type: "oil" | "battery" | "alternator" | "inspection" | "custom",
+  type: "oil" | "battery" | "alternator" | "inspection" | "custom" | "tires" | "brakes" | "alignment",
   customId?: string,
 ) {
   const v = vehicles.find(x => x.id === vehicleId);
@@ -1885,6 +1885,13 @@ export function markScheduledComplete(
     const next = new Date();
     next.setFullYear(next.getFullYear() + 1);
     s.inspectionExpiry = next.toISOString().slice(0, 10);
+  } else if (type === "tires") {
+    s.tiresLastDone = today;
+    s.tiresLastMileage = v.mileage;
+  } else if (type === "brakes") {
+    s.brakesLastDone = today;
+  } else if (type === "alignment") {
+    s.alignmentLastDone = today;
   } else if (type === "custom" && customId) {
     s.customAlerts = (s.customAlerts ?? []).map(c =>
       c.id === customId ? { ...c, lastDate: today } : c,
