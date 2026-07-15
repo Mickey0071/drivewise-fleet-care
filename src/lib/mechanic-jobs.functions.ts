@@ -252,6 +252,7 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
     labourCost?: number | null;
     estimatedHours?: number | null;
     mechanicNotes?: string;
+    mechanicRecommendations?: string;
   }) => {
     if (!d?.token || !TOKEN_RE.test(d.token)) throw new Error("Invalid link");
     const results = (Array.isArray(d.checklistResults) ? d.checklistResults : [])
@@ -263,7 +264,12 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
       }))
       .slice(0, 40);
     const parts = (Array.isArray(d.partsList) ? d.partsList : [])
-      .map((p) => ({ name: String(p.name ?? "").slice(0, 200), price: Number(p.price) || 0, labor: Number(p.labor) || 0 }))
+      .map((p) => ({
+        name: String(p.name ?? "").slice(0, 200),
+        qty: Math.max(1, Math.floor(Number((p as any).qty) || 1)),
+        price: Number(p.price) || 0,
+        labor: Number(p.labor) || 0,
+      }))
       .filter((p) => p.name.trim().length > 0 && p.price >= 0)
       .slice(0, 50);
     const partsLaborTotal = parts.reduce((s, p) => s + (Number(p.labor) || 0), 0);
@@ -271,7 +277,7 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
     if (!Number.isFinite(labour) || labour < 0 || labour > 1000000) throw new Error("Invalid labour cost");
     const hours = d.estimatedHours == null ? null : Number(d.estimatedHours);
     if (hours != null && (!Number.isFinite(hours) || hours < 0 || hours > 1000)) throw new Error("Invalid hours");
-    const partsTotal = parts.reduce((s, p) => s + p.price, 0);
+    const partsTotal = parts.reduce((s, p) => s + p.price * (p.qty || 1), 0);
     if (!(partsTotal > 0) && !(labour > 0)) throw new Error("Add parts or a labour estimate");
     return {
       token: d.token,
@@ -280,6 +286,7 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
       labourCost: labour,
       estimatedHours: hours,
       mechanicNotes: (d.mechanicNotes ?? "").slice(0, 2000),
+      mechanicRecommendations: (d.mechanicRecommendations ?? "").slice(0, 4000),
       partsTotal,
     };
   })
@@ -301,6 +308,9 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
         labour_cost: data.labourCost,
         estimated_hours: data.estimatedHours,
         mechanic_notes: data.mechanicNotes,
+        mechanic_recommendations: data.mechanicRecommendations,
+        completed_by_kind: "mechanic",
+        completed_by_name: job.mechanic_name,
         submitted_at: now,
         status: "submitted",
       })
@@ -310,9 +320,12 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
 
     // Auto-populate Phase 2 (Diagnose) on the linked maintenance ticket.
     const total = data.partsTotal + data.labourCost;
-    const partsLines = data.partsList.map((p) => `• ${p.name} — $${p.price.toFixed(2)}`).join("\n");
+    const partsLines = data.partsList
+      .map((p) => `• ${p.name}${(p.qty ?? 1) > 1 ? ` × ${p.qty}` : ""} — $${(p.price * (p.qty ?? 1)).toFixed(2)}`)
+      .join("\n");
     const diagnosisNotes = [
       data.mechanicNotes,
+      data.mechanicRecommendations ? `Recommendations:\n${data.mechanicRecommendations}` : "",
       partsLines ? `\nParts:\n${partsLines}` : "",
       `\nMechanic: ${job.mechanic_name}${job.mechanic_phone ? ` — ${job.mechanic_phone}` : ""}${job.mechanic_shop ? ` (${job.mechanic_shop})` : ""}`,
     ]
