@@ -1278,6 +1278,8 @@ export type Database = {
           additional_context: string | null
           checklist_items: Json
           checklist_results: Json | null
+          completed_by_kind: string | null
+          completed_by_name: string | null
           created_at: string
           created_by_admin: string | null
           estimated_hours: number | null
@@ -1288,6 +1290,7 @@ export type Database = {
           mechanic_name: string
           mechanic_notes: string | null
           mechanic_phone: string
+          mechanic_recommendations: string | null
           mechanic_shop: string | null
           parts_list: Json | null
           sent_at: string
@@ -1301,6 +1304,8 @@ export type Database = {
           additional_context?: string | null
           checklist_items?: Json
           checklist_results?: Json | null
+          completed_by_kind?: string | null
+          completed_by_name?: string | null
           created_at?: string
           created_by_admin?: string | null
           estimated_hours?: number | null
@@ -1311,6 +1316,7 @@ export type Database = {
           mechanic_name: string
           mechanic_notes?: string | null
           mechanic_phone: string
+          mechanic_recommendations?: string | null
           mechanic_shop?: string | null
           parts_list?: Json | null
           sent_at?: string
@@ -1324,6 +1330,8 @@ export type Database = {
           additional_context?: string | null
           checklist_items?: Json
           checklist_results?: Json | null
+          completed_by_kind?: string | null
+          completed_by_name?: string | null
           created_at?: string
           created_by_admin?: string | null
           estimated_hours?: number | null
@@ -1334,6 +1342,7 @@ export type Database = {
           mechanic_name?: string
           mechanic_notes?: string | null
           mechanic_phone?: string
+          mechanic_recommendations?: string | null
           mechanic_shop?: string | null
           parts_list?: Json | null
           sent_at?: string

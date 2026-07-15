@@ -13,7 +13,10 @@ function fmt(d: string | null | undefined) {
 
 export function ViewDiagnosisDialog({ job, onClose }: { job: MechanicJobRow | null; onClose: () => void }) {
   if (!job) return null;
-  const partsTotal = (job.parts_list ?? []).reduce((s, p) => s + (Number(p.price) || 0), 0);
+  const partsTotal = (job.parts_list ?? []).reduce(
+    (s, p) => s + (Number(p.price) || 0) * (Number((p as any).qty) || 1),
+    0,
+  );
   const total = partsTotal + (Number(job.labour_cost) || 0);
   return (
     <Dialog open={!!job} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -25,6 +28,15 @@ export function ViewDiagnosisDialog({ job, onClose }: { job: MechanicJobRow | nu
           <div className="rounded-md bg-muted/40 px-3 py-2 text-xs">
             <div><span className="font-medium">Mechanic:</span> {job.mechanic_name} — {job.mechanic_phone}{job.mechanic_shop ? ` (${job.mechanic_shop})` : ""}</div>
             <div><span className="font-medium">Submitted:</span> {fmt(job.submitted_at)}</div>
+            {job.completed_by_kind ? (
+              <div>
+                <span className="font-medium">Completed by:</span>{" "}
+                {job.completed_by_name || (job.completed_by_kind === "admin" ? "Admin" : job.mechanic_name)}{" "}
+                <Badge variant="secondary" className="ml-1 text-[10px] capitalize">
+                  {job.completed_by_kind === "mechanic" ? "via SMS link" : "in-app"}
+                </Badge>
+              </div>
+            ) : null}
           </div>
 
           {(job.checklist_results ?? []).length > 0 ? (
@@ -54,6 +66,7 @@ export function ViewDiagnosisDialog({ job, onClose }: { job: MechanicJobRow | nu
               <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Parts</h3>
               <div className="flex gap-2 px-0.5 text-[10px] font-medium uppercase text-muted-foreground">
                 <span className="flex-1">Part</span>
+                <span className="w-10 text-right">Qty</span>
                 <span className="w-16 text-right">Part</span>
                 <span className="w-16 text-right">Labor</span>
                 <span className="w-16 text-right">Total</span>
@@ -61,12 +74,15 @@ export function ViewDiagnosisDialog({ job, onClose }: { job: MechanicJobRow | nu
               <div className="space-y-1">
                 {(job.parts_list ?? []).map((p, i) => {
                   const labor = Number((p as any).labor) || 0;
+                  const qty = Number((p as any).qty) || 1;
+                  const price = Number(p.price) || 0;
                   return (
                     <div key={i} className="flex gap-2 text-xs">
                       <span className="flex-1">{p.name}</span>
-                      <span className="w-16 text-right tabular-nums">{money(p.price)}</span>
+                      <span className="w-10 text-right tabular-nums">{qty}</span>
+                      <span className="w-16 text-right tabular-nums">{money(price)}</span>
                       <span className="w-16 text-right tabular-nums">{money(labor)}</span>
-                      <span className="w-16 text-right font-medium tabular-nums">{money((Number(p.price) || 0) + labor)}</span>
+                      <span className="w-16 text-right font-medium tabular-nums">{money(price * qty + labor)}</span>
                     </div>
                   );
                 })}
@@ -82,8 +98,15 @@ export function ViewDiagnosisDialog({ job, onClose }: { job: MechanicJobRow | nu
 
           {job.mechanic_notes ? (
             <div>
-              <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Notes</h3>
+              <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Diagnosis Summary</h3>
               <p className="whitespace-pre-wrap text-xs text-muted-foreground">{job.mechanic_notes}</p>
+            </div>
+          ) : null}
+
+          {job.mechanic_recommendations ? (
+            <div>
+              <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Mechanic Recommendations</h3>
+              <p className="whitespace-pre-wrap text-xs text-muted-foreground">{job.mechanic_recommendations}</p>
             </div>
           ) : null}
         </div>

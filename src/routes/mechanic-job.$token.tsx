@@ -36,9 +36,10 @@ function MechanicJobPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [results, setResults] = useState<Record<string, { result: ResultState; notes: string }>>({});
-  const [parts, setParts] = useState<PartItem[]>([{ name: "", price: 0, labor: 0 }]);
+  const [parts, setParts] = useState<PartItem[]>([{ name: "", qty: 1, price: 0, labor: 0 }]);
   const [hours, setHours] = useState("");
   const [notes, setNotes] = useState("");
+  const [recommendations, setRecommendations] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -58,7 +59,10 @@ function MechanicJobPage() {
   }, [token, fetchFn]);
 
   const items: ChecklistItem[] = data?.found ? data.job.checklistItems : [];
-  const partsTotal = useMemo(() => parts.reduce((s, p) => s + (Number(p.price) || 0), 0), [parts]);
+  const partsTotal = useMemo(
+    () => parts.reduce((s, p) => s + (Number(p.price) || 0) * (Number(p.qty) || 1), 0),
+    [parts],
+  );
   const laborTotal = useMemo(() => parts.reduce((s, p) => s + (Number(p.labor) || 0), 0), [parts]);
 
   function setItem(id: string, patch: Partial<{ result: ResultState; notes: string }>) {
@@ -67,15 +71,22 @@ function MechanicJobPage() {
       return { ...prev, [id]: { ...base, ...patch } };
     });
   }
-  function addPart() { setParts((p) => [...p, { name: "", price: 0, labor: 0 }]); }
+  function addPart() { setParts((p) => [...p, { name: "", qty: 1, price: 0, labor: 0 }]); }
   function removePart(i: number) { setParts((p) => p.filter((_, idx) => idx !== i)); }
   function setPart(i: number, patch: Partial<PartItem>) {
     setParts((p) => p.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
   }
 
   async function handleSubmit() {
-    const cleanParts = parts.filter((p) => p.name.trim() && (Number(p.price) || 0) >= 0).map((p) => ({ name: p.name.trim(), price: Number(p.price) || 0, labor: Number(p.labor) || 0 }));
-    const pTotal = cleanParts.reduce((s, p) => s + p.price, 0);
+    const cleanParts = parts
+      .filter((p) => p.name.trim() && (Number(p.price) || 0) >= 0)
+      .map((p) => ({
+        name: p.name.trim(),
+        qty: Math.max(1, Math.floor(Number(p.qty) || 1)),
+        price: Number(p.price) || 0,
+        labor: Number(p.labor) || 0,
+      }));
+    const pTotal = cleanParts.reduce((s, p) => s + p.price * (p.qty || 1), 0);
     const lTotal = cleanParts.reduce((s, p) => s + (p.labor || 0), 0);
     if (items.length > 0) {
       const completedAny = items.some((it) => {
@@ -100,6 +111,7 @@ function MechanicJobPage() {
           labourCost: 0,
           estimatedHours: hours ? parseFloat(hours) : null,
           mechanicNotes: notes,
+          mechanicRecommendations: recommendations,
         },
       });
       setDone(true);
@@ -214,7 +226,12 @@ function MechanicJobPage() {
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="mt-2 grid grid-cols-3 gap-2">
+                <div className="mt-2 grid grid-cols-4 gap-2">
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium uppercase text-muted-foreground">Qty</label>
+                    <Input className="h-9 text-right text-sm" type="number" inputMode="numeric" min="1" step="1" placeholder="1"
+                      value={p.qty ? String(p.qty) : ""} onChange={(e) => setPart(i, { qty: Math.max(1, parseInt(e.target.value, 10) || 1) })} />
+                  </div>
                   <div>
                     <label className="mb-0.5 block text-[10px] font-medium uppercase text-muted-foreground">Part $</label>
                     <Input className="h-9 text-right text-sm" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0"
@@ -227,7 +244,9 @@ function MechanicJobPage() {
                   </div>
                   <div>
                     <label className="mb-0.5 block text-[10px] font-medium uppercase text-muted-foreground">Line total</label>
-                    <div className="flex h-9 items-center justify-end text-sm font-medium tabular-nums">{money((Number(p.price) || 0) + (Number(p.labor) || 0))}</div>
+                    <div className="flex h-9 items-center justify-end text-sm font-medium tabular-nums">
+                      {money((Number(p.price) || 0) * (Number(p.qty) || 1) + (Number(p.labor) || 0))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -254,8 +273,14 @@ function MechanicJobPage() {
 
         <Card className="space-y-2 p-4">
           <h2 className="text-sm font-semibold">Diagnosis Summary</h2>
-          <Textarea className="min-h-[80px] text-sm" placeholder="Diagnosis summary and recommendations"
+          <Textarea className="min-h-[64px] text-sm" placeholder="Short summary — what's wrong (1–2 sentences)"
             value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </Card>
+
+        <Card className="space-y-2 p-4">
+          <h2 className="text-sm font-semibold">Mechanic Recommendations</h2>
+          <Textarea className="min-h-[100px] text-sm" placeholder="Findings and recommended repairs — anything outside the checklist"
+            value={recommendations} onChange={(e) => setRecommendations(e.target.value)} />
         </Card>
 
         <div className="flex justify-between rounded-md bg-background px-3 py-2 text-sm font-medium shadow-sm">
