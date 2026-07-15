@@ -1403,7 +1403,9 @@ function RepairsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button onClick={submitCreateRepair}>Create</Button>
+            <Button onClick={submitCreateRepair}>
+              {createFromMaintenance ? "Create Maintenance Ticket" : "Create"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
