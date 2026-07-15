@@ -485,6 +485,7 @@ function VehicleDetail() {
         </TabsContent>
 
         <TabsContent value="maintenance" className="mt-4 space-y-4">
+          <VehicleScheduledMaintenance vehicle={v} />
           <div className="grid gap-3 sm:grid-cols-2">
             <Stat label="Last service" value={lastSvc ? `${lastSvc.serviceType}` : "—"} />
             <Stat label="Next service due" value={lastSvc ? fmtDate(lastSvc.nextServiceDue) : "—"} />
