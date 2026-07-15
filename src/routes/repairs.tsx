@@ -58,11 +58,11 @@ import type { Maintenance } from "@/lib/mock/data";
 import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
 
 export const Route = createFileRoute("/repairs")({
-  head: () => ({ meta: [{ title: "Maintenance — Camauto Rentals" }] }),
-  component: MaintenancePage,
+  head: () => ({ meta: [{ title: "Repairs — Camauto Rentals" }] }),
+  component: RepairsPage,
 });
 
-function MaintenancePage() {
+function RepairsPage() {
   useStoreVersion();
   const navigate = useNavigate();
   const [tab, setTab] = useState("scheduled");
