@@ -16,6 +16,9 @@ import { Search } from "lucide-react";
 import { unreadReportCount, useStoreVersion } from "@/lib/mock/store";
 import { rentals } from "@/lib/mock/data";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { countNewWaitlistEntries } from "@/lib/waitlist.functions";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/camauto-logo.jpeg";
 import {
@@ -191,6 +194,7 @@ const primaryGroups: Group[] = [
     key: "reservations", label: "Reservations", icon: FileText, defaultOpen: true,
     items: [
       { title: "Active Reservations", url: "/rentals", icon: FileText, roles: ALL_ROLES },
+      { title: "Waitlist", url: "/admin/waitlist", icon: ClipboardList, roles: ALL_ROLES },
       { title: "Calendar", url: "/calendar", icon: Calendar, roles: ALL_ROLES },
       { title: "Client Portal Activity", url: "/driver-portal", icon: IdCard, roles: ALL_ROLES },
     ],
