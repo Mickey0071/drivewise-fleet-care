@@ -226,7 +226,12 @@ function MechanicJobPage() {
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="mt-2 grid grid-cols-3 gap-2">
+                <div className="mt-2 grid grid-cols-4 gap-2">
+                  <div>
+                    <label className="mb-0.5 block text-[10px] font-medium uppercase text-muted-foreground">Qty</label>
+                    <Input className="h-9 text-right text-sm" type="number" inputMode="numeric" min="1" step="1" placeholder="1"
+                      value={p.qty ? String(p.qty) : ""} onChange={(e) => setPart(i, { qty: Math.max(1, parseInt(e.target.value, 10) || 1) })} />
+                  </div>
                   <div>
                     <label className="mb-0.5 block text-[10px] font-medium uppercase text-muted-foreground">Part $</label>
                     <Input className="h-9 text-right text-sm" type="number" inputMode="decimal" min="0" step="0.01" placeholder="0"
@@ -239,7 +244,9 @@ function MechanicJobPage() {
                   </div>
                   <div>
                     <label className="mb-0.5 block text-[10px] font-medium uppercase text-muted-foreground">Line total</label>
-                    <div className="flex h-9 items-center justify-end text-sm font-medium tabular-nums">{money((Number(p.price) || 0) + (Number(p.labor) || 0))}</div>
+                    <div className="flex h-9 items-center justify-end text-sm font-medium tabular-nums">
+                      {money((Number(p.price) || 0) * (Number(p.qty) || 1) + (Number(p.labor) || 0))}
+                    </div>
                   </div>
                 </div>
               </div>
