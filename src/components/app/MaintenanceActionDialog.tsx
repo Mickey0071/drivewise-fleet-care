@@ -51,8 +51,15 @@ export function MaintenanceActionDialog({
 
   function scheduleMechanic() {
     onClose();
-    toast.message("Opening Repairs — create a mechanic job for this vehicle.");
-    navigate({ to: "/repairs" });
+    toast.message("Opening Repairs — pre-filled from maintenance items.");
+    navigate({
+      to: "/repairs",
+      search: {
+        vehicleId: v.id,
+        items: flaggedNames.join(","),
+        openCreate: "1",
+      } as never,
+    });
   }
 
   function sendRunnerToMechanic() {
