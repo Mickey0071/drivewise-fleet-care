@@ -18,6 +18,8 @@ import {
   type ScheduledItem,
   type ScheduledType,
 } from "@/lib/maintenance-utils";
+import type { Vehicle } from "@/lib/mock/data";
+import { MaintenanceActionDialog } from "@/components/app/MaintenanceActionDialog";
 
 export const Route = createFileRoute("/maintenance")({
   head: () => ({ meta: [{ title: "Maintenance Overview — Camauto Rentals" }] }),
@@ -66,6 +68,7 @@ function rowUrgency(items: ScheduledItem[]): number {
 function MaintenanceOverviewPage() {
   useStoreVersion();
   const navigate = useNavigate();
+  const [actionFor, setActionFor] = useState<{ vehicle: Vehicle; items: ScheduledItem[] } | null>(null);
 
   const rows = useMemo(() => {
     return activeVehicles()
@@ -156,7 +159,10 @@ function MaintenanceOverviewPage() {
                       key={r.vehicle.id}
                       className="cursor-pointer hover:bg-muted/40"
                       onClick={() =>
-                        navigate({ to: "/fleet/$vehicleId", params: { vehicleId: r.vehicle.id } })
+                        setActionFor({
+                          vehicle: r.vehicle,
+                          items: (r.cells.filter(Boolean) as ScheduledItem[]),
+                        })
                       }
                     >
                       <TableCell>
@@ -203,6 +209,12 @@ function MaintenanceOverviewPage() {
           Configure per-vehicle intervals from the vehicle detail page → Maintenance settings.
         </p>
       </div>
+
+      <MaintenanceActionDialog
+        vehicle={actionFor?.vehicle ?? null}
+        items={actionFor?.items ?? []}
+        onClose={() => setActionFor(null)}
+      />
     </div>
   );
 }
