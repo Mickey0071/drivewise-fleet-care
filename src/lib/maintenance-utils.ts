@@ -304,12 +304,20 @@ export function isScheduleConfigured(v: Vehicle): boolean {
 // Settings. "Due soon" = overdue, OR within 7 days, OR within 100 miles.
 // ---------------------------------------------------------------------------
 
-export type ScheduledType = "oil" | "battery" | "alternator" | "inspection" | "custom";
+export type ScheduledType =
+  | "oil"
+  | "battery"
+  | "alternator"
+  | "inspection"
+  | "tires"
+  | "brakes"
+  | "alignment"
+  | "custom";
 export type ScheduledStatus = "overdue" | "due_soon" | "upcoming";
 
 /** Dashboard "due soon" thresholds (distinct from the Fleet badge thresholds). */
 export const SCHEDULED_DAYS_SOON = 7;
-export const SCHEDULED_MILES_SOON = 100;
+export const SCHEDULED_MILES_SOON = 500;
 
 export interface ScheduledItem {
   key: string;
