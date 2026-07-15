@@ -1900,6 +1900,118 @@ export function markScheduledComplete(
   return updateVehicle(vehicleId, { maintenanceSettings: s });
 }
 
+/** Rich Mark-Done for a scheduled item — updates the last-done, optionally
+ *  logs an expense, and stamps repair_history for the fleet-card audit log. */
+export async function markMaintenanceItemDone(input: {
+  vehicleId: string;
+  type: "oil" | "battery" | "alternator" | "inspection" | "tires" | "brakes" | "alignment" | "custom";
+  customId?: string;
+  date?: string;
+  mileage?: number;
+  cost?: number;
+  completedByRole?: "Admin" | "Mechanic" | "Runner";
+  completedByName?: string;
+  notes?: string;
+}) {
+  const v = vehicles.find(x => x.id === input.vehicleId);
+  if (!v) throw new Error("Vehicle not found");
+  const date = input.date || new Date().toISOString().slice(0, 10);
+  const mileage = typeof input.mileage === "number" && input.mileage > 0 ? input.mileage : v.mileage;
+  const s = { ...(v.maintenanceSettings ?? {}) };
+
+  switch (input.type) {
+    case "oil": {
+      const oc = { ...(s.oilChange ?? { mode: "miles" as const, interval: 3000 }) };
+      oc.lastMileage = mileage;
+      oc.lastDate = date;
+      if (!oc.interval) oc.interval = 3000;
+      s.oilChange = oc;
+      break;
+    }
+    case "battery":
+      s.batteryLastDone = date;
+      break;
+    case "alternator":
+      s.alternatorLastDone = date;
+      break;
+    case "inspection": {
+      const next = new Date(`${date}T00:00:00`);
+      next.setFullYear(next.getFullYear() + 1);
+      s.inspectionExpiry = next.toISOString().slice(0, 10);
+      break;
+    }
+    case "tires":
+      s.tiresLastDone = date;
+      s.tiresLastMileage = mileage;
+      break;
+    case "brakes":
+      s.brakesLastDone = date;
+      break;
+    case "alignment":
+      s.alignmentLastDone = date;
+      break;
+    case "custom":
+      if (input.customId) {
+        s.customAlerts = (s.customAlerts ?? []).map(c =>
+          c.id === input.customId ? { ...c, lastDate: date } : c,
+        );
+      }
+      break;
+  }
+
+  // Update mileage on the vehicle when the user entered a newer value.
+  const patch: Partial<Vehicle> = { maintenanceSettings: s };
+  if (mileage > v.mileage) patch.mileage = mileage;
+  await updateVehicle(v.id, patch);
+
+  const label = FIXED_ITEM_LABELS[input.type] || "Maintenance";
+  const cost = Math.max(0, Number(input.cost) || 0);
+  const completedBy = input.completedByName?.trim() || input.completedByRole || "Admin";
+
+  if (cost > 0) {
+    addExpense({
+      category: "Maintenance",
+      amount: cost,
+      date,
+      vehicleId: v.id,
+      vendor: completedBy,
+      notes: `${label} — ${completedBy}${input.notes ? `: ${input.notes}` : ""}`,
+    });
+  }
+
+  // Fleet-card repair-history row so the vehicle detail page's history log
+  // shows every routine service too.
+  cloudWrite(
+    "repair_history:insert",
+    supabase.from("repair_history").insert({
+      vehicle_id: v.id,
+      maintenance_id: null,
+      repair_date: date,
+      issue: label,
+      parts: null,
+      parts_cost: 0,
+      labor_cost: cost,
+      total_cost: cost,
+      mechanic_name: input.completedByRole === "Mechanic" ? input.completedByName || null : null,
+      completed_by: completedBy,
+      notes: input.notes || null,
+    } as never),
+  );
+
+  emit();
+}
+
+const FIXED_ITEM_LABELS: Record<string, string> = {
+  oil: "Oil Change",
+  battery: "Battery Test",
+  alternator: "Alternator Test",
+  inspection: "NJ Inspection",
+  tires: "Tire Rotation",
+  brakes: "Brakes Inspection",
+  alignment: "Alignment",
+  custom: "Scheduled Maintenance",
+};
+
 function _setVehicleAvailabilityOverride(vehicleId: string, available: boolean, reason?: string) {
   const v = vehicles.find(x => x.id === vehicleId);
   if (!v) return Promise.reject(new Error("Vehicle not found"));
