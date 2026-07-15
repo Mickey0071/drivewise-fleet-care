@@ -331,6 +331,8 @@ export interface ScheduledItem {
   milesRemaining?: number;
   daysRemaining?: number;
   status: ScheduledStatus;
+  /** True when the vehicle has no last-done recorded for this item yet. */
+  unconfigured?: boolean;
 }
 
 function classify(daysRemaining?: number, milesRemaining?: number): ScheduledStatus {
