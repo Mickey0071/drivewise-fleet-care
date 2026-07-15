@@ -15,6 +15,7 @@ import { Route as SmsLogRouteImport } from './routes/sms-log'
 import { Route as SelfAgreementRouteImport } from './routes/self-agreement'
 import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RepairsRouteImport } from './routes/repairs'
 import { Route as RentalsRouteImport } from './routes/rentals'
 import { Route as RentalAgreementRouteImport } from './routes/rental-agreement'
 import { Route as RefundApprovalsRouteImport } from './routes/refund-approvals'
@@ -27,7 +28,6 @@ import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as MyRentalsRouteImport } from './routes/my-rentals'
 import { Route as MonthlyVehicleReportsRouteImport } from './routes/monthly-vehicle-reports'
 import { Route as MigratedReservationsRouteImport } from './routes/migrated-reservations'
-import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JvUnitsRouteImport } from './routes/jv-units'
 import { Route as JvPayoutsRouteImport } from './routes/jv-payouts'
@@ -136,6 +136,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RepairsRoute = RepairsRouteImport.update({
+  id: '/repairs',
+  path: '/repairs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RentalsRoute = RentalsRouteImport.update({
   id: '/rentals',
   path: '/rentals',
@@ -194,11 +199,6 @@ const MonthlyVehicleReportsRoute = MonthlyVehicleReportsRouteImport.update({
 const MigratedReservationsRoute = MigratedReservationsRouteImport.update({
   id: '/migrated-reservations',
   path: '/migrated-reservations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MaintenanceRoute = MaintenanceRouteImport.update({
-  id: '/maintenance',
-  path: '/maintenance',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -614,7 +614,6 @@ export interface FileRoutesByFullPath {
   '/jv-payouts': typeof JvPayoutsRoute
   '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
-  '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
@@ -627,6 +626,7 @@ export interface FileRoutesByFullPath {
   '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
+  '/repairs': typeof RepairsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/self-agreement': typeof SelfAgreementRoute
@@ -712,7 +712,6 @@ export interface FileRoutesByTo {
   '/jv-payouts': typeof JvPayoutsRoute
   '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
-  '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
@@ -725,6 +724,7 @@ export interface FileRoutesByTo {
   '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
+  '/repairs': typeof RepairsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/self-agreement': typeof SelfAgreementRoute
@@ -811,7 +811,6 @@ export interface FileRoutesById {
   '/jv-payouts': typeof JvPayoutsRoute
   '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
-  '/maintenance': typeof MaintenanceRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
@@ -824,6 +823,7 @@ export interface FileRoutesById {
   '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
+  '/repairs': typeof RepairsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/runner-reports': typeof RunnerReportsRoute
   '/self-agreement': typeof SelfAgreementRoute
@@ -911,7 +911,6 @@ export interface FileRouteTypes {
     | '/jv-payouts'
     | '/jv-units'
     | '/login'
-    | '/maintenance'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
     | '/my-rentals'
@@ -924,6 +923,7 @@ export interface FileRouteTypes {
     | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
+    | '/repairs'
     | '/reset-password'
     | '/runner-reports'
     | '/self-agreement'
@@ -1009,7 +1009,6 @@ export interface FileRouteTypes {
     | '/jv-payouts'
     | '/jv-units'
     | '/login'
-    | '/maintenance'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
     | '/my-rentals'
@@ -1022,6 +1021,7 @@ export interface FileRouteTypes {
     | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
+    | '/repairs'
     | '/reset-password'
     | '/runner-reports'
     | '/self-agreement'
@@ -1107,7 +1107,6 @@ export interface FileRouteTypes {
     | '/jv-payouts'
     | '/jv-units'
     | '/login'
-    | '/maintenance'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
     | '/my-rentals'
@@ -1120,6 +1119,7 @@ export interface FileRouteTypes {
     | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
+    | '/repairs'
     | '/reset-password'
     | '/runner-reports'
     | '/self-agreement'
@@ -1206,7 +1206,6 @@ export interface RootRouteChildren {
   JvPayoutsRoute: typeof JvPayoutsRoute
   JvUnitsRoute: typeof JvUnitsRoute
   LoginRoute: typeof LoginRoute
-  MaintenanceRoute: typeof MaintenanceRoute
   MigratedReservationsRoute: typeof MigratedReservationsRoute
   MonthlyVehicleReportsRoute: typeof MonthlyVehicleReportsRoute
   MyRentalsRoute: typeof MyRentalsRouteWithChildren
@@ -1219,6 +1218,7 @@ export interface RootRouteChildren {
   RefundApprovalsRoute: typeof RefundApprovalsRoute
   RentalAgreementRoute: typeof RentalAgreementRoute
   RentalsRoute: typeof RentalsRoute
+  RepairsRoute: typeof RepairsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RunnerReportsRoute: typeof RunnerReportsRoute
   SelfAgreementRoute: typeof SelfAgreementRoute
@@ -1330,6 +1330,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/repairs': {
+      id: '/repairs'
+      path: '/repairs'
+      fullPath: '/repairs'
+      preLoaderRoute: typeof RepairsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rentals': {
       id: '/rentals'
       path: '/rentals'
@@ -1412,13 +1419,6 @@ declare module '@tanstack/react-router' {
       path: '/migrated-reservations'
       fullPath: '/migrated-reservations'
       preLoaderRoute: typeof MigratedReservationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/maintenance': {
-      id: '/maintenance'
-      path: '/maintenance'
-      fullPath: '/maintenance'
-      preLoaderRoute: typeof MaintenanceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -2002,7 +2002,6 @@ const rootRouteChildren: RootRouteChildren = {
   JvPayoutsRoute: JvPayoutsRoute,
   JvUnitsRoute: JvUnitsRoute,
   LoginRoute: LoginRoute,
-  MaintenanceRoute: MaintenanceRoute,
   MigratedReservationsRoute: MigratedReservationsRoute,
   MonthlyVehicleReportsRoute: MonthlyVehicleReportsRoute,
   MyRentalsRoute: MyRentalsRouteWithChildren,
@@ -2015,6 +2014,7 @@ const rootRouteChildren: RootRouteChildren = {
   RefundApprovalsRoute: RefundApprovalsRoute,
   RentalAgreementRoute: RentalAgreementRoute,
   RentalsRoute: RentalsRoute,
+  RepairsRoute: RepairsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RunnerReportsRoute: RunnerReportsRoute,
   SelfAgreementRoute: SelfAgreementRoute,

@@ -57,7 +57,7 @@ import {
 import type { Maintenance } from "@/lib/mock/data";
 import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
 
-export const Route = createFileRoute("/maintenance")({
+export const Route = createFileRoute("/repairs")({
   head: () => ({ meta: [{ title: "Maintenance — Camauto Rentals" }] }),
   component: MaintenancePage,
 });
