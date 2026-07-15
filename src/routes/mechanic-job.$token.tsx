@@ -273,8 +273,14 @@ function MechanicJobPage() {
 
         <Card className="space-y-2 p-4">
           <h2 className="text-sm font-semibold">Diagnosis Summary</h2>
-          <Textarea className="min-h-[80px] text-sm" placeholder="Diagnosis summary and recommendations"
+          <Textarea className="min-h-[64px] text-sm" placeholder="Short summary — what's wrong (1–2 sentences)"
             value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </Card>
+
+        <Card className="space-y-2 p-4">
+          <h2 className="text-sm font-semibold">Mechanic Recommendations</h2>
+          <Textarea className="min-h-[100px] text-sm" placeholder="Findings and recommended repairs — anything outside the checklist"
+            value={recommendations} onChange={(e) => setRecommendations(e.target.value)} />
         </Card>
 
         <div className="flex justify-between rounded-md bg-background px-3 py-2 text-sm font-medium shadow-sm">
