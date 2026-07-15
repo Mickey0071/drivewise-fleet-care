@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as VendorsRouteImport } from './routes/vendors'
 import { Route as SmsLogRouteImport } from './routes/sms-log'
@@ -76,6 +77,7 @@ import { Route as AnalyticsPnlDashboardRouteImport } from './routes/analytics_.p
 import { Route as AnalyticsFailuresRouteImport } from './routes/analytics_.failures'
 import { Route as AnalyticsCostsRouteImport } from './routes/analytics_.costs'
 import { Route as AnalyticsBreakevenRouteImport } from './routes/analytics_.breakeven'
+import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminPaymentReconciliationRouteImport } from './routes/admin.payment-reconciliation'
@@ -108,6 +110,11 @@ import { Route as ApiPublicHooksMonthlyBackupRouteImport } from './routes/api/pu
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
 import { Route as ApiPublicHooksAutoExtensionLinksRouteImport } from './routes/api/public/hooks/auto-extension-links'
 
+const WaitlistRoute = WaitlistRouteImport.update({
+  id: '/waitlist',
+  path: '/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ViolationsRoute = ViolationsRouteImport.update({
   id: '/violations',
   path: '/violations',
@@ -443,6 +450,11 @@ const AnalyticsBreakevenRoute = AnalyticsBreakevenRouteImport.update({
   path: '/analytics/breakeven',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminWaitlistRoute = AdminWaitlistRouteImport.update({
+  id: '/admin/waitlist',
+  path: '/admin/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
@@ -647,6 +659,7 @@ export interface FileRoutesByFullPath {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/waitlist': typeof WaitlistRoute
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
@@ -665,6 +678,7 @@ export interface FileRoutesByFullPath {
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/waitlist': typeof AdminWaitlistRoute
   '/analytics/breakeven': typeof AnalyticsBreakevenRoute
   '/analytics/costs': typeof AnalyticsCostsRoute
   '/analytics/failures': typeof AnalyticsFailuresRoute
@@ -747,6 +761,7 @@ export interface FileRoutesByTo {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/waitlist': typeof WaitlistRoute
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
@@ -765,6 +780,7 @@ export interface FileRoutesByTo {
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/waitlist': typeof AdminWaitlistRoute
   '/analytics/breakeven': typeof AnalyticsBreakevenRoute
   '/analytics/costs': typeof AnalyticsCostsRoute
   '/analytics/failures': typeof AnalyticsFailuresRoute
@@ -848,6 +864,7 @@ export interface FileRoutesById {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
+  '/waitlist': typeof WaitlistRoute
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
@@ -866,6 +883,7 @@ export interface FileRoutesById {
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/waitlist': typeof AdminWaitlistRoute
   '/analytics_/breakeven': typeof AnalyticsBreakevenRoute
   '/analytics_/costs': typeof AnalyticsCostsRoute
   '/analytics_/failures': typeof AnalyticsFailuresRoute
@@ -950,6 +968,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/waitlist'
     | '/accident-report/$token'
     | '/add-card/$token'
     | '/admin/backfill-plates'
@@ -968,6 +987,7 @@ export interface FileRouteTypes {
     | '/admin/payment-reconciliation'
     | '/admin/tasks'
     | '/admin/users'
+    | '/admin/waitlist'
     | '/analytics/breakeven'
     | '/analytics/costs'
     | '/analytics/failures'
@@ -1050,6 +1070,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/waitlist'
     | '/accident-report/$token'
     | '/add-card/$token'
     | '/admin/backfill-plates'
@@ -1068,6 +1089,7 @@ export interface FileRouteTypes {
     | '/admin/payment-reconciliation'
     | '/admin/tasks'
     | '/admin/users'
+    | '/admin/waitlist'
     | '/analytics/breakeven'
     | '/analytics/costs'
     | '/analytics/failures'
@@ -1150,6 +1172,7 @@ export interface FileRouteTypes {
     | '/sms-log'
     | '/vendors'
     | '/violations'
+    | '/waitlist'
     | '/accident-report/$token'
     | '/add-card/$token'
     | '/admin/backfill-plates'
@@ -1168,6 +1191,7 @@ export interface FileRouteTypes {
     | '/admin/payment-reconciliation'
     | '/admin/tasks'
     | '/admin/users'
+    | '/admin/waitlist'
     | '/analytics_/breakeven'
     | '/analytics_/costs'
     | '/analytics_/failures'
@@ -1251,6 +1275,7 @@ export interface RootRouteChildren {
   SmsLogRoute: typeof SmsLogRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
+  WaitlistRoute: typeof WaitlistRoute
   AccidentReportTokenRoute: typeof AccidentReportTokenRoute
   AddCardTokenRoute: typeof AddCardTokenRoute
   AdminBackfillPlatesRoute: typeof AdminBackfillPlatesRoute
@@ -1269,6 +1294,7 @@ export interface RootRouteChildren {
   AdminPaymentReconciliationRoute: typeof AdminPaymentReconciliationRoute
   AdminTasksRoute: typeof AdminTasksRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  AdminWaitlistRoute: typeof AdminWaitlistRoute
   AnalyticsBreakevenRoute: typeof AnalyticsBreakevenRoute
   AnalyticsCostsRoute: typeof AnalyticsCostsRoute
   AnalyticsFailuresRoute: typeof AnalyticsFailuresRoute
@@ -1315,6 +1341,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/waitlist': {
+      id: '/waitlist'
+      path: '/waitlist'
+      fullPath: '/waitlist'
+      preLoaderRoute: typeof WaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/violations': {
       id: '/violations'
       path: '/violations'
@@ -1784,6 +1817,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsBreakevenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/waitlist': {
+      id: '/admin/waitlist'
+      path: '/admin/waitlist'
+      fullPath: '/admin/waitlist'
+      preLoaderRoute: typeof AdminWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/admin/users'
@@ -2063,6 +2103,7 @@ const rootRouteChildren: RootRouteChildren = {
   SmsLogRoute: SmsLogRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
+  WaitlistRoute: WaitlistRoute,
   AccidentReportTokenRoute: AccidentReportTokenRoute,
   AddCardTokenRoute: AddCardTokenRoute,
   AdminBackfillPlatesRoute: AdminBackfillPlatesRoute,
@@ -2081,6 +2122,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminPaymentReconciliationRoute: AdminPaymentReconciliationRoute,
   AdminTasksRoute: AdminTasksRoute,
   AdminUsersRoute: AdminUsersRoute,
+  AdminWaitlistRoute: AdminWaitlistRoute,
   AnalyticsBreakevenRoute: AnalyticsBreakevenRoute,
   AnalyticsCostsRoute: AnalyticsCostsRoute,
   AnalyticsFailuresRoute: AnalyticsFailuresRoute,

@@ -3402,6 +3402,51 @@ export type Database = {
           },
         ]
       }
+      waitlist_entries: {
+        Row: {
+          admin_seen_at: string | null
+          converted_at: string | null
+          converted_rental_id: string | null
+          created_at: string
+          email: string
+          id: string
+          license_url: string | null
+          name: string
+          phone: string
+          selfie_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_seen_at?: string | null
+          converted_at?: string | null
+          converted_rental_id?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          license_url?: string | null
+          name: string
+          phone: string
+          selfie_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_seen_at?: string | null
+          converted_at?: string | null
+          converted_rental_id?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          license_url?: string | null
+          name?: string
+          phone?: string
+          selfie_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       work_orders: {
         Row: {
           actual_cost: number | null

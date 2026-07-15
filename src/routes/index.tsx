@@ -17,6 +17,7 @@ import { PendingApprovalsCard } from "@/components/app/PendingApprovalsCard";
 import { PartsQuotedCard } from "@/components/app/PartsQuotedCard";
 import { NewDiagnosisAlertCard } from "@/components/app/NewDiagnosisAlertCard";
 import { CompletedTaskAlerts } from "@/components/app/CompletedTaskAlerts";
+import { WaitlistAlertCard } from "@/components/app/WaitlistAlertCard";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
@@ -211,6 +212,8 @@ function Index() {
       />
 
       {role === "admin" && <PendingPaymentReviews />}
+
+      {role === "admin" && <WaitlistAlertCard />}
 
       {role === "admin" && <CompletedTaskAlerts />}
 

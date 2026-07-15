@@ -16,6 +16,9 @@ import { Search } from "lucide-react";
 import { unreadReportCount, useStoreVersion } from "@/lib/mock/store";
 import { rentals } from "@/lib/mock/data";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { countNewWaitlistEntries } from "@/lib/waitlist.functions";
 import { Button } from "@/components/ui/button";
 import logo from "@/assets/camauto-logo.jpeg";
 import {
@@ -191,6 +194,7 @@ const primaryGroups: Group[] = [
     key: "reservations", label: "Reservations", icon: FileText, defaultOpen: true,
     items: [
       { title: "Active Reservations", url: "/rentals", icon: FileText, roles: ALL_ROLES },
+      { title: "Waitlist", url: "/admin/waitlist", icon: ClipboardList, roles: ALL_ROLES },
       { title: "Calendar", url: "/calendar", icon: Calendar, roles: ALL_ROLES },
       { title: "Client Portal Activity", url: "/driver-portal", icon: IdCard, roles: ALL_ROLES },
     ],
@@ -297,6 +301,13 @@ export function AppSidebar() {
   useStoreVersion();
   const unread = unreadReportCount();
   const pendingReviewCount = rentals.filter(r => r.staffReviewStatus === "pending").length;
+  const countNewWl = useServerFn(countNewWaitlistEntries);
+  const { data: wlNewData } = useQuery({
+    queryKey: ["waitlist-new-count"],
+    queryFn: () => countNewWl(),
+    refetchInterval: 60_000,
+  });
+  const waitlistNew = wlNewData?.count ?? 0;
   const { role, user, signOut } = useAuth();
   const filter = (items: Item[]) => role ? items.filter(i => i.roles.includes(role)) : [];
   const [query, setQuery] = useState("");
@@ -343,6 +354,9 @@ export function AppSidebar() {
               )}
               {!collapsed && item.url === "/pending-agreements" && pendingReviewCount > 0 && (
                 <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">{pendingReviewCount}</Badge>
+              )}
+              {!collapsed && item.url === "/admin/waitlist" && waitlistNew > 0 && (
+                <Badge className="h-5 bg-primary px-1.5 text-[10px] text-primary-foreground">{waitlistNew}</Badge>
               )}
             </Link>
           </SidebarMenuButton>
