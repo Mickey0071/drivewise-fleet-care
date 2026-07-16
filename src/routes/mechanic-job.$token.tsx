@@ -13,8 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Loader2, Wrench, Plus, X, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Loader2, Wrench, Plus, X, AlertTriangle, Camera } from "lucide-react";
 import { toast } from "sonner";
+import { analyzePartsTicketMechanic } from "@/lib/parts-photo.functions";
+import { compressImage } from "@/lib/image-compress";
 
 export const Route = createFileRoute("/mechanic-job/$token")({
   head: () => ({ meta: [{ title: "Vehicle Diagnosis — Camauto Rentals" }] }),
@@ -40,6 +42,39 @@ function MechanicJobPage() {
   const [hours, setHours] = useState("");
   const [notes, setNotes] = useState("");
   const [recommendations, setRecommendations] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [scanBanner, setScanBanner] = useState<string | null>(null);
+  const analyzeFn = useServerFn(analyzePartsTicketMechanic);
+
+  async function handleScanFile(file: File | null | undefined) {
+    if (!file) return;
+    setScanning(true);
+    setScanBanner(null);
+    try {
+      const compressed = await compressImage(file);
+      const dataUrl = await new Promise<string>((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result as string);
+        fr.onerror = rej;
+        fr.readAsDataURL(compressed);
+      });
+      const { extraction } = await analyzeFn({ data: { token, dataUrl } });
+      if (extraction.parts.length === 0) {
+        setScanBanner("Couldn't read parts from that photo. Please add manually.");
+        return;
+      }
+      setParts((prev) => {
+        // Drop any leading empty row(s) then append scanned rows.
+        const kept = prev.filter((p) => p.name.trim() || (p.price || 0) > 0 || (p.labor || 0) > 0);
+        return [...kept, ...extraction.parts];
+      });
+      setScanBanner(`Scanned ${extraction.parts.length} part${extraction.parts.length === 1 ? "" : "s"} (${extraction.confidence}% confidence) — review before submitting.`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Scan failed");
+    } finally {
+      setScanning(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -216,6 +251,24 @@ function MechanicJobPage() {
             <h2 className="text-sm font-semibold">Parts Needed</h2>
             <Badge variant="secondary" className="text-xs">Total {money(partsTotal + laborTotal)}</Badge>
           </div>
+          <label className="mb-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border bg-muted/30 py-2.5 text-sm font-medium hover:bg-muted">
+            {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+            {scanning ? "Reading ticket…" : "Scan parts ticket"}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              disabled={scanning}
+              onChange={(e) => { void handleScanFile(e.target.files?.[0]); e.target.value = ""; }}
+            />
+          </label>
+          {scanBanner && (
+            <div className="mb-3 flex items-start justify-between gap-2 rounded-md bg-emerald-50 px-2 py-1.5 text-xs text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+              <span>{scanBanner}</span>
+              <button type="button" className="text-emerald-700 underline dark:text-emerald-300" onClick={() => setScanBanner(null)}>Dismiss</button>
+            </div>
+          )}
           <div className="space-y-3">
             {parts.map((p, i) => (
               <div key={i} className="rounded-lg border p-2.5">
