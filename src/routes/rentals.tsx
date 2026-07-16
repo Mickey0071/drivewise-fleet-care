@@ -36,6 +36,7 @@ import { ChargeCardDialog } from "@/components/app/ChargeCardDialog";
 import { RecordPaymentDialog } from "@/components/app/RecordPaymentDialog";
 import { getSavedCard } from "@/lib/card-display";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
+import { SendVehicleToMechanicDialog } from "@/components/app/SendVehicleToMechanicDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
 import { SwapHistoryTimeline } from "@/components/app/SwapHistoryTimeline";
 import { ReservationDocuments } from "@/components/app/ReservationDocuments";
