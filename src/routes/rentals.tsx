@@ -1408,6 +1408,21 @@ function RentalsPage() {
         rental={returnChoiceRental}
         onClose={() => setReturnChoiceRental(null)}
       />
+      {mechanicRental && (() => {
+        const v = vehicleById(mechanicRental.vehicleId);
+        return (
+          <SendVehicleToMechanicDialog
+            open
+            onOpenChange={(o) => { if (!o) setMechanicRental(null); }}
+            vehicleId={mechanicRental.vehicleId}
+            vehicleLabel={v ? `${v.year} ${v.make} ${v.model}` : mechanicRental.vehicleId}
+            plate={v?.plate}
+            mileage={v?.mileage ?? 0}
+            adminName={user?.email ?? undefined}
+            contextLabel={`Returned rental ${mechanicRental.id}`}
+          />
+        );
+      })()}
       <RecordPaymentDialog
         open={!!recordPayRental}
         onOpenChange={(o) => { if (!o) setRecordPayRental(null); }}
