@@ -13,8 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Loader2, Wrench, Plus, X, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Loader2, Wrench, Plus, X, AlertTriangle, Camera } from "lucide-react";
 import { toast } from "sonner";
+import { analyzePartsTicketMechanic } from "@/lib/parts-photo.functions";
+import { compressImage } from "@/lib/image-compress";
 
 export const Route = createFileRoute("/mechanic-job/$token")({
   head: () => ({ meta: [{ title: "Vehicle Diagnosis — Camauto Rentals" }] }),
@@ -40,6 +42,39 @@ function MechanicJobPage() {
   const [hours, setHours] = useState("");
   const [notes, setNotes] = useState("");
   const [recommendations, setRecommendations] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [scanBanner, setScanBanner] = useState<string | null>(null);
+  const analyzeFn = useServerFn(analyzePartsTicketMechanic);
+
+  async function handleScanFile(file: File | null | undefined) {
+    if (!file) return;
+    setScanning(true);
+    setScanBanner(null);
+    try {
+      const compressed = await compressImage(file);
+      const dataUrl = await new Promise<string>((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result as string);
+        fr.onerror = rej;
+        fr.readAsDataURL(compressed);
+      });
+      const { extraction } = await analyzeFn({ data: { token, dataUrl } });
+      if (extraction.parts.length === 0) {
+        setScanBanner("Couldn't read parts from that photo. Please add manually.");
+        return;
+      }
+      setParts((prev) => {
+        // Drop any leading empty row(s) then append scanned rows.
+        const kept = prev.filter((p) => p.name.trim() || (p.price || 0) > 0 || (p.labor || 0) > 0);
+        return [...kept, ...extraction.parts];
+      });
+      setScanBanner(`Scanned ${extraction.parts.length} part${extraction.parts.length === 1 ? "" : "s"} (${extraction.confidence}% confidence) — review before submitting.`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Scan failed");
+    } finally {
+      setScanning(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
