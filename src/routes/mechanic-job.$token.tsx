@@ -251,6 +251,24 @@ function MechanicJobPage() {
             <h2 className="text-sm font-semibold">Parts Needed</h2>
             <Badge variant="secondary" className="text-xs">Total {money(partsTotal + laborTotal)}</Badge>
           </div>
+          <label className="mb-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border bg-muted/30 py-2.5 text-sm font-medium hover:bg-muted">
+            {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+            {scanning ? "Reading ticket…" : "Scan parts ticket"}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              disabled={scanning}
+              onChange={(e) => { void handleScanFile(e.target.files?.[0]); e.target.value = ""; }}
+            />
+          </label>
+          {scanBanner && (
+            <div className="mb-3 flex items-start justify-between gap-2 rounded-md bg-emerald-50 px-2 py-1.5 text-xs text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+              <span>{scanBanner}</span>
+              <button type="button" className="text-emerald-700 underline dark:text-emerald-300" onClick={() => setScanBanner(null)}>Dismiss</button>
+            </div>
+          )}
           <div className="space-y-3">
             {parts.map((p, i) => (
               <div key={i} className="rounded-lg border p-2.5">
