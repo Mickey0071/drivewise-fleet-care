@@ -14,11 +14,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Send, CheckCircle2, Wrench } from "lucide-react";
+import { Plus, Send, CheckCircle2, Wrench, Camera, Loader2 } from "lucide-react";
 import {
   listPartsSuppliers, addPartsSupplier, createPartInquiry,
   listPartInquiries, closePartInquiry,
 } from "@/lib/parts.functions";
+import { analyzePartsTicketAdmin } from "@/lib/parts-photo.functions";
+import { compressImage } from "@/lib/image-compress";
 import { z } from "zod";
 import { vehicles, activeVehicles, maintenance, expenses } from "@/lib/mock/data";
 import type { RepairLineItem } from "@/lib/mock/data";
@@ -84,6 +86,45 @@ function RecordPartPurchase() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanBanner, setScanBanner] = useState<string | null>(null);
+  const analyzeFn = useServerFn(analyzePartsTicketAdmin);
+
+  async function handleScanFile(file: File | null | undefined) {
+    if (!file) return;
+    setScanning(true);
+    setScanBanner(null);
+    try {
+      const compressed = await compressImage(file);
+      const dataUrl = await new Promise<string>((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result as string);
+        fr.onerror = rej;
+        fr.readAsDataURL(compressed);
+      });
+      const { extraction } = await analyzeFn({ data: { dataUrl } });
+      const filled: string[] = [];
+      if (extraction.part_name && !partName) { setPartName(extraction.part_name); filled.push("part name"); }
+      if (extraction.supplier && !supplier) { setSupplier(extraction.supplier); filled.push("supplier"); }
+      if (extraction.technician && !technician) { setTechnician(extraction.technician); filled.push("technician"); }
+      if (extraction.part_cost != null && !partCost) { setPartCost(String(extraction.part_cost)); filled.push("part $"); }
+      if (extraction.labor_cost != null && !laborCost) { setLaborCost(String(extraction.labor_cost)); filled.push("labor $"); }
+      if (extraction.date) { setDate(extraction.date); filled.push("date"); }
+      if (extraction.notes) {
+        setNotes((n) => (n ? n + "\n" : "") + extraction.notes);
+        filled.push("notes");
+      }
+      if (filled.length === 0) {
+        setScanBanner("Couldn't read the ticket clearly. Please fill in manually.");
+      } else {
+        setScanBanner(`Scanned (${extraction.confidence}% confidence) — review before saving.`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Scan failed");
+    } finally {
+      setScanning(false);
+    }
+  }
 
   // Suggest technicians used before (from repairs and prior part purchases).
   const technicianOptions = Array.from(new Set([
@@ -201,6 +242,26 @@ function RecordPartPurchase() {
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div>
+          <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border bg-muted/30 py-2.5 text-sm font-medium hover:bg-muted">
+            {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+            {scanning ? "Reading ticket…" : "Scan ticket / receipt"}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              disabled={scanning}
+              onChange={(e) => { void handleScanFile(e.target.files?.[0]); e.target.value = ""; }}
+            />
+          </label>
+          {scanBanner && (
+            <div className="mt-1.5 flex items-start justify-between gap-2 rounded-md bg-emerald-50 px-2 py-1.5 text-xs text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+              <span>{scanBanner}</span>
+              <button type="button" className="text-emerald-700 underline dark:text-emerald-300" onClick={() => setScanBanner(null)}>Dismiss</button>
+            </div>
+          )}
+        </div>
         <div>
           <Label className="mb-1.5 block text-xs">Vehicle *</Label>
           <Select value={vehicleId} onValueChange={handleVehicleChange}>
