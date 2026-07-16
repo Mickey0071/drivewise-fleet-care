@@ -118,6 +118,7 @@ function RentalsPage() {
   const [returnChoiceRental, setReturnChoiceRental] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
   const [violationFor, setViolationFor] = useState<Rental | null>(null);
+  const [mechanicRental, setMechanicRental] = useState<Rental | null>(null);
   
   const [chatting, setChatting] = useState<Rental | null>(null);
   // (Mark as Returned now opens the full Return Inspection dialog directly.)
