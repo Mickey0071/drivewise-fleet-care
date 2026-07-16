@@ -24,6 +24,7 @@ import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehiclePhotosDialog } from "@/components/app/VehiclePhotosDialog";
 import { VehicleRepairPanelDialog } from "@/components/app/VehicleRepairPanelDialog";
+import { SendVehicleToMechanicDialog } from "@/components/app/SendVehicleToMechanicDialog";
 import { Share2, Camera, Pencil, Images, Plus, Wrench, Archive, RotateCcw, Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +50,7 @@ function FleetPage() {
   const [rmVehicleId, setRmVehicleId] = useState<string | null>(null);
   const [archiveVehicleId, setArchiveVehicleId] = useState<string | null>(null);
   const [repairPanelVehicleId, setRepairPanelVehicleId] = useState<string | null>(null);
+  const [mechanicVehicleId, setMechanicVehicleId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { status, view } = Route.useSearch();
