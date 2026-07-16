@@ -428,6 +428,21 @@ function FleetPage() {
         vehicleId={archiveVehicleId}
         onClose={() => setArchiveVehicleId(null)}
       />
+      {mechanicVehicleId && (() => {
+        const v = vehicles.find(x => x.id === mechanicVehicleId);
+        if (!v) return null;
+        return (
+          <SendVehicleToMechanicDialog
+            open
+            onOpenChange={(o) => { if (!o) setMechanicVehicleId(null); }}
+            vehicleId={v.id}
+            vehicleLabel={`${v.year} ${v.make} ${v.model}`}
+            plate={v.plate}
+            mileage={v.mileage}
+            contextLabel={`Fleet · ${v.status}`}
+          />
+        );
+      })()}
     </div>
   );
 }
