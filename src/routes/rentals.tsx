@@ -817,9 +817,14 @@ function RentalsPage() {
                     </Button>
                   )}
                   {r.reservationStatus === "returned" || r.reservationStatus === "completed" ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Returned{r.returnedAt ? ` ${fmtDate(r.returnedAt)}` : ""}
-                    </span>
+                    <>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Returned{r.returnedAt ? ` ${fmtDate(r.returnedAt)}` : ""}
+                      </span>
+                      <Button variant="outline" size="sm" onClick={() => setMechanicRental(r)}>
+                        <Wrench className="mr-1 h-4 w-4" /> Send to Mechanic
+                      </Button>
+                    </>
                   ) : (
                     <Button variant="outline" size="sm" onClick={() => setReturnChoiceRental(r)}>
                       <Undo2 className="mr-1 h-4 w-4" /> Return Vehicle
