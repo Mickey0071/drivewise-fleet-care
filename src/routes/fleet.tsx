@@ -24,6 +24,7 @@ import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehiclePhotosDialog } from "@/components/app/VehiclePhotosDialog";
 import { VehicleRepairPanelDialog } from "@/components/app/VehicleRepairPanelDialog";
+import { SendVehicleToMechanicDialog } from "@/components/app/SendVehicleToMechanicDialog";
 import { Share2, Camera, Pencil, Images, Plus, Wrench, Archive, RotateCcw, Search } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +50,7 @@ function FleetPage() {
   const [rmVehicleId, setRmVehicleId] = useState<string | null>(null);
   const [archiveVehicleId, setArchiveVehicleId] = useState<string | null>(null);
   const [repairPanelVehicleId, setRepairPanelVehicleId] = useState<string | null>(null);
+  const [mechanicVehicleId, setMechanicVehicleId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { status, view } = Route.useSearch();
@@ -335,6 +337,16 @@ function FleetPage() {
               >
                 <Wrench className="mr-1 h-4 w-4" /> Repairs{openRepairs.length > 0 ? ` (${openRepairs.length})` : ""}
               </Button>
+              {(v.status === "available" || v.status === "inspection") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); setMechanicVehicleId(v.id); }}
+                  title="Send this vehicle for a Basic Mechanic Inspection"
+                >
+                  <Wrench className="mr-1 h-4 w-4" /> Send to Mechanic
+                </Button>
+              )}
               {isVehicleBookable(v.id) && (
                 <Button
                   variant="outline"
@@ -416,6 +428,21 @@ function FleetPage() {
         vehicleId={archiveVehicleId}
         onClose={() => setArchiveVehicleId(null)}
       />
+      {mechanicVehicleId && (() => {
+        const v = vehicles.find(x => x.id === mechanicVehicleId);
+        if (!v) return null;
+        return (
+          <SendVehicleToMechanicDialog
+            open
+            onOpenChange={(o) => { if (!o) setMechanicVehicleId(null); }}
+            vehicleId={v.id}
+            vehicleLabel={`${v.year} ${v.make} ${v.model}`}
+            plate={v.plate}
+            mileage={v.mileage}
+            contextLabel={`Fleet · ${v.status}`}
+          />
+        );
+      })()}
     </div>
   );
 }

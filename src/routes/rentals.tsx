@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download, Smartphone, Percent, CreditCard } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download, Smartphone, Percent, CreditCard, Wrench } from "lucide-react";
 import { Search as SearchIcon, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { LayoutDashboard } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -36,6 +36,7 @@ import { ChargeCardDialog } from "@/components/app/ChargeCardDialog";
 import { RecordPaymentDialog } from "@/components/app/RecordPaymentDialog";
 import { getSavedCard } from "@/lib/card-display";
 import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
+import { SendVehicleToMechanicDialog } from "@/components/app/SendVehicleToMechanicDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
 import { SwapHistoryTimeline } from "@/components/app/SwapHistoryTimeline";
 import { ReservationDocuments } from "@/components/app/ReservationDocuments";
@@ -117,6 +118,7 @@ function RentalsPage() {
   const [returnChoiceRental, setReturnChoiceRental] = useState<Rental | null>(null);
   const [charging, setCharging] = useState<Rental | null>(null);
   const [violationFor, setViolationFor] = useState<Rental | null>(null);
+  const [mechanicRental, setMechanicRental] = useState<Rental | null>(null);
   
   const [chatting, setChatting] = useState<Rental | null>(null);
   // (Mark as Returned now opens the full Return Inspection dialog directly.)
@@ -815,9 +817,14 @@ function RentalsPage() {
                     </Button>
                   )}
                   {r.reservationStatus === "returned" || r.reservationStatus === "completed" ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Returned{r.returnedAt ? ` ${fmtDate(r.returnedAt)}` : ""}
-                    </span>
+                    <>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Returned{r.returnedAt ? ` ${fmtDate(r.returnedAt)}` : ""}
+                      </span>
+                      <Button variant="outline" size="sm" onClick={() => setMechanicRental(r)}>
+                        <Wrench className="mr-1 h-4 w-4" /> Send to Mechanic
+                      </Button>
+                    </>
                   ) : (
                     <Button variant="outline" size="sm" onClick={() => setReturnChoiceRental(r)}>
                       <Undo2 className="mr-1 h-4 w-4" /> Return Vehicle
@@ -1401,6 +1408,21 @@ function RentalsPage() {
         rental={returnChoiceRental}
         onClose={() => setReturnChoiceRental(null)}
       />
+      {mechanicRental && (() => {
+        const v = vehicleById(mechanicRental.vehicleId);
+        return (
+          <SendVehicleToMechanicDialog
+            open
+            onOpenChange={(o) => { if (!o) setMechanicRental(null); }}
+            vehicleId={mechanicRental.vehicleId}
+            vehicleLabel={v ? `${v.year} ${v.make} ${v.model}` : mechanicRental.vehicleId}
+            plate={v?.plate}
+            mileage={v?.mileage ?? 0}
+            adminName={user?.email ?? undefined}
+            contextLabel={`Returned rental ${mechanicRental.id}`}
+          />
+        );
+      })()}
       <RecordPaymentDialog
         open={!!recordPayRental}
         onOpenChange={(o) => { if (!o) setRecordPayRental(null); }}
