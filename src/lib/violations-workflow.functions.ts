@@ -130,6 +130,36 @@ export const setViolationStage = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** Batch-move multiple violations to the same stage. */
+export const bulkSetViolationStage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { violationIds: string[]; stage: Stage }) => {
+    if (!Array.isArray(input.violationIds) || input.violationIds.length === 0)
+      throw new Error("violationIds required");
+    if (input.violationIds.length > 500) throw new Error("Too many ids");
+    if (!STAGES.includes(input.stage)) throw new Error("Invalid stage");
+    return { violationIds: input.violationIds, stage: input.stage };
+  })
+  .handler(async ({ data, context }) => {
+    const now = new Date().toISOString();
+    const { error } = await supabaseAdmin
+      .from("violations")
+      .update({ workflow_stage: data.stage, updated_at: now } as never)
+      .in("id", data.violationIds);
+    if (error) throw new Error(error.message);
+    const name = await changedByName(context.userId ?? null);
+    const rows = data.violationIds.map((id) => ({
+      violation_id: id,
+      from_status: null,
+      to_status: `stage:${data.stage}`,
+      reason: `Bulk moved to ${data.stage}`,
+      changed_by: context.userId ?? null,
+      changed_by_name: name,
+    }));
+    await supabaseAdmin.from("violation_status_history").insert(rows as never);
+    return { updated: data.violationIds.length };
+  });
+
 /** Flag a violation as an orphan dispute ("Plate Not Mine"). */
 export const flagViolationOrphan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
