@@ -264,6 +264,10 @@ export interface Maintenance {
   amountPaid?: number;
   balance?: number;
   completionDate?: string;
+  /** Set when repair_history + expenses were already posted on Accept, so
+   *  the completion path does not duplicate them when the ticket is later
+   *  marked complete. */
+  historyPostedAt?: string;
   /** Actual parts cost entered at completion. */
   partsCost?: number;
   /** Actual labor cost entered at completion. */
