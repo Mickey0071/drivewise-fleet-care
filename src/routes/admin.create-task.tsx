@@ -538,7 +538,7 @@ function CreateMechanicTask() {
 
   const currentRental = useMemo(() => {
     if (vehicleId === "none") return null;
-    return rentals.find((r) => r.vehicleId === vehicleId && r.status === "active") ?? null;
+    return rentals.find((r) => r.vehicleId === vehicleId && r.reservationStatus === "active") ?? null;
   }, [vehicleId]);
 
   const replacementOptions = useMemo(
