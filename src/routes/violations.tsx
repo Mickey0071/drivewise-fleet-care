@@ -1413,6 +1413,48 @@ function ViolationsPage() {
     }
   };
 
+  const batchTransferPackets = async () => {
+    // Use selection when the admin selected rows; otherwise all matched rows in view.
+    const targets = selectedRows.length > 0 ? selectedRows : filtered;
+    if (targets.length === 0) return;
+    setBatchTransferBusy(true);
+    try {
+      const res = await batchTransferFn({
+        data: { violationIds: targets.map((v) => v.id) },
+      });
+      const failures = res.results
+        .filter((r) => !r.ok)
+        .map((r) => ({
+          id: r.violationId,
+          reason:
+            r.errorCode === "date_outside_rental"
+              ? "Violation date outside rental period"
+              : r.errorCode === "no_agreement"
+                ? "No rental agreement on file"
+                : r.errorCode === "no_rental"
+                  ? "Not matched to a rental"
+                  : r.errorCode === "no_dates"
+                    ? "Missing rental start/end dates"
+                    : r.error ?? "Unknown error",
+        }));
+      setBatchTransferReport({
+        succeeded: res.succeeded,
+        failed: res.failed,
+        failures,
+      });
+      qc.invalidateQueries({ queryKey: ["violations"] });
+      if (res.failed === 0) {
+        toast.success(`${res.succeeded} transfer packet(s) generated`);
+      } else {
+        toast.message(`Batch complete — ${res.succeeded} succeeded, ${res.failed} failed`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Batch generation failed");
+    } finally {
+      setBatchTransferBusy(false);
+    }
+  };
+
   const printAllAgreements = async () => {
     const targets = selectedRows.length > 0 ? selectedRows : filtered;
     if (targets.length === 0) return;
