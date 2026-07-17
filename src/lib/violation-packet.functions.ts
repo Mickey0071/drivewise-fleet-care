@@ -21,7 +21,7 @@ export const getMatchedAgreementsForPrint = createServerFn({ method: "POST" })
     const { data: viols, error } = await supabaseAdmin
       .from("violations")
       .select(
-        "id, rental_id, reference_number, date_issued, amount, total_amount, license_plate, driver_name",
+        "id, rental_id, reference_number, date_issued, amount, total_amount, license_plate",
       )
       .in("id", data.violationIds);
     if (error) throw new Error(error.message);
@@ -42,15 +42,17 @@ export const getMatchedAgreementsForPrint = createServerFn({ method: "POST" })
     const skipped: Array<{ violationId: string; reason: string }> = [];
 
     // Group violations by rental first
-    const rentalToViols = new Map<string, typeof viols>();
+    type Viol = NonNullable<typeof viols>[number];
+    const rentalToViols = new Map<string, Viol[]>();
     for (const v of viols ?? []) {
-      if (!v.rental_id) {
-        skipped.push({ violationId: v.id, reason: "No rental linked" });
+      const vv = v as Viol;
+      if (!vv.rental_id) {
+        skipped.push({ violationId: vv.id, reason: "No rental linked" });
         continue;
       }
-      const arr = rentalToViols.get(v.rental_id) ?? [];
-      arr.push(v);
-      rentalToViols.set(v.rental_id, arr);
+      const arr = rentalToViols.get(vv.rental_id) ?? [];
+      arr.push(vv);
+      rentalToViols.set(vv.rental_id, arr);
     }
 
     if (rentalToViols.size > 0) {
@@ -80,16 +82,14 @@ export const getMatchedAgreementsForPrint = createServerFn({ method: "POST" })
             skipped.push({ violationId: v.id, reason: "No agreement on file" });
           continue;
         }
-        const first = vs[0];
+        const first = vs[0]!;
         byRental.set(rentalId, {
           rentalId,
           violationIds: vs.map((v) => v.id),
           agreementUrl: (r as any).agreement_pdf_url,
           header: {
             name:
-              driverMap.get((r as any).driver_id) ||
-              first.driver_name ||
-              "Unknown",
+              driverMap.get((r as any).driver_id) || "Unknown",
             plate: first.license_plate || "",
             dateIssued: first.date_issued || "",
             refNum: first.reference_number || "",
