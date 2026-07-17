@@ -12,6 +12,17 @@ import {
   savePacketSettings,
   type PacketSettings,
 } from "@/lib/transfer-packet.functions";
+import { PACKET_DOC_KINDS, type PacketDocKind } from "@/lib/transfer-packet.functions";
+
+const DOC_LABELS: Record<PacketDocKind, string> = {
+  cover: "Transfer Cover Page",
+  agreement: "Signed Rental Agreement",
+  license: "Driver License",
+  selfie: "Renter Selfie",
+  signature: "Renter Signature",
+  receipt: "Rental Receipt",
+  violation_photo: "Violation Photo",
+};
 
 export const Route = createFileRoute("/admin/packet-settings")({
   head: () => ({ meta: [{ title: "Transfer Packet Settings — Camauto" }] }),
@@ -74,6 +85,7 @@ function PacketSettingsPage() {
           signerCompany: settings.signerCompany,
           defaultAuthority: settings.defaultAuthority,
           signatureDataUrl: pendingSig ?? undefined,
+          defaultPacketLayout: settings.defaultPacketLayout,
         },
       });
       setSettings(res);
@@ -86,6 +98,27 @@ function PacketSettingsPage() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const layout = settings?.defaultPacketLayout ?? [];
+  const remaining = PACKET_DOC_KINDS.filter((k) => !layout.includes(k));
+  const moveLayout = (kind: string, dir: -1 | 1) => {
+    if (!settings) return;
+    const i = layout.indexOf(kind);
+    if (i < 0) return;
+    const j = i + dir;
+    if (j < 0 || j >= layout.length) return;
+    const next = [...layout];
+    [next[i], next[j]] = [next[j], next[i]];
+    update("defaultPacketLayout", next);
+  };
+  const addLayout = (kind: string) => {
+    if (!settings || layout.includes(kind)) return;
+    update("defaultPacketLayout", [...layout, kind]);
+  };
+  const removeLayout = (kind: string) => {
+    if (!settings) return;
+    update("defaultPacketLayout", layout.filter((k) => k !== kind));
   };
 
   const onClearSignature = async () => {
