@@ -100,7 +100,7 @@ export const acceptRepairAction = createServerFn({ method: "POST" })
     const laborCost = Number(row.labor_cost) || 0;
     const nowIso = new Date().toISOString();
     const today = nowIso.slice(0, 10);
-    const { error } = await db
+    const { data: acceptedRow, error } = await db
       .from("maintenance")
       .update({
         action_taken: "accepted",
@@ -114,12 +114,13 @@ export const acceptRepairAction = createServerFn({ method: "POST" })
         // won't post the expense again.
         amount_paid: total,
         balance: 0,
-        accept_token: null,
-        decline_token: null,
       })
       .eq("id", row.id)
-      .eq("action_taken", "pending");
+      .eq("action_taken", "pending")
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(error.message);
+    if (!acceptedRow) throw new Error("This diagnosis was already handled.");
 
     const { label, plate } = await vehicleLabel(row.vehicle_id);
     const issue = row.issue_description || row.service_type || "repair";
@@ -214,7 +215,7 @@ export const declineRepairAction = createServerFn({ method: "POST" })
     if (!row) throw new Error("This link is no longer valid.");
     if (row.action_taken !== "pending") throw new Error(`This diagnosis was already ${row.action_taken}.`);
 
-    const { error } = await db
+    const { data: declinedRow, error } = await db
       .from("maintenance")
       .update({
         action_taken: "declined",
@@ -223,12 +224,13 @@ export const declineRepairAction = createServerFn({ method: "POST" })
         decline_reason: data.reason,
         decline_notes: data.notes || null,
         status: "diagnosing",
-        accept_token: null,
-        decline_token: null,
       })
       .eq("id", row.id)
-      .eq("action_taken", "pending");
+      .eq("action_taken", "pending")
+      .select("id")
+      .maybeSingle();
     if (error) throw new Error(error.message);
+    if (!declinedRow) throw new Error("This diagnosis was already handled.");
 
     const { label } = await vehicleLabel(row.vehicle_id);
     if (row.mechanic_phone) {

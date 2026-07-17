@@ -16,6 +16,45 @@ function genToken(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function ensureMaintenanceTicket(data: {
+  maintenanceId: string;
+  vehicleId?: string | null;
+  mechanicName: string;
+  mechanicShop?: string | null;
+  issueDescription?: string | null;
+  additionalContext?: string | null;
+}) {
+  const { data: existing, error: lookupError } = await supabaseAdmin
+    .from("maintenance")
+    .select("id")
+    .eq("id", data.maintenanceId)
+    .maybeSingle();
+  if (lookupError) throw new Error(lookupError.message);
+  if (existing) return;
+  if (!data.vehicleId) throw new Error("Maintenance ticket was not saved yet. Please try sending the mechanic link again.");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const { error } = await supabaseAdmin.from("maintenance").insert({
+    id: data.maintenanceId,
+    vehicle_id: data.vehicleId,
+    service_type: data.issueDescription || "Mechanic Diagnosis",
+    vendor: data.mechanicName,
+    date_completed: null,
+    mileage_at_service: 0,
+    cost: 0,
+    parts_cost: 0,
+    labor_cost: 0,
+    next_service_due: today,
+    notes: data.additionalContext || `Sent to ${data.mechanicName}${data.mechanicShop ? ` (${data.mechanicShop})` : ""} for mechanic diagnosis.`,
+    issue_description: data.issueDescription || "Mechanic Diagnosis",
+    status: "diagnosing",
+    is_rental_blocking: true,
+    mechanic_name: data.mechanicName,
+    source: "mechanic_job",
+  });
+  if (error && error.code !== "23505") throw new Error(error.message);
+}
+
 export interface ChecklistItem {
   id: string;
   label: string;
@@ -100,6 +139,8 @@ export const createMechanicJob = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }) => {
+    await ensureMaintenanceTicket(data);
+
     const token = genToken();
     const { data: row, error } = await supabaseAdmin
       .from("mechanic_jobs")
