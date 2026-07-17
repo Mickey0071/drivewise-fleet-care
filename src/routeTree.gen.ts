@@ -82,6 +82,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminPaymentReconciliationRouteImport } from './routes/admin.payment-reconciliation'
 import { Route as AdminPartsRouteImport } from './routes/admin.parts'
+import { Route as AdminPacketSettingsRouteImport } from './routes/admin.packet-settings'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminMechanicsRouteImport } from './routes/admin.mechanics'
 import { Route as AdminMalibuPlateReviewRouteImport } from './routes/admin.malibu-plate-review'
@@ -477,6 +478,11 @@ const AdminPartsRoute = AdminPartsRouteImport.update({
   path: '/admin/parts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPacketSettingsRoute = AdminPacketSettingsRouteImport.update({
+  id: '/admin/packet-settings',
+  path: '/admin/packet-settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
   id: '/admin/notifications',
   path: '/admin/notifications',
@@ -681,6 +687,7 @@ export interface FileRoutesByFullPath {
   '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
   '/admin/mechanics': typeof AdminMechanicsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/packet-settings': typeof AdminPacketSettingsRoute
   '/admin/parts': typeof AdminPartsRoute
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
@@ -784,6 +791,7 @@ export interface FileRoutesByTo {
   '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
   '/admin/mechanics': typeof AdminMechanicsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/packet-settings': typeof AdminPacketSettingsRoute
   '/admin/parts': typeof AdminPartsRoute
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
@@ -888,6 +896,7 @@ export interface FileRoutesById {
   '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
   '/admin/mechanics': typeof AdminMechanicsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/packet-settings': typeof AdminPacketSettingsRoute
   '/admin/parts': typeof AdminPartsRoute
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
@@ -993,6 +1002,7 @@ export interface FileRouteTypes {
     | '/admin/malibu-plate-review'
     | '/admin/mechanics'
     | '/admin/notifications'
+    | '/admin/packet-settings'
     | '/admin/parts'
     | '/admin/payment-reconciliation'
     | '/admin/tasks'
@@ -1096,6 +1106,7 @@ export interface FileRouteTypes {
     | '/admin/malibu-plate-review'
     | '/admin/mechanics'
     | '/admin/notifications'
+    | '/admin/packet-settings'
     | '/admin/parts'
     | '/admin/payment-reconciliation'
     | '/admin/tasks'
@@ -1199,6 +1210,7 @@ export interface FileRouteTypes {
     | '/admin/malibu-plate-review'
     | '/admin/mechanics'
     | '/admin/notifications'
+    | '/admin/packet-settings'
     | '/admin/parts'
     | '/admin/payment-reconciliation'
     | '/admin/tasks'
@@ -1303,6 +1315,7 @@ export interface RootRouteChildren {
   AdminMalibuPlateReviewRoute: typeof AdminMalibuPlateReviewRoute
   AdminMechanicsRoute: typeof AdminMechanicsRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
+  AdminPacketSettingsRoute: typeof AdminPacketSettingsRoute
   AdminPartsRoute: typeof AdminPartsRoute
   AdminPaymentReconciliationRoute: typeof AdminPaymentReconciliationRoute
   AdminTasksRoute: typeof AdminTasksRoute
@@ -1865,6 +1878,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPartsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/packet-settings': {
+      id: '/admin/packet-settings'
+      path: '/admin/packet-settings'
+      fullPath: '/admin/packet-settings'
+      preLoaderRoute: typeof AdminPacketSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/notifications': {
       id: '/admin/notifications'
       path: '/admin/notifications'
@@ -2139,6 +2159,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminMalibuPlateReviewRoute: AdminMalibuPlateReviewRoute,
   AdminMechanicsRoute: AdminMechanicsRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
+  AdminPacketSettingsRoute: AdminPacketSettingsRoute,
   AdminPartsRoute: AdminPartsRoute,
   AdminPaymentReconciliationRoute: AdminPaymentReconciliationRoute,
   AdminTasksRoute: AdminTasksRoute,

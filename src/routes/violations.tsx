@@ -1591,6 +1591,9 @@ function ViolationsPage() {
                 <DropdownMenuItem asChild>
                   <Link to="/violations/authorities">Authorities</Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/admin/packet-settings">Transfer Packet Settings</Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/violations/import">Import CSV</Link>
