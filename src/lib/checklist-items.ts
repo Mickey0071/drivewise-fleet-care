@@ -1,6 +1,7 @@
 export const CHECKLIST_SECTIONS = [
   { title: 'Before Starting Car', items: [
     { key: 'oil_level', label: 'Check oil level before starting engine' },
+    { key: 'oil_change_due', label: 'Oil change — check sticker / mileage, flag if due' },
     { key: 'spare_key', label: 'Spare key present and accounted for' },
     { key: 'inspection_sticker', label: 'Inspection sticker — valid and not expired' },
   ]},

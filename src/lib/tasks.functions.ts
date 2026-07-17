@@ -269,14 +269,18 @@ export const createReturnInspection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: {
     rentalId: string;
-    runnerId: string;
+    runnerName: string;
+    runnerPhone: string;
     origin: string;
     vehicleLabel?: string;
   }) => {
     if (!input.rentalId) throw new Error("rentalId required");
-    if (!input.runnerId) throw new Error("runnerId required");
+    const name = String(input.runnerName ?? "").trim();
+    if (!name || name.length > 120) throw new Error("runnerName required");
+    const phone = String(input.runnerPhone ?? "").trim();
+    if (phone.replace(/\D/g, "").length < 10) throw new Error("valid runnerPhone required");
     if (!input.origin || !/^https?:\/\//.test(input.origin)) throw new Error("origin required");
-    return input;
+    return { ...input, runnerName: name, runnerPhone: phone };
   })
   .handler(async ({ data, context }) => {
     const { supabase } = context;
@@ -311,11 +315,13 @@ export const createReturnInspection = createServerFn({ method: "POST" })
       .insert({
         type: "inspection",
         vehicle_id: rental.vehicle_id as string,
-        runner_id: data.runnerId,
+        runner_id: null,
         assigned_by: context.userId,
         details: {
           return_inspection: true,
           rental_id: rental.id,
+          runner_name: data.runnerName,
+          runner_phone: data.runnerPhone,
           instructions: "Post-return inspection — check the vehicle before it goes back on the lot.",
         } as any,
         status: "assigned",
@@ -324,21 +330,15 @@ export const createReturnInspection = createServerFn({ method: "POST" })
       .single();
     if (tErr) throw new Error(tErr.message);
 
-    const { data: runner } = await supabase
-      .from("profiles")
-      .select("full_name, first_name, phone")
-      .eq("id", data.runnerId)
-      .maybeSingle();
-
     const taskId = taskRow.id as string;
     const url = `${data.origin.replace(/\/$/, "")}/runner/task/${encodeURIComponent(taskId)}`;
     const label = data.vehicleLabel || (rental.vehicle_id as string);
     let smsStatus: "sent" | "skipped_no_phone" = "skipped_no_phone";
-    if (runner?.phone && runner.phone.length >= 7) {
+    if (data.runnerPhone) {
       await sendSms(
-        runner.phone,
+        data.runnerPhone,
         `Camauto: Inspection needed — ${label}. Open on your phone: ${url}`,
-        runner.full_name || runner.first_name || "Runner",
+        data.runnerName || "Runner",
       );
       smsStatus = "sent";
     }
