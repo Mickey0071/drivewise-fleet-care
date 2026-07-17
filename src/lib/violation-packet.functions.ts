@@ -13,9 +13,33 @@ import { z } from "zod";
 export const downloadViolationPacket = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
-    z.object({ violationId: z.string().min(1).max(64) }).parse(input),
+    z
+      .object({
+        violationId: z.string().min(1).max(64),
+        include: z
+          .object({
+            coverLetter: z.boolean().optional(),
+            agreement: z.boolean().optional(),
+            license: z.boolean().optional(),
+            selfie: z.boolean().optional(),
+            signature: z.boolean().optional(),
+            receipt: z.boolean().optional(),
+            violationPhoto: z.boolean().optional(),
+          })
+          .optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data }) => {
+    const inc = {
+      coverLetter: data.include?.coverLetter ?? true,
+      agreement: data.include?.agreement ?? true,
+      license: data.include?.license ?? true,
+      selfie: data.include?.selfie ?? true,
+      signature: data.include?.signature ?? true,
+      receipt: data.include?.receipt ?? true,
+      violationPhoto: data.include?.violationPhoto ?? true,
+    };
     const { data: v, error: vErr } = await supabaseAdmin
       .from("violations")
       .select("*")
@@ -54,11 +78,12 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
     const driver = driverRes.data;
     const rental = rentalRes.data;
 
-    const coverPdf = await buildCoverPdf({ v, vehicle, driver, rental });
-
     const zip = new JSZip();
     const missing: string[] = [];
-    zip.file("00_COVER_SHEET.pdf", coverPdf);
+    if (inc.coverLetter) {
+      const coverPdf = await buildCoverPdf({ v, vehicle, driver, rental });
+      zip.file("00_COVER_SHEET.pdf", coverPdf);
+    }
 
     async function add(url: string | null | undefined, name: string) {
       if (!url) {
@@ -80,13 +105,13 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
     }
 
     await Promise.all([
-      add(rental?.agreement_pdf_url, "01_SIGNED_RENTAL_AGREEMENT"),
-      add(rental?.license_image_url, "02_DRIVER_LICENSE"),
-      add(rental?.selfie_image_url, "03_RENTER_SELFIE"),
-      add(rental?.client_signature_url, "04_SIGNATURE"),
-      add(rental?.receipt_pdf_url, "05_RENTAL_RECEIPT"),
-      add(v.photo_url, "06_VIOLATION_PHOTO"),
-    ]);
+      inc.agreement ? add(rental?.agreement_pdf_url, "01_SIGNED_RENTAL_AGREEMENT") : null,
+      inc.license ? add(rental?.license_image_url, "02_DRIVER_LICENSE") : null,
+      inc.selfie ? add(rental?.selfie_image_url, "03_RENTER_SELFIE") : null,
+      inc.signature ? add(rental?.client_signature_url, "04_SIGNATURE") : null,
+      inc.receipt ? add(rental?.receipt_pdf_url, "05_RENTAL_RECEIPT") : null,
+      inc.violationPhoto ? add(v.photo_url, "06_VIOLATION_PHOTO") : null,
+    ].filter(Boolean));
 
     if (missing.length > 0) {
       zip.file(

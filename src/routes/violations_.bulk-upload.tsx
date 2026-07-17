@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/use-auth";
@@ -754,6 +755,8 @@ function ManualMatchDialog({
   const [retroFor, setRetroFor] = useState<ViolationSearchCard | null>(null);
   const [retroPhone, setRetroPhone] = useState("");
   const [retroEmail, setRetroEmail] = useState("");
+  const [packetFor, setPacketFor] = useState<string | null>(null);
+  const [inc, setInc] = useState({ coverLetter: true, agreement: true, license: true });
 
   const soon = (label: string) => toast.message(`${label} — coming soon`);
 
@@ -852,12 +855,32 @@ function ManualMatchDialog({
     }
   };
 
+  const openPacketPicker = (rentalId: string) => {
+    setInc({ coverLetter: true, agreement: true, license: true });
+    setPacketFor(rentalId);
+  };
+
   const matchAndPacket = async (rentalId: string) => {
     setBusy(true);
     try {
       const { violationId } = await matchCommit({ data: { itemId: item.id, rentalId } });
       toast.success("Ticket created — building dispute packet…");
-      const { filename, base64, missing } = await buildPacket({ data: { violationId } });
+      const { filename, base64, missing } = await buildPacket({
+        data: {
+          violationId,
+          include: {
+            coverLetter: inc.coverLetter,
+            agreement: inc.agreement,
+            license: inc.license,
+            // Not shown in the picker; keep supporting evidence off by default
+            // when the admin explicitly narrows to the 3 core docs.
+            selfie: false,
+            signature: false,
+            receipt: false,
+            violationPhoto: false,
+          },
+        },
+      });
       const bin = atob(base64);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -875,6 +898,7 @@ function ManualMatchDialog({
       } else {
         toast.success("Dispute packet downloaded");
       }
+      setPacketFor(null);
       onMatched();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to build packet");
@@ -1039,7 +1063,7 @@ function ManualMatchDialog({
                             <Button
                               size="sm"
                               disabled={busy}
-                              onClick={() => matchAndPacket(r.id)}
+                              onClick={() => openPacketPicker(r.id)}
                               className="bg-emerald-600 hover:bg-emerald-700"
                             >
                               <ShieldX className="mr-1 h-4 w-4" />
@@ -1131,6 +1155,54 @@ function ManualMatchDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <Dialog open={packetFor !== null} onOpenChange={(o) => !o && !busy && setPacketFor(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Dispute packet — include which docs?</DialogTitle>
+            <DialogDescription>
+              Pick the documents to bundle into the ZIP. Any item not on file will
+              be listed in MISSING.txt.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={inc.coverLetter}
+                onCheckedChange={(v) => setInc((s) => ({ ...s, coverLetter: v === true }))}
+              />
+              Dispute cover letter
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={inc.agreement}
+                onCheckedChange={(v) => setInc((s) => ({ ...s, agreement: v === true }))}
+              />
+              Signed rental agreement
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={inc.license}
+                onCheckedChange={(v) => setInc((s) => ({ ...s, license: v === true }))}
+              />
+              Driver's license
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPacketFor(null)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700"
+              disabled={busy || (!inc.coverLetter && !inc.agreement && !inc.license)}
+              onClick={() => packetFor && matchAndPacket(packetFor)}
+            >
+              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Download className="mr-1 h-4 w-4" />}
+              Create ticket + download
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
