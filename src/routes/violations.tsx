@@ -1020,11 +1020,10 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
       <Button
         size="sm"
         variant="outline"
-        onClick={doTransferPacket}
-        disabled={busy === "transferPacket"}
-        title="Cover page + attached rental agreement, merged into one PDF"
+        onClick={() => setBuilderOpen(true)}
+        title="Choose which documents to include in the Transfer of Responsibility packet"
       >
-        {busy === "transferPacket" ? "Building…" : "📄 Transfer Packet"}
+        📄 Transfer Packet
       </Button>
       {v.transfer_packet_url && (
         <a
@@ -1036,6 +1035,13 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
           Download
         </a>
       )}
+
+      <PacketBuilderDialog
+        open={builderOpen}
+        onOpenChange={setBuilderOpen}
+        violationId={v.id}
+        onGenerated={refreshAll}
+      />
 
       <Dialog open={retroOpen} onOpenChange={setRetroOpen}>
         <DialogContent>
