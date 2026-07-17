@@ -1103,6 +1103,7 @@ export type Database = {
           diagnosis_notes: string | null
           diagnosis_title: string | null
           down_payment: number
+          history_posted_at: string | null
           id: string
           inspection_id: string | null
           is_rental_blocking: boolean
@@ -1166,6 +1167,7 @@ export type Database = {
           diagnosis_notes?: string | null
           diagnosis_title?: string | null
           down_payment?: number
+          history_posted_at?: string | null
           id: string
           inspection_id?: string | null
           is_rental_blocking?: boolean
@@ -1229,6 +1231,7 @@ export type Database = {
           diagnosis_notes?: string | null
           diagnosis_title?: string | null
           down_payment?: number
+          history_posted_at?: string | null
           id?: string
           inspection_id?: string | null
           is_rental_blocking?: boolean

@@ -1,0 +1,1 @@
+ALTER TABLE public.maintenance ADD COLUMN IF NOT EXISTS history_posted_at timestamptz;
