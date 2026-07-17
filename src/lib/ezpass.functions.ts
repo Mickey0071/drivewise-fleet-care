@@ -711,3 +711,155 @@ export const debugEzpassMatch = createServerFn({ method: "GET" })
     }
     return out;
   });
+
+/**
+ * Quick-return the signed rental agreement URL for a rental. Used by the
+ * Manual Match dialog so an admin can preview / download the agreement before
+ * committing a match. Only returns rows that already have a stored PDF; the
+ * dialog decides whether to offer retro-signing instead.
+ */
+export const getRentalAgreementUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ rentalId: z.string().min(1).max(64) }).parse(input),
+  )
+  .handler(async ({ data }): Promise<{ url: string | null; filename: string }> => {
+    const { data: rental } = await supabaseAdmin
+      .from("rentals")
+      .select("id, agreement_pdf_url, driver_id")
+      .eq("id", data.rentalId)
+      .maybeSingle();
+    const url = (rental as { agreement_pdf_url: string | null } | null)?.agreement_pdf_url ?? null;
+    let name = "renter";
+    if (rental?.driver_id) {
+      const { data: dr } = await supabaseAdmin
+        .from("drivers")
+        .select("full_name, last_name")
+        .eq("id", rental.driver_id)
+        .maybeSingle();
+      name = (dr?.full_name || dr?.last_name || "renter")
+        .replace(/[^a-z0-9_-]+/gi, "_")
+        .replace(/^_+|_+$/g, "")
+        .slice(0, 40) || "renter";
+    }
+    return { url, filename: `${data.rentalId}_${name}_AGREEMENT.pdf` };
+  });
+
+/**
+ * Manually match an EZPass batch item to a rental AND immediately commit it
+ * as a real `violations` row (workflow_stage=matched). Returns the new
+ * violation id so the caller can download an evidence packet with the
+ * agreement in hand. `approveEzpassBatch` later skips items that already
+ * have a `violation_id`, so this does not double-create.
+ */
+export const matchAndCommitEzpassItem = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ itemId: z.string().uuid(), rentalId: z.string().min(1).max(64) }).parse(input),
+  )
+  .handler(async ({ data, context }): Promise<{ violationId: string }> => {
+    const { data: rental, error: rErr } = await supabaseAdmin
+      .from("rentals")
+      .select("id, driver_id, vehicle_id")
+      .eq("id", data.rentalId)
+      .maybeSingle();
+    if (rErr || !rental) throw new Error("Rental not found");
+
+    let driverName: string | null = null;
+    if (rental.driver_id) {
+      const { data: dr } = await supabaseAdmin
+        .from("drivers")
+        .select("full_name")
+        .eq("id", rental.driver_id)
+        .maybeSingle();
+      driverName = dr?.full_name ?? null;
+    }
+
+    const { data: item, error: iErr } = await supabaseAdmin
+      .from("ezpass_batch_items")
+      .select("*")
+      .eq("id", data.itemId)
+      .maybeSingle();
+    if (iErr || !item) throw new Error("Batch item not found");
+
+    // Persist the match on the batch item.
+    await supabaseAdmin
+      .from("ezpass_batch_items")
+      .update({
+        match_status: "matched",
+        rental_id: rental.id,
+        driver_id: rental.driver_id ?? null,
+        vehicle_id: rental.vehicle_id ?? null,
+        driver_name: driverName,
+        candidates: null,
+      } as never)
+      .eq("id", data.itemId);
+
+    // Fetch the batch's original document (used as the violation photo).
+    const { data: batch } = await supabaseAdmin
+      .from("ezpass_batches")
+      .select("file_url")
+      .eq("id", (item as { batch_id: string }).batch_id)
+      .maybeSingle();
+    const originalDocUrl = (batch as { file_url: string | null } | null)?.file_url ?? null;
+
+    // Duplicate detection — same plate + date + amount already exists.
+    let violationId = (item as { violation_id: string | null }).violation_id ?? null;
+    if (!violationId && item.plate && item.violation_date) {
+      const { data: dups } = await supabaseAdmin
+        .from("violations")
+        .select("id")
+        .eq("license_plate", item.plate)
+        .eq("date_issued", item.violation_date)
+        .eq("amount", item.amount)
+        .limit(1);
+      if (dups && dups.length > 0) {
+        violationId = (dups[0] as { id: string }).id;
+        await supabaseAdmin
+          .from("violations")
+          .update({
+            rental_id: rental.id,
+            vehicle_id: rental.vehicle_id ?? "UNKNOWN",
+            driver_id: rental.driver_id,
+            workflow_stage: "matched",
+            updated_at: new Date().toISOString(),
+          } as never)
+          .eq("id", violationId);
+      }
+    }
+
+    if (!violationId) {
+      violationId = genId("VIO");
+      await supabaseAdmin.from("violations").insert({
+        id: violationId,
+        rental_id: rental.id,
+        vehicle_id: rental.vehicle_id ?? "UNKNOWN",
+        driver_id: rental.driver_id,
+        type: "toll",
+        date_issued: item.violation_date,
+        license_plate: item.plate,
+        amount: item.amount,
+        fee: 0,
+        total_amount: item.amount,
+        description: `EZPass toll — ${item.location ?? ""}`.trim(),
+        location: item.location,
+        violation_time: item.violation_time,
+        notes: `Imported from EZPass batch ${(item as { batch_id: string }).batch_id} (manual match)`,
+        status: "pending",
+        reference_number: (item as { reference_number: string | null }).reference_number ?? null,
+        workflow_stage: "matched",
+        is_orphan: false,
+        photo_url: originalDocUrl,
+        created_by: context.userId ?? null,
+      } as never);
+    }
+
+    await supabaseAdmin
+      .from("ezpass_batch_items")
+      .update({ violation_id: violationId } as never)
+      .eq("id", data.itemId);
+
+    await recomputeBatchCounts((item as { batch_id: string }).batch_id);
+
+    return { violationId: violationId! };
+  });
