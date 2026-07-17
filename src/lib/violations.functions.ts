@@ -59,6 +59,8 @@ export interface ViolationRow {
   is_orphan?: boolean | null;
   dispute_method?: string | null;
   disputed_at?: string | null;
+  transfer_packet_url?: string | null;
+  transfer_packet_generated_at?: string | null;
   /** Computed: a signed rental agreement is on file for the matched rental. */
   agreement_on_file?: boolean;
   rental_start?: string | null;
