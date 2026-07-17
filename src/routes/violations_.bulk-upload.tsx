@@ -743,6 +743,9 @@ function ManualMatchDialog({
   const search = useServerFn(searchRentalsForViolation);
   const match = useServerFn(manualMatchEzpassItem);
   const sendRetro = useServerFn(sendRetroAgreementLink);
+  const getAgreement = useServerFn(getRentalAgreementUrl);
+  const matchCommit = useServerFn(matchAndCommitEzpassItem);
+  const buildPacket = useServerFn(downloadViolationPacket);
 
   const [date, setDate] = useState(item.violation_date ?? "");
   const [plate, setPlate] = useState(item.plate ?? "");
@@ -821,6 +824,60 @@ function ManualMatchDialog({
       onMatched();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Match failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const downloadAgreement = async (rentalId: string) => {
+    setBusy(true);
+    try {
+      const { url, filename } = await getAgreement({ data: { rentalId } });
+      if (!url) {
+        toast.error("No signed agreement on file for this rental");
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.target = "_blank";
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load agreement");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const matchAndPacket = async (rentalId: string) => {
+    setBusy(true);
+    try {
+      const { violationId } = await matchCommit({ data: { itemId: item.id, rentalId } });
+      toast.success("Ticket created — building dispute packet…");
+      const { filename, base64, missing } = await buildPacket({ data: { violationId } });
+      const bin = atob(base64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "application/zip" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      if (missing && missing.length > 0) {
+        toast.warning(`Packet downloaded — missing: ${missing.join(", ")}`);
+      } else {
+        toast.success("Dispute packet downloaded");
+      }
+      onMatched();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to build packet");
     } finally {
       setBusy(false);
     }
