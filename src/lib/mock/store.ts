@@ -2609,33 +2609,37 @@ export function completeRepair(
     daysInRepair = Math.max(0, Math.round((Date.now() - start) / 86400000));
   }
   const issueCategory = inferScheduledType(m) ?? "general";
-  cloudWrite(
-    "repair_history:insert",
-    supabase.from("repair_history").insert({
-      vehicle_id: m.vehicleId,
-      maintenance_id: m.id,
-      repair_date: today,
-      issue: issueText,
-      parts: typeof partsList === "string" ? partsList : null,
-      parts_cost: parts,
-      labor_cost: labor,
-      total_cost: total,
-      mechanic_name: m.mechanicName ?? null,
-      completed_by: m.completedBy ?? "Admin",
-      notes: m.mechanicNotes ?? m.notes ?? null,
-    } as never),
-  );
-  cloudWrite(
-    "repair_scorecard:insert",
-    supabase.from("repair_scorecard").insert({
-      vehicle_id: m.vehicleId,
-      maintenance_id: m.id,
-      repair_date: today,
-      cost: total,
-      issue_category: issueCategory,
-      days_in_repair: daysInRepair,
-    } as never),
-  );
+  // Skip if this ticket was already posted to repair_history when the admin
+  // accepted the mechanic diagnosis — prevents double-posting on Complete.
+  if (!m.historyPostedAt) {
+    cloudWrite(
+      "repair_history:insert",
+      supabase.from("repair_history").insert({
+        vehicle_id: m.vehicleId,
+        maintenance_id: m.id,
+        repair_date: today,
+        issue: issueText,
+        parts: typeof partsList === "string" ? partsList : null,
+        parts_cost: parts,
+        labor_cost: labor,
+        total_cost: total,
+        mechanic_name: m.mechanicName ?? null,
+        completed_by: m.completedBy ?? "Admin",
+        notes: m.mechanicNotes ?? m.notes ?? null,
+      } as never),
+    );
+    cloudWrite(
+      "repair_scorecard:insert",
+      supabase.from("repair_scorecard").insert({
+        vehicle_id: m.vehicleId,
+        maintenance_id: m.id,
+        repair_date: today,
+        cost: total,
+        issue_category: issueCategory,
+        days_in_repair: daysInRepair,
+      } as never),
+    );
+  }
 
   // --- Reset the related scheduled-maintenance marker so the alert clears
   //     and the next due date recalculates from today. ---
