@@ -724,6 +724,7 @@ const toMaintenance = (m: Maintenance) => ({
   amount_paid: m.amountPaid ?? 0,
   balance: m.balance ?? 0,
   completion_date: m.completionDate ?? null,
+  history_posted_at: m.historyPostedAt ?? null,
   is_rental_blocking: m.isRentalBlocking ?? false,
   parts_cost: m.partsCost ?? 0,
   labor_cost: m.laborCost ?? 0,
