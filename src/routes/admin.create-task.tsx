@@ -505,3 +505,310 @@ function CreateTaskPage() {
     </div>
   );
 }
+
+function CreateMechanicTask() {
+  useStoreVersion();
+  const listMechFn = useServerFn(listMechanics);
+  const saveMechFn = useServerFn(saveMechanic);
+  const createJobFn = useServerFn(createMechanicJob);
+
+  const [mechs, setMechs] = useState<SavedMechanic[]>([]);
+  const [selectedMech, setSelectedMech] = useState<string>("__new__");
+  const [mName, setMName] = useState("");
+  const [mPhone, setMPhone] = useState("");
+  const [mShop, setMShop] = useState("");
+  const [vehicleId, setVehicleId] = useState<string>("none");
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [customItems, setCustomItems] = useState<{ id: string; label: string }[]>([]);
+  const [customDraft, setCustomDraft] = useState("");
+  const [urgency, setUrgency] = useState<"normal" | "urgent" | "asap">("normal");
+  const [notes, setNotes] = useState("");
+  const [swap, setSwap] = useState(false);
+  const [replacementVehicleId, setReplacementVehicleId] = useState<string>("none");
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    listMechFn().then(setMechs).catch(() => {});
+  }, [listMechFn]);
+
+  const vehicleOptions = useMemo(
+    () => activeVehicles().map((v) => ({ id: v.id, label: `${v.year} ${v.make} ${v.model} · ${v.plate}` })),
+    [],
+  );
+
+  const currentRental = useMemo(() => {
+    if (vehicleId === "none") return null;
+    return rentals.find((r) => r.vehicleId === vehicleId && r.status === "active") ?? null;
+  }, [vehicleId]);
+
+  const replacementOptions = useMemo(
+    () => activeVehicles()
+      .filter((v) => v.id !== vehicleId && (v.status === "available" || !v.status))
+      .map((v) => ({ id: v.id, label: `${v.year} ${v.make} ${v.model} · ${v.plate}` })),
+    [vehicleId],
+  );
+
+  function pickMechanic(id: string) {
+    setSelectedMech(id);
+    if (id === "__new__") { setMName(""); setMPhone(""); setMShop(""); return; }
+    const m = mechs.find((x) => x.id === id);
+    if (m) { setMName(m.name); setMPhone(formatPhone(m.phone)); setMShop(m.shop ?? ""); }
+  }
+
+  function toggleItem(id: string) {
+    setSelectedItems((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
+
+  function addCustomItem() {
+    const label = customDraft.trim();
+    if (!label) return;
+    const id = `custom_${Date.now()}`;
+    setCustomItems((prev) => [...prev, { id, label }]);
+    setSelectedItems((prev) => new Set(prev).add(id));
+    setCustomDraft("");
+  }
+
+  function removeCustomItem(id: string) {
+    setCustomItems((prev) => prev.filter((c) => c.id !== id));
+    setSelectedItems((prev) => { const n = new Set(prev); n.delete(id); return n; });
+  }
+
+  async function saveMechanicToList() {
+    if (!mName.trim()) { toast.error("Enter a mechanic name first"); return; }
+    if (mPhone.replace(/\D/g, "").length < 10) { toast.error("Enter a valid phone first"); return; }
+    try {
+      const saved = await saveMechFn({ data: { name: mName.trim(), phone: mPhone.trim(), shop: mShop.trim() || undefined } });
+      toast.success(`Saved ${saved.name}`);
+      const list = await listMechFn();
+      setMechs(list);
+      setSelectedMech(saved.id);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save mechanic");
+    }
+  }
+
+  async function submit() {
+    if (vehicleId === "none") { toast.error("Select a vehicle"); return; }
+    if (!mName.trim()) { toast.error("Mechanic name is required"); return; }
+    if (mPhone.replace(/\D/g, "").length < 10) { toast.error("Enter a valid mechanic phone"); return; }
+    const chosen = [
+      ...MECHANIC_CHECKLIST_PRESET.filter((i) => selectedItems.has(i.id)),
+      ...customItems.filter((i) => selectedItems.has(i.id)),
+    ];
+    if (chosen.length === 0) { toast.error("Pick at least one checklist item"); return; }
+    if (swap && replacementVehicleId === "none") { toast.error("Pick a replacement vehicle for the swap"); return; }
+
+    setSending(true);
+    try {
+      const v = vehicles.find((x) => x.id === vehicleId);
+      const vehicleLabel = v ? `${v.year} ${v.make} ${v.model}` : "";
+      const urgencyPrefix =
+        urgency === "asap" ? "🚨🚨 ASAP: " :
+        urgency === "urgent" ? "🚨 URGENT: " : "";
+      const issueDescription = `${urgencyPrefix}Scheduled maintenance — ${chosen.length} item${chosen.length === 1 ? "" : "s"}`;
+      const contextParts = [
+        `Tasks:\n${chosen.map((c) => `• ${c.label}`).join("\n")}`,
+        notes.trim() ? `Admin notes: ${notes.trim()}` : "",
+      ].filter(Boolean);
+
+      const today = new Date().toISOString().slice(0, 10);
+      const ticket = addMaintenance({
+        vehicleId,
+        serviceType: issueDescription,
+        vendor: mName.trim(),
+        cost: 0,
+        dateCompleted: "",
+        mileageAtService: (v as any)?.mileage ?? 0,
+        nextServiceDue: today,
+        notes: contextParts.join("\n\n"),
+        issueDescription,
+        status: "diagnosing",
+        isRentalBlocking: false,
+        mechanicName: mName.trim(),
+        source: "create_task_mechanic",
+      } as any);
+
+      await createJobFn({
+        data: {
+          maintenanceId: ticket.id,
+          vehicleId,
+          mechanicName: mName.trim(),
+          mechanicPhone: mPhone.trim(),
+          mechanicShop: mShop.trim() || undefined,
+          issueDescription,
+          additionalContext: contextParts.join("\n\n"),
+          checklistItems: chosen,
+          vehicleLabel,
+          plate: v?.plate,
+        },
+      });
+
+      // Swap: move the active rental to the replacement vehicle.
+      if (swap && currentRental && replacementVehicleId !== "none") {
+        try {
+          const { updateRental } = await import("@/lib/mock/store");
+          updateRental(currentRental.id, {
+            vehicleId: replacementVehicleId,
+            notes: `${(currentRental as any).notes ? (currentRental as any).notes + "\n" : ""}Swapped from ${vehicleLabel} on ${today} — original vehicle in shop.`,
+          } as any);
+        } catch { /* store helper missing — non-fatal */ }
+      }
+
+      toast.success(`✓ Mechanic job sent to ${mName.trim()}`);
+      setSelectedItems(new Set());
+      setCustomItems([]);
+      setNotes("");
+      setUrgency("normal");
+      setSwap(false);
+      setReplacementVehicleId("none");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to send mechanic job");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader><CardTitle className="text-base">Vehicle</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <Select value={vehicleId} onValueChange={setVehicleId}>
+            <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Select…</SelectItem>
+              {vehicleOptions.map((v) => <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {currentRental && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs">
+              <div>Currently rented by <span className="font-medium">{(currentRental as any).driverName || "customer"}</span>.</div>
+              <label className="mt-2 flex items-center gap-2">
+                <Switch checked={swap} onCheckedChange={setSwap} />
+                <span>Swap renter to another vehicle while this one is in shop</span>
+              </label>
+              {swap && (
+                <div className="mt-2">
+                  <Label className="text-xs">Replacement vehicle</Label>
+                  <Select value={replacementVehicleId} onValueChange={setReplacementVehicleId}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Pick a replacement" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Select…</SelectItem>
+                      {replacementOptions.map((v) => <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Mechanic</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label>Saved mechanics</Label>
+            <Select value={selectedMech} onValueChange={pickMechanic}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder={mechs.length ? "Pick a saved mechanic" : "No saved mechanics yet"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__new__">+ New mechanic</SelectItem>
+                {mechs.filter((m) => m.isActive).map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.name} · {formatPhone(m.phone)}{m.shop ? ` (${m.shop})` : ""}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <Label>Name *</Label>
+              <Input className="mt-1" value={mName} onChange={(e) => setMName(e.target.value)} />
+            </div>
+            <div>
+              <Label>Phone *</Label>
+              <Input className="mt-1" type="tel" value={mPhone}
+                onChange={(e) => setMPhone(formatPhone(e.target.value))} placeholder="(267) 555-1234" />
+            </div>
+            <div>
+              <Label>Shop</Label>
+              <Input className="mt-1" value={mShop} onChange={(e) => setMShop(e.target.value)} />
+            </div>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={saveMechanicToList}>
+            <Save className="h-4 w-4" /> Save mechanic to list
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Tasks ({selectedItems.size} selected)</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {MECHANIC_CHECKLIST_PRESET.map((item) => (
+              <label key={item.id} className="flex cursor-pointer items-center gap-2 rounded-md border p-2 text-sm hover:bg-muted/50">
+                <input type="checkbox" checked={selectedItems.has(item.id)} onChange={() => toggleItem(item.id)} className="h-4 w-4" />
+                {item.label}
+              </label>
+            ))}
+            {customItems.map((item) => (
+              <label key={item.id} className="flex cursor-pointer items-center gap-2 rounded-md border border-primary/40 p-2 text-sm hover:bg-muted/50">
+                <input type="checkbox" checked={selectedItems.has(item.id)} onChange={() => toggleItem(item.id)} className="h-4 w-4" />
+                <span className="flex-1">{item.label}</span>
+                <button type="button" onClick={() => removeCustomItem(item.id)} className="text-muted-foreground hover:text-destructive">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </label>
+            ))}
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Input placeholder="Add custom task…" value={customDraft} onChange={(e) => setCustomDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomItem(); } }} />
+            <Button type="button" variant="outline" size="sm" onClick={addCustomItem}>
+              <Plus className="h-4 w-4" /> Add
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Urgency</CardTitle></CardHeader>
+        <CardContent>
+          <RadioGroup value={urgency} onValueChange={(v) => setUrgency(v as any)} className="flex gap-6">
+            {[
+              { v: "normal", l: "Normal" },
+              { v: "urgent", l: "Urgent" },
+              { v: "asap", l: "ASAP" },
+            ].map((o) => (
+              <label key={o.v} className="flex cursor-pointer items-center gap-2 text-sm">
+                <RadioGroupItem value={o.v} /> {o.l}
+              </label>
+            ))}
+          </RadioGroup>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Notes to mechanic</CardTitle></CardHeader>
+        <CardContent>
+          <Textarea className="min-h-[90px]" value={notes} onChange={(e) => setNotes(e.target.value)}
+            placeholder="Symptoms, context, anything the mechanic should know…" />
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end pb-10">
+        <div className="w-full max-w-md space-y-2">
+          <SendLinkPreview route="/mechanic-job/[token]" />
+          <Button disabled={sending} onClick={submit} size="lg" className="w-full">
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Send Mechanic Job</>}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
