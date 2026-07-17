@@ -1017,6 +1017,25 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
           <Button size="sm" variant="outline" onClick={doPacket} disabled={busy === "packet"}>
             {busy === "packet" ? "Building…" : "🖨️ Mail Packet"}
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={doTransferPacket}
+            disabled={busy === "transferPacket"}
+            title="Cover page + attached rental agreement, merged into one PDF"
+          >
+            {busy === "transferPacket" ? "Building…" : "📄 Transfer Packet"}
+          </Button>
+          {v.transfer_packet_url && (
+            <a
+              href={v.transfer_packet_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-primary underline self-center"
+            >
+              Download
+            </a>
+          )}
           {!v.mailed_at && (
             <Button
               size="sm"
