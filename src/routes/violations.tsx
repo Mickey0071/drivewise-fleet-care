@@ -74,6 +74,10 @@ import {
 } from "@/lib/violations-workflow.functions";
 import { bulkSetViolationStage } from "@/lib/violations-workflow.functions";
 import { getMatchedAgreementsForPrint } from "@/lib/violation-packet.functions";
+import {
+  generateTransferPacket,
+  batchGenerateTransferPackets,
+} from "@/lib/transfer-packet.functions";
 import { getViolationAgreement } from "@/lib/violations-workflow.functions";
 import { attachViolationDocument } from "@/lib/violations-workflow.functions";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
@@ -805,6 +809,7 @@ function RowActions({
 function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }) {
   const genTransfer = useServerFn(generateLiabilityTransfer);
   const genPacket = useServerFn(generateMailPacket);
+  const genTransferPacket = useServerFn(generateTransferPacket);
   const mark = useServerFn(markViolationStage);
   const readiness = useServerFn(getViolationReadiness);
   const sendRetro = useServerFn(sendViolationRetroLink);
@@ -868,6 +873,36 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
       } else {
         toast.success("Mail packet ready to print");
       }
+      refreshAll();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const doTransferPacket = async () => {
+    setBusy("transferPacket");
+    try {
+      const res = await genTransferPacket({ data: { violationId: v.id } });
+      if (!res.ok) {
+        toast.error(res.error ?? "Failed to generate Transfer Packet");
+        return;
+      }
+      if (res.base64 && res.filename) {
+        const bin = atob(res.base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = res.filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+      toast.success("Transfer of Responsibility Packet generated");
       refreshAll();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -1009,6 +1044,26 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
             </Button>
           )}
         </>
+      )}
+      {/* Transfer of Responsibility Packet — available on every matched violation. */}
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={doTransferPacket}
+        disabled={busy === "transferPacket"}
+        title="Cover page + attached rental agreement, merged into one PDF"
+      >
+        {busy === "transferPacket" ? "Building…" : "📄 Transfer Packet"}
+      </Button>
+      {v.transfer_packet_url && (
+        <a
+          href={v.transfer_packet_url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs text-primary underline self-center"
+        >
+          Download
+        </a>
       )}
 
       <Dialog open={retroOpen} onOpenChange={setRetroOpen}>
@@ -1242,6 +1297,12 @@ function ViolationsPage() {
   const genPacketFn = useServerFn(generateMailPacket);
   const getAgreementsFn = useServerFn(getMatchedAgreementsForPrint);
   const bulkStageFn = useServerFn(bulkSetViolationStage);
+  const batchTransferFn = useServerFn(batchGenerateTransferPackets);
+  const [batchTransferBusy, setBatchTransferBusy] = useState(false);
+  const [batchTransferReport, setBatchTransferReport] = useState<
+    | { succeeded: number; failed: number; failures: Array<{ id: string; reason: string }> }
+    | null
+  >(null);
   const [printBusy, setPrintBusy] = useState(false);
 
   // Clear selection whenever the active tab changes.
@@ -1349,6 +1410,48 @@ function ViolationsPage() {
       toast.error(e instanceof Error ? e.message : "Could not build packets");
     } finally {
       setBulkBusy(false);
+    }
+  };
+
+  const batchTransferPackets = async () => {
+    // Use selection when the admin selected rows; otherwise all matched rows in view.
+    const targets = selectedRows.length > 0 ? selectedRows : filtered;
+    if (targets.length === 0) return;
+    setBatchTransferBusy(true);
+    try {
+      const res = await batchTransferFn({
+        data: { violationIds: targets.map((v) => v.id) },
+      });
+      const failures = res.results
+        .filter((r) => !r.ok)
+        .map((r) => ({
+          id: r.violationId,
+          reason:
+            r.errorCode === "date_outside_rental"
+              ? "Violation date outside rental period"
+              : r.errorCode === "no_agreement"
+                ? "No rental agreement on file"
+                : r.errorCode === "no_rental"
+                  ? "Not matched to a rental"
+                  : r.errorCode === "no_dates"
+                    ? "Missing rental start/end dates"
+                    : r.error ?? "Unknown error",
+        }));
+      setBatchTransferReport({
+        succeeded: res.succeeded,
+        failed: res.failed,
+        failures,
+      });
+      qc.invalidateQueries({ queryKey: ["violations"] });
+      if (res.failed === 0) {
+        toast.success(`${res.succeeded} transfer packet(s) generated`);
+      } else {
+        toast.message(`Batch complete — ${res.succeeded} succeeded, ${res.failed} failed`);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Batch generation failed");
+    } finally {
+      setBatchTransferBusy(false);
     }
   };
 
@@ -1488,6 +1591,9 @@ function ViolationsPage() {
                 <DropdownMenuItem asChild>
                   <Link to="/violations/authorities">Authorities</Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/admin/packet-settings">Transfer Packet Settings</Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/violations/import">Import CSV</Link>
@@ -1572,6 +1678,23 @@ function ViolationsPage() {
                 title={selectedRows.length > 0 ? "Print selected agreements" : "Print all agreements on this tab"}
               >
                 {printBusy ? "Building…" : "🖨️ Print All Agreements"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={filtered.length === 0 || batchTransferBusy}
+                onClick={batchTransferPackets}
+                title={
+                  selectedRows.length > 0
+                    ? "Generate Transfer Packets for the selected violations"
+                    : "Generate Transfer Packets for every matched violation in view"
+                }
+              >
+                {batchTransferBusy
+                  ? "Building…"
+                  : selectedRows.length > 0
+                    ? "🧾 Batch Transfer Packets"
+                    : "🧾 Batch Transfer Packets (all)"}
               </Button>
             </div>
           )}
@@ -1851,6 +1974,51 @@ function ViolationsPage() {
           }}
         />
       )}
+
+      <Dialog
+        open={!!batchTransferReport}
+        onOpenChange={(o) => !o && setBatchTransferReport(null)}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Batch Transfer Packet — Summary</DialogTitle>
+          </DialogHeader>
+          {batchTransferReport && (
+            <div className="space-y-3 text-sm">
+              <div className="flex gap-3">
+                <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                  ✓ {batchTransferReport.succeeded} succeeded
+                </Badge>
+                {batchTransferReport.failed > 0 && (
+                  <Badge variant="destructive">
+                    ✗ {batchTransferReport.failed} failed
+                  </Badge>
+                )}
+              </div>
+              {batchTransferReport.failures.length > 0 ? (
+                <div className="rounded-md border p-3">
+                  <div className="mb-2 font-medium">Failed / skipped:</div>
+                  <ul className="space-y-1 text-xs">
+                    {batchTransferReport.failures.map((f) => (
+                      <li key={f.id} className="flex justify-between gap-3">
+                        <span className="font-mono">{f.id}</span>
+                        <span className="text-destructive">{f.reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">
+                  All eligible violations generated a Transfer Packet successfully.
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setBatchTransferReport(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

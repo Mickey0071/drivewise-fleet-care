@@ -1423,6 +1423,39 @@ export type Database = {
         }
         Relationships: []
       }
+      packet_settings: {
+        Row: {
+          created_at: string
+          default_authority: string
+          id: string
+          signature_url: string | null
+          signer_company: string
+          signer_name: string
+          signer_title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_authority?: string
+          id?: string
+          signature_url?: string | null
+          signer_company?: string
+          signer_name?: string
+          signer_title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_authority?: string
+          id?: string
+          signature_url?: string | null
+          signer_company?: string
+          signer_name?: string
+          signer_title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       part_inquiries: {
         Row: {
           created_at: string
@@ -3298,6 +3331,8 @@ export type Database = {
           submitted_to_authority_at: string | null
           total_amount: number
           transfer_confirmed_at: string | null
+          transfer_packet_generated_at: string | null
+          transfer_packet_url: string | null
           type: string
           updated_at: string
           vehicle_id: string
@@ -3362,6 +3397,8 @@ export type Database = {
           submitted_to_authority_at?: string | null
           total_amount?: number
           transfer_confirmed_at?: string | null
+          transfer_packet_generated_at?: string | null
+          transfer_packet_url?: string | null
           type?: string
           updated_at?: string
           vehicle_id: string
@@ -3426,6 +3463,8 @@ export type Database = {
           submitted_to_authority_at?: string | null
           total_amount?: number
           transfer_confirmed_at?: string | null
+          transfer_packet_generated_at?: string | null
+          transfer_packet_url?: string | null
           type?: string
           updated_at?: string
           vehicle_id?: string
