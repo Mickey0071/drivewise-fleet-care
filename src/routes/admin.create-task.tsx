@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Plus, X, Loader2, Send, Save, Trash2 } from "lucide-react";
+import { Plus, X, Loader2, Send, Save, Trash2, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/app/PageHeader";
@@ -12,11 +12,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { vehicles, activeVehicles, drivers } from "@/lib/mock/data";
-import { useStoreVersion } from "@/lib/mock/store";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { vehicles, activeVehicles, drivers, rentals } from "@/lib/mock/data";
+import { addMaintenance, useStoreVersion } from "@/lib/mock/store";
 import { createRunnerTask } from "@/lib/runner-tasks.functions";
 import { createRmCardLink } from "@/lib/rm-cards.functions";
 import { listRunners, saveRunner, deleteRunner, type SavedRunner } from "@/lib/runners.functions";
+import { listMechanics, saveMechanic, type SavedMechanic } from "@/lib/mechanics.functions";
+import { createMechanicJob } from "@/lib/mechanic-jobs.functions";
 import { computeScheduledItems } from "@/lib/maintenance-utils";
 import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 
