@@ -83,6 +83,7 @@ import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminPaymentReconciliationRouteImport } from './routes/admin.payment-reconciliation'
 import { Route as AdminPartsRouteImport } from './routes/admin.parts'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
+import { Route as AdminMechanicsRouteImport } from './routes/admin.mechanics'
 import { Route as AdminMalibuPlateReviewRouteImport } from './routes/admin.malibu-plate-review'
 import { Route as AdminMaintenanceNotificationsRouteImport } from './routes/admin.maintenance-notifications'
 import { Route as AdminImportLegacyRouteImport } from './routes/admin.import-legacy'
@@ -481,6 +482,11 @@ const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
   path: '/admin/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminMechanicsRoute = AdminMechanicsRouteImport.update({
+  id: '/admin/mechanics',
+  path: '/admin/mechanics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminMalibuPlateReviewRoute = AdminMalibuPlateReviewRouteImport.update({
   id: '/admin/malibu-plate-review',
   path: '/admin/malibu-plate-review',
@@ -673,6 +679,7 @@ export interface FileRoutesByFullPath {
   '/admin/import-legacy': typeof AdminImportLegacyRoute
   '/admin/maintenance-notifications': typeof AdminMaintenanceNotificationsRoute
   '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
+  '/admin/mechanics': typeof AdminMechanicsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
@@ -775,6 +782,7 @@ export interface FileRoutesByTo {
   '/admin/import-legacy': typeof AdminImportLegacyRoute
   '/admin/maintenance-notifications': typeof AdminMaintenanceNotificationsRoute
   '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
+  '/admin/mechanics': typeof AdminMechanicsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
@@ -878,6 +886,7 @@ export interface FileRoutesById {
   '/admin/import-legacy': typeof AdminImportLegacyRoute
   '/admin/maintenance-notifications': typeof AdminMaintenanceNotificationsRoute
   '/admin/malibu-plate-review': typeof AdminMalibuPlateReviewRoute
+  '/admin/mechanics': typeof AdminMechanicsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/parts': typeof AdminPartsRoute
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
@@ -982,6 +991,7 @@ export interface FileRouteTypes {
     | '/admin/import-legacy'
     | '/admin/maintenance-notifications'
     | '/admin/malibu-plate-review'
+    | '/admin/mechanics'
     | '/admin/notifications'
     | '/admin/parts'
     | '/admin/payment-reconciliation'
@@ -1084,6 +1094,7 @@ export interface FileRouteTypes {
     | '/admin/import-legacy'
     | '/admin/maintenance-notifications'
     | '/admin/malibu-plate-review'
+    | '/admin/mechanics'
     | '/admin/notifications'
     | '/admin/parts'
     | '/admin/payment-reconciliation'
@@ -1186,6 +1197,7 @@ export interface FileRouteTypes {
     | '/admin/import-legacy'
     | '/admin/maintenance-notifications'
     | '/admin/malibu-plate-review'
+    | '/admin/mechanics'
     | '/admin/notifications'
     | '/admin/parts'
     | '/admin/payment-reconciliation'
@@ -1289,6 +1301,7 @@ export interface RootRouteChildren {
   AdminImportLegacyRoute: typeof AdminImportLegacyRoute
   AdminMaintenanceNotificationsRoute: typeof AdminMaintenanceNotificationsRoute
   AdminMalibuPlateReviewRoute: typeof AdminMalibuPlateReviewRoute
+  AdminMechanicsRoute: typeof AdminMechanicsRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminPartsRoute: typeof AdminPartsRoute
   AdminPaymentReconciliationRoute: typeof AdminPaymentReconciliationRoute
@@ -1859,6 +1872,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminNotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/mechanics': {
+      id: '/admin/mechanics'
+      path: '/admin/mechanics'
+      fullPath: '/admin/mechanics'
+      preLoaderRoute: typeof AdminMechanicsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/malibu-plate-review': {
       id: '/admin/malibu-plate-review'
       path: '/admin/malibu-plate-review'
@@ -2117,6 +2137,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminImportLegacyRoute: AdminImportLegacyRoute,
   AdminMaintenanceNotificationsRoute: AdminMaintenanceNotificationsRoute,
   AdminMalibuPlateReviewRoute: AdminMalibuPlateReviewRoute,
+  AdminMechanicsRoute: AdminMechanicsRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminPartsRoute: AdminPartsRoute,
   AdminPaymentReconciliationRoute: AdminPaymentReconciliationRoute,

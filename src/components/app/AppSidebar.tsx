@@ -229,6 +229,7 @@ const primaryGroups: Group[] = [
       { title: "Staff Directory", url: "/admin/users", icon: UsersRound, roles: ALL_ROLES },
       { title: "Create Task", url: "/admin/create-task", icon: ClipboardList, roles: ALL_ROLES },
       { title: "Runner Dispatch", url: "/admin/tasks", icon: ClipboardList, roles: ALL_ROLES },
+      { title: "Mechanics", url: "/admin/mechanics", icon: Wrench, roles: ALL_ROLES },
     ],
   },
   {
@@ -255,6 +256,7 @@ const adminItems: Item[] = [
   { title: "Repairs", url: "/repairs", icon: Wrench, roles: ["admin"] },
   { title: "Create Task", url: "/admin/create-task", icon: ClipboardList, roles: ["admin"] },
   { title: "Runner Tasks", url: "/admin/tasks", icon: ClipboardList, roles: ["admin"] },
+  { title: "Mechanics", url: "/admin/mechanics", icon: Wrench, roles: ["admin"] },
   { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ["admin"] },
   { title: "Customers", url: "/drivers", icon: Users, roles: ["admin"] },
   { title: "Pending Agreements", url: "/pending-agreements", icon: FileSignature, roles: ["admin", "va"] },

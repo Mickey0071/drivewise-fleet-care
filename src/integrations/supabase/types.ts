@@ -1354,6 +1354,36 @@ export type Database = {
         }
         Relationships: []
       }
+      mechanics: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          phone: string
+          shop: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          phone: string
+          shop?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string
+          shop?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           created_at: string
@@ -3018,6 +3048,7 @@ export type Database = {
           next_service_due: string | null
           notes: string | null
           plate: string
+          preferred_mechanic_id: string | null
           registration_expiry: string | null
           repo_date: string | null
           repo_location: string | null
@@ -3064,6 +3095,7 @@ export type Database = {
           next_service_due?: string | null
           notes?: string | null
           plate: string
+          preferred_mechanic_id?: string | null
           registration_expiry?: string | null
           repo_date?: string | null
           repo_location?: string | null
@@ -3110,6 +3142,7 @@ export type Database = {
           next_service_due?: string | null
           notes?: string | null
           plate?: string
+          preferred_mechanic_id?: string | null
           registration_expiry?: string | null
           repo_date?: string | null
           repo_location?: string | null
@@ -3128,7 +3161,15 @@ export type Database = {
           weekly_rate?: number
           year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_preferred_mechanic_id_fkey"
+            columns: ["preferred_mechanic_id"]
+            isOneToOne: false
+            referencedRelation: "mechanics"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vendors: {
         Row: {

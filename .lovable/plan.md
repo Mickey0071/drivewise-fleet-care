@@ -1,49 +1,56 @@
-## Goal
+## Add Mechanic assignee to Create-Task + saved mechanic list
 
-Fix the empty "Runner" dropdown on the **Return Vehicle → Send for Inspection** flow, let you add and save a runner's name and phone right there, SMS them the inspection link, and add an oil-change item to the checklist.
+Scope is large but most infrastructure already exists — `mechanic_jobs`, `sendMechanicJob` SMS, `/mechanic-job/$token` submit flow, `repair_history`, and the Repair History tab on the vehicle detail page. This plan wires Create-Task into that pipeline and fills the small gaps.
 
-## Answering "have you added a mechanic runner checklist?"
+### 1. Saved mechanics table (new)
+Migration `mechanics` table + `vehicle_preferred_mechanic_id` on `vehicles`:
+```
+mechanics(id uuid pk, name text, phone text, shop text, is_active bool, created_at, updated_at)
+```
+GRANT to authenticated + service_role, RLS: any authenticated user can read/write (matches `runners` table pattern).
 
-**No.** The only checklist that exists is the vehicle inspection checklist in `src/lib/checklist-items.ts` (Before Starting / Exterior / Interior / Test Drive) used by the runner post-return inspection. There's no separate mechanic-runner checklist yet. I can add one in a follow-up if you want — say the word and I'll draft sections (e.g. Fluids, Belts/Hoses, Brakes, Suspension, Under-Body, Diagnostics/OBD) tied to a `mechanic` task type. Not included in this plan since you didn't ask for it explicitly.
+New server fns in `src/lib/mechanics.functions.ts`: `listMechanics`, `saveMechanic`, `deleteMechanic`, `setPreferredMechanic(vehicleId, mechanicId)`.
 
-## Why the dropdown is empty
+### 2. `/admin/mechanics` route (new)
+Simple management screen mirroring the runner list UX: table + inline add form (Name / Phone / Shop / Active). Add link in admin nav.
 
-`ReturnVehicleDialog` currently pulls runners from `user_roles` (role = `runner`) joined to `profiles`. You have no users with that role, so the list is empty. Meanwhile the app already has a **saved runners table** (`runners` — name + phone, used by "Send RM Task") with `listRunners` / `saveRunner` server fns. We'll switch this dialog to use that same source so the runner you already saved in one place shows up everywhere.
+### 3. Create-Task page — add Mechanic tab
+`src/routes/admin.create-task.tsx` gets a top-level `[Runner] [Mechanic]` toggle. When Mechanic is active, show a new form:
 
-## Behavior
+- **Vehicle**: fleet dropdown (pre-fills from `?vehicleId=` query param)
+- **Mechanic**: dropdown of `listMechanics()` results + "+ Add new mechanic" inline (Name/Phone/Shop, persisted via `saveMechanic`)
+- **Checklist** (16 pre-built items shown in the request) as checkboxes + `[+ Add custom item]` free-text row
+- **Urgency**: radio Normal/Urgent/ASAP
+- **Notes to mechanic**: textarea
+- **Swap vehicle** toggle: if the vehicle has an active rental, show current renter name and a dropdown to pick a replacement `available` vehicle. On send, updates that rental's `vehicle_id` (writes a note in rental history).
+- Submit calls existing `createMechanicJob` with `checklistItems` = selected items, `issueDescription` = urgency + checklist summary, `additionalContext` = notes.
 
-### Return Vehicle → Send for Inspection
-- Runner select now lists rows from the `runners` table (alphabetical, name + last-4 of phone).
-- Below the select: **"+ Add new runner"** toggle reveals two inputs (Name, Phone with `(xxx) xxx-xxxx` mask) and a **Save** button. Save calls `saveRunner` (upserts by phone), refreshes the list, auto-selects the new runner. Same UX as elsewhere in the app.
-- **"Create Inspection & Return"** now sends the inspection link to the selected runner's phone via SMS. Vehicle → `inspection` status, rental → `returned`, runner_task created (with `runner_id = null`, name/phone stored in `details`).
+Urgency prefix is prepended to the SMS body (`🚨 URGENT: …` / `🚨🚨 ASAP: …`) — smallest possible change to `mechanic-jobs.functions.ts`: accept optional `urgency` in `createMechanicJob` input and inline into the SMS message.
 
-### Inspection checklist
-- Add an **Oil change** row to the "Before Starting Car" section in `src/lib/checklist-items.ts`:
-  - `{ key: 'oil_change_due', label: 'Oil change — check sticker / mileage, flag if due' }`
-- The existing `oil_level` row stays.
+### 4. `/mechanic-job/$token` — verify + minor polish
+Already renders checklist as Pass/Fail/N/A per item with notes, plus parts (name/qty/price/labor) and labour cost, and calls `submitMechanicJob`. Confirmed adequate for the checklist workflow — no changes needed unless the audit surfaces a gap.
 
-## Implementation
+### 5. Approve → repair_history + expenses (verify + fill gap)
+On mechanic submission, `submitMechanicJob` already writes `parts_cost` / `labor_cost` / `parts_list` back to the linked `maintenance` row and SMSes admin an Accept/Decline link. The existing `/repair/accept/$token` handler (`repair-actions.functions.ts`) is what creates `repair_history` and the auto-posted expense on completion.
 
-### 1. `src/lib/tasks.functions.ts` — `createReturnInspection`
-Change input from `{ runnerId }` to `{ runnerName, runnerPhone }`. Validate both (name 1–120 chars, phone digits ≥ 10). Insert `runner_tasks` with `runner_id: null` and `details.runner_name` / `details.runner_phone` alongside the existing fields. SMS uses the provided phone. Everything else (rental → returned, vehicle → inspection, return URL) unchanged.
+Gap: on **Accept**, the current flow doesn't complete the maintenance row automatically — verify and, if needed, add a "Complete + post to repair history" step so approval creates the `repair_history` row and expense row in one action (matching the existing pattern in `repairs.tsx`).
 
-### 2. `src/components/app/ReturnVehicleDialog.tsx`
-- Replace the `user_roles`+`profiles` fetch with `useServerFn(listRunners)` on mount.
-- State: `runnerId` → `selectedRunnerId` (row id from `runners` table), plus `adding`, `newName`, `newPhone`, `savingNew`.
-- Inline "+ Add new runner" block with Name/Phone inputs + Save button calling `useServerFn(saveRunner)`; on success prepend to list and select.
-- `sendForInspection`: look up name+phone from selected row, pass `{ runnerName, runnerPhone }` to `createReturnInspection`. Existing toast + refresh flow unchanged.
-- Fall back to "No saved runners yet — add one below" when the list is empty.
+### 6. Repair History tab on vehicle
+Already exists on `fleet.$vehicleId.tsx` and pulls from `repair_history`. No changes.
 
-### 3. `src/lib/checklist-items.ts`
-Append the new `oil_change_due` item to the **Before Starting Car** section.
+### Files to touch
+- **New**: `supabase/migrations/<new>.sql` (mechanics table + vehicle FK), `src/lib/mechanics.functions.ts`, `src/routes/admin.mechanics.tsx`
+- **Edit**: `src/routes/admin.create-task.tsx` (add Mechanic tab + form), `src/lib/mechanic-jobs.functions.ts` (accept `urgency`), possibly `src/lib/repair-actions.functions.ts` (auto-complete on accept)
+- **Verify only**: `src/routes/mechanic-job.$token.tsx`, `src/routes/fleet.$vehicleId.tsx` (Repair History tab), `src/routes/repairs.tsx` (mechanic jobs tab already lists submissions)
 
-## Non-goals
-- No changes to `startReturnInspection` (public inspection link), `SendRmTaskDialog`, other dialogs, or any other route.
-- No new mechanic-runner checklist in this plan (answered above).
-- No schema migration — `runner_tasks.runner_id` is already nullable.
+### Out of scope (say the word to add later)
+- Automatic maintenance-schedule reset per-item (needs a mapping table of checklist item → recurring service). Currently we complete the maintenance ticket; per-item recurrence reset can be a follow-up.
+- Fleet card totals: already derived from `repair_history` + expenses, so they update automatically once the repair row is written.
 
-## Verification
-1. Open Rentals → Return a vehicle → Send for Inspection: dropdown now lists saved runners (from the same list as the RM task flow).
-2. Click **+ Add new runner**, enter a name and phone, Save → it appears selected in the dropdown and the row is persisted so it appears next time.
-3. Click **Create Inspection & Return** → toast "Inspection sent to <name> by SMS", rental returns, vehicle is in `inspection`.
-4. Open the runner's SMS link → checklist loads with the new **"Oil change"** row inside "Before Starting Car".
+### Order of operations
+1. Migration for `mechanics` table (needs approval)
+2. `mechanics.functions.ts` + `admin.mechanics.tsx`
+3. Create-Task Mechanic tab + wire `createMechanicJob` with urgency
+4. Verify approve flow writes repair_history + expense; patch if not.
+
+Ready to proceed?
