@@ -241,6 +241,66 @@ function PacketSettingsPage() {
           {busy ? "Saving…" : "Save settings"}
         </Button>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Default Packet Layout</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Sets the default order and contents of Transfer of Responsibility packets. Batch Generate
+            uses this layout; individual packets start from this layout in the Packet Builder.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-md border">
+              <div className="border-b bg-muted/30 px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
+                Available
+              </div>
+              <ul className="space-y-1 p-2">
+                {remaining.length === 0 && (
+                  <li className="p-2 text-xs text-muted-foreground">All items in layout.</li>
+                )}
+                {remaining.map((k) => (
+                  <li key={k} className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm">
+                    <span>{DOC_LABELS[k]}</span>
+                    <Button size="sm" variant="ghost" onClick={() => addLayout(k)}>
+                      Add →
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-md border">
+              <div className="border-b bg-muted/30 px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">
+                Default Layout ({layout.length})
+              </div>
+              <ol className="space-y-1 p-2">
+                {layout.length === 0 && (
+                  <li className="p-2 text-xs text-muted-foreground">No documents.</li>
+                )}
+                {layout.map((k, i) => (
+                  <li key={k} className="flex items-center justify-between rounded-md border px-2 py-1.5 text-sm">
+                    <span className="flex items-center gap-2">
+                      <span className="w-5 text-xs text-muted-foreground">{i + 1}.</span>
+                      {DOC_LABELS[k as PacketDocKind] ?? k}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => moveLayout(k, -1)} disabled={i === 0}>↑</Button>
+                      <Button size="sm" variant="ghost" onClick={() => moveLayout(k, 1)} disabled={i === layout.length - 1}>↓</Button>
+                      <Button size="sm" variant="ghost" onClick={() => removeLayout(k)}>✕</Button>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={onSave} disabled={busy}>
+              {busy ? "Saving…" : "Save default layout"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
