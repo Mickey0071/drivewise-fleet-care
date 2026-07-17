@@ -338,6 +338,8 @@ export function AppSidebar() {
   const search = (items: Item[]) =>
     q ? items.filter(i => i.title.toLowerCase().includes(q)) : items;
 
+  const { shortcuts, isPinned, togglePin } = useSidebarShortcuts();
+
   // Per-user sidebar arrangement (order + lock), synced across devices.
   const { layout, save } = useSidebarLayout();
   const [editing, setEditing] = useState(false);
@@ -368,21 +370,52 @@ export function AppSidebar() {
     <SidebarMenu>
       {items.map((item) => (
         <SidebarMenuItem key={item.title}>
-          <SidebarMenuButton asChild isActive={isActive(item.url)}>
-            <Link to={item.url} className="flex items-center gap-3">
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="flex-1">{item.title}</span>}
-              {!collapsed && item.url === "/runner-reports" && unread > 0 && (
-                <Badge variant="default" className="h-5 px-1.5 text-[10px]">{unread}</Badge>
-              )}
-              {!collapsed && item.url === "/pending-agreements" && pendingReviewCount > 0 && (
-                <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">{pendingReviewCount}</Badge>
-              )}
-              {!collapsed && item.url === "/admin/waitlist" && waitlistNew > 0 && (
-                <Badge className="h-5 bg-primary px-1.5 text-[10px] text-primary-foreground">{waitlistNew}</Badge>
-              )}
-            </Link>
-          </SidebarMenuButton>
+          <ContextMenu>
+            <ContextMenuTrigger asChild>
+              <div className="group/link relative">
+                <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                  <Link to={item.url} className="flex items-center gap-3">
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span className="flex-1">{item.title}</span>}
+                    {!collapsed && item.url === "/runner-reports" && unread > 0 && (
+                      <Badge variant="default" className="h-5 px-1.5 text-[10px]">{unread}</Badge>
+                    )}
+                    {!collapsed && item.url === "/pending-agreements" && pendingReviewCount > 0 && (
+                      <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">{pendingReviewCount}</Badge>
+                    )}
+                    {!collapsed && item.url === "/admin/waitlist" && waitlistNew > 0 && (
+                      <Badge className="h-5 bg-primary px-1.5 text-[10px] text-primary-foreground">{waitlistNew}</Badge>
+                    )}
+                  </Link>
+                </SidebarMenuButton>
+                {!collapsed && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault(); e.stopPropagation();
+                      togglePin({ url: item.url, title: item.title, iconKey: iconKeyOf(item.icon) });
+                    }}
+                    className={`absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground ${isPinned(item.url) ? "opacity-100" : "opacity-0 group-hover/link:opacity-100"}`}
+                    aria-label={isPinned(item.url) ? `Unpin ${item.title}` : `Pin ${item.title}`}
+                    title={isPinned(item.url) ? "Unpin from Shortcuts" : "Pin to Shortcuts"}
+                  >
+                    <Star className={`h-3.5 w-3.5 ${isPinned(item.url) ? "fill-current text-amber-500" : ""}`} />
+                  </button>
+                )}
+              </div>
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+              <ContextMenuItem
+                onSelect={() => togglePin({ url: item.url, title: item.title, iconKey: iconKeyOf(item.icon) })}
+              >
+                {isPinned(item.url) ? (
+                  <><PinOff className="mr-2 h-4 w-4" /> Unpin from Shortcuts</>
+                ) : (
+                  <><Pin className="mr-2 h-4 w-4" /> Pin to Shortcuts</>
+                )}
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
         </SidebarMenuItem>
       ))}
     </SidebarMenu>
@@ -395,6 +428,12 @@ export function AppSidebar() {
   // is a draggable block so a folder can be dropped anywhere in the sidebar.
   type Block = { group: Group; items: Item[] };
   const blocksRaw: Block[] = [
+    ...(shortcuts.length > 0 ? [{
+      group: { key: "shortcuts", label: "Shortcuts", icon: Star, defaultOpen: true, items: [] } as Group,
+      items: shortcuts.map((s): Item => ({
+        title: s.title, url: s.url, icon: iconFromKey(s.iconKey), roles: ALL_ROLES,
+      })).filter(i => q ? i.title.toLowerCase().includes(q) : true),
+    }] : []),
     {
       group: { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, defaultOpen: true, items: [] },
       items: search(filter(adminItems)).filter(i => i.url === "/"),
