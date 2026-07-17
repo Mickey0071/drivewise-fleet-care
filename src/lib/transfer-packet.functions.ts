@@ -389,13 +389,19 @@ async function buildCoverPdf(ctx: CoverCtx): Promise<Uint8Array> {
 // ---------------------------------------------------------------------------
 
 async function loadCtx(violationId: string): Promise<
-  | { ok: true; ctx: CoverCtx; agreementUrl: string }
+  | {
+      ok: true;
+      ctx: CoverCtx;
+      agreementUrl: string | null;
+      docUrls: Partial<Record<PacketDocKind, string>>;
+      defaultLayout: string[];
+    }
   | { ok: false; errorCode: NonNullable<TransferPacketResult["errorCode"]>; error: string }
 > {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const settingsRes = await supabaseAdmin
     .from("packet_settings")
-    .select("signer_name, signer_title, signer_company, signature_url, default_authority")
+    .select("signer_name, signer_title, signer_company, signature_url, default_authority, default_packet_layout")
     .eq("id", "default")
     .maybeSingle();
   const s = settingsRes.data ?? ({} as Record<string, unknown>);
@@ -405,6 +411,7 @@ async function loadCtx(violationId: string): Promise<
     signerCompany: (s.signer_company as string) ?? "Camauto Rentals / Rentalprise LLC",
     signatureUrl: (s.signature_url as string) ?? null,
     defaultAuthority: (s.default_authority as string) ?? "NJ E-ZPass",
+    defaultPacketLayout: normalizeLayout((s as Record<string, unknown>).default_packet_layout),
   };
 
   const { data: v, error: vErr } = await supabaseAdmin
@@ -438,7 +445,9 @@ async function loadCtx(violationId: string): Promise<
     v.rental_id
       ? supabaseAdmin
           .from("rentals")
-          .select("id, start_date, end_date, agreement_pdf_url")
+          .select(
+            "id, start_date, end_date, agreement_pdf_url, license_image_url, selfie_image_url, client_signature_url, receipt_pdf_url",
+          )
           .eq("id", v.rental_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -465,9 +474,6 @@ async function loadCtx(violationId: string): Promise<
   const agreementUrl =
     (rental?.agreement_pdf_url as string | null) ?? (legacy?.agreement_pdf_url as string | null) ?? null;
 
-  if (!agreementUrl) {
-    return { ok: false, errorCode: "no_agreement", error: "No rental agreement on file for this violation" };
-  }
   if (!rentalStart || !rentalEnd) {
     return { ok: false, errorCode: "no_dates", error: "Rental period is incomplete — cannot validate date" };
   }
@@ -538,7 +544,15 @@ async function loadCtx(violationId: string): Promise<
     settings,
   };
 
-  return { ok: true, ctx, agreementUrl };
+  const docUrls: Partial<Record<PacketDocKind, string>> = {};
+  if (agreementUrl) docUrls.agreement = agreementUrl;
+  if (rental?.license_image_url) docUrls.license = String(rental.license_image_url);
+  if (rental?.selfie_image_url) docUrls.selfie = String(rental.selfie_image_url);
+  if (rental?.client_signature_url) docUrls.signature = String(rental.client_signature_url);
+  if (rental?.receipt_pdf_url) docUrls.receipt = String(rental.receipt_pdf_url);
+  if (v.photo_url) docUrls.violation_photo = String(v.photo_url);
+
+  return { ok: true, ctx, agreementUrl, docUrls, defaultLayout: settings.defaultPacketLayout };
 }
 
 // ---------------------------------------------------------------------------
