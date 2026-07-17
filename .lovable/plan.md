@@ -1,36 +1,52 @@
-# Photo auto-fill for parts tickets
+## Goal
 
-Add a "Scan ticket" photo upload to both parts entry flows. The image is sent to Lovable AI (Gemini vision), which reads the parts receipt / invoice / handwritten ticket and fills the form fields automatically. User can edit before saving.
+In **Violations → Bulk Upload → Manual Match** dialog, when the admin picks a candidate renter, if that rental has a signed agreement, let them:
 
-## Where it shows up
+1. **Download the signed agreement** immediately (one click)
+2. **Match + Create Ticket + Download Dispute Packet** in a single action — commits the ezpass item → real `violations` ticket → returns a ZIP with cover sheet + agreement + license + selfie + receipt + toll photo
 
-1. **Admin Parts page** (`/admin/parts`) — "Scan ticket" button above the form. Auto-fills: part name, part cost, labor cost, supplier, notes, and (best-effort) technician.
-2. **Mechanic diagnostic checklist** (`/mechanic-job/$token`, "Parts Needed" section) — "Scan parts ticket" button. Auto-fills the parts list: one row per part with name, qty, part $, labor $.
+## Current state
 
-## How it works
+- Manual match today only stages the row on `ezpass_batch_items` (`manualMatchEzpassItem`); the real `violations` row isn't created until the whole batch is approved via `approveEzpassBatch`.
+- `downloadViolationPacket` (in `src/lib/violation-packet.functions.ts`) already builds the full dispute packet ZIP but requires an existing `violations.id`.
+- The dialog already shows an `Agreement on file` badge per candidate but has no download or packet action; the top-bar "Generate Dispute Packet" is a "coming soon" stub.
 
-1. User taps "Scan ticket" → camera/file picker (reuse the existing `PhotoCapture` component pattern from waitlist/violations).
-2. Client compresses the image (existing `image-compress.ts`) and sends a data URL to a new server function.
-3. Server function uploads the photo to a new private `parts-tickets` storage bucket and calls Lovable AI (`google/gemini-2.5-flash`) with a strict JSON schema:
-   - Admin variant: `{ part_name, part_cost, labor_cost, supplier, technician, notes, confidence }`
-   - Mechanic variant: `{ parts: [{ name, qty, price, labor }], confidence, notes }`
-4. Response fields populate the form. Empty/unreadable fields are left blank. A small "Scanned — review before saving" banner appears with the confidence and a "Clear" button. All fields remain editable.
-5. Nothing auto-submits.
+## Changes
 
-## Files
+### 1. New server fn: `matchAndCommitEzpassItem` in `src/lib/ezpass.functions.ts`
 
-- **New**: `src/lib/parts-photo.functions.ts` — two server functions (`analyzePartsTicketAdmin`, `analyzePartsTicketMechanic`), both `requireSupabaseAuth` for the admin one; the mechanic one is public and validated by the existing `$token` in the request (added as an input, checked against `mechanic_jobs`).
-- **Migration**: create private `parts-tickets` storage bucket (staff-only read via signed URLs, same pattern as `violation-photos`).
-- **Edit** `src/routes/admin.parts.tsx` — add scan button + handler that sets the existing `partName`, `partCost`, `laborCost`, `supplier`, `notes`, technician state.
-- **Edit** `src/routes/mechanic-job.$token.tsx` — add scan button in the "Parts Needed" header that replaces/extends the `parts` array with scanned rows (append, don't wipe).
-- **Reuse**: existing `PhotoCapture`-style capture UI (or a small inline `<input type="file" accept="image/*" capture="environment">`) and `image-compress.ts`.
+Auth-only. Input: `{ itemId, rentalId }`. Behavior:
+- Runs the same match logic as `manualMatchEzpassItem` (updates the batch item)
+- Then upserts a single `violations` row for that item (mirroring the per-item logic already in `approveEzpassBatch`: type, plate, amount/fee/total, date_issued, description/notes, driver_id, vehicle_id, rental_id, original doc url from the batch, status = `pending` / `matched` stage)
+- Marks the batch item as `committed` (new nullable `committed_violation_id` column already implied by the workflow, or reuse existing `violation_id` field if present — verify at build time and add a small migration only if the column is missing)
+- Returns `{ violationId }`
 
-## Guardrails
+Recompute batch counts afterwards.
 
-- Suppliers: only accept a supplier value if it matches (case-insensitive) an existing row in `parts_suppliers`; otherwise put the raw name into `notes` and leave supplier blank so the admin picks.
-- Technicians: same — only preselect if it matches a known technician name; otherwise leave blank.
-- Numeric fields default to 0 when unreadable.
-- 10 MB size cap, jpeg/png/webp only, mirroring `violation-photo.functions.ts`.
-- Errors from the AI gateway (402/429) surface as a toast; the form stays usable for manual entry.
+### 2. New server fn: `getRentalAgreementUrl` in `src/lib/violations-workflow.functions.ts`
 
-No changes to submit logic, totals, DB schema for maintenance/parts, or other screens.
+Auth-only. Input `{ rentalId }`. Returns `{ agreementUrl, filename }` from `rentals.agreement_pdf_url` (or the legacy equivalent). Used for the "Download Agreement" quick action so we don't need a full packet build.
+
+### 3. UI changes in `src/routes/violations_.bulk-upload.tsx` — `ManualMatchDialog`
+
+For each candidate card where `r.hasAgreement === true` and it's a Live (non-migration) rental, replace the single **Match** button with a small action cluster:
+
+- **Download Agreement** (outline) — calls `getRentalAgreementUrl` and triggers a browser download
+- **Match + Dispute Packet** (primary emerald) — calls `matchAndCommitEzpassItem` → then `downloadViolationPacket({ violationId })` → decodes base64 → triggers ZIP download → toasts "Ticket created + packet downloaded" → closes dialog and calls `onMatched()`
+- **Match only** (ghost) — the existing quick-match path (no packet)
+
+Legacy/migrated rentals keep their existing Send/Resend Agreement flow unchanged.
+
+The top-bar "Generate Dispute Packet" stub stays as-is for the pre-selection state (still coming-soon), because a packet requires a chosen rental.
+
+### 4. No changes to
+
+- `approveEzpassBatch` (still commits every remaining un-committed item at batch approval; already-committed items are skipped by checking the new committed flag)
+- The existing `manualMatchEzpassItem` (kept for the plain "Match only" path)
+- Any renter-facing flows, agreement generation, or dispute recording elsewhere
+
+## Verification
+
+- Open a batch with a matchable toll, click Manual Match, pick a renter that has `Agreement on file`
+- Click **Download Agreement** → PDF downloads
+- Click **Match + Dispute Packet** → toast, ZIP downloads containing cover sheet + agreement + license + selfie + receipt + toll photo, dialog closes, batch item shows Matched, a new row appears in `violations` linked to that rental, and approving the batch later does not double-create it
