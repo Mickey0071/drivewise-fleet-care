@@ -1033,14 +1033,49 @@ function ManualMatchDialog({
                         </Button>
                       )
                     ) : (
-                      <Button
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => confirm(r.id)}
-                        className="bg-emerald-600 hover:bg-emerald-700"
-                      >
-                        Match
-                      </Button>
+                      <div className="flex flex-col items-end gap-1">
+                        {r.hasAgreement ? (
+                          <>
+                            <Button
+                              size="sm"
+                              disabled={busy}
+                              onClick={() => matchAndPacket(r.id)}
+                              className="bg-emerald-600 hover:bg-emerald-700"
+                            >
+                              <ShieldX className="mr-1 h-4 w-4" />
+                              Match + Dispute Packet
+                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={busy}
+                                onClick={() => downloadAgreement(r.id)}
+                              >
+                                <Download className="mr-1 h-4 w-4" />
+                                Agreement
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={busy}
+                                onClick={() => confirm(r.id)}
+                              >
+                                Match only
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <Button
+                            size="sm"
+                            disabled={busy}
+                            onClick={() => confirm(r.id)}
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                          >
+                            Match
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
