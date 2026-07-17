@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
   Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature, Bell, CalendarPlus, BarChart3, DatabaseBackup, Package, Upload, Database,
-  Gauge, ChevronRight, Handshake, GripVertical, Lock, LockOpen,
+  Gauge, ChevronRight, Handshake, GripVertical, Lock, LockOpen, Star, Pin, PinOff,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
@@ -31,9 +31,30 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useSidebarLayout, applyOrder } from "@/hooks/use-sidebar-layout";
+import { useSidebarShortcuts, type Shortcut } from "@/hooks/use-sidebar-shortcuts";
+import {
+  ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import type { LucideIcon } from "lucide-react";
 
 type Item = { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] };
 type Group = { key: string; label: string; icon: typeof LayoutDashboard; items: Item[]; defaultOpen?: boolean };
+
+// Registry so pinned shortcuts (stored by icon name) can resolve back to a component.
+const ICON_REGISTRY: Record<string, LucideIcon> = {
+  LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
+  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList,
+  ScrollText, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature,
+  Bell, CalendarPlus, BarChart3, DatabaseBackup, Package, Upload, Database, Gauge,
+  Handshake, Star,
+};
+function iconKeyOf(icon: LucideIcon): string {
+  const found = Object.entries(ICON_REGISTRY).find(([, v]) => v === icon);
+  return found?.[0] ?? "Star";
+}
+function iconFromKey(key: string): LucideIcon {
+  return ICON_REGISTRY[key] ?? Star;
+}
 
 function CollapsibleGroup({
   group, collapsed, items, renderItems,
