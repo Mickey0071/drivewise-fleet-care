@@ -1676,6 +1676,23 @@ function ViolationsPage() {
               >
                 {printBusy ? "Building…" : "🖨️ Print All Agreements"}
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={filtered.length === 0 || batchTransferBusy}
+                onClick={batchTransferPackets}
+                title={
+                  selectedRows.length > 0
+                    ? "Generate Transfer Packets for the selected violations"
+                    : "Generate Transfer Packets for every matched violation in view"
+                }
+              >
+                {batchTransferBusy
+                  ? "Building…"
+                  : selectedRows.length > 0
+                    ? "🧾 Batch Transfer Packets"
+                    : "🧾 Batch Transfer Packets (all)"}
+              </Button>
             </div>
           )}
           {isLoading ? (
