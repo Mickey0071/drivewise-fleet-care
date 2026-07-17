@@ -1240,6 +1240,9 @@ function ViolationsPage() {
   const [bulkOnlineOpen, setBulkOnlineOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const genPacketFn = useServerFn(generateMailPacket);
+  const getAgreementsFn = useServerFn(getMatchedAgreementsForPrint);
+  const bulkStageFn = useServerFn(bulkSetViolationStage);
+  const [printBusy, setPrintBusy] = useState(false);
 
   // Clear selection whenever the active tab changes.
   useEffect(() => {
