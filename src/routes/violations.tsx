@@ -1297,6 +1297,12 @@ function ViolationsPage() {
   const genPacketFn = useServerFn(generateMailPacket);
   const getAgreementsFn = useServerFn(getMatchedAgreementsForPrint);
   const bulkStageFn = useServerFn(bulkSetViolationStage);
+  const batchTransferFn = useServerFn(batchGenerateTransferPackets);
+  const [batchTransferBusy, setBatchTransferBusy] = useState(false);
+  const [batchTransferReport, setBatchTransferReport] = useState<
+    | { succeeded: number; failed: number; failures: Array<{ id: string; reason: string }> }
+    | null
+  >(null);
   const [printBusy, setPrintBusy] = useState(false);
 
   // Clear selection whenever the active tab changes.
