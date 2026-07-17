@@ -81,6 +81,7 @@ import {
 import { getViolationAgreement } from "@/lib/violations-workflow.functions";
 import { attachViolationDocument } from "@/lib/violations-workflow.functions";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
+import { PacketBuilderDialog } from "@/components/app/PacketBuilderDialog";
 import { downloadCSV } from "@/lib/exports";
 
 function readFileAsDataUrl(file: File): Promise<string> {
