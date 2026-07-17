@@ -25,9 +25,45 @@ import { computeScheduledItems } from "@/lib/maintenance-utils";
 import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 
 export const Route = createFileRoute("/admin/create-task")({
-  head: () => ({ meta: [{ title: "Create Runner Task — Camauto Rentals" }] }),
-  component: CreateTaskPage,
+  head: () => ({ meta: [{ title: "Create Task — Camauto Rentals" }] }),
+  component: CreateTaskPageWrapper,
 });
+
+const MECHANIC_CHECKLIST_PRESET: { id: string; label: string }[] = [
+  { id: "oil_change", label: "Oil change" },
+  { id: "tire_rotation", label: "Tire rotation" },
+  { id: "brake_inspection", label: "Brake inspection" },
+  { id: "battery_test", label: "Battery test" },
+  { id: "alignment", label: "Alignment check" },
+  { id: "ac_check", label: "AC check" },
+  { id: "transmission_fluid", label: "Transmission fluid" },
+  { id: "coolant_flush", label: "Coolant flush" },
+  { id: "check_engine", label: "Check engine light diagnosis" },
+  { id: "tire_pressure", label: "Tire pressure check" },
+  { id: "fluid_levels", label: "Fluid levels check" },
+  { id: "belt_inspection", label: "Belt inspection" },
+  { id: "filter_replacement", label: "Filter replacement (air/cabin)" },
+  { id: "spark_plugs", label: "Spark plugs" },
+  { id: "suspension", label: "Suspension check" },
+  { id: "exhaust", label: "Exhaust inspection" },
+];
+
+function CreateTaskPageWrapper() {
+  const [mode, setMode] = useState<"runner" | "mechanic">("runner");
+  return (
+    <div className="mx-auto max-w-2xl space-y-4">
+      <PageHeader title="Create Task" subtitle="Send a task link to a runner or a mechanic by SMS — no login required" />
+      <Tabs value={mode} onValueChange={(v) => setMode(v as "runner" | "mechanic")}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="runner">Runner</TabsTrigger>
+          <TabsTrigger value="mechanic"><Wrench className="mr-1 h-3.5 w-3.5" /> Mechanic</TabsTrigger>
+        </TabsList>
+        <TabsContent value="runner" className="mt-4"><CreateTaskPage /></TabsContent>
+        <TabsContent value="mechanic" className="mt-4"><CreateMechanicTask /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
 
 const TEMPLATES: Record<string, { type: string; items: string[] }> = {
   "Vehicle Pickup": { type: "transport", items: ["Confirm pickup location & contact", "Inspect exterior for damage", "Photograph all four sides", "Check fuel level & mileage", "Collect keys & documents", "Lock vehicle"] },
