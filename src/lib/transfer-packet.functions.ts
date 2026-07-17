@@ -293,12 +293,30 @@ async function buildCoverPdf(ctx: CoverCtx): Promise<Uint8Array> {
   doc.line(left, y, right, y);
   y += 18;
 
-  // Violation Number (large, top)
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.setTextColor(176, 0, 32);
-  doc.text(`Violation #: ${ctx.violation.referenceNumber}`, left, y);
-  y += 26;
+  // Violation Number — extra large with yellow highlight
+  {
+    const label = "VIOLATION #";
+    const value = ctx.violation.referenceNumber || "—";
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(70, 70, 70);
+    doc.text(label, left, y);
+    y += 6;
+    const boxH = 44;
+    const boxY = y;
+    // Yellow highlight background
+    doc.setFillColor(255, 235, 59);
+    doc.rect(left, boxY, right - left, boxH, "F");
+    doc.setDrawColor(200, 160, 0);
+    doc.setLineWidth(1);
+    doc.rect(left, boxY, right - left, boxH, "S");
+    // Big black violation number centered vertically in the box
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(32);
+    doc.setTextColor(0, 0, 0);
+    doc.text(value, left + 12, boxY + boxH - 12);
+    y = boxY + boxH + 16;
+  }
 
   gap(4);
   line("VIOLATION", { bold: true, size: 11 });
