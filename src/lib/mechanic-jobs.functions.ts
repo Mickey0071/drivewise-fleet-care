@@ -31,11 +31,12 @@ async function ensureMaintenanceTicket(data: {
     .maybeSingle();
   if (lookupError) throw new Error(lookupError.message);
   if (existing) return;
+  if (!data.vehicleId) throw new Error("Maintenance ticket was not saved yet. Please try sending the mechanic link again.");
 
   const today = new Date().toISOString().slice(0, 10);
   const { error } = await supabaseAdmin.from("maintenance").insert({
     id: data.maintenanceId,
-    vehicle_id: data.vehicleId ?? null,
+    vehicle_id: data.vehicleId,
     service_type: data.issueDescription || "Mechanic Diagnosis",
     vendor: data.mechanicName,
     date_completed: null,
