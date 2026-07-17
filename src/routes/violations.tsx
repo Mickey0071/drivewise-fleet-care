@@ -1564,6 +1564,15 @@ function ViolationsPage() {
               >
                 🌐 Bulk Online Prep
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={filtered.length === 0 || printBusy}
+                onClick={printAllAgreements}
+                title={selectedRows.length > 0 ? "Print selected agreements" : "Print all agreements on this tab"}
+              >
+                {printBusy ? "Building…" : "🖨️ Print All Agreements"}
+              </Button>
             </div>
           )}
           {isLoading ? (
