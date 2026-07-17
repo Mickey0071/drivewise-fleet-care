@@ -1427,6 +1427,7 @@ export type Database = {
         Row: {
           created_at: string
           default_authority: string
+          default_packet_layout: Json
           id: string
           signature_url: string | null
           signer_company: string
@@ -1437,6 +1438,7 @@ export type Database = {
         Insert: {
           created_at?: string
           default_authority?: string
+          default_packet_layout?: Json
           id?: string
           signature_url?: string | null
           signer_company?: string
@@ -1447,6 +1449,7 @@ export type Database = {
         Update: {
           created_at?: string
           default_authority?: string
+          default_packet_layout?: Json
           id?: string
           signature_url?: string | null
           signer_company?: string

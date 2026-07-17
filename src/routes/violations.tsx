@@ -81,6 +81,7 @@ import {
 import { getViolationAgreement } from "@/lib/violations-workflow.functions";
 import { attachViolationDocument } from "@/lib/violations-workflow.functions";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
+import { PacketBuilderDialog } from "@/components/app/PacketBuilderDialog";
 import { downloadCSV } from "@/lib/exports";
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -809,7 +810,6 @@ function RowActions({
 function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }) {
   const genTransfer = useServerFn(generateLiabilityTransfer);
   const genPacket = useServerFn(generateMailPacket);
-  const genTransferPacket = useServerFn(generateTransferPacket);
   const mark = useServerFn(markViolationStage);
   const readiness = useServerFn(getViolationReadiness);
   const sendRetro = useServerFn(sendViolationRetroLink);
@@ -823,6 +823,7 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
   const [overrideNote, setOverrideNote] = useState(
     "Customer unreachable - proceeding with available info per N.J.S.A. 39:4-138.1",
   );
+  const [builderOpen, setBuilderOpen] = useState(false);
 
   const transferred0 = !!v.liability_transfer_generated_at;
   const { data: status, refetch: refetchStatus } = useQuery({
@@ -881,35 +882,6 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
     }
   };
 
-  const doTransferPacket = async () => {
-    setBusy("transferPacket");
-    try {
-      const res = await genTransferPacket({ data: { violationId: v.id } });
-      if (!res.ok) {
-        toast.error(res.error ?? "Failed to generate Transfer Packet");
-        return;
-      }
-      if (res.base64 && res.filename) {
-        const bin = atob(res.base64);
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = res.filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      }
-      toast.success("Transfer of Responsibility Packet generated");
-      refreshAll();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    } finally {
-      setBusy(null);
-    }
-  };
 
   const doMark = async (stage: "mailed" | "confirmed") => {
     setBusy(stage);
@@ -1049,11 +1021,10 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
       <Button
         size="sm"
         variant="outline"
-        onClick={doTransferPacket}
-        disabled={busy === "transferPacket"}
-        title="Cover page + attached rental agreement, merged into one PDF"
+        onClick={() => setBuilderOpen(true)}
+        title="Choose which documents to include in the Transfer of Responsibility packet"
       >
-        {busy === "transferPacket" ? "Building…" : "📄 Transfer Packet"}
+        📄 Transfer Packet
       </Button>
       {v.transfer_packet_url && (
         <a
@@ -1065,6 +1036,13 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
           Download
         </a>
       )}
+
+      <PacketBuilderDialog
+        open={builderOpen}
+        onOpenChange={setBuilderOpen}
+        violationId={v.id}
+        onGenerated={refreshAll}
+      />
 
       <Dialog open={retroOpen} onOpenChange={setRetroOpen}>
         <DialogContent>

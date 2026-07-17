@@ -12,6 +12,7 @@ export interface PacketSettings {
   signerCompany: string;
   signatureUrl: string | null;
   defaultAuthority: string;
+  defaultPacketLayout: string[];
 }
 
 export interface TransferPacketResult {
@@ -37,7 +38,7 @@ export const getPacketSettings = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<PacketSettings> => {
     const { data, error } = await context.supabase
       .from("packet_settings")
-      .select("signer_name, signer_title, signer_company, signature_url, default_authority")
+      .select("signer_name, signer_title, signer_company, signature_url, default_authority, default_packet_layout")
       .eq("id", "default")
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -48,6 +49,7 @@ export const getPacketSettings = createServerFn({ method: "GET" })
       signerCompany: (row.signer_company as string) ?? "Camauto Rentals / Rentalprise LLC",
       signatureUrl: (row.signature_url as string) ?? null,
       defaultAuthority: (row.default_authority as string) ?? "NJ E-ZPass",
+      defaultPacketLayout: normalizeLayout(row.default_packet_layout),
     };
   });
 
@@ -64,6 +66,7 @@ export const savePacketSettings = createServerFn({ method: "POST" })
         signatureDataUrl: z.string().max(4_000_000).nullable().optional(),
         // If true, clears the stored signature.
         clearSignature: z.boolean().optional(),
+        defaultPacketLayout: z.array(z.string().min(1).max(40)).max(20).optional(),
       })
       .parse(input),
   )
@@ -101,6 +104,7 @@ export const savePacketSettings = createServerFn({ method: "POST" })
       default_authority: data.defaultAuthority,
     };
     if (signatureUrl !== undefined) patch.signature_url = signatureUrl;
+    if (data.defaultPacketLayout) patch.default_packet_layout = normalizeLayout(data.defaultPacketLayout);
 
     const { error } = await context.supabase
       .from("packet_settings")
@@ -111,7 +115,7 @@ export const savePacketSettings = createServerFn({ method: "POST" })
     // Return the freshly saved row
     const { data: row } = await context.supabase
       .from("packet_settings")
-      .select("signer_name, signer_title, signer_company, signature_url, default_authority")
+      .select("signer_name, signer_title, signer_company, signature_url, default_authority, default_packet_layout")
       .eq("id", "default")
       .maybeSingle();
     return {
@@ -120,8 +124,45 @@ export const savePacketSettings = createServerFn({ method: "POST" })
       signerCompany: (row?.signer_company as string) ?? data.signerCompany,
       signatureUrl: (row?.signature_url as string) ?? null,
       defaultAuthority: (row?.default_authority as string) ?? data.defaultAuthority,
+      defaultPacketLayout: normalizeLayout(row?.default_packet_layout),
     };
   });
+
+// ---------------------------------------------------------------------------
+// Packet document kinds
+// ---------------------------------------------------------------------------
+
+export const PACKET_DOC_KINDS = [
+  "cover",
+  "agreement",
+  "license",
+  "selfie",
+  "signature",
+  "receipt",
+  "violation_photo",
+] as const;
+export type PacketDocKind = (typeof PACKET_DOC_KINDS)[number];
+
+const DOC_LABELS: Record<PacketDocKind, string> = {
+  cover: "Transfer Cover Page",
+  agreement: "Signed Rental Agreement",
+  license: "Driver License",
+  selfie: "Renter Selfie",
+  signature: "Renter Signature",
+  receipt: "Rental Receipt",
+  violation_photo: "Violation Photo",
+};
+
+function normalizeLayout(raw: unknown): string[] {
+  const arr = Array.isArray(raw) ? raw : [];
+  const out: string[] = [];
+  for (const v of arr) {
+    const k = String(v);
+    if ((PACKET_DOC_KINDS as readonly string[]).includes(k) && !out.includes(k)) out.push(k);
+  }
+  if (out.length === 0) return ["cover", "agreement"];
+  return out;
+}
 
 // ---------------------------------------------------------------------------
 // Date validation
@@ -348,13 +389,19 @@ async function buildCoverPdf(ctx: CoverCtx): Promise<Uint8Array> {
 // ---------------------------------------------------------------------------
 
 async function loadCtx(violationId: string): Promise<
-  | { ok: true; ctx: CoverCtx; agreementUrl: string }
+  | {
+      ok: true;
+      ctx: CoverCtx;
+      agreementUrl: string | null;
+      docUrls: Partial<Record<PacketDocKind, string>>;
+      defaultLayout: string[];
+    }
   | { ok: false; errorCode: NonNullable<TransferPacketResult["errorCode"]>; error: string }
 > {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const settingsRes = await supabaseAdmin
     .from("packet_settings")
-    .select("signer_name, signer_title, signer_company, signature_url, default_authority")
+    .select("signer_name, signer_title, signer_company, signature_url, default_authority, default_packet_layout")
     .eq("id", "default")
     .maybeSingle();
   const s = settingsRes.data ?? ({} as Record<string, unknown>);
@@ -364,6 +411,7 @@ async function loadCtx(violationId: string): Promise<
     signerCompany: (s.signer_company as string) ?? "Camauto Rentals / Rentalprise LLC",
     signatureUrl: (s.signature_url as string) ?? null,
     defaultAuthority: (s.default_authority as string) ?? "NJ E-ZPass",
+    defaultPacketLayout: normalizeLayout((s as Record<string, unknown>).default_packet_layout),
   };
 
   const { data: v, error: vErr } = await supabaseAdmin
@@ -397,7 +445,9 @@ async function loadCtx(violationId: string): Promise<
     v.rental_id
       ? supabaseAdmin
           .from("rentals")
-          .select("id, start_date, end_date, agreement_pdf_url")
+          .select(
+            "id, start_date, end_date, agreement_pdf_url, license_image_url, selfie_image_url, client_signature_url, receipt_pdf_url",
+          )
           .eq("id", v.rental_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -424,9 +474,6 @@ async function loadCtx(violationId: string): Promise<
   const agreementUrl =
     (rental?.agreement_pdf_url as string | null) ?? (legacy?.agreement_pdf_url as string | null) ?? null;
 
-  if (!agreementUrl) {
-    return { ok: false, errorCode: "no_agreement", error: "No rental agreement on file for this violation" };
-  }
   if (!rentalStart || !rentalEnd) {
     return { ok: false, errorCode: "no_dates", error: "Rental period is incomplete — cannot validate date" };
   }
@@ -497,34 +544,96 @@ async function loadCtx(violationId: string): Promise<
     settings,
   };
 
-  return { ok: true, ctx, agreementUrl };
+  const docUrls: Partial<Record<PacketDocKind, string>> = {};
+  if (agreementUrl) docUrls.agreement = agreementUrl;
+  if (rental?.license_image_url) docUrls.license = String(rental.license_image_url);
+  if (rental?.selfie_image_url) docUrls.selfie = String(rental.selfie_image_url);
+  if (rental?.client_signature_url) docUrls.signature = String(rental.client_signature_url);
+  if (rental?.receipt_pdf_url) docUrls.receipt = String(rental.receipt_pdf_url);
+  if (v.photo_url) docUrls.violation_photo = String(v.photo_url);
+
+  return { ok: true, ctx, agreementUrl, docUrls, defaultLayout: settings.defaultPacketLayout };
 }
 
 // ---------------------------------------------------------------------------
 // Merge helpers
 // ---------------------------------------------------------------------------
 
-async function mergeCoverWithAgreement(
-  coverPdf: Uint8Array,
-  agreementUrl: string,
-): Promise<Uint8Array> {
+async function fetchBytes(url: string): Promise<{ bytes: Uint8Array; contentType: string }> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Fetch failed (HTTP ${res.status})`);
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
+  return { bytes, contentType };
+}
+
+function isPdfBytes(bytes: Uint8Array, contentType: string): boolean {
+  if (contentType.includes("pdf")) return true;
+  return bytes.length >= 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+}
+
+function isPngBytes(bytes: Uint8Array, contentType: string): boolean {
+  if (contentType.includes("png")) return true;
+  return (
+    bytes.length >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47
+  );
+}
+
+async function mergeDocuments(
+  parts: Array<{ kind: PacketDocKind; bytes?: Uint8Array; url?: string }>,
+): Promise<{ merged: Uint8Array; used: PacketDocKind[]; missing: PacketDocKind[] }> {
   const { PDFDocument } = await import("pdf-lib");
   const out = await PDFDocument.create();
+  const used: PacketDocKind[] = [];
+  const missing: PacketDocKind[] = [];
 
-  // Cover first
-  const coverDoc = await PDFDocument.load(coverPdf);
-  const coverPages = await out.copyPages(coverDoc, coverDoc.getPageIndices());
-  for (const p of coverPages) out.addPage(p);
+  for (const part of parts) {
+    try {
+      let bytes: Uint8Array | null = null;
+      let contentType = "";
+      if (part.bytes) {
+        bytes = part.bytes;
+        contentType = "application/pdf";
+      } else if (part.url) {
+        const fetched = await fetchBytes(part.url);
+        bytes = fetched.bytes;
+        contentType = fetched.contentType;
+      }
+      if (!bytes) {
+        missing.push(part.kind);
+        continue;
+      }
+      if (isPdfBytes(bytes, contentType)) {
+        const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+        const pages = await out.copyPages(doc, doc.getPageIndices());
+        for (const p of pages) out.addPage(p);
+      } else {
+        // Embed image on a letter-size page.
+        const img = isPngBytes(bytes, contentType)
+          ? await out.embedPng(bytes)
+          : await out.embedJpg(bytes);
+        const page = out.addPage([612, 792]);
+        const margin = 36;
+        const maxW = 612 - margin * 2;
+        const maxH = 792 - margin * 2;
+        const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        page.drawImage(img, {
+          x: (612 - w) / 2,
+          y: (792 - h) / 2,
+          width: w,
+          height: h,
+        });
+      }
+      used.push(part.kind);
+    } catch {
+      missing.push(part.kind);
+    }
+  }
 
-  // Then the signed agreement
-  const res = await fetch(agreementUrl);
-  if (!res.ok) throw new Error(`Could not fetch rental agreement (HTTP ${res.status})`);
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  const agreement = await PDFDocument.load(bytes, { ignoreEncryption: true });
-  const agreementPages = await out.copyPages(agreement, agreement.getPageIndices());
-  for (const p of agreementPages) out.addPage(p);
-
-  return await out.save();
+  const merged = await out.save();
+  return { merged, used, missing };
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -540,14 +649,33 @@ function safeName(s: string | null | undefined): string {
   return (s ?? "").replace(/[^a-z0-9]+/gi, "").toUpperCase() || "NA";
 }
 
-async function generateOne(violationId: string): Promise<TransferPacketResult> {
+async function generateOne(
+  violationId: string,
+  documents?: string[] | null,
+): Promise<TransferPacketResult> {
   const loaded = await loadCtx(violationId);
   if (!loaded.ok) {
     return { ok: false, error: loaded.error, errorCode: loaded.errorCode };
   }
   try {
-    const cover = await buildCoverPdf(loaded.ctx);
-    const merged = await mergeCoverWithAgreement(cover, loaded.agreementUrl);
+    const layout = normalizeLayout(
+      documents && documents.length > 0 ? documents : loaded.defaultLayout,
+    );
+    const parts: Array<{ kind: PacketDocKind; bytes?: Uint8Array; url?: string }> = [];
+    for (const kindStr of layout) {
+      const kind = kindStr as PacketDocKind;
+      if (kind === "cover") {
+        parts.push({ kind, bytes: await buildCoverPdf(loaded.ctx) });
+      } else {
+        const url = loaded.docUrls[kind];
+        if (url) parts.push({ kind, url });
+        // silently skip missing docs
+      }
+    }
+    if (parts.length === 0) {
+      return { ok: false, errorCode: "unknown", error: "No documents selected for packet" };
+    }
+    const { merged } = await mergeDocuments(parts);
 
     const plate = safeName(loaded.ctx.vehicle.plate);
     const ref = safeName(loaded.ctx.violation.referenceNumber);
@@ -593,10 +721,15 @@ async function generateOne(violationId: string): Promise<TransferPacketResult> {
 export const generateTransferPacket = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
-    z.object({ violationId: z.string().min(1).max(64) }).parse(input),
+    z
+      .object({
+        violationId: z.string().min(1).max(64),
+        documents: z.array(z.string().min(1).max(40)).max(20).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data }): Promise<TransferPacketResult> => {
-    return generateOne(data.violationId);
+    return generateOne(data.violationId, data.documents ?? null);
   });
 
 export interface BatchSummary {
@@ -615,14 +748,19 @@ export interface BatchSummary {
 export const batchGenerateTransferPackets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
-    z.object({ violationIds: z.array(z.string().min(1).max(64)).min(1).max(200) }).parse(input),
+    z
+      .object({
+        violationIds: z.array(z.string().min(1).max(64)).min(1).max(200),
+        documents: z.array(z.string().min(1).max(40)).max(20).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data }): Promise<BatchSummary> => {
     const results: BatchSummary["results"] = [];
     let succeeded = 0;
     let failed = 0;
     for (const id of data.violationIds) {
-      const r = await generateOne(id);
+      const r = await generateOne(id, data.documents ?? null);
       if (r.ok) {
         succeeded++;
         results.push({ violationId: id, ok: true, packetUrl: r.packetUrl ?? null });
@@ -632,4 +770,69 @@ export const batchGenerateTransferPackets = createServerFn({ method: "POST" })
       }
     }
     return { total: data.violationIds.length, succeeded, failed, results };
+  });
+
+// ---------------------------------------------------------------------------
+// Packet Builder helpers
+// ---------------------------------------------------------------------------
+
+export interface AvailableDoc {
+  kind: PacketDocKind;
+  label: string;
+  available: boolean;
+  url: string | null;
+}
+
+export interface PacketBuilderData {
+  violationId: string;
+  referenceNumber: string;
+  defaultLayout: string[];
+  available: AvailableDoc[];
+  validation:
+    | { ok: true }
+    | { ok: false; errorCode: NonNullable<TransferPacketResult["errorCode"]>; error: string };
+}
+
+export const getPacketBuilderData = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ violationId: z.string().min(1).max(64) }).parse(input),
+  )
+  .handler(async ({ data }): Promise<PacketBuilderData> => {
+    const loaded = await loadCtx(data.violationId);
+    if (!loaded.ok) {
+      // Still return default layout so the UI can render, but signal the error.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const settingsRes = await supabaseAdmin
+        .from("packet_settings")
+        .select("default_packet_layout")
+        .eq("id", "default")
+        .maybeSingle();
+      return {
+        violationId: data.violationId,
+        referenceNumber: data.violationId,
+        defaultLayout: normalizeLayout(settingsRes.data?.default_packet_layout),
+        available: PACKET_DOC_KINDS.map((k) => ({
+          kind: k,
+          label: DOC_LABELS[k],
+          available: k === "cover",
+          url: null,
+        })),
+        validation: { ok: false, errorCode: loaded.errorCode, error: loaded.error },
+      };
+    }
+    const available: AvailableDoc[] = PACKET_DOC_KINDS.map((k) => {
+      if (k === "cover") {
+        return { kind: k, label: DOC_LABELS[k], available: true, url: null };
+      }
+      const url = loaded.docUrls[k] ?? null;
+      return { kind: k, label: DOC_LABELS[k], available: !!url, url };
+    });
+    return {
+      violationId: data.violationId,
+      referenceNumber: loaded.ctx.violation.referenceNumber,
+      defaultLayout: loaded.defaultLayout,
+      available,
+      validation: { ok: true },
+    };
   });
