@@ -681,6 +681,7 @@ const fromMaintenance = (r: any): Maintenance => ({
   amountPaid: r.amount_paid != null ? Number(r.amount_paid) : undefined,
   balance: r.balance != null ? Number(r.balance) : undefined,
   completionDate: r.completion_date ?? undefined,
+  historyPostedAt: r.history_posted_at ?? undefined,
   isRentalBlocking: !!r.is_rental_blocking,
   partsCost: r.parts_cost != null ? Number(r.parts_cost) : undefined,
   laborCost: r.labor_cost != null ? Number(r.labor_cost) : undefined,
