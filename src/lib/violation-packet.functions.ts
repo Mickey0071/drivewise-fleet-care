@@ -5,6 +5,113 @@ import JSZip from "jszip";
 import { z } from "zod";
 
 /**
+ * Collect signed rental agreements for a set of matched violations so the
+ * client can merge them into a single printable PDF.
+ */
+export const getMatchedAgreementsForPrint = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        violationIds: z.array(z.string().min(1)).min(1).max(200),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { data: viols, error } = await supabaseAdmin
+      .from("violations")
+      .select(
+        "id, rental_id, reference_number, date_issued, amount, total_amount, license_plate",
+      )
+      .in("id", data.violationIds);
+    if (error) throw new Error(error.message);
+
+    type Item = {
+      rentalId: string;
+      violationIds: string[];
+      agreementUrl: string;
+      header: {
+        name: string;
+        plate: string;
+        dateIssued: string;
+        refNum: string;
+        amount: number;
+      };
+    };
+    const byRental = new Map<string, Item>();
+    const skipped: Array<{ violationId: string; reason: string }> = [];
+
+    // Group violations by rental first
+    type Viol = NonNullable<typeof viols>[number];
+    const rentalToViols = new Map<string, Viol[]>();
+    for (const v of viols ?? []) {
+      const vv = v as Viol;
+      if (!vv.rental_id) {
+        skipped.push({ violationId: vv.id, reason: "No rental linked" });
+        continue;
+      }
+      const arr = rentalToViols.get(vv.rental_id) ?? [];
+      arr.push(vv);
+      rentalToViols.set(vv.rental_id, arr);
+    }
+
+    if (rentalToViols.size > 0) {
+      const { data: rentals } = await supabaseAdmin
+        .from("rentals")
+        .select("id, agreement_pdf_url, driver_id")
+        .in("id", Array.from(rentalToViols.keys()));
+
+      const driverIds = Array.from(
+        new Set((rentals ?? []).map((r: any) => r.driver_id).filter(Boolean)),
+      );
+      const driverMap = new Map<string, string>();
+      if (driverIds.length > 0) {
+        const { data: drivers } = await supabaseAdmin
+          .from("drivers")
+          .select("id, full_name")
+          .in("id", driverIds);
+        for (const d of drivers ?? [])
+          driverMap.set((d as any).id, (d as any).full_name ?? "");
+      }
+
+      for (const r of rentals ?? []) {
+        const rentalId = (r as any).id as string;
+        const vs = rentalToViols.get(rentalId) ?? [];
+        if (!(r as any).agreement_pdf_url) {
+          for (const v of vs)
+            skipped.push({ violationId: v.id, reason: "No agreement on file" });
+          continue;
+        }
+        const first = vs[0]!;
+        byRental.set(rentalId, {
+          rentalId,
+          violationIds: vs.map((v) => v.id),
+          agreementUrl: (r as any).agreement_pdf_url,
+          header: {
+            name:
+              driverMap.get((r as any).driver_id) || "Unknown",
+            plate: first.license_plate || "",
+            dateIssued: first.date_issued || "",
+            refNum: first.reference_number || "",
+            amount: Number(first.total_amount ?? first.amount ?? 0),
+          },
+        });
+      }
+
+      // Rentals that were referenced by violations but not returned by query
+      for (const [rentalId, vs] of rentalToViols) {
+        if (!byRental.has(rentalId) &&
+            !skipped.some((s) => vs.some((v) => v.id === s.violationId))) {
+          for (const v of vs)
+            skipped.push({ violationId: v.id, reason: "Rental not found" });
+        }
+      }
+    }
+
+    return { items: Array.from(byRental.values()), skipped };
+  });
+
+/**
  * Build a downloadable evidence packet (ZIP) for a violation — for the
  * EZPass / toll authority / parking authority. Includes a cover-sheet PDF
  * with all violation/rental/customer details plus the signed agreement,

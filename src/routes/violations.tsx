@@ -72,6 +72,8 @@ import {
   recordViolationDispute,
   flagViolationOrphan,
 } from "@/lib/violations-workflow.functions";
+import { bulkSetViolationStage } from "@/lib/violations-workflow.functions";
+import { getMatchedAgreementsForPrint } from "@/lib/violation-packet.functions";
 import { getViolationAgreement } from "@/lib/violations-workflow.functions";
 import { attachViolationDocument } from "@/lib/violations-workflow.functions";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
@@ -1238,6 +1240,9 @@ function ViolationsPage() {
   const [bulkOnlineOpen, setBulkOnlineOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const genPacketFn = useServerFn(generateMailPacket);
+  const getAgreementsFn = useServerFn(getMatchedAgreementsForPrint);
+  const bulkStageFn = useServerFn(bulkSetViolationStage);
+  const [printBusy, setPrintBusy] = useState(false);
 
   // Clear selection whenever the active tab changes.
   useEffect(() => {
@@ -1344,6 +1349,87 @@ function ViolationsPage() {
       toast.error(e instanceof Error ? e.message : "Could not build packets");
     } finally {
       setBulkBusy(false);
+    }
+  };
+
+  const printAllAgreements = async () => {
+    const targets = selectedRows.length > 0 ? selectedRows : filtered;
+    if (targets.length === 0) return;
+    setPrintBusy(true);
+    try {
+      const { items, skipped } = await getAgreementsFn({
+        data: { violationIds: targets.map((v) => v.id) },
+      });
+      if (items.length === 0) {
+        toast.error("No signed agreements found for the selected violations");
+        return;
+      }
+
+      const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+      const merged = await PDFDocument.create();
+      const helv = await merged.embedFont(StandardFonts.Helvetica);
+      const helvBold = await merged.embedFont(StandardFonts.HelveticaBold);
+
+      for (const item of items) {
+        // Cover page
+        const cover = merged.addPage([612, 792]);
+        let y = 740;
+        cover.drawText("Rental Agreement — Dispute Packet", {
+          x: 50, y, size: 18, font: helvBold, color: rgb(0.05, 0.4, 0.2),
+        });
+        y -= 40;
+        const rows: Array<[string, string]> = [
+          ["Renter", item.header.name],
+          ["Plate", item.header.plate],
+          ["Violation Ref #", item.header.refNum],
+          ["Date Issued", (item.header.dateIssued || "").slice(0, 10)],
+          ["Amount", `$${item.header.amount.toFixed(2)}`],
+        ];
+        for (const [k, v] of rows) {
+          cover.drawText(`${k}:`, { x: 50, y, size: 12, font: helvBold, color: rgb(0.2, 0.2, 0.2) });
+          cover.drawText(v || "—", { x: 170, y, size: 12, font: helv, color: rgb(0.1, 0.1, 0.1) });
+          y -= 22;
+        }
+
+        // Fetch agreement PDF and append
+        try {
+          const resp = await fetch(item.agreementUrl);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const bytes = await resp.arrayBuffer();
+          const src = await PDFDocument.load(bytes);
+          const pages = await merged.copyPages(src, src.getPageIndices());
+          for (const p of pages) merged.addPage(p);
+        } catch (e) {
+          cover.drawText(`⚠ Failed to load agreement PDF: ${e instanceof Error ? e.message : "error"}`,
+            { x: 50, y: y - 20, size: 10, font: helv, color: rgb(0.7, 0.1, 0.1) });
+        }
+      }
+
+      const pdfBytes = await merged.save();
+      const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, "_blank");
+      if (w) {
+        w.addEventListener("load", () => {
+          try { w.print(); } catch { /* ignore */ }
+        });
+      }
+
+      // Move printed violations to "disputed"
+      const printedIds = items.flatMap((i) => i.violationIds);
+      await bulkStageFn({ data: { violationIds: printedIds, stage: "disputed" } });
+      qc.invalidateQueries({ queryKey: ["violations"] });
+      setSelected(new Set());
+      const skippedCount = skipped.length;
+      toast.success(
+        `${printedIds.length} moved to Disputed${skippedCount ? ` · ${skippedCount} skipped (no agreement)` : ""}`,
+      );
+      // Revoke after a delay so the print window can render
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Print failed");
+    } finally {
+      setPrintBusy(false);
     }
   };
 
@@ -1477,6 +1563,15 @@ function ViolationsPage() {
                 onClick={() => setBulkOnlineOpen(true)}
               >
                 🌐 Bulk Online Prep
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={filtered.length === 0 || printBusy}
+                onClick={printAllAgreements}
+                title={selectedRows.length > 0 ? "Print selected agreements" : "Print all agreements on this tab"}
+              >
+                {printBusy ? "Building…" : "🖨️ Print All Agreements"}
               </Button>
             </div>
           )}
