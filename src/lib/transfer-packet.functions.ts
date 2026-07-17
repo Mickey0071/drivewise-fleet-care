@@ -12,6 +12,7 @@ export interface PacketSettings {
   signerCompany: string;
   signatureUrl: string | null;
   defaultAuthority: string;
+  defaultPacketLayout: string[];
 }
 
 export interface TransferPacketResult {
@@ -37,7 +38,7 @@ export const getPacketSettings = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<PacketSettings> => {
     const { data, error } = await context.supabase
       .from("packet_settings")
-      .select("signer_name, signer_title, signer_company, signature_url, default_authority")
+      .select("signer_name, signer_title, signer_company, signature_url, default_authority, default_packet_layout")
       .eq("id", "default")
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -48,6 +49,7 @@ export const getPacketSettings = createServerFn({ method: "GET" })
       signerCompany: (row.signer_company as string) ?? "Camauto Rentals / Rentalprise LLC",
       signatureUrl: (row.signature_url as string) ?? null,
       defaultAuthority: (row.default_authority as string) ?? "NJ E-ZPass",
+      defaultPacketLayout: normalizeLayout(row.default_packet_layout),
     };
   });
 
@@ -64,6 +66,7 @@ export const savePacketSettings = createServerFn({ method: "POST" })
         signatureDataUrl: z.string().max(4_000_000).nullable().optional(),
         // If true, clears the stored signature.
         clearSignature: z.boolean().optional(),
+        defaultPacketLayout: z.array(z.string().min(1).max(40)).max(20).optional(),
       })
       .parse(input),
   )
@@ -101,6 +104,7 @@ export const savePacketSettings = createServerFn({ method: "POST" })
       default_authority: data.defaultAuthority,
     };
     if (signatureUrl !== undefined) patch.signature_url = signatureUrl;
+    if (data.defaultPacketLayout) patch.default_packet_layout = normalizeLayout(data.defaultPacketLayout);
 
     const { error } = await context.supabase
       .from("packet_settings")
@@ -111,7 +115,7 @@ export const savePacketSettings = createServerFn({ method: "POST" })
     // Return the freshly saved row
     const { data: row } = await context.supabase
       .from("packet_settings")
-      .select("signer_name, signer_title, signer_company, signature_url, default_authority")
+      .select("signer_name, signer_title, signer_company, signature_url, default_authority, default_packet_layout")
       .eq("id", "default")
       .maybeSingle();
     return {
@@ -120,8 +124,45 @@ export const savePacketSettings = createServerFn({ method: "POST" })
       signerCompany: (row?.signer_company as string) ?? data.signerCompany,
       signatureUrl: (row?.signature_url as string) ?? null,
       defaultAuthority: (row?.default_authority as string) ?? data.defaultAuthority,
+      defaultPacketLayout: normalizeLayout(row?.default_packet_layout),
     };
   });
+
+// ---------------------------------------------------------------------------
+// Packet document kinds
+// ---------------------------------------------------------------------------
+
+export const PACKET_DOC_KINDS = [
+  "cover",
+  "agreement",
+  "license",
+  "selfie",
+  "signature",
+  "receipt",
+  "violation_photo",
+] as const;
+export type PacketDocKind = (typeof PACKET_DOC_KINDS)[number];
+
+const DOC_LABELS: Record<PacketDocKind, string> = {
+  cover: "Transfer Cover Page",
+  agreement: "Signed Rental Agreement",
+  license: "Driver License",
+  selfie: "Renter Selfie",
+  signature: "Renter Signature",
+  receipt: "Rental Receipt",
+  violation_photo: "Violation Photo",
+};
+
+function normalizeLayout(raw: unknown): string[] {
+  const arr = Array.isArray(raw) ? raw : [];
+  const out: string[] = [];
+  for (const v of arr) {
+    const k = String(v);
+    if ((PACKET_DOC_KINDS as readonly string[]).includes(k) && !out.includes(k)) out.push(k);
+  }
+  if (out.length === 0) return ["cover", "agreement"];
+  return out;
+}
 
 // ---------------------------------------------------------------------------
 // Date validation
