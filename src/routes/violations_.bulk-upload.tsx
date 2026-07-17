@@ -1155,6 +1155,54 @@ function ManualMatchDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <Dialog open={packetFor !== null} onOpenChange={(o) => !o && !busy && setPacketFor(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Dispute packet — include which docs?</DialogTitle>
+            <DialogDescription>
+              Pick the documents to bundle into the ZIP. Any item not on file will
+              be listed in MISSING.txt.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={inc.coverLetter}
+                onCheckedChange={(v) => setInc((s) => ({ ...s, coverLetter: v === true }))}
+              />
+              Dispute cover letter
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={inc.agreement}
+                onCheckedChange={(v) => setInc((s) => ({ ...s, agreement: v === true }))}
+              />
+              Signed rental agreement
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={inc.license}
+                onCheckedChange={(v) => setInc((s) => ({ ...s, license: v === true }))}
+              />
+              Driver's license
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPacketFor(null)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700"
+              disabled={busy || (!inc.coverLetter && !inc.agreement && !inc.license)}
+              onClick={() => packetFor && matchAndPacket(packetFor)}
+            >
+              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Download className="mr-1 h-4 w-4" />}
+              Create ticket + download
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
