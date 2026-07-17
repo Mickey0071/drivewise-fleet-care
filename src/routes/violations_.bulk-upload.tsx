@@ -754,6 +754,8 @@ function ManualMatchDialog({
   const [retroFor, setRetroFor] = useState<ViolationSearchCard | null>(null);
   const [retroPhone, setRetroPhone] = useState("");
   const [retroEmail, setRetroEmail] = useState("");
+  const [packetFor, setPacketFor] = useState<string | null>(null);
+  const [inc, setInc] = useState({ coverLetter: true, agreement: true, license: true });
 
   const soon = (label: string) => toast.message(`${label} — coming soon`);
 
@@ -852,12 +854,32 @@ function ManualMatchDialog({
     }
   };
 
+  const openPacketPicker = (rentalId: string) => {
+    setInc({ coverLetter: true, agreement: true, license: true });
+    setPacketFor(rentalId);
+  };
+
   const matchAndPacket = async (rentalId: string) => {
     setBusy(true);
     try {
       const { violationId } = await matchCommit({ data: { itemId: item.id, rentalId } });
       toast.success("Ticket created — building dispute packet…");
-      const { filename, base64, missing } = await buildPacket({ data: { violationId } });
+      const { filename, base64, missing } = await buildPacket({
+        data: {
+          violationId,
+          include: {
+            coverLetter: inc.coverLetter,
+            agreement: inc.agreement,
+            license: inc.license,
+            // Not shown in the picker; keep supporting evidence off by default
+            // when the admin explicitly narrows to the 3 core docs.
+            selfie: false,
+            signature: false,
+            receipt: false,
+            violationPhoto: false,
+          },
+        },
+      });
       const bin = atob(base64);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -875,6 +897,7 @@ function ManualMatchDialog({
       } else {
         toast.success("Dispute packet downloaded");
       }
+      setPacketFor(null);
       onMatched();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to build packet");
