@@ -20,7 +20,18 @@ const money = (n: unknown) =>
 
 const db = supabaseAdmin as any;
 
-type PartItem = { name: string; price: number };
+type PartItem = { name: string; price: number; qty?: number };
+
+function formatPartsList(parts: PartItem[] | null | undefined): string | null {
+  if (!Array.isArray(parts) || parts.length === 0) return null;
+  return parts
+    .map((p) => {
+      const qty = Number(p.qty) > 0 ? Number(p.qty) : 1;
+      const price = Number(p.price) || 0;
+      return `${p.name}${qty > 1 ? ` ×${qty}` : ""} @ ${money(price)}`;
+    })
+    .join(", ");
+}
 
 /** Public: load repair details by accept OR decline token. */
 export const getRepairActionByToken = createServerFn({ method: "GET" })
@@ -53,7 +64,7 @@ export const getRepairActionByToken = createServerFn({ method: "GET" })
 async function loadByToken(token: string, field: "accept_token" | "decline_token") {
   const { data: row } = await db
     .from("maintenance")
-    .select("id, action_taken, vehicle_id, mechanic_name, mechanic_phone, issue_description, service_type, parts_list, parts_cost, labor_cost, cost")
+    .select("id, action_taken, vehicle_id, mechanic_name, mechanic_phone, issue_description, service_type, parts_list, parts_cost, labor_cost, cost, history_posted_at")
     .eq(field, token)
     .maybeSingle();
   return row;
@@ -85,13 +96,24 @@ export const acceptRepairAction = createServerFn({ method: "POST" })
     if (row.action_taken !== "pending") throw new Error(`This diagnosis was already ${row.action_taken}.`);
 
     const total = Number(row.cost) || 0;
+    const partsCost = Number(row.parts_cost) || 0;
+    const laborCost = Number(row.labor_cost) || 0;
+    const nowIso = new Date().toISOString();
+    const today = nowIso.slice(0, 10);
     const { error } = await db
       .from("maintenance")
       .update({
         action_taken: "accepted",
-        accepted_at: new Date().toISOString(),
+        accepted_at: nowIso,
         accepted_by: "Admin",
         status: "pending_complete",
+        // Mark that repair_history + expense have already been posted so the
+        // completion path does not duplicate them.
+        history_posted_at: nowIso,
+        // Treat the approved total as already-expensed so completeRepair
+        // won't post the expense again.
+        amount_paid: total,
+        balance: 0,
         accept_token: null,
         decline_token: null,
       })
@@ -101,6 +123,70 @@ export const acceptRepairAction = createServerFn({ method: "POST" })
 
     const { label, plate } = await vehicleLabel(row.vehicle_id);
     const issue = row.issue_description || row.service_type || "repair";
+    const mechanicName = (row.mechanic_name ?? "").trim() || null;
+    const partsText = formatPartsList(row.parts_list as PartItem[] | null);
+
+    // Post to the vehicle's fleet-card repair history so the approved
+    // services and prices show on the vehicle immediately.
+    if (!row.history_posted_at) {
+      try {
+        await db.from("repair_history").insert({
+          vehicle_id: row.vehicle_id,
+          maintenance_id: row.id,
+          repair_date: today,
+          issue,
+          parts: partsText,
+          parts_cost: partsCost,
+          labor_cost: laborCost,
+          total_cost: total,
+          mechanic_name: mechanicName,
+          completed_by: "Admin (approved)",
+          notes: "Approved from mechanic diagnosis",
+        });
+      } catch (e) {
+        console.error("accept repair_history insert failed", e);
+      }
+
+      // Post the expense to P&L now. Split into Parts / Labour when both
+      // are present for a cleaner P&L breakdown; otherwise use a single line.
+      try {
+        if (partsCost > 0 && laborCost > 0) {
+          await db.from("expenses").insert([
+            {
+              category: "Parts",
+              amount: partsCost,
+              date: today,
+              vehicle_id: row.vehicle_id,
+              maintenance_id: row.id,
+              vendor: mechanicName,
+              notes: `Repair ${row.id} approved — ${issue} (parts)`,
+            },
+            {
+              category: "Labour",
+              amount: laborCost,
+              date: today,
+              vehicle_id: row.vehicle_id,
+              maintenance_id: row.id,
+              vendor: mechanicName,
+              notes: `Repair ${row.id} approved — ${issue} (labour)`,
+            },
+          ]);
+        } else if (total > 0) {
+          await db.from("expenses").insert({
+            category: "Repair & Maintenance",
+            amount: total,
+            date: today,
+            vehicle_id: row.vehicle_id,
+            maintenance_id: row.id,
+            vendor: mechanicName,
+            notes: `Repair ${row.id} approved — ${issue}`,
+          });
+        }
+      } catch (e) {
+        console.error("accept expense insert failed", e);
+      }
+    }
+
     if (row.mechanic_phone) {
       try {
         await sendSms(
