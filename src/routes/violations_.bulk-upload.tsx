@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/use-auth";
@@ -1062,7 +1063,7 @@ function ManualMatchDialog({
                             <Button
                               size="sm"
                               disabled={busy}
-                              onClick={() => matchAndPacket(r.id)}
+                              onClick={() => openPacketPicker(r.id)}
                               className="bg-emerald-600 hover:bg-emerald-700"
                             >
                               <ShieldX className="mr-1 h-4 w-4" />
