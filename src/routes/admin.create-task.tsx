@@ -318,9 +318,7 @@ function CreateTaskPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <PageHeader title="Create Runner Task" subtitle="Send a task link to a runner by SMS — no login required" />
-
+    <div className="space-y-6">
       <Card>
         <CardHeader><CardTitle className="text-base">Basic info</CardTitle></CardHeader>
         <CardContent className="space-y-4">
