@@ -1,52 +1,49 @@
 ## Goal
 
-In **Violations → Matched tab**, add a **"🖨️ Print All Agreements"** action that:
-1. Gathers every signed rental agreement for matched violations into one merged PDF
-2. Opens the browser's print dialog
-3. On successful print/save, moves those violations to the **Disputed** tab
+Fix the empty "Runner" dropdown on the **Return Vehicle → Send for Inspection** flow, let you add and save a runner's name and phone right there, SMS them the inspection link, and add an oil-change item to the checklist.
+
+## Answering "have you added a mechanic runner checklist?"
+
+**No.** The only checklist that exists is the vehicle inspection checklist in `src/lib/checklist-items.ts` (Before Starting / Exterior / Interior / Test Drive) used by the runner post-return inspection. There's no separate mechanic-runner checklist yet. I can add one in a follow-up if you want — say the word and I'll draft sections (e.g. Fluids, Belts/Hoses, Brakes, Suspension, Under-Body, Diagnostics/OBD) tied to a `mechanic` task type. Not included in this plan since you didn't ask for it explicitly.
+
+## Why the dropdown is empty
+
+`ReturnVehicleDialog` currently pulls runners from `user_roles` (role = `runner`) joined to `profiles`. You have no users with that role, so the list is empty. Meanwhile the app already has a **saved runners table** (`runners` — name + phone, used by "Send RM Task") with `listRunners` / `saveRunner` server fns. We'll switch this dialog to use that same source so the runner you already saved in one place shows up everywhere.
 
 ## Behavior
 
-- **Scope**: uses `selectedRows` if any rows are checked, otherwise every row currently visible on the Matched tab. Deduplicates by `rental_id` when merging PDFs so a rental with multiple tolls prints once.
-- **What gets merged**: only rentals with a stored `agreement_pdf_url`. Rentals missing an agreement are skipped and reported.
-- **Output**: opens the merged PDF in a new tab and auto-fires `window.print()`.
-- **Cover page per agreement**: slim header page showing renter name, plate, violation ref #, date, and amount for easy sorting after printing.
-- **Auto-move to Disputed**: after the print dialog is dismissed, every violation whose rental made it into the merged PDF (the non-skipped set) is moved to `workflow_stage = "disputed"`. Skipped rows stay in Matched. Toast summarizes: `X moved to Disputed · Y skipped (no agreement on file)`.
+### Return Vehicle → Send for Inspection
+- Runner select now lists rows from the `runners` table (alphabetical, name + last-4 of phone).
+- Below the select: **"+ Add new runner"** toggle reveals two inputs (Name, Phone with `(xxx) xxx-xxxx` mask) and a **Save** button. Save calls `saveRunner` (upserts by phone), refreshes the list, auto-selects the new runner. Same UX as elsewhere in the app.
+- **"Create Inspection & Return"** now sends the inspection link to the selected runner's phone via SMS. Vehicle → `inspection` status, rental → `returned`, runner_task created (with `runner_id = null`, name/phone stored in `details`).
+
+### Inspection checklist
+- Add an **Oil change** row to the "Before Starting Car" section in `src/lib/checklist-items.ts`:
+  - `{ key: 'oil_change_due', label: 'Oil change — check sticker / mileage, flag if due' }`
+- The existing `oil_level` row stays.
 
 ## Implementation
 
-### 1. New server fn `getMatchedAgreementsForPrint` in `src/lib/violation-packet.functions.ts`
-- Auth-only. Input: `{ violationIds: string[] }` (cap 200).
-- For each violation with `rental_id`, fetch `agreement_pdf_url`, driver name, plate, and violation summary.
-- Deduplicates by `rental_id` (keeps the first violation id per rental for the cover page; also returns the full list of violation ids per rental so the client can stage-move all of them).
-- Returns `{ items: Array<{ rentalId, violationIds: string[], agreementUrl, header: { name, plate, dateIssued, refNum, amount } }>, skipped: Array<{ violationId, reason }> }`.
+### 1. `src/lib/tasks.functions.ts` — `createReturnInspection`
+Change input from `{ runnerId }` to `{ runnerName, runnerPhone }`. Validate both (name 1–120 chars, phone digits ≥ 10). Insert `runner_tasks` with `runner_id: null` and `details.runner_name` / `details.runner_phone` alongside the existing fields. SMS uses the provided phone. Everything else (rental → returned, vehicle → inspection, return URL) unchanged.
 
-### 2. New server fn `bulkSetViolationStage` in `src/lib/violations-workflow.functions.ts`
-- Auth-only. Input: `{ violationIds: string[], stage: "disputed" }` (accept the full `Stage` enum but this UI only passes `"disputed"`).
-- Batch-updates `violations.workflow_stage` and writes one `violation_status_history` audit row per id (mirroring the existing single-item `setViolationStage`). Returns `{ updated: number }`.
+### 2. `src/components/app/ReturnVehicleDialog.tsx`
+- Replace the `user_roles`+`profiles` fetch with `useServerFn(listRunners)` on mount.
+- State: `runnerId` → `selectedRunnerId` (row id from `runners` table), plus `adding`, `newName`, `newPhone`, `savingNew`.
+- Inline "+ Add new runner" block with Name/Phone inputs + Save button calling `useServerFn(saveRunner)`; on success prepend to list and select.
+- `sendForInspection`: look up name+phone from selected row, pass `{ runnerName, runnerPhone }` to `createReturnInspection`. Existing toast + refresh flow unchanged.
+- Fall back to "No saved runners yet — add one below" when the list is empty.
 
-### 3. Client helper `buildMergedAgreementsPdf` (inline in `src/routes/violations.tsx`)
-- Uses `pdf-lib` (already installed) to:
-  - Draw a 1-page cover sheet per rental (renter name, plate, ref #, date, amount) using Helvetica in the same green/text-color palette as the existing cover sheet.
-  - Fetch each `agreementUrl`, `PDFDocument.load`, `copyPages` into the merged doc.
-- Returns a `Blob`.
-
-### 4. UI in `src/routes/violations.tsx` Matched-tab toolbar
-- Add **"🖨️ Print All Agreements"** as a third button next to "Bulk Download Packets" / "Bulk Online Prep".
-- Handler flow:
-  1. Target IDs = `selectedRows.length > 0 ? selectedRows : filtered`.
-  2. Call `getMatchedAgreementsForPrint({ violationIds })`.
-  3. If nothing merged, toast an error and stop.
-  4. Client-side merge → open blob URL in new tab → `printWindow.onload = () => printWindow.print()`.
-  5. After the print window's `afterprint` fires (or immediately after `print()` returns as a fallback), call `bulkSetViolationStage({ violationIds: <flattened ids from non-skipped items>, stage: "disputed" })`.
-  6. Invalidate the `["violations"]` query, clear selection, toast summary.
-- Button shows "Building…" while working; disabled during the run.
+### 3. `src/lib/checklist-items.ts`
+Append the new `oil_change_due` item to the **Before Starting Car** section.
 
 ## Non-goals
-- No changes to `downloadViolationPacket`, the manual-match flow, or other tabs.
-- Does not re-generate agreements — only prints what's stored on `rentals.agreement_pdf_url`.
-- Skipped rentals (no agreement on file) are NOT auto-moved to Disputed; only agreements that actually printed advance.
+- No changes to `startReturnInspection` (public inspection link), `SendRmTaskDialog`, other dialogs, or any other route.
+- No new mechanic-runner checklist in this plan (answered above).
+- No schema migration — `runner_tasks.runner_id` is already nullable.
 
 ## Verification
-- Open Matched tab with a mix of rentals (some with agreements, some without). Click **Print All Agreements** with nothing selected → new tab opens with merged PDF, print dialog appears. After closing print, matched rows for printed rentals disappear from Matched and appear in Disputed; rentals without agreements stay in Matched. Toast reports both counts.
-- Select 2 rows sharing one rental + 1 row on a different rental → merged PDF contains exactly 2 agreements; all 3 violation rows move to Disputed together.
+1. Open Rentals → Return a vehicle → Send for Inspection: dropdown now lists saved runners (from the same list as the RM task flow).
+2. Click **+ Add new runner**, enter a name and phone, Save → it appears selected in the dropdown and the row is persisted so it appears next time.
+3. Click **Create Inspection & Return** → toast "Inspection sent to <name> by SMS", rental returns, vehicle is in `inspection`.
+4. Open the runner's SMS link → checklist loads with the new **"Oil change"** row inside "Before Starting Car".
