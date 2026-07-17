@@ -1971,6 +1971,51 @@ function ViolationsPage() {
           }}
         />
       )}
+
+      <Dialog
+        open={!!batchTransferReport}
+        onOpenChange={(o) => !o && setBatchTransferReport(null)}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Batch Transfer Packet — Summary</DialogTitle>
+          </DialogHeader>
+          {batchTransferReport && (
+            <div className="space-y-3 text-sm">
+              <div className="flex gap-3">
+                <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                  ✓ {batchTransferReport.succeeded} succeeded
+                </Badge>
+                {batchTransferReport.failed > 0 && (
+                  <Badge variant="destructive">
+                    ✗ {batchTransferReport.failed} failed
+                  </Badge>
+                )}
+              </div>
+              {batchTransferReport.failures.length > 0 ? (
+                <div className="rounded-md border p-3">
+                  <div className="mb-2 font-medium">Failed / skipped:</div>
+                  <ul className="space-y-1 text-xs">
+                    {batchTransferReport.failures.map((f) => (
+                      <li key={f.id} className="flex justify-between gap-3">
+                        <span className="font-mono">{f.id}</span>
+                        <span className="text-destructive">{f.reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">
+                  All eligible violations generated a Transfer Packet successfully.
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setBatchTransferReport(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
