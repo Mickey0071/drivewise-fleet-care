@@ -215,7 +215,7 @@ export const declineRepairAction = createServerFn({ method: "POST" })
     if (!row) throw new Error("This link is no longer valid.");
     if (row.action_taken !== "pending") throw new Error(`This diagnosis was already ${row.action_taken}.`);
 
-    const { error } = await db
+    const { data: declinedRow, error } = await db
       .from("maintenance")
       .update({
         action_taken: "declined",
@@ -230,7 +230,7 @@ export const declineRepairAction = createServerFn({ method: "POST" })
       .select("id")
       .maybeSingle();
     if (error) throw new Error(error.message);
-    if (!data) throw new Error("This diagnosis was already handled.");
+    if (!declinedRow) throw new Error("This diagnosis was already handled.");
 
     const { label } = await vehicleLabel(row.vehicle_id);
     if (row.mechanic_phone) {
