@@ -809,7 +809,6 @@ function RowActions({
 function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }) {
   const genTransfer = useServerFn(generateLiabilityTransfer);
   const genPacket = useServerFn(generateMailPacket);
-  const genTransferPacket = useServerFn(generateTransferPacket);
   const mark = useServerFn(markViolationStage);
   const readiness = useServerFn(getViolationReadiness);
   const sendRetro = useServerFn(sendViolationRetroLink);
@@ -823,6 +822,7 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
   const [overrideNote, setOverrideNote] = useState(
     "Customer unreachable - proceeding with available info per N.J.S.A. 39:4-138.1",
   );
+  const [builderOpen, setBuilderOpen] = useState(false);
 
   const transferred0 = !!v.liability_transfer_generated_at;
   const { data: status, refetch: refetchStatus } = useQuery({
@@ -881,35 +881,6 @@ function LiabilityActions({ v, onDone }: { v: ViolationRow; onDone: () => void }
     }
   };
 
-  const doTransferPacket = async () => {
-    setBusy("transferPacket");
-    try {
-      const res = await genTransferPacket({ data: { violationId: v.id } });
-      if (!res.ok) {
-        toast.error(res.error ?? "Failed to generate Transfer Packet");
-        return;
-      }
-      if (res.base64 && res.filename) {
-        const bin = atob(res.base64);
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = res.filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      }
-      toast.success("Transfer of Responsibility Packet generated");
-      refreshAll();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
-    } finally {
-      setBusy(null);
-    }
-  };
 
   const doMark = async (stage: "mailed" | "confirmed") => {
     setBusy(stage);
