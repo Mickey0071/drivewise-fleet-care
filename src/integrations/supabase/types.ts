@@ -2578,6 +2578,54 @@ export type Database = {
         }
         Relationships: []
       }
+      reservation_log: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          entry_type: string
+          id: string
+          maintenance_id: string | null
+          problem_category: string | null
+          reservation_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          entry_type: string
+          id?: string
+          maintenance_id?: string | null
+          problem_category?: string | null
+          reservation_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          entry_type?: string
+          id?: string
+          maintenance_id?: string | null
+          problem_category?: string | null
+          reservation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservation_log_maintenance_id_fkey"
+            columns: ["maintenance_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservation_log_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rm_cards: {
         Row: {
           created_at: string

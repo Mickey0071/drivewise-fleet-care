@@ -7,6 +7,7 @@ import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame, RotateCcw,
 import { ReportActions } from "@/components/app/ReportActions";
 
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
+import { MaintenanceReservationBanner } from "@/components/app/MaintenanceReservationBanner";
 import { SendToMechanicDialog } from "@/components/app/SendToMechanicDialog";
 import { ViewDiagnosisDialog } from "@/components/app/ViewDiagnosisDialog";
 import { MechanicJobHistory } from "@/components/app/MechanicJobHistory";
@@ -537,6 +538,7 @@ function RepairsPage() {
                         <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} job={sentJobByMaint.get(m.id) ?? submittedJobByMaint.get(m.id)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
+                            <MaintenanceReservationBanner maintenanceId={m.id} />
                             {m.repairRequestNotes && (
                               <div className="text-xs text-muted-foreground">
                                 <span className="font-medium text-foreground">Symptoms:</span> {m.repairRequestNotes}
