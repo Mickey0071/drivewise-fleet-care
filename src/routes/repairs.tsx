@@ -537,6 +537,7 @@ function RepairsPage() {
                         <RepairRow m={m} open={open} onToggle={() => toggleExpand(m.id)} onDelete={() => setDeleteRecord(m)} job={sentJobByMaint.get(m.id) ?? submittedJobByMaint.get(m.id)} />
                         {open && (
                           <div className="space-y-2 px-3 pb-3">
+                            <MaintenanceReservationBanner maintenanceId={m.id} />
                             {m.repairRequestNotes && (
                               <div className="text-xs text-muted-foreground">
                                 <span className="font-medium text-foreground">Symptoms:</span> {m.repairRequestNotes}
