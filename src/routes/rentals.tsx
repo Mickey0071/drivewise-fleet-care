@@ -39,6 +39,7 @@ import { ReturnVehicleDialog } from "@/components/app/ReturnVehicleDialog";
 import { SendVehicleToMechanicDialog } from "@/components/app/SendVehicleToMechanicDialog";
 import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHistory";
 import { SwapHistoryTimeline } from "@/components/app/SwapHistoryTimeline";
+import { ReservationLog } from "@/components/app/ReservationLog";
 import { ReservationDocuments } from "@/components/app/ReservationDocuments";
 import { RentalVerificationPanel } from "@/components/app/RentalVerificationPanel";
 import { useAuth } from "@/hooks/use-auth";
