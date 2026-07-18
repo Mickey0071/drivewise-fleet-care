@@ -7,6 +7,7 @@ import { Wrench, CalendarClock, Settings2, CheckCircle2, Plus, Flame, RotateCcw,
 import { ReportActions } from "@/components/app/ReportActions";
 
 import { CompletedRepairDetailDialog } from "@/components/app/CompletedRepairDetailDialog";
+import { MaintenanceReservationBanner } from "@/components/app/MaintenanceReservationBanner";
 import { SendToMechanicDialog } from "@/components/app/SendToMechanicDialog";
 import { ViewDiagnosisDialog } from "@/components/app/ViewDiagnosisDialog";
 import { MechanicJobHistory } from "@/components/app/MechanicJobHistory";
