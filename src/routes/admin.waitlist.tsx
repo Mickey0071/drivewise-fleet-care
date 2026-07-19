@@ -22,6 +22,7 @@ import {
   createWaitlistEntryAdmin, updateWaitlistEntry, uploadWaitlistDoc,
 } from "@/lib/waitlist.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
+import { sendRentalSms } from "@/lib/rental-sms.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { vehicles } from "@/lib/mock/data";
 import { isVehicleBookable, addDriver, addRental, ensureRentalSynced, useStoreVersion } from "@/lib/mock/store";
@@ -415,10 +416,17 @@ function CreateWaiterDialog({
   const [cadence, setCadence] = useState<"Daily" | "Weekly" | "">("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [sendText, setSendText] = useState(true);
+  const [smsBody, setSmsBody] = useState(
+    "Hi{{name}}, you're on the Camauto Rentals waitlist. We'll text you as soon as a vehicle opens up — no forms to fill out again.",
+  );
+  const sendSmsFn = useServerFn(sendRentalSms);
 
   useEffect(() => {
     if (open) {
       setName(""); setPhone(""); setEmail(""); setPref(""); setCadence(""); setNotes("");
+      setSendText(true);
+      setSmsBody("Hi{{name}}, you're on the Camauto Rentals waitlist. We'll text you as soon as a vehicle opens up — no forms to fill out again.");
     }
   }, [open]);
 
@@ -433,6 +441,16 @@ function CreateWaiterDialog({
         adminNotes: notes || undefined,
       } });
       toast.success("Waiter added");
+      if (sendText && phone.trim() && smsBody.trim()) {
+        const firstName = name.trim().split(/\s+/)[0] || "";
+        const message = smsBody.replace(/\{\{\s*name\s*\}\}/gi, firstName ? ` ${firstName}` : "");
+        try {
+          await sendSmsFn({ data: { phone: phone.trim(), message, name: name.trim() || undefined } });
+          toast.success("Text sent");
+        } catch (err) {
+          toast.error(err instanceof Error ? `Text failed: ${err.message}` : "Text failed");
+        }
+      }
       onDone();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not create waiter");
@@ -491,6 +509,25 @@ function CreateWaiterDialog({
           <div className="space-y-1.5">
             <Label>Notes</Label>
             <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+          <div className="space-y-2 rounded-md border p-3">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={sendText}
+                onChange={(e) => setSendText(e.target.checked)}
+                className="h-4 w-4"
+              />
+              Send confirmation text to {phone.trim() || "phone entered"}
+            </label>
+            {sendText && (
+              <>
+                <Textarea rows={3} value={smsBody} onChange={(e) => setSmsBody(e.target.value)} />
+                <p className="text-[11px] text-muted-foreground">
+                  {"{{name}}"} is replaced with the waiter's first name.
+                </p>
+              </>
+            )}
           </div>
         </div>
         <DialogFooter>
