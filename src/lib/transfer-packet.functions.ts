@@ -26,6 +26,8 @@ export interface TransferPacketResult {
     | "no_agreement"
     | "no_dates"
     | "date_outside_rental"
+    | "missing_address"
+    | "missing_signature"
     | "unknown";
 }
 
