@@ -201,7 +201,11 @@ function SortableNavRow(props: React.ComponentProps<typeof NavRow> & { id: strin
   };
   return (
     <div ref={setNodeRef} style={style}>
-      <NavRow {...rest} dragAttributes={attributes} dragListeners={listeners} />
+      <NavRow
+        {...rest}
+        dragAttributes={attributes as unknown as Record<string, unknown>}
+        dragListeners={listeners as unknown as Record<string, unknown>}
+      />
     </div>
   );
 }
