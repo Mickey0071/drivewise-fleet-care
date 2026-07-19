@@ -10,6 +10,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   getPacketBuilderData,
   generateTransferPacket,
@@ -41,11 +44,15 @@ export function PacketBuilderDialog({
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [dragKind, setDragKind] = useState<string | null>(null);
+  const [addressOverride, setAddressOverride] = useState("");
+  const [allowUnsigned, setAllowUnsigned] = useState(false);
 
   useEffect(() => {
     if (!open || !violationId) return;
     setData(null);
     setSelected([]);
+    setAddressOverride("");
+    setAllowUnsigned(false);
     loadFn({ data: { violationId } })
       .then((res) => {
         setData(res);
@@ -116,9 +123,29 @@ export function PacketBuilderDialog({
       toast.error("Add at least one document to the packet");
       return;
     }
+    const errorCode =
+      data?.validation.ok === false ? data.validation.errorCode : null;
+    if (errorCode === "missing_address" && addressOverride.trim().length < 5) {
+      toast.error("Enter the renter's full address before generating");
+      return;
+    }
+    if (errorCode === "missing_signature" && !allowUnsigned) {
+      toast.error(
+        "The agreement has no signature. Tick 'Proceed without signature' to override, or send a retroactive signing link first.",
+      );
+      return;
+    }
     setBusy(true);
     try {
-      const res = await genFn({ data: { violationId, documents: selected } });
+      const res = await genFn({
+        data: {
+          violationId,
+          documents: selected,
+          renterAddressOverride:
+            addressOverride.trim().length > 0 ? addressOverride.trim() : undefined,
+          allowUnsigned,
+        },
+      });
       if (!res.ok) {
         toast.error(res.error ?? "Failed to generate packet");
         return;
@@ -183,9 +210,39 @@ export function PacketBuilderDialog({
         ) : (
           <>
             {data.validation.ok === false && (
-              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                Warning: {data.validation.error}
-              </p>
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive space-y-2">
+                <p className="font-medium">
+                  ⚠ {data.validation.error}
+                </p>
+                {data.validation.errorCode === "missing_address" && (
+                  <div className="space-y-1 pt-1">
+                    <Label className="text-xs text-destructive">
+                      Enter renter's mailing address (required)
+                    </Label>
+                    <Input
+                      value={addressOverride}
+                      onChange={(e) => setAddressOverride(e.target.value)}
+                      placeholder="123 Main St, Newark, NJ 07102"
+                      className="bg-background text-foreground"
+                    />
+                    <p className="text-[11px] text-destructive/80">
+                      This will be saved to the renter's record for future packets.
+                    </p>
+                  </div>
+                )}
+                {data.validation.errorCode === "missing_signature" && (
+                  <label className="flex items-start gap-2 pt-1">
+                    <Checkbox
+                      checked={allowUnsigned}
+                      onCheckedChange={(v) => setAllowUnsigned(Boolean(v))}
+                      className="mt-0.5"
+                    />
+                    <span className="text-[12px]">
+                      Proceed without renter signature (admin override). Prefer sending a retroactive signing link from the row first.
+                    </span>
+                  </label>
+                )}
+              </div>
             )}
 
             <div className="grid gap-4 md:grid-cols-2">
