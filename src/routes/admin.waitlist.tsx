@@ -433,7 +433,7 @@ function CreateWaiterDialog({
   async function submit() {
     setSaving(true);
     try {
-      await create({ data: {
+      const result = await create({ data: {
         name, phone,
         email: email || undefined,
         vehiclePreference: pref || undefined,
@@ -443,7 +443,12 @@ function CreateWaiterDialog({
       toast.success("Waiter added");
       if (sendText && phone.trim() && smsBody.trim()) {
         const firstName = name.trim().split(/\s+/)[0] || "";
-        const message = smsBody.replace(/\{\{\s*name\s*\}\}/gi, firstName ? ` ${firstName}` : "");
+        const uploadLink = result?.uploadToken
+          ? `${window.location.origin}/waitlist/upload/${result.uploadToken}`
+          : "";
+        const message = smsBody
+          .replace(/\{\{\s*name\s*\}\}/gi, firstName ? ` ${firstName}` : "")
+          .replace(/\{\{\s*link\s*\}\}/gi, uploadLink);
         try {
           await sendSmsFn({ data: { phone: phone.trim(), message, name: name.trim() || undefined } });
           toast.success("Text sent");
