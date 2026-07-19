@@ -865,7 +865,7 @@ function ManualMatchDialog({
     try {
       const { violationId } = await matchCommit({ data: { itemId: item.id, rentalId } });
       toast.success("Ticket created — building dispute packet…");
-      const { filename, base64, missing } = await buildPacket({
+      const res = await buildPacket({
         data: {
           violationId,
           include: {
@@ -881,6 +881,14 @@ function ManualMatchDialog({
           },
         },
       });
+      if (!res.ok) {
+        toast.error(
+          res.error ??
+            "Packet blocked — renter address or signature missing on the agreement.",
+        );
+        return;
+      }
+      const { filename, base64, missing } = res;
       const bin = atob(base64);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
