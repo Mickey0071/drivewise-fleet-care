@@ -1,28 +1,27 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
-  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList, LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature, Bell, CalendarPlus, BarChart3, DatabaseBackup, Package, Upload, Database,
-  Gauge, ChevronRight, Handshake, GripVertical, Lock, LockOpen, Star, Pin, PinOff,
+  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList,
+  LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2,
+  Undo2, FileSignature, Bell, CalendarPlus, BarChart3, DatabaseBackup, Package,
+  Upload, Database, Gauge, Handshake, GripVertical, Star, RotateCcw, Search,
 } from "lucide-react";
 import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
-  SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
+  Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar,
 } from "@/components/ui/sidebar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { unreadReportCount, useStoreVersion } from "@/lib/mock/store";
 import { rentals } from "@/lib/mock/data";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { countNewWaitlistEntries } from "@/lib/waitlist.functions";
-import { Button } from "@/components/ui/button";
 import logo from "@/assets/camauto-logo.jpeg";
 import {
-  DndContext, closestCenter, PointerSensor, KeyboardSensor,
+  DndContext, closestCenter, PointerSensor, KeyboardSensor, TouchSensor,
   useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
 import {
@@ -30,297 +29,206 @@ import {
   useSortable, sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useSidebarLayout, applyOrder } from "@/hooks/use-sidebar-layout";
-import { useSidebarShortcuts, type Shortcut } from "@/hooks/use-sidebar-shortcuts";
+import { useNavLayout, applyOrder } from "@/hooks/use-nav-layout";
 import {
-  ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger,
-} from "@/components/ui/context-menu";
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { LucideIcon } from "lucide-react";
 
-type Item = { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] };
-type Group = { key: string; label: string; icon: typeof LayoutDashboard; items: Item[]; defaultOpen?: boolean };
-
-// Registry so pinned shortcuts (stored by icon name) can resolve back to a component.
-const ICON_REGISTRY: Record<string, LucideIcon> = {
-  LayoutDashboard, Car, Users, FileText, DollarSign, ClipboardCheck, Calendar,
-  Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList,
-  ScrollText, Shield, MessageSquare, UsersRound, Building2, Undo2, FileSignature,
-  Bell, CalendarPlus, BarChart3, DatabaseBackup, Package, Upload, Database, Gauge,
-  Handshake, Star,
+type Role = AppRole;
+type NavItem = {
+  key: string; // stable id (== url)
+  url: string;
+  title: string;
+  icon: LucideIcon;
+  roles: Role[];
+  sectionKey: string;
+  sectionLabel: string;
+  sectionIcon: LucideIcon;
 };
-function iconKeyOf(icon: LucideIcon): string {
-  const found = Object.entries(ICON_REGISTRY).find(([, v]) => v === icon);
-  return found?.[0] ?? "Star";
-}
-function iconFromKey(key: string): LucideIcon {
-  return ICON_REGISTRY[key] ?? Star;
-}
 
-function CollapsibleGroup({
-  group, collapsed, items, renderItems,
+const ALL: Role[] = ["admin"];
+
+/**
+ * Default sidebar composition. The user can re-order any item across sections;
+ * the section labels below are only defaults used to group items on first load
+ * and as visual dividers when consecutive items share the same default section.
+ */
+const DEFAULT_ITEMS: NavItem[] = [
+  // Dashboard
+  { key: "/", url: "/", title: "Dashboard", icon: LayoutDashboard, roles: ["admin"], sectionKey: "dashboard", sectionLabel: "Dashboard", sectionIcon: LayoutDashboard },
+  { key: "/fleet-snapshot", url: "/fleet-snapshot", title: "Fleet Snapshot", icon: Gauge, roles: ["admin"], sectionKey: "dashboard", sectionLabel: "Dashboard", sectionIcon: LayoutDashboard },
+
+  // Reservations
+  { key: "/rentals", url: "/rentals", title: "Active Reservations", icon: FileText, roles: ALL, sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
+  { key: "/admin/waitlist", url: "/admin/waitlist", title: "Waitlist", icon: ClipboardList, roles: ALL, sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
+  { key: "/calendar", url: "/calendar", title: "Calendar", icon: Calendar, roles: ALL, sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
+  { key: "/driver-portal", url: "/driver-portal", title: "Client Portal Activity", icon: IdCard, roles: ALL, sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
+  { key: "/pending-agreements", url: "/pending-agreements", title: "Pending Agreements", icon: FileSignature, roles: ["admin", "va"], sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
+
+  // Fleet
+  { key: "/fleet", url: "/fleet", title: "Vehicles", icon: Car, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
+  { key: "/maintenance", url: "/maintenance", title: "Maintenance", icon: Wrench, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
+  { key: "/repairs", url: "/repairs", title: "Repairs", icon: Wrench, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
+  { key: "/admin/parts", url: "/admin/parts", title: "Parts", icon: Package, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
+  { key: "/inspections", url: "/inspections", title: "Inspections", icon: ClipboardCheck, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
+  { key: "/violations", url: "/violations", title: "Violations", icon: AlertTriangle, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
+  { key: "/monthly-vehicle-reports", url: "/monthly-vehicle-reports", title: "Monthly Vehicle Reports", icon: FileText, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
+  { key: "/insurance", url: "/insurance", title: "Insurance", icon: Shield, roles: ["admin"], sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
+  { key: "/vendors", url: "/vendors", title: "Vendors", icon: Building2, roles: ["admin"], sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
+
+  // Customers & Payments
+  { key: "/drivers", url: "/drivers", title: "Customers", icon: Users, roles: ["admin"], sectionKey: "customers", sectionLabel: "Customers & Payments", sectionIcon: Users },
+  { key: "/payments", url: "/payments", title: "Payments", icon: DollarSign, roles: ["admin"], sectionKey: "customers", sectionLabel: "Customers & Payments", sectionIcon: Users },
+  { key: "/refund-approvals", url: "/refund-approvals", title: "Refund Approvals", icon: Undo2, roles: ["admin", "va"], sectionKey: "customers", sectionLabel: "Customers & Payments", sectionIcon: Users },
+
+  // P&L / Finance
+  { key: "/analytics/pnl-dashboard", url: "/analytics/pnl-dashboard", title: "P&L Dashboard", icon: TrendingUp, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
+  { key: "/pnl", url: "/pnl", title: "P&L", icon: TrendingUp, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
+  { key: "/admin/expenses", url: "/admin/expenses", title: "Expenses", icon: Receipt, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
+  { key: "/analytics/profitability", url: "/analytics/profitability", title: "Vehicle Profitability", icon: BarChart3, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
+  { key: "/analytics", url: "/analytics", title: "Analytics", icon: BarChart3, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
+  { key: "/payroll", url: "/payroll", title: "Payroll", icon: Banknote, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
+
+  // Staff & Tasks
+  { key: "/admin/users", url: "/admin/users", title: "Staff Directory", icon: UsersRound, roles: ALL, sectionKey: "staff", sectionLabel: "Staff & Tasks", sectionIcon: UsersRound },
+  { key: "/admin/create-task", url: "/admin/create-task", title: "Create Task", icon: ClipboardList, roles: ALL, sectionKey: "staff", sectionLabel: "Staff & Tasks", sectionIcon: UsersRound },
+  { key: "/admin/tasks", url: "/admin/tasks", title: "Runner Dispatch", icon: ClipboardList, roles: ALL, sectionKey: "staff", sectionLabel: "Staff & Tasks", sectionIcon: UsersRound },
+  { key: "/admin/mechanics", url: "/admin/mechanics", title: "Mechanics", icon: Wrench, roles: ALL, sectionKey: "staff", sectionLabel: "Staff & Tasks", sectionIcon: UsersRound },
+  { key: "/runner-reports", url: "/runner-reports", title: "Runner Reports", icon: ClipboardList, roles: ["admin"], sectionKey: "staff", sectionLabel: "Staff & Tasks", sectionIcon: UsersRound },
+
+  // JV
+  { key: "/jv-units", url: "/jv-units", title: "JV Units", icon: Car, roles: ALL, sectionKey: "jv", sectionLabel: "JV", sectionIcon: Handshake },
+  { key: "/jv-contracts", url: "/jv-contracts", title: "JV Contracts", icon: FileSignature, roles: ALL, sectionKey: "jv", sectionLabel: "JV", sectionIcon: Handshake },
+  { key: "/jv-payouts", url: "/jv-payouts", title: "JV Payouts", icon: Banknote, roles: ALL, sectionKey: "jv", sectionLabel: "JV", sectionIcon: Handshake },
+
+  // Other
+  { key: "/rental-agreement", url: "/rental-agreement", title: "Rental Agreement", icon: ScrollText, roles: ["admin"], sectionKey: "other", sectionLabel: "Other", sectionIcon: FileText },
+  { key: "/self-agreement", url: "/self-agreement", title: "Rental Agreement Violation", icon: FileSignature, roles: ["admin"], sectionKey: "other", sectionLabel: "Other", sectionIcon: FileText },
+  { key: "/sms-log", url: "/sms-log", title: "SMS log", icon: MessageSquare, roles: ["admin"], sectionKey: "other", sectionLabel: "Other", sectionIcon: FileText },
+  { key: "/admin/notifications", url: "/admin/notifications", title: "Notifications", icon: Bell, roles: ["admin"], sectionKey: "other", sectionLabel: "Other", sectionIcon: FileText },
+  { key: "/admin/extensions", url: "/admin/extensions", title: "Extension Offers", icon: CalendarPlus, roles: ["admin"], sectionKey: "other", sectionLabel: "Other", sectionIcon: FileText },
+
+  // Settings
+  { key: "/admin/import-data", url: "/admin/import-data", title: "Import Data", icon: DatabaseBackup, roles: ["admin"], sectionKey: "settings", sectionLabel: "Settings", sectionIcon: DatabaseBackup },
+  { key: "/admin/import-legacy", url: "/admin/import-legacy", title: "Import Legacy Rentals", icon: Upload, roles: ["admin"], sectionKey: "settings", sectionLabel: "Settings", sectionIcon: DatabaseBackup },
+  { key: "/migrated-reservations", url: "/migrated-reservations", title: "Migrated Reservations", icon: Database, roles: ["admin"], sectionKey: "settings", sectionLabel: "Settings", sectionIcon: DatabaseBackup },
+  { key: "/admin/backups", url: "/admin/backups", title: "Backups", icon: DatabaseBackup, roles: ["admin"], sectionKey: "settings", sectionLabel: "Settings", sectionIcon: DatabaseBackup },
+];
+
+function NavRow({
+  item, isActive, badges, collapsed, isMobile, isStarred, onToggleStar,
+  dragHandleRef, dragAttributes, dragListeners,
 }: {
-  group: Group;
+  item: NavItem;
+  isActive: (url: string) => boolean;
+  badges: { unread: number; pendingReview: number; waitlistNew: number };
   collapsed: boolean;
-  items: Item[];
-  renderItems: (items: Item[]) => ReactNode;
+  isMobile: boolean;
+  isStarred: boolean;
+  onToggleStar: (key: string) => void;
+  dragHandleRef?: (el: HTMLButtonElement | null) => void;
+  dragAttributes?: Record<string, unknown>;
+  dragListeners?: Record<string, unknown>;
 }) {
-  const storageKey = `sidebar-group:${group.key}`;
-  const [open, setOpen] = useState<boolean>(() => {
-    if (typeof window === "undefined") return group.defaultOpen ?? true;
-    const stored = window.localStorage.getItem(storageKey);
-    return stored === null ? (group.defaultOpen ?? true) : stored === "1";
-  });
-  const toggle = (next: boolean) => {
-    setOpen(next);
-    try { window.localStorage.setItem(storageKey, next ? "1" : "0"); } catch { /* ignore */ }
-  };
-
-  if (collapsed) {
-    // Icon-only mode: render items flat so they stay reachable.
-    return (
-      <SidebarGroup>
-        <SidebarGroupContent>{renderItems(items)}</SidebarGroupContent>
-      </SidebarGroup>
-    );
-  }
-
+  const active = isActive(item.url);
+  const Icon = item.icon;
+  const showGripAlways = isMobile;
   return (
-    <Collapsible open={open} onOpenChange={toggle}>
-      <SidebarGroup>
-        <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground">
-          <group.icon className="h-4 w-4 shrink-0" />
-          <span className="flex-1 text-left uppercase tracking-wide">{group.label}</span>
-          <ChevronRight className={`h-4 w-4 shrink-0 transition-transform duration-200 ${open ? "rotate-90" : ""}`} />
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <SidebarGroupContent>{renderItems(items)}</SidebarGroupContent>
-        </CollapsibleContent>
-      </SidebarGroup>
-    </Collapsible>
+    <div
+      className={`group/nav relative flex items-center gap-1 rounded-md ${
+        active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "hover:bg-sidebar-accent/50"
+      }`}
+    >
+      {!collapsed && (
+        <button
+          ref={dragHandleRef as never}
+          type="button"
+          aria-label={`Reorder ${item.title}`}
+          className={`cursor-grab touch-none px-1 text-sidebar-foreground/40 hover:text-sidebar-foreground ${
+            showGripAlways ? "opacity-100" : "opacity-0 group-hover/nav:opacity-100"
+          }`}
+          {...(dragAttributes ?? {})}
+          {...(dragListeners ?? {})}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
+      )}
+      <Link
+        to={item.url}
+        className="flex flex-1 items-center gap-2 py-2 pr-8 text-sm"
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        {!collapsed && <span className="flex-1 truncate">{item.title}</span>}
+        {!collapsed && item.url === "/runner-reports" && badges.unread > 0 && (
+          <Badge variant="default" className="h-5 px-1.5 text-[10px]">{badges.unread}</Badge>
+        )}
+        {!collapsed && item.url === "/pending-agreements" && badges.pendingReview > 0 && (
+          <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">{badges.pendingReview}</Badge>
+        )}
+        {!collapsed && item.url === "/admin/waitlist" && badges.waitlistNew > 0 && (
+          <Badge className="h-5 bg-primary px-1.5 text-[10px] text-primary-foreground">{badges.waitlistNew}</Badge>
+        )}
+      </Link>
+      {!collapsed && (
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleStar(item.key); }}
+          aria-label={isStarred ? `Remove ${item.title} shortcut` : `Add ${item.title} shortcut to top`}
+          title={isStarred ? "Remove from top shortcuts" : "Pin to top shortcuts"}
+          className={`absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground ${
+            isStarred ? "opacity-100" : "opacity-0 group-hover/nav:opacity-100"
+          }`}
+        >
+          <Star className={`h-3.5 w-3.5 ${isStarred ? "fill-current text-amber-500" : ""}`} />
+        </button>
+      )}
+    </div>
   );
 }
 
-const ALL_ROLES: AppRole[] = ["admin"];
-
-// ---- Drag-and-drop building blocks for the "Edit layout" mode ----
-
-function SortableLink({
-  item, isActive, unread, pendingReviewCount,
-}: {
-  item: Item;
-  isActive: (url: string) => boolean;
-  unread: number;
-  pendingReviewCount: number;
-}) {
+function SortableNavRow(props: React.ComponentProps<typeof NavRow> & { id: string }) {
+  const { id, ...rest } = props;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: item.url });
+    useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
   return (
-    <SidebarMenuItem ref={setNodeRef} style={style}>
-      <div className="flex items-center gap-1 rounded-md border border-dashed border-sidebar-border/60 bg-sidebar-accent/30 px-1">
-        <button
-          type="button"
-          className="cursor-grab touch-none px-0.5 text-sidebar-foreground/50 hover:text-sidebar-foreground"
-          {...attributes}
-          {...listeners}
-          aria-label={`Reorder ${item.title}`}
-        >
-          <GripVertical className="h-3.5 w-3.5" />
-        </button>
-        <div className="flex flex-1 items-center gap-2 py-1.5 text-sm">
-          <item.icon className="h-4 w-4 shrink-0" />
-          <span className="flex-1">{item.title}</span>
-          {item.url === "/runner-reports" && unread > 0 && (
-            <Badge variant="default" className="h-5 px-1.5 text-[10px]">{unread}</Badge>
-          )}
-          {item.url === "/pending-agreements" && pendingReviewCount > 0 && (
-            <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">{pendingReviewCount}</Badge>
-          )}
-        </div>
-      </div>
-    </SidebarMenuItem>
+    <div ref={setNodeRef} style={style}>
+      <NavRow
+        {...rest}
+        dragAttributes={attributes as unknown as Record<string, unknown>}
+        dragListeners={listeners as unknown as Record<string, unknown>}
+      />
+    </div>
   );
 }
 
-function EditableGroupBlock({
-  group, items, isActive, unread, pendingReviewCount, sensors, onReorderItems,
-}: {
-  group: Group;
-  items: Item[];
-  isActive: (url: string) => boolean;
-  unread: number;
-  pendingReviewCount: number;
-  sensors: ReturnType<typeof useSensors>;
-  onReorderItems: (groupKey: string, orderedUrls: string[]) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: `group:${group.key}` });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.6 : 1,
-  };
-  const handleItemDragEnd = (e: DragEndEvent) => {
-    const { active, over } = e;
-    if (!over || active.id === over.id) return;
-    const urls = items.map((i) => i.url);
-    const from = urls.indexOf(String(active.id));
-    const to = urls.indexOf(String(over.id));
-    if (from < 0 || to < 0) return;
-    onReorderItems(group.key, arrayMove(urls, from, to));
-  };
+function SectionHeader({ label, icon: Icon }: { label: string; icon: LucideIcon }) {
   return (
-    <SidebarGroup ref={setNodeRef} style={style}>
-      <div className="flex items-center gap-2 rounded-md bg-sidebar-accent px-2 py-1.5 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/80">
-        <button
-          type="button"
-          className="cursor-grab touch-none text-sidebar-foreground/60 hover:text-sidebar-foreground"
-          {...attributes}
-          {...listeners}
-          aria-label={`Reorder ${group.label} section`}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-        <group.icon className="h-4 w-4" />
-        <span className="flex-1">{group.label}</span>
-      </div>
-      <SidebarGroupContent>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
-          <SortableContext items={items.map((i) => i.url)} strategy={verticalListSortingStrategy}>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SortableLink
-                  key={item.url}
-                  item={item}
-                  isActive={isActive}
-                  unread={unread}
-                  pendingReviewCount={pendingReviewCount}
-                />
-              ))}
-            </SidebarMenu>
-          </SortableContext>
-        </DndContext>
-      </SidebarGroupContent>
-    </SidebarGroup>
+    <div className="mt-3 flex items-center gap-2 px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-sidebar-foreground/60">
+      <Icon className="h-3.5 w-3.5" />
+      <span>{label}</span>
+    </div>
   );
 }
-
-// New top-level collapsible groups (navigation reorganization)
-const primaryGroups: Group[] = [
-  {
-    key: "reservations", label: "Reservations", icon: FileText, defaultOpen: true,
-    items: [
-      { title: "Active Reservations", url: "/rentals", icon: FileText, roles: ALL_ROLES },
-      { title: "Waitlist", url: "/admin/waitlist", icon: ClipboardList, roles: ALL_ROLES },
-      { title: "Calendar", url: "/calendar", icon: Calendar, roles: ALL_ROLES },
-      { title: "Client Portal Activity", url: "/driver-portal", icon: IdCard, roles: ALL_ROLES },
-    ],
-  },
-  {
-    key: "fleet", label: "Fleet", icon: Car, defaultOpen: true,
-    items: [
-      { title: "Vehicles", url: "/fleet", icon: Car, roles: ALL_ROLES },
-      { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ALL_ROLES },
-      { title: "Repairs", url: "/repairs", icon: Wrench, roles: ALL_ROLES },
-      { title: "Parts", url: "/admin/parts", icon: Package, roles: ALL_ROLES },
-      { title: "Inspections", url: "/inspections", icon: ClipboardCheck, roles: ALL_ROLES },
-      { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ALL_ROLES },
-      { title: "Monthly Vehicle Reports", url: "/monthly-vehicle-reports", icon: FileText, roles: ALL_ROLES },
-    ],
-  },
-  {
-    key: "pnl", label: "P&L/Expenses", icon: TrendingUp, defaultOpen: true,
-    items: [
-      { title: "P&L Dashboard", url: "/analytics/pnl-dashboard", icon: TrendingUp, roles: ALL_ROLES },
-      { title: "P&L", url: "/pnl", icon: TrendingUp, roles: ALL_ROLES },
-      { title: "Expenses", url: "/admin/expenses", icon: Receipt, roles: ALL_ROLES },
-      { title: "Vehicle Profitability", url: "/analytics/profitability", icon: BarChart3, roles: ALL_ROLES },
-      { title: "Prior Period Adjustment", url: "/analytics/pnl-dashboard#prior-period-adjustment", icon: DollarSign, roles: ALL_ROLES },
-      { title: "Analytics", url: "/analytics", icon: BarChart3, roles: ALL_ROLES },
-      { title: "Payroll", url: "/payroll", icon: Banknote, roles: ALL_ROLES },
-    ],
-  },
-  {
-    key: "staff", label: "Staff", icon: UsersRound, defaultOpen: true,
-    items: [
-      { title: "Staff Directory", url: "/admin/users", icon: UsersRound, roles: ALL_ROLES },
-      { title: "Create Task", url: "/admin/create-task", icon: ClipboardList, roles: ALL_ROLES },
-      { title: "Runner Dispatch", url: "/admin/tasks", icon: ClipboardList, roles: ALL_ROLES },
-      { title: "Mechanics", url: "/admin/mechanics", icon: Wrench, roles: ALL_ROLES },
-    ],
-  },
-  {
-    key: "jv", label: "JV", icon: Handshake, defaultOpen: true,
-    items: [
-      { title: "JV Units", url: "/jv-units", icon: Car, roles: ALL_ROLES },
-      { title: "JV Contracts", url: "/jv-contracts", icon: FileSignature, roles: ALL_ROLES },
-      { title: "JV Payouts", url: "/jv-payouts", icon: Banknote, roles: ALL_ROLES },
-    ],
-  },
-];
-
-// URLs surfaced inside the primary groups — excluded from the "More" lists to avoid duplicates.
-const primaryUrls = new Set(
-  primaryGroups.flatMap(g => g.items.map(i => i.url.split("#")[0])),
-);
-
-const adminItems: Item[] = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["admin"] },
-  { title: "Fleet Snapshot", url: "/fleet-snapshot", icon: Gauge, roles: ["admin"] },
-  { title: "Reservations", url: "/rentals", icon: FileText, roles: ["admin"] },
-  { title: "Fleet", url: "/fleet", icon: Car, roles: ["admin"] },
-  { title: "Maintenance", url: "/maintenance", icon: Wrench, roles: ["admin"] },
-  { title: "Repairs", url: "/repairs", icon: Wrench, roles: ["admin"] },
-  { title: "Create Task", url: "/admin/create-task", icon: ClipboardList, roles: ["admin"] },
-  { title: "Runner Tasks", url: "/admin/tasks", icon: ClipboardList, roles: ["admin"] },
-  { title: "Mechanics", url: "/admin/mechanics", icon: Wrench, roles: ["admin"] },
-  { title: "Violations", url: "/violations", icon: AlertTriangle, roles: ["admin"] },
-  { title: "Customers", url: "/drivers", icon: Users, roles: ["admin"] },
-  { title: "Pending Agreements", url: "/pending-agreements", icon: FileSignature, roles: ["admin", "va"] },
-  { title: "Calendar", url: "/calendar", icon: Calendar, roles: ["admin"] },
-  { title: "Payments", url: "/payments", icon: DollarSign, roles: ["admin"] },
-  { title: "Inspections", url: "/inspections", icon: ClipboardCheck, roles: ["admin"] },
-  { title: "Vendors", url: "/vendors", icon: Building2, roles: ["admin"] },
-  { title: "Parts", url: "/admin/parts", icon: Package, roles: ["admin"] },
-  { title: "Insurance", url: "/insurance", icon: Shield, roles: ["admin"] },
-  { title: "Runner Reports", url: "/runner-reports", icon: ClipboardList, roles: ["admin"] },
-  { title: "Rental Agreement", url: "/rental-agreement", icon: ScrollText, roles: ["admin"] },
-  { title: "Rental Agreement Violation", url: "/self-agreement", icon: FileSignature, roles: ["admin"] },
-  { title: "SMS log", url: "/sms-log", icon: MessageSquare, roles: ["admin"] },
-  { title: "Analytics", url: "/analytics", icon: BarChart3, roles: ["admin"] },
-  { title: "Notifications", url: "/admin/notifications", icon: Bell, roles: ["admin"] },
-  { title: "Extension Offers", url: "/admin/extensions", icon: CalendarPlus, roles: ["admin"] },
-  { title: "Refund Approvals", url: "/refund-approvals", icon: Undo2, roles: ["admin", "va"] },
-  { title: "Backups", url: "/admin/backups", icon: DatabaseBackup, roles: ["admin"] },
-];
-const financeItems: Item[] = [
-  { title: "P&L", url: "/pnl", icon: TrendingUp, roles: ["admin"] },
-  { title: "Monthly Vehicle Reports", url: "/monthly-vehicle-reports", icon: FileText, roles: ["admin"] },
-  { title: "Expenses", url: "/admin/expenses", icon: Receipt, roles: ["admin"] },
-  { title: "Payroll", url: "/payroll", icon: Banknote, roles: ["admin"] },
-];
-const portalItems: Item[] = [
-  { title: "Renter Portal", url: "/driver-portal", icon: IdCard, roles: ["admin", "driver"] },
-];
-const settingsItems: Item[] = [
-  { title: "Team & Access", url: "/admin/users", icon: UsersRound, roles: ["admin"] },
-  { title: "Import Data", url: "/admin/import-data", icon: DatabaseBackup, roles: ["admin"] },
-  { title: "Import Legacy Rentals", url: "/admin/import-legacy", icon: Upload, roles: ["admin"] },
-  { title: "Migrated Reservations", url: "/migrated-reservations", icon: Database, roles: ["admin"] },
-];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const isMobile = useIsMobile();
   const path = useRouterState({ select: (r) => r.location.pathname });
   const isActive = (rawUrl: string) => {
     const url = rawUrl.split("#")[0];
     return url === "/" ? path === "/" : path.startsWith(url);
   };
+
   useStoreVersion();
   const unread = unreadReportCount();
   const pendingReviewCount = rentals.filter(r => r.staffReviewStatus === "pending").length;
@@ -331,133 +239,63 @@ export function AppSidebar() {
     refetchInterval: 60_000,
   });
   const waitlistNew = wlNewData?.count ?? 0;
+  const badges = { unread, pendingReview: pendingReviewCount, waitlistNew };
+
   const { role, user, signOut } = useAuth();
-  const filter = (items: Item[]) => role ? items.filter(i => i.roles.includes(role)) : [];
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
-  const search = (items: Item[]) =>
-    q ? items.filter(i => i.title.toLowerCase().includes(q)) : items;
 
-  const { shortcuts, isPinned, togglePin } = useSidebarShortcuts();
+  const { layout, setNavOrder, setShortcuts, toggleStar, isStarred, reset } = useNavLayout();
 
-  // Per-user sidebar arrangement (order + lock), synced across devices.
-  const { layout, save } = useSidebarLayout();
-  const [editing, setEditing] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  // Apply the saved order to a group's items (new links append at the end).
-  const orderItems = (group: Group, items: Item[]) =>
-    applyOrder(items, (i) => i.url, layout.itemOrder[group.key]);
+  // Filter by role, then apply user's saved order.
+  const orderedNav = useMemo<NavItem[]>(() => {
+    const filtered = DEFAULT_ITEMS.filter(i => role ? i.roles.includes(role) : false);
+    return applyOrder(filtered, (i) => i.key, layout.navOrder);
+  }, [role, layout.navOrder]);
 
-  const handleGroupDragEnd = (e: DragEndEvent) => {
+  const searched = useMemo<NavItem[]>(() => {
+    if (!q) return orderedNav;
+    return orderedNav.filter(i => i.title.toLowerCase().includes(q));
+  }, [orderedNav, q]);
+
+  // Shortcut rows: preserve saved order, resolve items from master list.
+  const shortcutItems = useMemo<NavItem[]>(() => {
+    const byKey = new Map(DEFAULT_ITEMS.map(i => [i.key, i]));
+    const list = layout.shortcuts
+      .map(k => byKey.get(k))
+      .filter((i): i is NavItem => !!i && (role ? i.roles.includes(role) : false));
+    if (!q) return list;
+    return list.filter(i => i.title.toLowerCase().includes(q));
+  }, [layout.shortcuts, role, q]);
+
+  const handleNavDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const keys = orderedBlocks.map((b) => b.group.key);
-    const from = keys.indexOf(String(active.id).replace(/^group:/, ""));
-    const to = keys.indexOf(String(over.id).replace(/^group:/, ""));
+    // Reorder against the full nav list (not the searched subset).
+    const fullKeys = orderedNav.map(i => i.key);
+    const from = fullKeys.indexOf(String(active.id));
+    const to = fullKeys.indexOf(String(over.id));
     if (from < 0 || to < 0) return;
-    save({ ...layout, groupOrder: arrayMove(keys, from, to) });
+    void setNavOrder(arrayMove(fullKeys, from, to));
   };
 
-  const handleReorderItems = (groupKey: string, orderedUrls: string[]) => {
-    save({ ...layout, itemOrder: { ...layout.itemOrder, [groupKey]: orderedUrls } });
+  const handleShortcutDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const keys = layout.shortcuts.slice();
+    const activeKey = String(active.id).replace(/^sc:/, "");
+    const overKey = String(over.id).replace(/^sc:/, "");
+    const from = keys.indexOf(activeKey);
+    const to = keys.indexOf(overKey);
+    if (from < 0 || to < 0) return;
+    void setShortcuts(arrayMove(keys, from, to));
   };
-
-  const renderItems = (items: Item[]) => (
-    <SidebarMenu>
-      {items.map((item) => (
-        <SidebarMenuItem key={item.title}>
-          <ContextMenu>
-            <ContextMenuTrigger asChild>
-              <div className="group/link relative">
-                <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                  <Link to={item.url} className="flex items-center gap-3">
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    {!collapsed && <span className="flex-1">{item.title}</span>}
-                    {!collapsed && item.url === "/runner-reports" && unread > 0 && (
-                      <Badge variant="default" className="h-5 px-1.5 text-[10px]">{unread}</Badge>
-                    )}
-                    {!collapsed && item.url === "/pending-agreements" && pendingReviewCount > 0 && (
-                      <Badge className="h-5 bg-amber-500 px-1.5 text-[10px] text-white hover:bg-amber-500">{pendingReviewCount}</Badge>
-                    )}
-                    {!collapsed && item.url === "/admin/waitlist" && waitlistNew > 0 && (
-                      <Badge className="h-5 bg-primary px-1.5 text-[10px] text-primary-foreground">{waitlistNew}</Badge>
-                    )}
-                  </Link>
-                </SidebarMenuButton>
-                {!collapsed && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault(); e.stopPropagation();
-                      togglePin({ url: item.url, title: item.title, iconKey: iconKeyOf(item.icon) });
-                    }}
-                    className={`absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground ${isPinned(item.url) ? "opacity-100" : "opacity-0 group-hover/link:opacity-100"}`}
-                    aria-label={isPinned(item.url) ? `Unpin ${item.title}` : `Pin ${item.title}`}
-                    title={isPinned(item.url) ? "Unpin from Shortcuts" : "Pin to Shortcuts"}
-                  >
-                    <Star className={`h-3.5 w-3.5 ${isPinned(item.url) ? "fill-current text-amber-500" : ""}`} />
-                  </button>
-                )}
-              </div>
-            </ContextMenuTrigger>
-            <ContextMenuContent>
-              <ContextMenuItem
-                onSelect={() => togglePin({ url: item.url, title: item.title, iconKey: iconKeyOf(item.icon) })}
-              >
-                {isPinned(item.url) ? (
-                  <><PinOff className="mr-2 h-4 w-4" /> Unpin from Shortcuts</>
-                ) : (
-                  <><Pin className="mr-2 h-4 w-4" /> Pin to Shortcuts</>
-                )}
-              </ContextMenuItem>
-            </ContextMenuContent>
-          </ContextMenu>
-        </SidebarMenuItem>
-      ))}
-    </SidebarMenu>
-  );
-
-  // Leftover items (not surfaced in the primary groups) stay accessible below.
-  const leftover = (items: Item[]) => search(filter(items)).filter(i => !primaryUrls.has(i.url));
-
-  // Every sidebar section (Dashboard, primary folders, and the "More" lists)
-  // is a draggable block so a folder can be dropped anywhere in the sidebar.
-  type Block = { group: Group; items: Item[] };
-  const blocksRaw: Block[] = [
-    ...(shortcuts.length > 0 ? [{
-      group: { key: "shortcuts", label: "Shortcuts", icon: Star, defaultOpen: true, items: [] } as Group,
-      items: shortcuts.map((s): Item => ({
-        title: s.title, url: s.url, icon: iconFromKey(s.iconKey), roles: ALL_ROLES,
-      })).filter(i => q ? i.title.toLowerCase().includes(q) : true),
-    }] : []),
-    {
-      group: { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, defaultOpen: true, items: [] },
-      items: search(filter(adminItems)).filter(i => i.url === "/"),
-    },
-    ...primaryGroups.map((g) => ({ group: g, items: search(filter(g.items)) })),
-    {
-      group: { key: "more-ops", label: "More — Operations", icon: ClipboardList, defaultOpen: false, items: [] },
-      items: leftover(adminItems).filter(i => i.url !== "/"),
-    },
-    {
-      group: { key: "more-finance", label: "More — Finance", icon: TrendingUp, defaultOpen: false, items: [] },
-      items: leftover(financeItems),
-    },
-    {
-      group: { key: "more-portals", label: "More — Portals", icon: IdCard, defaultOpen: false, items: [] },
-      items: leftover(portalItems),
-    },
-    {
-      group: { key: "more-settings", label: "More — Settings", icon: UsersRound, defaultOpen: false, items: [] },
-      items: leftover(settingsItems),
-    },
-  ].map((b) => ({ ...b, items: orderItems(b.group, b.items) }));
-  // Blocks in the user's saved order (new blocks append at the end).
-  const orderedBlocks = applyOrder(blocksRaw, (b) => b.group.key, layout.groupOrder);
 
   return (
     <Sidebar collapsible="icon">
@@ -473,6 +311,7 @@ export function AppSidebar() {
           )}
         </Link>
       </SidebarHeader>
+
       <SidebarContent>
         {!collapsed && (
           <div className="px-2 pt-2">
@@ -485,56 +324,98 @@ export function AppSidebar() {
                 className="h-8 pl-8 text-sm"
               />
             </div>
-            <Button
-              variant={editing ? "default" : "outline"}
-              size="sm"
-              className="mt-2 w-full"
-              onClick={() => {
-                if (editing) {
-                  save({ ...layout, locked: true });
-                  setEditing(false);
-                } else {
-                  setEditing(true);
-                }
-              }}
-              title={editing ? "Lock the sidebar layout" : "Rearrange the sidebar"}
-            >
-              {editing ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
-              <span className="ml-1">{editing ? "Lock layout" : "Edit layout"}</span>
-            </Button>
           </div>
         )}
-        {editing && !collapsed && !q ? (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleGroupDragEnd}>
-            <SortableContext
-              items={orderedBlocks.map((b) => `group:${b.group.key}`)}
-              strategy={verticalListSortingStrategy}
-            >
-              {orderedBlocks.map(({ group, items }) => {
-                if (items.length === 0) return null;
-                return (
-                  <EditableGroupBlock
-                    key={group.key}
-                    group={group}
-                    items={items}
-                    isActive={isActive}
-                    unread={unread}
-                    pendingReviewCount={pendingReviewCount}
-                    sensors={sensors}
-                    onReorderItems={handleReorderItems}
-                  />
-                );
-              })}
+
+        {/* Starred shortcuts — always at the very top, above everything */}
+        {shortcutItems.length > 0 && (
+          <div className="px-2 pt-2">
+            {!collapsed && (
+              <div className="flex items-center gap-2 px-2 py-1 text-[11px] font-medium uppercase tracking-wide text-amber-600/80 dark:text-amber-400/80">
+                <Star className="h-3.5 w-3.5 fill-current" />
+                <span>Shortcuts</span>
+              </div>
+            )}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleShortcutDragEnd}>
+              <SortableContext items={shortcutItems.map(i => `sc:${i.key}`)} strategy={verticalListSortingStrategy}>
+                <div className="flex flex-col gap-0.5">
+                  {shortcutItems.map((item) => (
+                    <SortableNavRow
+                      key={`sc:${item.key}`}
+                      id={`sc:${item.key}`}
+                      item={item}
+                      isActive={isActive}
+                      badges={badges}
+                      collapsed={collapsed}
+                      isMobile={isMobile}
+                      isStarred={true}
+                      onToggleStar={toggleStar}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+            <div className="my-2 border-t border-sidebar-border" />
+          </div>
+        )}
+
+        {/* Main nav — flat, cross-section drag-and-drop */}
+        <div className="px-2 pb-2">
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleNavDragEnd}>
+            <SortableContext items={searched.map(i => i.key)} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col gap-0.5">
+                {searched.map((item, idx) => {
+                  const prev = idx > 0 ? searched[idx - 1] : undefined;
+                  const showHeader = !collapsed && !q && (!prev || prev.sectionKey !== item.sectionKey);
+                  return (
+                    <div key={item.key}>
+                      {showHeader && (
+                        <SectionHeader label={item.sectionLabel} icon={item.sectionIcon} />
+                      )}
+                      <SortableNavRow
+                        id={item.key}
+                        item={item}
+                        isActive={isActive}
+                        badges={badges}
+                        collapsed={collapsed}
+                        isMobile={isMobile}
+                        isStarred={isStarred(item.key)}
+                        onToggleStar={toggleStar}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </SortableContext>
           </DndContext>
-        ) : (
-          orderedBlocks.map(({ group, items }) =>
-            items.length === 0 ? null : (
-              <CollapsibleGroup key={group.key} group={group} collapsed={collapsed} renderItems={renderItems} items={items} />
-            ),
-          )
+        </div>
+
+        {/* Reset layout */}
+        {!collapsed && (
+          <div className="mt-auto px-2 pb-2">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-full justify-start text-xs text-sidebar-foreground/70">
+                  <RotateCcw className="mr-2 h-3.5 w-3.5" /> Reset layout
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset sidebar layout?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This restores the default order and removes every pinned shortcut. Only your account is affected.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => void reset()}>Reset</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         )}
       </SidebarContent>
+
       <SidebarFooter className="border-t border-sidebar-border p-3">
         {!collapsed && user && (
           <div className="mb-2 min-w-0">
