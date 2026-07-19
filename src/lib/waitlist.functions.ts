@@ -146,6 +146,129 @@ export const markWaitlistSeen = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** Admin: create a waiter manually (name + phone required, docs optional). */
+export const createWaitlistEntryAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    name: string;
+    phone: string;
+    email?: string;
+    licenseFrontDataUrl?: string;
+    licenseBackDataUrl?: string;
+    rideshareProofDataUrl?: string;
+    vehiclePreference?: string;
+    rentalCadence?: "Daily" | "Weekly";
+    adminNotes?: string;
+  }) => {
+    const name = (input.name ?? "").trim();
+    const phone = (input.phone ?? "").trim();
+    if (name.length < 2) throw new Error("Name required");
+    if (phone.length < 7) throw new Error("Phone required");
+    const email = (input.email ?? "").trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Invalid email");
+    const cadence = input.rentalCadence === "Daily" ? "Daily" : input.rentalCadence === "Weekly" ? "Weekly" : null;
+    return {
+      name, phone, email: email || null,
+      licenseFrontDataUrl: input.licenseFrontDataUrl ?? null,
+      licenseBackDataUrl: input.licenseBackDataUrl ?? null,
+      rideshareProofDataUrl: input.rideshareProofDataUrl ?? null,
+      vehiclePreference: (input.vehiclePreference ?? "").trim() || null,
+      rentalCadence: cadence,
+      adminNotes: (input.adminNotes ?? "").trim() || null,
+    };
+  })
+  .handler(async ({ data }) => {
+    const { data: inserted, error } = await db
+      .from("waitlist_entries")
+      .insert({
+        name: data.name,
+        phone: data.phone,
+        email: data.email ?? "",
+        status: "Waitlisted",
+        source: "Admin",
+        vehicle_preference: data.vehiclePreference,
+        rental_cadence: data.rentalCadence,
+        admin_notes: data.adminNotes,
+      })
+      .select("id")
+      .single();
+    if (error || !inserted) throw new Error(`Could not save: ${error?.message ?? "unknown"}`);
+    const entryId = inserted.id as string;
+    const patch: Record<string, string> = {};
+    if (data.licenseFrontDataUrl) {
+      const u = await uploadImage(entryId, "license-front", data.licenseFrontDataUrl);
+      patch.license_front_url = u;
+      patch.license_url = u;
+    }
+    if (data.licenseBackDataUrl) {
+      patch.license_back_url = await uploadImage(entryId, "license-back", data.licenseBackDataUrl);
+    }
+    if (data.rideshareProofDataUrl) {
+      patch.rideshare_proof_url = await uploadImage(entryId, "rideshare-proof", data.rideshareProofDataUrl);
+    }
+    if (Object.keys(patch).length) {
+      const { error: uErr } = await db.from("waitlist_entries").update(patch).eq("id", entryId);
+      if (uErr) throw new Error(uErr.message);
+    }
+    return { ok: true as const, id: entryId };
+  });
+
+/** Admin: update editable fields on a waitlist card (notes, contact info, prefs). */
+export const updateWaitlistEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    id: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+    vehiclePreference?: string | null;
+    rentalCadence?: string | null;
+    adminNotes?: string | null;
+  }) => {
+    if (!input.id) throw new Error("id required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const patch: Record<string, unknown> = {};
+    if (data.name !== undefined) patch.name = data.name.trim();
+    if (data.phone !== undefined) patch.phone = data.phone.trim();
+    if (data.email !== undefined) patch.email = data.email.trim();
+    if (data.vehiclePreference !== undefined) patch.vehicle_preference = data.vehiclePreference || null;
+    if (data.rentalCadence !== undefined) patch.rental_cadence = data.rentalCadence || null;
+    if (data.adminNotes !== undefined) patch.admin_notes = data.adminNotes ?? null;
+    if (!Object.keys(patch).length) return { ok: true as const };
+    const { error } = await (context.supabase as any)
+      .from("waitlist_entries").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+/** Admin: upload a document onto an existing waiter card. */
+export const uploadWaitlistDoc = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    id: string;
+    kind: "license-front" | "license-back" | "rideshare-proof";
+    dataUrl: string;
+  }) => {
+    if (!input.id) throw new Error("id required");
+    if (!["license-front", "license-back", "rideshare-proof"].includes(input.kind)) throw new Error("kind invalid");
+    if (!input.dataUrl?.startsWith("data:image/")) throw new Error("Image required");
+    return input;
+  })
+  .handler(async ({ data }) => {
+    const url = await uploadImage(data.id, data.kind, data.dataUrl);
+    const col =
+      data.kind === "license-front" ? "license_front_url"
+      : data.kind === "license-back" ? "license_back_url"
+      : "rideshare_proof_url";
+    const patch: Record<string, string> = { [col]: url };
+    if (data.kind === "license-front") patch.license_url = url;
+    const { error } = await db.from("waitlist_entries").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const, url };
+  });
+
 /** Admin: mark a waitlist entry as Converted after a reservation is created. */
 export const markWaitlistConverted = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
