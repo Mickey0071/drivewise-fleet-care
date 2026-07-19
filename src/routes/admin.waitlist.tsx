@@ -21,6 +21,7 @@ import {
 } from "@/lib/waitlist.functions";
 import { vehicles } from "@/lib/mock/data";
 import { isVehicleBookable, addDriver, addRental, useStoreVersion } from "@/lib/mock/store";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/admin/waitlist")({
   head: () => ({ meta: [{ title: "Waitlist — Camauto Rentals" }] }),
@@ -241,10 +242,17 @@ function AssignVehicleDialog({
         phone: entry.phone,
         email: entry.email,
         licenseImageUrl: (entry.license_front_url ?? entry.license_url) ?? undefined,
-        licenseBackImageUrl: entry.license_back_url ?? undefined,
-        rideshareProofUrl: entry.rideshare_proof_url ?? undefined,
       } as any);
       await (driver as any).cloudReady?.catch?.(() => {});
+
+      // Carry over the license-back and rideshare-proof references onto the driver
+      // record directly (mock store doesn't map these columns).
+      const driverExtras: Record<string, unknown> = {};
+      if (entry.license_back_url) driverExtras.license_back_image_url = entry.license_back_url;
+      if (entry.rideshare_proof_url) driverExtras.rideshare_proof_url = entry.rideshare_proof_url;
+      if (Object.keys(driverExtras).length) {
+        await (supabase.from("drivers") as any).update(driverExtras).eq("id", driver.id).then(() => {}, () => {});
+      }
 
       // Create the reservation (defaults to pending, weekly cadence).
       const rental = addRental({
@@ -258,8 +266,6 @@ function AssignVehicleDialog({
         rateAmount: rate,
         deposit: 0,
         licenseImageUrl: (entry.license_front_url ?? entry.license_url) ?? undefined,
-        licenseBackImageUrl: entry.license_back_url ?? undefined,
-        rideshareProofUrl: entry.rideshare_proof_url ?? undefined,
         selfieImageUrl: entry.selfie_url ?? undefined,
       } as any);
       await (rental as any).cloudReady?.catch?.(() => {});
