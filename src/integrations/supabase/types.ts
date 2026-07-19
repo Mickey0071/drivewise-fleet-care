@@ -3595,6 +3595,7 @@ export type Database = {
           source: string
           status: string
           updated_at: string
+          upload_token: string | null
           vehicle_preference: string | null
         }
         Insert: {
@@ -3616,6 +3617,7 @@ export type Database = {
           source?: string
           status?: string
           updated_at?: string
+          upload_token?: string | null
           vehicle_preference?: string | null
         }
         Update: {
@@ -3637,6 +3639,7 @@ export type Database = {
           source?: string
           status?: string
           updated_at?: string
+          upload_token?: string | null
           vehicle_preference?: string | null
         }
         Relationships: []
