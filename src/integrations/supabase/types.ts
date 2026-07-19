@@ -211,6 +211,7 @@ export type Database = {
           import_source: string | null
           insurance_on_file: boolean
           last_name: string | null
+          license_back_image_url: string | null
           license_expiry: string
           license_image_url: string | null
           license_number: string
@@ -218,6 +219,7 @@ export type Database = {
           next_auto_charge_date: string | null
           phone: string
           rideshare: string
+          rideshare_proof_url: string | null
           state: string | null
           status: string
           street_address: string | null
@@ -255,6 +257,7 @@ export type Database = {
           import_source?: string | null
           insurance_on_file?: boolean
           last_name?: string | null
+          license_back_image_url?: string | null
           license_expiry: string
           license_image_url?: string | null
           license_number: string
@@ -262,6 +265,7 @@ export type Database = {
           next_auto_charge_date?: string | null
           phone: string
           rideshare?: string
+          rideshare_proof_url?: string | null
           state?: string | null
           status?: string
           street_address?: string | null
@@ -299,6 +303,7 @@ export type Database = {
           import_source?: string | null
           insurance_on_file?: boolean
           last_name?: string | null
+          license_back_image_url?: string | null
           license_expiry?: string
           license_image_url?: string | null
           license_number?: string
@@ -306,6 +311,7 @@ export type Database = {
           next_auto_charge_date?: string | null
           phone?: string
           rideshare?: string
+          rideshare_proof_url?: string | null
           state?: string | null
           status?: string
           street_address?: string | null
@@ -3544,12 +3550,17 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          license_back_url: string | null
+          license_front_url: string | null
           license_url: string | null
           name: string
           phone: string
+          rental_cadence: string | null
+          rideshare_proof_url: string | null
           selfie_url: string | null
           status: string
           updated_at: string
+          vehicle_preference: string | null
         }
         Insert: {
           admin_seen_at?: string | null
@@ -3558,12 +3569,17 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
+          license_back_url?: string | null
+          license_front_url?: string | null
           license_url?: string | null
           name: string
           phone: string
+          rental_cadence?: string | null
+          rideshare_proof_url?: string | null
           selfie_url?: string | null
           status?: string
           updated_at?: string
+          vehicle_preference?: string | null
         }
         Update: {
           admin_seen_at?: string | null
@@ -3572,12 +3588,17 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          license_back_url?: string | null
+          license_front_url?: string | null
           license_url?: string | null
           name?: string
           phone?: string
+          rental_cadence?: string | null
+          rideshare_proof_url?: string | null
           selfie_url?: string | null
           status?: string
           updated_at?: string
+          vehicle_preference?: string | null
         }
         Relationships: []
       }
