@@ -108,7 +108,7 @@ export function DisputePacketDialog({
           toast.error(res.error ?? "Renter signature is missing on the agreement.");
           return;
         }
-        toast.error(res.error ?? "Packet failed");
+        toast.error("Packet failed");
         return;
       }
       const bin = atob(res.base64!);
