@@ -210,7 +210,97 @@ export const createWaitlistEntryAdmin = createServerFn({ method: "POST" })
       const { error: uErr } = await db.from("waitlist_entries").update(patch).eq("id", entryId);
       if (uErr) throw new Error(uErr.message);
     }
-    return { ok: true as const, id: entryId };
+    const { data: row } = await db
+      .from("waitlist_entries")
+      .select("upload_token")
+      .eq("id", entryId)
+      .single();
+    return { ok: true as const, id: entryId, uploadToken: (row?.upload_token as string) ?? null };
+  });
+
+/** Public: fetch minimal waitlist entry state by upload token (for the SMS upload link). */
+export const getWaitlistEntryByToken = createServerFn({ method: "GET" })
+  .inputValidator((input: { token: string }) => {
+    const token = (input.token ?? "").trim();
+    if (!token) throw new Error("Missing token");
+    return { token };
+  })
+  .handler(async ({ data }) => {
+    const { data: row, error } = await db
+      .from("waitlist_entries")
+      .select("id, name, license_front_url, license_back_url, rideshare_proof_url, vehicle_preference, rental_cadence")
+      .eq("upload_token", data.token)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("This link is invalid or has expired.");
+    return {
+      id: row.id as string,
+      name: (row.name as string) ?? "",
+      hasLicenseFront: !!row.license_front_url,
+      hasLicenseBack: !!row.license_back_url,
+      hasRideshareProof: !!row.rideshare_proof_url,
+      vehiclePreference: (row.vehicle_preference as string) ?? "",
+      rentalCadence: (row.rental_cadence as string) ?? "",
+    };
+  });
+
+/** Public: waiter uploads their docs via tokenized SMS link. */
+export const submitWaitlistDocsByToken = createServerFn({ method: "POST" })
+  .inputValidator((input: {
+    token: string;
+    licenseFrontDataUrl?: string;
+    licenseBackDataUrl?: string;
+    rideshareProofDataUrl?: string;
+    vehiclePreference?: string;
+    rentalCadence?: "Daily" | "Weekly";
+  }) => {
+    const token = (input.token ?? "").trim();
+    if (!token) throw new Error("Missing token");
+    for (const [k, v] of Object.entries({
+      licenseFrontDataUrl: input.licenseFrontDataUrl,
+      licenseBackDataUrl: input.licenseBackDataUrl,
+      rideshareProofDataUrl: input.rideshareProofDataUrl,
+    })) {
+      if (v && !v.startsWith("data:image/")) throw new Error(`Invalid ${k}`);
+    }
+    return {
+      token,
+      licenseFrontDataUrl: input.licenseFrontDataUrl ?? null,
+      licenseBackDataUrl: input.licenseBackDataUrl ?? null,
+      rideshareProofDataUrl: input.rideshareProofDataUrl ?? null,
+      vehiclePreference: (input.vehiclePreference ?? "").trim() || null,
+      rentalCadence:
+        input.rentalCadence === "Daily" ? "Daily" : input.rentalCadence === "Weekly" ? "Weekly" : null,
+    };
+  })
+  .handler(async ({ data }) => {
+    const { data: row, error: findErr } = await db
+      .from("waitlist_entries")
+      .select("id")
+      .eq("upload_token", data.token)
+      .maybeSingle();
+    if (findErr) throw new Error(findErr.message);
+    if (!row) throw new Error("This link is invalid or has expired.");
+    const entryId = row.id as string;
+    const patch: Record<string, string | null> = {};
+    if (data.licenseFrontDataUrl) {
+      const u = await uploadImage(entryId, "license-front", data.licenseFrontDataUrl);
+      patch.license_front_url = u;
+      patch.license_url = u;
+    }
+    if (data.licenseBackDataUrl) {
+      patch.license_back_url = await uploadImage(entryId, "license-back", data.licenseBackDataUrl);
+    }
+    if (data.rideshareProofDataUrl) {
+      patch.rideshare_proof_url = await uploadImage(entryId, "rideshare-proof", data.rideshareProofDataUrl);
+    }
+    if (data.vehiclePreference) patch.vehicle_preference = data.vehiclePreference;
+    if (data.rentalCadence) patch.rental_cadence = data.rentalCadence;
+    if (Object.keys(patch).length) {
+      const { error: uErr } = await db.from("waitlist_entries").update(patch).eq("id", entryId);
+      if (uErr) throw new Error(uErr.message);
+    }
+    return { ok: true as const };
   });
 
 /** Admin: update editable fields on a waitlist card (notes, contact info, prefs). */
