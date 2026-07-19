@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { submitWaitlistEntry } from "@/lib/waitlist.functions";
 
 export const Route = createFileRoute("/waitlist")({
@@ -27,8 +31,11 @@ function WaitlistPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [licenseUrl, setLicenseUrl] = useState<string | null>(null);
-  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
+  const [licenseFrontUrl, setLicenseFrontUrl] = useState<string | null>(null);
+  const [licenseBackUrl, setLicenseBackUrl] = useState<string | null>(null);
+  const [rideshareUrl, setRideshareUrl] = useState<string | null>(null);
+  const [vehiclePreference, setVehiclePreference] = useState<string>("No preference");
+  const [rentalCadence, setRentalCadence] = useState<"Daily" | "Weekly" | "">("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -36,13 +43,16 @@ function WaitlistPage() {
     name.trim().length >= 2 &&
     phone.trim().length >= 7 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
-    !!licenseUrl &&
-    !!selfieUrl &&
+    !!licenseFrontUrl &&
+    !!licenseBackUrl &&
+    !!rideshareUrl &&
+    (rentalCadence === "Daily" || rentalCadence === "Weekly") &&
     !submitting;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit || !licenseUrl || !selfieUrl) return;
+    if (!canSubmit || !licenseFrontUrl || !licenseBackUrl || !rideshareUrl) return;
+    if (rentalCadence !== "Daily" && rentalCadence !== "Weekly") return;
     setSubmitting(true);
     try {
       await submit({
@@ -50,8 +60,11 @@ function WaitlistPage() {
           name: name.trim(),
           phone: phone.trim(),
           email: email.trim(),
-          licenseDataUrl: licenseUrl,
-          selfieDataUrl: selfieUrl,
+          licenseFrontDataUrl: licenseFrontUrl,
+          licenseBackDataUrl: licenseBackUrl,
+          rideshareProofDataUrl: rideshareUrl,
+          vehiclePreference,
+          rentalCadence,
         },
       });
       setDone(true);
@@ -73,6 +86,9 @@ function WaitlistPage() {
           <p className="mt-3 text-sm text-muted-foreground">
             Your info has been received and you're officially in line for the next
             available vehicle. Someone from our team will be in contact with you shortly.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Your documents are on file. You're all set.
           </p>
           <p className="mt-4 text-sm font-medium">— Camauto Rentals</p>
         </Card>
@@ -131,24 +147,65 @@ function WaitlistPage() {
         <div>
           <div className="mb-2 flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">1</span>
-            <h2 className="text-sm font-semibold">Upload your driver's license</h2>
-            {licenseUrl && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />}
+            <h2 className="text-sm font-semibold">Driver's license — front</h2>
+            {licenseFrontUrl && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />}
           </div>
           <Card className="p-4">
-            <PhotoCapture label="Upload license" onChange={setLicenseUrl} value={licenseUrl} />
+            <PhotoCapture label="Upload license (front)" onChange={setLicenseFrontUrl} value={licenseFrontUrl} />
           </Card>
         </div>
 
         <div>
           <div className="mb-2 flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">2</span>
-            <h2 className="text-sm font-semibold">Take a selfie</h2>
-            {selfieUrl && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />}
+            <h2 className="text-sm font-semibold">Driver's license — back</h2>
+            {licenseBackUrl && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />}
           </div>
           <Card className="p-4">
-            <PhotoCapture label="Take selfie" onChange={setSelfieUrl} value={selfieUrl} useCamera />
+            <PhotoCapture label="Upload license (back)" onChange={setLicenseBackUrl} value={licenseBackUrl} />
           </Card>
         </div>
+
+        <div>
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">3</span>
+            <h2 className="text-sm font-semibold">Rideshare proof (Uber/Lyft driver app screenshot)</h2>
+            {rideshareUrl && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />}
+          </div>
+          <Card className="p-4">
+            <PhotoCapture label="Upload rideshare screenshot" onChange={setRideshareUrl} value={rideshareUrl} />
+          </Card>
+        </div>
+
+        <Card className="space-y-4 p-4">
+          <div className="space-y-1.5">
+            <Label>Vehicle preference (optional)</Label>
+            <Select value={vehiclePreference} onValueChange={setVehiclePreference}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="No preference">No preference</SelectItem>
+                <SelectItem value="Sedan">Sedan</SelectItem>
+                <SelectItem value="SUV">SUV</SelectItem>
+                <SelectItem value="Minivan">Minivan</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Rental cadence</Label>
+            <RadioGroup value={rentalCadence} onValueChange={(v) => setRentalCadence(v as "Daily" | "Weekly")} className="flex gap-6">
+              <label className="flex items-center gap-2 text-sm">
+                <RadioGroupItem value="Daily" id="cadence-daily" /> Daily
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <RadioGroupItem value="Weekly" id="cadence-weekly" /> Weekly
+              </label>
+            </RadioGroup>
+          </div>
+        </Card>
+
+        <p className="rounded-md border border-[#2db84b]/30 bg-[#2db84b]/10 px-3 py-2 text-center text-xs text-foreground">
+          Upload your documents once. When a vehicle opens up, we'll call you — no forms to fill out again.
+        </p>
 
         <Button
           type="submit"
