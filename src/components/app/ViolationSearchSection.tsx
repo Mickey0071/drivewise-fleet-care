@@ -619,6 +619,7 @@ function CreateViolationModal({
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [packetFor, setPacketFor] = useState<string | null>(null);
 
   const open = Boolean(card);
 
@@ -641,12 +642,10 @@ function CreateViolationModal({
     }
   };
 
-  const downloadPacket = async (violationId: string) => {
+  const downloadPacket = (violationId: string) => {
     // Open the picker dialog instead of silently generating.
     setPacketFor(violationId);
   };
-
-  const [packetFor, setPacketFor] = useState<string | null>(null);
 
   return (
     <Dialog
