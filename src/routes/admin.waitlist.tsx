@@ -22,6 +22,7 @@ import {
   createWaitlistEntryAdmin, updateWaitlistEntry, uploadWaitlistDoc,
 } from "@/lib/waitlist.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
+import { sendRentalSms } from "@/lib/rental-sms.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { vehicles } from "@/lib/mock/data";
 import { isVehicleBookable, addDriver, addRental, ensureRentalSynced, useStoreVersion } from "@/lib/mock/store";
