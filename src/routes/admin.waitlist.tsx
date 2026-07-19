@@ -418,7 +418,7 @@ function CreateWaiterDialog({
   const [saving, setSaving] = useState(false);
   const [sendText, setSendText] = useState(true);
   const [smsBody, setSmsBody] = useState(
-    "Hi{{name}}, you're on the Camauto Rentals waitlist. We'll text you as soon as a vehicle opens up — no forms to fill out again.",
+    "Hi{{name}}, you're on the Camauto Rentals waitlist. Upload your info here so we're ready to roll when a vehicle opens up: {{link}}",
   );
   const sendSmsFn = useServerFn(sendRentalSms);
 
