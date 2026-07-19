@@ -179,9 +179,7 @@ function NavRow({
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleStar(item.key); }}
           aria-label={isStarred ? `Remove ${item.title} shortcut` : `Add ${item.title} shortcut to top`}
           title={isStarred ? "Remove from top shortcuts" : "Pin to top shortcuts"}
-          className={`absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground ${
-            isStarred ? "opacity-100" : "opacity-0 group-hover/nav:opacity-100"
-          }`}
+          className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-sidebar-foreground/60 opacity-100 hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           <Star className={`h-3.5 w-3.5 ${isStarred ? "fill-current text-amber-500" : ""}`} />
         </button>
