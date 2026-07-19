@@ -240,7 +240,9 @@ function AssignVehicleDialog({
         fullName: entry.name,
         phone: entry.phone,
         email: entry.email,
-        licenseImageUrl: entry.license_url ?? undefined,
+        licenseImageUrl: (entry.license_front_url ?? entry.license_url) ?? undefined,
+        licenseBackImageUrl: entry.license_back_url ?? undefined,
+        rideshareProofUrl: entry.rideshare_proof_url ?? undefined,
       } as any);
       await (driver as any).cloudReady?.catch?.(() => {});
 
@@ -255,7 +257,9 @@ function AssignVehicleDialog({
         weeklyRate: rate,
         rateAmount: rate,
         deposit: 0,
-        licenseImageUrl: entry.license_url ?? undefined,
+        licenseImageUrl: (entry.license_front_url ?? entry.license_url) ?? undefined,
+        licenseBackImageUrl: entry.license_back_url ?? undefined,
+        rideshareProofUrl: entry.rideshare_proof_url ?? undefined,
         selfieImageUrl: entry.selfie_url ?? undefined,
       } as any);
       await (rental as any).cloudReady?.catch?.(() => {});
