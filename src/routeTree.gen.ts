@@ -98,6 +98,7 @@ import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
 import { Route as AdminBackfillPlatesRouteImport } from './routes/admin.backfill-plates'
 import { Route as AddCardTokenRouteImport } from './routes/add-card.$token'
 import { Route as AccidentReportTokenRouteImport } from './routes/accident-report.$token'
+import { Route as WaitlistUploadTokenRouteImport } from './routes/waitlist.upload.$token'
 import { Route as RepairDeclineTokenRouteImport } from './routes/repair.decline.$token'
 import { Route as RepairAcceptTokenRouteImport } from './routes/repair.accept.$token'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
@@ -559,6 +560,11 @@ const AccidentReportTokenRoute = AccidentReportTokenRouteImport.update({
   path: '/accident-report/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WaitlistUploadTokenRoute = WaitlistUploadTokenRouteImport.update({
+  id: '/upload/$token',
+  path: '/upload/$token',
+  getParentRoute: () => WaitlistRoute,
+} as any)
 const RepairDeclineTokenRoute = RepairDeclineTokenRouteImport.update({
   id: '/repair/decline/$token',
   path: '/repair/decline/$token',
@@ -671,7 +677,7 @@ export interface FileRoutesByFullPath {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
-  '/waitlist': typeof WaitlistRoute
+  '/waitlist': typeof WaitlistRouteWithChildren
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
@@ -729,6 +735,7 @@ export interface FileRoutesByFullPath {
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
+  '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
@@ -775,7 +782,7 @@ export interface FileRoutesByTo {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
-  '/waitlist': typeof WaitlistRoute
+  '/waitlist': typeof WaitlistRouteWithChildren
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
@@ -833,6 +840,7 @@ export interface FileRoutesByTo {
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
+  '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
@@ -880,7 +888,7 @@ export interface FileRoutesById {
   '/sms-log': typeof SmsLogRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
-  '/waitlist': typeof WaitlistRoute
+  '/waitlist': typeof WaitlistRouteWithChildren
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
@@ -938,6 +946,7 @@ export interface FileRoutesById {
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
+  '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
@@ -1044,6 +1053,7 @@ export interface FileRouteTypes {
     | '/rent/portal/$rentalId'
     | '/repair/accept/$token'
     | '/repair/decline/$token'
+    | '/waitlist/upload/$token'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/monthly-backup'
@@ -1148,6 +1158,7 @@ export interface FileRouteTypes {
     | '/rent/portal/$rentalId'
     | '/repair/accept/$token'
     | '/repair/decline/$token'
+    | '/waitlist/upload/$token'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/monthly-backup'
@@ -1252,6 +1263,7 @@ export interface FileRouteTypes {
     | '/rent/portal/$rentalId'
     | '/repair/accept/$token'
     | '/repair/decline/$token'
+    | '/waitlist/upload/$token'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/monthly-backup'
@@ -1299,7 +1311,7 @@ export interface RootRouteChildren {
   SmsLogRoute: typeof SmsLogRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
-  WaitlistRoute: typeof WaitlistRoute
+  WaitlistRoute: typeof WaitlistRouteWithChildren
   AccidentReportTokenRoute: typeof AccidentReportTokenRoute
   AddCardTokenRoute: typeof AddCardTokenRoute
   AdminBackfillPlatesRoute: typeof AdminBackfillPlatesRoute
@@ -1990,6 +2002,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccidentReportTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/waitlist/upload/$token': {
+      id: '/waitlist/upload/$token'
+      path: '/upload/$token'
+      fullPath: '/waitlist/upload/$token'
+      preLoaderRoute: typeof WaitlistUploadTokenRouteImport
+      parentRoute: typeof WaitlistRoute
+    }
     '/repair/decline/$token': {
       id: '/repair/decline/$token'
       path: '/repair/decline/$token'
@@ -2106,6 +2125,18 @@ const MyRentalsRouteWithChildren = MyRentalsRoute._addFileChildren(
   MyRentalsRouteChildren,
 )
 
+interface WaitlistRouteChildren {
+  WaitlistUploadTokenRoute: typeof WaitlistUploadTokenRoute
+}
+
+const WaitlistRouteChildren: WaitlistRouteChildren = {
+  WaitlistUploadTokenRoute: WaitlistUploadTokenRoute,
+}
+
+const WaitlistRouteWithChildren = WaitlistRoute._addFileChildren(
+  WaitlistRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
@@ -2143,7 +2174,7 @@ const rootRouteChildren: RootRouteChildren = {
   SmsLogRoute: SmsLogRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
-  WaitlistRoute: WaitlistRoute,
+  WaitlistRoute: WaitlistRouteWithChildren,
   AccidentReportTokenRoute: AccidentReportTokenRoute,
   AddCardTokenRoute: AddCardTokenRoute,
   AdminBackfillPlatesRoute: AdminBackfillPlatesRoute,

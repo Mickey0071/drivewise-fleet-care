@@ -418,7 +418,7 @@ function CreateWaiterDialog({
   const [saving, setSaving] = useState(false);
   const [sendText, setSendText] = useState(true);
   const [smsBody, setSmsBody] = useState(
-    "Hi{{name}}, you're on the Camauto Rentals waitlist. We'll text you as soon as a vehicle opens up — no forms to fill out again.",
+    "Hi{{name}}, you're on the Camauto Rentals waitlist. Upload your info here so we're ready to roll when a vehicle opens up: {{link}}",
   );
   const sendSmsFn = useServerFn(sendRentalSms);
 
@@ -426,14 +426,14 @@ function CreateWaiterDialog({
     if (open) {
       setName(""); setPhone(""); setEmail(""); setPref(""); setCadence(""); setNotes("");
       setSendText(true);
-      setSmsBody("Hi{{name}}, you're on the Camauto Rentals waitlist. We'll text you as soon as a vehicle opens up — no forms to fill out again.");
+      setSmsBody("Hi{{name}}, you're on the Camauto Rentals waitlist. Upload your info here so we're ready to roll when a vehicle opens up: {{link}}");
     }
   }, [open]);
 
   async function submit() {
     setSaving(true);
     try {
-      await create({ data: {
+      const result = await create({ data: {
         name, phone,
         email: email || undefined,
         vehiclePreference: pref || undefined,
@@ -443,7 +443,12 @@ function CreateWaiterDialog({
       toast.success("Waiter added");
       if (sendText && phone.trim() && smsBody.trim()) {
         const firstName = name.trim().split(/\s+/)[0] || "";
-        const message = smsBody.replace(/\{\{\s*name\s*\}\}/gi, firstName ? ` ${firstName}` : "");
+        const uploadLink = result?.uploadToken
+          ? `${window.location.origin}/waitlist/upload/${result.uploadToken}`
+          : "";
+        const message = smsBody
+          .replace(/\{\{\s*name\s*\}\}/gi, firstName ? ` ${firstName}` : "")
+          .replace(/\{\{\s*link\s*\}\}/gi, uploadLink);
         try {
           await sendSmsFn({ data: { phone: phone.trim(), message, name: name.trim() || undefined } });
           toast.success("Text sent");

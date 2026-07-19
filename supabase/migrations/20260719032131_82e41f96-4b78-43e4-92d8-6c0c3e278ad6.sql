@@ -1,0 +1,2 @@
+ALTER TABLE public.waitlist_entries ADD COLUMN IF NOT EXISTS upload_token uuid UNIQUE DEFAULT gen_random_uuid();
+UPDATE public.waitlist_entries SET upload_token = gen_random_uuid() WHERE upload_token IS NULL;
