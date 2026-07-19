@@ -96,7 +96,7 @@ function WaitlistAdminPage() {
       <PageHeader
         title="Waitlist"
         subtitle="Prospective renters waiting for the next available vehicle"
-        actions={
+        action={
           <Button size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="mr-1.5 h-4 w-4" /> Create Waiter
           </Button>
@@ -513,6 +513,7 @@ function AssignVehicleDialog({
 }) {
   useStoreVersion();
   const convert = useServerFn(markWaitlistConverted);
+  const sendLink = useServerFn(sendPaymentLink);
   const [vehicleId, setVehicleId] = useState<string>("");
   const [startDate, setStartDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [weeklyRate, setWeeklyRate] = useState<string>("");
@@ -580,10 +581,30 @@ function AssignVehicleDialog({
       await (rental as any).cloudReady?.catch?.(() => {});
 
       await convert({ data: { id: entry.id, rentalId: rental.id } });
+
+      // Immediately send the tokenized reservation/payment link via SMS.
+      try {
+        await ensureRentalSynced(rental.id);
+      } catch { /* best-effort */ }
+      try {
+        await sendLink({ data: {
+          phone: entry.phone,
+          name: entry.name,
+          email: entry.email || null,
+          amountCents: Math.round(rate * 100),
+          description: `First payment — ${chosen?.year ?? ""} ${chosen?.make ?? ""} ${chosen?.model ?? ""}`.trim().slice(0, 200),
+          environment: getStripeEnvironment(),
+          rentalId: rental.id,
+          sendSms: true,
+        } });
+      } catch (e) {
+        console.error("[waitlist convert] payment link failed", e);
+        toast.warning("Reservation created, but SMS payment link could not be sent");
+      }
       return rental.id;
     },
     onSuccess: (id) => {
-      toast.success(`Reservation ${id} created`);
+      toast.success(`Reservation ${id} created and payment link sent`);
       onDone();
     },
     onError: (err) => {
