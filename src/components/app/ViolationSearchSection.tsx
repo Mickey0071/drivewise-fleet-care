@@ -642,24 +642,11 @@ function CreateViolationModal({
   };
 
   const downloadPacket = async (violationId: string) => {
-    try {
-      const res = await dlPacket({ data: { violationId } });
-      const bin = atob(res.base64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const url = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = res.filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      toast.success("Packet downloaded");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Packet failed");
-    }
+    // Open the picker dialog instead of silently generating.
+    setPacketFor(violationId);
   };
+
+  const [packetFor, setPacketFor] = useState<string | null>(null);
 
   return (
     <Dialog
