@@ -179,9 +179,7 @@ function NavRow({
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleStar(item.key); }}
           aria-label={isStarred ? `Remove ${item.title} shortcut` : `Add ${item.title} shortcut to top`}
           title={isStarred ? "Remove from top shortcuts" : "Pin to top shortcuts"}
-          className={`absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground ${
-            isStarred ? "opacity-100" : "opacity-0 group-hover/nav:opacity-100"
-          }`}
+          className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-sidebar-foreground/60 opacity-100 hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           <Star className={`h-3.5 w-3.5 ${isStarred ? "fill-current text-amber-500" : ""}`} />
         </button>
@@ -328,6 +326,14 @@ export function AppSidebar() {
         )}
 
         {/* Starred shortcuts — always at the very top, above everything */}
+        {!collapsed && shortcutItems.length === 0 && (
+          <div className="mx-2 mt-2 rounded-md border border-dashed border-sidebar-border px-3 py-2 text-[11px] leading-snug text-sidebar-foreground/60">
+            <div className="mb-0.5 flex items-center gap-1.5 font-medium uppercase tracking-wide text-amber-600/80 dark:text-amber-400/80">
+              <Star className="h-3.5 w-3.5" /> Shortcuts
+            </div>
+            Tap the <Star className="mx-0.5 inline h-3 w-3" /> next to any item below to pin just that single row up here.
+          </div>
+        )}
         {shortcutItems.length > 0 && (
           <div className="px-2 pt-2">
             {!collapsed && (
