@@ -36,6 +36,7 @@ import {
 } from "@/lib/retro-agreement.functions";
 import { createViolation } from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
+import { DisputePacketDialog } from "@/components/app/DisputePacketDialog";
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { DEFAULT_SETTINGS, renderClauseBody } from "@/lib/agreementSettings";
 
@@ -619,6 +620,7 @@ function CreateViolationModal({
   const [uploading, setUploading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [packetFor, setPacketFor] = useState<string | null>(null);
 
   const open = Boolean(card);
 
@@ -641,27 +643,13 @@ function CreateViolationModal({
     }
   };
 
-  const downloadPacket = async (violationId: string) => {
-    try {
-      const res = await dlPacket({ data: { violationId } });
-      const bin = atob(res.base64);
-      const bytes = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const url = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = res.filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      toast.success("Packet downloaded");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Packet failed");
-    }
+  const downloadPacket = (violationId: string) => {
+    // Open the picker dialog instead of silently generating.
+    setPacketFor(violationId);
   };
 
   return (
+    <>
     <Dialog
       open={open}
       onOpenChange={(o) => {
@@ -791,5 +779,10 @@ function CreateViolationModal({
         )}
       </DialogContent>
     </Dialog>
+    <DisputePacketDialog
+      violationId={packetFor}
+      onClose={() => setPacketFor(null)}
+    />
+    </>
   );
 }

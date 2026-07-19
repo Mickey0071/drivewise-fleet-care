@@ -134,6 +134,8 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
             violationPhoto: z.boolean().optional(),
           })
           .optional(),
+        renterAddressOverride: z.string().max(500).optional(),
+        allowUnsigned: z.boolean().optional(),
       })
       .parse(input),
   )
@@ -153,6 +155,19 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
       .eq("id", data.violationId)
       .maybeSingle();
     if (vErr || !v) throw new Error("Violation not found");
+
+    // Persist address override up-front so it appears in the packet cover.
+    if (data.renterAddressOverride && data.renterAddressOverride.trim().length > 0) {
+      const addr = data.renterAddressOverride.trim();
+      if (v.driver_id) {
+        await supabaseAdmin.from("drivers").update({ address: addr } as never).eq("id", v.driver_id);
+      } else if (v.legacy_rental_id) {
+        await supabaseAdmin
+          .from("legacy_rentals")
+          .update({ address: addr } as never)
+          .eq("id", v.legacy_rental_id);
+      }
+    }
 
     const [vehicleRes, driverRes, rentalRes] = await Promise.all([
       v.vehicle_id && v.vehicle_id !== "UNKNOWN"
@@ -175,7 +190,7 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
         ? supabaseAdmin
             .from("rentals")
             .select(
-              "id, start_date, end_date, returned_at, agreement_pdf_url, receipt_pdf_url, license_image_url, selfie_image_url, client_signature_url, stripe_payment_method_id",
+              "id, start_date, end_date, returned_at, agreement_pdf_url, receipt_pdf_url, license_image_url, selfie_image_url, client_signature_url, client_signed_at, signed_at, stripe_payment_method_id, driver_id",
             )
             .eq("id", v.rental_id)
             .maybeSingle()
@@ -184,6 +199,54 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
     const vehicle = vehicleRes.data;
     const driver = driverRes.data;
     const rental = rentalRes.data;
+
+    // Guard: agreement cannot be included without renter address + signature.
+    const [{ data: legacy }] = await Promise.all([
+      v.legacy_rental_id
+        ? supabaseAdmin
+            .from("legacy_rentals")
+            .select("address, agreement_pdf_url")
+            .eq("id", v.legacy_rental_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null as any }),
+    ]);
+    if (inc.agreement) {
+      const addr =
+        (driver?.address as string) ||
+        [
+          driver?.street_address,
+          driver?.city,
+          driver?.state,
+          driver?.zip_code,
+        ]
+          .filter(Boolean)
+          .join(", ") ||
+        (legacy?.address as string) ||
+        "";
+      if (!addr || addr.trim().length === 0) {
+        return {
+          ok: false as const,
+          errorCode: "missing_address" as const,
+          error:
+            "Renter address is missing on the rental agreement — enter it before generating the packet.",
+        };
+      }
+      const signed = rental
+        ? !!(
+            (rental as any).signed_at ||
+            (rental as any).client_signed_at ||
+            (rental as any).client_signature_url
+          )
+        : !!legacy?.agreement_pdf_url;
+      if (!signed && !data.allowUnsigned) {
+        return {
+          ok: false as const,
+          errorCode: "missing_signature" as const,
+          error:
+            "Rental agreement has no renter signature on file — send a retroactive signing link or acknowledge to override.",
+        };
+      }
+    }
 
     const zip = new JSZip();
     const missing: string[] = [];
@@ -242,7 +305,7 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
     const dateStr = (v.date_issued || "").replace(/-/g, "");
     const filename = `VIOLATION_${v.id}_${plate}_${dateStr}.zip`;
 
-    return { filename, base64, missing };
+    return { ok: true as const, filename, base64, missing };
   });
 
 function guessExt(url: string, contentType: string | null): string {
