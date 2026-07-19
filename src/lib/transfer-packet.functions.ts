@@ -726,8 +726,9 @@ function safeName(s: string | null | undefined): string {
 async function generateOne(
   violationId: string,
   documents?: string[] | null,
+  overrides?: { renterAddressOverride?: string | null; allowUnsigned?: boolean },
 ): Promise<TransferPacketResult> {
-  const loaded = await loadCtx(violationId);
+  const loaded = await loadCtx(violationId, overrides);
   if (!loaded.ok) {
     return { ok: false, error: loaded.error, errorCode: loaded.errorCode };
   }
@@ -799,11 +800,16 @@ export const generateTransferPacket = createServerFn({ method: "POST" })
       .object({
         violationId: z.string().min(1).max(64),
         documents: z.array(z.string().min(1).max(40)).max(20).optional(),
+        renterAddressOverride: z.string().max(500).optional(),
+        allowUnsigned: z.boolean().optional(),
       })
       .parse(input),
   )
   .handler(async ({ data }): Promise<TransferPacketResult> => {
-    return generateOne(data.violationId, data.documents ?? null);
+    return generateOne(data.violationId, data.documents ?? null, {
+      renterAddressOverride: data.renterAddressOverride ?? null,
+      allowUnsigned: data.allowUnsigned ?? false,
+    });
   });
 
 export interface BatchSummary {
@@ -826,6 +832,7 @@ export const batchGenerateTransferPackets = createServerFn({ method: "POST" })
       .object({
         violationIds: z.array(z.string().min(1).max(64)).min(1).max(200),
         documents: z.array(z.string().min(1).max(40)).max(20).optional(),
+        allowUnsigned: z.boolean().optional(),
       })
       .parse(input),
   )
@@ -834,7 +841,9 @@ export const batchGenerateTransferPackets = createServerFn({ method: "POST" })
     let succeeded = 0;
     let failed = 0;
     for (const id of data.violationIds) {
-      const r = await generateOne(id, data.documents ?? null);
+      const r = await generateOne(id, data.documents ?? null, {
+        allowUnsigned: data.allowUnsigned ?? false,
+      });
       if (r.ok) {
         succeeded++;
         results.push({ violationId: id, ok: true, packetUrl: r.packetUrl ?? null });
