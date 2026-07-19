@@ -85,6 +85,7 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
         status: "Waitlisted",
         vehicle_preference: data.vehiclePreference,
         rental_cadence: data.rentalCadence,
+        source: "Form",
       })
       .select("id")
       .single();
