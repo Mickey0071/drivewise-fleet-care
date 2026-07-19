@@ -426,7 +426,7 @@ function CreateWaiterDialog({
     if (open) {
       setName(""); setPhone(""); setEmail(""); setPref(""); setCadence(""); setNotes("");
       setSendText(true);
-      setSmsBody("Hi{{name}}, you're on the Camauto Rentals waitlist. We'll text you as soon as a vehicle opens up — no forms to fill out again.");
+      setSmsBody("Hi{{name}}, you're on the Camauto Rentals waitlist. Upload your info here so we're ready to roll when a vehicle opens up: {{link}}");
     }
   }, [open]);
 
