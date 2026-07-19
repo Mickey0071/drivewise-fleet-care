@@ -414,6 +414,11 @@ function SendLinkModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <DisputePacketDialog
+      violationId={packetFor}
+      onClose={() => setPacketFor(null)}
+    />
+    </>
   );
 }
 
