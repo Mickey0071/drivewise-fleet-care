@@ -654,6 +654,7 @@ function CreateViolationModal({
   };
 
   return (
+    <>
     <Dialog
       open={open}
       onOpenChange={(o) => {
