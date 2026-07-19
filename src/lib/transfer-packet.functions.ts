@@ -408,13 +408,18 @@ async function buildCoverPdf(ctx: CoverCtx): Promise<Uint8Array> {
 // Loader + validator
 // ---------------------------------------------------------------------------
 
-async function loadCtx(violationId: string): Promise<
+async function loadCtx(
+  violationId: string,
+  opts?: { renterAddressOverride?: string | null; allowUnsigned?: boolean },
+): Promise<
   | {
       ok: true;
       ctx: CoverCtx;
       agreementUrl: string | null;
       docUrls: Partial<Record<PacketDocKind, string>>;
       defaultLayout: string[];
+      agreementSigned: boolean;
+      renterName: string;
     }
   | { ok: false; errorCode: NonNullable<TransferPacketResult["errorCode"]>; error: string }
 > {
@@ -445,6 +450,20 @@ async function loadCtx(violationId: string): Promise<
     return { ok: false, errorCode: "no_rental", error: "Violation is not matched to a rental" };
   }
 
+  // If admin provided an address override, persist before loading — so the
+  // saved value shows up on this packet AND every future one.
+  if (opts?.renterAddressOverride && opts.renterAddressOverride.trim().length > 0) {
+    const addr = opts.renterAddressOverride.trim();
+    if (v.driver_id) {
+      await supabaseAdmin.from("drivers").update({ address: addr } as never).eq("id", v.driver_id);
+    } else if (v.legacy_rental_id) {
+      await supabaseAdmin
+        .from("legacy_rentals")
+        .update({ address: addr } as never)
+        .eq("id", v.legacy_rental_id);
+    }
+  }
+
   const [vehicleRes, driverRes, rentalRes, legacyRentalRes] = await Promise.all([
     v.vehicle_id && v.vehicle_id !== "UNKNOWN"
       ? supabaseAdmin
@@ -466,7 +485,7 @@ async function loadCtx(violationId: string): Promise<
       ? supabaseAdmin
           .from("rentals")
           .select(
-            "id, start_date, end_date, agreement_pdf_url, license_image_url, selfie_image_url, client_signature_url, receipt_pdf_url",
+            "id, start_date, end_date, agreement_pdf_url, license_image_url, selfie_image_url, client_signature_url, client_signed_at, signed_at, receipt_pdf_url",
           )
           .eq("id", v.rental_id)
           .maybeSingle()
@@ -521,11 +540,38 @@ async function loadCtx(violationId: string): Promise<
     [driver?.street_address, driver?.city, driver?.state, driver?.zip_code].filter(Boolean).join(", ") ||
     (legacy?.address as string) ||
     "";
+  if (!renterAddress || renterAddress.trim().length === 0) {
+    return {
+      ok: false,
+      errorCode: "missing_address",
+      error: "Renter address is missing on the rental agreement — enter it to continue.",
+    };
+  }
   const renterName =
     (driver?.full_name as string) ||
     `${driver?.first_name ?? ""} ${driver?.last_name ?? ""}`.trim() ||
     (legacy?.renter_name as string) ||
     "";
+
+  // Signature: live rental is signed when signed_at OR client_signed_at OR
+  // client_signature_url is set. Legacy rentals with an agreement_pdf_url are
+  // treated as signed (the PDF itself is the signed artifact).
+  const agreementSigned = rental
+    ? !!(
+        (rental.signed_at as string | null) ||
+        (rental.client_signed_at as string | null) ||
+        (rental.client_signature_url as string | null)
+      )
+    : !!(legacy?.agreement_pdf_url as string | null);
+  if (!agreementSigned && !opts?.allowUnsigned) {
+    return {
+      ok: false,
+      errorCode: "missing_signature",
+      error:
+        "Rental agreement has no renter signature on file — send a retroactive signing link or acknowledge to override.",
+    };
+  }
+
   const renterLicense =
     (driver?.license_number as string) || (legacy?.dl_number as string) || "";
   const renterLicenseState =
@@ -572,7 +618,15 @@ async function loadCtx(violationId: string): Promise<
   if (rental?.receipt_pdf_url) docUrls.receipt = String(rental.receipt_pdf_url);
   if (v.photo_url) docUrls.violation_photo = String(v.photo_url);
 
-  return { ok: true, ctx, agreementUrl, docUrls, defaultLayout: settings.defaultPacketLayout };
+  return {
+    ok: true,
+    ctx,
+    agreementUrl,
+    docUrls,
+    defaultLayout: settings.defaultPacketLayout,
+    agreementSigned,
+    renterName,
+  };
 }
 
 // ---------------------------------------------------------------------------
