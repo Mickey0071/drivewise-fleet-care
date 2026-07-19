@@ -36,6 +36,7 @@ import {
 } from "@/lib/retro-agreement.functions";
 import { createViolation } from "@/lib/violations.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
+import { DisputePacketDialog } from "@/components/app/DisputePacketDialog";
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
 import { DEFAULT_SETTINGS, renderClauseBody } from "@/lib/agreementSettings";
 
