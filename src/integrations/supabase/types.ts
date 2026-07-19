@@ -3577,6 +3577,7 @@ export type Database = {
       }
       waitlist_entries: {
         Row: {
+          admin_notes: string | null
           admin_seen_at: string | null
           converted_at: string | null
           converted_rental_id: string | null
@@ -3591,11 +3592,13 @@ export type Database = {
           rental_cadence: string | null
           rideshare_proof_url: string | null
           selfie_url: string | null
+          source: string
           status: string
           updated_at: string
           vehicle_preference: string | null
         }
         Insert: {
+          admin_notes?: string | null
           admin_seen_at?: string | null
           converted_at?: string | null
           converted_rental_id?: string | null
@@ -3610,11 +3613,13 @@ export type Database = {
           rental_cadence?: string | null
           rideshare_proof_url?: string | null
           selfie_url?: string | null
+          source?: string
           status?: string
           updated_at?: string
           vehicle_preference?: string | null
         }
         Update: {
+          admin_notes?: string | null
           admin_seen_at?: string | null
           converted_at?: string | null
           converted_rental_id?: string | null
@@ -3629,6 +3634,7 @@ export type Database = {
           rental_cadence?: string | null
           rideshare_proof_url?: string | null
           selfie_url?: string | null
+          source?: string
           status?: string
           updated_at?: string
           vehicle_preference?: string | null
