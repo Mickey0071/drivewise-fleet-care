@@ -1,36 +1,21 @@
 ## Goal
+On a vehicle's **Repair History** tab, show both completed repairs AND all other expenses recorded against that vehicle, grouped into two clearly labeled sections on the same view, with a Download button that exports the combined history.
 
-When an admin taps **Accept** on the mechanic diagnosis link, immediately stamp the vehicle's repair history and log the P&L expense with the mechanic's checked services and prices. Today those only post when the ticket is later marked Complete.
+## Changes
 
-## Scope
+### 1. `src/routes/fleet.$vehicleId.tsx` — Repair History tab
+- Keep the existing "Repair history" section (completed repairs from `maintenance`) as-is.
+- Add a second section **"Expenses"** below it, listing every vehicle expense that is NOT already counted as a completed repair. Source: `buildCombinedExpenses()` filtered to this vehicle where `source === "operational"` (plus `"maintenance"` routine service, which today is folded into repairs — we'll only include rows not already shown above to avoid double-counting).
+  - Each row: date · category · vendor/notes · amount.
+- Update the tab header count to show both totals, e.g. `Repair history (5) · Expenses (12)`.
+- Add a **Download** button (next to the existing "Copy deep link" button) that exports the combined list as CSV using existing `downloadCSV` from `src/lib/exports.ts`. Columns: Date, Type (Repair / Expense), Category, Vendor/Mechanic, Description, Parts, Labor, Amount. Filename: `repair-history-<plate>-<YYYY-MM-DD>.csv`.
+- Optional secondary action: reuse existing `printPage()` for a Print/PDF button (matches pattern in `ReportActions.tsx`).
 
-Server-side only. Edit `acceptRepairAction` in `src/lib/repair-actions.functions.ts`. No UI changes; no schema changes.
+### 2. No schema, server, or business-logic changes
+Purely a presentation change on one tab. `buildCombinedExpenses()` already unifies operational expenses + repairs; we just render both slices in the Repair History tab and add the export.
 
-## Behavior
+## Out of scope
+- Fleet-wide `/repairs` page (unchanged).
+- Expense entry/editing (still lives on the Expenses tab).
 
-On Accept, in addition to the current update (status → `pending_complete`, mechanic SMS):
-
-1. **Insert `repair_history`** row for the vehicle:
-   - `issue` = `issue_description` or `service_type`
-   - `parts` = human-readable list built from `parts_list` (name × qty @ price)
-   - `parts_cost`, `labor_cost`, `total_cost` from the maintenance row
-   - `mechanic_name`, `completed_by = "Admin (approved)"`
-   - `notes` = "Approved from mechanic diagnosis"
-2. **Insert `expenses`** row:
-   - `category` = "Repair & Maintenance"
-   - `amount` = `cost`
-   - `vehicle_id`, `maintenance_id` linked
-   - `vendor` = mechanic name
-3. **Guard against double-posting on Complete.** Stamp a new flag on the maintenance row (`history_posted_at`) inside the same Accept update. The completion path in `store.ts` (~line 2611) reads this flag and skips its own `repair_history` + expense inserts when set, so marking Complete later doesn't duplicate.
-4. **Idempotency.** The existing `.eq("action_taken", "pending")` guard already prevents a second Accept from firing. History/expense inserts run only when that update actually affects a row.
-
-## Answers to the two questions asked
-
-- **Same phone doesn't matter** — accept/decline links are token-based URLs, not tied to the sending number. "Link unavailable / invalid" means the token was already consumed (someone tapped Accept/Decline) or the mechanic re-submitted the checklist and rotated the tokens.
-- **What's recorded today vs after this change** — today, Accept saves the checked services/prices onto the maintenance ticket only; repair history + P&L post only when Complete is tapped. After this change, they post to the vehicle on Accept.
-
-## Technical notes
-
-- Migration adds `history_posted_at timestamptz` to `public.maintenance` (nullable) so the completion path can detect an already-posted ticket.
-- Uses `supabaseAdmin` (already imported) for the inserts inside the server function handler.
-- No changes to the mechanic-facing form, the accept page UI, or the Complete workflow beyond the skip-if-already-posted guard.
+Ready to build?

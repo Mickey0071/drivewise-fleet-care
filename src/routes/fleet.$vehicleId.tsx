@@ -42,6 +42,7 @@ import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost, repairDispla
 import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { exportRentalReportPdf } from "@/lib/rental-report.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
+import { downloadCSV } from "@/lib/exports";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
@@ -132,6 +133,8 @@ function VehicleDetail() {
   // Expense line items (all sources) drive both the Analytics breakdown and the
   // Expenses tab list. Category roll-up for the pills.
   const expenseItems = fin.expenseLineItems;
+  const completedRepairIds = new Set(completedRepairs.map(m => m.id));
+  const otherExpenses = expenseItems.filter(e => !completedRepairIds.has(e.id));
   const vehExpenseByCat = expenseItems.reduce<Record<string, number>>((acc, e) => {
     acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc;
   }, {});
@@ -628,7 +631,46 @@ function VehicleDetail() {
         </TabsContent>
 
         <TabsContent value="repairs" className="mt-4 space-y-4">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const rows = [
+                  ...completedRepairs.map(m => {
+                    const parts = m.partsCost ?? m.selectedSolution?.partsCost ?? 0;
+                    const labor = m.laborCost ?? m.selectedSolution?.laborCost ?? 0;
+                    return [
+                      (m.completionDate ?? m.dateCompleted ?? "").slice(0, 10),
+                      "Repair",
+                      "Repair",
+                      m.completedBy || m.vendor || "",
+                      repairDisplayTitle(m),
+                      parts,
+                      labor,
+                      effectiveRepairCost(m),
+                    ];
+                  }),
+                  ...otherExpenses.map(e => [
+                    e.date.slice(0, 10),
+                    "Expense",
+                    e.category,
+                    "",
+                    e.description,
+                    "",
+                    "",
+                    e.amount,
+                  ]),
+                ].sort((a, b) => String(b[0]).localeCompare(String(a[0])));
+                downloadCSV(
+                  `repair-history-${v.plate}-${new Date().toISOString().slice(0, 10)}.csv`,
+                  ["Date", "Type", "Category", "Vendor/Mechanic", "Description", "Parts", "Labor", "Amount"],
+                  rows,
+                );
+              }}
+            >
+              <Download className="mr-1 h-4 w-4" />Download CSV
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -697,6 +739,25 @@ function VehicleDetail() {
                   </div>
                 );
               })
+            )}
+          </Section>
+          <Section title={`Expenses (${otherExpenses.length})`}>
+            {otherExpenses.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No other expenses recorded for this vehicle.</p>
+            ) : (
+              otherExpenses.map(e => (
+                <Row
+                  key={`${e.source}-${e.id}`}
+                  title={e.description || e.category}
+                  sub={`${fmtDate(e.date)} · ${e.category}`}
+                  right={
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{fmtMoney(e.amount)}</span>
+                      <span className="text-[11px] text-muted-foreground capitalize">{e.source}</span>
+                    </div>
+                  }
+                />
+              ))
             )}
           </Section>
         </TabsContent>
