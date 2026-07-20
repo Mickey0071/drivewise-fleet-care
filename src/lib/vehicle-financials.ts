@@ -8,12 +8,13 @@ import {
   driverById,
   type Maintenance,
 } from "@/lib/mock/data";
+import { isIssueRecord } from "@/lib/maintenance-utils";
 import {
-  effectiveRepairCost,
-  isCompletedRepair,
-  isIssueRecord,
-  isAutoPostedRepairRow,
-} from "@/lib/maintenance-utils";
+  isRepairCost,
+  isAutoPostedExpense,
+  repairCost,
+  countableExpenses,
+} from "@/lib/money-rules";
 
 // ---------------------------------------------------------------------------
 // UNIFIED VEHICLE FINANCIAL ENGINE
@@ -58,6 +59,13 @@ export interface VehicleFinancials {
   netPnl: number;
   /** null when there are no expenses (ROI undefined). */
   roi: number | null;
+  /** Sum of repairCost() over every maintenance row passing isRepairCost. */
+  repairs: number;
+  /** Sum of amounts across countableExpenses (auto-posted rows removed). */
+  expenses: number;
+  /** repairs + expenses. Equal to totalExpenses; kept as a named field so
+   *  downstream code can read the split explicitly. */
+  grand: number;
   incomeLineItems: FinancialIncomeItem[];
   expenseLineItems: FinancialExpenseItem[];
   /** Expense subtotals keyed by source, for category roll-ups. */
@@ -123,12 +131,14 @@ export function getVehicleFinancials(
   // ----- EXPENSES: manual + repairs/maintenance + violations -----
   const expenseLineItems: FinancialExpenseItem[] = [];
 
-  // 1. Manual operational expenses (exclude auto-posted repair rows to avoid
-  //    double-counting the maintenance record below).
-  for (const e of expenses) {
-    if (e.vehicleId !== vehicleId) continue;
-    if (isAutoPostedRepairRow(e)) continue;
-    if (!inRange(e.date, range)) continue;
+  // 1. Operational expenses — countableExpenses removes any row whose
+  //    maintenance_id FK points at a maintenance record (those rows are the
+  //    auto-posted duplicate of the underlying repair and are counted via
+  //    the maintenance loop below). See src/lib/money-rules.ts.
+  const vehicleExpenses = expenses.filter(
+    (e) => e.vehicleId === vehicleId && inRange(e.date, range),
+  );
+  for (const e of countableExpenses(vehicleExpenses)) {
     expenseLineItems.push({
       id: e.id,
       date: (e.date ?? "").slice(0, 10),
@@ -139,13 +149,15 @@ export function getVehicleFinancials(
     });
   }
 
-  // 2. Completed repairs & routine maintenance, valued with effectiveRepairCost.
+  // 2. Repairs — every maintenance row with a real cost, regardless of
+  //    workflow status. Scheduled reminders (oil/battery/etc.) are excluded
+  //    inside isRepairCost. See src/lib/money-rules.ts.
   for (const m of maintenance) {
     if (m.vehicleId !== vehicleId) continue;
-    if (!isCompletedRepair(m)) continue;
+    if (!isRepairCost(m)) continue;
     const date = maintenanceDate(m);
     if (!inRange(date, range)) continue;
-    const amount = effectiveRepairCost(m);
+    const amount = repairCost(m);
     const source: ExpenseSource = isIssueRecord(m) ? "repair" : "maintenance";
     const label = maintenanceLabel(m);
     const partsTotal = Number(m.partsCost ?? m.selectedSolution?.partsCost ?? 0);
@@ -228,12 +240,23 @@ export function getVehicleFinancials(
   };
   for (const it of expenseLineItems) expenseBySource[it.source] += it.amount;
 
+  // Explicit repair / expense split so downstream code never has to guess.
+  const repairsTotal = expenseLineItems
+    .filter((it) => it.source === "repair" || it.source === "maintenance")
+    .reduce((s, it) => s + it.amount, 0);
+  const expensesTotal = expenseLineItems
+    .filter((it) => it.source === "manual" || it.source === "violation")
+    .reduce((s, it) => s + it.amount, 0);
+
   return {
     vehicleId,
     totalIncome,
     totalExpenses,
     netPnl,
     roi,
+    repairs: repairsTotal,
+    expenses: expensesTotal,
+    grand: repairsTotal + expensesTotal,
     incomeLineItems,
     expenseLineItems,
     expenseBySource,
