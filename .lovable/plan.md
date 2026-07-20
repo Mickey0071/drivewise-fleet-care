@@ -1,54 +1,45 @@
-## Goal
+## Where we are
 
-Add a one-shot "Log past repair" action on the vehicle fleet card that records a completed repair directly to the vehicle's repair history and expenses — no ticket, no mechanic dispatch, no approval flow.
+Tier 1 is done. `src/lib/money-rules.ts` is the single source of truth (`repairCost`, `isRepairCost`, `isAutoPostedExpense`, `countableExpenses`) with the "counted exactly once — never zero times" invariant. `getVehicleFinancials`, `combined-expenses.ts`, `pnl.tsx`, and `repair-history-pdf.ts` all read through it. The disappearing-money leak (Ford NEW2026 M-3357914, $68) is closed.
 
-## Where it lives
+## Still doing their own money math (tier 2 targets)
 
-- Vehicle detail page (`src/routes/fleet.$vehicleId.tsx`), Repairs tab.
-- New button **"+ Log past repair"** placed next to the existing **Download CSV** / **Copy deep link** buttons, right above the "Repair history" section.
-- Existing "New repair" (ticket) flow stays untouched — this is an additive shortcut for repairs already done.
+Grepped for `effectiveRepairCost`, `isAutoPostedRepairRow`, and independent `.reduce` sums over repairs/expenses. Live callers:
 
-## Dialog: `LogPastRepairDialog`
+1. `src/lib/maintenance-utils.ts` — still exports `effectiveRepairCost` and `isAutoPostedRepairRow` (legacy regex).
+2. `src/routes/repairs.tsx` — 5 call sites use `effectiveRepairCost`; monthly total is a raw `.reduce`.
+3. `src/routes/fleet.$vehicleId.tsx` — 4 call sites still use `effectiveRepairCost` for display rows and CSV export.
+4. `src/routes/analytics_.pnl-dashboard.tsx` — local `maintCost(m)` helper + independent `.reduce` for operational expenses (no dedupe against maintenance).
+5. `src/lib/backups.server.ts` — `monthMaint.reduce(...)` sums maintenance cost with its own rule.
+6. `src/components/app/CompletedRepairDetailDialog.tsx`, `VehicleRepairPanelDialog.tsx` — display `effectiveRepairCost(m)`.
+7. `src/components/app/ServiceHistoryReportDialog.tsx` — `.reduce((s,m)=>s+m.cost,0)` twice, bypassing precedence.
+8. `src/components/app/MechanicJobHistory.tsx` — sums `parts_list` + `labour_cost` from mechanic jobs (different table — leave; not repair/expense math).
+9. `src/components/app/RepairBreakdown.tsx`, `CreateRepairDialog.tsx` — sum draft form rows before save (input widgets, not reporting; leave).
 
-New component `src/components/app/LogPastRepairDialog.tsx`. Fields:
+## Plan
 
-- Date completed (defaults to today)
-- Problem category (reuse `ProblemCategorySelect`)
-- Short description (e.g. "Front brake pads")
-- Vendor / mechanic name (free text)
-- Parts cost ($)
-- Labor cost ($)
-- Total (auto = parts + labor, read-only)
-- Notes (optional)
-- Mileage at service (optional)
+**Step 1 — Deprecate and forward legacy helpers in `maintenance-utils.ts`**
+- Replace the body of `effectiveRepairCost(m)` with `return repairCost(m)` (import from `money-rules`). Keep the export so callers don't break in one sweep.
+- Delete `isAutoPostedRepairRow` entirely. It's the buggy regex (`/completed/i`) that started this whole thread; nothing should be allowed to call it. Any remaining importer becomes a build error — good, we want to see them.
 
-Vehicle is locked to the current fleet card.
+**Step 2 — Rewire tier 2 reporting sites to money-rules**
+- `src/routes/repairs.tsx`: swap 5 `effectiveRepairCost` calls → `repairCost`; change `completedThisMonthTotal` to sum via `repairCost` and filter with `isRepairCost` so scheduled reminders don't inflate it.
+- `src/routes/fleet.$vehicleId.tsx`: swap 4 `effectiveRepairCost` display/CSV sites → `repairCost`. Grand totals in this file already come from `getVehicleFinancials(v.id)` — leave those alone.
+- `src/routes/analytics_.pnl-dashboard.tsx`: replace local `maintCost` with `repairCost`; wrap operational-expense `.reduce` in `countableExpenses(periodExpenses, maintenance)` so an auto-posted repair expense doesn't get counted alongside the maintenance row. Do the same for the per-vehicle P&L slice.
+- `src/lib/backups.server.ts`: replace `monthMaint.reduce(...)` with a sum built from `isRepairCost` + `repairCost`; wrap the paid-expense sum through `countableExpenses`.
+- `src/components/app/ServiceHistoryReportDialog.tsx`, `VehicleRepairPanelDialog.tsx`, `CompletedRepairDetailDialog.tsx`: swap `m.cost` / `effectiveRepairCost(m)` → `repairCost(m)`.
 
-## Write path
+**Step 3 — Verify, zero writes**
+- Live browser check via headless Chromium (same pattern as last turn):
+  - V-113 grand still 337 (must not move).
+  - Ford NEW2026 grand still shows the $68 on the expense side.
+  - `/analytics/pnl-dashboard` maintenance figure for the current period reconciles to the sum of `repairCost` over `isRepairCost` rows in that window.
+  - `/repairs` "completed this month" figure equals `getVehicleFinancials` roll-up across affected vehicles.
+- Paste actual numbers back. Confirm zero rows written.
 
-Reuse the existing `addMaintenance(...)` store function (already used by `LogServiceDialog`) with a completed shape so it lands as a real repair, not an open ticket:
+**Out of scope this turn**
+- Draft form widgets (`RepairBreakdown`, `CreateRepairDialog`) — they compute pre-save totals from user input, not reporting.
+- `MechanicJobHistory` — sums a different table (`mechanic_jobs`), not repair/expense ledger.
+- The `.reduce` calls in `src/lib/mock/store.ts` — those are id/sort helpers, not money math.
 
-- `serviceType` = description
-- `vendor` = vendor
-- `dateCompleted` = chosen date
-- `completionDate` = chosen date
-- `status` = `"complete"`
-- `partsCost`, `laborCost`, `cost` = parts + labor
-- `problemCategory` = selected category
-- `historyPostedAt` = now (matches the flag repair-accept flow already uses to prevent double-posting)
-- `notes`, `mileageAtService` when provided
-
-Because the record is marked complete with `partsCost`/`laborCost`, `getVehicleFinancials` automatically picks it up and splits it into Parts / Labor expense rows in the P&L, ROI, expense tracker, and CSV export — no separate `expenses` insert needed (that would double-count).
-
-It will render in the Repair history list immediately via `completedRepairs`, and appear in the combined "Download CSV" export already on the tab.
-
-## Out of scope
-
-- No SMS / mechanic job / approval token.
-- No changes to the ticket-based `CreateRepairDialog`, `sendMechanicJob`, or repair scorecard flow.
-- No schema/migration changes — this uses the existing maintenance record shape.
-
-## Files touched
-
-- `src/routes/fleet.$vehicleId.tsx` — add button + dialog mount on the Repairs tab.
-- `src/components/app/LogPastRepairDialog.tsx` — new.
+After this, tier 3 (write-side dedupe in `repair-actions.functions.ts` and completion paths) is the remaining chunk — but that one does touch data, so it deserves its own plan.
