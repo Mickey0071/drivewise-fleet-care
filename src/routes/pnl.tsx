@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { payments, expenses, payrollRuns, staffById, vehicles, vehicleById, driverById, rentals, violations, fmtMoney, fmtDate } from "@/lib/mock/data";
+import { payments, expenses, payrollRuns, staffById, vehicleById, driverById, rentals, violations, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { useStoreVersion } from "@/lib/mock/store";
 import { maintenance } from "@/lib/mock/data";
-import { isServiceLogRecord, isIssueRecord, effectiveRepairCost, isCompletedRepair, isAutoPostedRepairRow } from "@/lib/maintenance-utils";
+import { isIssueRecord } from "@/lib/maintenance-utils";
+import { isRepairCost, repairCost, countableExpenses } from "@/lib/money-rules";
 import { getFleetFinancials } from "@/lib/vehicle-financials";
 import { Users, CreditCard, Banknote, TrendingUp, TrendingDown, Trophy, AlertTriangle } from "lucide-react";
 import { ReportActions } from "@/components/app/ReportActions";
@@ -82,23 +83,24 @@ function PnLPage() {
     // Expenses monthly buckets
     const expByMonth: Record<string, { maintenance: number; payroll: number; other: number }> = {};
     const ensureE = (k: string) => (expByMonth[k] ??= { maintenance: 0, payroll: 0, other: 0 });
-    expenses.forEach(e => {
-      if (!inRange(e.date)) return;
-      // Skip auto-posted repair rows — those are counted via the maintenance
-      // table below (using effectiveRepairCost) to avoid double-counting.
-      if (isAutoPostedRepairRow(e)) return;
+    // money-rules.countableExpenses only drops auto-posted rows whose parent
+    // maintenance record is itself being counted below via isRepairCost/
+    // repairCost — that guarantees every dollar is counted exactly once,
+    // never zero times.
+    countableExpenses(expenses.filter(e => inRange(e.date)), maintenance).forEach(e => {
       const b = ensureE(ymKey(e.date));
       const c = e.category.toLowerCase();
       if (c.includes("maint")) b.maintenance += e.amount;
       else if (c.includes("payroll")) b.payroll += e.amount;
       else b.other += e.amount;
     });
-    // Completed repairs/maintenance from the maintenance table — the single
-    // source for repair cost (operational auto-posted rows were skipped above).
-    // Uses effectiveRepairCost so rows that only carry parts+labor still count.
+    // Repairs / maintenance — single-source predicate. A row counts the
+    // moment it has a real cost, whatever its workflow status.
     maintenance.forEach(m => {
-      if (!isCompletedRepair(m) || !inRange(m.dateCompleted ?? undefined)) return;
-      ensureE(ymKey(m.dateCompleted!)).maintenance += effectiveRepairCost(m);
+      if (!isRepairCost(m)) return;
+      const d = (m.dateCompleted || m.completionDate || m.createdAt || "").slice(0, 10);
+      if (!inRange(d)) return;
+      ensureE(ymKey(d)).maintenance += repairCost(m);
     });
 
     const incomeRows = Object.entries(incomeByMonth)
