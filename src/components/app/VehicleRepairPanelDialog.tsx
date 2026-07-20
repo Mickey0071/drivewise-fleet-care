@@ -25,7 +25,8 @@ import {
   updateMaintenance,
   lineItemTotals,
 } from "@/lib/mock/store";
-import { repairDisplayTitle, repairReportedIssue, effectiveRepairCost } from "@/lib/maintenance-utils";
+import { repairDisplayTitle, repairReportedIssue } from "@/lib/maintenance-utils";
+import { repairCost as effectiveRepairCost } from "@/lib/money-rules";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AlertTriangle, Wrench, Plus, StickyNote, ChevronRight } from "lucide-react";

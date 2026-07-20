@@ -337,9 +337,12 @@ async function buildDatasets(period: string): Promise<{ data: Dataset; stats: Ba
   };
 
   const newCustomers = (drivers ?? []).filter((d) => inMonth(d.created_at)).length;
-  const totalRepairCost = monthMaint.reduce(
-    (s, m) => s + (Number(m.cost) || (Number(m.parts_cost) || 0) + (Number(m.labor_cost) || 0)), 0,
-  );
+  // Single source of truth (src/lib/money-rules.ts). Import at call site
+  // to keep this Worker module tree-shakeable.
+  const { isRepairCost, repairCost } = await import("@/lib/money-rules");
+  const totalRepairCost = monthMaint
+    .filter((m) => isRepairCost(m))
+    .reduce((s, m) => s + repairCost(m), 0);
 
   const stats: BackupStats = {
     totalRentals: monthRentals.length,

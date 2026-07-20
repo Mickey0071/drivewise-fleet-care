@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2 } from "lucide-react";
 import { vehicleById, fmtMoney, fmtDate, type Maintenance } from "@/lib/mock/data";
-import { effectiveRepairCost, repairDisplayTitle, repairReportedIssue, repairSplitLabel } from "@/lib/maintenance-utils";
+import { repairDisplayTitle, repairReportedIssue, repairSplitLabel } from "@/lib/maintenance-utils";
+import { repairCost as effectiveRepairCost } from "@/lib/money-rules";
 import { RepairBreakdownView, EditBreakdownButton } from "@/components/app/RepairBreakdown";
 
 interface Props {

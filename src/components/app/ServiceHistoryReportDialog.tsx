@@ -8,6 +8,7 @@ import { SignaturePad } from "@/components/app/SignaturePad";
 import { toast } from "sonner";
 import { maintenance, fmtDate, fmtMoney, type Vehicle, type Maintenance } from "@/lib/mock/data";
 import { isServiceLogRecord, isIssueRecord, lastServiceFor, summarizeOpenIssue } from "@/lib/maintenance-utils";
+import { repairCost } from "@/lib/money-rules";
 import { useAgreementSettings } from "@/lib/agreementSettings";
 import { useStoreVersion } from "@/lib/mock/store";
 import { renderServiceHistoryPdf, type ServiceHistoryData } from "@/lib/service-history-pdf";
@@ -50,8 +51,8 @@ export function ServiceHistoryReportDialog({ open, onOpenChange, vehicle }: Prop
       .filter(m => !m.dateCompleted)
       .sort((a, b) => (b.createdAt ?? b.id).localeCompare(a.createdAt ?? a.id));
 
-    const totalMaintenance = serviceLog.reduce((s, m) => s + m.cost, 0);
-    const totalRepair = repairs.reduce((s, m) => s + m.cost, 0);
+    const totalMaintenance = serviceLog.reduce((s, m) => s + repairCost(m), 0);
+    const totalRepair = repairs.reduce((s, m) => s + repairCost(m), 0);
     const lastSvc = lastServiceFor(maintenance, vehicle.id);
     let openBalance = 0;
     const openRows = openIssues.map((m: Maintenance) => {

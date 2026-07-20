@@ -39,7 +39,8 @@ import { RepairBreakdownView, EditBreakdownButton } from "@/components/app/Repai
 import { LogPastRepairDialog } from "@/components/app/LogPastRepairDialog";
 import type { Maintenance, WorkOrder, Rental } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
-import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost, repairDisplayTitle, repairReportedIssue, repairSplitLabel } from "@/lib/maintenance-utils";
+import { lastServiceFor, computeVehicleAlerts, repairDisplayTitle, repairReportedIssue, repairSplitLabel } from "@/lib/maintenance-utils";
+import { repairCost as effectiveRepairCost } from "@/lib/money-rules";
 import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { exportRentalReportPdf } from "@/lib/rental-report.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
