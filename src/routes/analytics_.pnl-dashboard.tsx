@@ -14,6 +14,7 @@ import { useStoreVersion, activeVehicles as getActiveFleet } from "@/lib/mock/st
 import {
   payments, expenses, maintenance, rentals, vehicleById, fmtMoney,
 } from "@/lib/mock/data";
+import { repairCost, isRepairCost, countableExpenses } from "@/lib/money-rules";
 import { TrendingUp, TrendingDown, Trophy, AlertTriangle, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/analytics_/pnl-dashboard")({
@@ -127,23 +128,19 @@ function PnLDashboard() {
 
     // ---- Expenses by date ----
     const periodExpenses = expenses.filter(e => inRange(e.date, from, to));
-    // Operational expenses exclude rows auto-generated from a completed
-    // maintenance record (those are counted via the maintenance table below)
-    // to avoid double-counting.
-    const operationalExpenses = periodExpenses.reduce(
-      (s, e) => s + (e.maintenanceId ? 0 : (e.amount || 0)), 0);
-    // Effective cost for a maintenance/repair row: prefer the explicit cost,
-    // but fall back to parts + labor fields when cost was never rolled up
-    // (repair rows often store partsCost/laborCost only).
-    const maintCost = (m: typeof maintenance[number]) =>
-      (m.cost || 0) > 0 ? (m.cost || 0) : ((m.partsCost || 0) + (m.laborCost || 0));
+    // Money rules (single source of truth): operational expenses drop only
+    // rows whose parent maintenance row is itself being counted below, so no
+    // dollar can fall through both sides.
+    const operationalExpenses = countableExpenses(periodExpenses, maintenance)
+      .reduce((s, e) => s + (e.amount || 0), 0);
+    const maintCost = (m: typeof maintenance[number]) => repairCost(m);
     // Completed maintenance / service-log costs in range.
     const maintenanceExpenses = maintenance
-      .filter(m => !!m.dateCompleted && inRange(m.dateCompleted, from, to))
+      .filter(m => isRepairCost(m) && !!m.dateCompleted && inRange(m.dateCompleted, from, to))
       .reduce((s, m) => s + maintCost(m), 0);
     // Pending (not-yet-completed) maintenance — shown as a warning, not counted.
     const pendingMaintenance = maintenance
-      .filter(m => !m.dateCompleted)
+      .filter(m => isRepairCost(m) && !m.dateCompleted)
       .reduce((s, m) => s + maintCost(m), 0);
     const totalExpenses = operationalExpenses + maintenanceExpenses + legacyExpenses;
 
@@ -159,14 +156,13 @@ function PnLDashboard() {
       const rev = paidPayments
         .filter(p => rentalVehicle.get(p.rentalId) === v.id)
         .reduce((s, p) => s + (p.amount || 0), 0);
-      const exp = periodExpenses
-        .filter(e => e.vehicleId === v.id && !e.maintenanceId)
+      const exp = countableExpenses(periodExpenses, maintenance)
+        .filter(e => e.vehicleId === v.id)
         .reduce((s, e) => s + (e.amount || 0), 0);
       // Add completed maintenance/repair costs for this vehicle using the same
-      // parts+labor fallback as the fleet-wide total (and exclude the
-      // auto-posted maintenance expense rows above to avoid double-counting).
+      // money-rules helper as the fleet-wide total.
       const maint = maintenance
-        .filter(m => m.vehicleId === v.id && !!m.dateCompleted && inRange(m.dateCompleted, from, to))
+        .filter(m => m.vehicleId === v.id && isRepairCost(m) && !!m.dateCompleted && inRange(m.dateCompleted, from, to))
         .reduce((s, m) => s + maintCost(m), 0);
       const vehExp = exp + maint;
       let daysRented = 0;

@@ -1,5 +1,6 @@
 import type { Maintenance } from "@/lib/mock/data";
 import type { Vehicle, ScheduledTaskKey } from "@/lib/mock/data";
+import { repairCost } from "@/lib/money-rules";
 
 // Issue tickets (repairs) are created via AddIssueDialog, which writes an
 // "Issue opened" marker as the first notes line. Everything else is treated
@@ -45,16 +46,19 @@ export function repairSplitLabel(m: Maintenance): string | null {
   return null;
 }
 
-// Effective cost for a maintenance/repair row. Prefer the explicit `cost`,
-// but fall back to parts + labor when `cost` was never rolled up (null/zero).
-// Use this everywhere a repair cost is displayed or summed so totals stay
-// consistent across the fleet card, P&L, and repair history views.
+// Legacy shim — forwards to the single source of truth in money-rules.ts.
+// Kept only so existing call sites keep compiling; new code should import
+// `repairCost` from "@/lib/money-rules" directly.
 export function effectiveRepairCost(m: Maintenance): number {
-  const cost = Number(m.cost) || 0;
-  if (cost > 0) return cost;
-  const parts = Number(m.partsCost ?? m.selectedSolution?.partsCost) || 0;
-  const labor = Number(m.laborCost ?? m.selectedSolution?.laborCost) || 0;
-  return parts + labor;
+  // selectedSolution.parts/labor fallback is preserved here for the few
+  // legacy rows that only carry the estimate on the selected solution.
+  if ((Number(m.cost) || 0) <= 0
+      && !(Number(m.partsCost) || 0) && !(Number(m.laborCost) || 0)
+      && (m.selectedSolution?.partsCost || m.selectedSolution?.laborCost)) {
+    return (Number(m.selectedSolution?.partsCost) || 0)
+         + (Number(m.selectedSolution?.laborCost) || 0);
+  }
+  return repairCost(m);
 }
 
 // A repair is "completed" once it has a completion date or status. Use this
@@ -63,14 +67,10 @@ export function isCompletedRepair(m: Maintenance): boolean {
   return m.status === "complete" || !!m.dateCompleted;
 }
 
-// When a repair is completed its cost auto-posts into the expense ledger
-// (notes like "Repair <id> completed …"). Those rows must be excluded from
-// operational-expense sums so the repair is only counted once via the
-// maintenance table's effectiveRepairCost. Single source of truth shared by
-// the vehicle detail page and the P&L dashboard.
-export function isAutoPostedRepairRow(e: { maintenanceId?: string; notes?: string | null }): boolean {
-  return !!e.maintenanceId && /Repair\s+.*\bcompleted\b/i.test(e.notes ?? "");
-}
+// isAutoPostedRepairRow was removed — its regex-based match was the source
+// of the double-count/undercount bug. Use `isAutoPostedExpense` from
+// "@/lib/money-rules" instead (matches by maintenance_id FK only, and only
+// excludes when the parent repair is actually being counted).
 
 // Most recent completed routine service for a vehicle.
 export function lastServiceFor(list: Maintenance[], vehicleId: string): Maintenance | undefined {
