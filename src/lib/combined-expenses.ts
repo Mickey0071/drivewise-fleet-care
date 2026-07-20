@@ -1,11 +1,6 @@
 import { expenses, maintenance, type Expense, type Maintenance } from "@/lib/mock/data";
-import {
-  effectiveRepairCost,
-  isCompletedRepair,
-  isIssueRecord,
-  isServiceLogRecord,
-  isAutoPostedRepairRow,
-} from "@/lib/maintenance-utils";
+import { isIssueRecord, isServiceLogRecord } from "@/lib/maintenance-utils";
+import { isRepairCost, repairCost, countableExpenses } from "@/lib/money-rules";
 
 export type ExpenseSource = "operational" | "repair" | "maintenance";
 
@@ -48,8 +43,10 @@ function maintenanceLabel(m: Maintenance): string {
 export function buildCombinedExpenses(): CombinedExpense[] {
   const rows: CombinedExpense[] = [];
 
-  for (const e of expenses) {
-    if (isAutoPostedRepairRow(e)) continue;
+  // Operational expenses — money-rules.countableExpenses only drops rows
+  // whose parent maintenance record is actually being counted below, so
+  // no dollar can fall through both sides.
+  for (const e of countableExpenses(expenses, maintenance)) {
     rows.push({
       id: e.id,
       category: e.category,
@@ -64,9 +61,11 @@ export function buildCombinedExpenses(): CombinedExpense[] {
     });
   }
 
+  // Repairs / maintenance — the single-source predicate. A row counts the
+  // moment it has a real cost, regardless of workflow status.
   for (const m of maintenance) {
-    if (!isCompletedRepair(m)) continue;
-    const amount = effectiveRepairCost(m);
+    if (!isRepairCost(m)) continue;
+    const amount = repairCost(m);
     const source: ExpenseSource = isIssueRecord(m)
       ? "repair"
       : isServiceLogRecord(m)
