@@ -896,6 +896,11 @@ function VehicleDetail() {
         onOpenChange={setCreateWoOpen}
         vehicle={v}
       />
+      <LogPastRepairDialog
+        open={logRepairOpen}
+        onOpenChange={setLogRepairOpen}
+        vehicleId={v.id}
+      />
       {activeWo && (
         <WorkOrderDialog
           open={!!activeWo}
