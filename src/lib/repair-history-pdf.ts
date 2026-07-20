@@ -32,6 +32,7 @@ const money = (n: number | null) =>
 export async function renderRepairHistoryPdf(
   vehicle: Pick<Vehicle, "year" | "make" | "model" | "plate" | "vin">,
   rows: RepairHistoryRow[],
+  totals: { repairs: number; expenses: number; grand: number },
 ): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "letter" });
@@ -68,10 +69,12 @@ export async function renderRepairHistoryPdf(
   doc.text(`Generated ${new Date().toLocaleString("en-US")}`, left, y);
   y += 14;
 
-  // Totals
-  const totalRepairs = rows.filter(r => r.kind === "Repair").reduce((s, r) => s + r.amount, 0);
-  const totalExpenses = rows.filter(r => r.kind === "Expense").reduce((s, r) => s + r.amount, 0);
-  const grandTotal = totalRepairs + totalExpenses;
+  // Totals — authoritative values from getVehicleFinancials (single source of
+  // truth in src/lib/money-rules.ts + src/lib/vehicle-financials.ts). Rendered
+  // rows below are display-only and MUST NOT feed any sum.
+  const totalRepairs = totals.repairs;
+  const totalExpenses = totals.expenses;
+  const grandTotal = totals.grand;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
