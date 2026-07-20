@@ -133,6 +133,7 @@ function VehicleDetail() {
   // Expense line items (all sources) drive both the Analytics breakdown and the
   // Expenses tab list. Category roll-up for the pills.
   const expenseItems = fin.expenseLineItems;
+  const completedRepairIds = new Set<string>();
   const vehExpenseByCat = expenseItems.reduce<Record<string, number>>((acc, e) => {
     acc[e.category] = (acc[e.category] ?? 0) + e.amount; return acc;
   }, {});
