@@ -49,6 +49,9 @@ type ExpenseLike = {
   maintenance_id?: string | null;
 };
 
+/** Minimal maintenance row shape used for the parent lookup. */
+type MaintenanceRowLike = MaintenanceLike & { id: string };
+
 function num(v: unknown): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -96,18 +99,36 @@ export function isRepairCost(m: MaintenanceLike): boolean {
 }
 
 /**
- * TRUE when an expense row was auto-posted from the Accept-a-repair flow
- * (i.e. its maintenance_id FK is populated). These rows are duplicates of
- * the underlying maintenance row and must be filtered out of any expense
- * total so we don't double count. Identity is determined by the FK alone —
- * never by matching text in `notes`, which is what caused the previous bug.
+ * INVARIANT: Every dollar is counted exactly once — never zero times.
+ *
+ * TRUE (exclude) only when an expense row is auto-posted from the
+ * Accept-a-repair flow AND the parent maintenance row is itself being
+ * counted on the repair side. If the parent is missing, or exists but
+ * fails `isRepairCost` (e.g. filtered out as a scheduled reminder),
+ * this returns FALSE so the expense still counts. One door must always
+ * stay open — a cost may never fall through both sides.
+ *
+ * Identity of an auto-posted row is determined by the `maintenance_id`
+ * FK alone — never by matching text in `notes`, which is what caused
+ * the earlier double-count bug.
  */
-export function isAutoPostedExpense(e: ExpenseLike): boolean {
-  const id = e.maintenanceId ?? e.maintenance_id;
-  return typeof id === "string" && id.trim().length > 0;
+export function isAutoPostedExpense(
+  e: ExpenseLike,
+  maintenanceRows: readonly MaintenanceRowLike[],
+): boolean {
+  const id = (e.maintenanceId ?? e.maintenance_id ?? "").trim();
+  if (!id) return false;
+  const parent = maintenanceRows.find((m) => m.id === id);
+  if (!parent) return false;
+  return isRepairCost(parent);
 }
 
-/** All expenses that should be summed into the operational expense total. */
-export function countableExpenses<T extends ExpenseLike>(rows: T[]): T[] {
-  return rows.filter((r) => !isAutoPostedExpense(r));
+/** All expenses that should be summed into the operational expense total.
+ *  Requires the maintenance list so the auto-post dedupe only fires when
+ *  the parent repair row is actually being counted. */
+export function countableExpenses<T extends ExpenseLike>(
+  rows: T[],
+  maintenanceRows: readonly MaintenanceRowLike[],
+): T[] {
+  return rows.filter((r) => !isAutoPostedExpense(r, maintenanceRows));
 }
