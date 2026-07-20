@@ -44,6 +44,7 @@ import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { exportRentalReportPdf } from "@/lib/rental-report.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { downloadCSV } from "@/lib/exports";
+import { renderRepairHistoryPdf, type RepairHistoryRow } from "@/lib/repair-history-pdf";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
@@ -675,6 +676,57 @@ function VehicleDetail() {
               }}
             >
               <Download className="mr-1 h-4 w-4" />Download CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const rows: RepairHistoryRow[] = [
+                  ...completedRepairs.map(m => {
+                    const parts = m.partsCost ?? m.selectedSolution?.partsCost ?? 0;
+                    const labor = m.laborCost ?? m.selectedSolution?.laborCost ?? 0;
+                    return {
+                      date: (m.completionDate ?? m.dateCompleted ?? "").slice(0, 10),
+                      kind: "Repair" as const,
+                      category: "Repair",
+                      vendor: m.completedBy || m.vendor || "",
+                      description: repairDisplayTitle(m),
+                      parts: parts || null,
+                      labor: labor || null,
+                      amount: effectiveRepairCost(m),
+                    };
+                  }),
+                  ...otherExpenses.map(e => ({
+                    date: e.date.slice(0, 10),
+                    kind: "Expense" as const,
+                    category: e.category,
+                    vendor: "",
+                    description: e.description,
+                    parts: null,
+                    labor: null,
+                    amount: e.amount,
+                  })),
+                ].sort((a, b) => b.date.localeCompare(a.date));
+                try {
+                  const blob = await renderRepairHistoryPdf(
+                    { year: v.year, make: v.make, model: v.model, plate: v.plate, vin: v.vin },
+                    rows,
+                  );
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `repair-history-${v.plate}-${new Date().toISOString().slice(0, 10)}.pdf`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  URL.revokeObjectURL(url);
+                } catch (e) {
+                  console.error(e);
+                  toast.error("Could not generate PDF");
+                }
+              }}
+            >
+              <Download className="mr-1 h-4 w-4" />Download PDF
             </Button>
             <Button
               variant="outline"
