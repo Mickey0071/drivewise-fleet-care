@@ -1,5 +1,13 @@
 import type { Vehicle } from "@/lib/mock/data";
 
+// ---------------------------------------------------------------------------
+// Rendering only. This module does NOT decide what counts as a repair or
+// expense — callers must build the `rows` array from the single source of
+// truth (getVehicleFinancials.expenseLineItems in src/lib/vehicle-financials.ts
+// which delegates to src/lib/money-rules.ts). The subtotals below are a
+// straight sum of whatever the caller passed in and add no independent logic.
+// ---------------------------------------------------------------------------
+
 export interface RepairHistoryRow {
   date: string;
   kind: "Repair" | "Expense";
