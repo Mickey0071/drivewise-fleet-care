@@ -138,7 +138,7 @@ export function getVehicleFinancials(
   const vehicleExpenses = expenses.filter(
     (e) => e.vehicleId === vehicleId && inRange(e.date, range),
   );
-  for (const e of countableExpenses(vehicleExpenses)) {
+  for (const e of countableExpenses(vehicleExpenses, maintenance)) {
     expenseLineItems.push({
       id: e.id,
       date: (e.date ?? "").slice(0, 10),
