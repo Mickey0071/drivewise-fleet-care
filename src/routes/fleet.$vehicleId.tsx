@@ -634,6 +634,9 @@ function VehicleDetail() {
 
         <TabsContent value="repairs" className="mt-4 space-y-4">
           <div className="flex flex-wrap justify-end gap-2">
+            <Button size="sm" onClick={() => setLogRepairOpen(true)}>
+              + Log past repair
+            </Button>
             <Button
               variant="outline"
               size="sm"
