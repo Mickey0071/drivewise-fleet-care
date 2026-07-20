@@ -711,6 +711,7 @@ function VehicleDetail() {
                   const blob = await renderRepairHistoryPdf(
                     { year: v.year, make: v.make, model: v.model, plate: v.plate, vin: v.vin },
                     rows,
+                    { repairs: financials.repairs, expenses: financials.expenses, grand: financials.grand },
                   );
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement("a");
