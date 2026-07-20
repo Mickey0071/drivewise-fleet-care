@@ -643,32 +643,23 @@ function VehicleDetail() {
               variant="outline"
               size="sm"
               onClick={() => {
-                const rows = [
-                  ...completedRepairs.map(m => {
-                    const parts = m.partsCost ?? m.selectedSolution?.partsCost ?? 0;
-                    const labor = m.laborCost ?? m.selectedSolution?.laborCost ?? 0;
-                    return [
-                      (m.completionDate ?? m.dateCompleted ?? "").slice(0, 10),
-                      "Repair",
-                      "Repair",
-                      m.completedBy || m.vendor || "",
-                      repairDisplayTitle(m),
-                      parts,
-                      labor,
-                      effectiveRepairCost(m),
-                    ];
-                  }),
-                  ...otherExpenses.map(e => [
-                    e.date.slice(0, 10),
-                    "Expense",
-                    e.category,
+                // Rows come from fin.expenseLineItems — the same authoritative
+                // list getVehicleFinancials used to produce the totals. Do NOT
+                // re-derive from raw completedRepairs / otherExpenses here;
+                // that path skips the auto-post dedupe and can outrun the total.
+                const rows = fin.expenseLineItems.map(item => {
+                  const isRepair = item.source === "repair" || item.source === "maintenance";
+                  return [
+                    item.date,
+                    isRepair ? "Repair" : "Expense",
+                    item.category,
                     "",
-                    e.description,
-                    "",
-                    "",
-                    e.amount,
-                  ]),
-                ].sort((a, b) => String(b[0]).localeCompare(String(a[0])));
+                    item.description,
+                    item.category === "Parts" ? item.amount : "",
+                    item.category === "Labor" ? item.amount : "",
+                    item.amount,
+                  ];
+                });
                 downloadCSV(
                   `repair-history-${v.plate}-${new Date().toISOString().slice(0, 10)}.csv`,
                   ["Date", "Type", "Category", "Vendor/Mechanic", "Description", "Parts", "Labor", "Amount"],
@@ -682,32 +673,23 @@ function VehicleDetail() {
               variant="outline"
               size="sm"
               onClick={async () => {
-                const rows: RepairHistoryRow[] = [
-                  ...completedRepairs.map(m => {
-                    const parts = m.partsCost ?? m.selectedSolution?.partsCost ?? 0;
-                    const labor = m.laborCost ?? m.selectedSolution?.laborCost ?? 0;
-                    return {
-                      date: (m.completionDate ?? m.dateCompleted ?? "").slice(0, 10),
-                      kind: "Repair" as const,
-                      category: "Repair",
-                      vendor: m.completedBy || m.vendor || "",
-                      description: repairDisplayTitle(m),
-                      parts: parts || null,
-                      labor: labor || null,
-                      amount: effectiveRepairCost(m),
-                    };
-                  }),
-                  ...otherExpenses.map(e => ({
-                    date: e.date.slice(0, 10),
-                    kind: "Expense" as const,
-                    category: e.category,
+                // Rows come from fin.expenseLineItems — the same authoritative
+                // list getVehicleFinancials used to produce the totals shown in
+                // the PDF header. Never re-derive from the raw maintenance /
+                // expenses arrays here.
+                const rows: RepairHistoryRow[] = fin.expenseLineItems.map(item => {
+                  const isRepair = item.source === "repair" || item.source === "maintenance";
+                  return {
+                    date: item.date,
+                    kind: isRepair ? "Repair" : "Expense",
+                    category: item.category,
                     vendor: "",
-                    description: e.description,
-                    parts: null,
-                    labor: null,
-                    amount: e.amount,
-                  })),
-                ].sort((a, b) => b.date.localeCompare(a.date));
+                    description: item.description,
+                    parts: item.category === "Parts" ? item.amount : null,
+                    labor: item.category === "Labor" ? item.amount : null,
+                    amount: item.amount,
+                  };
+                });
                 try {
                   const blob = await renderRepairHistoryPdf(
                     { year: v.year, make: v.make, model: v.model, plate: v.plate, vin: v.vin },
