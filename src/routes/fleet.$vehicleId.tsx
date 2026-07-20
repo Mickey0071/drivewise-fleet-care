@@ -36,6 +36,7 @@ import { ExpenseDialog } from "@/components/app/ExpenseDialog";
 import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 import { RepairBreakdownView, EditBreakdownButton } from "@/components/app/RepairBreakdown";
+import { LogPastRepairDialog } from "@/components/app/LogPastRepairDialog";
 import type { Maintenance, WorkOrder, Rental } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { lastServiceFor, computeVehicleAlerts, effectiveRepairCost, repairDisplayTitle, repairReportedIssue, repairSplitLabel } from "@/lib/maintenance-utils";
@@ -65,6 +66,7 @@ function VehicleDetail() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [createWoOpen, setCreateWoOpen] = useState(false);
+  const [logRepairOpen, setLogRepairOpen] = useState(false);
   const [activeWo, setActiveWo] = useState<WorkOrder | null>(null);
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
@@ -632,6 +634,9 @@ function VehicleDetail() {
 
         <TabsContent value="repairs" className="mt-4 space-y-4">
           <div className="flex flex-wrap justify-end gap-2">
+            <Button size="sm" onClick={() => setLogRepairOpen(true)}>
+              + Log past repair
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -890,6 +895,11 @@ function VehicleDetail() {
         open={createWoOpen}
         onOpenChange={setCreateWoOpen}
         vehicle={v}
+      />
+      <LogPastRepairDialog
+        open={logRepairOpen}
+        onOpenChange={setLogRepairOpen}
+        vehicleId={v.id}
       />
       {activeWo && (
         <WorkOrderDialog

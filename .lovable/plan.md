@@ -1,21 +1,54 @@
 ## Goal
-On a vehicle's **Repair History** tab, show both completed repairs AND all other expenses recorded against that vehicle, grouped into two clearly labeled sections on the same view, with a Download button that exports the combined history.
 
-## Changes
+Add a one-shot "Log past repair" action on the vehicle fleet card that records a completed repair directly to the vehicle's repair history and expenses — no ticket, no mechanic dispatch, no approval flow.
 
-### 1. `src/routes/fleet.$vehicleId.tsx` — Repair History tab
-- Keep the existing "Repair history" section (completed repairs from `maintenance`) as-is.
-- Add a second section **"Expenses"** below it, listing every vehicle expense that is NOT already counted as a completed repair. Source: `buildCombinedExpenses()` filtered to this vehicle where `source === "operational"` (plus `"maintenance"` routine service, which today is folded into repairs — we'll only include rows not already shown above to avoid double-counting).
-  - Each row: date · category · vendor/notes · amount.
-- Update the tab header count to show both totals, e.g. `Repair history (5) · Expenses (12)`.
-- Add a **Download** button (next to the existing "Copy deep link" button) that exports the combined list as CSV using existing `downloadCSV` from `src/lib/exports.ts`. Columns: Date, Type (Repair / Expense), Category, Vendor/Mechanic, Description, Parts, Labor, Amount. Filename: `repair-history-<plate>-<YYYY-MM-DD>.csv`.
-- Optional secondary action: reuse existing `printPage()` for a Print/PDF button (matches pattern in `ReportActions.tsx`).
+## Where it lives
 
-### 2. No schema, server, or business-logic changes
-Purely a presentation change on one tab. `buildCombinedExpenses()` already unifies operational expenses + repairs; we just render both slices in the Repair History tab and add the export.
+- Vehicle detail page (`src/routes/fleet.$vehicleId.tsx`), Repairs tab.
+- New button **"+ Log past repair"** placed next to the existing **Download CSV** / **Copy deep link** buttons, right above the "Repair history" section.
+- Existing "New repair" (ticket) flow stays untouched — this is an additive shortcut for repairs already done.
+
+## Dialog: `LogPastRepairDialog`
+
+New component `src/components/app/LogPastRepairDialog.tsx`. Fields:
+
+- Date completed (defaults to today)
+- Problem category (reuse `ProblemCategorySelect`)
+- Short description (e.g. "Front brake pads")
+- Vendor / mechanic name (free text)
+- Parts cost ($)
+- Labor cost ($)
+- Total (auto = parts + labor, read-only)
+- Notes (optional)
+- Mileage at service (optional)
+
+Vehicle is locked to the current fleet card.
+
+## Write path
+
+Reuse the existing `addMaintenance(...)` store function (already used by `LogServiceDialog`) with a completed shape so it lands as a real repair, not an open ticket:
+
+- `serviceType` = description
+- `vendor` = vendor
+- `dateCompleted` = chosen date
+- `completionDate` = chosen date
+- `status` = `"complete"`
+- `partsCost`, `laborCost`, `cost` = parts + labor
+- `problemCategory` = selected category
+- `historyPostedAt` = now (matches the flag repair-accept flow already uses to prevent double-posting)
+- `notes`, `mileageAtService` when provided
+
+Because the record is marked complete with `partsCost`/`laborCost`, `getVehicleFinancials` automatically picks it up and splits it into Parts / Labor expense rows in the P&L, ROI, expense tracker, and CSV export — no separate `expenses` insert needed (that would double-count).
+
+It will render in the Repair history list immediately via `completedRepairs`, and appear in the combined "Download CSV" export already on the tab.
 
 ## Out of scope
-- Fleet-wide `/repairs` page (unchanged).
-- Expense entry/editing (still lives on the Expenses tab).
 
-Ready to build?
+- No SMS / mechanic job / approval token.
+- No changes to the ticket-based `CreateRepairDialog`, `sendMechanicJob`, or repair scorecard flow.
+- No schema/migration changes — this uses the existing maintenance record shape.
+
+## Files touched
+
+- `src/routes/fleet.$vehicleId.tsx` — add button + dialog mount on the Repairs tab.
+- `src/components/app/LogPastRepairDialog.tsx` — new.
