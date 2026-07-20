@@ -44,6 +44,7 @@ import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { exportRentalReportPdf } from "@/lib/rental-report.functions";
 import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { downloadCSV } from "@/lib/exports";
+import { renderRepairHistoryPdf, type RepairHistoryRow } from "@/lib/repair-history-pdf";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
