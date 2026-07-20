@@ -58,6 +58,7 @@ export function LogPastRepairDialog({ open, onOpenChange, vehicleId }: Props) {
       notes: notes.trim() || undefined,
       historyPostedAt: nowIso,
       completedBy: vendor.trim(),
+      nextServiceDue: dateCompleted,
     });
     toast.success(`Repair ${rec.id} logged to history`);
     reset();
