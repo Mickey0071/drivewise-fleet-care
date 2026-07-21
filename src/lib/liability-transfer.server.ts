@@ -9,6 +9,36 @@ export interface AuthorityAddress {
   is_active: boolean;
 }
 
+/**
+ * Map an authority key to the statute we cite on outgoing dispute paperwork.
+ * Unknown / missing keys are rejected so we never mail a packet with a wrong
+ * legal reference. Add new authorities here as they come online.
+ */
+export function statuteFor(authorityKey: string | null | undefined): string {
+  const key = (authorityKey ?? "").trim().toLowerCase();
+  if (!key) {
+    throw new Error(
+      "Authority is not set on this violation — pick the toll/parking authority before generating dispute paperwork.",
+    );
+  }
+  switch (key) {
+    case "nj_ezpass":
+    case "nj_turnpike":
+    case "ny_ezpass":
+    case "pa_turnpike":
+      return "N.J.S.A. 27:23-34.3(b) and N.J.A.C. 19:9-9.2(f)";
+    case "ppa":
+    case "philadelphia_parking":
+      return "Philadelphia Code §12-2804(8)";
+    case "nj_mvc":
+      return "N.J.S.A. 39:4-138.1";
+    default:
+      throw new Error(
+        `No statute is configured for authority "${authorityKey}". Add a statute mapping in liability-transfer.server.ts before generating this packet.`,
+      );
+  }
+}
+
 export const OWNER = {
   legal: "Rentalprise LLC d/b/a Camauto Rentals",
   address: "416 Sicklerville Rd, Sicklerville NJ 08081",
@@ -202,8 +232,9 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
   });
   blank();
 
+  const statute = statuteFor((v.authority_key as string | null) ?? null);
   line(
-    `Pursuant to N.J.S.A. 39:4-138.1, Camauto Rentals (Rentalprise LLC, registered rental car company) hereby provides notice of operator identity and requests transfer of liability for the violation referenced below.`,
+    `Pursuant to ${statute}, Camauto Rentals (Rentalprise LLC, registered rental car company) hereby provides notice of operator identity and requests transfer of liability for the violation referenced below.`,
   );
   blank();
 
@@ -283,7 +314,7 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
   blank();
 
   line(
-    `Pursuant to N.J.S.A. 39:4-138.1 and applicable rental car liability transfer statutes, we hereby formally identify the above-named individual as the sole operator of the vehicle during the violation period. The renter executed a signed rental agreement accepting full responsibility for all tolls, fines, and violations incurred during the rental period.`,
+    `Pursuant to ${statute} and applicable rental car liability transfer statutes, we hereby formally identify the above-named individual as the sole operator of the vehicle during the violation period. The renter executed a signed rental agreement accepting full responsibility for all tolls, fines, and violations incurred during the rental period.`,
   );
   blank();
   line(
@@ -291,7 +322,7 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
   );
   blank();
   line(
-    `Please contact the renter directly using the information provided. Camauto Rentals has no further obligation regarding this matter pursuant to NJ rental car liability transfer statutes.`,
+    `Please contact the renter directly using the information provided. Camauto Rentals has no further obligation regarding this matter pursuant to the rental car liability transfer statutes cited above.`,
   );
   blank();
   line(
