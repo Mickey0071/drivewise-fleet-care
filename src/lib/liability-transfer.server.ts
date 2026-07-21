@@ -232,8 +232,9 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
   });
   blank();
 
+  const statute = statuteFor((v.authority_key as string | null) ?? null);
   line(
-    `Pursuant to N.J.S.A. 39:4-138.1, Camauto Rentals (Rentalprise LLC, registered rental car company) hereby provides notice of operator identity and requests transfer of liability for the violation referenced below.`,
+    `Pursuant to ${statute}, Camauto Rentals (Rentalprise LLC, registered rental car company) hereby provides notice of operator identity and requests transfer of liability for the violation referenced below.`,
   );
   blank();
 
@@ -313,7 +314,7 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
   blank();
 
   line(
-    `Pursuant to N.J.S.A. 39:4-138.1 and applicable rental car liability transfer statutes, we hereby formally identify the above-named individual as the sole operator of the vehicle during the violation period. The renter executed a signed rental agreement accepting full responsibility for all tolls, fines, and violations incurred during the rental period.`,
+    `Pursuant to ${statute} and applicable rental car liability transfer statutes, we hereby formally identify the above-named individual as the sole operator of the vehicle during the violation period. The renter executed a signed rental agreement accepting full responsibility for all tolls, fines, and violations incurred during the rental period.`,
   );
   blank();
   line(
@@ -321,7 +322,7 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
   );
   blank();
   line(
-    `Please contact the renter directly using the information provided. Camauto Rentals has no further obligation regarding this matter pursuant to NJ rental car liability transfer statutes.`,
+    `Please contact the renter directly using the information provided. Camauto Rentals has no further obligation regarding this matter pursuant to the rental car liability transfer statutes cited above.`,
   );
   blank();
   line(
