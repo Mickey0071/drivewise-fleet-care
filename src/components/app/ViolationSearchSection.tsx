@@ -64,6 +64,10 @@ function fmt(d: string | null): string {
 const AUTHORITIES = [
   { key: "nj_ezpass", label: "NJ E-ZPass" },
   { key: "nj_turnpike", label: "NJ Turnpike" },
+  { key: "ny_ezpass", label: "NY E-ZPass" },
+  { key: "pa_turnpike", label: "PA Turnpike" },
+  { key: "ppa", label: "Philadelphia Parking Authority (PPA)" },
+  { key: "nj_mvc", label: "NJ MVC" },
   { key: "other", label: "Other" },
 ];
 

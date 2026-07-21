@@ -213,6 +213,7 @@ interface CoverCtx {
     id: string;
     referenceNumber: string;
     authorityName: string;
+    authorityKey: string | null;
     dateIssued: string | null;
     timeIssued: string | null;
   };
@@ -330,7 +331,29 @@ async function buildCoverPdf(ctx: CoverCtx): Promise<Uint8Array> {
 
   line("VEHICLE", { bold: true, size: 11 });
   field("Year / Make / Model", [ctx.vehicle.year, ctx.vehicle.make, ctx.vehicle.model].filter(Boolean).join(" ") || "—");
-  field("Plate", ctx.vehicle.plate || "—");
+  // Plate — highlighted yellow so it's unmistakable on the cover.
+  {
+    ensure(22);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(70, 70, 70);
+    doc.text("Plate", left, y);
+    const val = ctx.vehicle.plate || "—";
+    const boxX = left + 156;
+    const boxY = y - 12;
+    const boxW = 180;
+    const boxH = 20;
+    doc.setFillColor(255, 235, 59);
+    doc.rect(boxX, boxY, boxW, boxH, "F");
+    doc.setDrawColor(200, 160, 0);
+    doc.setLineWidth(0.75);
+    doc.rect(boxX, boxY, boxW, boxH, "S");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(val, boxX + 8, y + 2);
+    y += 22;
+  }
   field("State", ctx.vehicle.state || "—");
   gap();
 
@@ -356,11 +379,14 @@ async function buildCoverPdf(ctx: CoverCtx): Promise<Uint8Array> {
   // Attestation
   line("ATTESTATION", { bold: true, size: 11 });
   gap(2);
+  // Statute is chosen by authority — throws if unknown so we never mail a
+  // packet citing the wrong body of law.
+  const statute = statuteFor(ctx.violation.authorityKey);
   const attestation =
     `I, ${ctx.settings.signerName}, ${ctx.settings.signerTitle} of ${ctx.settings.signerCompany}, ` +
     `hereby attest that the above-referenced vehicle was under an active rental agreement with the individual named above ` +
-    `on the date of the violation. Pursuant to the attached rental agreement, responsibility for this violation is hereby ` +
-    `transferred to the renter identified above.`;
+    `on the date of the violation. Pursuant to ${statute} and the attached rental agreement, responsibility for this ` +
+    `violation is hereby transferred to the renter identified above.`;
   line(attestation);
   gap(24);
 
@@ -587,6 +613,7 @@ async function loadCtx(
       authorityName: (v.authority_key as string | null) === "nj_ezpass"
         ? "NJ E-ZPass"
         : settings.defaultAuthority,
+      authorityKey: (v.authority_key as string | null) ?? null,
       dateIssued: (v.date_issued as string | null) ?? null,
       timeIssued: (v.violation_time as string | null) ?? null,
     },

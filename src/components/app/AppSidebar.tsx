@@ -76,6 +76,8 @@ const DEFAULT_ITEMS: NavItem[] = [
   { key: "/admin/parts", url: "/admin/parts", title: "Parts", icon: Package, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
   { key: "/inspections", url: "/inspections", title: "Inspections", icon: ClipboardCheck, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
   { key: "/violations", url: "/violations", title: "Violations", icon: AlertTriangle, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
+  { key: "/admin/packet-settings", url: "/admin/packet-settings", title: "Transfer Packet Settings", icon: FileSignature, roles: ["admin"], sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
+  { key: "/violations/authorities", url: "/violations/authorities", title: "Violation Authorities", icon: Building2, roles: ["admin"], sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
   { key: "/monthly-vehicle-reports", url: "/monthly-vehicle-reports", title: "Monthly Vehicle Reports", icon: FileText, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
   { key: "/insurance", url: "/insurance", title: "Insurance", icon: Shield, roles: ["admin"], sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
   { key: "/vendors", url: "/vendors", title: "Vendors", icon: Building2, roles: ["admin"], sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
