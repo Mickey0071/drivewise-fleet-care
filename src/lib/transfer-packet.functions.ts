@@ -715,6 +715,7 @@ function isPngBytes(bytes: Uint8Array, contentType: string): boolean {
 
 async function mergeDocuments(
   parts: Array<{ kind: PacketDocKind; bytes?: Uint8Array; url?: string }>,
+  opts?: { highlightPlate?: string | null },
 ): Promise<{ merged: Uint8Array; used: PacketDocKind[]; missing: PacketDocKind[] }> {
   const { PDFDocument } = await import("pdf-lib");
   const out = await PDFDocument.create();
@@ -738,6 +739,9 @@ async function mergeDocuments(
         continue;
       }
       if (isPdfBytes(bytes, contentType)) {
+        if (part.kind === "agreement" && opts?.highlightPlate) {
+          bytes = await highlightPlateOnPdf(bytes, opts.highlightPlate);
+        }
         const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
         const pages = await out.copyPages(doc, doc.getPageIndices());
         for (const p of pages) out.addPage(p);
