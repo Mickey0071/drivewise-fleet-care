@@ -247,6 +247,20 @@ function fmtDate(iso: string | null): string {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
+function authorityDisplayName(key: string | null, fallback: string): string {
+  switch ((key ?? "").toLowerCase()) {
+    case "nj_ezpass": return "NJ E-ZPass";
+    case "ny_ezpass": return "NY E-ZPass";
+    case "nj_turnpike": return "NJ Turnpike";
+    case "pa_turnpike": return "PA Turnpike";
+    case "ppa":
+    case "philadelphia_parking":
+      return "Philadelphia Parking Authority";
+    case "nj_mvc": return "NJ Motor Vehicle Commission";
+    default: return fallback;
+  }
+}
+
 async function buildCoverPdf(ctx: CoverCtx): Promise<Uint8Array> {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "letter", compress: true });
