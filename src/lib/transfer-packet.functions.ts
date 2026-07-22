@@ -29,6 +29,7 @@ export interface TransferPacketResult {
     | "date_outside_rental"
     | "missing_address"
     | "missing_signature"
+    | "missing_authority"
     | "unknown";
 }
 
@@ -244,6 +245,20 @@ function fmtDate(iso: string | null): string {
   const d = new Date(s.length === 10 ? `${s}T00:00:00` : s);
   if (isNaN(d.getTime())) return s;
   return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+}
+
+function authorityDisplayName(key: string | null, fallback: string): string {
+  switch ((key ?? "").toLowerCase()) {
+    case "nj_ezpass": return "NJ E-ZPass";
+    case "ny_ezpass": return "NY E-ZPass";
+    case "nj_turnpike": return "NJ Turnpike";
+    case "pa_turnpike": return "PA Turnpike";
+    case "ppa":
+    case "philadelphia_parking":
+      return "Philadelphia Parking Authority";
+    case "nj_mvc": return "NJ Motor Vehicle Commission";
+    default: return fallback;
+  }
 }
 
 async function buildCoverPdf(ctx: CoverCtx): Promise<Uint8Array> {
@@ -477,6 +492,22 @@ async function loadCtx(
     return { ok: false, errorCode: "no_rental", error: "Violation is not matched to a rental" };
   }
 
+  // Block generation up-front when authority is missing / unrecognized so we
+  // never mail a packet citing the wrong body of law. statuteFor throws on
+  // anything we don't have a mapping for.
+  try {
+    statuteFor((v.authority_key as string | null) ?? null);
+  } catch (e) {
+    return {
+      ok: false,
+      errorCode: "missing_authority",
+      error:
+        e instanceof Error
+          ? e.message
+          : "Authority is not set on this violation — pick the toll/parking authority before generating.",
+    };
+  }
+
   // If admin provided an address override, persist before loading — so the
   // saved value shows up on this packet AND every future one.
   if (opts?.renterAddressOverride && opts.renterAddressOverride.trim().length > 0) {
@@ -610,9 +641,10 @@ async function loadCtx(
       id: v.id,
       referenceNumber:
         ((v.reference_number as string | null) ?? "").trim() || String(v.id).toUpperCase(),
-      authorityName: (v.authority_key as string | null) === "nj_ezpass"
-        ? "NJ E-ZPass"
-        : settings.defaultAuthority,
+      authorityName: authorityDisplayName(
+        (v.authority_key as string | null) ?? null,
+        settings.defaultAuthority,
+      ),
       authorityKey: (v.authority_key as string | null) ?? null,
       dateIssued: (v.date_issued as string | null) ?? null,
       timeIssued: (v.violation_time as string | null) ?? null,
@@ -681,8 +713,63 @@ function isPngBytes(bytes: Uint8Array, contentType: string): boolean {
   );
 }
 
+/**
+ * Draw a semi-transparent yellow highlight over every occurrence of `plate`
+ * (case-insensitive, whitespace-agnostic) across all pages of `bytes`.
+ * Uses pdfjs-dist to locate text-item positions and pdf-lib to overlay
+ * rectangles. Returns the original bytes if anything goes wrong so we never
+ * break packet generation over a highlight failure.
+ */
+async function highlightPlateOnPdf(bytes: Uint8Array, plate: string): Promise<Uint8Array> {
+  const target = plate.replace(/\s+/g, "").toUpperCase();
+  if (target.length < 3) return bytes;
+  try {
+    // Legacy build works outside the browser (no worker required).
+    const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    if (pdfjs.GlobalWorkerOptions) pdfjs.GlobalWorkerOptions.workerSrc = "";
+    const loadingTask = pdfjs.getDocument({
+      data: bytes,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: false,
+      disableWorker: true,
+    });
+    const src = await loadingTask.promise;
+    const { PDFDocument, rgb } = await import("pdf-lib");
+    const out = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    const pages = out.getPages();
+    const pageCount = Math.min(src.numPages, pages.length);
+    for (let i = 0; i < pageCount; i++) {
+      const page = await src.getPage(i + 1);
+      const content = await page.getTextContent();
+      const outPage = pages[i];
+      for (const item of content.items as Array<any>) {
+        const s = String(item.str ?? "").replace(/\s+/g, "").toUpperCase();
+        if (!s || !s.includes(target)) continue;
+        const t = item.transform as number[];
+        const x = t[4];
+        const y = t[5];
+        const w = Number(item.width) || target.length * 6;
+        const h = Number(item.height) || Math.abs(t[3]) || 10;
+        outPage.drawRectangle({
+          x: x - 1,
+          y: y - 1,
+          width: w + 2,
+          height: h + 2,
+          color: rgb(1, 0.92, 0.23),
+          opacity: 0.45,
+        });
+      }
+    }
+    return await out.save();
+  } catch {
+    return bytes;
+  }
+}
+
 async function mergeDocuments(
   parts: Array<{ kind: PacketDocKind; bytes?: Uint8Array; url?: string }>,
+  opts?: { highlightPlate?: string | null },
 ): Promise<{ merged: Uint8Array; used: PacketDocKind[]; missing: PacketDocKind[] }> {
   const { PDFDocument } = await import("pdf-lib");
   const out = await PDFDocument.create();
@@ -706,7 +793,11 @@ async function mergeDocuments(
         continue;
       }
       if (isPdfBytes(bytes, contentType)) {
-        const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+        const pdfBytes: Uint8Array =
+          part.kind === "agreement" && opts?.highlightPlate
+            ? await highlightPlateOnPdf(bytes, opts.highlightPlate)
+            : bytes;
+        const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
         const pages = await out.copyPages(doc, doc.getPageIndices());
         for (const p of pages) out.addPage(p);
       } else {
@@ -778,7 +869,9 @@ async function generateOne(
     if (parts.length === 0) {
       return { ok: false, errorCode: "unknown", error: "No documents selected for packet" };
     }
-    const { merged } = await mergeDocuments(parts);
+    const { merged } = await mergeDocuments(parts, {
+      highlightPlate: loaded.ctx.vehicle.plate || null,
+    });
 
     const plate = safeName(loaded.ctx.vehicle.plate);
     const ref = safeName(loaded.ctx.violation.referenceNumber);
