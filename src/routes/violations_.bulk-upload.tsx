@@ -884,6 +884,7 @@ function ManualMatchDialog({
     setBusy(true);
     try {
       const { violationId } = await matchCommit({ data: { itemId: item.id, rentalId } });
+      setMatchedRentalId(rentalId);
       toast.success("Ticket created — building dispute packet…");
       const res = await buildPacket({
         data: {
@@ -966,6 +967,75 @@ function ManualMatchDialog({
     }
   };
 
+  const generateDisputePacket = () => {
+    if (!matchedRentalId) {
+      toast.error("Match a rental first, then generate the packet.");
+      return;
+    }
+    // Reuses the same picker + matchAndPacket flow the per-row Generate
+    // buttons above use, keeping behavior identical to the main Violations tab.
+    openPacketPicker(matchedRentalId);
+  };
+
+  const openCreateNewRental = () => {
+    setNewRenter("");
+    setNewPhone("");
+    setNewEmail("");
+    setNewPlate(item.plate ?? "");
+    setNewStart((item.violation_date ?? "").slice(0, 10));
+    setNewEnd((item.violation_date ?? "").slice(0, 10));
+    setCreateOpen(true);
+  };
+
+  const submitCreateNewRental = async () => {
+    if (!newRenter.trim()) {
+      toast.error("Enter the renter name");
+      return;
+    }
+    if (!newStart) {
+      toast.error("Enter a start date");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { rentalId } = await createInternal({
+        data: {
+          itemId: item.id,
+          renterName: newRenter.trim(),
+          phone: newPhone.trim() || null,
+          email: newEmail.trim() || null,
+          plate: newPlate.trim() || null,
+          startDate: newStart,
+          endDate: newEnd || null,
+        },
+      });
+      // Auto-commit through the same matchCommit path other flows use.
+      await matchCommit({ data: { itemId: item.id, rentalId } });
+      setMatchedRentalId(rentalId);
+      setCreateOpen(false);
+      toast.success("Internal rental created and matched");
+      onMatched();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create internal rental");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmDismiss = async () => {
+    setBusy(true);
+    try {
+      await dismiss({ data: { itemId: item.id } });
+      toast.success("Marked plate as not ours — removed from queue");
+      setDismissOpen(false);
+      onMatched();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to dismiss");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-xl">
@@ -977,15 +1047,30 @@ function ManualMatchDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Coming-soon actions */}
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => soon("Create New Rental")}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={openCreateNewRental}
+          >
             <FilePlus2 className="mr-1 h-4 w-4" /> Create New Rental
           </Button>
-          <Button variant="outline" size="sm" onClick={() => soon("Plate Not Mine")}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={() => setDismissOpen(true)}
+          >
             <Ban className="mr-1 h-4 w-4" /> Plate Not Mine
           </Button>
-          <Button variant="outline" size="sm" onClick={() => soon("Generate Dispute Packet")}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy || !matchedRentalId}
+            onClick={generateDisputePacket}
+            title={matchedRentalId ? "Build a dispute packet ZIP for the matched rental" : "Match a rental first"}
+          >
             <ShieldX className="mr-1 h-4 w-4" /> Generate Dispute Packet
           </Button>
         </div>
