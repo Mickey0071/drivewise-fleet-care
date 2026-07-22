@@ -390,7 +390,6 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
   const items = data?.items ?? [];
   const batch = data?.batch;
   const visibleItems = items.filter((i) => i.match_status !== "dismissed");
-  const dismissedCount = items.length - visibleItems.length;
   const matchedCount = visibleItems.filter((i) => i.match_status === "matched").length;
   const unmatchedCount = visibleItems.length - matchedCount;
   const totalAmount = useMemo(
