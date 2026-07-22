@@ -753,6 +753,8 @@ function ManualMatchDialog({
   const getAgreement = useServerFn(getRentalAgreementUrl);
   const matchCommit = useServerFn(matchAndCommitEzpassItem);
   const buildPacket = useServerFn(downloadViolationPacket);
+  const dismiss = useServerFn(dismissEzpassItem);
+  const createInternal = useServerFn(createInternalRentalForItem);
 
   const [date, setDate] = useState(item.violation_date ?? "");
   const [plate, setPlate] = useState(item.plate ?? "");
@@ -763,8 +765,20 @@ function ManualMatchDialog({
   const [retroEmail, setRetroEmail] = useState("");
   const [packetFor, setPacketFor] = useState<string | null>(null);
   const [inc, setInc] = useState({ coverLetter: true, agreement: true, license: true });
-
-  const soon = (label: string) => toast.message(`${label} — coming soon`);
+  // Tracks the rental this ticket is matched to — starts from whatever the
+  // batch item was persisted with and updates whenever the user matches in
+  // this dialog. Drives the enable/disable state on "Generate Dispute Packet".
+  const [matchedRentalId, setMatchedRentalId] = useState<string | null>(item.rental_id ?? null);
+  // "Create New Rental" internal-agreement flow.
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newRenter, setNewRenter] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPlate, setNewPlate] = useState(item.plate ?? "");
+  const [newStart, setNewStart] = useState((item.violation_date ?? "").slice(0, 10));
+  const [newEnd, setNewEnd] = useState((item.violation_date ?? "").slice(0, 10));
+  // "Plate Not Mine" dismissal confirm.
+  const [dismissOpen, setDismissOpen] = useState(false);
 
   // Always load ALL rentals on this plate (and/or name) — never hard-filter by
   // the violation date. A rental whose stored window doesn't cover the toll
