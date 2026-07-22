@@ -263,7 +263,9 @@ function RentalsPage() {
   // Net balance = what's owed minus any overpayment credit on file. A negative
   // result means the renter has a positive credit (nothing due).
   function rentalBalance(r: Rental): number {
-    return rentalOwed(r) - rentalCredit(r.id);
+    // Credits are now counted inside rentalCanonicalOwed's paymentsReceived,
+    // so subtracting rentalCredit again would double-count them.
+    return rentalOwed(r);
   }
   function rentalOwed(r: Rental): number {
     // CANONICAL RULE (single source of truth — see store.rentalCanonicalOwed):
