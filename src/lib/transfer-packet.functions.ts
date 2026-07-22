@@ -793,10 +793,11 @@ async function mergeDocuments(
         continue;
       }
       if (isPdfBytes(bytes, contentType)) {
-        if (part.kind === "agreement" && opts?.highlightPlate) {
-          bytes = await highlightPlateOnPdf(bytes, opts.highlightPlate);
-        }
-        const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+        const pdfBytes: Uint8Array =
+          part.kind === "agreement" && opts?.highlightPlate
+            ? await highlightPlateOnPdf(bytes, opts.highlightPlate)
+            : bytes;
+        const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
         const pages = await out.copyPages(doc, doc.getPageIndices());
         for (const p of pages) out.addPage(p);
       } else {
