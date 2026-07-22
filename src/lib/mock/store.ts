@@ -406,10 +406,14 @@ export function rentalTimeCharge(r: Rental): number {
   return periods * rate;
 }
 
-/** Sum of every payment received against a rental (excludes credit rows). */
+/** Sum of every payment received against a rental.
+ *  Includes `credit` rows — those are real cash the renter handed over that
+ *  simply didn't have a scheduled installment to consume when recorded (e.g.
+ *  cash paid before the weekly bill posts). Only `violation` money is excluded
+ *  because it's tracked on its own line. */
 export function rentalPaymentsReceived(rentalId: string): number {
   return payments
-    .filter(p => p.rentalId === rentalId && p.status === "paid" && p.kind !== "credit" && p.kind !== "violation")
+    .filter(p => p.rentalId === rentalId && p.status === "paid" && p.kind !== "violation")
     .reduce((s, p) => s + Number(p.amount || 0), 0);
 }
 
