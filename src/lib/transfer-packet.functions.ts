@@ -29,6 +29,7 @@ export interface TransferPacketResult {
     | "date_outside_rental"
     | "missing_address"
     | "missing_signature"
+    | "missing_authority"
     | "unknown";
 }
 
