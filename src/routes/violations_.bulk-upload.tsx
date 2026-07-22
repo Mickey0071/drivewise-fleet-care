@@ -1316,6 +1316,94 @@ function ManualMatchDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create New Rental — minimal on-file rental so a ticket with no
+          live reservation can still be attributed and disputed. */}
+      <Dialog open={createOpen} onOpenChange={(o) => !o && !busy && setCreateOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create internal rental</DialogTitle>
+            <DialogDescription>
+              Creates an on-file rental for this plate + date so the ticket can
+              be matched and a dispute packet generated. You can fill in full
+              renter details later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Input
+              value={newRenter}
+              onChange={(e) => setNewRenter(e.target.value)}
+              placeholder="Renter full name (required)"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                placeholder="Phone"
+              />
+              <Input
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="Email"
+              />
+            </div>
+            <Input
+              value={newPlate}
+              onChange={(e) => setNewPlate(e.target.value)}
+              placeholder="License plate"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground">Start date</label>
+                <Input type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">End date</label>
+                <Input type="date" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCreateOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              onClick={submitCreateNewRental}
+              disabled={busy}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FilePlus2 className="mr-1 h-4 w-4" />}
+              Create + Match
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Plate Not Mine — dismiss the batch item so it drops out of the queue. */}
+      <Dialog open={dismissOpen} onOpenChange={(o) => !o && !busy && setDismissOpen(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Mark plate as not ours?</DialogTitle>
+            <DialogDescription>
+              Removes this ticket from the review queue. The record is kept for
+              audit but stops appearing in matched / unmatched counts.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDismissOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDismiss}
+              disabled={busy}
+            >
+              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Ban className="mr-1 h-4 w-4" />}
+              Dismiss
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
