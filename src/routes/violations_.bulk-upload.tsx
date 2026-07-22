@@ -458,7 +458,6 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
         <SummaryCard
           label="Total violations"
           value={String(visibleItems.length)}
-          sub={dismissedCount ? `(${dismissedCount} dismissed hidden)` : undefined}
         />
         <SummaryCard label="Auto-matched" value={String(matchedCount)} tone="ok" />
         <SummaryCard label="Unmatched" value={String(unmatchedCount)} tone={unmatchedCount ? "warn" : "ok"} />
