@@ -478,6 +478,22 @@ async function loadCtx(
     return { ok: false, errorCode: "no_rental", error: "Violation is not matched to a rental" };
   }
 
+  // Block generation up-front when authority is missing / unrecognized so we
+  // never mail a packet citing the wrong body of law. statuteFor throws on
+  // anything we don't have a mapping for.
+  try {
+    statuteFor((v.authority_key as string | null) ?? null);
+  } catch (e) {
+    return {
+      ok: false,
+      errorCode: "missing_authority",
+      error:
+        e instanceof Error
+          ? e.message
+          : "Authority is not set on this violation — pick the toll/parking authority before generating.",
+    };
+  }
+
   // If admin provided an address override, persist before loading — so the
   // saved value shows up on this packet AND every future one.
   if (opts?.renterAddressOverride && opts.renterAddressOverride.trim().length > 0) {
