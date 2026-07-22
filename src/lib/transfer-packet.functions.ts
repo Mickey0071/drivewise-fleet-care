@@ -627,9 +627,10 @@ async function loadCtx(
       id: v.id,
       referenceNumber:
         ((v.reference_number as string | null) ?? "").trim() || String(v.id).toUpperCase(),
-      authorityName: (v.authority_key as string | null) === "nj_ezpass"
-        ? "NJ E-ZPass"
-        : settings.defaultAuthority,
+      authorityName: authorityDisplayName(
+        (v.authority_key as string | null) ?? null,
+        settings.defaultAuthority,
+      ),
       authorityKey: (v.authority_key as string | null) ?? null,
       dateIssued: (v.date_issued as string | null) ?? null,
       timeIssued: (v.violation_time as string | null) ?? null,
