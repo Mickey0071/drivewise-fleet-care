@@ -869,7 +869,9 @@ async function generateOne(
     if (parts.length === 0) {
       return { ok: false, errorCode: "unknown", error: "No documents selected for packet" };
     }
-    const { merged } = await mergeDocuments(parts);
+    const { merged } = await mergeDocuments(parts, {
+      highlightPlate: loaded.ctx.vehicle.plate || null,
+    });
 
     const plate = safeName(loaded.ctx.vehicle.plate);
     const ref = safeName(loaded.ctx.violation.referenceNumber);
