@@ -39,6 +39,8 @@ import {
   downloadAffidavitsZip,
   matchAndCommitEzpassItem,
   getRentalAgreementUrl,
+  dismissEzpassItem,
+  createInternalRentalForItem,
   type EzpassBatchItem,
 } from "@/lib/ezpass.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
@@ -387,11 +389,13 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
 
   const items = data?.items ?? [];
   const batch = data?.batch;
-  const matchedCount = items.filter((i) => i.match_status === "matched").length;
-  const unmatchedCount = items.length - matchedCount;
+  const visibleItems = items.filter((i) => i.match_status !== "dismissed");
+  const dismissedCount = items.length - visibleItems.length;
+  const matchedCount = visibleItems.filter((i) => i.match_status === "matched").length;
+  const unmatchedCount = visibleItems.length - matchedCount;
   const totalAmount = useMemo(
-    () => items.reduce((s, i) => s + Number(i.amount || 0), 0),
-    [items],
+    () => visibleItems.reduce((s, i) => s + Number(i.amount || 0), 0),
+    [visibleItems],
   );
   const approved = batch?.status === "approved";
 
@@ -451,7 +455,11 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
       />
 
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <SummaryCard label="Total violations" value={String(items.length)} />
+        <SummaryCard
+          label="Total violations"
+          value={String(visibleItems.length)}
+          sub={dismissedCount ? `(${dismissedCount} dismissed hidden)` : undefined}
+        />
         <SummaryCard label="Auto-matched" value={String(matchedCount)} tone="ok" />
         <SummaryCard label="Unmatched" value={String(unmatchedCount)} tone={unmatchedCount ? "warn" : "ok"} />
         <SummaryCard label="Total amount" value={fmtMoney(totalAmount)} />
@@ -476,7 +484,7 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((it) => (
+                  {visibleItems.map((it) => (
                     <tr key={it.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-3">
                         {fmtDate(it.violation_date)}
