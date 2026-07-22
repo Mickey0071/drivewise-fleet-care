@@ -39,6 +39,8 @@ import {
   downloadAffidavitsZip,
   matchAndCommitEzpassItem,
   getRentalAgreementUrl,
+  dismissEzpassItem,
+  createInternalRentalForItem,
   type EzpassBatchItem,
 } from "@/lib/ezpass.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
@@ -387,11 +389,12 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
 
   const items = data?.items ?? [];
   const batch = data?.batch;
-  const matchedCount = items.filter((i) => i.match_status === "matched").length;
-  const unmatchedCount = items.length - matchedCount;
+  const visibleItems = items.filter((i) => i.match_status !== "dismissed");
+  const matchedCount = visibleItems.filter((i) => i.match_status === "matched").length;
+  const unmatchedCount = visibleItems.length - matchedCount;
   const totalAmount = useMemo(
-    () => items.reduce((s, i) => s + Number(i.amount || 0), 0),
-    [items],
+    () => visibleItems.reduce((s, i) => s + Number(i.amount || 0), 0),
+    [visibleItems],
   );
   const approved = batch?.status === "approved";
 
@@ -451,7 +454,10 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
       />
 
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <SummaryCard label="Total violations" value={String(items.length)} />
+        <SummaryCard
+          label="Total violations"
+          value={String(visibleItems.length)}
+        />
         <SummaryCard label="Auto-matched" value={String(matchedCount)} tone="ok" />
         <SummaryCard label="Unmatched" value={String(unmatchedCount)} tone={unmatchedCount ? "warn" : "ok"} />
         <SummaryCard label="Total amount" value={fmtMoney(totalAmount)} />
@@ -476,7 +482,7 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((it) => (
+                  {visibleItems.map((it) => (
                     <tr key={it.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-3">
                         {fmtDate(it.violation_date)}
@@ -747,6 +753,8 @@ function ManualMatchDialog({
   const getAgreement = useServerFn(getRentalAgreementUrl);
   const matchCommit = useServerFn(matchAndCommitEzpassItem);
   const buildPacket = useServerFn(downloadViolationPacket);
+  const dismiss = useServerFn(dismissEzpassItem);
+  const createInternal = useServerFn(createInternalRentalForItem);
 
   const [date, setDate] = useState(item.violation_date ?? "");
   const [plate, setPlate] = useState(item.plate ?? "");
@@ -757,8 +765,20 @@ function ManualMatchDialog({
   const [retroEmail, setRetroEmail] = useState("");
   const [packetFor, setPacketFor] = useState<string | null>(null);
   const [inc, setInc] = useState({ coverLetter: true, agreement: true, license: true });
-
-  const soon = (label: string) => toast.message(`${label} — coming soon`);
+  // Tracks the rental this ticket is matched to — starts from whatever the
+  // batch item was persisted with and updates whenever the user matches in
+  // this dialog. Drives the enable/disable state on "Generate Dispute Packet".
+  const [matchedRentalId, setMatchedRentalId] = useState<string | null>(item.rental_id ?? null);
+  // "Create New Rental" internal-agreement flow.
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newRenter, setNewRenter] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPlate, setNewPlate] = useState(item.plate ?? "");
+  const [newStart, setNewStart] = useState((item.violation_date ?? "").slice(0, 10));
+  const [newEnd, setNewEnd] = useState((item.violation_date ?? "").slice(0, 10));
+  // "Plate Not Mine" dismissal confirm.
+  const [dismissOpen, setDismissOpen] = useState(false);
 
   // Always load ALL rentals on this plate (and/or name) — never hard-filter by
   // the violation date. A rental whose stored window doesn't cover the toll
@@ -864,6 +884,7 @@ function ManualMatchDialog({
     setBusy(true);
     try {
       const { violationId } = await matchCommit({ data: { itemId: item.id, rentalId } });
+      setMatchedRentalId(rentalId);
       toast.success("Ticket created — building dispute packet…");
       const res = await buildPacket({
         data: {
@@ -946,6 +967,75 @@ function ManualMatchDialog({
     }
   };
 
+  const generateDisputePacket = () => {
+    if (!matchedRentalId) {
+      toast.error("Match a rental first, then generate the packet.");
+      return;
+    }
+    // Reuses the same picker + matchAndPacket flow the per-row Generate
+    // buttons above use, keeping behavior identical to the main Violations tab.
+    openPacketPicker(matchedRentalId);
+  };
+
+  const openCreateNewRental = () => {
+    setNewRenter("");
+    setNewPhone("");
+    setNewEmail("");
+    setNewPlate(item.plate ?? "");
+    setNewStart((item.violation_date ?? "").slice(0, 10));
+    setNewEnd((item.violation_date ?? "").slice(0, 10));
+    setCreateOpen(true);
+  };
+
+  const submitCreateNewRental = async () => {
+    if (!newRenter.trim()) {
+      toast.error("Enter the renter name");
+      return;
+    }
+    if (!newStart) {
+      toast.error("Enter a start date");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { rentalId } = await createInternal({
+        data: {
+          itemId: item.id,
+          renterName: newRenter.trim(),
+          phone: newPhone.trim() || null,
+          email: newEmail.trim() || null,
+          plate: newPlate.trim() || null,
+          startDate: newStart,
+          endDate: newEnd || null,
+        },
+      });
+      // Auto-commit through the same matchCommit path other flows use.
+      await matchCommit({ data: { itemId: item.id, rentalId } });
+      setMatchedRentalId(rentalId);
+      setCreateOpen(false);
+      toast.success("Internal rental created and matched");
+      onMatched();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create internal rental");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmDismiss = async () => {
+    setBusy(true);
+    try {
+      await dismiss({ data: { itemId: item.id } });
+      toast.success("Marked plate as not ours — removed from queue");
+      setDismissOpen(false);
+      onMatched();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to dismiss");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-xl">
@@ -957,15 +1047,30 @@ function ManualMatchDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Coming-soon actions */}
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => soon("Create New Rental")}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={openCreateNewRental}
+          >
             <FilePlus2 className="mr-1 h-4 w-4" /> Create New Rental
           </Button>
-          <Button variant="outline" size="sm" onClick={() => soon("Plate Not Mine")}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={() => setDismissOpen(true)}
+          >
             <Ban className="mr-1 h-4 w-4" /> Plate Not Mine
           </Button>
-          <Button variant="outline" size="sm" onClick={() => soon("Generate Dispute Packet")}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy || !matchedRentalId}
+            onClick={generateDisputePacket}
+            title={matchedRentalId ? "Build a dispute packet ZIP for the matched rental" : "Match a rental first"}
+          >
             <ShieldX className="mr-1 h-4 w-4" /> Generate Dispute Packet
           </Button>
         </div>
@@ -1207,6 +1312,94 @@ function ManualMatchDialog({
             >
               {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Download className="mr-1 h-4 w-4" />}
               Create ticket + download
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create New Rental — minimal on-file rental so a ticket with no
+          live reservation can still be attributed and disputed. */}
+      <Dialog open={createOpen} onOpenChange={(o) => !o && !busy && setCreateOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create internal rental</DialogTitle>
+            <DialogDescription>
+              Creates an on-file rental for this plate + date so the ticket can
+              be matched and a dispute packet generated. You can fill in full
+              renter details later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Input
+              value={newRenter}
+              onChange={(e) => setNewRenter(e.target.value)}
+              placeholder="Renter full name (required)"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                placeholder="Phone"
+              />
+              <Input
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="Email"
+              />
+            </div>
+            <Input
+              value={newPlate}
+              onChange={(e) => setNewPlate(e.target.value)}
+              placeholder="License plate"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground">Start date</label>
+                <Input type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">End date</label>
+                <Input type="date" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCreateOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              onClick={submitCreateNewRental}
+              disabled={busy}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <FilePlus2 className="mr-1 h-4 w-4" />}
+              Create + Match
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Plate Not Mine — dismiss the batch item so it drops out of the queue. */}
+      <Dialog open={dismissOpen} onOpenChange={(o) => !o && !busy && setDismissOpen(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Mark plate as not ours?</DialogTitle>
+            <DialogDescription>
+              Removes this ticket from the review queue. The record is kept for
+              audit but stops appearing in matched / unmatched counts.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDismissOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDismiss}
+              disabled={busy}
+            >
+              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Ban className="mr-1 h-4 w-4" />}
+              Dismiss
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -863,3 +863,114 @@ export const matchAndCommitEzpassItem = createServerFn({ method: "POST" })
 
     return { violationId: violationId! };
   });
+
+/**
+ * Dismiss a batch item as "not our plate" — takes it out of the active
+ * matching queue without deleting it (so audit / undo is possible).
+ * Persists match_status='dismissed' on the batch item; the review table
+ * filters those rows out.
+ */
+export const dismissEzpassItem = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ itemId: z.string().uuid(), reason: z.string().max(500).optional() }).parse(input),
+  )
+  .handler(async ({ data }): Promise<{ ok: true }> => {
+    const { data: item } = await supabaseAdmin
+      .from("ezpass_batch_items")
+      .select("batch_id")
+      .eq("id", data.itemId)
+      .maybeSingle();
+    const { error } = await supabaseAdmin
+      .from("ezpass_batch_items")
+      .update({
+        match_status: "dismissed",
+        rental_id: null,
+        driver_id: null,
+        vehicle_id: null,
+        driver_name: null,
+        candidates: null,
+      } as never)
+      .eq("id", data.itemId);
+    if (error) throw new Error(error.message);
+    if (item?.batch_id) await recomputeBatchCounts((item as { batch_id: string }).batch_id);
+    return { ok: true as const };
+  });
+
+/**
+ * Create an internal "on-file" rental (minimal driver + rental row) so a
+ * scanned toll that has no live reservation can still be attributed to a
+ * renter and pushed through matchAndCommitEzpassItem. The rental is flagged
+ * `reservation_status='internal'` and its notes reference the batch item
+ * that triggered it. Returns the new rental id for the caller to feed into
+ * the existing matchCommit path.
+ */
+export const createInternalRentalForItem = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        itemId: z.string().uuid(),
+        renterName: z.string().min(1).max(200),
+        phone: z.string().max(40).optional().nullable(),
+        email: z.string().max(200).optional().nullable(),
+        plate: z.string().max(20).optional().nullable(),
+        startDate: z.string().min(10).max(10),
+        endDate: z.string().min(10).max(10).optional().nullable(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }): Promise<{ rentalId: string; vehicleId: string }> => {
+    const { data: item } = await supabaseAdmin
+      .from("ezpass_batch_items")
+      .select("id, plate, violation_date")
+      .eq("id", data.itemId)
+      .maybeSingle();
+    if (!item) throw new Error("Batch item not found");
+
+    const rawPlate = (data.plate || (item as { plate: string | null }).plate || "").trim();
+    const plateNorm = normalizePlate(rawPlate);
+    let vehicleId = "UNKNOWN";
+    if (plateNorm) {
+      const { data: vs } = await supabaseAdmin
+        .from("vehicles")
+        .select("id, plate")
+        .limit(1000);
+      const hit = (vs ?? []).find(
+        (v) => normalizePlate((v as { plate: string | null }).plate ?? "") === plateNorm,
+      );
+      if (hit) vehicleId = (hit as { id: string }).id;
+    }
+
+    // Minimal driver shell — real license info can be filled in later.
+    const driverId = genId("D");
+    const { error: dErr } = await supabaseAdmin.from("drivers").insert({
+      id: driverId,
+      full_name: data.renterName.trim(),
+      phone: (data.phone || "").trim(),
+      email: (data.email || "").trim(),
+      license_number: "",
+      license_expiry: new Date().toISOString().slice(0, 10),
+      status: "active",
+    } as never);
+    if (dErr) throw new Error("Driver create failed: " + dErr.message);
+
+    const rentalId = genId("R");
+    const { error: rErr } = await supabaseAdmin.from("rentals").insert({
+      id: rentalId,
+      vehicle_id: vehicleId,
+      driver_id: driverId,
+      start_date: data.startDate,
+      end_date: data.endDate || null,
+      billing_period: "weekly",
+      weekly_rate: 0,
+      rate: 0,
+      deposit_paid: 0,
+      reservation_status: "internal",
+      payment_status: "current",
+      notes: `Internal / on-file rental created from EZPass batch item ${data.itemId} to cover a ticket that had no live reservation.`,
+    } as never);
+    if (rErr) throw new Error("Rental create failed: " + rErr.message);
+
+    return { rentalId, vehicleId };
+  });
