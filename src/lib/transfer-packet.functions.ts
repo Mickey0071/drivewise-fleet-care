@@ -713,6 +713,60 @@ function isPngBytes(bytes: Uint8Array, contentType: string): boolean {
   );
 }
 
+/**
+ * Draw a semi-transparent yellow highlight over every occurrence of `plate`
+ * (case-insensitive, whitespace-agnostic) across all pages of `bytes`.
+ * Uses pdfjs-dist to locate text-item positions and pdf-lib to overlay
+ * rectangles. Returns the original bytes if anything goes wrong so we never
+ * break packet generation over a highlight failure.
+ */
+async function highlightPlateOnPdf(bytes: Uint8Array, plate: string): Promise<Uint8Array> {
+  const target = plate.replace(/\s+/g, "").toUpperCase();
+  if (target.length < 3) return bytes;
+  try {
+    // Legacy build works outside the browser (no worker required).
+    const pdfjs: any = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    if (pdfjs.GlobalWorkerOptions) pdfjs.GlobalWorkerOptions.workerSrc = "";
+    const loadingTask = pdfjs.getDocument({
+      data: bytes,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: false,
+      disableWorker: true,
+    });
+    const src = await loadingTask.promise;
+    const { PDFDocument, rgb } = await import("pdf-lib");
+    const out = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    const pages = out.getPages();
+    const pageCount = Math.min(src.numPages, pages.length);
+    for (let i = 0; i < pageCount; i++) {
+      const page = await src.getPage(i + 1);
+      const content = await page.getTextContent();
+      const outPage = pages[i];
+      for (const item of content.items as Array<any>) {
+        const s = String(item.str ?? "").replace(/\s+/g, "").toUpperCase();
+        if (!s || !s.includes(target)) continue;
+        const t = item.transform as number[];
+        const x = t[4];
+        const y = t[5];
+        const w = Number(item.width) || target.length * 6;
+        const h = Number(item.height) || Math.abs(t[3]) || 10;
+        outPage.drawRectangle({
+          x: x - 1,
+          y: y - 1,
+          width: w + 2,
+          height: h + 2,
+          color: rgb(1, 0.92, 0.23),
+          opacity: 0.45,
+        });
+      }
+    }
+    return await out.save();
+  } catch {
+    return bytes;
+  }
+}
+
 async function mergeDocuments(
   parts: Array<{ kind: PacketDocKind; bytes?: Uint8Array; url?: string }>,
   opts?: { highlightPlate?: string | null },
