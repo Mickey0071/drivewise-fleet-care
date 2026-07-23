@@ -37,55 +37,86 @@ interface VehicleKey {
 }
 
 /**
- * Normalise a vehicle identity into the GHL custom-value key.
+ * Normalise free-text fields (case, whitespace, common punctuation).
+ */
+function norm(s: string | null | undefined): string {
+  return (s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/** Make aliases — DB rows use both "CHEVY" and "Chevrolet", etc. */
+const MAKE_ALIASES: Record<string, string> = {
+  chevy: "chevrolet",
+  chev: "chevrolet",
+};
+function canonMake(make: string): string {
+  const m = norm(make);
+  return MAKE_ALIASES[m] ?? m;
+}
+
+/** Model aliases — accept common misspellings / abbreviations. */
+const MODEL_ALIASES: Record<string, string> = {
+  forrester: "forester", // DB has "FORRESTER"
+};
+function canonModelBase(model: string): string {
+  // Take the first token so trailing trim levels ("LTZ", "GLS", "AWD SE",
+  // "California 2.4", "EX 2.4", "Bro", "(Blue)", "lt") do not break the match.
+  const first = norm(model).split(/[\s(]/)[0] ?? "";
+  return MODEL_ALIASES[first] ?? first;
+}
+
+/** Color aliases — "dark grey" folds to "grey", "gray" folds to "grey". */
+function canonColor(color: string | null): string {
+  const c = norm(color).replace(/\bgray\b/g, "grey");
+  // Strip qualifiers so "dark grey" / "light blue" still match "grey" / "blue".
+  return c.replace(/^(dark|light|bright|deep)\s+/, "");
+}
+
+/**
+ * Ordered mapping table. First entry that matches (make + model prefix + year
+ * + color, with color being flexible for "grey"/"dark grey") wins.
+ */
+interface MappingEntry {
+  make: string;
+  model: string;
+  year: number;
+  color: string;
+  id: string;
+  name: string;
+}
+const MAPPING: readonly MappingEntry[] = [
+  { make: "nissan",    model: "altima",   year: 2014, color: "grey",   id: "KlCQkhhXFkIIRpWrqwjz", name: "Nissan Altima 2014 Dark Grey" },
+  { make: "chevrolet", model: "malibu",   year: 2015, color: "red",    id: "JO3SasqrsaX3ot2mzeE8", name: "Chevrolet Malibu 2015 Red" },
+  { make: "chevrolet", model: "malibu",   year: 2015, color: "grey",   id: "bIHURGn9XHjsHuHrJepP", name: "Chevrolet Malibu 2015 Grey" },
+  { make: "gmc",       model: "terrain",  year: 2012, color: "black",  id: "pnicSg0l6DQG7jRyeIY2", name: "GMC Terrain 2012 Black" },
+  { make: "subaru",    model: "forester", year: 2015, color: "blue",   id: "Ssp6FNAHY3G4DEnZ7COB", name: "Subaru Forester 2015 Blue" },
+  { make: "hyundai",   model: "elantra",  year: 2013, color: "white",  id: "GTfW1Z6czXQ9lpeQaOgS", name: "Hyundai Elantra 2013 White" },
+  { make: "chevrolet", model: "impala",   year: 2007, color: "grey",   id: "SpiUveTXUh4hrw1S1nOy", name: "Chevrolet Impala 2007 Grey" },
+  { make: "chrysler",  model: "200",      year: 2015, color: "silver", id: "YaZtJxDfpPKy9DZXDB4X", name: "Chrysler 200 2015 Silver" },
+  { make: "kia",       model: "optima",   year: 2015, color: "black",  id: "4NFQDK3SrxiHj6kYPCxM", name: "Kia Optima 2015 Black" },
+  { make: "ford",      model: "fusion",   year: 2014, color: "red",    id: "jmdaiPRmS7wwWEaNUU8e", name: "Ford Fusion 2014 Red" },
+  { make: "ford",      model: "fusion",   year: 2016, color: "red",    id: "Cg2g7S2hexGl2ICPOl2Z", name: "Ford Fusion 2016 Red" },
+  { make: "hyundai",   model: "sonata",   year: 2014, color: "black",  id: "PEGxXhCCsrVGksGcDMm1", name: "Hyundai Sonata 2014 Black" },
+  { make: "ford",      model: "edge",     year: 2011, color: "white",  id: "1kBGgYCT9fmYLRpBIu6J", name: "Ford Edge 2011 White" },
+];
+
+/**
+ * Normalise a vehicle identity into the GHL Custom Value ID.
  * Returns null when the vehicle is not in the approved 13-vehicle list.
  */
 export function vehicleToCustomValueKey(v: VehicleKey): string | null {
-  const make = v.make.toLowerCase();
-  const model = v.model.toLowerCase();
-  const color = (v.color ?? "").toLowerCase().trim();
+  const make = canonMake(v.make);
+  const model = canonModelBase(v.model);
+  const color = canonColor(v.color);
   const year = v.year;
-  const id = `${make}_${model}_${year}_${color}`;
-
-  // Map vehicle identity → GHL Custom Value ID (from GHL dashboard).
-  // The PUT /customValues/{id} endpoint takes the ID, not the name.
-  const map: Record<string, string> = {
-    "nissan_altima_2014_dark grey": "KlCQkhhXFkIIRpWrqwjz",
-    "chevrolet_malibu_2015_red":    "JO3SasqrsaX3ot2mzeE8",
-    "chevrolet_malibu_2015_grey":   "bIHURGn9XHjsHuHrJepP",
-    "gmc_terrain_2012_black":       "pnicSg0l6DQG7jRyeIY2",
-    "subaru_forester_2015_blue":    "Ssp6FNAHY3G4DEnZ7COB",
-    "hyundai_elantra_2013_white":   "GTfW1Z6czXQ9lpeQaOgS",
-    "chevrolet_impala_2007_grey":   "SpiUveTXUh4hrw1S1nOy",
-    "chrysler_200_2015_silver":     "YaZtJxDfpPKy9DZXDB4X",
-    "kia_optima_2015_black":        "4NFQDK3SrxiHj6kYPCxM",
-    "ford_fusion_2014_red":         "jmdaiPRmS7wwWEaNUU8e",
-    "ford_fusion_2016_red":         "Cg2g7S2hexGl2ICPOl2Z",
-    "hyundai_sonata_2014_black":    "PEGxXhCCsrVGksGcDMm1",
-    "ford_edge_2011_white":         "1kBGgYCT9fmYLRpBIu6J",
-  };
-
-  return map[id] ?? null;
+  const hit = MAPPING.find(
+    (m) => m.make === make && m.model === model && m.year === year && m.color === color,
+  );
+  return hit?.id ?? null;
 }
 
 /** Human-readable name written alongside the value on PUT. */
 function customValueNameForId(id: string): string {
-  const names: Record<string, string> = {
-    KlCQkhhXFkIIRpWrqwjz: "Nissan Altima 2014 Dark Grey",
-    JO3SasqrsaX3ot2mzeE8: "Chevrolet Malibu 2015 Red",
-    bIHURGn9XHjsHuHrJepP: "Chevrolet Malibu 2015 Grey",
-    pnicSg0l6DQG7jRyeIY2: "GMC Terrain 2012 Black",
-    Ssp6FNAHY3G4DEnZ7COB: "Subaru Forester 2015 Blue",
-    GTfW1Z6czXQ9lpeQaOgS: "Hyundai Elantra 2013 White",
-    SpiUveTXUh4hrw1S1nOy: "Chevrolet Impala 2007 Grey",
-    YaZtJxDfpPKy9DZXDB4X: "Chrysler 200 2015 Silver",
-    "4NFQDK3SrxiHj6kYPCxM": "Kia Optima 2015 Black",
-    jmdaiPRmS7wwWEaNUU8e: "Ford Fusion 2014 Red",
-    Cg2g7S2hexGl2ICPOl2Z: "Ford Fusion 2016 Red",
-    PEGxXhCCsrVGksGcDMm1: "Hyundai Sonata 2014 Black",
-    "1kBGgYCT9fmYLRpBIu6J": "Ford Edge 2011 White",
-  };
-  return names[id] ?? id;
+  return MAPPING.find((m) => m.id === id)?.name ?? id;
 }
 
 /**
