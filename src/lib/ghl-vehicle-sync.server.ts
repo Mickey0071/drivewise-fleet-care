@@ -167,7 +167,13 @@ async function updateCustomValue(
   customValueId: string,
   value: string,
 ): Promise<boolean> {
-  const token = process.env.ghlPitToken ?? process.env.GHL_PIT_TOKEN;
+  // Prefer the dedicated vehicle-sync PIT so we don't risk changing the token
+  // used by other GHL flows (contacts, SMS, etc.). Fall back to the shared
+  // PIT if the dedicated one hasn't been set.
+  const token =
+    process.env.GHL_VEHICLE_SYNC_PIT_TOKEN ??
+    process.env.ghlPitToken ??
+    process.env.GHL_PIT_TOKEN;
   const locationId = process.env.ghlLocationId ?? process.env.GHL_LOCATION_ID;
   if (!token || !locationId) {
     console.warn(
