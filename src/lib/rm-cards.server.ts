@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
+import { syncVehicleAvailabilityToGhl } from "@/lib/ghl-vehicle-sync.server";
 
 const ADMIN_NOTIFY_PHONE = "267-221-3977";
 
@@ -128,6 +129,7 @@ export async function applyRmSubmission(input: {
     vehicleUpdate.status = "maintenance";
   }
   await supabaseAdmin.from("vehicles").update(vehicleUpdate).eq("id", input.vehicleId);
+  try { await syncVehicleAvailabilityToGhl(input.vehicleId); } catch (e) { console.error("[rm-cards] ghl sync failed", e); }
 
   const vehicleLabel = `${(v as any).year ?? ""} ${(v as any).make ?? ""} ${(v as any).model ?? ""}`.trim() || input.vehicleId;
 

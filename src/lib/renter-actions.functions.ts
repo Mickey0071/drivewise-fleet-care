@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createStripeClient } from "@/lib/stripe.server";
 import { sendSms } from "@/lib/ghl.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
+import { syncVehicleAvailabilityToGhl } from "@/lib/ghl-vehicle-sync.server";
 
 /**
  * Renter-initiated extension. Only available for weekly active rentals owned
@@ -111,6 +112,7 @@ export const cancelRentalByAdmin = createServerFn({ method: "POST" })
 
     if (rental.vehicle_id) {
       await supabaseAdmin.from("vehicles").update({ status: "available" }).eq("id", rental.vehicle_id);
+      try { await syncVehicleAvailabilityToGhl(rental.vehicle_id); } catch (e) { console.error("[cancelRentalByAdmin] ghl sync failed", e); }
     }
 
     // Notify the renter.

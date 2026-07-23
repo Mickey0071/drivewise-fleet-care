@@ -149,6 +149,10 @@ export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
       .from("vehicles")
       .update({ status: "available", mileage: data.mileage })
       .eq("id", data.vehicleId);
+    try {
+      const { syncVehicleAvailabilityToGhl } = await import("@/lib/ghl-vehicle-sync.server");
+      await syncVehicleAvailabilityToGhl(data.vehicleId);
+    } catch (e) { console.error("[inspection] ghl sync failed", e); }
 
     // Clear pending
     await supabaseAdmin
