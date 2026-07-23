@@ -606,9 +606,18 @@ function VehicleDetail() {
               const manual = item.source === "manual"
                 ? expenses.find(e => e.id === item.id)
                 : undefined;
+              // Two-line display: [Title] on top, [Description] below.
+              // For manual expenses we prefer the freeform notes captured in
+              // the expense form; for repairs/maintenance/violations the
+              // description already carries the meaningful detail.
+              const title = manual
+                ? `${manual.category}${manual.vendor ? ` · ${manual.vendor}` : ""}`
+                : item.description;
+              const detail = manual ? (manual.notes ?? "") : (item.description === item.category ? "" : "");
               return (
               <Row key={`${item.source}-${item.id}`}
-                title={item.description}
+                title={title}
+                note={detail}
                 sub={`${fmtDate(item.date)} · ${item.category}`}
                 right={
                   <div className="flex items-center gap-2">
