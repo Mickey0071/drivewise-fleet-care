@@ -47,23 +47,45 @@ export function vehicleToCustomValueKey(v: VehicleKey): string | null {
   const year = v.year;
   const id = `${make}_${model}_${year}_${color}`;
 
+  // Map vehicle identity → GHL Custom Value ID (from GHL dashboard).
+  // The PUT /customValues/{id} endpoint takes the ID, not the name.
   const map: Record<string, string> = {
-    "nissan_altima_2014_dark grey": "nissan_altima_2014_dark_grey",
-    "chevrolet_malibu_2015_red": "chevrolet_malibu_2015_red",
-    "chevrolet_malibu_2015_grey": "chevrolet_malibu_2015_grey",
-    "gmc_terrain_2012_black": "gmc_terrain_2012_black",
-    "subaru_forester_2015_blue": "subaru_forester_2015_blue",
-    "hyundai_elantra_2013_white": "hyundai_elantra_2013_white",
-    "chevrolet_impala_2007_grey": "chevrolet_impala_2007_grey",
-    "chrysler_200_2015_silver": "chrysler_200_2015_silver",
-    "kia_optima_2015_black": "kia_optima_2015_black",
-    "ford_fusion_2014_red": "ford_fusion_2014_red",
-    "ford_fusion_2016_red": "ford_fusion_2016_red",
-    "hyundai_sonata_2014_black": "hyundai_sonata_2014_black",
-    "ford_edge_2011_white": "ford_edge_2011_white",
+    "nissan_altima_2014_dark grey": "KlCQkhhXFkIIRpWrqwjz",
+    "chevrolet_malibu_2015_red":    "JO3SasqrsaX3ot2mzeE8",
+    "chevrolet_malibu_2015_grey":   "bIHURGn9XHjsHuHrJepP",
+    "gmc_terrain_2012_black":       "pnicSg0l6DQG7jRyeIY2",
+    "subaru_forester_2015_blue":    "Ssp6FNAHY3G4DEnZ7COB",
+    "hyundai_elantra_2013_white":   "GTfW1Z6czXQ9lpeQaOgS",
+    "chevrolet_impala_2007_grey":   "SpiUveTXUh4hrw1S1nOy",
+    "chrysler_200_2015_silver":     "YaZtJxDfpPKy9DZXDB4X",
+    "kia_optima_2015_black":        "4NFQDK3SrxiHj6kYPCxM",
+    "ford_fusion_2014_red":         "jmdaiPRmS7wwWEaNUU8e",
+    "ford_fusion_2016_red":         "Cg2g7S2hexGl2ICPOl2Z",
+    "hyundai_sonata_2014_black":    "PEGxXhCCsrVGksGcDMm1",
+    "ford_edge_2011_white":         "1kBGgYCT9fmYLRpBIu6J",
   };
 
   return map[id] ?? null;
+}
+
+/** Human-readable name written alongside the value on PUT. */
+function customValueNameForId(id: string): string {
+  const names: Record<string, string> = {
+    KlCQkhhXFkIIRpWrqwjz: "Nissan Altima 2014 Dark Grey",
+    JO3SasqrsaX3ot2mzeE8: "Chevrolet Malibu 2015 Red",
+    bIHURGn9XHjsHuHrJepP: "Chevrolet Malibu 2015 Grey",
+    pnicSg0l6DQG7jRyeIY2: "GMC Terrain 2012 Black",
+    Ssp6FNAHY3G4DEnZ7COB: "Subaru Forester 2015 Blue",
+    GTfW1Z6czXQ9lpeQaOgS: "Hyundai Elantra 2013 White",
+    SpiUveTXUh4hrw1S1nOy: "Chevrolet Impala 2007 Grey",
+    YaZtJxDfpPKy9DZXDB4X: "Chrysler 200 2015 Silver",
+    "4NFQDK3SrxiHj6kYPCxM": "Kia Optima 2015 Black",
+    jmdaiPRmS7wwWEaNUU8e: "Ford Fusion 2014 Red",
+    Cg2g7S2hexGl2ICPOl2Z: "Ford Fusion 2016 Red",
+    PEGxXhCCsrVGksGcDMm1: "Hyundai Sonata 2014 Black",
+    "1kBGgYCT9fmYLRpBIu6J": "Ford Edge 2011 White",
+  };
+  return names[id] ?? id;
 }
 
 /**
@@ -111,7 +133,7 @@ async function fetchWithTimeout(
  * Returns true on success, false on any failure (caller logs).
  */
 async function updateCustomValue(
-  customValueKey: string,
+  customValueId: string,
   value: string,
 ): Promise<boolean> {
   const token = process.env.ghlPitToken;
@@ -125,9 +147,9 @@ async function updateCustomValue(
 
   try {
     const res = await fetchWithTimeout(
-      `${GHL_BASE}/locations/${encodeURIComponent(locationId)}/customValues`,
+      `${GHL_BASE}/locations/${encodeURIComponent(locationId)}/customValues/${encodeURIComponent(customValueId)}`,
       {
-        method: "POST",
+        method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
           Version: GHL_VERSION,
@@ -135,8 +157,7 @@ async function updateCustomValue(
           Accept: "application/json",
         },
         body: JSON.stringify({
-          locationId,
-          customFieldId: customValueKey,
+          name: customValueNameForId(customValueId),
           value,
         }),
       },
@@ -148,7 +169,7 @@ async function updateCustomValue(
     return true;
   } catch (e) {
     console.error(
-      `[ghl-vehicle-sync] update failed key=${customValueKey} value=${value}: ${e instanceof Error ? e.message : String(e)}`,
+      `[ghl-vehicle-sync] update failed id=${customValueId} value=${value}: ${e instanceof Error ? e.message : String(e)}`,
     );
     return false;
   }
