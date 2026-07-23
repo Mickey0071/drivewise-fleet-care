@@ -86,6 +86,7 @@ export function EditVehicleDialog({
     }
     setSaving(true);
     try {
+      const previousStatus = vehicle.status;
       await updateVehicle(vehicle.id, {
         make: make.trim(),
         model: model.trim(),
@@ -112,7 +113,7 @@ export function EditVehicleDialog({
         const url = await uploadVehiclePhoto(vehicle.id, photoFile);
         await updateVehicleImage(vehicle.id, url);
       }
-      if (status !== vehicle.status) {
+      if (status !== previousStatus) {
         try {
           const syncResult = await syncVehicleAvailabilityFn({ data: { vehicleId: vehicle.id } });
           if (syncResult.skipped || !syncResult.ok) {
