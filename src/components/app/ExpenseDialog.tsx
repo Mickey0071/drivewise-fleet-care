@@ -251,8 +251,12 @@ export function ExpenseDialog({ open, onOpenChange, expense, defaultVehicleId, o
           </div>
 
           <div>
-            <Label className="mb-1.5 block text-xs">Notes</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Description / details" />
+            <Label className="mb-1.5 block text-xs">Description / details</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="What was this for? e.g. Front brake pads and rotors replaced under warranty"
+            />
           </div>
         </div>
         <DialogFooter>

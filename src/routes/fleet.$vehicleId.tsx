@@ -606,9 +606,18 @@ function VehicleDetail() {
               const manual = item.source === "manual"
                 ? expenses.find(e => e.id === item.id)
                 : undefined;
+              // Two-line display: [Title] on top, [Description] below.
+              // For manual expenses we prefer the freeform notes captured in
+              // the expense form; for repairs/maintenance/violations the
+              // description already carries the meaningful detail.
+              const title = manual
+                ? `${manual.category}${manual.vendor ? ` · ${manual.vendor}` : ""}`
+                : item.description;
+              const detail = manual ? (manual.notes ?? "") : (item.description === item.category ? "" : "");
               return (
               <Row key={`${item.source}-${item.id}`}
-                title={item.description}
+                title={title}
+                note={detail}
                 sub={`${fmtDate(item.date)} · ${item.category}`}
                 right={
                   <div className="flex items-center gap-2">
@@ -1047,7 +1056,16 @@ function VehicleNotesTab({ vehicleId, notes }: { vehicleId: string; notes?: stri
     </Card>
   );
 }
-function Row({ title, sub, right }: { title: string; sub: string; right?: React.ReactNode }) {
-  return <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2"><div><div className="text-sm font-medium">{title}</div><div className="text-xs text-muted-foreground">{sub}</div></div><div className="flex items-center">{right}</div></div>;
+function Row({ title, sub, note, right }: { title: string; sub: string; note?: string; right?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+      <div className="min-w-0">
+        <div className="text-sm font-medium">{title}</div>
+        {note ? <div className="text-xs text-foreground/80 whitespace-pre-wrap break-words">{note}</div> : null}
+        <div className="text-xs text-muted-foreground">{sub}</div>
+      </div>
+      <div className="flex items-center">{right}</div>
+    </div>
+  );
 }
 function Empty() { return <p className="text-sm text-muted-foreground">No records yet.</p>; }
