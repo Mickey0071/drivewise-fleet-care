@@ -167,8 +167,8 @@ async function updateCustomValue(
   customValueId: string,
   value: string,
 ): Promise<boolean> {
-  const token = process.env.ghlPitToken;
-  const locationId = process.env.ghlLocationId;
+  const token = process.env.ghlPitToken ?? process.env.GHL_PIT_TOKEN;
+  const locationId = process.env.ghlLocationId ?? process.env.GHL_LOCATION_ID;
   if (!token || !locationId) {
     console.warn(
       `[ghl-vehicle-sync] skipped — ghlPitToken / ghlLocationId not configured`,
