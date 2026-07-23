@@ -1056,7 +1056,16 @@ function VehicleNotesTab({ vehicleId, notes }: { vehicleId: string; notes?: stri
     </Card>
   );
 }
-function Row({ title, sub, right }: { title: string; sub: string; right?: React.ReactNode }) {
-  return <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2"><div><div className="text-sm font-medium">{title}</div><div className="text-xs text-muted-foreground">{sub}</div></div><div className="flex items-center">{right}</div></div>;
+function Row({ title, sub, note, right }: { title: string; sub: string; note?: string; right?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2">
+      <div className="min-w-0">
+        <div className="text-sm font-medium">{title}</div>
+        {note ? <div className="text-xs text-foreground/80 whitespace-pre-wrap break-words">{note}</div> : null}
+        <div className="text-xs text-muted-foreground">{sub}</div>
+      </div>
+      <div className="flex items-center">{right}</div>
+    </div>
+  );
 }
 function Empty() { return <p className="text-sm text-muted-foreground">No records yet.</p>; }
