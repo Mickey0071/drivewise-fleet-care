@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendSms } from "@/lib/ghl.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
 import { sendReceiptToCustomer } from "@/lib/receipt.functions";
+import { syncVehicleAvailabilityToGhl } from "@/lib/ghl-vehicle-sync.server";
 
 function inclusiveDaysBetween(startIso: string, endIso: string): number {
   const MS = 24 * 60 * 60 * 1000;
@@ -80,6 +81,7 @@ export const adminOverrideReturn = createServerFn({ method: "POST" })
         .from("vehicles")
         .update({ status: "available" })
         .eq("id", rental.vehicle_id);
+      try { await syncVehicleAvailabilityToGhl(rental.vehicle_id); } catch (e) { console.error("[admin-override-return] ghl sync failed", e); }
       return { ok: true, alreadyReturned: true as const };
     }
 
@@ -158,6 +160,7 @@ export const adminOverrideReturn = createServerFn({ method: "POST" })
     if (!updatedVehicle || updatedVehicle.status !== "available") {
       throw new Error("Failed to mark vehicle available after return");
     }
+    try { await syncVehicleAvailabilityToGhl(rental.vehicle_id); } catch (e) { console.error("[admin-override-return] ghl sync failed", e); }
 
     // Log charge + deliver SMS/email receipt (best-effort).
     let smsStatus: "sent" | "skipped_no_phone" | "failed" | "skipped_no_charge" = "skipped_no_phone";
