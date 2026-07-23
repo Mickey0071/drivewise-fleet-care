@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { sendSms } from "@/lib/ghl.server";
 import { TASK_TYPE_KEYS } from "@/lib/task-types";
+import { syncVehicleAvailabilityToGhl } from "@/lib/ghl-vehicle-sync.server";
 
 /** Admin: assign a task to a runner for a vehicle and SMS them the link. */
 export const assignTask = createServerFn({ method: "POST" })
@@ -139,6 +140,7 @@ export const submitTask = createServerFn({ method: "POST" })
         .from("vehicles")
         .update({ status: "maintenance", has_open_issues: true })
         .eq("id", row.vehicle_id as string);
+      try { await syncVehicleAvailabilityToGhl(row.vehicle_id as string); } catch (e) { console.error("[tasks] ghl sync failed", e); }
 
       // Alert admin.
       const { data: veh } = await supabase
@@ -309,6 +311,7 @@ export const createReturnInspection = createServerFn({ method: "POST" })
       .from("vehicles")
       .update({ status: "inspection" })
       .eq("id", rental.vehicle_id as string);
+    try { await syncVehicleAvailabilityToGhl(rental.vehicle_id as string); } catch (e) { console.error("[tasks] ghl sync failed", e); }
 
     const { data: taskRow, error: tErr } = await supabase
       .from("runner_tasks")
@@ -443,6 +446,7 @@ export const reviewInspection = createServerFn({ method: "POST" })
         .from("vehicles")
         .update({ status: "available" })
         .eq("id", task.vehicle_id as string);
+      try { await syncVehicleAvailabilityToGhl(task.vehicle_id as string); } catch (e) { console.error("[tasks] ghl sync failed", e); }
       const auditNote = [task.notes, `Override at ${nowIso} by admin - inspection skipped`]
         .filter(Boolean)
         .join(" | ");
@@ -537,6 +541,7 @@ export const reviewInspection = createServerFn({ method: "POST" })
       .from("vehicles")
       .update(vehUpdate as never)
       .eq("id", task.vehicle_id as string);
+    try { await syncVehicleAvailabilityToGhl(task.vehicle_id as string); } catch (e) { console.error("[tasks] ghl sync failed", e); }
 
     // If tied to a rental return, finalize it so P&L treats it as closed.
     const rentalId = (task.details as any)?.rental_id as string | undefined;
