@@ -113,15 +113,18 @@ export function EditVehicleDialog({
         const url = await uploadVehiclePhoto(vehicle.id, photoFile);
         await updateVehicleImage(vehicle.id, url);
       }
-      if (status !== previousStatus) {
-        try {
-          const syncResult = await syncVehicleAvailabilityFn({ data: { vehicleId: vehicle.id } });
-          if (syncResult.skipped || !syncResult.ok) {
-            console.warn("[ghl-sync] vehicle availability sync did not complete", syncResult);
-          }
-        } catch (err) {
-          console.error("[ghl-sync] failed from EditVehicleDialog", err);
+      try {
+        console.info("[ghl-sync] syncing vehicle availability after edit", {
+          vehicleId: vehicle.id,
+          previousStatus,
+          nextStatus: status,
+        });
+        const syncResult = await syncVehicleAvailabilityFn({ data: { vehicleId: vehicle.id } });
+        if (syncResult.skipped || !syncResult.ok) {
+          console.warn("[ghl-sync] vehicle availability sync did not complete", syncResult);
         }
+      } catch (err) {
+        console.error("[ghl-sync] failed from EditVehicleDialog", err);
       }
       toast.success("Vehicle updated");
       onOpenChange(false);

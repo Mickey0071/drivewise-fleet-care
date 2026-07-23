@@ -238,6 +238,7 @@ export async function syncVehicleAvailabilityToGhl(
   vehicleId: string,
 ): Promise<GhlSyncResult> {
   try {
+    console.log(`[ghl-vehicle-sync] requested for vehicle=${vehicleId}`);
     // We need a lightweight way to read the vehicle row.  Because this
     // module is imported by server functions that already have supabaseAdmin
     // imported, we accept the vehicle row data passed in to avoid a second
@@ -251,6 +252,7 @@ export async function syncVehicleAvailabilityToGhl(
       .eq("id", vehicleId)
       .maybeSingle();
     if (error || !data) {
+      console.warn(`[ghl-vehicle-sync] skipped vehicle=${vehicleId} — vehicle not found`);
       return { ok: false, customValueKey: null, status: "", skipped: true, reason: "vehicle not found" };
     }
     return syncWithVehicleRow(data);
@@ -285,6 +287,9 @@ export function syncWithVehicleRow(
     });
 
     if (!customValueKey) {
+      console.warn(
+        `[ghl-vehicle-sync] skipped vehicle=${vehicle.id} — no mapping for ${vehicle.year} ${vehicle.make} ${vehicle.model} ${vehicle.color ?? ""}`,
+      );
       return {
         ok: false,
         customValueKey: null,
@@ -296,6 +301,9 @@ export function syncWithVehicleRow(
 
     const value = availabilityFromStatus(vehicle.status);
     if (!value) {
+      console.warn(
+        `[ghl-vehicle-sync] skipped vehicle=${vehicle.id} customValue=${customValueKey} — unknown status ${vehicle.status}`,
+      );
       return {
         ok: false,
         customValueKey,
