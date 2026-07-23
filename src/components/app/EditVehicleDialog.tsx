@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { updateVehicle, deleteVehicle, isVehicleBookable, uploadVehiclePhoto, updateVehicleImage } from "@/lib/mock/store";
 import type { Vehicle, VehicleStatus } from "@/lib/mock/data";
 import { useNavigate } from "@tanstack/react-router";
+import { syncVehicleAvailability } from "@/lib/ghl-vehicle-sync.functions";
 
 export function EditVehicleDialog({
   vehicle,
@@ -108,6 +109,13 @@ export function EditVehicleDialog({
       if (photoFile) {
         const url = await uploadVehiclePhoto(vehicle.id, photoFile);
         await updateVehicleImage(vehicle.id, url);
+      }
+      if (status !== vehicle.status) {
+        try {
+          await syncVehicleAvailability({ data: { vehicleId: vehicle.id } });
+        } catch (err) {
+          console.error("[ghl-sync] failed from EditVehicleDialog", err);
+        }
       }
       toast.success("Vehicle updated");
       onOpenChange(false);
