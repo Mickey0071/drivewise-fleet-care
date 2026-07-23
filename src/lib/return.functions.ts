@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
 import { sendReceiptToCustomer } from "@/lib/receipt.functions";
+import { syncVehicleAvailabilityToGhl } from "@/lib/ghl-vehicle-sync.server";
 
 /**
  * Day count, inclusive of both endpoints, computed in UTC days.
@@ -66,6 +67,7 @@ export const closeoutRental = createServerFn({ method: "POST" })
         .from("vehicles")
         .update({ status: "available" })
         .eq("id", rental.vehicle_id);
+      try { await syncVehicleAvailabilityToGhl(rental.vehicle_id); } catch (e) { console.error("[return] ghl sync failed", e); }
       return { ok: true, alreadyReturned: true as const };
     }
 
@@ -186,6 +188,7 @@ export const closeoutRental = createServerFn({ method: "POST" })
     if (!updatedVehicle || updatedVehicle.status !== "available") {
       throw new Error("Failed to mark vehicle available after return");
     }
+    try { await syncVehicleAvailabilityToGhl(rental.vehicle_id); } catch (e) { console.error("[return] ghl sync failed", e); }
 
     // Log the final charge to rental_charges (audit trail) and deliver a
     // branded SMS + email receipt to the renter.
