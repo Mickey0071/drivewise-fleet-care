@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { updateVehicle, deleteVehicle, isVehicleBookable, uploadVehiclePhoto, updateVehicleImage } from "@/lib/mock/store";
 import type { Vehicle, VehicleStatus } from "@/lib/mock/data";
 import { useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { syncVehicleAvailability } from "@/lib/ghl-vehicle-sync.functions";
 
 export function EditVehicleDialog({
@@ -23,6 +24,7 @@ export function EditVehicleDialog({
   onDeleted?: () => void;
 }) {
   const navigate = useNavigate();
+  const syncVehicleAvailabilityFn = useServerFn(syncVehicleAvailability);
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState<number>(new Date().getFullYear());
@@ -84,6 +86,7 @@ export function EditVehicleDialog({
     }
     setSaving(true);
     try {
+      const previousStatus = vehicle.status;
       await updateVehicle(vehicle.id, {
         make: make.trim(),
         model: model.trim(),
@@ -110,9 +113,12 @@ export function EditVehicleDialog({
         const url = await uploadVehiclePhoto(vehicle.id, photoFile);
         await updateVehicleImage(vehicle.id, url);
       }
-      if (status !== vehicle.status) {
+      if (status !== previousStatus) {
         try {
-          await syncVehicleAvailability({ data: { vehicleId: vehicle.id } });
+          const syncResult = await syncVehicleAvailabilityFn({ data: { vehicleId: vehicle.id } });
+          if (syncResult.skipped || !syncResult.ok) {
+            console.warn("[ghl-sync] vehicle availability sync did not complete", syncResult);
+          }
         } catch (err) {
           console.error("[ghl-sync] failed from EditVehicleDialog", err);
         }
