@@ -1126,6 +1126,10 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv, eventId?: s
 
       if (rental.vehicle_id) {
         await sb.from("vehicles").update({ status: "rented" }).eq("id", rental.vehicle_id);
+        try {
+          const { syncVehicleAvailabilityToGhl } = await import("@/lib/ghl-vehicle-sync.server");
+          await syncVehicleAvailabilityToGhl(rental.vehicle_id);
+        } catch (e) { console.error("[payments-webhook] ghl sync failed", e); }
       }
 
       // Cardholder name mismatch: immediately text the customer a link to
@@ -1423,6 +1427,10 @@ async function handlePaymentIntentSucceeded(pi: any, env: StripeEnv) {
 
   if (rental.vehicle_id) {
     await sb.from("vehicles").update({ status: "rented" }).eq("id", rental.vehicle_id);
+    try {
+      const { syncVehicleAvailabilityToGhl } = await import("@/lib/ghl-vehicle-sync.server");
+      await syncVehicleAvailabilityToGhl(rental.vehicle_id);
+    } catch (e) { console.error("[payments-webhook] ghl sync failed", e); }
   }
 }
 
