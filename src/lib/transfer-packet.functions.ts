@@ -956,6 +956,10 @@ async function generateOne(
     }
     const { merged } = await mergeDocuments(parts, {
       highlightPlate: loaded.ctx.vehicle.plate || null,
+      renterStamp: {
+        name: loaded.ctx.renter.name,
+        address: loaded.ctx.renter.address,
+      },
     });
 
     const plate = safeName(loaded.ctx.vehicle.plate);
