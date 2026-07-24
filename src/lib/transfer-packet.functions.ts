@@ -337,9 +337,26 @@ async function buildCoverPdf(ctx: CoverCtx): Promise<Uint8Array> {
     y = boxY + boxH + 16;
   }
 
+  // Issuing Authority — printed near the top so the mailroom sees it before
+  // any other detail. Required for the statute branching on the attestation.
+  {
+    ensure(28);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(70, 70, 70);
+    doc.text("ISSUING AUTHORITY", left, y);
+    y += 14;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(20, 20, 20);
+    doc.text(ctx.violation.authorityName, left, y);
+    y += 14;
+  }
+
   gap(4);
   line("VIOLATION", { bold: true, size: 11 });
-  field("Toll Authority", ctx.violation.authorityName);
+  field("Issuing Authority", ctx.violation.authorityName);
+  field("Violation #", ctx.violation.referenceNumber || "—");
   field("Date", fmtDate(ctx.violation.dateIssued));
   field("Time", ctx.violation.timeIssued || "—");
   gap();
@@ -768,8 +785,69 @@ async function highlightPlateOnPdf(bytes: Uint8Array, plate: string): Promise<Ui
 }
 
 async function mergeDocuments(
+  ...args: Parameters<typeof _mergeDocumentsImpl>
+): Promise<{ merged: Uint8Array; used: PacketDocKind[]; missing: PacketDocKind[] }> {
+  return _mergeDocumentsImpl(...args);
+}
+
+/**
+ * Overlay the current renter name + mailing address in a yellow-highlighted
+ * block near the top of page 1 of the attached agreement PDF. Falls back to
+ * the original bytes on any failure so packet generation never breaks.
+ */
+async function stampRenterOnAgreement(
+  bytes: Uint8Array,
+  name: string,
+  address: string,
+): Promise<Uint8Array> {
+  try {
+    const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
+    const out = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    const page = out.getPages()[0];
+    if (!page) return bytes;
+    const { width, height } = page.getSize();
+    const font = await out.embedFont(StandardFonts.HelveticaBold);
+    const bodyFont = await out.embedFont(StandardFonts.Helvetica);
+    const margin = 24;
+    const boxW = width - margin * 2;
+    const boxH = 44;
+    const boxY = height - margin - boxH;
+    page.drawRectangle({
+      x: margin,
+      y: boxY,
+      width: boxW,
+      height: boxH,
+      color: rgb(1, 0.92, 0.23),
+      opacity: 0.55,
+      borderColor: rgb(0.4, 0.3, 0),
+      borderWidth: 0.8,
+    });
+    page.drawText(`Renter: ${name || "—"}`, {
+      x: margin + 8,
+      y: boxY + boxH - 14,
+      size: 10,
+      font,
+      color: rgb(0, 0, 0),
+    });
+    page.drawText(`Address: ${address || "—"}`, {
+      x: margin + 8,
+      y: boxY + 10,
+      size: 9,
+      font: bodyFont,
+      color: rgb(0, 0, 0),
+    });
+    return await out.save();
+  } catch {
+    return bytes;
+  }
+}
+
+async function _mergeDocumentsImpl(
   parts: Array<{ kind: PacketDocKind; bytes?: Uint8Array; url?: string }>,
-  opts?: { highlightPlate?: string | null },
+  opts?: {
+    highlightPlate?: string | null;
+    renterStamp?: { name: string; address: string } | null;
+  },
 ): Promise<{ merged: Uint8Array; used: PacketDocKind[]; missing: PacketDocKind[] }> {
   const { PDFDocument } = await import("pdf-lib");
   const out = await PDFDocument.create();
@@ -793,10 +871,17 @@ async function mergeDocuments(
         continue;
       }
       if (isPdfBytes(bytes, contentType)) {
-        const pdfBytes: Uint8Array =
-          part.kind === "agreement" && opts?.highlightPlate
-            ? await highlightPlateOnPdf(bytes, opts.highlightPlate)
-            : bytes;
+        let pdfBytes: Uint8Array = bytes;
+        if (part.kind === "agreement" && opts?.highlightPlate) {
+          pdfBytes = await highlightPlateOnPdf(pdfBytes, opts.highlightPlate);
+        }
+        if (part.kind === "agreement" && opts?.renterStamp) {
+          pdfBytes = await stampRenterOnAgreement(
+            pdfBytes,
+            opts.renterStamp.name,
+            opts.renterStamp.address,
+          );
+        }
         const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
         const pages = await out.copyPages(doc, doc.getPageIndices());
         for (const p of pages) out.addPage(p);
@@ -871,6 +956,10 @@ async function generateOne(
     }
     const { merged } = await mergeDocuments(parts, {
       highlightPlate: loaded.ctx.vehicle.plate || null,
+      renterStamp: {
+        name: loaded.ctx.renter.name,
+        address: loaded.ctx.renter.address,
+      },
     });
 
     const plate = safeName(loaded.ctx.vehicle.plate);
