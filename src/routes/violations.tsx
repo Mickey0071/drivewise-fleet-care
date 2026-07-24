@@ -1762,6 +1762,9 @@ function ViolationsPage() {
                               Internal ID: {v.id}
                             </div>
                             <OriginalDocControl v={v} onDone={refresh} />
+                            {filter === "needs-ref" && (
+                              <AuthorityInlineEditor v={v} onDone={refresh} />
+                            )}
                           </div>
                         </div>
                       </td>
