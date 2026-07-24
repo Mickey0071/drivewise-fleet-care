@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { statuteFor } from "@/lib/liability-transfer.server";
+import { renderRentalAgreementPdf, type RentalAgreementPDFData } from "@/components/pdf/RentalAgreementPDF";
+import { DEFAULT_SETTINGS } from "@/lib/agreementSettings";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -337,9 +339,26 @@ async function buildCoverPdf(ctx: CoverCtx): Promise<Uint8Array> {
     y = boxY + boxH + 16;
   }
 
+  // Issuing Authority — printed near the top so the mailroom sees it before
+  // any other detail. Required for the statute branching on the attestation.
+  {
+    ensure(28);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(70, 70, 70);
+    doc.text("ISSUING AUTHORITY", left, y);
+    y += 14;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(20, 20, 20);
+    doc.text(ctx.violation.authorityName, left, y);
+    y += 14;
+  }
+
   gap(4);
   line("VIOLATION", { bold: true, size: 11 });
-  field("Toll Authority", ctx.violation.authorityName);
+  field("Issuing Authority", ctx.violation.authorityName);
+  field("Violation #", ctx.violation.referenceNumber || "—");
   field("Date", fmtDate(ctx.violation.dateIssued));
   field("Time", ctx.violation.timeIssued || "—");
   gap();
