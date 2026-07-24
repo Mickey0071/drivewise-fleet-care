@@ -791,7 +791,6 @@ async function mergeDocuments(
     renterStamp?: { name: string; address: string } | null;
   },
 ): Promise<{ merged: Uint8Array; used: PacketDocKind[]; missing: PacketDocKind[] }> {
-  // helper defined below
   const { PDFDocument } = await import("pdf-lib");
   const out = await PDFDocument.create();
   const used: PacketDocKind[] = [];
