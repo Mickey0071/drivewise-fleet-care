@@ -9,6 +9,24 @@ export interface ExtractedToll {
   reference_number: string | null; // EZPass Toll Bill / Notice / Reference #
 }
 
+/** Known authority keys we can map to a statute in liability-transfer.server.ts.
+ *  Anything else is left null and flagged for review. */
+export type AuthorityKey =
+  | "nj_ezpass"
+  | "ny_ezpass"
+  | "nj_turnpike"
+  | "pa_turnpike"
+  | "ppa"
+  | "nj_mvc"
+  | null;
+
+export interface RefAndAuthorityResult {
+  reference_number: string | null;
+  authority_key: AuthorityKey;
+  raw_authority_text: string | null;
+  confidence: number; // 0-100
+}
+
 /**
  * Normalize a license plate for matching. Order matters:
  * 1. Uppercase + trim leading/trailing whitespace and newlines.
@@ -24,6 +42,128 @@ export function normalizePlate(p: string | null | undefined): string {
   s = s.replace(/^\(?[A-Z]{2}\)?[\s/.\-]+/, "");
   s = s.replace(/[\s/.\-]/g, "");
   return s;
+}
+
+/** Fetch a remote image URL (signed Supabase URL, etc.) and inline it as a
+ *  data URL so the AI Gateway can accept it. Returns null on failure. */
+async function urlToDataUrl(url: string): Promise<string | null> {
+  if (!url) return null;
+  if (url.startsWith("data:")) return url;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error(`[ezpass] fetch ${res.status} for ${url.slice(0, 120)}`);
+      return null;
+    }
+    const ct = res.headers.get("content-type") || "image/jpeg";
+    // PDFs are not accepted as image_url; skip.
+    if (!ct.startsWith("image/")) {
+      console.error(`[ezpass] unsupported content-type ${ct}`);
+      return null;
+    }
+    const buf = new Uint8Array(await res.arrayBuffer());
+    let bin = "";
+    for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+    const b64 = typeof btoa === "function" ? btoa(bin) : Buffer.from(buf).toString("base64");
+    return `data:${ct};base64,${b64}`;
+  } catch (e) {
+    console.error(`[ezpass] urlToDataUrl error`, e);
+    return null;
+  }
+}
+
+function detectAuthorityFromText(text: string | null | undefined): AuthorityKey {
+  const t = (text ?? "").toLowerCase();
+  if (!t) return null;
+  if (/philadelphia|ppa|phila\.?\s*parking/.test(t)) return "ppa";
+  if (/pa\s*turnpike|pennsylvania\s*turnpike/.test(t)) return "pa_turnpike";
+  if (/nj\s*turnpike|new\s*jersey\s*turnpike|garden\s*state\s*parkway|njta/.test(t))
+    return "nj_turnpike";
+  if (/(mta|tbta|port\s*authority|thruway|ny\s*e-?z\s*pass|new\s*york\s*e-?z\s*pass)/.test(t))
+    return "ny_ezpass";
+  if (/(nj\s*mvc|motor\s*vehicle\s*commission)/.test(t)) return "nj_mvc";
+  if (/(nj\s*e-?z\s*pass|new\s*jersey\s*e-?z\s*pass|e-?zpass\s*(nj|new\s*jersey))/.test(t))
+    return "nj_ezpass";
+  if (/e-?z\s*pass|ezpass/.test(t)) return "nj_ezpass"; // best-guess default for bare EZPass
+  return null;
+}
+
+/** Re-OCR a stored document to recover the reference number AND detect the
+ *  issuing authority. Uses a broader label set than the original extractor. */
+export async function extractRefAndAuthorityFromUrl(
+  url: string,
+): Promise<RefAndAuthorityResult> {
+  const empty: RefAndAuthorityResult = {
+    reference_number: null,
+    authority_key: null,
+    raw_authority_text: null,
+    confidence: 0,
+  };
+  const apiKey = process.env.LOVABLE_API_KEY;
+  if (!apiKey) {
+    console.error("[ezpass] LOVABLE_API_KEY missing");
+    return empty;
+  }
+  const dataUrl = await urlToDataUrl(url);
+  if (!dataUrl) return empty;
+
+  try {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content:
+              'You read toll authority / parking / traffic violation notices. Return ONLY JSON: {"reference_number":string,"authority_text":string,"confidence":number}. reference_number is THE single official identifier for this notice (Toll Bill No, Bill No, Reference #, Notice #, Violation #, Invoice #, Statement #, Account #, Transaction #, Docket #, Case #, or any prominent long-digit/alphanumeric string in a header, boxed region, or under a "PLEASE REFERENCE" instruction). Copy it EXACTLY as printed with any letter prefix; empty string if truly unreadable. authority_text is the name of the issuing organization printed on the notice (e.g. "New Jersey E-ZPass", "PA Turnpike", "Philadelphia Parking Authority", "NJ MVC"). confidence 0-100 integer. No prose, no code fences.',
+          },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "Read the reference number and issuing authority from this notice." },
+              { type: "image_url", image_url: { url: dataUrl } },
+            ],
+          },
+        ],
+      }),
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      console.error(`[ezpass] re-extract gateway ${res.status}: ${t.slice(0, 300)}`);
+      return empty;
+    }
+    const json = (await res.json().catch(() => null)) as
+      | { choices?: Array<{ message?: { content?: string } }> }
+      | null;
+    let raw = json?.choices?.[0]?.message?.content;
+    if (typeof raw !== "string") return empty;
+    raw = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+    let parsed: Record<string, unknown> = {};
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      console.error("[ezpass] re-extract parse failed:", raw.slice(0, 200));
+      return empty;
+    }
+    const cleanStr = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    const ref = cleanStr(parsed.reference_number)
+      .replace(/[^A-Za-z0-9-]/g, "")
+      .toUpperCase()
+      .slice(0, 40) || null;
+    const authText = cleanStr(parsed.authority_text) || null;
+    const conf = Number(parsed.confidence);
+    return {
+      reference_number: ref,
+      authority_key: detectAuthorityFromText(authText),
+      raw_authority_text: authText,
+      confidence: Number.isFinite(conf) ? Math.max(0, Math.min(100, Math.round(conf))) : 0,
+    };
+  } catch (e) {
+    console.error("[ezpass] re-extract error", e);
+    return empty;
+  }
 }
 
 function normDate(v: string): string | null {
