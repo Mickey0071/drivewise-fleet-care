@@ -10,6 +10,17 @@ import {
 } from "@/lib/ezpass.server";
 import type { ExtractedToll } from "@/lib/ezpass.server";
 import { generateAndStoreLiabilityTransfer } from "@/lib/liability-transfer.server";
+import { extractRefAndAuthorityFromUrl } from "@/lib/ezpass.server";
+
+const VALID_AUTHORITY_KEYS = new Set([
+  "nj_ezpass",
+  "ny_ezpass",
+  "nj_turnpike",
+  "pa_turnpike",
+  "ppa",
+  "philadelphia_parking",
+  "nj_mvc",
+]);
 
 export interface EzpassBatchItem {
   id: string;
