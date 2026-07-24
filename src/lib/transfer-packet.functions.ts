@@ -920,6 +920,9 @@ async function _mergeDocumentsImpl(
         if (part.kind === "agreement" && opts?.highlightPlate) {
           pdfBytes = await highlightPlateOnPdf(pdfBytes, opts.highlightPlate);
         }
+        if (part.kind === "agreement") {
+          pdfBytes = await condenseAgreementToOnePage(pdfBytes);
+        }
         if (part.kind === "agreement" && opts?.renterStamp) {
           pdfBytes = await stampRenterOnAgreement(
             pdfBytes,
