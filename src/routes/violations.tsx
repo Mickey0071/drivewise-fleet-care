@@ -1207,15 +1207,23 @@ function BureauContactsCard() {
   );
 }
 
-type TabKey = "uploaded" | "matched" | "disputed" | "completed";
+type TabKey = "uploaded" | "matched" | "disputed" | "completed" | "needs-ref";
 
-const TAB_ORDER: TabKey[] = ["uploaded", "matched", "disputed", "completed"];
+const TAB_ORDER: TabKey[] = ["uploaded", "matched", "disputed", "completed", "needs-ref"];
 const TAB_LABELS: Record<TabKey, string> = {
   uploaded: "Uploaded",
   matched: "Matched",
   disputed: "Disputed",
   completed: "Completed",
+  "needs-ref": "Needs Ref #",
 };
+
+/** A violation shows in "Needs Ref #" when either the EZPass reference number
+ *  or the issuing authority is missing — both are required before we can mail
+ *  a dispute packet with the correct statute cite. */
+function needsRefFix(v: ViolationRow): boolean {
+  return !v.reference_number || !v.authority_key;
+}
 
 const PENDING_RESPONSE = ["pending", "failed", "sent_to_customer", "viewing"];
 
