@@ -1091,7 +1091,8 @@ export const reExtractMissingViolationRefs = createServerFn({ method: "POST" })
           .in("violation_id", ids)
       : { data: [] as Array<{ violation_id: string; batch_id: string }> };
     const batchOf = new Map<string, string>();
-    for (const it of items ?? []) {
+    for (const it of (items ?? []) as Array<{ violation_id: string | null; batch_id: string | null }>) {
+      if (!it.violation_id || !it.batch_id) continue;
       if (!batchOf.has(it.violation_id)) batchOf.set(it.violation_id, it.batch_id);
     }
     const batchIds = Array.from(new Set([...batchOf.values()]));
