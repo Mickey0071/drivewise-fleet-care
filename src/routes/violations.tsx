@@ -1650,6 +1650,9 @@ function ViolationsPage() {
 
       <Card>
         <CardContent className="p-0">
+          {filter === "needs-ref" && (
+            <NeedsRefToolbar count={filtered.length} onDone={refresh} />
+          )}
           {filter === "matched" && filtered.length > 0 && (
             <div className="flex flex-wrap items-center gap-3 border-b bg-muted/30 p-3 text-sm">
               <span className="font-medium">
