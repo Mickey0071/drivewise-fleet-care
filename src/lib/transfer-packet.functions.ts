@@ -786,7 +786,10 @@ async function highlightPlateOnPdf(bytes: Uint8Array, plate: string): Promise<Ui
 
 async function mergeDocuments(
   parts: Array<{ kind: PacketDocKind; bytes?: Uint8Array; url?: string }>,
-  opts?: { highlightPlate?: string | null },
+  opts?: {
+    highlightPlate?: string | null;
+    renterStamp?: { name: string; address: string } | null;
+  },
 ): Promise<{ merged: Uint8Array; used: PacketDocKind[]; missing: PacketDocKind[] }> {
   const { PDFDocument } = await import("pdf-lib");
   const out = await PDFDocument.create();
@@ -810,10 +813,17 @@ async function mergeDocuments(
         continue;
       }
       if (isPdfBytes(bytes, contentType)) {
-        const pdfBytes: Uint8Array =
-          part.kind === "agreement" && opts?.highlightPlate
-            ? await highlightPlateOnPdf(bytes, opts.highlightPlate)
-            : bytes;
+        let pdfBytes: Uint8Array = bytes;
+        if (part.kind === "agreement" && opts?.highlightPlate) {
+          pdfBytes = await highlightPlateOnPdf(pdfBytes, opts.highlightPlate);
+        }
+        if (part.kind === "agreement" && opts?.renterStamp) {
+          pdfBytes = await stampRenterOnAgreement(
+            pdfBytes,
+            opts.renterStamp.name,
+            opts.renterStamp.address,
+          );
+        }
         const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
         const pages = await out.copyPages(doc, doc.getPageIndices());
         for (const p of pages) out.addPage(p);
