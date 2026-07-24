@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import JSZip from "jszip";
 import { z } from "zod";
 
 /**
@@ -248,53 +247,25 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
       }
     }
 
-    const zip = new JSZip();
     const missing: string[] = [];
-    if (inc.coverLetter) {
-      const coverPdf = await buildCoverPdf({ v, vehicle, driver, rental });
-      zip.file("00_COVER_SHEET.pdf", coverPdf);
-    }
+    const parts: Array<{ label: string; url?: string | null }> = [];
+    if (inc.agreement) parts.push({ label: "Signed Rental Agreement", url: rental?.agreement_pdf_url });
+    if (inc.license) parts.push({ label: "Driver's License", url: rental?.license_image_url });
+    if (inc.selfie) parts.push({ label: "Renter Selfie", url: rental?.selfie_image_url });
+    if (inc.signature) parts.push({ label: "Renter Signature", url: rental?.client_signature_url });
+    if (inc.receipt) parts.push({ label: "Rental Receipt", url: rental?.receipt_pdf_url });
+    if (inc.violationPhoto) parts.push({ label: "Violation Photo", url: v.photo_url as string | null | undefined });
 
-    async function add(url: string | null | undefined, name: string) {
-      if (!url) {
-        missing.push(name);
-        return;
-      }
-      try {
-        const res = await fetch(url);
-        if (!res.ok) {
-          missing.push(`${name} (http ${res.status})`);
-          return;
-        }
-        const buf = new Uint8Array(await res.arrayBuffer());
-        const ext = guessExt(url, res.headers.get("content-type"));
-        zip.file(`${name}${ext}`, buf);
-      } catch (e) {
-        missing.push(`${name} (${e instanceof Error ? e.message : "fetch failed"})`);
-      }
-    }
+    const coverPdf = inc.coverLetter
+      ? await buildCoverPdf({ v, vehicle, driver, rental })
+      : null;
 
-    await Promise.all([
-      inc.agreement ? add(rental?.agreement_pdf_url, "01_SIGNED_RENTAL_AGREEMENT") : null,
-      inc.license ? add(rental?.license_image_url, "02_DRIVER_LICENSE") : null,
-      inc.selfie ? add(rental?.selfie_image_url, "03_RENTER_SELFIE") : null,
-      inc.signature ? add(rental?.client_signature_url, "04_SIGNATURE") : null,
-      inc.receipt ? add(rental?.receipt_pdf_url, "05_RENTAL_RECEIPT") : null,
-      inc.violationPhoto ? add(v.photo_url, "06_VIOLATION_PHOTO") : null,
-    ].filter(Boolean));
+    const merged = await mergePacket(coverPdf, parts, missing);
 
-    if (missing.length > 0) {
-      zip.file(
-        "MISSING.txt",
-        `The following items were not available for ${v.id}:\n\n- ${missing.join("\n- ")}\n`,
-      );
-    }
-
-    const buf = await zip.generateAsync({ type: "uint8array" });
     let bin = "";
     const chunk = 0x8000;
-    for (let i = 0; i < buf.length; i += chunk) {
-      bin += String.fromCharCode(...buf.subarray(i, i + chunk));
+    for (let i = 0; i < merged.length; i += chunk) {
+      bin += String.fromCharCode(...merged.subarray(i, i + chunk));
     }
     const base64 = btoa(bin);
 
@@ -303,19 +274,61 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
       .replace(/[^a-z0-9]+/gi, "")
       .toUpperCase() || "NOPLATE";
     const dateStr = (v.date_issued || "").replace(/-/g, "");
-    const filename = `VIOLATION_${v.id}_${plate}_${dateStr}.zip`;
+    const filename = `VIOLATION_${v.id}_${plate}_${dateStr}.pdf`;
 
     return { ok: true as const, filename, base64, missing };
   });
 
-function guessExt(url: string, contentType: string | null): string {
-  const ct = (contentType ?? "").toLowerCase();
-  if (ct.includes("pdf")) return ".pdf";
-  if (ct.includes("png")) return ".png";
-  if (ct.includes("jpeg") || ct.includes("jpg")) return ".jpg";
-  if (ct.includes("webp")) return ".webp";
-  const m = url.split("?")[0].match(/\.([a-z0-9]{2,5})$/i);
-  return m ? `.${m[1].toLowerCase()}` : "";
+async function mergePacket(
+  coverPdf: Uint8Array | null,
+  parts: Array<{ label: string; url?: string | null }>,
+  missing: string[],
+): Promise<Uint8Array> {
+  const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+  const out = await PDFDocument.create();
+  if (coverPdf) {
+    const src = await PDFDocument.load(coverPdf);
+    const pages = await out.copyPages(src, src.getPageIndices());
+    for (const p of pages) out.addPage(p);
+  }
+  for (const part of parts) {
+    if (!part.url) {
+      missing.push(part.label);
+      continue;
+    }
+    try {
+      const res = await fetch(part.url);
+      if (!res.ok) {
+        missing.push(`${part.label} (http ${res.status})`);
+        continue;
+      }
+      const buf = new Uint8Array(await res.arrayBuffer());
+      const ct = (res.headers.get("content-type") ?? "").toLowerCase();
+      const looksPdf = ct.includes("pdf") || (buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46);
+      if (looksPdf) {
+        const src = await PDFDocument.load(buf);
+        const pages = await out.copyPages(src, src.getPageIndices());
+        for (const p of pages) out.addPage(p);
+      } else {
+        // Embed image on a letter-size page
+        const isPng = ct.includes("png") || (buf[0] === 0x89 && buf[1] === 0x50);
+        const img = isPng ? await out.embedPng(buf) : await out.embedJpg(buf);
+        const page = out.addPage([612, 792]);
+        const margin = 36;
+        const maxW = 612 - margin * 2;
+        const maxH = 792 - margin * 2 - 20;
+        const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        const font = await out.embedFont(StandardFonts.HelveticaBold);
+        page.drawText(part.label, { x: margin, y: 792 - margin, size: 11, font, color: rgb(0.1, 0.4, 0.2) });
+        page.drawImage(img, { x: (612 - w) / 2, y: (792 - h) / 2 - 10, width: w, height: h });
+      }
+    } catch (e) {
+      missing.push(`${part.label} (${e instanceof Error ? e.message : "fetch failed"})`);
+    }
+  }
+  return await out.save();
 }
 
 function fmtMoney(n: number | null | undefined): string {
