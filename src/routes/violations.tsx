@@ -1314,7 +1314,9 @@ function ViolationsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (tabOf(r) !== filter) return false;
+      if (filter === "needs-ref") {
+        if (!needsRefFix(r)) return false;
+      } else if (tabOf(r) !== filter) return false;
       if (!q) return true;
       const hay = [
         r.id,
@@ -1334,8 +1336,17 @@ function ViolationsPage() {
   }, [rows, filter, search]);
 
   const tabCounts = useMemo(() => {
-    const c: Record<TabKey, number> = { uploaded: 0, matched: 0, disputed: 0, completed: 0 };
-    for (const r of rows) c[tabOf(r)]++;
+    const c: Record<TabKey, number> = {
+      uploaded: 0,
+      matched: 0,
+      disputed: 0,
+      completed: 0,
+      "needs-ref": 0,
+    };
+    for (const r of rows) {
+      c[tabOf(r)]++;
+      if (needsRefFix(r)) c["needs-ref"]++;
+    }
     return c;
   }, [rows]);
 
