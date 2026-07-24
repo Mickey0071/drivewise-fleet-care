@@ -10,6 +10,17 @@ import {
 } from "@/lib/ezpass.server";
 import type { ExtractedToll } from "@/lib/ezpass.server";
 import { generateAndStoreLiabilityTransfer } from "@/lib/liability-transfer.server";
+import { extractRefAndAuthorityFromUrl } from "@/lib/ezpass.server";
+
+const VALID_AUTHORITY_KEYS = new Set([
+  "nj_ezpass",
+  "ny_ezpass",
+  "nj_turnpike",
+  "pa_turnpike",
+  "ppa",
+  "philadelphia_parking",
+  "nj_mvc",
+]);
 
 export interface EzpassBatchItem {
   id: string;
@@ -973,4 +984,235 @@ export const createInternalRentalForItem = createServerFn({ method: "POST" })
     if (rErr) throw new Error("Rental create failed: " + rErr.message);
 
     return { rentalId, vehicleId };
+  });
+
+/* --------------------------------------------------------------------------
+ * MISSING REF/AUTHORITY BACKFILL
+ * -------------------------------------------------------------------------- */
+
+/** List every violation missing a reference_number OR authority_key so admins
+ *  can review + backfill them from one screen. Returns the document URL plus
+ *  the parent batch's file_url as a fallback. */
+export const listViolationsNeedingRef = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async (): Promise<Array<{
+    id: string;
+    license_plate: string | null;
+    date_issued: string | null;
+    amount: number | null;
+    reference_number: string | null;
+    authority_key: string | null;
+    photo_url: string | null;
+    batch_id: string | null;
+    batch_file_url: string | null;
+  }>> => {
+    const { data: vs, error } = await supabaseAdmin
+      .from("violations")
+      .select(
+        "id, license_plate, date_issued, amount, reference_number, authority_key, photo_url",
+      )
+      .or("reference_number.is.null,reference_number.eq.,authority_key.is.null,authority_key.eq.")
+      .order("date_issued", { ascending: false })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    const rows = (vs ?? []) as Array<Record<string, unknown>>;
+    if (rows.length === 0) return [];
+    const ids = rows.map((r) => r.id as string);
+    const { data: items } = await supabaseAdmin
+      .from("ezpass_batch_items")
+      .select("violation_id, batch_id")
+      .in("violation_id", ids);
+    const byViolation = new Map<string, string>();
+    for (const it of (items ?? []) as Array<{ violation_id: string; batch_id: string }>) {
+      if (!byViolation.has(it.violation_id)) byViolation.set(it.violation_id, it.batch_id);
+    }
+    const batchIds = Array.from(new Set([...byViolation.values()]));
+    const { data: batches } = batchIds.length
+      ? await supabaseAdmin
+          .from("ezpass_batches")
+          .select("id, file_url")
+          .in("id", batchIds)
+      : { data: [] as Array<{ id: string; file_url: string | null }> };
+    const batchUrl = new Map(
+      (batches ?? []).map((b) => [
+        (b as { id: string }).id,
+        (b as { file_url: string | null }).file_url,
+      ]),
+    );
+    return rows.map((r) => {
+      const bid = byViolation.get(r.id as string) ?? null;
+      return {
+        id: r.id as string,
+        license_plate: (r.license_plate as string | null) ?? null,
+        date_issued: (r.date_issued as string | null) ?? null,
+        amount: (r.amount as number | null) ?? null,
+        reference_number: (r.reference_number as string | null) ?? null,
+        authority_key: (r.authority_key as string | null) ?? null,
+        photo_url: (r.photo_url as string | null) ?? null,
+        batch_id: bid,
+        batch_file_url: bid ? batchUrl.get(bid) ?? null : null,
+      };
+    });
+  });
+
+/** Bulk re-OCR every violation missing a reference_number. Also detects the
+ *  issuing authority and writes it when confidently identified. Never
+ *  overwrites an already-populated value. */
+export const reExtractMissingViolationRefs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async (): Promise<{
+    examined: number;
+    updated_ref: number;
+    updated_authority: number;
+    still_blank_ref: number;
+    still_blank_authority: number;
+    preserved_existing: number;
+    no_document: number;
+  }> => {
+    const { data: vs, error } = await supabaseAdmin
+      .from("violations")
+      .select("id, reference_number, authority_key, photo_url")
+      .or("reference_number.is.null,reference_number.eq.,authority_key.is.null,authority_key.eq.")
+      .limit(500);
+    if (error) throw new Error(error.message);
+    const rows = (vs ?? []) as Array<{
+      id: string;
+      reference_number: string | null;
+      authority_key: string | null;
+      photo_url: string | null;
+    }>;
+
+    // Prefetch batch file_url fallbacks in one query.
+    const ids = rows.map((r) => r.id);
+    const { data: items } = ids.length
+      ? await supabaseAdmin
+          .from("ezpass_batch_items")
+          .select("violation_id, batch_id")
+          .in("violation_id", ids)
+      : { data: [] as Array<{ violation_id: string; batch_id: string }> };
+    const batchOf = new Map<string, string>();
+    for (const it of (items ?? []) as Array<{ violation_id: string | null; batch_id: string | null }>) {
+      if (!it.violation_id || !it.batch_id) continue;
+      if (!batchOf.has(it.violation_id)) batchOf.set(it.violation_id, it.batch_id);
+    }
+    const batchIds = Array.from(new Set([...batchOf.values()]));
+    const { data: batches } = batchIds.length
+      ? await supabaseAdmin.from("ezpass_batches").select("id, file_url").in("id", batchIds)
+      : { data: [] as Array<{ id: string; file_url: string | null }> };
+    const batchUrl = new Map(
+      (batches ?? []).map((b) => [
+        (b as { id: string }).id,
+        (b as { file_url: string | null }).file_url,
+      ]),
+    );
+
+    let updated_ref = 0;
+    let updated_authority = 0;
+    let preserved_existing = 0;
+    let no_document = 0;
+    let still_blank_ref = 0;
+    let still_blank_authority = 0;
+
+    for (const v of rows) {
+      const needsRef = !v.reference_number;
+      const needsAuth = !v.authority_key;
+      const bid = batchOf.get(v.id) ?? null;
+      const url = v.photo_url || (bid ? batchUrl.get(bid) ?? null : null);
+      if (!url) {
+        no_document++;
+        if (needsRef) still_blank_ref++;
+        if (needsAuth) still_blank_authority++;
+        continue;
+      }
+
+      const r = await extractRefAndAuthorityFromUrl(url);
+      const patch: Record<string, unknown> = {};
+      if (needsRef && r.reference_number) {
+        patch.reference_number = r.reference_number;
+      } else if (!needsRef) {
+        preserved_existing++;
+      }
+      if (needsAuth && r.authority_key && VALID_AUTHORITY_KEYS.has(r.authority_key)) {
+        patch.authority_key = r.authority_key;
+      }
+      if (Object.keys(patch).length > 0) {
+        patch.updated_at = new Date().toISOString();
+        const { error: uerr } = await supabaseAdmin
+          .from("violations")
+          .update(patch as never)
+          .eq("id", v.id);
+        if (!uerr) {
+          if (patch.reference_number) updated_ref++;
+          if (patch.authority_key) updated_authority++;
+        }
+        // Mirror the reference_number onto the source batch item(s), never
+        // overwriting a value that's already there.
+        if (patch.reference_number && bid) {
+          await supabaseAdmin
+            .from("ezpass_batch_items")
+            .update({ reference_number: patch.reference_number } as never)
+            .eq("violation_id", v.id)
+            .or("reference_number.is.null,reference_number.eq.");
+        }
+      }
+      if (needsRef && !patch.reference_number) still_blank_ref++;
+      if (needsAuth && !patch.authority_key) still_blank_authority++;
+    }
+
+    return {
+      examined: rows.length,
+      updated_ref,
+      updated_authority,
+      still_blank_ref,
+      still_blank_authority,
+      preserved_existing,
+      no_document,
+    };
+  });
+
+/** Set / clear the authority_key on a violation from the manual review UI. */
+export const setViolationAuthority = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        id: z.string().min(1),
+        authorityKey: z.string().nullable(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const key = data.authorityKey;
+    if (key !== null && !VALID_AUTHORITY_KEYS.has(key)) {
+      throw new Error(`Unknown authority "${key}"`);
+    }
+    const { error } = await supabaseAdmin
+      .from("violations")
+      .update({ authority_key: key, updated_at: new Date().toISOString() } as never)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+/** Report violations that are pointed at by more than one ezpass_batch_items
+ *  row (duplicate ingest). Never deletes — admin confirms. */
+export const findDuplicateEzpassLinks = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async (): Promise<Array<{ violation_id: string; item_ids: string[]; batch_ids: string[] }>> => {
+    const { data, error } = await supabaseAdmin
+      .from("ezpass_batch_items")
+      .select("id, batch_id, violation_id")
+      .not("violation_id", "is", null)
+      .limit(5000);
+    if (error) throw new Error(error.message);
+    const by = new Map<string, { item_ids: string[]; batch_ids: string[] }>();
+    for (const it of (data ?? []) as Array<{ id: string; batch_id: string; violation_id: string }>) {
+      const g = by.get(it.violation_id) ?? { item_ids: [], batch_ids: [] };
+      g.item_ids.push(it.id);
+      if (!g.batch_ids.includes(it.batch_id)) g.batch_ids.push(it.batch_id);
+      by.set(it.violation_id, g);
+    }
+    return Array.from(by.entries())
+      .filter(([, g]) => g.item_ids.length > 1)
+      .map(([violation_id, g]) => ({ violation_id, ...g }));
   });

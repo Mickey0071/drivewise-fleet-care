@@ -53,6 +53,10 @@ import { deleteViolation } from "@/lib/violations.functions";
 import { updateViolation } from "@/lib/violations.functions";
 import { setViolationReference } from "@/lib/violations.functions";
 import {
+  reExtractMissingViolationRefs,
+  setViolationAuthority,
+} from "@/lib/ezpass.functions";
+import {
   generateLiabilityTransfer,
   generateMailPacket,
   markViolationStage,
@@ -1203,15 +1207,23 @@ function BureauContactsCard() {
   );
 }
 
-type TabKey = "uploaded" | "matched" | "disputed" | "completed";
+type TabKey = "uploaded" | "matched" | "disputed" | "completed" | "needs-ref";
 
-const TAB_ORDER: TabKey[] = ["uploaded", "matched", "disputed", "completed"];
+const TAB_ORDER: TabKey[] = ["uploaded", "matched", "disputed", "completed", "needs-ref"];
 const TAB_LABELS: Record<TabKey, string> = {
   uploaded: "Uploaded",
   matched: "Matched",
   disputed: "Disputed",
   completed: "Completed",
+  "needs-ref": "Needs Ref #",
 };
+
+/** A violation shows in "Needs Ref #" when either the EZPass reference number
+ *  or the issuing authority is missing — both are required before we can mail
+ *  a dispute packet with the correct statute cite. */
+function needsRefFix(v: ViolationRow): boolean {
+  return !v.reference_number || !v.authority_key;
+}
 
 const PENDING_RESPONSE = ["pending", "failed", "sent_to_customer", "viewing"];
 
@@ -1302,7 +1314,9 @@ function ViolationsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (tabOf(r) !== filter) return false;
+      if (filter === "needs-ref") {
+        if (!needsRefFix(r)) return false;
+      } else if (tabOf(r) !== filter) return false;
       if (!q) return true;
       const hay = [
         r.id,
@@ -1322,8 +1336,17 @@ function ViolationsPage() {
   }, [rows, filter, search]);
 
   const tabCounts = useMemo(() => {
-    const c: Record<TabKey, number> = { uploaded: 0, matched: 0, disputed: 0, completed: 0 };
-    for (const r of rows) c[tabOf(r)]++;
+    const c: Record<TabKey, number> = {
+      uploaded: 0,
+      matched: 0,
+      disputed: 0,
+      completed: 0,
+      "needs-ref": 0,
+    };
+    for (const r of rows) {
+      c[tabOf(r)]++;
+      if (needsRefFix(r)) c["needs-ref"]++;
+    }
     return c;
   }, [rows]);
 
@@ -1627,6 +1650,9 @@ function ViolationsPage() {
 
       <Card>
         <CardContent className="p-0">
+          {filter === "needs-ref" && (
+            <NeedsRefToolbar count={filtered.length} onDone={refresh} />
+          )}
           {filter === "matched" && filtered.length > 0 && (
             <div className="flex flex-wrap items-center gap-3 border-b bg-muted/30 p-3 text-sm">
               <span className="font-medium">
@@ -1736,6 +1762,9 @@ function ViolationsPage() {
                               Internal ID: {v.id}
                             </div>
                             <OriginalDocControl v={v} onDone={refresh} />
+                            {filter === "needs-ref" && (
+                              <AuthorityInlineEditor v={v} onDone={refresh} />
+                            )}
                           </div>
                         </div>
                       </td>
@@ -3089,5 +3118,87 @@ function ChangeStatusDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Needs Ref # helpers                                                *
+ * ------------------------------------------------------------------ */
+
+const AUTHORITY_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "nj_ezpass", label: "NJ EZ Pass" },
+  { value: "ny_ezpass", label: "NY EZ Pass" },
+  { value: "nj_turnpike", label: "NJ Turnpike" },
+  { value: "pa_turnpike", label: "PA Turnpike" },
+  { value: "ppa", label: "Philadelphia Parking (PPA)" },
+  { value: "philadelphia_parking", label: "Philadelphia Parking" },
+  { value: "nj_mvc", label: "NJ MVC" },
+];
+
+function NeedsRefToolbar({ count, onDone }: { count: number; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const r = await reExtractMissingViolationRefs();
+      toast.success(
+        `Re-scanned ${r.examined}. Added ${r.updated_ref} ref #, ${r.updated_authority} authority. ${r.still_blank_ref} ref still blank.`,
+      );
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Re-extract failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-3 border-b bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
+      <span className="font-medium">
+        {count} violation{count === 1 ? "" : "s"} missing reference # or authority.
+      </span>
+      <Button size="sm" onClick={run} disabled={busy}>
+        {busy ? "Re-scanning…" : "🔁 Re-extract missing (AI OCR)"}
+      </Button>
+      <span className="text-xs text-muted-foreground">
+        Reads each attached document again with a wider label set. Never overwrites values that are
+        already filled.
+      </span>
+    </div>
+  );
+}
+
+function AuthorityInlineEditor({ v, onDone }: { v: ViolationRow; onDone: () => void }) {
+  const [value, setValue] = useState(v.authority_key ?? "");
+  const [saving, setSaving] = useState(false);
+  const save = async (next: string) => {
+    setValue(next);
+    setSaving(true);
+    try {
+      await setViolationAuthority({ data: { id: v.id, authorityKey: next || null } });
+      onDone();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div className="mt-1 flex items-center gap-1">
+      <span className="text-[10px] uppercase text-muted-foreground">Authority:</span>
+      <select
+        className="h-6 rounded border bg-background px-1 text-xs"
+        value={value}
+        disabled={saving}
+        onChange={(e) => save(e.target.value)}
+      >
+        <option value="">— select —</option>
+        {AUTHORITY_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
