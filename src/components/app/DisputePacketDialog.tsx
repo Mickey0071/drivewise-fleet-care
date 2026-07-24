@@ -141,7 +141,7 @@ export function DisputePacketDialog({
         <DialogHeader>
           <DialogTitle>Choose documents for the dispute packet</DialogTitle>
           <DialogDescription>
-            Pick which items to include in the ZIP. The rental agreement must have the renter's address AND signature — you'll be prompted below if either is missing.
+            Pick which items to include in the packet PDF. The rental agreement must have the renter's address AND signature — you'll be prompted below if either is missing.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2 py-2">
