@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import JSZip from "jszip";
 import { z } from "zod";
 
 /**
@@ -35,65 +34,64 @@ export const downloadClientPacket = createServerFn({ method: "POST" })
       .replace(/^_+|_+$/g, "")
       .slice(0, 40) || "renter";
 
-    const zip = new JSZip();
     const missing: string[] = [];
+    const parts: Array<{ label: string; url?: string | null }> = [
+      { label: "Signed Rental Agreement", url: rental.agreement_pdf_url },
+      { label: "Rental Receipt", url: rental.receipt_pdf_url },
+      { label: "Driver's License", url: rental.license_image_url },
+      { label: "Renter Selfie", url: rental.selfie_image_url },
+      { label: "Renter Signature", url: rental.client_signature_url },
+    ];
 
-    async function add(url: string | null | undefined, name: string) {
-      if (!url) {
-        missing.push(name);
-        return;
+    const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+    const out = await PDFDocument.create();
+    for (const part of parts) {
+      if (!part.url) {
+        missing.push(part.label);
+        continue;
       }
       try {
-        const res = await fetch(url);
+        const res = await fetch(part.url);
         if (!res.ok) {
-          missing.push(`${name} (http ${res.status})`);
-          return;
+          missing.push(`${part.label} (http ${res.status})`);
+          continue;
         }
         const buf = new Uint8Array(await res.arrayBuffer());
-        const ext = guessExt(url, res.headers.get("content-type"));
-        zip.file(`${name}${ext}`, buf);
+        const ct = (res.headers.get("content-type") ?? "").toLowerCase();
+        const looksPdf = ct.includes("pdf") || (buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46);
+        if (looksPdf) {
+          const src = await PDFDocument.load(buf);
+          const pages = await out.copyPages(src, src.getPageIndices());
+          for (const p of pages) out.addPage(p);
+        } else {
+          const isPng = ct.includes("png") || (buf[0] === 0x89 && buf[1] === 0x50);
+          const img = isPng ? await out.embedPng(buf) : await out.embedJpg(buf);
+          const page = out.addPage([612, 792]);
+          const margin = 36;
+          const maxW = 612 - margin * 2;
+          const maxH = 792 - margin * 2 - 20;
+          const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+          const w = img.width * scale;
+          const h = img.height * scale;
+          const font = await out.embedFont(StandardFonts.HelveticaBold);
+          page.drawText(part.label, { x: margin, y: 792 - margin, size: 11, font, color: rgb(0.1, 0.4, 0.2) });
+          page.drawImage(img, { x: (612 - w) / 2, y: (792 - h) / 2 - 10, width: w, height: h });
+        }
       } catch (e) {
-        missing.push(`${name} (${e instanceof Error ? e.message : "fetch failed"})`);
+        missing.push(`${part.label} (${e instanceof Error ? e.message : "fetch failed"})`);
       }
     }
-
-    await Promise.all([
-      add(rental.agreement_pdf_url, "SIGNED_RENTAL_AGREEMENT"),
-      add(rental.receipt_pdf_url, "RECEIPT"),
-      add(rental.license_image_url, "DRIVER_LICENSE"),
-      add(rental.selfie_image_url, "SELFIE"),
-      add(rental.client_signature_url, "SIGNATURE"),
-    ]);
-
-    if (missing.length > 0) {
-      zip.file(
-        "MISSING.txt",
-        `The following items were not available for ${rental.id}:\n\n- ${missing.join("\n- ")}\n`,
-      );
-    }
-
-    const buf = await zip.generateAsync({ type: "uint8array" });
-    // Base64 encode without exhausting the call stack on large buffers
+    const merged = await out.save();
     let bin = "";
     const chunk = 0x8000;
-    for (let i = 0; i < buf.length; i += chunk) {
-      bin += String.fromCharCode(...buf.subarray(i, i + chunk));
+    for (let i = 0; i < merged.length; i += chunk) {
+      bin += String.fromCharCode(...merged.subarray(i, i + chunk));
     }
     const base64 = btoa(bin);
 
     return {
-      filename: `${rental.id}_${safeName}_packet.zip`,
+      filename: `${rental.id}_${safeName}_packet.pdf`,
       base64,
       missing,
     };
   });
-
-function guessExt(url: string, contentType: string | null): string {
-  const ct = (contentType ?? "").toLowerCase();
-  if (ct.includes("pdf")) return ".pdf";
-  if (ct.includes("png")) return ".png";
-  if (ct.includes("jpeg") || ct.includes("jpg")) return ".jpg";
-  if (ct.includes("webp")) return ".webp";
-  const m = url.split("?")[0].match(/\.([a-z0-9]{2,5})$/i);
-  return m ? `.${m[1].toLowerCase()}` : "";
-}

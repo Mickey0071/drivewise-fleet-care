@@ -114,7 +114,7 @@ export function DisputePacketDialog({
       const bin = atob(res.base64!);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const url = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
       const a = document.createElement("a");
       a.href = url;
       a.download = res.filename!;
@@ -141,7 +141,7 @@ export function DisputePacketDialog({
         <DialogHeader>
           <DialogTitle>Choose documents for the dispute packet</DialogTitle>
           <DialogDescription>
-            Pick which items to include in the ZIP. The rental agreement must have the renter's address AND signature — you'll be prompted below if either is missing.
+            Pick which items to include in the packet PDF. The rental agreement must have the renter's address AND signature — you'll be prompted below if either is missing.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2 py-2">
