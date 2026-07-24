@@ -2,8 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { statuteFor } from "@/lib/liability-transfer.server";
-import { renderRentalAgreementPdf, type RentalAgreementPDFData } from "@/components/pdf/RentalAgreementPDF";
-import { DEFAULT_SETTINGS } from "@/lib/agreementSettings";
 
 // ---------------------------------------------------------------------------
 // Types
