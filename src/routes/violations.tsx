@@ -53,6 +53,10 @@ import { deleteViolation } from "@/lib/violations.functions";
 import { updateViolation } from "@/lib/violations.functions";
 import { setViolationReference } from "@/lib/violations.functions";
 import {
+  reExtractMissingViolationRefs,
+  setViolationAuthority,
+} from "@/lib/ezpass.functions";
+import {
   generateLiabilityTransfer,
   generateMailPacket,
   markViolationStage,
