@@ -785,6 +785,64 @@ async function highlightPlateOnPdf(bytes: Uint8Array, plate: string): Promise<Ui
 }
 
 async function mergeDocuments(
+  ...args: Parameters<typeof _mergeDocumentsImpl>
+): Promise<{ merged: Uint8Array; used: PacketDocKind[]; missing: PacketDocKind[] }> {
+  return _mergeDocumentsImpl(...args);
+}
+
+/**
+ * Overlay the current renter name + mailing address in a yellow-highlighted
+ * block near the top of page 1 of the attached agreement PDF. Falls back to
+ * the original bytes on any failure so packet generation never breaks.
+ */
+async function stampRenterOnAgreement(
+  bytes: Uint8Array,
+  name: string,
+  address: string,
+): Promise<Uint8Array> {
+  try {
+    const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
+    const out = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    const page = out.getPages()[0];
+    if (!page) return bytes;
+    const { width, height } = page.getSize();
+    const font = await out.embedFont(StandardFonts.HelveticaBold);
+    const bodyFont = await out.embedFont(StandardFonts.Helvetica);
+    const margin = 24;
+    const boxW = width - margin * 2;
+    const boxH = 44;
+    const boxY = height - margin - boxH;
+    page.drawRectangle({
+      x: margin,
+      y: boxY,
+      width: boxW,
+      height: boxH,
+      color: rgb(1, 0.92, 0.23),
+      opacity: 0.55,
+      borderColor: rgb(0.4, 0.3, 0),
+      borderWidth: 0.8,
+    });
+    page.drawText(`Renter: ${name || "—"}`, {
+      x: margin + 8,
+      y: boxY + boxH - 14,
+      size: 10,
+      font,
+      color: rgb(0, 0, 0),
+    });
+    page.drawText(`Address: ${address || "—"}`, {
+      x: margin + 8,
+      y: boxY + 10,
+      size: 9,
+      font: bodyFont,
+      color: rgb(0, 0, 0),
+    });
+    return await out.save();
+  } catch {
+    return bytes;
+  }
+}
+
+async function _mergeDocumentsImpl(
   parts: Array<{ kind: PacketDocKind; bytes?: Uint8Array; url?: string }>,
   opts?: {
     highlightPlate?: string | null;
