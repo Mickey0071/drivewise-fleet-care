@@ -842,6 +842,51 @@ async function stampRenterOnAgreement(
   }
 }
 
+/**
+ * Condense a multi-page rental agreement PDF into a single letter-size page by
+ * tiling every source page as a scaled XObject. Chosen because dispute packets
+ * only need the agreement as evidence — tolls authorities want the signature
+ * page visible without wading through 6+ pages. Returns the original bytes if
+ * anything fails so packet generation never breaks.
+ */
+async function condenseAgreementToOnePage(bytes: Uint8Array): Promise<Uint8Array> {
+  try {
+    const { PDFDocument } = await import("pdf-lib");
+    const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    const total = src.getPageCount();
+    if (total <= 1) return bytes;
+
+    const out = await PDFDocument.create();
+    const PAGE_W = 612;
+    const PAGE_H = 792;
+    const MARGIN = 18;
+    // Choose a grid that fits every page. Prefer 2-wide layouts for readability.
+    const cols = total <= 2 ? 1 : 2;
+    const rows = Math.ceil(total / cols);
+    const cellW = (PAGE_W - MARGIN * 2) / cols;
+    const cellH = (PAGE_H - MARGIN * 2) / rows;
+    const embedded = await out.embedPages(src.getPages());
+    const page = out.addPage([PAGE_W, PAGE_H]);
+    for (let i = 0; i < embedded.length; i++) {
+      const ep = embedded[i];
+      const scale = Math.min(cellW / ep.width, cellH / ep.height);
+      const w = ep.width * scale;
+      const h = ep.height * scale;
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const cellX = MARGIN + col * cellW;
+      // pdf-lib origin is bottom-left; lay tiles top-to-bottom.
+      const cellYTop = PAGE_H - MARGIN - row * cellH;
+      const x = cellX + (cellW - w) / 2;
+      const y = cellYTop - cellH + (cellH - h) / 2;
+      page.drawPage(ep, { x, y, width: w, height: h });
+    }
+    return await out.save();
+  } catch {
+    return bytes;
+  }
+}
+
 async function _mergeDocumentsImpl(
   parts: Array<{ kind: PacketDocKind; bytes?: Uint8Array; url?: string }>,
   opts?: {
