@@ -1688,48 +1688,67 @@ function ViolationsPage() {
               <span className="font-medium">
                 {selectedRows.length > 0 ? `${selectedRows.length} selected` : "Select violations to dispute in bulk"}
               </span>
+              {/* Primary action — one merged PDF per selected renter, ready to mail. */}
               <Button
                 size="sm"
-                variant="outline"
                 disabled={selectedRows.length === 0 || bulkBusy}
                 onClick={bulkDownloadPackets}
+                className="bg-emerald-600 hover:bg-emerald-700"
               >
-                {bulkBusy ? "Building…" : "📦 Bulk Download Packets"}
+                {bulkBusy ? "Building…" : "🖨️ Print Dispute Packets"}
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={selectedRows.length === 0}
-                onClick={() => setBulkOnlineOpen(true)}
-              >
-                🌐 Bulk Online Prep
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={filtered.length === 0 || printBusy}
-                onClick={printAllAgreements}
-                title={selectedRows.length > 0 ? "Print selected agreements" : "Print all agreements on this tab"}
-              >
-                {printBusy ? "Building…" : "🖨️ Print All Agreements"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={filtered.length === 0 || batchTransferBusy}
-                onClick={batchTransferPackets}
-                title={
-                  selectedRows.length > 0
-                    ? "Generate Transfer Packets for the selected violations"
-                    : "Generate Transfer Packets for every matched violation in view"
-                }
-              >
-                {batchTransferBusy
-                  ? "Building…"
-                  : selectedRows.length > 0
-                    ? "🧾 Batch Transfer Packets"
-                    : "🧾 Batch Transfer Packets (all)"}
-              </Button>
+              {/* Bulk Set Authority — unblocks the "authority not set" gate on a batch. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={selectedRows.length === 0 || bulkAuthBusy}
+                  >
+                    {bulkAuthBusy ? "Setting…" : "Set Authority for Selected"}
+                    <ChevronDown className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  {AUTHORITY_OPTIONS.map((o) => (
+                    <DropdownMenuItem key={o.value} onClick={() => bulkSetAuthority(o.value)}>
+                      {o.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {/* Everything else lives under Advanced. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    Advanced <ChevronDown className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuItem
+                    disabled={selectedRows.length === 0}
+                    onClick={() => setBulkOnlineOpen(true)}
+                  >
+                    🌐 Bulk Online Prep
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={filtered.length === 0 || printBusy}
+                    onClick={printAllAgreements}
+                  >
+                    {printBusy ? "Building…" : "🖨️ Print All Agreements"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={filtered.length === 0 || batchTransferBusy}
+                    onClick={batchTransferPackets}
+                  >
+                    {batchTransferBusy
+                      ? "Building…"
+                      : selectedRows.length > 0
+                        ? "🧾 Batch Transfer Packets"
+                        : "🧾 Batch Transfer Packets (all)"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
           {isLoading ? (
