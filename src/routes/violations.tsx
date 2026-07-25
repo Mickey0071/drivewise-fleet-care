@@ -1173,10 +1173,6 @@ const BUREAU_CONTACTS: { name: string; phone: string; note: string }[] = [
 
 function BureauContactsCard() {
   const [open, setOpen] = useState(false);
-  return _bureauContactsBody(open, setOpen);
-}
-
-function _bureauContactsBody(open: boolean, setOpen: (u: (o: boolean) => boolean) => void) {
   return (
     <Card className="mb-4">
       <CardContent className="p-3">
