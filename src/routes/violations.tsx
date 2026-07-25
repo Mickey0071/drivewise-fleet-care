@@ -1763,7 +1763,10 @@ function ViolationsPage() {
                             </div>
                             <OriginalDocControl v={v} onDone={refresh} />
                             {filter === "needs-ref" && (
-                              <AuthorityInlineEditor v={v} onDone={refresh} />
+                              <>
+                                <AuthorityInlineEditor v={v} onDone={refresh} />
+                                <OcrCandidates v={v} onPick={refresh} />
+                              </>
                             )}
                           </div>
                         </div>
