@@ -1,0 +1,1 @@
+ALTER TABLE public.violations ADD COLUMN IF NOT EXISTS ocr_candidates jsonb; ALTER TABLE public.violations ADD COLUMN IF NOT EXISTS ocr_secondary_ref text;

@@ -3396,6 +3396,8 @@ export type Database = {
           mail_packet_printed_at: string | null
           mailed_at: string | null
           notes: string | null
+          ocr_candidates: Json | null
+          ocr_secondary_ref: string | null
           paid_at: string | null
           payment_link_url: string | null
           payment_method: string | null
@@ -3462,6 +3464,8 @@ export type Database = {
           mail_packet_printed_at?: string | null
           mailed_at?: string | null
           notes?: string | null
+          ocr_candidates?: Json | null
+          ocr_secondary_ref?: string | null
           paid_at?: string | null
           payment_link_url?: string | null
           payment_method?: string | null
@@ -3528,6 +3532,8 @@ export type Database = {
           mail_packet_printed_at?: string | null
           mailed_at?: string | null
           notes?: string | null
+          ocr_candidates?: Json | null
+          ocr_secondary_ref?: string | null
           paid_at?: string | null
           payment_link_url?: string | null
           payment_method?: string | null
