@@ -1173,6 +1173,53 @@ const BUREAU_CONTACTS: { name: string; phone: string; note: string }[] = [
 ];
 
 function BureauContactsCard() {
+  return _bureauContactsCard();
+}
+
+/** Compact list of renters who have a pending retro-agreement signing link.
+ *  Rendered inside the "More" dialog so the main violations view stays clean. */
+function AwaitingRetroSummary() {
+  const q = useQuery({
+    queryKey: ["awaiting-retro-summary"],
+    queryFn: () => listAwaitingRetroAgreements(),
+  });
+  const items = q.data ?? [];
+  const pending = items.filter((a) => !a.retroSignedAt);
+  const ready = items.filter((a) => a.retroSignedAt);
+  return (
+    <Card>
+      <CardContent className="p-3">
+        <div className="mb-2 text-sm font-medium">Awaiting Retroactive Agreements</div>
+        {items.length === 0 ? (
+          <div className="text-xs text-muted-foreground">No pending retroactive signing links.</div>
+        ) : (
+          <div className="space-y-2 text-xs">
+            {pending.length > 0 && (
+              <div>
+                <div className="mb-1 font-medium text-amber-700">Pending signature ({pending.length})</div>
+                <ul className="ml-4 list-disc space-y-0.5">
+                  {pending.map((a) => (
+                    <li key={a.id}>
+                      {a.customerName} — {a.vehicleLabel}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {ready.length > 0 && (
+              <div className="text-emerald-700">
+                <span className="font-medium">Signed — ready for violation:</span>{" "}
+                {ready.map((a) => a.customerName).join(", ")}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function _bureauContactsCard() {
   const [open, setOpen] = useState(false);
   return (
     <Card className="mb-4">
