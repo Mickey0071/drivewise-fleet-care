@@ -1172,6 +1172,12 @@ const BUREAU_CONTACTS: { name: string; phone: string; note: string }[] = [
 ];
 
 function BureauContactsCard() {
+  // (existing)
+  // ...
+  return _bureauContactsCard();
+}
+
+function _bureauContactsCard() {
   const [open, setOpen] = useState(false);
   return (
     <Card className="mb-4">
