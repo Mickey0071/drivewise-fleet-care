@@ -1005,11 +1005,14 @@ export const listViolationsNeedingRef = createServerFn({ method: "GET" })
     photo_url: string | null;
     batch_id: string | null;
     batch_file_url: string | null;
+    ocr_candidates: Array<{ label: string; number: string }> | null;
+    ocr_secondary_ref: string | null;
+    notes: string | null;
   }>> => {
     const { data: vs, error } = await supabaseAdmin
       .from("violations")
       .select(
-        "id, license_plate, date_issued, amount, reference_number, authority_key, photo_url",
+        "id, license_plate, date_issued, amount, reference_number, authority_key, photo_url, ocr_candidates, ocr_secondary_ref, notes",
       )
       .or("reference_number.is.null,reference_number.eq.,authority_key.is.null,authority_key.eq.")
       .order("date_issued", { ascending: false })
@@ -1051,6 +1054,10 @@ export const listViolationsNeedingRef = createServerFn({ method: "GET" })
         photo_url: (r.photo_url as string | null) ?? null,
         batch_id: bid,
         batch_file_url: bid ? batchUrl.get(bid) ?? null : null,
+        ocr_candidates:
+          (r.ocr_candidates as Array<{ label: string; number: string }> | null) ?? null,
+        ocr_secondary_ref: (r.ocr_secondary_ref as string | null) ?? null,
+        notes: (r.notes as string | null) ?? null,
       };
     });
   });
@@ -1071,7 +1078,7 @@ export const reExtractMissingViolationRefs = createServerFn({ method: "POST" })
   }> => {
     const { data: vs, error } = await supabaseAdmin
       .from("violations")
-      .select("id, reference_number, authority_key, photo_url")
+      .select("id, reference_number, authority_key, photo_url, notes")
       .or("reference_number.is.null,reference_number.eq.,authority_key.is.null,authority_key.eq.")
       .limit(500);
     if (error) throw new Error(error.message);
@@ -1080,6 +1087,7 @@ export const reExtractMissingViolationRefs = createServerFn({ method: "POST" })
       reference_number: string | null;
       authority_key: string | null;
       photo_url: string | null;
+      notes: string | null;
     }>;
 
     // Prefetch batch file_url fallbacks in one query.
@@ -1134,6 +1142,20 @@ export const reExtractMissingViolationRefs = createServerFn({ method: "POST" })
       }
       if (needsAuth && r.authority_key && VALID_AUTHORITY_KEYS.has(r.authority_key)) {
         patch.authority_key = r.authority_key;
+      }
+      // Always persist the OCR candidates + secondary # so the admin UI can show them
+      // (especially useful when we still couldn't pick a confident reference_number).
+      if (r.candidates.length > 0) {
+        patch.ocr_candidates = r.candidates;
+      }
+      if (r.secondary_number) {
+        patch.ocr_secondary_ref = r.secondary_number;
+        // Also append a human-readable note so it surfaces in existing notes UIs.
+        const marker = `[OCR] Secondary ref (from ${r.notice_type ?? "notice"}): ${r.secondary_number}`;
+        const existing = v.notes ?? "";
+        if (!existing.includes(r.secondary_number)) {
+          patch.notes = existing ? `${existing}\n${marker}` : marker;
+        }
       }
       if (Object.keys(patch).length > 0) {
         patch.updated_at = new Date().toISOString();

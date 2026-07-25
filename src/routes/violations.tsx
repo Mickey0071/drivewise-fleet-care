@@ -1763,7 +1763,10 @@ function ViolationsPage() {
                             </div>
                             <OriginalDocControl v={v} onDone={refresh} />
                             {filter === "needs-ref" && (
-                              <AuthorityInlineEditor v={v} onDone={refresh} />
+                              <>
+                                <AuthorityInlineEditor v={v} onDone={refresh} />
+                                <OcrCandidates v={v} onPick={refresh} />
+                              </>
                             )}
                           </div>
                         </div>
@@ -3199,6 +3202,69 @@ function AuthorityInlineEditor({ v, onDone }: { v: ViolationRow; onDone: () => v
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+/**
+ * Renders every candidate identifier the OCR pass could see on the notice, so
+ * the admin can pick the right one when the auto-picked reference is wrong or
+ * empty. Also surfaces a "secondary" reference (e.g. the prior bill number
+ * cited on a second/final notice) so it's not lost.
+ */
+function OcrCandidates({ v, onPick }: { v: ViolationRow; onPick: () => void }) {
+  const saveRef = useServerFn(setViolationReference);
+  const [saving, setSaving] = useState<string | null>(null);
+  const candidates = Array.isArray(v.ocr_candidates) ? v.ocr_candidates : [];
+  const secondary = v.ocr_secondary_ref ?? null;
+  if (candidates.length === 0 && !secondary) return null;
+  const pick = async (num: string) => {
+    setSaving(num);
+    try {
+      await saveRef({ data: { id: v.id, referenceNumber: num } });
+      toast.success(`Set reference to ${num}`);
+      onPick();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(null);
+    }
+  };
+  return (
+    <div className="mt-1 space-y-1">
+      <div className="text-[10px] uppercase text-muted-foreground">
+        OCR saw {candidates.length} candidate{candidates.length === 1 ? "" : "s"}:
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {candidates.map((c) => (
+          <button
+            key={c.number}
+            type="button"
+            disabled={saving !== null}
+            onClick={() => pick(c.number)}
+            className="rounded border border-dashed px-1.5 py-0.5 text-[11px] hover:bg-muted disabled:opacity-50"
+            title={`Label on document: ${c.label}`}
+          >
+            <span className="text-muted-foreground">{c.label}:</span>{" "}
+            <span className="font-mono">{c.number}</span>
+            {saving === c.number ? " …" : ""}
+          </button>
+        ))}
+      </div>
+      {secondary && (
+        <div className="text-[11px]">
+          <span className="text-muted-foreground">Secondary #: </span>
+          <span className="font-mono">{secondary}</span>
+          <button
+            type="button"
+            className="ml-2 text-primary underline disabled:opacity-50"
+            disabled={saving !== null}
+            onClick={() => pick(secondary)}
+          >
+            use as reference
+          </button>
+        </div>
+      )}
     </div>
   );
 }

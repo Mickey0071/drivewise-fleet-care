@@ -65,6 +65,8 @@ export interface ViolationRow {
   agreement_on_file?: boolean;
   rental_start?: string | null;
   rental_end?: string | null;
+  ocr_candidates?: Array<{ label: string; number: string }> | null;
+  ocr_secondary_ref?: string | null;
 }
 
 export const listViolations = createServerFn({ method: "GET" })
