@@ -71,7 +71,15 @@ const AUTHORITIES = [
   { key: "other", label: "Other" },
 ];
 
-export function ViolationSearchSection({ onCreated }: { onCreated: () => void }) {
+export function ViolationSearchSection({
+  onCreated,
+  hideAwaitingRetro = false,
+}: {
+  onCreated: () => void;
+  /** When true, suppresses the "Awaiting Retroactive Agreements" card so the
+   *  parent can render it inside a "More" dialog and keep the main view clean. */
+  hideAwaitingRetro?: boolean;
+}) {
   const qc = useQueryClient();
   const runSearch = useServerFn(searchRentalsForViolation);
   const cancelLink = useServerFn(cancelRetroAgreementLink);
@@ -203,7 +211,7 @@ export function ViolationSearchSection({ onCreated }: { onCreated: () => void })
         </div>
       )}
 
-      {(awaiting.data?.length ?? 0) > 0 && (
+      {!hideAwaitingRetro && (awaiting.data?.length ?? 0) > 0 && (
         <Card className="border-amber-200">
           <CardContent className="p-4">
             <h3 className="mb-2 font-semibold">Awaiting Retroactive Agreements</h3>
