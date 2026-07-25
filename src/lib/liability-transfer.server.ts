@@ -200,7 +200,7 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
   const ref = (v.reference_number as string | null)?.trim() || "";
   const dateLabel = fmtDate(v.date_issued as string);
   const plateLabel =
-    ((v.license_plate as string | null) ?? vehicle?.plate ?? "").toUpperCase() || "—";
+    String((v.license_plate as string | null) ?? vehicle?.plate ?? "").toUpperCase() || "—";
   const amountLabel = fmtMoney(Number(v.total_amount ?? v.amount ?? 0));
 
   // Violation number banner (top of document)
