@@ -27,6 +27,20 @@ export interface RefAndAuthorityResult {
   confidence: number; // 0-100
 }
 
+/** Extra fields captured when re-OCRing a stored notice document. */
+export interface RefCandidate {
+  label: string; // The label text next to the number (e.g. "Bill No", "Notice #"), or "unlabeled".
+  number: string; // The digit/alphanumeric string as printed.
+}
+
+export interface RefExtractExtras {
+  notice_type: "original" | "second" | "final" | "past_due" | "prior" | null;
+  secondary_number: string | null; // A second identifying number printed on the notice (e.g. prior bill # on a second notice).
+  candidates: RefCandidate[]; // All plausible identifiers the OCR could see on the page.
+}
+
+export type RefAndAuthorityFullResult = RefAndAuthorityResult & RefExtractExtras;
+
 /**
  * Normalize a license plate for matching. Order matters:
  * 1. Uppercase + trim leading/trailing whitespace and newlines.
@@ -92,12 +106,15 @@ function detectAuthorityFromText(text: string | null | undefined): AuthorityKey 
  *  issuing authority. Uses a broader label set than the original extractor. */
 export async function extractRefAndAuthorityFromUrl(
   url: string,
-): Promise<RefAndAuthorityResult> {
-  const empty: RefAndAuthorityResult = {
+): Promise<RefAndAuthorityFullResult> {
+  const empty: RefAndAuthorityFullResult = {
     reference_number: null,
     authority_key: null,
     raw_authority_text: null,
     confidence: 0,
+    notice_type: null,
+    secondary_number: null,
+    candidates: [],
   };
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) {
@@ -117,12 +134,12 @@ export async function extractRefAndAuthorityFromUrl(
           {
             role: "system",
             content:
-              'You read toll authority / parking / traffic violation notices. Return ONLY JSON: {"reference_number":string,"authority_text":string,"confidence":number}. reference_number is THE single official identifier for this notice (Toll Bill No, Bill No, Reference #, Notice #, Violation #, Invoice #, Statement #, Account #, Transaction #, Docket #, Case #, or any prominent long-digit/alphanumeric string in a header, boxed region, or under a "PLEASE REFERENCE" instruction). Copy it EXACTLY as printed with any letter prefix; empty string if truly unreadable. authority_text is the name of the issuing organization printed on the notice (e.g. "New Jersey E-ZPass", "PA Turnpike", "Philadelphia Parking Authority", "NJ MVC"). confidence 0-100 integer. No prose, no code fences.',
+              'You read toll authority / parking / traffic violation notices (originals AND second/final/past-due notices). Scan the ENTIRE page — header, body, footer, remit stub, boxed regions — not just the top. Return ONLY JSON with this exact shape: {"reference_number":string,"authority_text":string,"confidence":number,"notice_type":"original"|"second"|"final"|"past_due"|"prior"|"","secondary_number":string,"candidates":[{"label":string,"number":string}]}. reference_number = THE primary identifier printed on this notice. Recognize ANY of these labels (in priority order): "Toll Bill No", "Bill No", "Violation No", "Violation #", "Notice No", "Notice #", "Statement No", "Statement #", "Invoice No", "Invoice #", "Reference No", "Reference #", "Account No", "Account #", "Transaction No", "Transaction #", "Citation No", "Citation #", "Case No", "Docket No", "PLEASE REFERENCE". Also accept any prominent standalone long digit/alphanumeric string (9+ characters) shown in a header or boxed region even if unlabeled — pick the most prominent one as reference_number in that case. Copy it EXACTLY as printed, including any letter prefix; empty string only if truly unreadable. If the document is a Second Notice / Final Notice / Past Due / Prior Notice (look for those exact words), set notice_type accordingly and, if the notice references an EARLIER bill/notice number in addition to its own current identifier, put the earlier one in secondary_number. Otherwise notice_type is "original" (or "" if unclear) and secondary_number is "". authority_text = the issuing organization exactly as printed (e.g. "New Jersey E-ZPass", "PA Turnpike", "Philadelphia Parking Authority", "NJ MVC"). candidates = a de-duplicated list of EVERY plausible identifier you can see anywhere on the page — for each, put the label text you saw next to it (or "unlabeled" if none) and the number/string exactly as printed. Include the primary reference_number in candidates too. Order candidates by prominence (most prominent first). Cap at 10. confidence = 0-100 integer for how sure you are about reference_number. No prose, no code fences.',
           },
           {
             role: "user",
             content: [
-              { type: "text", text: "Read the reference number and issuing authority from this notice." },
+              { type: "text", text: "Read the reference number, issuing authority, notice type, and every candidate identifier from this notice. Search the whole page." },
               { type: "image_url", image_url: { url: dataUrl } },
             ],
           },
@@ -148,17 +165,39 @@ export async function extractRefAndAuthorityFromUrl(
       return empty;
     }
     const cleanStr = (v: unknown) => (typeof v === "string" ? v.trim() : "");
-    const ref = cleanStr(parsed.reference_number)
-      .replace(/[^A-Za-z0-9-]/g, "")
-      .toUpperCase()
-      .slice(0, 40) || null;
+    const normRef = (s: string) =>
+      s.replace(/[^A-Za-z0-9-]/g, "").toUpperCase().slice(0, 40);
+    const ref = normRef(cleanStr(parsed.reference_number)) || null;
+    const secondary = normRef(cleanStr(parsed.secondary_number)) || null;
     const authText = cleanStr(parsed.authority_text) || null;
     const conf = Number(parsed.confidence);
+    const nt = cleanStr(parsed.notice_type).toLowerCase();
+    const notice_type = (["original", "second", "final", "past_due", "prior"] as const).includes(
+      nt as never,
+    )
+      ? (nt as RefExtractExtras["notice_type"])
+      : null;
+    const rawCandidates = Array.isArray(parsed.candidates) ? parsed.candidates : [];
+    const seen = new Set<string>();
+    const candidates: RefCandidate[] = [];
+    for (const c of rawCandidates) {
+      const o = (c ?? {}) as Record<string, unknown>;
+      const label = cleanStr(o.label).slice(0, 40) || "unlabeled";
+      const number = normRef(cleanStr(o.number));
+      if (!number || number.length < 5) continue;
+      if (seen.has(number)) continue;
+      seen.add(number);
+      candidates.push({ label, number });
+      if (candidates.length >= 10) break;
+    }
     return {
       reference_number: ref,
       authority_key: detectAuthorityFromText(authText),
       raw_authority_text: authText,
       confidence: Number.isFinite(conf) ? Math.max(0, Math.min(100, Math.round(conf))) : 0,
+      notice_type,
+      secondary_number: secondary && secondary !== ref ? secondary : null,
+      candidates,
     };
   } catch (e) {
     console.error("[ezpass] re-extract error", e);
