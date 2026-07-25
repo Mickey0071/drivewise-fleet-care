@@ -1942,6 +1942,24 @@ function ViolationsPage() {
         rows={selectedRows}
       />
 
+      {/* Collapsed reference material — kept in a "More" dialog to keep the
+       *  main view focused on search + tabs + list. */}
+      <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>More</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <BureauContactsCard />
+            <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+              Retroactive agreements pending signature appear in the search
+              section above once you look up a rental. This keeps the header
+              tight while you focus on the current tab.
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <NewViolationDialog open={newOpen} onOpenChange={setNewOpen} onCreated={(created) => {
         refresh();
         setNewOpen(false);
