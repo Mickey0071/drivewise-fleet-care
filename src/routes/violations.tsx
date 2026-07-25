@@ -1951,11 +1951,7 @@ function ViolationsPage() {
           </DialogHeader>
           <div className="space-y-4">
             <BureauContactsCard />
-            <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-              Retroactive agreements pending signature appear in the search
-              section above once you look up a rental. This keeps the header
-              tight while you focus on the current tab.
-            </div>
+            <AwaitingRetroSummary />
           </div>
         </DialogContent>
       </Dialog>
