@@ -192,19 +192,35 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
 
   // External documents MUST use the real EZPass violation/reference number.
   // Never fall back to the internal VIO- tracking id on any outgoing document.
+  // The reference number is helpful but not required — many second/final
+  // notices arrive without a clean ref #, and the rental agreement itself is
+  // the legal proof of liability. When it's missing, identify the toll by
+  // date + plate + amount in the cover letter and flag it visibly so the
+  // admin knows before mailing.
   const ref = (v.reference_number as string | null)?.trim() || "";
-  if (!ref) {
-    throw new Error(
-      "EZPass Ref # is missing for this violation. Enter the EZPass violation number before generating any dispute document.",
-    );
-  }
+  const dateLabel = fmtDate(v.date_issued as string);
+  const plateLabel =
+    ((v.license_plate as string | null) ?? vehicle?.plate ?? "").toUpperCase() || "—";
+  const amountLabel = fmtMoney(Number(v.total_amount ?? v.amount ?? 0));
 
   // Violation number banner (top of document)
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(176, 0, 32);
-  doc.text(`VIOLATION #: ${ref.toUpperCase()}`, left, y);
-  y += 16;
+  if (ref) {
+    doc.text(`VIOLATION #: ${ref.toUpperCase()}`, left, y);
+    y += 16;
+  } else {
+    doc.text("VIOLATION #: NOT ON FILE", left, y);
+    y += 14;
+    doc.setFontSize(9);
+    doc.text(
+      `Identified by: ${plateLabel} · ${dateLabel} · ${amountLabel}`,
+      left,
+      y,
+    );
+    y += 16;
+  }
   doc.setTextColor(20, 20, 20);
 
   // Letterhead
@@ -220,7 +236,11 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
   y += 22;
 
   line(`Date: ${fmtDate(new Date().toISOString())}`);
-  line(`Reference #: ${ref}`);
+  if (ref) {
+    line(`Reference #: ${ref}`);
+  } else {
+    line(`Reference #: (not printed on notice — identify by plate + date + amount below)`);
+  }
   blank();
 
   const authName = authority?.name ?? "Violation Processing Authority";
@@ -254,7 +274,7 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
   line(`- Time: ${(v.violation_time as string) ?? "—"}`);
   line(`- Location: ${(v.location as string) ?? (v.description as string) ?? "—"}`);
   line(`- Amount: ${fmtMoney(Number(v.total_amount ?? v.amount ?? 0))}`);
-  line(`- Citation/Reference #: ${ref}`);
+  line(`- Citation/Reference #: ${ref || "(missing on notice)"}`);
   blank();
 
   const addr =
