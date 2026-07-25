@@ -86,12 +86,20 @@ export const generateMailPacket = createServerFn({ method: "POST" })
     const out = await PDFDocument.create();
     const missing: string[] = [];
     const ref = (ctx.v.reference_number as string | null)?.trim() || "";
-    if (!ref) {
-      throw new Error(
-        "EZPass Ref # is missing for this violation. Enter the EZPass violation number before generating the mail packet.",
-      );
-    }
-    const violationStamp = `VIOLATION #: ${ref.toUpperCase()}`;
+    // Missing reference # must NOT block generation — the rental agreement is
+    // the legal proof. Fall back to a plate+date+amount identifier stamp so the
+    // authority can still match the packet to the notice.
+    const plateStamp = String(
+      (ctx.v.license_plate as string | null) ?? ctx.vehicle?.plate ?? "",
+    )
+      .toUpperCase()
+      .trim() || "NOPLATE";
+    const dateStamp = ((ctx.v.date_issued as string | null) ?? "").slice(0, 10) || "no-date";
+    const amtStamp = `$${Number(ctx.v.total_amount ?? ctx.v.amount ?? 0).toFixed(2)}`;
+    const violationStamp = ref
+      ? `VIOLATION #: ${ref.toUpperCase()}`
+      : `VIOLATION: ${plateStamp} · ${dateStamp} · ${amtStamp} (ref # missing)`;
+    if (!ref) missing.push("EZPass reference # (not on notice)");
 
     async function appendPdf(bytes: Uint8Array, opts?: { stamp?: string }) {
       const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
@@ -159,7 +167,11 @@ export const generateMailPacket = createServerFn({ method: "POST" })
         size: 14,
         color: rgb(0.69, 0, 0.125),
       });
-      note.drawText(`Violation reference #: ${ref.toUpperCase()}`, {
+      note.drawText(
+        ref
+          ? `Violation reference #: ${ref.toUpperCase()}`
+          : `Identified by: ${plateStamp} · ${dateStamp} · ${amtStamp} (reference # missing)`,
+        {
         x: 36,
         y: 710,
         size: 11,

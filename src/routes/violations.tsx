@@ -67,6 +67,7 @@ import {
   overrideViolationMailReady,
 } from "@/lib/violation-retro.functions";
 import { analyzeViolationPhoto } from "@/lib/violation-photo.functions";
+import { listAwaitingRetroAgreements } from "@/lib/retro-agreement.functions";
 import { CameraCaptureDialog } from "@/components/app/CameraCaptureDialog";
 import { SubmitDisputeDialog } from "@/components/app/SubmitDisputeDialog";
 import { CreateAgreementDialog } from "@/components/app/CreateAgreementDialog";
@@ -1172,6 +1173,53 @@ const BUREAU_CONTACTS: { name: string; phone: string; note: string }[] = [
 ];
 
 function BureauContactsCard() {
+  return _bureauContactsCard();
+}
+
+/** Compact list of renters who have a pending retro-agreement signing link.
+ *  Rendered inside the "More" dialog so the main violations view stays clean. */
+function AwaitingRetroSummary() {
+  const q = useQuery({
+    queryKey: ["awaiting-retro-summary"],
+    queryFn: () => listAwaitingRetroAgreements(),
+  });
+  const items = q.data ?? [];
+  const pending = items.filter((a) => !a.retroSignedAt);
+  const ready = items.filter((a) => a.retroSignedAt);
+  return (
+    <Card>
+      <CardContent className="p-3">
+        <div className="mb-2 text-sm font-medium">Awaiting Retroactive Agreements</div>
+        {items.length === 0 ? (
+          <div className="text-xs text-muted-foreground">No pending retroactive signing links.</div>
+        ) : (
+          <div className="space-y-2 text-xs">
+            {pending.length > 0 && (
+              <div>
+                <div className="mb-1 font-medium text-amber-700">Pending signature ({pending.length})</div>
+                <ul className="ml-4 list-disc space-y-0.5">
+                  {pending.map((a) => (
+                    <li key={a.id}>
+                      {a.customerName} — {a.vehicleLabel}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {ready.length > 0 && (
+              <div className="text-emerald-700">
+                <span className="font-medium">Signed — ready for violation:</span>{" "}
+                {ready.map((a) => a.customerName).join(", ")}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function _bureauContactsCard() {
   const [open, setOpen] = useState(false);
   return (
     <Card className="mb-4">
@@ -1294,6 +1342,34 @@ function ViolationsPage() {
     | null
   >(null);
   const [printBusy, setPrintBusy] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [bulkAuthBusy, setBulkAuthBusy] = useState(false);
+  const setAuthorityFn = useServerFn(setViolationAuthority);
+
+  /** Apply one authority to every selected row. Unblocker for the common case
+   *  where a whole batch of tolls is obviously NJ EZ Pass but each row shows
+   *  the "authority not set" block. */
+  const bulkSetAuthority = async (key: string) => {
+    if (selectedRows.length === 0 || bulkAuthBusy) return;
+    setBulkAuthBusy(true);
+    let ok = 0;
+    let fail = 0;
+    try {
+      for (const v of selectedRows) {
+        try {
+          await setAuthorityFn({ data: { id: v.id, authorityKey: key } });
+          ok++;
+        } catch {
+          fail++;
+        }
+      }
+      qc.invalidateQueries({ queryKey: ["violations"] });
+      if (fail === 0) toast.success(`Set authority on ${ok} violation${ok === 1 ? "" : "s"}`);
+      else toast.message(`Set authority on ${ok}, ${fail} failed`);
+    } finally {
+      setBulkAuthBusy(false);
+    }
+  };
 
   // Clear selection whenever the active tab changes.
   useEffect(() => {
@@ -1579,6 +1655,9 @@ function ViolationsPage() {
                 <FileUp className="mr-1 h-4 w-4" /> Bulk Upload EZPass
               </Link>
             </Button>
+            <Button variant="outline" onClick={() => setMoreOpen(true)}>
+              More…
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -1619,8 +1698,7 @@ function ViolationsPage() {
       />
 
       <ViolationSearchSection onCreated={refresh} />
-
-      <BureauContactsCard />
+      <ViolationSearchSection onCreated={refresh} hideAwaitingRetro />
 
       <Card className="mb-4">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
@@ -1658,48 +1736,67 @@ function ViolationsPage() {
               <span className="font-medium">
                 {selectedRows.length > 0 ? `${selectedRows.length} selected` : "Select violations to dispute in bulk"}
               </span>
+              {/* Primary action — one merged PDF per selected renter, ready to mail. */}
               <Button
                 size="sm"
-                variant="outline"
                 disabled={selectedRows.length === 0 || bulkBusy}
                 onClick={bulkDownloadPackets}
+                className="bg-emerald-600 hover:bg-emerald-700"
               >
-                {bulkBusy ? "Building…" : "📦 Bulk Download Packets"}
+                {bulkBusy ? "Building…" : "🖨️ Print Dispute Packets"}
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={selectedRows.length === 0}
-                onClick={() => setBulkOnlineOpen(true)}
-              >
-                🌐 Bulk Online Prep
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={filtered.length === 0 || printBusy}
-                onClick={printAllAgreements}
-                title={selectedRows.length > 0 ? "Print selected agreements" : "Print all agreements on this tab"}
-              >
-                {printBusy ? "Building…" : "🖨️ Print All Agreements"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={filtered.length === 0 || batchTransferBusy}
-                onClick={batchTransferPackets}
-                title={
-                  selectedRows.length > 0
-                    ? "Generate Transfer Packets for the selected violations"
-                    : "Generate Transfer Packets for every matched violation in view"
-                }
-              >
-                {batchTransferBusy
-                  ? "Building…"
-                  : selectedRows.length > 0
-                    ? "🧾 Batch Transfer Packets"
-                    : "🧾 Batch Transfer Packets (all)"}
-              </Button>
+              {/* Bulk Set Authority — unblocks the "authority not set" gate on a batch. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={selectedRows.length === 0 || bulkAuthBusy}
+                  >
+                    {bulkAuthBusy ? "Setting…" : "Set Authority for Selected"}
+                    <ChevronDown className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  {AUTHORITY_OPTIONS.map((o) => (
+                    <DropdownMenuItem key={o.value} onClick={() => bulkSetAuthority(o.value)}>
+                      {o.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {/* Everything else lives under Advanced. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    Advanced <ChevronDown className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuItem
+                    disabled={selectedRows.length === 0}
+                    onClick={() => setBulkOnlineOpen(true)}
+                  >
+                    🌐 Bulk Online Prep
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={filtered.length === 0 || printBusy}
+                    onClick={printAllAgreements}
+                  >
+                    {printBusy ? "Building…" : "🖨️ Print All Agreements"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={filtered.length === 0 || batchTransferBusy}
+                    onClick={batchTransferPackets}
+                  >
+                    {batchTransferBusy
+                      ? "Building…"
+                      : selectedRows.length > 0
+                        ? "🧾 Batch Transfer Packets"
+                        : "🧾 Batch Transfer Packets (all)"}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
           {isLoading ? (
@@ -1892,6 +1989,20 @@ function ViolationsPage() {
         onOpenChange={setBulkOnlineOpen}
         rows={selectedRows}
       />
+
+      {/* Collapsed reference material — kept in a "More" dialog to keep the
+       *  main view focused on search + tabs + list. */}
+      <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>More</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <BureauContactsCard />
+            <AwaitingRetroSummary />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <NewViolationDialog open={newOpen} onOpenChange={setNewOpen} onCreated={(created) => {
         refresh();
