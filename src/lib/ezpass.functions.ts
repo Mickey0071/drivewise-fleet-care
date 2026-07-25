@@ -1009,7 +1009,7 @@ export const listViolationsNeedingRef = createServerFn({ method: "GET" })
     const { data: vs, error } = await supabaseAdmin
       .from("violations")
       .select(
-        "id, license_plate, date_issued, amount, reference_number, authority_key, photo_url",
+        "id, license_plate, date_issued, amount, reference_number, authority_key, photo_url, ocr_candidates, ocr_secondary_ref, notes",
       )
       .or("reference_number.is.null,reference_number.eq.,authority_key.is.null,authority_key.eq.")
       .order("date_issued", { ascending: false })
@@ -1051,6 +1051,10 @@ export const listViolationsNeedingRef = createServerFn({ method: "GET" })
         photo_url: (r.photo_url as string | null) ?? null,
         batch_id: bid,
         batch_file_url: bid ? batchUrl.get(bid) ?? null : null,
+        ocr_candidates:
+          (r.ocr_candidates as Array<{ label: string; number: string }> | null) ?? null,
+        ocr_secondary_ref: (r.ocr_secondary_ref as string | null) ?? null,
+        notes: (r.notes as string | null) ?? null,
       };
     });
   });
