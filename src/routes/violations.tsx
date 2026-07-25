@@ -1607,6 +1607,9 @@ function ViolationsPage() {
                 <FileUp className="mr-1 h-4 w-4" /> Bulk Upload EZPass
               </Link>
             </Button>
+            <Button variant="outline" onClick={() => setMoreOpen(true)}>
+              More…
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -1647,8 +1650,7 @@ function ViolationsPage() {
       />
 
       <ViolationSearchSection onCreated={refresh} />
-
-      <BureauContactsCard />
+      <ViolationSearchSection onCreated={refresh} hideAwaitingRetro />
 
       <Card className="mb-4">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
