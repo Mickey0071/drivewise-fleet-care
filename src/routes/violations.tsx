@@ -1294,6 +1294,34 @@ function ViolationsPage() {
     | null
   >(null);
   const [printBusy, setPrintBusy] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [bulkAuthBusy, setBulkAuthBusy] = useState(false);
+  const setAuthorityFn = useServerFn(setViolationAuthority);
+
+  /** Apply one authority to every selected row. Unblocker for the common case
+   *  where a whole batch of tolls is obviously NJ EZ Pass but each row shows
+   *  the "authority not set" block. */
+  const bulkSetAuthority = async (key: string) => {
+    if (selectedRows.length === 0 || bulkAuthBusy) return;
+    setBulkAuthBusy(true);
+    let ok = 0;
+    let fail = 0;
+    try {
+      for (const v of selectedRows) {
+        try {
+          await setAuthorityFn({ data: { id: v.id, authorityKey: key } });
+          ok++;
+        } catch {
+          fail++;
+        }
+      }
+      qc.invalidateQueries({ queryKey: ["violations"] });
+      if (fail === 0) toast.success(`Set authority on ${ok} violation${ok === 1 ? "" : "s"}`);
+      else toast.message(`Set authority on ${ok}, ${fail} failed`);
+    } finally {
+      setBulkAuthBusy(false);
+    }
+  };
 
   // Clear selection whenever the active tab changes.
   useEffect(() => {
