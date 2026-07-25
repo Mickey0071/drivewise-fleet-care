@@ -1005,6 +1005,9 @@ export const listViolationsNeedingRef = createServerFn({ method: "GET" })
     photo_url: string | null;
     batch_id: string | null;
     batch_file_url: string | null;
+    ocr_candidates: Array<{ label: string; number: string }> | null;
+    ocr_secondary_ref: string | null;
+    notes: string | null;
   }>> => {
     const { data: vs, error } = await supabaseAdmin
       .from("violations")
