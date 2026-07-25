@@ -130,7 +130,14 @@ function MechanicJobPage() {
       });
       if (!completedAny) { toast.error("Mark at least one checklist item"); return; }
     }
-    if (!(pTotal > 0) && !(lTotal > 0)) { toast.error("Add parts or a labour estimate"); return; }
+    // A part doesn't need a price — sometimes the fix is covered under a
+    // prior repair / warranty and there's no charge. Accept the submission
+    // as long as there's a named part, a labour estimate, or a completed
+    // checklist item.
+    if (cleanParts.length === 0 && !(lTotal > 0)) {
+      toast.error("Add at least one part or a labour estimate");
+      return;
+    }
     setSubmitting(true);
     try {
       await submitFn({
