@@ -319,7 +319,12 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
     const hours = d.estimatedHours == null ? null : Number(d.estimatedHours);
     if (hours != null && (!Number.isFinite(hours) || hours < 0 || hours > 1000)) throw new Error("Invalid hours");
     const partsTotal = parts.reduce((s, p) => s + p.price * (p.qty || 1), 0);
-    if (!(partsTotal > 0) && !(labour > 0)) throw new Error("Add parts or a labour estimate");
+    // A part doesn't need a price — sometimes the fix is covered under a
+    // prior repair / warranty and there's no charge. Accept the submission
+    // as long as there's a named part or a labour estimate.
+    if (parts.length === 0 && !(labour > 0)) {
+      throw new Error("Add at least one part or a labour estimate");
+    }
     return {
       token: d.token,
       checklistResults: results,
