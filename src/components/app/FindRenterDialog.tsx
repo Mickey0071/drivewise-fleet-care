@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -224,7 +223,7 @@ export function FindRenterDialog({
         <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {step === "search" ? "Find Renter" : "Confirm Match"}
+              {step === "search" ? "Manual Match" : "Confirm Match"}
             </DialogTitle>
           </DialogHeader>
 
@@ -339,11 +338,18 @@ export function FindRenterDialog({
               )}
 
               <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-                <Button variant="outline" asChild>
-                  <Link to="/rentals">Create New Rental</Link>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelected(null);
+                    setLinked(true); // no rental to link to; skip match step
+                    setCreateOpen(true);
+                  }}
+                >
+                  Create New Rental Record
                 </Button>
                 <Button variant="ghost" className="text-destructive" onClick={flagOrphan} disabled={busy === "orphan"}>
-                  Plate Not Mine
+                  Plate Not In Fleet — Flag for Dispute
                 </Button>
               </DialogFooter>
             </div>
