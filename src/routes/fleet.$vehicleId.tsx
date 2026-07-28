@@ -662,7 +662,7 @@ function VehicleDetail() {
                     item.date,
                     isRepair ? "Repair" : "Expense",
                     item.category,
-                    "",
+                    item.vendor ?? "",
                     item.description,
                     item.category === "Parts" ? item.amount : "",
                     item.category === "Labor" ? item.amount : "",
@@ -692,7 +692,7 @@ function VehicleDetail() {
                     date: item.date,
                     kind: isRepair ? "Repair" : "Expense",
                     category: item.category,
-                    vendor: "",
+                    vendor: item.vendor ?? "",
                     description: item.description,
                     parts: item.category === "Parts" ? item.amount : null,
                     labor: item.category === "Labor" ? item.amount : null,
@@ -799,7 +799,7 @@ function VehicleDetail() {
                 <Row
                   key={`${e.source}-${e.id}`}
                   title={e.description || e.category}
-                  sub={`${fmtDate(e.date)} · ${e.category}`}
+                  sub={`${fmtDate(e.date)} · ${e.category}${e.vendor ? ` · ${e.vendor}` : ""}`}
                   right={
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{fmtMoney(e.amount)}</span>
