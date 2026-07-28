@@ -799,7 +799,7 @@ function VehicleDetail() {
                 <Row
                   key={`${e.source}-${e.id}`}
                   title={e.description || e.category}
-                  sub={`${fmtDate(e.date)} · ${e.category}`}
+                  sub={`${fmtDate(e.date)} · ${e.category}${e.vendor ? ` · ${e.vendor}` : ""}`}
                   right={
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{fmtMoney(e.amount)}</span>
