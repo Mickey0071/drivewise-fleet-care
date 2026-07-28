@@ -68,6 +68,13 @@ export function ExpenseDialog({ open, onOpenChange, expense, defaultVehicleId, o
   }, [open, expense, defaultVehicleId]);
 
   const isPayroll = category.trim().toLowerCase() === "payroll";
+  // A "repair-ish" expense either links to a maintenance ticket or uses a
+  // category that describes work done on a vehicle. Vendor is mandatory on
+  // these so repair history always shows who did the work.
+  const isRepairExpense =
+    !!maintenanceId ||
+    ["repair", "maintenance", "parts", "labor", "mechanic", "body shop", "tires", "brakes"]
+      .includes(category.trim().toLowerCase());
 
   // Auto-calc amount from hours * rate for payroll if both present and amount empty/derived.
   useEffect(() => {
@@ -89,6 +96,9 @@ export function ExpenseDialog({ open, onOpenChange, expense, defaultVehicleId, o
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
     const cat = category.trim();
     if (!cat) return toast.error("Pick or enter a category");
+    if (isRepairExpense && !vendor.trim()) {
+      return toast.error("Vendor is required for repair expenses");
+    }
     setSaving(true);
     try {
       await ensureCategory(cat);
