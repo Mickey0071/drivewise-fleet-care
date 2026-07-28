@@ -739,56 +739,43 @@ function VehicleDetail() {
             {completedRepairs.length === 0 ? (
               <p className="text-sm text-muted-foreground">No repair history.</p>
             ) : (
-              completedRepairs.map(m => {
-                const issue = repairDisplayTitle(m);
-                const mechanic = m.completedBy || m.vendor || "—";
-                const parts = m.partsCost ?? m.selectedSolution?.partsCost ?? 0;
-                const labor = m.laborCost ?? m.selectedSolution?.laborCost ?? 0;
-                const total = effectiveRepairCost(m);
-                return (
-                  <div key={m.id} className="rounded-md border border-border bg-card px-3 py-2">
-                    <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">{issue}</div>
-                      {repairSplitLabel(m) && (
-                        <div className="text-[11px] text-muted-foreground">🔗 {repairSplitLabel(m)}</div>
-                      )}
-                      <div className="text-xs text-muted-foreground">
-                        {fmtDate(m.completionDate ?? m.dateCompleted)} · {mechanic}
+              <div className="space-y-1">
+                {completedRepairs.map(m => {
+                  const issue = repairDisplayTitle(m);
+                  const mechanic = m.completedBy || m.vendor || "—";
+                  const parts = m.partsCost ?? m.selectedSolution?.partsCost ?? 0;
+                  const labor = m.laborCost ?? m.selectedSolution?.laborCost ?? 0;
+                  const total = effectiveRepairCost(m);
+                  return (
+                    <div key={m.id} className="rounded-md border border-border bg-card px-3 py-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium truncate">{issue}</div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {fmtDate(m.completionDate ?? m.dateCompleted)} · {mechanic}
+                            {repairSplitLabel(m) && (
+                              <span className="ml-1 text-muted-foreground/80">🔗 {repairSplitLabel(m)}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="text-right leading-tight">
+                            <span className="block text-sm font-medium">{fmtMoney(total)}</span>
+                            {(parts > 0 || labor > 0) && (
+                              <span className="text-[10px] text-muted-foreground">
+                                {parts > 0 ? `P ${fmtMoney(parts)}` : ""}
+                                {parts > 0 && labor > 0 ? " · " : ""}
+                                {labor > 0 ? `L ${fmtMoney(labor)}` : ""}
+                              </span>
+                            )}
+                          </div>
+                          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => setCompletedRepair(m)}>View</Button>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="font-medium">{fmtMoney(total)}</span>
-                      <Button variant="outline" size="sm" onClick={() => setCompletedRepair(m)}>View Details</Button>
-                    </div>
-                  </div>
-                  <div className="mt-2 rounded-md border border-border bg-muted/30 p-2">
-                    <RepairBreakdownView record={m} />
-                    <div className="mt-2 flex justify-end">
-                      <EditBreakdownButton record={m} />
-                    </div>
-                  </div>
-                  {m.lineItems && m.lineItems.length > 0 && (
-                    <div className="mt-2 space-y-1 border-t border-border pt-2">
-                      {m.lineItems.map(item => (
-                        <div key={item.id} className="flex items-center justify-between gap-2 text-xs">
-                          <div className="min-w-0">
-                            <span className="truncate font-medium">• {item.title}</span>
-                            <span className="ml-1 text-muted-foreground">
-                              {item.completedAt ? new Date(item.completedAt).toLocaleString("en-US") : ""}
-                              {item.mechanicName ? ` · ${item.mechanicName}` : ""}
-                            </span>
-                          </div>
-                          <span className="shrink-0 text-muted-foreground">
-                            {fmtMoney((Number(item.partsCost) || 0) + (Number(item.laborCost) || 0))}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
           </Section>
           <Section title={`Expenses (${otherExpenses.length})`}>
