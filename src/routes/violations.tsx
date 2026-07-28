@@ -1893,6 +1893,22 @@ function ViolationsPage() {
                         {v.rental_id && (
                           <div className="text-xs text-muted-foreground">{v.rental_id}</div>
                         )}
+                        {filter === "matched" && (
+                          <div className="mt-1 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <ReadinessBadge v={v} />
+                              <Button
+                                size="sm"
+                                variant="link"
+                                className="h-auto p-0 text-xs"
+                                onClick={() => setMissingFor(v)}
+                              >
+                                Fill missing →
+                              </Button>
+                            </div>
+                            <FieldChecklist v={v} />
+                          </div>
+                        )}
                       </td>
                       <td className="p-3 text-right font-semibold">
                         {fmtMoney(Number(v.total_amount || v.amount))}
