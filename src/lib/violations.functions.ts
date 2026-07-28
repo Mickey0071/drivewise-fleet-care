@@ -476,7 +476,16 @@ export const createViolation = createServerFn({ method: "POST" })
             .slice(0, 40) || null,
         location: (input.location || "").slice(0, 200) || null,
         time: (input.time || "").slice(0, 20) || null,
-        authorityKey: (input.authorityKey || "").slice(0, 40) || null,
+        // Auto-default authority when caller doesn't supply one: NJ plates
+        // (the entire fleet) → nj_ezpass. Admin can override on the card.
+        authorityKey:
+          (input.authorityKey || "").slice(0, 40) ||
+          (() => {
+            const p = (input.licensePlate || "").toUpperCase();
+            if (/^\(?NY\)?[\s/.\-]/.test(p)) return "ny_ezpass";
+            if (/^\(?PA\)?[\s/.\-]/.test(p)) return "pa_turnpike";
+            return "nj_ezpass";
+          })(),
       };
     },
   )

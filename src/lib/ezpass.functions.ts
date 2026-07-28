@@ -10,7 +10,7 @@ import {
 } from "@/lib/ezpass.server";
 import type { ExtractedToll } from "@/lib/ezpass.server";
 import { generateAndStoreLiabilityTransfer } from "@/lib/liability-transfer.server";
-import { extractRefAndAuthorityFromUrl } from "@/lib/ezpass.server";
+import { extractRefAndAuthorityFromUrl, detectAuthorityFromLocation } from "@/lib/ezpass.server";
 
 const VALID_AUTHORITY_KEYS = new Set([
   "nj_ezpass",
@@ -20,6 +20,8 @@ const VALID_AUTHORITY_KEYS = new Set([
   "ppa",
   "philadelphia_parking",
   "nj_mvc",
+  "drpa",
+  "sjta",
 ]);
 
 export interface EzpassBatchItem {
@@ -531,6 +533,9 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
             // EZPass ref # is auto-extracted from the scan when present; admin
             // can still enter/correct it manually on the violation card.
             reference_number: item.reference_number ?? null,
+            // Auto-populate authority from toll location + plate state so the
+            // dispute packet mailing address & statute are always ready.
+            authority_key: detectAuthorityFromLocation(item.location, item.plate),
             workflow_stage: isMatched ? "matched" : "uploaded",
             is_orphan: false,
             photo_url: originalDocUrl,
@@ -858,6 +863,7 @@ export const matchAndCommitEzpassItem = createServerFn({ method: "POST" })
         notes: `Imported from EZPass batch ${(item as { batch_id: string }).batch_id} (manual match)`,
         status: "pending",
         reference_number: (item as { reference_number: string | null }).reference_number ?? null,
+        authority_key: detectAuthorityFromLocation(item.location, item.plate),
         workflow_stage: "matched",
         is_orphan: false,
         photo_url: originalDocUrl,
