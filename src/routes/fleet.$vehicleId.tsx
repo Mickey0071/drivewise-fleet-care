@@ -480,9 +480,33 @@ function VehicleDetail() {
             <Stat label="Net P&L" value={fmtMoney(netTotal)} />
             <Stat label="ROI" value={roiPct == null ? "—" : `${roiPct.toFixed(0)}%`} />
           </div>
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setAddIncomeOpen(true)}>
+              <DollarSign className="mr-1 h-4 w-4" /> Add Income
+            </Button>
+          </div>
           <Section title="Income (payments collected)">
             {fin.incomeLineItems.length === 0 ? <Empty/> : fin.incomeLineItems.map(p => (
-              <Row key={p.id} title={fmtMoney(p.amount)} sub={`${p.renterName} · ${fmtDate(p.date)}`} right={<span className="text-xs text-muted-foreground">{p.method ?? "paid"}</span>} />
+              <Row key={p.id}
+                title={fmtMoney(p.amount)}
+                sub={`${p.renterName} · ${fmtDate(p.date)}`}
+                right={
+                  p.id.startsWith("oi_") ? (
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                        {p.method ?? "Other"}
+                      </span>
+                      <button
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => {
+                          if (confirm("Remove this income entry?")) deleteOtherIncome(p.id);
+                        }}
+                      >Delete</button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{p.method ?? "paid"}</span>
+                  )
+                } />
             ))}
           </Section>
           <Section title={`Expense breakdown (${expenseItems.length})`}>
