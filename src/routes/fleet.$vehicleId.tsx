@@ -957,7 +957,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return <Card><CardContent className="p-4"><div className="text-xs uppercase text-muted-foreground">{label}</div><div className="mt-1 text-xl font-bold">{value}</div></CardContent></Card>;
 }
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return <Card><CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader><CardContent className="space-y-2">{children}</CardContent></Card>;
+  return <Card><CardHeader className="pb-2"><CardTitle className="text-sm">{title}</CardTitle></CardHeader><CardContent className="space-y-1">{children}</CardContent></Card>;
 }
 
 function CompletedTasksTab({ vehicleId }: { vehicleId: string }) {
