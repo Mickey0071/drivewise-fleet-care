@@ -961,6 +961,12 @@ function VehicleDetail() {
         onOpenChange={setLogRepairOpen}
         vehicleId={v.id}
       />
+      <AddOtherIncomeDialog
+        open={addIncomeOpen}
+        onOpenChange={setAddIncomeOpen}
+        vehicleId={v.id}
+        vehicleLabel={`${v.year} ${v.make} ${v.model}`}
+      />
       {activeWo && (
         <WorkOrderDialog
           open={!!activeWo}
