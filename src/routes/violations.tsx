@@ -2029,6 +2029,11 @@ function ViolationsPage() {
         rows={selectedRows}
       />
 
+      <MissingFieldsSheet
+        violation={missingFor}
+        onClose={() => setMissingFor(null)}
+      />
+
       {/* Collapsed reference material — kept in a "More" dialog to keep the
        *  main view focused on search + tabs + list. */}
       <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
