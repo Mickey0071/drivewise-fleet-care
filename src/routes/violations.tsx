@@ -1255,15 +1255,14 @@ function _bureauContactsCard() {
   );
 }
 
-type TabKey = "uploaded" | "matched" | "disputed" | "completed" | "needs-ref";
+type TabKey = "uploaded" | "matched" | "disputed" | "completed";
 
-const TAB_ORDER: TabKey[] = ["uploaded", "matched", "disputed", "completed", "needs-ref"];
+const TAB_ORDER: TabKey[] = ["uploaded", "matched", "disputed", "completed"];
 const TAB_LABELS: Record<TabKey, string> = {
   uploaded: "Uploaded",
   matched: "Matched",
   disputed: "Disputed",
   completed: "Completed",
-  "needs-ref": "Needs Ref #",
 };
 
 /** A violation shows in "Needs Ref #" when either the EZPass reference number
@@ -1390,9 +1389,7 @@ function ViolationsPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
-      if (filter === "needs-ref") {
-        if (!needsRefFix(r)) return false;
-      } else if (tabOf(r) !== filter) return false;
+      if (tabOf(r) !== filter) return false;
       if (!q) return true;
       const hay = [
         r.id,
@@ -1417,11 +1414,9 @@ function ViolationsPage() {
       matched: 0,
       disputed: 0,
       completed: 0,
-      "needs-ref": 0,
     };
     for (const r of rows) {
       c[tabOf(r)]++;
-      if (needsRefFix(r)) c["needs-ref"]++;
     }
     return c;
   }, [rows]);
@@ -1698,7 +1693,6 @@ function ViolationsPage() {
       />
 
       <ViolationSearchSection onCreated={refresh} />
-      <ViolationSearchSection onCreated={refresh} hideAwaitingRetro />
 
       <Card className="mb-4">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
@@ -1728,9 +1722,7 @@ function ViolationsPage() {
 
       <Card>
         <CardContent className="p-0">
-          {filter === "needs-ref" && (
-            <NeedsRefToolbar count={filtered.length} onDone={refresh} />
-          )}
+          {null}
           {filter === "matched" && filtered.length > 0 && (
             <div className="flex flex-wrap items-center gap-3 border-b bg-muted/30 p-3 text-sm">
               <span className="font-medium">
@@ -1859,8 +1851,13 @@ function ViolationsPage() {
                               Internal ID: {v.id}
                             </div>
                             <OriginalDocControl v={v} onDone={refresh} />
-                            {filter === "needs-ref" && (
+                            {needsRefFix(v) && (
                               <>
+                                <div className="mt-1">
+                                  <Badge variant="outline" className="border-amber-300 bg-amber-50 text-[10px] text-amber-700">
+                                    ⚠️ Missing EZPass #
+                                  </Badge>
+                                </div>
                                 <AuthorityInlineEditor v={v} onDone={refresh} />
                                 <OcrCandidates v={v} onPick={refresh} />
                               </>
