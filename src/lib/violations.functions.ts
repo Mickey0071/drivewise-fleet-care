@@ -863,6 +863,101 @@ export interface ViolationHistoryRow {
   created_at: string;
 }
 
+/**
+ * Fill missing renter info on a violation. Writes to the driver record when
+ * one exists (so every other violation for that renter picks it up too), and
+ * falls back to the legacy_rental shell for migrated reservations. Only fields
+ * with a non-empty value are updated — leaving a field blank does not clear
+ * an existing value.
+ */
+export const updateRenterInfoForViolation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    violationId: string;
+    address?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    licenseNumber?: string | null;
+    dlState?: string | null;
+    fullName?: string | null;
+  }) => {
+    if (!input?.violationId) throw new Error("violationId required");
+    const clean = (v: string | null | undefined) =>
+      v == null ? undefined : String(v).trim().slice(0, 400) || undefined;
+    return {
+      violationId: input.violationId,
+      address: clean(input.address),
+      phone: clean(input.phone),
+      email: clean(input.email),
+      licenseNumber: clean(input.licenseNumber),
+      dlState: clean(input.dlState)?.toUpperCase(),
+      fullName: clean(input.fullName),
+    };
+  })
+  .handler(async ({ data }) => {
+    const { data: v, error } = await (supabaseAdmin as any)
+      .from("violations")
+      .select("id, driver_id, legacy_rental_id, retro_legacy_rental_id")
+      .eq("id", data.violationId)
+      .maybeSingle();
+    if (error || !v) throw new Error("Violation not found");
+
+    let updatedDriver = false;
+    let updatedLegacy = false;
+
+    if (v.driver_id) {
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (data.fullName) patch.full_name = data.fullName;
+      if (data.address) {
+        patch.address = data.address;
+        patch.street_address = data.address;
+      }
+      if (data.phone) patch.phone = data.phone;
+      if (data.email) patch.email = data.email;
+      if (data.licenseNumber) patch.license_number = data.licenseNumber;
+      if (data.dlState) patch.dl_state = data.dlState;
+      if (Object.keys(patch).length > 1) {
+        const { error: dErr } = await (supabaseAdmin as any)
+          .from("drivers")
+          .update(patch as never)
+          .eq("id", v.driver_id);
+        if (dErr) throw new Error(dErr.message);
+        updatedDriver = true;
+      }
+    }
+
+    const legacyId = v.retro_legacy_rental_id || v.legacy_rental_id;
+    if (legacyId) {
+      const patch: Record<string, unknown> = {};
+      if (data.fullName) patch.renter_name = data.fullName;
+      if (data.address) patch.address = data.address;
+      if (data.phone) patch.phone = data.phone;
+      if (data.email) patch.email = data.email;
+      if (data.licenseNumber) patch.dl_number = data.licenseNumber;
+      if (data.dlState) patch.dl_state = data.dlState;
+      if (Object.keys(patch).length > 0) {
+        const { error: lErr } = await (supabaseAdmin as any)
+          .from("legacy_rentals")
+          .update(patch as never)
+          .eq("id", legacyId);
+        if (lErr) throw new Error(lErr.message);
+        updatedLegacy = true;
+      }
+    }
+
+    return { ok: true as const, updatedDriver, updatedLegacy };
+  });
+
+export interface ViolationHistoryRowOriginal {
+  id: string;
+  violation_id: string;
+  from_status: string | null;
+  to_status: string;
+  reason: string | null;
+  changed_by_name: string | null;
+  created_at: string;
+}
+
 const VALID_STATUSES = ["pending", "paid", "disputed", "failed", "mailed_pending_review"] as const;
 type ViolationStatus = (typeof VALID_STATUSES)[number];
 
