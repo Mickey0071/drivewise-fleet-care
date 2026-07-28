@@ -16,7 +16,7 @@ import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2, ChevronDown, Download, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2, ChevronDown, Download, CheckCircle2, DollarSign } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { listCompletedTasksForVehicle } from "@/lib/runner-tasks-admin.functions";
 import { taskTypeLabel } from "@/lib/task-types";
