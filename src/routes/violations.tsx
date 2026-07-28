@@ -87,6 +87,14 @@ import { getViolationAgreement } from "@/lib/violations-workflow.functions";
 import { attachViolationDocument } from "@/lib/violations-workflow.functions";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
 import { PacketBuilderDialog } from "@/components/app/PacketBuilderDialog";
+import {
+  FieldChecklist,
+  ReadinessBadge,
+  MissingFieldsSheet,
+  FleetMissingSummary,
+  fieldStatus,
+  type FieldKey,
+} from "@/components/app/ViolationMissingFields";
 import { downloadCSV } from "@/lib/exports";
 
 function readFileAsDataUrl(file: File): Promise<string> {
