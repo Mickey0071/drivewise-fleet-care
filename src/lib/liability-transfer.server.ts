@@ -16,26 +16,15 @@ export interface AuthorityAddress {
  */
 export function statuteFor(authorityKey: string | null | undefined): string {
   const key = (authorityKey ?? "").trim().toLowerCase();
-  if (!key) {
-    throw new Error(
-      "Authority is not set on this violation — pick the toll/parking authority before generating dispute paperwork.",
-    );
-  }
   switch (key) {
-    case "nj_ezpass":
-    case "nj_turnpike":
-    case "ny_ezpass":
-    case "pa_turnpike":
-      return "N.J.S.A. 27:23-34.3(b) and N.J.A.C. 19:9-9.2(f)";
     case "ppa":
     case "philadelphia_parking":
       return "Philadelphia Code §12-2804(8)";
-    case "nj_mvc":
-      return "N.J.S.A. 39:4-138.1";
     default:
-      throw new Error(
-        `No statute is configured for authority "${authorityKey}". Add a statute mapping in liability-transfer.server.ts before generating this packet.`,
-      );
+      // Default (and NJ E-ZPass / NJ MVC / NJ Turnpike / general fallback):
+      // NJ rental-vehicle operator-identification statute. Never throw — a
+      // missing statute must not block the admin from printing & mailing.
+      return "N.J.S.A. 39:4-138.1";
   }
 }
 
@@ -164,24 +153,34 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "letter", compress: true });
   const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
   const left = 54;
   const right = pageW - 54;
-  let y = 56;
+  let y = 64;
 
   const { v, vehicle, driver, rental, authority } = ctx;
 
-  const ensure = (space: number) => {
-    if (y + space > pageH - 60) {
-      doc.addPage();
-      y = 56;
-    }
-  };
-  const line = (text: string, opts?: { bold?: boolean; size?: number; gap?: number }) => {
-    ensure(16);
+  // ── Simplified single-page NOTICE OF LIABILITY TRANSFER ────────────────
+  // Never throws for missing data; unknown fields print as "[SEE ATTACHED
+  // NOTICE]" or a blank underline so the admin can hand-fill and mail.
+  const ref = (v.reference_number as string | null)?.trim() || "";
+  const plate =
+    String((v.license_plate as string | null) ?? vehicle?.plate ?? "").toUpperCase() || "—";
+  const amountLabel = fmtMoney(Number(v.total_amount ?? v.amount ?? 0));
+  const addr =
+    (driver?.address as string) ||
+    [driver?.street_address, driver?.city, driver?.state, driver?.zip_code]
+      .filter(Boolean)
+      .join(", ") ||
+    "________________________________________";
+
+  const write = (
+    text: string,
+    opts?: { bold?: boolean; size?: number; color?: [number, number, number]; gap?: number },
+  ) => {
     doc.setFont("helvetica", opts?.bold ? "bold" : "normal");
-    doc.setFontSize(opts?.size ?? 10);
-    doc.setTextColor(20, 20, 20);
+    doc.setFontSize(opts?.size ?? 10.5);
+    const c = opts?.color ?? [20, 20, 20];
+    doc.setTextColor(c[0], c[1], c[2]);
     const wrapped = doc.splitTextToSize(text, right - left);
     doc.text(wrapped, left, y);
     y += (opts?.gap ?? 14) * (Array.isArray(wrapped) ? wrapped.length : 1);
@@ -190,171 +189,75 @@ export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array
     y += h;
   };
 
-  // External documents MUST use the real EZPass violation/reference number.
-  // Never fall back to the internal VIO- tracking id on any outgoing document.
-  // The reference number is helpful but not required — many second/final
-  // notices arrive without a clean ref #, and the rental agreement itself is
-  // the legal proof of liability. When it's missing, identify the toll by
-  // date + plate + amount in the cover letter and flag it visibly so the
-  // admin knows before mailing.
-  const ref = (v.reference_number as string | null)?.trim() || "";
-  const dateLabel = fmtDate(v.date_issued as string);
-  const plateLabel =
-    String((v.license_plate as string | null) ?? vehicle?.plate ?? "").toUpperCase() || "—";
-  const amountLabel = fmtMoney(Number(v.total_amount ?? v.amount ?? 0));
-
-  // Violation number banner (top of document)
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(176, 0, 32);
-  if (ref) {
-    doc.text(`VIOLATION #: ${ref.toUpperCase()}`, left, y);
-    y += 16;
-  } else {
-    doc.text("VIOLATION #: NOT ON FILE", left, y);
-    y += 14;
-    doc.setFontSize(9);
-    doc.text(
-      `Identified by: ${plateLabel} · ${dateLabel} · ${amountLabel}`,
-      left,
-      y,
-    );
-    y += 16;
-  }
-  doc.setTextColor(20, 20, 20);
-
   // Letterhead
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(16, 122, 60);
-  doc.text("CAMAUTO RENTALS", left, y);
-  y += 16;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(90, 90, 90);
-  doc.text(`${OWNER.legal} · ${OWNER.address} · ${OWNER.phone}`, left, y);
-  y += 22;
+  write("CAMAUTO RENTALS", { bold: true, size: 16, color: [16, 122, 60], gap: 18 });
+  write(OWNER.legal, { size: 9, color: [90, 90, 90], gap: 11 });
+  write(OWNER.address, { size: 9, color: [90, 90, 90], gap: 11 });
+  write(`${OWNER.phone} | ${OWNER.email}`, { size: 9, color: [90, 90, 90], gap: 11 });
+  blank(10);
 
-  line(`Date: ${fmtDate(new Date().toISOString())}`);
-  if (ref) {
-    line(`Reference #: ${ref}`);
-  } else {
-    line(`Reference #: (not printed on notice — identify by plate + date + amount below)`);
-  }
-  blank();
+  write(`Date: ${fmtDate(new Date().toISOString())}`);
+  blank(10);
 
-  const authName = authority?.name ?? "Violation Processing Authority";
-  const authLines = (authority?.address_lines ?? "").split("\n").filter(Boolean);
-  line(`To: ${authName}`, { bold: true });
-  for (const al of authLines) line(al);
-  line(`Re: Liability Transfer for Vehicle ${(v.license_plate as string) ?? vehicle?.plate ?? "—"}`, {
-    bold: true,
-  });
-  blank();
+  // Recipient
+  const authName = authority?.name ?? "NJ E-ZPass Violation Processing Center";
+  const authLines = (authority?.address_lines ?? "P.O. Box 4971\nTrenton, NJ 08650")
+    .split("\n")
+    .filter(Boolean);
+  write(`To: ${authName}`, { bold: true });
+  for (const al of authLines) write(al);
+  blank(8);
+
+  // Re: block
+  write("Re: NOTICE OF LIABILITY TRANSFER", { bold: true });
+  write(`EZPass Violation #: ${ref ? ref.toUpperCase() : "[SEE ATTACHED NOTICE]"}`);
+  write(`Vehicle Plate: ${plate}`);
+  write(`Violation Date: ${fmtDate(v.date_issued as string)}`);
+  write(`Amount: ${amountLabel}`);
+  blank(10);
 
   const statute = statuteFor((v.authority_key as string | null) ?? null);
-  line(
-    `Pursuant to ${statute}, Camauto Rentals (Rentalprise LLC, registered rental car company) hereby provides notice of operator identity and requests transfer of liability for the violation referenced below.`,
+  write(
+    `Pursuant to ${statute}, ${OWNER.legal} hereby identifies the operator of the above vehicle at the time of this violation and requests transfer of liability.`,
   );
-  blank();
+  blank(10);
 
-  line("VEHICLE INFORMATION:", { bold: true });
-  line(
-    `- Vehicle: ${[vehicle?.year, vehicle?.make, vehicle?.model].filter(Boolean).join(" ") || "—"}`,
-  );
-  line(`- Plate: ${(v.license_plate as string) ?? vehicle?.plate ?? "—"}`);
-  line(`- VIN: ${(vehicle?.vin as string) ?? "—"}`);
-  line(`- Owner: ${OWNER.legal}`);
-  line(`- Address: ${OWNER.address}`);
-  line(`- Phone: ${OWNER.phone}`);
-  blank();
+  // Vehicle
+  write("VEHICLE:", { bold: true });
+  const vehLine = [
+    [vehicle?.year, vehicle?.make, vehicle?.model].filter(Boolean).join(" ") || "—",
+    `Plate: ${plate}`,
+    `VIN: ${(vehicle?.vin as string) || "—"}`,
+  ].join(" · ");
+  write(vehLine);
+  blank(10);
 
-  line("VIOLATION DETAILS:", { bold: true });
-  line(`- Date: ${fmtDate(v.date_issued as string)}`);
-  line(`- Time: ${(v.violation_time as string) ?? "—"}`);
-  line(`- Location: ${(v.location as string) ?? (v.description as string) ?? "—"}`);
-  line(`- Amount: ${fmtMoney(Number(v.total_amount ?? v.amount ?? 0))}`);
-  line(`- Citation/Reference #: ${ref || "(missing on notice)"}`);
-  blank();
-
-  const addr =
-    (driver?.address as string) ||
-    [driver?.street_address, driver?.city, driver?.state, driver?.zip_code]
-      .filter(Boolean)
-      .join(", ");
-  // Track required renter fields that are blank so the admin knows to fill
-  // them in (especially for migrated reservations) before mailing.
-  const missing: string[] = [];
-  const TODO = "[ ADD BEFORE MAILING ]";
-  const req = (val: unknown, label: string): string => {
-    const s = typeof val === "string" ? val.trim() : val != null ? String(val) : "";
-    if (!s) {
-      missing.push(label);
-      return TODO;
-    }
-    return s;
-  };
-  line("RENTER INFORMATION (at time of violation):", { bold: true });
-  line(`- Full Name: ${req(driver?.full_name, "Full Name")}`);
-  line(`- Address: ${req(addr, "Address")}`);
-  line(`- Driver's License: ${req(driver?.license_number, "Driver's License #")}`);
-  line(`- License State: ${(driver?.dl_state as string) || "—"}`);
-  line(`- License Expiration: ${fmtDate(driver?.license_expiry as string)}`);
-  line(`- Phone: ${(driver?.phone as string) || "—"}`);
-  line(`- Email: ${(driver?.email as string) || "—"}`);
-  line(`- Date of Birth: ${fmtDate(driver?.date_of_birth as string)}`);
-  line(`- Rental Agreement #: ${(rental?.id as string) || "—"}`);
-  line(
-    `- Rental Period: ${
-      rental?.start_date ? fmtDate(rental?.start_date as string) : req("", "Rental start date")
+  // Renter
+  write("RENTER (operator at time of violation):", { bold: true });
+  write(`Name: ${(driver?.full_name as string) || "________________________________________"}`);
+  write(`Address: ${addr}`);
+  write(`Phone: ${(driver?.phone as string) || "____________________"}`);
+  write(`License #: ${(driver?.license_number as string) || "____________________"}`);
+  write(
+    `Rental Period: ${
+      rental?.start_date ? fmtDate(rental?.start_date as string) : "____________"
     } to ${rental?.end_date ? fmtDate(rental?.end_date as string) : "ongoing"}`,
   );
-  blank();
+  write(`Rental Agreement #: ${(rental?.id as string) || "____________"}`);
+  blank(12);
 
-  if (missing.length > 0) {
-    ensure(40);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(176, 0, 32);
-    const warn = doc.splitTextToSize(
-      `ACTION REQUIRED — missing renter information: ${missing.join(", ")}. ` +
-        `Add these details to the migrated reservation, then regenerate this packet before mailing.`,
-      right - left,
-    );
-    doc.text(warn, left, y);
-    y += 14 * (Array.isArray(warn) ? warn.length : 1);
-    doc.setTextColor(20, 20, 20);
-    blank();
-  }
+  write(
+    "The renter executed a signed rental agreement accepting full responsibility for all tolls, fines, and violations incurred during the rental period.",
+  );
+  blank(10);
 
-  line("ATTACHED DOCUMENTS:", { bold: true });
-  line("- Copy of signed rental agreement");
-  line("- Copy of renter's driver's license (front)");
-  line("- Copy of original violation notice");
-  blank();
+  write("Attached: Signed rental agreement", { bold: true });
+  blank(24);
 
-  line(
-    `Pursuant to ${statute} and applicable rental car liability transfer statutes, we hereby formally identify the above-named individual as the sole operator of the vehicle during the violation period. The renter executed a signed rental agreement accepting full responsibility for all tolls, fines, and violations incurred during the rental period.`,
-  );
-  blank();
-  line(
-    `We respectfully request that liability for this violation be transferred to the renter directly. We are not disputing the validity of the violation; we are merely providing required information for liability transfer per applicable law.`,
-  );
-  blank();
-  line(
-    `Please contact the renter directly using the information provided. Camauto Rentals has no further obligation regarding this matter pursuant to the rental car liability transfer statutes cited above.`,
-  );
-  blank();
-  line(
-    `If you require additional documentation or have questions, please contact us at ${OWNER.email} or ${OWNER.phone}.`,
-  );
-  blank(16);
-  line("Respectfully,");
-  blank(20);
-  line(OWNER.signer, { bold: true });
-  line("Camauto Rentals");
-  line(`Date: ${fmtDate(new Date().toISOString())}`);
-  line(`Reference #: ${ref}`);
+  write("Respectfully,");
+  blank(28);
+  write(OWNER.signer, { bold: true });
+  write("Camauto Rentals");
 
   return new Uint8Array(doc.output("arraybuffer"));
 }
