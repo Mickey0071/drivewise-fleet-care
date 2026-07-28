@@ -948,15 +948,7 @@ export const updateRenterInfoForViolation = createServerFn({ method: "POST" })
     return { ok: true as const, updatedDriver, updatedLegacy };
   });
 
-export interface ViolationHistoryRowOriginal {
-  id: string;
-  violation_id: string;
-  from_status: string | null;
-  to_status: string;
-  reason: string | null;
-  changed_by_name: string | null;
-  created_at: string;
-}
+// (ViolationHistoryRow is declared below.)
 
 const VALID_STATUSES = ["pending", "paid", "disputed", "failed", "mailed_pending_review"] as const;
 type ViolationStatus = (typeof VALID_STATUSES)[number];
