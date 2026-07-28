@@ -67,6 +67,10 @@ export interface ViolationRow {
   rental_end?: string | null;
   ocr_candidates?: Array<{ label: string; number: string }> | null;
   ocr_secondary_ref?: string | null;
+  driver_address?: string | null;
+  driver_email?: string | null;
+  driver_license_number?: string | null;
+  driver_dl_state?: string | null;
 }
 
 export const listViolations = createServerFn({ method: "GET" })
@@ -83,14 +87,18 @@ export const listViolations = createServerFn({ method: "GET" })
     const vehicleIds = Array.from(new Set(rows.map((r) => r.vehicle_id).filter(Boolean))) as string[];
     const [{ data: drivers }, { data: vehicles }] = await Promise.all([
       driverIds.length
-        ? supabaseAdmin.from("drivers").select("id, full_name, phone").in("id", driverIds)
-        : Promise.resolve({ data: [] as { id: string; full_name: string; phone: string }[] }),
+        ? supabaseAdmin
+            .from("drivers")
+            .select(
+              "id, full_name, phone, email, license_number, dl_state, address, street_address, city, state, zip_code",
+            )
+            .in("id", driverIds)
+        : Promise.resolve({ data: [] as any[] }),
       vehicleIds.length
         ? supabaseAdmin.from("vehicles").select("id, plate, make, model, year").in("id", vehicleIds)
         : Promise.resolve({ data: [] as { id: string; plate: string; make: string; model: string; year: number }[] }),
     ]);
-    const dMap = new Map((drivers ?? []).map((d) => [d.id, d.full_name]));
-    const dPhone = new Map((drivers ?? []).map((d) => [d.id, (d as any).phone ?? null]));
+    const dMap = new Map((drivers ?? []).map((d: any) => [d.id, d]));
     const vMap = new Map(
       (vehicles ?? []).map((v) => [v.id, `${v.year} ${v.make} ${v.model} (${v.plate})`]),
     );
@@ -111,23 +119,36 @@ export const listViolations = createServerFn({ method: "GET" })
     const { data: legacyRows } = legacyIds.length
       ? await supabaseAdmin
           .from("legacy_rentals")
-          .select("id, retro_signed_at, renter_name, phone")
+          .select("id, retro_signed_at, renter_name, phone, email, address, dl_number, dl_state")
           .in("id", legacyIds)
-      : { data: [] as { id: string; retro_signed_at: string | null; renter_name: string | null; phone: string | null }[] };
+      : { data: [] as any[] };
     const lMap = new Map((legacyRows ?? []).map((r) => [r.id, r]));
     return rows.map((r) => {
       const rental = r.rental_id ? rMap.get(r.rental_id) : undefined;
       const legacyId = (r as any).retro_legacy_rental_id || r.legacy_rental_id;
       const legacy = legacyId ? lMap.get(legacyId) : undefined;
       const agreementOnFile = Boolean(rental?.agreement_pdf_url) || Boolean(legacy?.retro_signed_at);
+      const driver: any = r.driver_id ? dMap.get(r.driver_id) : undefined;
+      const driverAddress =
+        (driver?.address as string | null) ||
+        [driver?.street_address, driver?.city, driver?.state, driver?.zip_code]
+          .filter(Boolean)
+          .join(", ") ||
+        (legacy?.address as string | null) ||
+        null;
       return {
         ...r,
         driver_name:
-          (r.driver_id ? dMap.get(r.driver_id) ?? null : null) ||
+          (driver?.full_name ?? null) ||
           (legacy?.renter_name ?? null),
         driver_phone:
-          (r.driver_id ? dPhone.get(r.driver_id) ?? null : null) ||
+          (driver?.phone ?? null) ||
           ((legacy as any)?.phone ?? null),
+        driver_email: (driver?.email ?? null) || (legacy?.email ?? null),
+        driver_license_number:
+          (driver?.license_number ?? null) || (legacy?.dl_number ?? null),
+        driver_dl_state: (driver?.dl_state ?? null) || (legacy?.dl_state ?? null),
+        driver_address: driverAddress,
         vehicle_label: r.vehicle_id ? vMap.get(r.vehicle_id) ?? null : null,
         agreement_on_file: agreementOnFile,
         rental_start: rental?.start_date ?? null,
@@ -841,6 +862,93 @@ export interface ViolationHistoryRow {
   changed_by_name: string | null;
   created_at: string;
 }
+
+/**
+ * Fill missing renter info on a violation. Writes to the driver record when
+ * one exists (so every other violation for that renter picks it up too), and
+ * falls back to the legacy_rental shell for migrated reservations. Only fields
+ * with a non-empty value are updated — leaving a field blank does not clear
+ * an existing value.
+ */
+export const updateRenterInfoForViolation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    violationId: string;
+    address?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    licenseNumber?: string | null;
+    dlState?: string | null;
+    fullName?: string | null;
+  }) => {
+    if (!input?.violationId) throw new Error("violationId required");
+    const clean = (v: string | null | undefined) =>
+      v == null ? undefined : String(v).trim().slice(0, 400) || undefined;
+    return {
+      violationId: input.violationId,
+      address: clean(input.address),
+      phone: clean(input.phone),
+      email: clean(input.email),
+      licenseNumber: clean(input.licenseNumber),
+      dlState: clean(input.dlState)?.toUpperCase(),
+      fullName: clean(input.fullName),
+    };
+  })
+  .handler(async ({ data }) => {
+    const { data: v, error } = await (supabaseAdmin as any)
+      .from("violations")
+      .select("id, driver_id, legacy_rental_id, retro_legacy_rental_id")
+      .eq("id", data.violationId)
+      .maybeSingle();
+    if (error || !v) throw new Error("Violation not found");
+
+    let updatedDriver = false;
+    let updatedLegacy = false;
+
+    if (v.driver_id) {
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (data.fullName) patch.full_name = data.fullName;
+      if (data.address) {
+        patch.address = data.address;
+        patch.street_address = data.address;
+      }
+      if (data.phone) patch.phone = data.phone;
+      if (data.email) patch.email = data.email;
+      if (data.licenseNumber) patch.license_number = data.licenseNumber;
+      if (data.dlState) patch.dl_state = data.dlState;
+      if (Object.keys(patch).length > 1) {
+        const { error: dErr } = await (supabaseAdmin as any)
+          .from("drivers")
+          .update(patch as never)
+          .eq("id", v.driver_id);
+        if (dErr) throw new Error(dErr.message);
+        updatedDriver = true;
+      }
+    }
+
+    const legacyId = v.retro_legacy_rental_id || v.legacy_rental_id;
+    if (legacyId) {
+      const patch: Record<string, unknown> = {};
+      if (data.fullName) patch.renter_name = data.fullName;
+      if (data.address) patch.address = data.address;
+      if (data.phone) patch.phone = data.phone;
+      if (data.email) patch.email = data.email;
+      if (data.licenseNumber) patch.dl_number = data.licenseNumber;
+      if (data.dlState) patch.dl_state = data.dlState;
+      if (Object.keys(patch).length > 0) {
+        const { error: lErr } = await (supabaseAdmin as any)
+          .from("legacy_rentals")
+          .update(patch as never)
+          .eq("id", legacyId);
+        if (lErr) throw new Error(lErr.message);
+        updatedLegacy = true;
+      }
+    }
+
+    return { ok: true as const, updatedDriver, updatedLegacy };
+  });
+
+// (ViolationHistoryRow is declared below.)
 
 const VALID_STATUSES = ["pending", "paid", "disputed", "failed", "mailed_pending_review"] as const;
 type ViolationStatus = (typeof VALID_STATUSES)[number];

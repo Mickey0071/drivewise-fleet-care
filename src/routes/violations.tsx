@@ -87,6 +87,14 @@ import { getViolationAgreement } from "@/lib/violations-workflow.functions";
 import { attachViolationDocument } from "@/lib/violations-workflow.functions";
 import { ViolationSearchSection } from "@/components/app/ViolationSearchSection";
 import { PacketBuilderDialog } from "@/components/app/PacketBuilderDialog";
+import {
+  FieldChecklist,
+  ReadinessBadge,
+  MissingFieldsSheet,
+  FleetMissingSummary,
+  fieldStatus,
+  type FieldKey,
+} from "@/components/app/ViolationMissingFields";
 import { downloadCSV } from "@/lib/exports";
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -1344,6 +1352,8 @@ function ViolationsPage() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [bulkAuthBusy, setBulkAuthBusy] = useState(false);
   const setAuthorityFn = useServerFn(setViolationAuthority);
+  const [missingFor, setMissingFor] = useState<ViolationRow | null>(null);
+  const [missingFieldFilter, setMissingFieldFilter] = useState<FieldKey | null>(null);
 
   /** Apply one authority to every selected row. Unblocker for the common case
    *  where a whole batch of tolls is obviously NJ EZ Pass but each row shows
@@ -1390,6 +1400,10 @@ function ViolationsPage() {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (tabOf(r) !== filter) return false;
+      if (filter === "matched" && missingFieldFilter) {
+        const s = fieldStatus(r);
+        if (s[missingFieldFilter]) return false;
+      }
       if (!q) return true;
       const hay = [
         r.id,
@@ -1406,7 +1420,11 @@ function ViolationsPage() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [rows, filter, search]);
+  }, [rows, filter, search, missingFieldFilter]);
+
+  // Every matched-tab violation — the fleet-wide missing-field summary is
+  // computed off the full tab, not the currently-filtered view.
+  const matchedRows = useMemo(() => rows.filter((r) => tabOf(r) === "matched"), [rows]);
 
   const tabCounts = useMemo(() => {
     const c: Record<TabKey, number> = {
@@ -1720,6 +1738,14 @@ function ViolationsPage() {
         </CardContent>
       </Card>
 
+      {filter === "matched" && matchedRows.length > 0 && (
+        <FleetMissingSummary
+          rows={matchedRows}
+          activeField={missingFieldFilter}
+          onPickField={setMissingFieldFilter}
+        />
+      )}
+
       <Card>
         <CardContent className="p-0">
           {null}
@@ -1875,6 +1901,22 @@ function ViolationsPage() {
                         {v.rental_id && (
                           <div className="text-xs text-muted-foreground">{v.rental_id}</div>
                         )}
+                        {filter === "matched" && (
+                          <div className="mt-1 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <ReadinessBadge v={v} />
+                              <Button
+                                size="sm"
+                                variant="link"
+                                className="h-auto p-0 text-xs"
+                                onClick={() => setMissingFor(v)}
+                              >
+                                Fill missing →
+                              </Button>
+                            </div>
+                            <FieldChecklist v={v} />
+                          </div>
+                        )}
                       </td>
                       <td className="p-3 text-right font-semibold">
                         {fmtMoney(Number(v.total_amount || v.amount))}
@@ -1985,6 +2027,11 @@ function ViolationsPage() {
         open={bulkOnlineOpen}
         onOpenChange={setBulkOnlineOpen}
         rows={selectedRows}
+      />
+
+      <MissingFieldsSheet
+        violation={missingFor}
+        onClose={() => setMissingFor(null)}
       />
 
       {/* Collapsed reference material — kept in a "More" dialog to keep the
