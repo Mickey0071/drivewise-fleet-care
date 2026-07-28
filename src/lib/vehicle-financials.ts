@@ -15,6 +15,7 @@ import {
   repairCost,
   countableExpenses,
 } from "@/lib/money-rules";
+import { listOtherIncome } from "@/lib/other-income";
 
 // ---------------------------------------------------------------------------
 // UNIFIED VEHICLE FINANCIAL ENGINE
@@ -130,6 +131,22 @@ export function getVehicleFinancials(
     }))
     .filter((it) => inRange(it.date, range))
     .sort((a, b) => b.date.localeCompare(a.date));
+
+  // Manually-entered "other income" for this vehicle (insurance claims,
+  // cash rentals, referral bonuses, etc.). Persisted in localStorage via
+  // src/lib/other-income.ts and rolled into every income tile & ROI calc.
+  for (const oi of listOtherIncome(vehicleId)) {
+    if (!inRange(oi.date, range)) continue;
+    incomeLineItems.push({
+      id: oi.id,
+      date: oi.date,
+      renterName: oi.source || oi.category,
+      amount: Number(oi.amount || 0),
+      method: oi.category,
+      rentalId: "",
+    });
+  }
+  incomeLineItems.sort((a, b) => b.date.localeCompare(a.date));
 
   // ----- EXPENSES: manual + repairs/maintenance + violations -----
   const expenseLineItems: FinancialExpenseItem[] = [];

@@ -16,7 +16,7 @@ import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2, ChevronDown, Download, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2, ChevronDown, Download, CheckCircle2, DollarSign } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { listCompletedTasksForVehicle } from "@/lib/runner-tasks-admin.functions";
 import { taskTypeLabel } from "@/lib/task-types";
@@ -37,6 +37,8 @@ import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 
 import { LogPastRepairDialog } from "@/components/app/LogPastRepairDialog";
+import { AddOtherIncomeDialog } from "@/components/app/AddOtherIncomeDialog";
+import { useOtherIncomeVersion, listOtherIncome, deleteOtherIncome } from "@/lib/other-income";
 import type { Maintenance, WorkOrder, Rental } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { lastServiceFor, computeVehicleAlerts, repairDisplayTitle, repairReportedIssue, repairSplitLabel } from "@/lib/maintenance-utils";
@@ -58,6 +60,7 @@ export const Route = createFileRoute("/fleet/$vehicleId")({
 
 function VehicleDetail() {
   useStoreVersion();
+  useOtherIncomeVersion();
   const { vehicleId } = Route.useParams();
   const { tab, maint } = Route.useSearch();
   const v = vehicleById(vehicleId);
@@ -69,6 +72,7 @@ function VehicleDetail() {
   const [reportOpen, setReportOpen] = useState(false);
   const [createWoOpen, setCreateWoOpen] = useState(false);
   const [logRepairOpen, setLogRepairOpen] = useState(false);
+  const [addIncomeOpen, setAddIncomeOpen] = useState(false);
   const [activeWo, setActiveWo] = useState<WorkOrder | null>(null);
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
@@ -476,9 +480,33 @@ function VehicleDetail() {
             <Stat label="Net P&L" value={fmtMoney(netTotal)} />
             <Stat label="ROI" value={roiPct == null ? "—" : `${roiPct.toFixed(0)}%`} />
           </div>
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setAddIncomeOpen(true)}>
+              <DollarSign className="mr-1 h-4 w-4" /> Add Income
+            </Button>
+          </div>
           <Section title="Income (payments collected)">
             {fin.incomeLineItems.length === 0 ? <Empty/> : fin.incomeLineItems.map(p => (
-              <Row key={p.id} title={fmtMoney(p.amount)} sub={`${p.renterName} · ${fmtDate(p.date)}`} right={<span className="text-xs text-muted-foreground">{p.method ?? "paid"}</span>} />
+              <Row key={p.id}
+                title={fmtMoney(p.amount)}
+                sub={`${p.renterName} · ${fmtDate(p.date)}`}
+                right={
+                  p.id.startsWith("oi_") ? (
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                        {p.method ?? "Other"}
+                      </span>
+                      <button
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => {
+                          if (confirm("Remove this income entry?")) deleteOtherIncome(p.id);
+                        }}
+                      >Delete</button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{p.method ?? "paid"}</span>
+                  )
+                } />
             ))}
           </Section>
           <Section title={`Expense breakdown (${expenseItems.length})`}>
@@ -932,6 +960,12 @@ function VehicleDetail() {
         open={logRepairOpen}
         onOpenChange={setLogRepairOpen}
         vehicleId={v.id}
+      />
+      <AddOtherIncomeDialog
+        open={addIncomeOpen}
+        onOpenChange={setAddIncomeOpen}
+        vehicleId={v.id}
+        vehicleLabel={`${v.year} ${v.make} ${v.model}`}
       />
       {activeWo && (
         <WorkOrderDialog
