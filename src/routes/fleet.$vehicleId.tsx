@@ -37,6 +37,8 @@ import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 
 import { LogPastRepairDialog } from "@/components/app/LogPastRepairDialog";
+import { AddOtherIncomeDialog } from "@/components/app/AddOtherIncomeDialog";
+import { useOtherIncomeVersion, listOtherIncome, deleteOtherIncome } from "@/lib/other-income";
 import type { Maintenance, WorkOrder, Rental } from "@/lib/mock/data";
 import { workOrders } from "@/lib/mock/data";
 import { lastServiceFor, computeVehicleAlerts, repairDisplayTitle, repairReportedIssue, repairSplitLabel } from "@/lib/maintenance-utils";
@@ -58,6 +60,7 @@ export const Route = createFileRoute("/fleet/$vehicleId")({
 
 function VehicleDetail() {
   useStoreVersion();
+  useOtherIncomeVersion();
   const { vehicleId } = Route.useParams();
   const { tab, maint } = Route.useSearch();
   const v = vehicleById(vehicleId);
@@ -69,6 +72,7 @@ function VehicleDetail() {
   const [reportOpen, setReportOpen] = useState(false);
   const [createWoOpen, setCreateWoOpen] = useState(false);
   const [logRepairOpen, setLogRepairOpen] = useState(false);
+  const [addIncomeOpen, setAddIncomeOpen] = useState(false);
   const [activeWo, setActiveWo] = useState<WorkOrder | null>(null);
   const [inspectionDetailId, setInspectionDetailId] = useState<string | null>(null);
   const [resolveRecord, setResolveRecord] = useState<Maintenance | null>(null);
