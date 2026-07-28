@@ -1738,6 +1738,14 @@ function ViolationsPage() {
         </CardContent>
       </Card>
 
+      {filter === "matched" && matchedRows.length > 0 && (
+        <FleetMissingSummary
+          rows={matchedRows}
+          activeField={missingFieldFilter}
+          onPickField={setMissingFieldFilter}
+        />
+      )}
+
       <Card>
         <CardContent className="p-0">
           {null}
