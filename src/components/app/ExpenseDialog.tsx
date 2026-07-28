@@ -246,8 +246,14 @@ export function ExpenseDialog({ open, onOpenChange, expense, defaultVehicleId, o
           </div>
 
           <div>
-            <Label className="mb-1.5 block text-xs">Vendor / Paid to</Label>
-            <Input value={vendor} onChange={(e) => setVendor(e.target.value)} />
+            <Label className="mb-1.5 block text-xs">
+              Vendor / Paid to{isRepairExpense && <span className="text-destructive"> *</span>}
+            </Label>
+            <Input
+              value={vendor}
+              onChange={(e) => setVendor(e.target.value)}
+              placeholder={isRepairExpense ? "Required — who did the work?" : "e.g. QuickLube"}
+            />
           </div>
 
           <div>
