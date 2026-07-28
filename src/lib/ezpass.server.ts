@@ -18,6 +18,8 @@ export type AuthorityKey =
   | "pa_turnpike"
   | "ppa"
   | "nj_mvc"
+  | "drpa"
+  | "sjta"
   | null;
 
 export interface RefAndAuthorityResult {
@@ -91,6 +93,9 @@ function detectAuthorityFromText(text: string | null | undefined): AuthorityKey 
   if (!t) return null;
   if (/philadelphia|ppa|phila\.?\s*parking/.test(t)) return "ppa";
   if (/pa\s*turnpike|pennsylvania\s*turnpike/.test(t)) return "pa_turnpike";
+  if (/drpa|delaware\s*river\s*port|ben\s*franklin|walt\s*whitman|commodore\s*barry|betsy\s*ross/.test(t))
+    return "drpa";
+  if (/sjta|south\s*jersey\s*transportation|atlantic\s*city\s*expressway/.test(t)) return "sjta";
   if (/nj\s*turnpike|new\s*jersey\s*turnpike|garden\s*state\s*parkway|njta/.test(t))
     return "nj_turnpike";
   if (/(mta|tbta|port\s*authority|thruway|ny\s*e-?z\s*pass|new\s*york\s*e-?z\s*pass)/.test(t))
@@ -100,6 +105,41 @@ function detectAuthorityFromText(text: string | null | undefined): AuthorityKey 
     return "nj_ezpass";
   if (/e-?z\s*pass|ezpass/.test(t)) return "nj_ezpass"; // best-guess default for bare EZPass
   return null;
+}
+
+/**
+ * Map a toll plaza / location string (and the plate) to an issuing authority.
+ * Used at ingest time so every violation gets an authority auto-populated —
+ * admins never have to enter it manually. Defaults to nj_ezpass for NJ plates
+ * (every vehicle in this fleet has NJ plates), so we always return a usable
+ * authority key rather than null.
+ */
+export function detectAuthorityFromLocation(
+  location: string | null | undefined,
+  plate: string | null | undefined,
+): AuthorityKey {
+  const loc = (location ?? "").toUpperCase();
+  if (loc) {
+    // DRPA bridges: Ben Franklin (BFB), Walt Whitman (WWB), Commodore Barry (CBB), Betsy Ross (BRB)
+    if (/\b(BFB|WWB|CBB|BRB)\b|BEN\s*FRANKLIN|WALT\s*WHITMAN|COMMODORE\s*BARRY|BETSY\s*ROSS|DRPA/.test(loc)) {
+      return "drpa";
+    }
+    // SJTA — Atlantic City Expressway
+    if (/\bACE\b|ATLANTIC\s*CITY|SJTA|EXPRESSWAY/.test(loc)) return "sjta";
+    // NJ Turnpike interchange codes (e.g. 40E / 40W / 06E) + Garden State Parkway (41E/41W) — both run by NJTA
+    if (/NJ\s*TURNPIKE|NJTP\b|TURNPIKE|GARDEN\s*STATE|GSP\b|NJTA|\b\d{2}[EW]\b/.test(loc)) {
+      return "nj_turnpike";
+    }
+    // PA Turnpike
+    if (/PA\s*TURNPIKE|PENNSYLVANIA\s*TURNPIKE/.test(loc)) return "pa_turnpike";
+    // Philadelphia Parking Authority
+    if (/PPA|PHILADELPHIA\s*PARKING/.test(loc)) return "ppa";
+  }
+  // Plate-state fallback: every fleet vehicle has NJ plates → default NJ E-ZPass.
+  const p = (plate ?? "").toUpperCase();
+  if (/^\(?NY\)?[\s/.\-]/.test(p)) return "ny_ezpass";
+  if (/^\(?PA\)?[\s/.\-]/.test(p)) return "pa_turnpike";
+  return "nj_ezpass";
 }
 
 /** Re-OCR a stored document to recover the reference number AND detect the
