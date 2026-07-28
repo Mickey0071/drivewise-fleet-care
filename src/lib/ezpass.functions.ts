@@ -863,6 +863,7 @@ export const matchAndCommitEzpassItem = createServerFn({ method: "POST" })
         notes: `Imported from EZPass batch ${(item as { batch_id: string }).batch_id} (manual match)`,
         status: "pending",
         reference_number: (item as { reference_number: string | null }).reference_number ?? null,
+        authority_key: detectAuthorityFromLocation(item.location, item.plate),
         workflow_stage: "matched",
         is_orphan: false,
         photo_url: originalDocUrl,
