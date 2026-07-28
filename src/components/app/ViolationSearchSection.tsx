@@ -94,6 +94,14 @@ export function ViolationSearchSection({
     queryFn: () => listAwaitingRetroAgreements(),
   });
 
+  // Local dismiss for the "Awaiting Retroactive Agreements" banner.
+  // Auto-resets whenever a new pending item appears (e.g. new send).
+  const [awaitingDismissed, setAwaitingDismissed] = useState(false);
+  const pendingCount = (awaiting.data ?? []).filter((a) => !a.retroSignedAt).length;
+  useEffect(() => {
+    if (pendingCount === 0) setAwaitingDismissed(false);
+  }, [pendingCount]);
+
   // Create-violation modal state
   const [createFor, setCreateFor] = useState<ViolationSearchCard | null>(null);
   // Send-link modal state
@@ -211,10 +219,21 @@ export function ViolationSearchSection({
         </div>
       )}
 
-      {!hideAwaitingRetro && (awaiting.data?.length ?? 0) > 0 && (
+      {!hideAwaitingRetro && !awaitingDismissed && (awaiting.data?.length ?? 0) > 0 && (
         <Card className="border-amber-200">
           <CardContent className="p-4">
-            <h3 className="mb-2 font-semibold">Awaiting Retroactive Agreements</h3>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="font-semibold">Awaiting Retroactive Agreements</h3>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0"
+                aria-label="Dismiss"
+                onClick={() => setAwaitingDismissed(true)}
+              >
+                ✕
+              </Button>
+            </div>
             <div className="space-y-2">
               {awaiting.data!.filter((a) => !a.retroSignedAt).map((a) => {
                 const days = a.retroSentAt
