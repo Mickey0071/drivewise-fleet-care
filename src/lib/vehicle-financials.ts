@@ -50,6 +50,9 @@ export interface FinancialExpenseItem {
   description: string;
   amount: number;
   source: ExpenseSource;
+  /** Vendor / mechanic / paid-to for this line, when known. Used by the
+   *  repair-history CSV & PDF so every repair row lists who did the work. */
+  vendor?: string;
 }
 
 export interface VehicleFinancials {
@@ -146,6 +149,7 @@ export function getVehicleFinancials(
       description: e.notes || e.vendor || e.category,
       amount: Number(e.amount || 0),
       source: "manual",
+      vendor: e.vendor || undefined,
     });
   }
 
@@ -174,6 +178,7 @@ export function getVehicleFinancials(
           description: `${label}${m.vendor ? ` · ${m.vendor}` : ""}`,
           amount: partsTotal,
           source,
+          vendor: m.vendor || m.mechanicName || m.completedBy || undefined,
         });
       }
       if (laborTotal > 0) {
@@ -184,6 +189,7 @@ export function getVehicleFinancials(
           description: `${label}${m.mechanicName || m.completedBy ? ` · ${m.mechanicName || m.completedBy}` : ""}`,
           amount: laborTotal,
           source,
+          vendor: m.mechanicName || m.completedBy || m.vendor || undefined,
         });
       }
       // If the aggregate `cost` exceeded parts+labor (e.g. rounding, fees),
@@ -197,6 +203,7 @@ export function getVehicleFinancials(
           description: `${label} (other)`,
           amount: remainder,
           source,
+          vendor: m.vendor || m.mechanicName || m.completedBy || undefined,
         });
       }
     } else {
@@ -207,6 +214,7 @@ export function getVehicleFinancials(
         description: label,
         amount,
         source,
+        vendor: m.vendor || m.mechanicName || m.completedBy || undefined,
       });
     }
   }
