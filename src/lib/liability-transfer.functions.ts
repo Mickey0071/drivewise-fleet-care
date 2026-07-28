@@ -79,111 +79,50 @@ export const generateMailPacket = createServerFn({ method: "POST" })
     z.object({ violationId: z.string().min(1).max(64) }).parse(input),
   )
   .handler(async ({ data }): Promise<{ filename: string; base64: string; missing: string[] }> => {
-    const { PDFDocument, rgb } = await import("pdf-lib");
+    const { PDFDocument } = await import("pdf-lib");
     const ctx = await loadViolationCtx(data.violationId);
     const cover = await buildCoverLetterPdf(ctx);
 
     const out = await PDFDocument.create();
     const missing: string[] = [];
     const ref = (ctx.v.reference_number as string | null)?.trim() || "";
-    // Missing reference # must NOT block generation — the rental agreement is
-    // the legal proof. Fall back to a plate+date+amount identifier stamp so the
-    // authority can still match the packet to the notice.
-    const plateStamp = String(
-      (ctx.v.license_plate as string | null) ?? ctx.vehicle?.plate ?? "",
-    )
-      .toUpperCase()
-      .trim() || "NOPLATE";
-    const dateStamp = ((ctx.v.date_issued as string | null) ?? "").slice(0, 10) || "no-date";
-    const amtStamp = `$${Number(ctx.v.total_amount ?? ctx.v.amount ?? 0).toFixed(2)}`;
-    const violationStamp = ref
-      ? `VIOLATION #: ${ref.toUpperCase()}`
-      : `VIOLATION: ${plateStamp} · ${dateStamp} · ${amtStamp} (ref # missing)`;
     if (!ref) missing.push("EZPass reference # (not on notice)");
 
-    async function appendPdf(bytes: Uint8Array, opts?: { stamp?: string }) {
+    async function appendPdf(bytes: Uint8Array) {
       const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
       const pages = await out.copyPages(src, src.getPageIndices());
-      for (const p of pages) {
-        if (opts?.stamp) {
-          const size = p.getSize();
-          p.drawText(opts.stamp, {
-            x: 36,
-            y: size.height - 28,
-            size: 10,
-            color: rgb(0.69, 0, 0.125),
-          });
-        }
-        out.addPage(p);
-      }
-    }
-    async function appendImage(bytes: Uint8Array, contentType: string) {
-      const img = contentType.includes("png")
-        ? await out.embedPng(bytes)
-        : await out.embedJpg(bytes);
-      const page = out.addPage([612, 792]);
-      const margin = 36;
-      const maxW = 612 - margin * 2;
-      const maxH = 792 - margin * 2;
-      const scale = Math.min(maxW / img.width, maxH / img.height, 1);
-      const w = img.width * scale;
-      const h = img.height * scale;
-      page.drawImage(img, { x: (612 - w) / 2, y: (792 - h) / 2, width: w, height: h });
-    }
-    async function addUrl(url: string | null | undefined, label: string, opts?: { stamp?: string }) {
-      if (!url) {
-        missing.push(label);
-        return;
-      }
-      try {
-        const res = await fetch(url);
-        if (!res.ok) {
-          missing.push(`${label} (http ${res.status})`);
-          return;
-        }
-        const ct = (res.headers.get("content-type") ?? "").toLowerCase();
-        const bytes = new Uint8Array(await res.arrayBuffer());
-        const isPdf = ct.includes("pdf") || /\.pdf(\?|$)/i.test(url);
-        if (isPdf) await appendPdf(bytes, opts);
-        else await appendImage(bytes, ct || (/\.png(\?|$)/i.test(url) ? "image/png" : "image/jpeg"));
-      } catch (e) {
-        missing.push(`${label} (${e instanceof Error ? e.message : "fetch failed"})`);
-      }
+      for (const p of pages) out.addPage(p);
     }
 
-    // Page 1: cover letter
+    // Page 1 — Liability transfer cover letter
     await appendPdf(cover);
-    // Supporting documents (rely on the signed rental agreement — no affidavit)
-    const originalUrl = ctx.v.photo_url as string | null;
-    if (originalUrl) {
-      await addUrl(originalUrl, "Original violation notice");
+
+    // Page 2+ — Signed rental agreement, appended exactly as signed. If no
+    // agreement is on file we simply skip it: the cover letter is still a
+    // valid liability-transfer notice on its own.
+    const agreementUrl = (ctx.rental?.agreement_pdf_url as string | null) ?? null;
+    if (agreementUrl) {
+      try {
+        const res = await fetch(agreementUrl);
+        if (res.ok) {
+          const ct = (res.headers.get("content-type") ?? "").toLowerCase();
+          const bytes = new Uint8Array(await res.arrayBuffer());
+          if (ct.includes("pdf") || /\.pdf(\?|$)/i.test(agreementUrl)) {
+            await appendPdf(bytes);
+          } else {
+            missing.push("Signed rental agreement (not a PDF on file)");
+          }
+        } else {
+          missing.push(`Signed rental agreement (http ${res.status})`);
+        }
+      } catch (e) {
+        missing.push(
+          `Signed rental agreement (${e instanceof Error ? e.message : "fetch failed"})`,
+        );
+      }
     } else {
-      // No original document on file — add an explicit note page for the record.
-      missing.push("Original violation notice");
-      const note = out.addPage([612, 792]);
-      note.drawText("ORIGINAL VIOLATION NOTICE NOT AVAILABLE", {
-        x: 36,
-        y: 740,
-        size: 14,
-        color: rgb(0.69, 0, 0.125),
-      });
-      note.drawText(
-        ref
-          ? `Violation reference #: ${ref.toUpperCase()}`
-          : `Identified by: ${plateStamp} · ${dateStamp} · ${amtStamp} (reference # missing)`,
-        {
-        x: 36,
-        y: 710,
-        size: 11,
-        color: rgb(0, 0, 0),
-      });
-      note.drawText(
-        "The original notice was not uploaded with this violation.",
-        { x: 36, y: 688, size: 10, color: rgb(0.3, 0.3, 0.3) },
-      );
+      missing.push("Signed rental agreement");
     }
-    await addUrl((ctx.rental?.license_image_url as string) ?? null, "Driver's license (front)");
-    await addUrl((ctx.rental?.agreement_pdf_url as string) ?? null, "Signed rental agreement", { stamp: violationStamp });
 
     const buf = await out.save();
     let bin = "";
