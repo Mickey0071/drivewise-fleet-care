@@ -533,6 +533,9 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
             // EZPass ref # is auto-extracted from the scan when present; admin
             // can still enter/correct it manually on the violation card.
             reference_number: item.reference_number ?? null,
+            // Auto-populate authority from toll location + plate state so the
+            // dispute packet mailing address & statute are always ready.
+            authority_key: detectAuthorityFromLocation(item.location, item.plate),
             workflow_stage: isMatched ? "matched" : "uploaded",
             is_orphan: false,
             photo_url: originalDocUrl,
