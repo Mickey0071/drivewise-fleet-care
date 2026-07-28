@@ -67,6 +67,10 @@ export interface ViolationRow {
   rental_end?: string | null;
   ocr_candidates?: Array<{ label: string; number: string }> | null;
   ocr_secondary_ref?: string | null;
+  driver_address?: string | null;
+  driver_email?: string | null;
+  driver_license_number?: string | null;
+  driver_dl_state?: string | null;
 }
 
 export const listViolations = createServerFn({ method: "GET" })
@@ -83,14 +87,18 @@ export const listViolations = createServerFn({ method: "GET" })
     const vehicleIds = Array.from(new Set(rows.map((r) => r.vehicle_id).filter(Boolean))) as string[];
     const [{ data: drivers }, { data: vehicles }] = await Promise.all([
       driverIds.length
-        ? supabaseAdmin.from("drivers").select("id, full_name, phone").in("id", driverIds)
-        : Promise.resolve({ data: [] as { id: string; full_name: string; phone: string }[] }),
+        ? supabaseAdmin
+            .from("drivers")
+            .select(
+              "id, full_name, phone, email, license_number, dl_state, address, street_address, city, state, zip_code",
+            )
+            .in("id", driverIds)
+        : Promise.resolve({ data: [] as any[] }),
       vehicleIds.length
         ? supabaseAdmin.from("vehicles").select("id, plate, make, model, year").in("id", vehicleIds)
         : Promise.resolve({ data: [] as { id: string; plate: string; make: string; model: string; year: number }[] }),
     ]);
-    const dMap = new Map((drivers ?? []).map((d) => [d.id, d.full_name]));
-    const dPhone = new Map((drivers ?? []).map((d) => [d.id, (d as any).phone ?? null]));
+    const dMap = new Map((drivers ?? []).map((d: any) => [d.id, d]));
     const vMap = new Map(
       (vehicles ?? []).map((v) => [v.id, `${v.year} ${v.make} ${v.model} (${v.plate})`]),
     );
@@ -111,23 +119,36 @@ export const listViolations = createServerFn({ method: "GET" })
     const { data: legacyRows } = legacyIds.length
       ? await supabaseAdmin
           .from("legacy_rentals")
-          .select("id, retro_signed_at, renter_name, phone")
+          .select("id, retro_signed_at, renter_name, phone, email, address, dl_number, dl_state")
           .in("id", legacyIds)
-      : { data: [] as { id: string; retro_signed_at: string | null; renter_name: string | null; phone: string | null }[] };
+      : { data: [] as any[] };
     const lMap = new Map((legacyRows ?? []).map((r) => [r.id, r]));
     return rows.map((r) => {
       const rental = r.rental_id ? rMap.get(r.rental_id) : undefined;
       const legacyId = (r as any).retro_legacy_rental_id || r.legacy_rental_id;
       const legacy = legacyId ? lMap.get(legacyId) : undefined;
       const agreementOnFile = Boolean(rental?.agreement_pdf_url) || Boolean(legacy?.retro_signed_at);
+      const driver: any = r.driver_id ? dMap.get(r.driver_id) : undefined;
+      const driverAddress =
+        (driver?.address as string | null) ||
+        [driver?.street_address, driver?.city, driver?.state, driver?.zip_code]
+          .filter(Boolean)
+          .join(", ") ||
+        (legacy?.address as string | null) ||
+        null;
       return {
         ...r,
         driver_name:
-          (r.driver_id ? dMap.get(r.driver_id) ?? null : null) ||
+          (driver?.full_name ?? null) ||
           (legacy?.renter_name ?? null),
         driver_phone:
-          (r.driver_id ? dPhone.get(r.driver_id) ?? null : null) ||
+          (driver?.phone ?? null) ||
           ((legacy as any)?.phone ?? null),
+        driver_email: (driver?.email ?? null) || (legacy?.email ?? null),
+        driver_license_number:
+          (driver?.license_number ?? null) || (legacy?.dl_number ?? null),
+        driver_dl_state: (driver?.dl_state ?? null) || (legacy?.dl_state ?? null),
+        driver_address: driverAddress,
         vehicle_label: r.vehicle_id ? vMap.get(r.vehicle_id) ?? null : null,
         agreement_on_file: agreementOnFile,
         rental_start: rental?.start_date ?? null,
