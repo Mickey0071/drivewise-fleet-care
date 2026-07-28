@@ -1352,6 +1352,8 @@ function ViolationsPage() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [bulkAuthBusy, setBulkAuthBusy] = useState(false);
   const setAuthorityFn = useServerFn(setViolationAuthority);
+  const [missingFor, setMissingFor] = useState<ViolationRow | null>(null);
+  const [missingFieldFilter, setMissingFieldFilter] = useState<FieldKey | null>(null);
 
   /** Apply one authority to every selected row. Unblocker for the common case
    *  where a whole batch of tolls is obviously NJ EZ Pass but each row shows
@@ -1398,6 +1400,10 @@ function ViolationsPage() {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (tabOf(r) !== filter) return false;
+      if (filter === "matched" && missingFieldFilter) {
+        const s = fieldStatus(r);
+        if (s[missingFieldFilter]) return false;
+      }
       if (!q) return true;
       const hay = [
         r.id,
@@ -1414,7 +1420,11 @@ function ViolationsPage() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [rows, filter, search]);
+  }, [rows, filter, search, missingFieldFilter]);
+
+  // Every matched-tab violation — the fleet-wide missing-field summary is
+  // computed off the full tab, not the currently-filtered view.
+  const matchedRows = useMemo(() => rows.filter((r) => tabOf(r) === "matched"), [rows]);
 
   const tabCounts = useMemo(() => {
     const c: Record<TabKey, number> = {
