@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
+import { normalizePlate as normPlate } from "@/lib/plate";
 
 export interface ViolationRow {
   id: string;
@@ -201,15 +202,9 @@ export const lookupRentalByPlate = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }): Promise<PlateLookupResult> => {
     const { plate, date } = data;
-    // Normalized plate key (ignores spaces/dashes/case) — same logic as the
-    // main rental lookup so the violation matcher behaves identically.
-    const normPlate = (s: string | null | undefined) =>
-      (s ?? "")
-        .replace(/[^a-z0-9]/gi, "")
-        .toUpperCase()
-        // Strip a leading two-letter state code (e.g. "NJ") that some sources
-        // prepend to the plate — it confuses the matcher.
-        .replace(/^NJ(?=[A-Z0-9]{4,})/, "");
+    // Use the shared plate normalizer (handles "(NJ) N90VCG", "N90VCG NJ",
+    // "NJ / XPSD76", stray spaces/dashes, etc.) so lookups match the same
+    // canonical form we now store in the database.
     const plateKey = normPlate(plate);
     const today = new Date().toISOString().slice(0, 10);
     // Calendar-date inclusive range test: cast start/end to date (slice off the
@@ -566,7 +561,7 @@ export const createViolation = createServerFn({ method: "POST" })
         legacy_rental_id: data.legacyRentalId,
         type: data.type,
         date_issued: data.date,
-        license_plate: data.licensePlate,
+        license_plate: normPlate(data.licensePlate) || data.licensePlate,
         amount: data.amount,
         fee: data.fee,
         total_amount: total,
@@ -789,7 +784,9 @@ export const updateViolation = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (data.violationNumber !== undefined) patch.reference_number = data.violationNumber;
-    if (data.licensePlate !== undefined) patch.license_plate = data.licensePlate;
+    if (data.licensePlate !== undefined) {
+      patch.license_plate = normPlate(data.licensePlate) || data.licensePlate;
+    }
     if (data.date !== undefined) patch.date_issued = data.date;
     if (data.location !== undefined) patch.location = data.location;
     if (data.time !== undefined) patch.violation_time = data.time;
