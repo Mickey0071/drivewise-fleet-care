@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { RentalAgreement } from "@/components/app/RentalAgreement";
@@ -1181,6 +1181,9 @@ function RentalsPage() {
               }),
             }} />
             <Button onClick={() => setNewOpen(true)}>+ New Reservation</Button>
+            <Button variant="outline" asChild>
+              <Link to="/admin/historic-reservation">+ Add Historic Rental</Link>
+            </Button>
           </div>
         }
       />
