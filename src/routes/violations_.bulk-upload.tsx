@@ -41,6 +41,7 @@ import {
   getRentalAgreementUrl,
   dismissEzpassItem,
   createInternalRentalForItem,
+  setEzpassBatchItemRef,
   type EzpassBatchItem,
 } from "@/lib/ezpass.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
@@ -233,12 +234,20 @@ interface ManualRow {
   plate: string;
   location: string;
   amount: string;
+  reference_number: string;
 }
 
 function ManualEntry({ onBatch }: { onBatch: (id: string) => void }) {
   const qc = useQueryClient();
   const create = useServerFn(createManualEzpassBatch);
-  const emptyRow = (): ManualRow => ({ date: "", time: "", plate: "", location: "", amount: "" });
+  const emptyRow = (): ManualRow => ({
+    date: "",
+    time: "",
+    plate: "",
+    location: "",
+    amount: "",
+    reference_number: "",
+  });
   const [rows, setRows] = useState<ManualRow[]>([emptyRow(), emptyRow(), emptyRow()]);
   const [busy, setBusy] = useState(false);
 
@@ -255,10 +264,18 @@ function ManualEntry({ onBatch }: { onBatch: (id: string) => void }) {
         plate: r.plate.trim() || null,
         location: r.location.trim() || null,
         amount: Number(r.amount) || 0,
+        reference_number: r.reference_number.trim() || null,
       }))
       .filter((r) => r.plate || r.violation_date || r.amount > 0);
     if (valid.length === 0) {
       toast.error("Add at least one row with a plate, date, or amount");
+      return;
+    }
+    const missingRef = valid.filter((r) => !r.reference_number);
+    if (missingRef.length > 0) {
+      toast.error(
+        `${missingRef.length} row${missingRef.length === 1 ? "" : "s"} missing a Violation # — required from the physical notice`,
+      );
       return;
     }
     setBusy(true);
@@ -289,6 +306,7 @@ function ManualEntry({ onBatch }: { onBatch: (id: string) => void }) {
                 <th className="p-2">Time</th>
                 <th className="p-2">Plate</th>
                 <th className="p-2">Location</th>
+                <th className="p-2">Violation #</th>
                 <th className="p-2">Amount</th>
                 <th className="p-2"></th>
               </tr>
@@ -322,6 +340,14 @@ function ManualEntry({ onBatch }: { onBatch: (id: string) => void }) {
                       placeholder="Toll plaza / location"
                       value={r.location}
                       onChange={(e) => update(i, "location", e.target.value)}
+                    />
+                  </td>
+                  <td className="p-1">
+                    <Input
+                      placeholder="Required"
+                      value={r.reference_number}
+                      onChange={(e) => update(i, "reference_number", e.target.value.toUpperCase())}
+                      className={r.reference_number.trim() ? "font-mono" : "font-mono border-destructive/50"}
                     />
                   </td>
                   <td className="p-1">
@@ -392,6 +418,9 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
   const visibleItems = items.filter((i) => i.match_status !== "dismissed");
   const matchedCount = visibleItems.filter((i) => i.match_status === "matched").length;
   const unmatchedCount = visibleItems.length - matchedCount;
+  const missingRefCount = visibleItems.filter(
+    (i) => !i.violation_id && !(i.reference_number && i.reference_number.trim()),
+  ).length;
   const totalAmount = useMemo(
     () => visibleItems.reduce((s, i) => s + Number(i.amount || 0), 0),
     [visibleItems],
@@ -401,9 +430,20 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
   const refresh = () => qc.invalidateQueries({ queryKey: ["ezpass-batch", batchId] });
 
   const handleApprove = async () => {
+    if (missingRefCount > 0) {
+      toast.error(
+        `${missingRefCount} item${missingRefCount === 1 ? "" : "s"} missing an EZPass violation #. Enter it from the notice before approving.`,
+      );
+      return;
+    }
     setApproving(true);
     try {
       const res = await approve({ data: { batchId, mode: approveMode } });
+      if (res.skippedNoRef > 0) {
+        toast.message(
+          `${res.skippedNoRef} item${res.skippedNoRef === 1 ? "" : "s"} skipped — no EZPass violation #`,
+        );
+      }
       if (approveMode === "matched") {
         toast.success(
           `Saved ${res.matched} matched violation${res.matched === 1 ? "" : "s"} — ${res.unmatched} unmatched left to match`,
@@ -462,6 +502,20 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
         <SummaryCard label="Unmatched" value={String(unmatchedCount)} tone={unmatchedCount ? "warn" : "ok"} />
         <SummaryCard label="Total amount" value={fmtMoney(totalAmount)} />
       </div>
+      {missingRefCount > 0 && !approved && (
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <div>
+            <p className="font-medium">
+              {missingRefCount} item{missingRefCount === 1 ? "" : "s"} missing an EZPass violation number.
+            </p>
+            <p className="text-xs">
+              Enter the number from each notice in the "Violation #" column below. Approval is blocked
+              until every row has one — a dispute packet without this number is invalid.
+            </p>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -474,6 +528,7 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                   <tr>
                     <th className="p-3">Date/Time</th>
                     <th className="p-3">Plate</th>
+                    <th className="p-3">Violation #</th>
                     <th className="p-3">Toll Location</th>
                     <th className="p-3 text-right">Amount</th>
                     <th className="p-3">Renter</th>
@@ -491,6 +546,9 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                         ) : null}
                       </td>
                       <td className="p-3 font-mono text-xs">{it.plate || "—"}</td>
+                      <td className="p-3">
+                        <RefNumberCell item={it} disabled={approved} onSaved={refresh} />
+                      </td>
                       <td className="p-3">{it.location || "—"}</td>
                       <td className="p-3 text-right">{fmtMoney(Number(it.amount))}</td>
                       <td className="p-3">{it.driver_name || <span className="text-muted-foreground">—</span>}</td>
@@ -554,7 +612,7 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
             <Button
               size="lg"
               variant="outline"
-              disabled={items.length === 0 || matchedCount === 0}
+              disabled={items.length === 0 || matchedCount === 0 || missingRefCount > 0}
               onClick={() => {
                 setApproveMode("matched");
                 setConfirmOpen(true);
@@ -564,7 +622,7 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
             </Button>
             <Button
               size="lg"
-              disabled={items.length === 0}
+              disabled={items.length === 0 || missingRefCount > 0}
               onClick={() => {
                 setApproveMode("all");
                 setConfirmOpen(true);
@@ -657,6 +715,85 @@ function SummaryCard({
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+/** Inline editor for the EZPass violation / reference number on a batch item.
+ *  Approve is blocked until every visible row has one, because a dispute packet
+ *  is invalid without the number printed on the notice. */
+function RefNumberCell({
+  item,
+  disabled,
+  onSaved,
+}: {
+  item: EzpassBatchItem;
+  disabled: boolean;
+  onSaved: () => void;
+}) {
+  const saveRef = useServerFn(setEzpassBatchItemRef);
+  const [value, setValue] = useState(item.reference_number ?? "");
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(!item.reference_number);
+  const current = (item.reference_number ?? "").trim();
+
+  const commit = async () => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      toast.error("Enter the violation # from the notice");
+      return;
+    }
+    if (trimmed === current) {
+      setEditing(false);
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await saveRef({ data: { itemId: item.id, referenceNumber: trimmed } });
+      setValue(res.referenceNumber);
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!editing && current) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-xs font-semibold">{current}</span>
+        <button
+          type="button"
+          className="text-xs text-muted-foreground hover:underline disabled:opacity-50"
+          onClick={() => setEditing(true)}
+          disabled={disabled}
+        >
+          Edit
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        value={value}
+        onChange={(e) => setValue(e.target.value.toUpperCase())}
+        onKeyDown={(e) => e.key === "Enter" && commit()}
+        placeholder="Violation #"
+        className={`h-8 w-36 font-mono text-xs ${current ? "" : "border-destructive/60"}`}
+        disabled={disabled || busy}
+      />
+      <Button size="sm" className="h-8 px-2" onClick={commit} disabled={disabled || busy}>
+        {busy ? "…" : "Save"}
+      </Button>
+      {!current && (
+        <span className="text-[10px] font-medium text-destructive" title="Required for dispute">
+          required
+        </span>
+      )}
+    </div>
   );
 }
 
