@@ -313,7 +313,7 @@ export async function extractTollsFromImages(dataUrls: string[]): Promise<Extrac
         all.push({
           violation_date: normDate(cleanStr(o.date)),
           violation_time: cleanStr(o.time) || null,
-          plate: cleanStr(o.plate_number).toUpperCase() || null,
+          plate: normalizePlate(cleanStr(o.plate_number)) || null,
           location: cleanStr(o.toll_location) || null,
           amount: cleanNum(o.amount),
           reference_number: cleanStr(o.reference_number) || null,
