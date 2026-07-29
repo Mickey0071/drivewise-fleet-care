@@ -456,8 +456,15 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
       let matched = 0;
       let unmatched = 0;
       let skippedUnmatched = 0;
+      let skippedNoRef = 0;
 
       for (const item of rows) {
+        // Hard block: never persist a violation without its EZPass reference #.
+        // Admin must type it from the physical notice on the review screen.
+        if (!item.violation_id && !(item.reference_number && item.reference_number.trim())) {
+          skippedNoRef++;
+          continue;
+        }
         // Re-run the matcher on commit for anything not already firmly matched
         // (picks up plates backfilled after the batch was first created).
         let rentalId = item.rental_id;
@@ -604,7 +611,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
       // download) once everything has been persisted. In "matched" mode with
       // unmatched rows still pending, keep the batch open for further matching.
       const fullyResolved = mode === "all" || skippedUnmatched === 0;
-      if (fullyResolved) {
+      if (fullyResolved && skippedNoRef === 0) {
         await supabaseAdmin
           .from("ezpass_batches")
           .update({ status: "approved", matched_count: matched } as never)
@@ -616,7 +623,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
           .eq("id", data.batchId);
       }
 
-      return { generated, matched, unmatched, total: rows.length };
+      return { generated, matched, unmatched, total: rows.length, skippedNoRef };
     },
   );
 
