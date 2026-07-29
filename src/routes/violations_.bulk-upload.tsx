@@ -693,6 +693,85 @@ function SummaryCard({
   );
 }
 
+/** Inline editor for the EZPass violation / reference number on a batch item.
+ *  Approve is blocked until every visible row has one, because a dispute packet
+ *  is invalid without the number printed on the notice. */
+function RefNumberCell({
+  item,
+  disabled,
+  onSaved,
+}: {
+  item: EzpassBatchItem;
+  disabled: boolean;
+  onSaved: () => void;
+}) {
+  const saveRef = useServerFn(setEzpassBatchItemRef);
+  const [value, setValue] = useState(item.reference_number ?? "");
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(!item.reference_number);
+  const current = (item.reference_number ?? "").trim();
+
+  const commit = async () => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      toast.error("Enter the violation # from the notice");
+      return;
+    }
+    if (trimmed === current) {
+      setEditing(false);
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await saveRef({ data: { itemId: item.id, referenceNumber: trimmed } });
+      setValue(res.referenceNumber);
+      setEditing(false);
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!editing && current) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-xs font-semibold">{current}</span>
+        <button
+          type="button"
+          className="text-xs text-muted-foreground hover:underline disabled:opacity-50"
+          onClick={() => setEditing(true)}
+          disabled={disabled}
+        >
+          Edit
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        value={value}
+        onChange={(e) => setValue(e.target.value.toUpperCase())}
+        onKeyDown={(e) => e.key === "Enter" && commit()}
+        placeholder="Violation #"
+        className={`h-8 w-36 font-mono text-xs ${current ? "" : "border-destructive/60"}`}
+        disabled={disabled || busy}
+      />
+      <Button size="sm" className="h-8 px-2" onClick={commit} disabled={disabled || busy}>
+        {busy ? "…" : "Save"}
+      </Button>
+      {!current && (
+        <span className="text-[10px] font-medium text-destructive" title="Required for dispute">
+          required
+        </span>
+      )}
+    </div>
+  );
+}
+
 function DebugMatchPanel({ batchId }: { batchId: string }) {
   const { role } = useAuth();
   const debug = useServerFn(debugEzpassMatch);
