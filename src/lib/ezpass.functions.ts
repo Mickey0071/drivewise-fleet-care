@@ -191,6 +191,8 @@ export const createManualEzpassBatch = createServerFn({ method: "POST" })
       location: r.location?.trim() || null,
       amount: Number(r.amount || 0),
       reference_number: null,
+      authority_text: null,
+      authority_key: null,
     }));
 
     const batchId = genId("EZ");
@@ -481,6 +483,8 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
             location: item.location,
             amount: Number(item.amount || 0),
             reference_number: item.reference_number ?? null,
+            authority_text: null,
+            authority_key: null,
           });
           if (mr.match_status === "matched") {
             rentalId = mr.rental_id;
