@@ -433,7 +433,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
     async ({
       data,
       context,
-    }): Promise<{ generated: number; matched: number; unmatched: number; total: number }> => {
+    }): Promise<{ generated: number; matched: number; unmatched: number; total: number; skippedNoRef: number }> => {
       const mode = data.mode ?? "all";
       const { data: items, error: iErr } = await supabaseAdmin
         .from("ezpass_batch_items")
