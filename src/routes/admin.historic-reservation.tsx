@@ -58,7 +58,7 @@ function HistoricReservationPage() {
   // Search params for prefill from Violations page. TanStack routing types
   // are generated after `.gen.ts` refresh; use loose access to keep this file
   // self-contained.
-  const sp = (Route as unknown as { useSearch: () => z.infer<typeof search> }).useSearch();
+  const sp = Route.useSearch();
   const navigate = useNavigate();
   const createFn = useServerFn(createHistoricRental);
   const vehiclesFn = useServerFn(listFleetVehicles);
