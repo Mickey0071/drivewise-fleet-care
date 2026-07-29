@@ -143,10 +143,23 @@ export function applyOrder<T>(
   order: string[] | undefined,
 ): T[] {
   if (!order || order.length === 0) return items;
-  const index = new Map(order.map((k, i) => [k, i]));
-  return [...items].sort((a, b) => {
-    const ai = index.has(keyOf(a)) ? index.get(keyOf(a))! : Number.MAX_SAFE_INTEGER;
-    const bi = index.has(keyOf(b)) ? index.get(keyOf(b))! : Number.MAX_SAFE_INTEGER;
-    return ai - bi;
+  const orderIndex = new Map(order.map((k, i) => [k, i]));
+  // Items known to the saved order, in saved-order sequence.
+  const known = [...items]
+    .filter(i => orderIndex.has(keyOf(i)))
+    .sort((a, b) => orderIndex.get(keyOf(a))! - orderIndex.get(keyOf(b))!);
+  // Items added since the user saved their order — reinsert at their
+  // original default position so new nav entries don't get exiled to the bottom.
+  const result = [...known];
+  items.forEach((item, defaultIdx) => {
+    if (orderIndex.has(keyOf(item))) return;
+    // Find nearest earlier default sibling that is already placed.
+    let insertAt = result.length;
+    for (let i = 0; i < result.length; i++) {
+      const siblingDefaultIdx = items.findIndex(x => keyOf(x) === keyOf(result[i]));
+      if (siblingDefaultIdx > defaultIdx) { insertAt = i; break; }
+    }
+    result.splice(insertAt, 0, item);
   });
+  return result;
 }
