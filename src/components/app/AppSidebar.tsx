@@ -70,6 +70,9 @@ const DEFAULT_ITEMS: NavItem[] = [
   { key: "/pending-agreements", url: "/pending-agreements", title: "Pending Agreements", icon: FileSignature, roles: ["admin", "va"], sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
   { key: "/admin/historic-reservation", url: "/admin/historic-reservation", title: "+ Add Historic Rental", icon: CalendarPlus, roles: ["admin", "va"], sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
 
+  // Historic (standalone, top-level link)
+  { key: "historic:/admin/historic-reservation", url: "/admin/historic-reservation", title: "Historic Rental", icon: CalendarPlus, roles: ["admin", "va"], sectionKey: "historic", sectionLabel: "Historic", sectionIcon: CalendarPlus },
+
   // Fleet
   { key: "/fleet", url: "/fleet", title: "Vehicles", icon: Car, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
   { key: "/maintenance", url: "/maintenance", title: "Maintenance", icon: Wrench, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
