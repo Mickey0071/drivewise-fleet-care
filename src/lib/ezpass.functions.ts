@@ -112,12 +112,31 @@ export const processEzpassDocument = createServerFn({ method: "POST" })
       const mr = matched[i];
       if (mr.match_status === "matched") matchedCount++;
       totalAmount += Number(t.amount || 0);
+      // Prepend the detected authority abbreviation to `location` so the
+      // existing plaza-based authority detector picks it up on promotion
+      // (batch_items has no authority column). Example: "40W" -> "DRPA · 40W".
+      const authHint = t.authority_key
+        ? t.authority_key === "drpa" ? "DRPA"
+          : t.authority_key === "sjta" ? "SJTA"
+          : t.authority_key === "nj_turnpike" ? "NJTA"
+          : t.authority_key === "pa_turnpike" ? "PA TURNPIKE"
+          : t.authority_key === "ny_ezpass" ? "NY EZPASS"
+          : t.authority_key === "ppa" ? "PPA"
+          : null
+        : null;
+      const loc = t.location ?? "";
+      const locWithAuth =
+        authHint && !new RegExp(`\\b${authHint}\\b`, "i").test(loc)
+          ? loc
+            ? `${authHint} · ${loc}`
+            : authHint
+          : loc || null;
       return {
         batch_id: batchId,
         violation_date: t.violation_date,
         violation_time: t.violation_time,
         plate: t.plate,
-        location: t.location,
+        location: locWithAuth,
         amount: t.amount,
         match_status: mr.match_status,
         rental_id: mr.rental_id,
