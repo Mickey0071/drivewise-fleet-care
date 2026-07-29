@@ -81,12 +81,15 @@ export const generateMailPacket = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ filename: string; base64: string; missing: string[] }> => {
     const { PDFDocument } = await import("pdf-lib");
     const ctx = await loadViolationCtx(data.violationId);
+    const ref = (ctx.v.reference_number as string | null)?.trim() || "";
+    if (!ref) {
+      throw new Error(
+        "EZPass violation / reference number is required before generating a dispute packet. Enter the number from the notice, then try again.",
+      );
+    }
     const cover = await buildCoverLetterPdf(ctx);
-
     const out = await PDFDocument.create();
     const missing: string[] = [];
-    const ref = (ctx.v.reference_number as string | null)?.trim() || "";
-    if (!ref) missing.push("EZPass reference # (not on notice)");
 
     async function appendPdf(bytes: Uint8Array) {
       const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
