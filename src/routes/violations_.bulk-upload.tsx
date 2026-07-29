@@ -587,7 +587,7 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
             <Button
               size="lg"
               variant="outline"
-              disabled={items.length === 0 || matchedCount === 0}
+              disabled={items.length === 0 || matchedCount === 0 || missingRefCount > 0}
               onClick={() => {
                 setApproveMode("matched");
                 setConfirmOpen(true);
@@ -597,7 +597,7 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
             </Button>
             <Button
               size="lg"
-              disabled={items.length === 0}
+              disabled={items.length === 0 || missingRefCount > 0}
               onClick={() => {
                 setApproveMode("all");
                 setConfirmOpen(true);
