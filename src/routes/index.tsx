@@ -74,6 +74,11 @@ function ReservationRow({
           >
             {d?.fullName ?? r.driverId}
           </Link>
+          {d && (
+            <RenterName driverId={d.id} name={d.fullName} className="ml-2 text-xs text-muted-foreground underline-offset-2 hover:underline">
+              view profile
+            </RenterName>
+          )}
           <span className="ml-2 text-xs text-muted-foreground">{r.id}</span>
         </div>
         <div className="truncate text-xs text-muted-foreground">
