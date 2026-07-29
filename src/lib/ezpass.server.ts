@@ -252,6 +252,35 @@ function normDate(v: string): string | null {
   return null;
 }
 
+/** Validate an extracted violation date. Must be a real date, in the past
+ *  (allow a small clock-skew tolerance), and within the last 5 years.
+ *  Returns null if invalid so callers can flag for manual entry. */
+function validateViolationDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return null;
+  const now = new Date();
+  // Allow up to 2 days in the future for timezone/clock skew.
+  const maxFuture = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+  if (d.getTime() > maxFuture.getTime()) return null;
+  const fiveYearsAgo = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
+  if (d.getTime() < fiveYearsAgo.getTime()) return null;
+  return iso;
+}
+
+/** Validate extracted amount. Positive, under $10k sanity cap. */
+function validateAmount(n: number): number {
+  if (!Number.isFinite(n) || n <= 0 || n >= 10000) return 0;
+  return n;
+}
+
+/** Validate normalized plate: 4-8 alphanumeric chars. */
+function validatePlate(p: string | null): string | null {
+  if (!p) return null;
+  if (!/^[A-Z0-9]{4,8}$/.test(p)) return null;
+  return p;
+}
+
 /** Run Gemini vision over a set of image data URLs and return all toll rows found. */
 export async function extractTollsFromImages(dataUrls: string[]): Promise<ExtractedToll[]> {
   const apiKey = process.env.LOVABLE_API_KEY;
