@@ -303,6 +303,11 @@ export async function extractTollsFromImages(dataUrls: string[]): Promise<Extrac
         continue;
       }
       const rows = Array.isArray(parsed.violations) ? parsed.violations : [];
+      const pageAuthorityText =
+        typeof (parsed as { authority_text?: unknown }).authority_text === "string"
+          ? ((parsed as { authority_text: string }).authority_text).trim()
+          : "";
+      const pageAuthorityKey = detectAuthorityFromText(pageAuthorityText) || null;
       for (const r of rows) {
         const o = (r ?? {}) as Record<string, unknown>;
         const cleanStr = (v: unknown) => (typeof v === "string" ? v.trim() : "");
@@ -322,6 +327,8 @@ export async function extractTollsFromImages(dataUrls: string[]): Promise<Extrac
           location: cleanStr(o.toll_location) || null,
           amount: cleanNum(o.amount),
           reference_number: cleanStr(o.reference_number) || null,
+          authority_text: pageAuthorityText || null,
+          authority_key: pageAuthorityKey,
         });
       }
     } catch (e) {
