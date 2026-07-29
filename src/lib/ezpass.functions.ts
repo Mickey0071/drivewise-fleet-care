@@ -369,6 +369,33 @@ export const manualMatchEzpassItem = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** Save the EZPass reference / violation number on a single batch item. Called
+ *  from the bulk-review UI when OCR missed the number and the admin types it
+ *  in from the physical notice. Approve is blocked until every item has one. */
+export const setEzpassBatchItemRef = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        itemId: z.string().uuid(),
+        referenceNumber: z.string().trim().min(1).max(64),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const cleaned = data.referenceNumber
+      .toUpperCase()
+      .replace(/[^A-Z0-9-]/g, "")
+      .slice(0, 40);
+    if (!cleaned) throw new Error("Enter the EZPass reference / violation number");
+    const { error } = await supabaseAdmin
+      .from("ezpass_batch_items")
+      .update({ reference_number: cleaned } as never)
+      .eq("id", data.itemId);
+    if (error) throw new Error(error.message);
+    return { ok: true as const, referenceNumber: cleaned };
+  });
+
 async function recomputeBatchCounts(batchId: string) {
   const { data: items } = await supabaseAdmin
     .from("ezpass_batch_items")
