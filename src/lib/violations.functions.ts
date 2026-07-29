@@ -485,11 +485,18 @@ export const createViolation = createServerFn({ method: "POST" })
           input.extractedConfidence != null && Number.isFinite(Number(input.extractedConfidence))
             ? Math.max(0, Math.min(100, Math.round(Number(input.extractedConfidence))))
             : null,
-        citationNumber:
-          (input.citationNumber || "")
+        citationNumber: (() => {
+          const cleaned = (input.citationNumber || "")
             .toUpperCase()
             .replace(/[^A-Z0-9-]/g, "")
-            .slice(0, 40) || null,
+            .slice(0, 40);
+          if (!cleaned) {
+            throw new Error(
+              "EZPass reference / violation number is required. Enter the number printed on the notice before saving.",
+            );
+          }
+          return cleaned;
+        })(),
         location: (input.location || "").slice(0, 200) || null,
         time: (input.time || "").slice(0, 20) || null,
         // Auto-default authority when caller doesn't supply one: NJ plates
