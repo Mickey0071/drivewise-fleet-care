@@ -30,7 +30,7 @@ const search = z.object({
   date: z.string().optional(),
 });
 
-export const Route = createFileRoute("/_authenticated/admin/historic-reservation" as never)({
+export const Route = createFileRoute("/admin/historic-reservation")({
   validateSearch: (raw) => search.parse(raw),
   head: () => ({
     meta: [
