@@ -7,6 +7,11 @@ export interface ExtractedToll {
   location: string | null;
   amount: number;
   reference_number: string | null; // EZPass Toll Bill / Notice / Reference #
+  /** Authority text detected on the page header/letterhead (e.g. "Delaware
+   *  River Port Authority"). Used at ingest time to lock the authority key
+   *  BEFORE falling back to plaza/plate heuristics. */
+  authority_text: string | null;
+  authority_key: AuthorityKey;
 }
 
 /** Known authority keys we can map to a statute in liability-transfer.server.ts.
