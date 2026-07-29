@@ -393,6 +393,9 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
   const visibleItems = items.filter((i) => i.match_status !== "dismissed");
   const matchedCount = visibleItems.filter((i) => i.match_status === "matched").length;
   const unmatchedCount = visibleItems.length - matchedCount;
+  const missingRefCount = visibleItems.filter(
+    (i) => !i.violation_id && !(i.reference_number && i.reference_number.trim()),
+  ).length;
   const totalAmount = useMemo(
     () => visibleItems.reduce((s, i) => s + Number(i.amount || 0), 0),
     [visibleItems],
@@ -402,9 +405,20 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
   const refresh = () => qc.invalidateQueries({ queryKey: ["ezpass-batch", batchId] });
 
   const handleApprove = async () => {
+    if (missingRefCount > 0) {
+      toast.error(
+        `${missingRefCount} item${missingRefCount === 1 ? "" : "s"} missing an EZPass violation #. Enter it from the notice before approving.`,
+      );
+      return;
+    }
     setApproving(true);
     try {
       const res = await approve({ data: { batchId, mode: approveMode } });
+      if (res.skippedNoRef > 0) {
+        toast.message(
+          `${res.skippedNoRef} item${res.skippedNoRef === 1 ? "" : "s"} skipped — no EZPass violation #`,
+        );
+      }
       if (approveMode === "matched") {
         toast.success(
           `Saved ${res.matched} matched violation${res.matched === 1 ? "" : "s"} — ${res.unmatched} unmatched left to match`,
@@ -463,6 +477,20 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
         <SummaryCard label="Unmatched" value={String(unmatchedCount)} tone={unmatchedCount ? "warn" : "ok"} />
         <SummaryCard label="Total amount" value={fmtMoney(totalAmount)} />
       </div>
+      {missingRefCount > 0 && !approved && (
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <div>
+            <p className="font-medium">
+              {missingRefCount} item{missingRefCount === 1 ? "" : "s"} missing an EZPass violation number.
+            </p>
+            <p className="text-xs">
+              Enter the number from each notice in the "Violation #" column below. Approval is blocked
+              until every row has one — a dispute packet without this number is invalid.
+            </p>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -475,6 +503,7 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                   <tr>
                     <th className="p-3">Date/Time</th>
                     <th className="p-3">Plate</th>
+                    <th className="p-3">Violation #</th>
                     <th className="p-3">Toll Location</th>
                     <th className="p-3 text-right">Amount</th>
                     <th className="p-3">Renter</th>
@@ -492,6 +521,9 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                         ) : null}
                       </td>
                       <td className="p-3 font-mono text-xs">{it.plate || "—"}</td>
+                      <td className="p-3">
+                        <RefNumberCell item={it} disabled={approved} onSaved={refresh} />
+                      </td>
                       <td className="p-3">{it.location || "—"}</td>
                       <td className="p-3 text-right">{fmtMoney(Number(it.amount))}</td>
                       <td className="p-3">{it.driver_name || <span className="text-muted-foreground">—</span>}</td>
