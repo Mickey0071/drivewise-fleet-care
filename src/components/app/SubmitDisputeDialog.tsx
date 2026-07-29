@@ -177,6 +177,15 @@ export function SubmitDisputeDialog({
 
             {/* Documents */}
             <div className="flex flex-wrap gap-2">
+              {violation.photo_url ? (
+                <Button size="sm" variant="outline" asChild>
+                  <a href={violation.photo_url} target="_blank" rel="noreferrer">
+                    🎫 View Original Ticket
+                  </a>
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" disabled>No original ticket</Button>
+              )}
               {detail.signedPdfUrl ? (
                 <Button size="sm" variant="outline" asChild>
                   <a href={detail.signedPdfUrl} target="_blank" rel="noreferrer" download>
