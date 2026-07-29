@@ -68,6 +68,7 @@ const DEFAULT_ITEMS: NavItem[] = [
   { key: "/calendar", url: "/calendar", title: "Calendar", icon: Calendar, roles: ALL, sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
   { key: "/driver-portal", url: "/driver-portal", title: "Client Portal Activity", icon: IdCard, roles: ALL, sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
   { key: "/pending-agreements", url: "/pending-agreements", title: "Pending Agreements", icon: FileSignature, roles: ["admin", "va"], sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
+  { key: "/admin/historic-reservation", url: "/admin/historic-reservation", title: "+ Add Historic Rental", icon: CalendarPlus, roles: ["admin", "va"], sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
 
   // Fleet
   { key: "/fleet", url: "/fleet", title: "Vehicles", icon: Car, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
