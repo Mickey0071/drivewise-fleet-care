@@ -2254,6 +2254,7 @@ export type Database = {
           signed_at: string | null
           signed_by: string | null
           skip_daily_minimum: boolean
+          source: string | null
           staff_review_status: string | null
           start_date: string
           stripe_customer_id: string | null
@@ -2340,6 +2341,7 @@ export type Database = {
           signed_at?: string | null
           signed_by?: string | null
           skip_daily_minimum?: boolean
+          source?: string | null
           staff_review_status?: string | null
           start_date: string
           stripe_customer_id?: string | null
@@ -2426,6 +2428,7 @@ export type Database = {
           signed_at?: string | null
           signed_by?: string | null
           skip_daily_minimum?: boolean
+          source?: string | null
           staff_review_status?: string | null
           start_date?: string
           stripe_customer_id?: string | null

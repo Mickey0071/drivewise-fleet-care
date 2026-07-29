@@ -89,6 +89,7 @@ import { Route as AdminMalibuPlateReviewRouteImport } from './routes/admin.malib
 import { Route as AdminMaintenanceNotificationsRouteImport } from './routes/admin.maintenance-notifications'
 import { Route as AdminImportLegacyRouteImport } from './routes/admin.import-legacy'
 import { Route as AdminImportDataRouteImport } from './routes/admin.import-data'
+import { Route as AdminHistoricReservationRouteImport } from './routes/admin.historic-reservation'
 import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminExpensesRouteImport } from './routes/admin.expenses'
 import { Route as AdminExpenseCategoriesRouteImport } from './routes/admin.expense-categories'
@@ -515,6 +516,12 @@ const AdminImportDataRoute = AdminImportDataRouteImport.update({
   path: '/admin/import-data',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminHistoricReservationRoute =
+  AdminHistoricReservationRouteImport.update({
+    id: '/admin/historic-reservation',
+    path: '/admin/historic-reservation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AdminExtensionsRoute = AdminExtensionsRouteImport.update({
   id: '/admin/extensions',
   path: '/admin/extensions',
@@ -687,6 +694,7 @@ export interface FileRoutesByFullPath {
   '/admin/expense-categories': typeof AdminExpenseCategoriesRoute
   '/admin/expenses': typeof AdminExpensesRoute
   '/admin/extensions': typeof AdminExtensionsRoute
+  '/admin/historic-reservation': typeof AdminHistoricReservationRoute
   '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
   '/admin/maintenance-notifications': typeof AdminMaintenanceNotificationsRoute
@@ -792,6 +800,7 @@ export interface FileRoutesByTo {
   '/admin/expense-categories': typeof AdminExpenseCategoriesRoute
   '/admin/expenses': typeof AdminExpensesRoute
   '/admin/extensions': typeof AdminExtensionsRoute
+  '/admin/historic-reservation': typeof AdminHistoricReservationRoute
   '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
   '/admin/maintenance-notifications': typeof AdminMaintenanceNotificationsRoute
@@ -898,6 +907,7 @@ export interface FileRoutesById {
   '/admin/expense-categories': typeof AdminExpenseCategoriesRoute
   '/admin/expenses': typeof AdminExpensesRoute
   '/admin/extensions': typeof AdminExtensionsRoute
+  '/admin/historic-reservation': typeof AdminHistoricReservationRoute
   '/admin/import-data': typeof AdminImportDataRoute
   '/admin/import-legacy': typeof AdminImportLegacyRoute
   '/admin/maintenance-notifications': typeof AdminMaintenanceNotificationsRoute
@@ -1005,6 +1015,7 @@ export interface FileRouteTypes {
     | '/admin/expense-categories'
     | '/admin/expenses'
     | '/admin/extensions'
+    | '/admin/historic-reservation'
     | '/admin/import-data'
     | '/admin/import-legacy'
     | '/admin/maintenance-notifications'
@@ -1110,6 +1121,7 @@ export interface FileRouteTypes {
     | '/admin/expense-categories'
     | '/admin/expenses'
     | '/admin/extensions'
+    | '/admin/historic-reservation'
     | '/admin/import-data'
     | '/admin/import-legacy'
     | '/admin/maintenance-notifications'
@@ -1215,6 +1227,7 @@ export interface FileRouteTypes {
     | '/admin/expense-categories'
     | '/admin/expenses'
     | '/admin/extensions'
+    | '/admin/historic-reservation'
     | '/admin/import-data'
     | '/admin/import-legacy'
     | '/admin/maintenance-notifications'
@@ -1321,6 +1334,7 @@ export interface RootRouteChildren {
   AdminExpenseCategoriesRoute: typeof AdminExpenseCategoriesRoute
   AdminExpensesRoute: typeof AdminExpensesRoute
   AdminExtensionsRoute: typeof AdminExtensionsRoute
+  AdminHistoricReservationRoute: typeof AdminHistoricReservationRoute
   AdminImportDataRoute: typeof AdminImportDataRoute
   AdminImportLegacyRoute: typeof AdminImportLegacyRoute
   AdminMaintenanceNotificationsRoute: typeof AdminMaintenanceNotificationsRoute
@@ -1939,6 +1953,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminImportDataRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/historic-reservation': {
+      id: '/admin/historic-reservation'
+      path: '/admin/historic-reservation'
+      fullPath: '/admin/historic-reservation'
+      preLoaderRoute: typeof AdminHistoricReservationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/extensions': {
       id: '/admin/extensions'
       path: '/admin/extensions'
@@ -2184,6 +2205,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminExpenseCategoriesRoute: AdminExpenseCategoriesRoute,
   AdminExpensesRoute: AdminExpensesRoute,
   AdminExtensionsRoute: AdminExtensionsRoute,
+  AdminHistoricReservationRoute: AdminHistoricReservationRoute,
   AdminImportDataRoute: AdminImportDataRoute,
   AdminImportLegacyRoute: AdminImportLegacyRoute,
   AdminMaintenanceNotificationsRoute: AdminMaintenanceNotificationsRoute,
@@ -2243,13 +2265,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
