@@ -306,6 +306,7 @@ function ManualEntry({ onBatch }: { onBatch: (id: string) => void }) {
                 <th className="p-2">Time</th>
                 <th className="p-2">Plate</th>
                 <th className="p-2">Location</th>
+                <th className="p-2">Violation #</th>
                 <th className="p-2">Amount</th>
                 <th className="p-2"></th>
               </tr>
@@ -339,6 +340,14 @@ function ManualEntry({ onBatch }: { onBatch: (id: string) => void }) {
                       placeholder="Toll plaza / location"
                       value={r.location}
                       onChange={(e) => update(i, "location", e.target.value)}
+                    />
+                  </td>
+                  <td className="p-1">
+                    <Input
+                      placeholder="Required"
+                      value={r.reference_number}
+                      onChange={(e) => update(i, "reference_number", e.target.value.toUpperCase())}
+                      className={r.reference_number.trim() ? "font-mono" : "font-mono border-destructive/50"}
                     />
                   </td>
                   <td className="p-1">
