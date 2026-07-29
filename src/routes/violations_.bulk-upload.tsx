@@ -234,12 +234,20 @@ interface ManualRow {
   plate: string;
   location: string;
   amount: string;
+  reference_number: string;
 }
 
 function ManualEntry({ onBatch }: { onBatch: (id: string) => void }) {
   const qc = useQueryClient();
   const create = useServerFn(createManualEzpassBatch);
-  const emptyRow = (): ManualRow => ({ date: "", time: "", plate: "", location: "", amount: "" });
+  const emptyRow = (): ManualRow => ({
+    date: "",
+    time: "",
+    plate: "",
+    location: "",
+    amount: "",
+    reference_number: "",
+  });
   const [rows, setRows] = useState<ManualRow[]>([emptyRow(), emptyRow(), emptyRow()]);
   const [busy, setBusy] = useState(false);
 
@@ -256,10 +264,18 @@ function ManualEntry({ onBatch }: { onBatch: (id: string) => void }) {
         plate: r.plate.trim() || null,
         location: r.location.trim() || null,
         amount: Number(r.amount) || 0,
+        reference_number: r.reference_number.trim() || null,
       }))
       .filter((r) => r.plate || r.violation_date || r.amount > 0);
     if (valid.length === 0) {
       toast.error("Add at least one row with a plate, date, or amount");
+      return;
+    }
+    const missingRef = valid.filter((r) => !r.reference_number);
+    if (missingRef.length > 0) {
+      toast.error(
+        `${missingRef.length} row${missingRef.length === 1 ? "" : "s"} missing a Violation # — required from the physical notice`,
+      );
       return;
     }
     setBusy(true);
