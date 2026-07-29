@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -93,6 +94,7 @@ export function FindRenterDialog({
   const matchFn = useServerFn(matchViolationToRental);
   const orphanFn = useServerFn(flagViolationOrphan);
   const sendLinkFn = useServerFn(sendViolationRetroLink);
+  const navigate = useNavigate();
 
   const vDate = (violation?.date_issued || "").slice(0, 10);
   const [step, setStep] = useState<"search" | "confirm">("search");
@@ -341,9 +343,16 @@ export function FindRenterDialog({
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setSelected(null);
-                    setLinked(true); // no rental to link to; skip match step
-                    setCreateOpen(true);
+                    if (!violation) return;
+                    navigate({
+                      to: "/admin/historic-reservation",
+                      search: {
+                        violationId: violation.id,
+                        plate: violation.license_plate || plate || "",
+                        date: vDate,
+                      },
+                    });
+                    onClose();
                   }}
                 >
                   Create New Rental Record
