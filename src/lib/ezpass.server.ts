@@ -7,6 +7,11 @@ export interface ExtractedToll {
   location: string | null;
   amount: number;
   reference_number: string | null; // EZPass Toll Bill / Notice / Reference #
+  /** Authority text detected on the page header/letterhead (e.g. "Delaware
+   *  River Port Authority"). Used at ingest time to lock the authority key
+   *  BEFORE falling back to plaza/plate heuristics. */
+  authority_text: string | null;
+  authority_key: AuthorityKey;
 }
 
 /** Known authority keys we can map to a statute in liability-transfer.server.ts.
@@ -267,7 +272,7 @@ export async function extractTollsFromImages(dataUrls: string[]): Promise<Extrac
             {
               role: "system",
               content:
-                'You read EZPass / toll authority statements. Extract EVERY toll/violation line item. Return ONLY a compact JSON object: {"violations":[{"date":string,"time":string,"plate_number":string,"toll_location":string,"amount":number,"reference_number":string}]}. date format MM/DD/YYYY. time as shown (24h or 12h, empty string if absent). plate_number exactly as printed (empty string if absent). toll_location is the plaza/exit/road. amount is a positive USD decimal number. reference_number is the official EZPass / toll authority identifier for this violation/toll. Look under ANY of these labels: "Toll Bill No", "Bill No", "Reference #", "Reference No", "Notice #", "Notice No", "Violation #", "Violation No", "Invoice No", "Invoice #", "Account No", "Account #", "Transaction No", "Statement No", "Citation No", "Case No", "Docket No", "PLEASE REFERENCE". Also treat ANY prominent standalone alphanumeric 10+ characters in the header, footer, or a boxed region as a reference_number when no explicit label is nearby — especially strings starting with "B0" (e.g. "B062675392939"), "T1" (e.g. "T162..."), or a long run of digits. Copy exactly as printed, including any letter prefix. Empty string only if truly unreadable. If a single bill/notice number applies to all line items on the page, repeat it on each. If no violations are visible return {"violations":[]}. No prose, no code fences.',
+                'You read toll authority statements (EZPass, DRPA, SJTA, NJTA, PA Turnpike, etc.). FIRST, identify the issuing authority from the letterhead / header / footer / return address ("Delaware River Port Authority" → DRPA, "NJ E-ZPass" / "E-ZPass New Jersey" → NJ E-ZPass, "SJTA" / "Atlantic City Expressway" → SJTA, "NJ Turnpike" / "Garden State Parkway" → NJTA, "PA Turnpike" → PA Turnpike, "NY E-ZPass" / "MTA" / "Port Authority NY/NJ" → NY E-ZPass). Then extract EVERY toll/violation line item. Return ONLY a compact JSON object: {"authority_text":string,"violations":[{"date":string,"time":string,"plate_number":string,"toll_location":string,"amount":number,"reference_number":string}]}. authority_text = the issuing organization exactly as printed on the letterhead. CRITICAL date rule: date MUST come from the actual violation transaction row — the "Date" column of the "RECORDED VIOLATION TRANSACTIONS" table on DRPA notices, or the "Bill Date" / "Transaction Date" / "Trip Date" field on E-ZPass statements. NEVER use "Notice Date", "Statement Date", "Print Date", "Due Date", "Payment Due", "Pay By", "Response Due", or any date labeled as a deadline. Format MM/DD/YYYY. time as shown (24h or 12h, empty string if absent). plate_number exactly as printed (empty string if absent). toll_location is the plaza/exit/road/bridge (e.g. "BFB", "WWB", "40W", "Atlantic City Expressway"). amount is a positive USD decimal number — when a row has separate "Toll Due" and "Admin Fee" columns, SUM them and return the combined total. reference_number is the official identifier for this violation/toll. Look under ANY of these labels: "Toll Bill No", "Bill No", "Reference #", "Reference No", "Notice #", "Notice No", "Violation No", "Violation Number", "Violation #", "Invoice No", "Invoice #", "Account No", "Account #", "Transaction No", "Statement No", "Citation No", "Case No", "Docket No", "PLEASE REFERENCE". Also treat any prominent standalone alphanumeric 10+ characters in the header, footer, or a boxed region as a reference_number when no explicit label is nearby — especially strings starting with "B0", "T0", "T1", or a long run of digits. Copy exactly as printed, including any letter prefix. Empty string only if truly unreadable. If a single bill/notice number applies to all line items on the page, repeat it on each. If no violations are visible return {"authority_text":"","violations":[]}. No prose, no code fences.',
             },
             {
               role: "user",
@@ -298,6 +303,11 @@ export async function extractTollsFromImages(dataUrls: string[]): Promise<Extrac
         continue;
       }
       const rows = Array.isArray(parsed.violations) ? parsed.violations : [];
+      const pageAuthorityText =
+        typeof (parsed as { authority_text?: unknown }).authority_text === "string"
+          ? ((parsed as { authority_text: string }).authority_text).trim()
+          : "";
+      const pageAuthorityKey = detectAuthorityFromText(pageAuthorityText) || null;
       for (const r of rows) {
         const o = (r ?? {}) as Record<string, unknown>;
         const cleanStr = (v: unknown) => (typeof v === "string" ? v.trim() : "");
@@ -317,6 +327,8 @@ export async function extractTollsFromImages(dataUrls: string[]): Promise<Extrac
           location: cleanStr(o.toll_location) || null,
           amount: cleanNum(o.amount),
           reference_number: cleanStr(o.reference_number) || null,
+          authority_text: pageAuthorityText || null,
+          authority_key: pageAuthorityKey,
         });
       }
     } catch (e) {
