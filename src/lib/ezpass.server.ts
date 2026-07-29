@@ -43,22 +43,11 @@ export interface RefExtractExtras {
 
 export type RefAndAuthorityFullResult = RefAndAuthorityResult & RefExtractExtras;
 
-/**
- * Normalize a license plate for matching. Order matters:
- * 1. Uppercase + trim leading/trailing whitespace and newlines.
- * 2. Strip a leading state prefix (optional parens, 2 letters, optional
- *    close paren) followed by one or more separators (space, slash, dash,
- *    dot) — done BEFORE stripping punctuation so the delimiter anchors it.
- *    e.g. "NJ/XPSD76" -> "XPSD76", "(NJ) S80WST" -> "S80WST", but
- *    "N90VCG" and "AB1234" are left intact.
- * 3. Remove all remaining spaces, dashes, dots, and slashes.
- */
-export function normalizePlate(p: string | null | undefined): string {
-  let s = (p ?? "").toUpperCase().trim();
-  s = s.replace(/^\(?[A-Z]{2}\)?[\s/.\-]+/, "");
-  s = s.replace(/[\s/.\-]/g, "");
-  return s;
-}
+// Plate normalization now lives in the shared client-safe module so both the
+// server and browser (Manual Match dialog, etc.) use identical rules.
+// See src/lib/plate.ts for the canonical implementation and rationale.
+export { normalizePlate } from "@/lib/plate";
+import { normalizePlate } from "@/lib/plate";
 
 /** Fetch a remote image URL (signed Supabase URL, etc.) and inline it as a
  *  data URL so the AI Gateway can accept it. Returns null on failure. */
@@ -324,7 +313,7 @@ export async function extractTollsFromImages(dataUrls: string[]): Promise<Extrac
         all.push({
           violation_date: normDate(cleanStr(o.date)),
           violation_time: cleanStr(o.time) || null,
-          plate: cleanStr(o.plate_number).toUpperCase() || null,
+          plate: normalizePlate(cleanStr(o.plate_number)) || null,
           location: cleanStr(o.toll_location) || null,
           amount: cleanNum(o.amount),
           reference_number: cleanStr(o.reference_number) || null,

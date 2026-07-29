@@ -14,9 +14,9 @@ import {
 } from "@/lib/violations-workflow.functions";
 import { sendViolationRetroLink } from "@/lib/violation-retro.functions";
 import { CreateAgreementDialog } from "@/components/app/CreateAgreementDialog";
+import { normalizePlate } from "@/lib/plate";
 
-const normPlate = (s: string | null | undefined) =>
-  (s ?? "").replace(/[^a-z0-9]/gi, "").toUpperCase().replace(/^NJ(?=[A-Z0-9]{4,})/, "");
+const normPlate = normalizePlate;
 
 function fmtMoney(n: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n || 0);
