@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
+import { RenterName } from "@/components/app/RenterProfileProvider";
 import { useEffect, useRef, useState } from "react";
 import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download, Smartphone, Percent, CreditCard, Wrench } from "lucide-react";
 import { Search as SearchIcon, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
@@ -371,7 +372,9 @@ function RentalsPage() {
         className="grid w-full grid-cols-12 items-center gap-3 rounded-md border border-border bg-card px-3 py-2 text-left text-sm transition-colors hover:border-primary hover:bg-accent/40"
       >
         <span className="col-span-2 truncate font-mono text-xs text-muted-foreground">{r.id}</span>
-        <span className="col-span-3 truncate font-medium">{d?.fullName ?? r.driverId}</span>
+        <span className="col-span-3 truncate font-medium">
+          {d ? <RenterName driverId={d.id} name={d.fullName} /> : (r.driverId)}
+        </span>
         <span className="col-span-3 truncate text-muted-foreground">
           {v ? `${v.year} ${v.make} ${v.model}` : r.vehicleId}
           {v?.plate ? <span className="ml-1 text-xs">· {v.plate}</span> : null}
@@ -1300,7 +1303,9 @@ function RentalsPage() {
                     className={`cursor-pointer ${meta.row}`}
                   >
                     <TableCell className="font-mono text-xs text-muted-foreground">{r.id}</TableCell>
-                    <TableCell className="font-medium">{d?.fullName ?? r.driverId}</TableCell>
+                    <TableCell className="font-medium">
+                      {d ? <RenterName driverId={d.id} name={d.fullName} /> : r.driverId}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {v ? `${v.year} ${v.make} ${v.model}` : r.vehicleId}
                       {v?.plate ? <span className="ml-1 text-xs">· {v.plate}</span> : null}

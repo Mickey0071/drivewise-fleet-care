@@ -84,14 +84,11 @@ function DriversPage() {
               <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setDetailDriver(d)}
+                    <RenterName
+                      driverId={d.id}
+                      name={d.fullName}
                       className="rounded font-semibold text-primary underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      title="View renter details"
-                    >
-                      {d.fullName}
-                    </button>
+                    />
                     <StatusBadge status={d.status} />
                     {d.blocked && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
