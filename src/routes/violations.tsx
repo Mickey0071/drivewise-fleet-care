@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, Search, AlertTriangle, FileUp, MoreHorizontal, Trash2, Phone, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
+import { RenterName } from "@/components/app/RenterProfileProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
