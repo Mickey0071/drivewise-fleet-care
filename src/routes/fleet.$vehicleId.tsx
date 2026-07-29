@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
+import { RenterName } from "@/components/app/RenterProfileProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -419,7 +420,9 @@ function VehicleDetail() {
           <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
             <div>
               <div className="text-xs uppercase tracking-wide text-muted-foreground">Currently rented to</div>
-              <div className="mt-1 text-lg font-semibold">{activeDriver.fullName}</div>
+              <div className="mt-1 text-lg font-semibold">
+                <RenterName driverId={activeDriver.id} name={activeDriver.fullName} className="cursor-pointer text-left text-lg font-semibold text-foreground underline-offset-2 hover:underline" />
+              </div>
               <div className="text-xs text-muted-foreground">
                 Since {fmtDate(activeRental.startDate)} · {fmtMoney(activeRental.weeklyRate)}/wk · Deposit {fmtMoney(activeRental.depositPaid)}
               </div>
@@ -840,7 +843,13 @@ function VehicleDetail() {
                     className="flex w-full items-center justify-between px-3 py-2 text-left"
                   >
                     <div>
-                      <div className="text-sm font-medium">{u.driver?.fullName ?? u.driverId}</div>
+                    <div className="text-sm font-medium">
+                      {u.driver ? (
+                        <RenterName driverId={u.driver.id} name={u.driver.fullName} />
+                      ) : (
+                        u.driverId
+                      )}
+                    </div>
                       <div className="text-xs text-muted-foreground">{u.count} rental{u.count === 1 ? "" : "s"} · first started {fmtDate(u.firstStart)} · {fmtMoney(u.totalPaid)} paid</div>
                     </div>
                     <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />

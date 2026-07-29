@@ -22,6 +22,7 @@ import { hydrateFromCloud, isStoreHydrated, useStoreVersion } from "@/lib/mock/s
 import { RunnerLayout } from "@/components/app/RunnerLayout";
 import { PendingAgreementsWatcher } from "@/components/app/PendingAgreementsWatcher";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+import { RenterProfileProvider } from "@/components/app/RenterProfileProvider";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -286,6 +287,7 @@ function AuthGate() {
 
   return (
     <SidebarProvider>
+      <RenterProfileProvider>
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
         <div className="flex flex-1 flex-col">
@@ -307,6 +309,7 @@ function AuthGate() {
         </div>
       </div>
       <PendingAgreementsWatcher />
+      </RenterProfileProvider>
       <Toaster />
     </SidebarProvider>
   );

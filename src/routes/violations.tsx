@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Plus, Search, AlertTriangle, FileUp, MoreHorizontal, Trash2, Phone, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
+import { RenterName } from "@/components/app/RenterProfileProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1897,7 +1898,13 @@ function ViolationsPage() {
                         {v.vehicle_label || v.license_plate || "—"}
                       </td>
                       <td className="p-3">
-                        <div className="font-medium">{v.driver_name || "Unknown renter"}</div>
+                        <div className="font-medium">
+                          {v.driver_name ? (
+                            <RenterName name={v.driver_name} />
+                          ) : (
+                            "Unknown renter"
+                          )}
+                        </div>
                         {v.rental_id && (
                           <div className="text-xs text-muted-foreground">{v.rental_id}</div>
                         )}
