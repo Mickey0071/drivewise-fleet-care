@@ -41,6 +41,7 @@ import {
   getRentalAgreementUrl,
   dismissEzpassItem,
   createInternalRentalForItem,
+  setEzpassBatchItemRef,
   type EzpassBatchItem,
 } from "@/lib/ezpass.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
