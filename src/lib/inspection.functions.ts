@@ -122,7 +122,7 @@ export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
 
     const { data: v } = await supabaseAdmin
       .from("vehicles")
-      .select("id, year, make, model, plate")
+      .select("id, year, make, model, plate, mileage")
       .eq("id", data.vehicleId)
       .maybeSingle();
     if (!v) throw new Error("Vehicle not found");
@@ -144,11 +144,27 @@ export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
     });
     if (insErr) throw new Error(insErr.message);
 
-    // Flip vehicle to available + update mileage
+    // Flip vehicle to available. Increase-only on mileage: the inspection keeps
+    // the reading as a historical snapshot, but a lower number never rolls the
+    // vehicle's current mileage backward.
+    const currentMileage = (v.mileage as number) ?? 0;
+    const mileageApplied = data.mileage > currentMileage;
+    const vehiclePatch: { status: string; mileage?: number } = { status: "available" };
+    if (mileageApplied) vehiclePatch.mileage = data.mileage;
     await supabaseAdmin
       .from("vehicles")
-      .update({ status: "available", mileage: data.mileage })
+      .update(vehiclePatch)
       .eq("id", data.vehicleId);
+    if (data.mileage !== currentMileage) {
+      await supabaseAdmin.from("vehicle_mileage_log").insert({
+        vehicle_id: data.vehicleId,
+        old_mileage: currentMileage,
+        new_mileage: data.mileage,
+        applied: mileageApplied,
+        source: "Check-in inspection",
+        actor: data.completedBy.trim(),
+      });
+    }
     try {
       const { syncVehicleAvailabilityToGhl } = await import("@/lib/ghl-vehicle-sync.server");
       await syncVehicleAvailabilityToGhl(data.vehicleId);
@@ -163,5 +179,14 @@ export const submitPendingInspectionPublic = createServerFn({ method: "POST" })
     const failedItems = Object.entries(it)
       .filter(([, v]) => v?.status === "fail")
       .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
-    return { ok: true, damageNoted: data.damageNoted, failedItems, maintenanceCreated: failedItems.length > 0 || data.damageNoted };
+    return {
+      ok: true,
+      damageNoted: data.damageNoted,
+      failedItems,
+      maintenanceCreated: failedItems.length > 0 || data.damageNoted,
+      mileageApplied,
+      mileageWarning: mileageApplied
+        ? null
+        : `This is lower than the last recorded mileage (${currentMileage.toLocaleString()}). Vehicle mileage was not changed. Double-check the number.`,
+    };
   });

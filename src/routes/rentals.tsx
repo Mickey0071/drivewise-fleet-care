@@ -1847,6 +1847,9 @@ function ReturnDialog({ rental, onClose }: { rental: Rental | null; onClose: () 
       damageNoted,
       completedBy: completedBy.trim(),
     });
+    if (inspection.mileageApplied === false && inspection.previousMileage != null && (Number(mileage) || 0) < inspection.previousMileage) {
+      toast.warning(`This is lower than the last recorded mileage (${inspection.previousMileage.toLocaleString()}). Vehicle mileage was not changed. Double-check the number.`);
+    }
     if (damageNoted) {
       const renter = d?.fullName ?? rental.driverId;
       const msg = `Rentalprise Auto: New damage reported on return of ${v.year} ${v.make} ${v.model} (Plate ${v.plate}) by ${renter}. Odo ${Number(mileage).toLocaleString()} mi · Fuel ${fuelLevel}%. Received by ${completedBy.trim()}.${notes.trim() ? ` Notes: ${notes.trim()}` : ""}`;

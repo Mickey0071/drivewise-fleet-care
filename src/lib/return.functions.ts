@@ -178,6 +178,15 @@ export const closeoutRental = createServerFn({ method: "POST" })
     ) {
       vehiclePatch.mileage = data.mileage_in;
     }
+    if (typeof data.mileage_in === "number" && data.mileage_in !== (curVehicle?.mileage ?? 0)) {
+      await supabaseAdmin.from("vehicle_mileage_log").insert({
+        vehicle_id: rental.vehicle_id,
+        old_mileage: curVehicle?.mileage ?? null,
+        new_mileage: data.mileage_in,
+        applied: vehiclePatch.mileage != null,
+        source: "Rental return",
+      });
+    }
     const { data: updatedVehicle, error: vehicleErr } = await supabaseAdmin
       .from("vehicles")
       .update(vehiclePatch)
