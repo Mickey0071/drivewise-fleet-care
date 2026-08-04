@@ -113,6 +113,7 @@ function InspectPage() {
         items: itemsPayload,
       }});
       setDone({ failedItems: res.failedItems || [], maintenanceCreated: !!res.maintenanceCreated });
+      if (res.mileageWarning) toast.warning(res.mileageWarning);
     } catch (e) {
       toast.error("Submission failed", { description: e instanceof Error ? e.message : String(e) });
     } finally {
