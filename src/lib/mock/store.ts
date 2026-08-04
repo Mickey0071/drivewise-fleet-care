@@ -1827,6 +1827,9 @@ export function updateVehicle(id: string, fields: Partial<Omit<Vehicle, "id">>) 
   const v = vehicles.find(x => x.id === id);
   if (!v) return Promise.reject(new Error("Vehicle not found"));
   const prev = { ...v };
+  if (typeof fields.mileage === "number" && fields.mileage !== prev.mileage) {
+    logMileageReading(id, prev.mileage, fields.mileage, true, "Vehicle edit");
+  }
   Object.assign(v, fields);
   const patch: Record<string, unknown> = {};
   if (fields.make !== undefined) patch.make = fields.make;
