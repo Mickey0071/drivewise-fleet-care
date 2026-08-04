@@ -2335,12 +2335,32 @@ function syncVehicleOpenIssues(vehicleId: string) {
  *  strictly higher than what's on record (odometers only go up), which protects
  *  routine-maintenance math from typos and stale readings. To correct a bad
  *  value, edit the mileage directly on the vehicle (that path allows decreases). */
-function applyOdometerReading(vehicleId: string, mileage?: number | null) {
-  if (typeof mileage !== "number" || !Number.isFinite(mileage) || mileage <= 0) return;
+function logMileageReading(vehicleId: string, oldMileage: number | null, newMileage: number, applied: boolean, source: string, actor?: string | null) {
+  cloudWrite("mileage-log:insert", supabase.from("vehicle_mileage_log").insert({
+    vehicle_id: vehicleId,
+    old_mileage: oldMileage,
+    new_mileage: newMileage,
+    applied,
+    source,
+    actor: actor ?? null,
+  } as never));
+}
+
+export interface OdometerResult { applied: boolean; previous: number | null }
+
+function applyOdometerReading(vehicleId: string, mileage?: number | null, source = "manual", actor?: string | null): OdometerResult {
+  if (typeof mileage !== "number" || !Number.isFinite(mileage) || mileage <= 0) return { applied: false, previous: null };
   const v = vehicles.find(x => x.id === vehicleId);
-  if (!v || mileage <= v.mileage) return;
+  if (!v) return { applied: false, previous: null };
+  const previous = v.mileage;
+  if (mileage <= previous) {
+    if (mileage < previous) logMileageReading(vehicleId, previous, mileage, false, source, actor);
+    return { applied: false, previous };
+  }
   v.mileage = mileage;
   cloudWrite("vehicle:update", supabase.from("vehicles").update({ mileage }).eq("id", v.id));
+  logMileageReading(vehicleId, previous, mileage, true, source, actor);
+  return { applied: true, previous };
 }
 
 export function addMaintenance(input: Omit<Maintenance, "id">) {
