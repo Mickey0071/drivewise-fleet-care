@@ -470,6 +470,7 @@ function VehicleDetail() {
             </CardContent>
           </Card>
           <VehicleGallery vehicleId={v.id} coverUrl={v.imageUrl} />
+          <VehicleMileageHistory vehicleId={v.id} />
         </TabsContent>
 
         <TabsContent value="block" className="mt-4">
