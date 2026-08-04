@@ -2374,7 +2374,7 @@ export function addMaintenance(input: Omit<Maintenance, "id">) {
   cloudWrite("maintenance:insert", supabase.from("maintenance").insert(toMaintenance(rec)));
   const v = vehicles.find(v => v.id === input.vehicleId);
   if (v) {
-    applyOdometerReading(v.id, input.mileageAtService);
+    applyOdometerReading(v.id, input.mileageAtService, "Maintenance / repair");
     if (input.nextServiceDue) {
       v.nextServiceDue = input.nextServiceDue;
       cloudWrite("vehicle:update", supabase.from("vehicles").update({ next_service_due: v.nextServiceDue }).eq("id", v.id));
@@ -2414,7 +2414,7 @@ export function updateMaintenance(id: string, patch: Partial<Maintenance>) {
   if (!m) return;
   Object.assign(m, patch);
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
-  if (patch.mileageAtService !== undefined) applyOdometerReading(m.vehicleId, patch.mileageAtService);
+  if (patch.mileageAtService !== undefined) applyOdometerReading(m.vehicleId, patch.mileageAtService, "Maintenance / repair");
   // Completing (or reopening) a ticket flips the vehicle availability flag.
   syncVehicleOpenIssues(m.vehicleId);
   emit();
@@ -3318,7 +3318,7 @@ export function saveRepairDiagnosis(
       cloudWrite("maintenance:insert", supabase.from("maintenance").insert(toMaintenance(rec)));
     }
 
-    if (mileage != null) applyOdometerReading(m.vehicleId, mileage);
+    if (mileage != null) applyOdometerReading(m.vehicleId, mileage, "Mechanic diagnosis");
     syncVehicleOpenIssues(m.vehicleId);
     emit();
     return m;
@@ -3339,7 +3339,7 @@ export function saveRepairDiagnosis(
   if (input.mechanicName !== undefined) m.mechanicName = input.mechanicName.trim() || undefined;
   if (input.vendor !== undefined && input.vendor.trim()) m.vendor = input.vendor.trim();
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
-  if (mileage != null) applyOdometerReading(m.vehicleId, mileage);
+  if (mileage != null) applyOdometerReading(m.vehicleId, mileage, "Mechanic diagnosis");
   syncVehicleOpenIssues(m.vehicleId);
   emit();
   return m;
