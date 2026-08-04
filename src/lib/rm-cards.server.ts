@@ -124,6 +124,16 @@ export async function applyRmSubmission(input: {
   if (typeof input.mileage === "number" && input.mileage > ((v as any).mileage ?? 0)) {
     vehicleUpdate.mileage = input.mileage;
   }
+  if (typeof input.mileage === "number" && input.mileage !== ((v as any).mileage ?? 0)) {
+    await supabaseAdmin.from("vehicle_mileage_log").insert({
+      vehicle_id: input.vehicleId,
+      old_mileage: (v as any).mileage ?? null,
+      new_mileage: input.mileage,
+      applied: vehicleUpdate.mileage != null,
+      source: "RM inspection card",
+      actor: input.inspectorName || null,
+    });
+  }
   if (failed.length > 0) {
     vehicleUpdate.has_open_issues = true;
     vehicleUpdate.status = "maintenance";
