@@ -2277,7 +2277,12 @@ export function addInspection(input: Omit<Inspection, "id">) {
   inspections.push(insp);
   cloudWrite("inspection:insert", supabase.from("inspections").insert(toInspection(insp)));
   const v = vehicles.find(v => v.id === input.vehicleId);
-  applyOdometerReading(input.vehicleId, input.mileage);
+  const odo = applyOdometerReading(
+    input.vehicleId,
+    input.mileage,
+    input.type === "check-in" ? "Check-in inspection" : "Check-out inspection",
+    input.completedBy,
+  );
   // If this is a passing post-return inspection, lift the inspection hold so
   // the vehicle becomes bookable again. Failing inspections leave the vehicle
   // in the "inspection" status and flag has_open_issues via the DB trigger.
@@ -2291,7 +2296,7 @@ export function addInspection(input: Omit<Inspection, "id">) {
     }
   }
   emit();
-  return insp;
+  return Object.assign(insp, { mileageApplied: odo.applied, previousMileage: odo.previous });
 }
 
 function nextMaintenanceId() {
