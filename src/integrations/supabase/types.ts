@@ -3118,6 +3118,39 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_mileage_log: {
+        Row: {
+          actor: string | null
+          applied: boolean
+          created_at: string
+          id: string
+          new_mileage: number
+          old_mileage: number | null
+          source: string
+          vehicle_id: string
+        }
+        Insert: {
+          actor?: string | null
+          applied?: boolean
+          created_at?: string
+          id?: string
+          new_mileage: number
+          old_mileage?: number | null
+          source: string
+          vehicle_id: string
+        }
+        Update: {
+          actor?: string | null
+          applied?: boolean
+          created_at?: string
+          id?: string
+          new_mileage?: number
+          old_mileage?: number | null
+          source?: string
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
       vehicle_photos: {
         Row: {
           caption: string | null
