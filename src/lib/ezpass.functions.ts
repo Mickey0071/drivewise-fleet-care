@@ -3,7 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 import {
-  extractTollsFromImages,
+  extractTollsAndDocFromImages,
   autoMatchToll,
   normalizePlate,
   type MatchCandidate,
@@ -41,6 +41,15 @@ export interface EzpassBatchItem {
   violation_id: string | null;
   affidavit_pdf_url: string | null;
   reference_number: string | null;
+  document_type: string | null;
+  notice_date: string | null;
+  ocr_confidence: number | null;
+  requires_manual_review: boolean | null;
+  extraction_details: {
+    matched_pattern: string | null;
+    source_text: string | null;
+    page_found: number | null;
+  } | null;
 }
 
 export interface EzpassBatch {
@@ -75,7 +84,7 @@ export const processEzpassDocument = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }): Promise<{ batchId: string; found: number }> => {
-    const tolls = await extractTollsFromImages(data.images);
+    const { tolls, doc } = await extractTollsAndDocFromImages(data.images);
     if (tolls.length === 0) {
       throw new Error(
         "No toll violations could be read from this document. Try a clearer scan or a different page.",
@@ -133,7 +142,7 @@ export const processEzpassDocument = createServerFn({ method: "POST" })
           : loc || null;
       return {
         batch_id: batchId,
-        violation_date: t.violation_date,
+        violation_date: t.violation_date ?? doc.incident_date,
         violation_time: t.violation_time,
         plate: t.plate,
         location: locWithAuth,
@@ -145,6 +154,11 @@ export const processEzpassDocument = createServerFn({ method: "POST" })
         driver_name: mr.driver_name,
         candidates: mr.candidates as unknown,
         reference_number: t.reference_number ?? null,
+        document_type: doc.document_type,
+        notice_date: doc.notice_date,
+        ocr_confidence: doc.ocr_confidence,
+        requires_manual_review: doc.requires_manual_review || !t.violation_date,
+        extraction_details: doc.extraction_details as unknown,
       };
     });
 
@@ -585,6 +599,8 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
             description: `EZPass toll — ${item.location ?? ""}`.trim(),
             location: item.location,
             violation_time: item.violation_time,
+            notice_date: (item as { notice_date?: string | null }).notice_date ?? null,
+            document_type: (item as { document_type?: string | null }).document_type ?? null,
             notes: `Imported from EZPass batch ${data.batchId}`,
             status: "pending",
             // EZPass ref # is auto-extracted from the scan when present; admin
