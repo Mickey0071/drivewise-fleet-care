@@ -597,9 +597,14 @@ function DisputePacketBuilder() {
               {busy === "draft" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Save Draft
             </Button>
-            <Button onClick={generate} disabled={busy !== null}>
+            <Button
+              onClick={generate}
+              disabled={busy !== null || (rows.length > 0 && matchedRows.length === 0)}
+            >
               {busy === "generate" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Generate Packet
+              {matchedRows.length > 0 && unmatchedRows.length > 0
+                ? `Generate for matched (${matchedRows.length})`
+                : "Generate Packet"}
             </Button>
           </div>
         </CardContent>
@@ -607,13 +612,23 @@ function DisputePacketBuilder() {
 
       <ManualRenterDialog
         open={manualOpen}
-        onOpenChange={setManualOpen}
-        plate={rows.find((r) => r.plate)?.plate ?? null}
-        incidentDate={rows.find((r) => r.incident_date)?.incident_date ?? null}
+        onOpenChange={(o) => {
+          setManualOpen(o);
+          if (!o) setMatchPlate(null);
+        }}
+        plate={matchPlate ?? rows.find((r) => r.plate)?.plate ?? null}
+        incidentDate={
+          (matchPlate
+            ? rows.find((r) => norm(r.plate) === norm(matchPlate) && r.incident_date)?.incident_date
+            : rows.find((r) => r.incident_date)?.incident_date) ?? null
+        }
         onCreated={(r) => {
           setManualRenters((prev) => [r, ...prev]);
           setRenterId(r.id);
         }}
+        onMatched={(plate, renter) =>
+          setPlateMatches((prev) => ({ ...prev, [norm(plate)]: renter }))
+        }
       />
 
       <SavedPacketDraftsDialog
