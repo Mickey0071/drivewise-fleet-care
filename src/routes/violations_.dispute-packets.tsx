@@ -461,9 +461,6 @@ function DisputePacketBuilder() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-6 rounded-md bg-muted/40 p-3 text-sm">
-            </div>
-
           <div className="space-y-1.5">
             <Label>Notes</Label>
             <Textarea
@@ -512,6 +509,28 @@ function DisputePacketBuilder() {
         onCreated={(r) => {
           setManualRenters((prev) => [r, ...prev]);
           setRenterId(r.id);
+        }}
+      />
+
+      <SavedPacketDraftsDialog
+        open={draftsOpen}
+        onOpenChange={setDraftsOpen}
+        onResume={(d) => {
+          setPacketId(d.id);
+          setName(d.name);
+          setRenterId(d.renterId ?? "");
+          if (d.renterId && d.renterName) {
+            setManualRenters((prev) =>
+              prev.some((m) => m.id === d.renterId)
+                ? prev
+                : [{ id: d.renterId as string, name: d.renterName as string }, ...prev],
+            );
+          }
+          setDisputeType(d.disputeType);
+          setNotes(d.notes ?? "");
+          setRows(
+            d.items.map((it, i) => ({ ...it, key: `resume-${d.id}-${i}`, confirmed: true })),
+          );
         }}
       />
     </div>
