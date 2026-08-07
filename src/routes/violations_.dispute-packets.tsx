@@ -138,7 +138,7 @@ function DisputePacketBuilder() {
     ...(packetId ? { id: packetId } : {}),
     name: name.trim(),
     renterId: renterId || null,
-    renterName: renterOptions.find((r) => r.id === renterId)?.name ?? null,
+    renterName: allRenters.find((r) => r.id === renterId)?.name ?? null,
     disputeType,
     status,
     items: rows.map(({ key: _k, confirmed: _c, ...it }) => it),
@@ -181,7 +181,7 @@ function DisputePacketBuilder() {
       const items = rows.map(({ key: _k, confirmed: _c, ...it }) => it);
       const bytes = await renderMultiViolationDisputePdf({
         packetName: name.trim(),
-        renterName: renterOptions.find((r) => r.id === renterId)?.name ?? null,
+        renterName: allRenters.find((r) => r.id === renterId)?.name ?? null,
         disputeType,
         items,
       });
@@ -360,7 +360,7 @@ function DisputePacketBuilder() {
                   <SelectValue placeholder="Select renter" />
                 </SelectTrigger>
                 <SelectContent>
-                  {renterOptions.map((r) => (
+                  {allRenters.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.name}
                     </SelectItem>
