@@ -26,6 +26,7 @@ import {
   type PacketViolationItem,
 } from "@/lib/dispute-packets.functions";
 import { renderMultiViolationDisputePdf } from "@/components/pdf/MultiViolationDisputePDF";
+import { ManualRenterDialog } from "@/components/app/ManualRenterDialog";
 
 export const Route = createFileRoute("/violations_/dispute-packets")({
   head: () => ({
@@ -71,6 +72,8 @@ function DisputePacketBuilder() {
   const [packetId, setPacketId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [renterId, setRenterId] = useState<string>("");
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualRenters, setManualRenters] = useState<{ id: string; name: string }[]>([]);
   const [disputeType, setDisputeType] = useState<PacketDisputeType>("lessor_exemption_ezpass");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -86,6 +89,11 @@ function DisputePacketBuilder() {
       to: dates[dates.length - 1] ?? null,
     };
   }, [rows]);
+
+  const allRenters = useMemo(
+    () => [...manualRenters, ...renterOptions.filter((r) => !manualRenters.some((m) => m.id === r.id))],
+    [manualRenters, renterOptions],
+  );
 
   const needsReview = rows.some((r) => r.requires_manual_review && !r.confirmed);
 
