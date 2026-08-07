@@ -480,9 +480,9 @@ export const createViolationAgreement = createServerFn({ method: "POST" })
       phone: data.phone,
       email: data.email || (d.email as string) || null,
       address: data.address,
-      dl_number: data.licenseNumber,
+      dl_number: data.licenseNumber || null,
       dl_state: data.dlState || (d.dl_state as string) || null,
-      dob: data.dateOfBirth,
+      dob: data.dateOfBirth || null,
     };
 
     if (!shellId) {
