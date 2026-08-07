@@ -143,6 +143,7 @@ function DisputePacketBuilder() {
       toast.success("Documents processed");
     } finally {
       setUploading(false);
+      setAutoSaveAt(Date.now());
     }
   };
 
@@ -273,11 +274,16 @@ function DisputePacketBuilder() {
         title="Dispute Packet Builder"
         subtitle="Drop violation PDFs, confirm dates, generate one packet"
         action={
-          <Button variant="outline" asChild>
-            <Link to="/violations">
-              <ArrowLeft className="mr-1 h-4 w-4" /> Violations
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setDraftsOpen(true)}>
+              Saved drafts{drafts.length > 0 ? ` (${drafts.length})` : ""}
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/violations">
+                <ArrowLeft className="mr-1 h-4 w-4" /> Violations
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -453,6 +459,19 @@ function DisputePacketBuilder() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="flex flex-wrap gap-6 rounded-md bg-muted/40 p-3 text-sm">
+            </div>
+
+          <div className="space-y-1.5">
+            <Label>Notes</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Internal notes for this packet"
+              rows={2}
+            />
           </div>
 
           <div className="flex flex-wrap gap-6 rounded-md bg-muted/40 p-3 text-sm">
