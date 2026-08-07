@@ -53,7 +53,6 @@ import {
   sendRetroAgreementLink,
   type ViolationSearchCard,
 } from "@/lib/retro-agreement.functions";
-import { loadPdf } from "@/lib/pdf-to-image";
 
 export const Route = createFileRoute("/violations_/bulk-upload")({
   head: () => ({ meta: [{ title: "EZPass Bulk Upload — Camauto Rentals" }] }),
