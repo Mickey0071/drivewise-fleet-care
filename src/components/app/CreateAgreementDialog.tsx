@@ -66,7 +66,7 @@ export function CreateAgreementDialog({
       return;
     }
     if (!requiredOk) {
-      toast.error("Fill in all required renter fields (name, phone, address, license #, DOB)");
+      toast.error("Fill in all required renter fields (name, phone, address)");
       return;
     }
     setBusy(true);
