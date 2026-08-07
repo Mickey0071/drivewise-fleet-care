@@ -158,6 +158,8 @@ export interface Rental {
   receiptPdfGeneratedAt?: string;
   staffReviewStatus?: "pending" | "reviewed" | "approved";
   returnedAt?: string;
+  renewalLinkSent?: boolean;
+  renewalLinkSentAt?: string;
   portalLinkSends?: { at: string; phone: string | null; email: string | null }[];
   nameMismatchFlag?: boolean;
   cardholderName?: string;
