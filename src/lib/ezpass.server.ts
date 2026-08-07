@@ -1,4 +1,9 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import {
+  parseViolationDocument,
+  type ParsedViolationDocument,
+  type OcrPage,
+} from "@/lib/violation-parse";
 
 export interface ExtractedToll {
   violation_date: string | null; // YYYY-MM-DD
