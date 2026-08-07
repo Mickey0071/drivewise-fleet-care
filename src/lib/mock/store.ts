@@ -166,6 +166,8 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   extensionDeclinedAt: r.extension_declined_at ?? undefined,
   accidentReport: r.accident_report ?? undefined,
   accidentToken: r.accident_token ?? undefined,
+  renewalLinkSent: !!r.renewal_link_sent,
+  renewalLinkSentAt: r.renewal_link_sent_at ?? undefined,
 });
 const toRental = (r: any) => ({
   id: r.id, vehicle_id: r.vehicleId, driver_id: r.driverId,
