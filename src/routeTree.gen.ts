@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as ViolationsRouteImport } from './routes/violations'
 import { Route as VendorsRouteImport } from './routes/vendors'
+import { Route as VehiclesDownRouteImport } from './routes/vehicles-down'
 import { Route as SmsLogRouteImport } from './routes/sms-log'
 import { Route as SelfAgreementRouteImport } from './routes/self-agreement'
 import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
@@ -128,6 +129,11 @@ const ViolationsRoute = ViolationsRouteImport.update({
 const VendorsRoute = VendorsRouteImport.update({
   id: '/vendors',
   path: '/vendors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VehiclesDownRoute = VehiclesDownRouteImport.update({
+  id: '/vehicles-down',
+  path: '/vehicles-down',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SmsLogRoute = SmsLogRouteImport.update({
@@ -689,6 +695,7 @@ export interface FileRoutesByFullPath {
   '/runner-reports': typeof RunnerReportsRoute
   '/self-agreement': typeof SelfAgreementRoute
   '/sms-log': typeof SmsLogRoute
+  '/vehicles-down': typeof VehiclesDownRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/waitlist': typeof WaitlistRouteWithChildren
@@ -796,6 +803,7 @@ export interface FileRoutesByTo {
   '/runner-reports': typeof RunnerReportsRoute
   '/self-agreement': typeof SelfAgreementRoute
   '/sms-log': typeof SmsLogRoute
+  '/vehicles-down': typeof VehiclesDownRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/waitlist': typeof WaitlistRouteWithChildren
@@ -904,6 +912,7 @@ export interface FileRoutesById {
   '/runner-reports': typeof RunnerReportsRoute
   '/self-agreement': typeof SelfAgreementRoute
   '/sms-log': typeof SmsLogRoute
+  '/vehicles-down': typeof VehiclesDownRoute
   '/vendors': typeof VendorsRoute
   '/violations': typeof ViolationsRoute
   '/waitlist': typeof WaitlistRouteWithChildren
@@ -1013,6 +1022,7 @@ export interface FileRouteTypes {
     | '/runner-reports'
     | '/self-agreement'
     | '/sms-log'
+    | '/vehicles-down'
     | '/vendors'
     | '/violations'
     | '/waitlist'
@@ -1120,6 +1130,7 @@ export interface FileRouteTypes {
     | '/runner-reports'
     | '/self-agreement'
     | '/sms-log'
+    | '/vehicles-down'
     | '/vendors'
     | '/violations'
     | '/waitlist'
@@ -1227,6 +1238,7 @@ export interface FileRouteTypes {
     | '/runner-reports'
     | '/self-agreement'
     | '/sms-log'
+    | '/vehicles-down'
     | '/vendors'
     | '/violations'
     | '/waitlist'
@@ -1335,6 +1347,7 @@ export interface RootRouteChildren {
   RunnerReportsRoute: typeof RunnerReportsRoute
   SelfAgreementRoute: typeof SelfAgreementRoute
   SmsLogRoute: typeof SmsLogRoute
+  VehiclesDownRoute: typeof VehiclesDownRoute
   VendorsRoute: typeof VendorsRoute
   ViolationsRoute: typeof ViolationsRoute
   WaitlistRoute: typeof WaitlistRouteWithChildren
@@ -1426,6 +1439,13 @@ declare module '@tanstack/react-router' {
       path: '/vendors'
       fullPath: '/vendors'
       preLoaderRoute: typeof VendorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vehicles-down': {
+      id: '/vehicles-down'
+      path: '/vehicles-down'
+      fullPath: '/vehicles-down'
+      preLoaderRoute: typeof VehiclesDownRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sms-log': {
@@ -2214,6 +2234,7 @@ const rootRouteChildren: RootRouteChildren = {
   RunnerReportsRoute: RunnerReportsRoute,
   SelfAgreementRoute: SelfAgreementRoute,
   SmsLogRoute: SmsLogRoute,
+  VehiclesDownRoute: VehiclesDownRoute,
   VendorsRoute: VendorsRoute,
   ViolationsRoute: ViolationsRoute,
   WaitlistRoute: WaitlistRouteWithChildren,
