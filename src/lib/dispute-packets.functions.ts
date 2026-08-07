@@ -294,13 +294,14 @@ export const saveBlankAgreement = createServerFn({ method: "POST" })
     z
       .object({
         renterId: z.string().min(1),
+        renterName: z.string().max(160).optional(),
         plate: z.string().max(20).nullable(),
         pdfBase64: z.string().min(10),
         signedDate: z.string().min(10).max(10),
       })
       .parse(input),
   )
-  .handler(async ({ data }): Promise<{ path: string; url: string | null }> => {
+  .handler(async ({ data, context }): Promise<{ path: string; url: string | null }> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { normalizePlate } = await import("@/lib/plate");
     const plate = normalizePlate(data.plate) || "NOPLATE";
@@ -333,6 +334,114 @@ export const saveBlankAgreement = createServerFn({ method: "POST" })
           } as never)
           .in("id", ids);
       }
+
+      // Permanent plate → renter link so future violations auto-match.
+      let renterName = data.renterName?.trim() || "";
+      if (!renterName) {
+        const { data: d } = await supabaseAdmin
+          .from("drivers")
+          .select("full_name")
+          .eq("id", data.renterId)
+          .maybeSingle();
+        renterName = (d?.full_name as string | null) ?? data.renterId;
+      }
+      await supabaseAdmin.from("plate_renter_matches").upsert(
+        {
+          plate,
+          driver_id: data.renterId,
+          renter_name: renterName,
+          agreement_path: path,
+          agreement_url: url,
+          created_by: context.userId ?? null,
+          updated_at: new Date().toISOString(),
+        } as never,
+        { onConflict: "plate" },
+      );
     }
     return { path, url };
+  });
+
+export interface PlateMatch {
+  plate: string;
+  driverId: string;
+  renterName: string;
+  agreementUrl: string | null;
+}
+
+/**
+ * Resolve which of the supplied plates are already permanently matched to a
+ * renter (via a stored plate → renter link, or an existing rental on that plate).
+ */
+export const lookupPlateMatches = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ plates: z.array(z.string()).max(200) }).parse(input),
+  )
+  .handler(async ({ data, context }): Promise<PlateMatch[]> => {
+    const { normalizePlate } = await import("@/lib/plate");
+    const wanted = Array.from(
+      new Set(data.plates.map((p) => normalizePlate(p)).filter((p): p is string => Boolean(p))),
+    );
+    if (wanted.length === 0) return [];
+
+    const out = new Map<string, PlateMatch>();
+
+    const { data: links } = await context.supabase
+      .from("plate_renter_matches")
+      .select("plate, driver_id, renter_name, agreement_url")
+      .in("plate", wanted);
+    for (const l of links ?? []) {
+      out.set(l.plate as string, {
+        plate: l.plate as string,
+        driverId: l.driver_id as string,
+        renterName: (l.renter_name as string) ?? "",
+        agreementUrl: (l.agreement_url as string | null) ?? null,
+      });
+    }
+
+    const missing = wanted.filter((p) => !out.has(p));
+    if (missing.length > 0) {
+      // Fall back to existing rentals on a vehicle with that plate.
+      const { data: vehicles } = await context.supabase
+        .from("vehicles")
+        .select("id, plate")
+        .limit(2000);
+      const byPlate = new Map<string, string>();
+      for (const v of vehicles ?? []) {
+        const np = normalizePlate(v.plate as string | null);
+        if (np && missing.includes(np)) byPlate.set(v.id as string, np);
+      }
+      if (byPlate.size > 0) {
+        const { data: rentals } = await context.supabase
+          .from("rentals")
+          .select("vehicle_id, driver_id, start_date")
+          .in("vehicle_id", Array.from(byPlate.keys()))
+          .order("start_date", { ascending: false })
+          .limit(2000);
+        const driverIds = Array.from(
+          new Set((rentals ?? []).map((r) => r.driver_id as string | null).filter(Boolean)),
+        ) as string[];
+        const names = new Map<string, string>();
+        if (driverIds.length > 0) {
+          const { data: ds } = await context.supabase
+            .from("drivers")
+            .select("id, full_name")
+            .in("id", driverIds);
+          for (const d of ds ?? []) names.set(d.id as string, (d.full_name as string) ?? "");
+        }
+        for (const r of rentals ?? []) {
+          const np = byPlate.get(r.vehicle_id as string);
+          const did = r.driver_id as string | null;
+          if (!np || !did || out.has(np)) continue;
+          out.set(np, {
+            plate: np,
+            driverId: did,
+            renterName: names.get(did) ?? did,
+            agreementUrl: null,
+          });
+        }
+      }
+    }
+
+    return Array.from(out.values());
   });

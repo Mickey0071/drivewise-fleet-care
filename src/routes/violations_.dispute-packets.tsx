@@ -22,6 +22,7 @@ import {
   parseViolationUpload,
   listPacketRenters,
   saveDisputePacket,
+  lookupPlateMatches,
   type PacketDisputeType,
   type PacketViolationItem,
 } from "@/lib/dispute-packets.functions";
@@ -91,6 +92,54 @@ function DisputePacketBuilder() {
   const [localKey, setLocalKey] = useState<string | null>(null);
   const [autoSaveAt, setAutoSaveAt] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const lookupMatches = useServerFn(lookupPlateMatches);
+  /** normalized plate → renter permanently matched to it */
+  const [plateMatches, setPlateMatches] = useState<
+    Record<string, { id: string; name: string }>
+  >({});
+  const [matchPlate, setMatchPlate] = useState<string | null>(null);
+
+  const norm = (p: string | null) => (p ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+  const matchedRows = useMemo(
+    () => rows.filter((r) => Boolean(plateMatches[norm(r.plate)])),
+    [rows, plateMatches],
+  );
+  const unmatchedRows = useMemo(
+    () => rows.filter((r) => !plateMatches[norm(r.plate)]),
+    [rows, plateMatches],
+  );
+  const unmatchedPlates = useMemo(
+    () => Array.from(new Set(unmatchedRows.map((r) => r.plate).filter(Boolean) as string[])),
+    [unmatchedRows],
+  );
+
+  // Resolve permanent plate → renter links whenever the plate set changes.
+  const plateKey = useMemo(
+    () => Array.from(new Set(rows.map((r) => norm(r.plate)).filter(Boolean))).sort().join(","),
+    [rows],
+  );
+  useEffect(() => {
+    if (!plateKey) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await lookupMatches({ data: { plates: plateKey.split(",") } });
+        if (cancelled) return;
+        setPlateMatches((prev) => {
+          const next = { ...prev };
+          for (const m of res) next[m.plate] = { id: m.driverId, name: m.renterName };
+          return next;
+        });
+      } catch {
+        /* matching is best-effort */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plateKey]);
 
   const summary = useMemo(() => {
     const dates = rows
@@ -236,7 +285,8 @@ function DisputePacketBuilder() {
     }
     setBusy("generate");
     try {
-      const items = rows.map(({ key: _k, confirmed: _c, ...it }) => it);
+      const source = matchedRows.length > 0 ? matchedRows : rows;
+      const items = source.map(({ key: _k, confirmed: _c, ...it }) => it);
       const bytes = await renderMultiViolationDisputePdf({
         packetName: name.trim(),
         renterName: allRenters.find((r) => r.id === renterId)?.name ?? null,
@@ -246,7 +296,7 @@ function DisputePacketBuilder() {
       let bin = "";
       bytes.forEach((b) => (bin += String.fromCharCode(b)));
       const res = await save({
-        data: { ...buildPayload("DISPUTED"), pdfBase64: btoa(bin) },
+        data: { ...buildPayload("DISPUTED"), items, pdfBase64: btoa(bin) },
       });
       setPacketId(res.id);
       removeLocalDraft({ ...(localKey ? { key: localKey } : {}), packetId: res.id });
@@ -337,6 +387,16 @@ function DisputePacketBuilder() {
               No violations uploaded yet.
             </div>
           ) : (
+            <>
+            <div className="flex flex-wrap items-center gap-4 border-b p-3 text-sm">
+              <span>
+                Matched violations: <strong>{matchedRows.length}</strong> ✅
+              </span>
+              <span>
+                Unmatched violations: <strong>{unmatchedRows.length}</strong>{" "}
+                {unmatchedRows.length > 0 ? "❌" : "✅"}
+              </span>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
@@ -351,9 +411,15 @@ function DisputePacketBuilder() {
                 <tbody>
                   {rows.map((r) => {
                     const flagged = r.requires_manual_review && !r.confirmed;
+                    const match = plateMatches[norm(r.plate)];
                     return (
                       <tr key={r.key} className="border-b last:border-0 align-top">
-                        <td className="p-3">{r.plate || "—"}</td>
+                        <td className="p-3">
+                          <div>{r.plate || "—"}</div>
+                          {match ? (
+                            <div className="text-xs text-muted-foreground">{match.name}</div>
+                          ) : null}
+                        </td>
                         <td className="p-3">
                           {flagged ? (
                             <div className="flex items-center gap-2">
@@ -389,12 +455,29 @@ function DisputePacketBuilder() {
                         </td>
                         <td className="p-3 text-right font-semibold">{money(r.amount)}</td>
                         <td className="p-3">
-                          {flagged ? (
+                          {!match ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-destructive">Unmatched</span>
+                              {r.plate ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8"
+                                  onClick={() => {
+                                    setMatchPlate(r.plate);
+                                    setManualOpen(true);
+                                  }}
+                                >
+                                  Create agreement
+                                </Button>
+                              ) : null}
+                            </div>
+                          ) : flagged ? (
                             <span className="flex items-center gap-1 text-xs text-amber-600">
                               <AlertTriangle className="h-3.5 w-3.5" /> Confirm date
                             </span>
                           ) : (
-                            <span className="text-xs text-muted-foreground">Ready</span>
+                            <span className="text-xs text-muted-foreground">Matched — ready</span>
                           )}
                         </td>
                       </tr>
@@ -403,6 +486,27 @@ function DisputePacketBuilder() {
                 </tbody>
               </table>
             </div>
+            {unmatchedPlates.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 border-t p-3">
+                <span className="text-sm text-muted-foreground">
+                  Create agreements for unmatched violations:
+                </span>
+                {unmatchedPlates.map((p) => (
+                  <Button
+                    key={p}
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setMatchPlate(p);
+                      setManualOpen(true);
+                    }}
+                  >
+                    Create agreement — {p}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+            </>
           )}
         </CardContent>
       </Card>
@@ -493,9 +597,14 @@ function DisputePacketBuilder() {
               {busy === "draft" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Save Draft
             </Button>
-            <Button onClick={generate} disabled={busy !== null}>
+            <Button
+              onClick={generate}
+              disabled={busy !== null || (rows.length > 0 && matchedRows.length === 0)}
+            >
               {busy === "generate" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Generate Packet
+              {matchedRows.length > 0 && unmatchedRows.length > 0
+                ? `Generate for matched (${matchedRows.length})`
+                : "Generate Packet"}
             </Button>
           </div>
         </CardContent>
@@ -503,13 +612,23 @@ function DisputePacketBuilder() {
 
       <ManualRenterDialog
         open={manualOpen}
-        onOpenChange={setManualOpen}
-        plate={rows.find((r) => r.plate)?.plate ?? null}
-        incidentDate={rows.find((r) => r.incident_date)?.incident_date ?? null}
+        onOpenChange={(o) => {
+          setManualOpen(o);
+          if (!o) setMatchPlate(null);
+        }}
+        plate={matchPlate ?? rows.find((r) => r.plate)?.plate ?? null}
+        incidentDate={
+          (matchPlate
+            ? rows.find((r) => norm(r.plate) === norm(matchPlate) && r.incident_date)?.incident_date
+            : rows.find((r) => r.incident_date)?.incident_date) ?? null
+        }
         onCreated={(r) => {
           setManualRenters((prev) => [r, ...prev]);
           setRenterId(r.id);
         }}
+        onMatched={(plate, renter) =>
+          setPlateMatches((prev) => ({ ...prev, [norm(plate)]: renter }))
+        }
       />
 
       <SavedPacketDraftsDialog
