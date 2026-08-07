@@ -172,7 +172,7 @@ export function CreateAgreementDialog({
               <Input value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label>Date of Birth *</Label>
+              <Label>Date of Birth</Label>
               <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
             </div>
             <div className="space-y-1 sm:col-span-2">
@@ -180,7 +180,7 @@ export function CreateAgreementDialog({
               <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, City, State ZIP" />
             </div>
             <div className="space-y-1">
-              <Label>License # *</Label>
+              <Label>License #</Label>
               <Input value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
             </div>
             <div className="space-y-1">
