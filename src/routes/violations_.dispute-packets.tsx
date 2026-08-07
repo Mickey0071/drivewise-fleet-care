@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { ArrowLeft, FileText, Loader2, Upload, AlertTriangle } from "lucide-react";
@@ -27,6 +27,10 @@ import {
 } from "@/lib/dispute-packets.functions";
 import { renderMultiViolationDisputePdf } from "@/components/pdf/MultiViolationDisputePDF";
 import { ManualRenterDialog } from "@/components/app/ManualRenterDialog";
+import { SavedPacketDraftsDialog } from "@/components/app/SavedPacketDraftsDialog";
+import { listPacketDrafts } from "@/lib/dispute-packets.functions";
+import { saveLocalDraft, removeLocalDraft } from "@/lib/packet-drafts";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/violations_/dispute-packets")({
   head: () => ({
@@ -59,10 +63,17 @@ function DisputePacketBuilder() {
   const parse = useServerFn(parseViolationUpload);
   const save = useServerFn(saveDisputePacket);
   const renters = useServerFn(listPacketRenters);
+  const draftsList = useServerFn(listPacketDrafts);
+  const qc = useQueryClient();
 
   const { data: renterOptions = [] } = useQuery({
     queryKey: ["packet-renters"],
     queryFn: () => renters(),
+  });
+
+  const { data: drafts = [] } = useQuery({
+    queryKey: ["packet-drafts"],
+    queryFn: () => draftsList(),
   });
 
   const [rows, setRows] = useState<Row[]>([]);
@@ -75,6 +86,10 @@ function DisputePacketBuilder() {
   const [manualOpen, setManualOpen] = useState(false);
   const [manualRenters, setManualRenters] = useState<{ id: string; name: string }[]>([]);
   const [disputeType, setDisputeType] = useState<PacketDisputeType>("lessor_exemption_ezpass");
+  const [notes, setNotes] = useState("");
+  const [draftsOpen, setDraftsOpen] = useState(false);
+  const [localKey, setLocalKey] = useState<string | null>(null);
+  const [autoSaveAt, setAutoSaveAt] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const summary = useMemo(() => {
@@ -128,11 +143,50 @@ function DisputePacketBuilder() {
       toast.success("Documents processed");
     } finally {
       setUploading(false);
+      setAutoSaveAt(Date.now());
     }
   };
 
   const setRow = (key: string, patch: Partial<Row>) =>
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+
+  const defaultName = () => {
+    const plate = rows.find((r) => r.plate)?.plate;
+    return name.trim() || `${plate ? `${plate} ` : ""}Dispute packet`;
+  };
+
+  const persistLocal = (id: string | null) => {
+    const key = saveLocalDraft({
+      ...(localKey ? { key: localKey } : {}),
+      packetId: id,
+      name: defaultName(),
+      renterId: renterId || null,
+      renterName: allRenters.find((r) => r.id === renterId)?.name ?? null,
+      disputeType,
+      notes: notes.trim() || null,
+      items: rows.map(({ key: _k, confirmed: _c, ...it }) => it),
+    });
+    if (key) setLocalKey(key);
+  };
+
+  // Auto-save: browser immediately after parsing, server a few seconds later.
+  useEffect(() => {
+    if (autoSaveAt === null || rows.length === 0) return;
+    persistLocal(packetId);
+    const t = window.setTimeout(async () => {
+      try {
+        const res = await save({ data: { ...buildPayload("DRAFT"), name: defaultName() } });
+        setPacketId(res.id);
+        persistLocal(res.id);
+        void qc.invalidateQueries({ queryKey: ["packet-drafts"] });
+        toast.success("Saved to browser and server");
+      } catch {
+        /* keep the browser copy; user can Save Draft manually */
+      }
+    }, 7000);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSaveAt]);
 
   const buildPayload = (status: "DRAFT" | "DISPUTED") => ({
     ...(packetId ? { id: packetId } : {}),
@@ -141,6 +195,8 @@ function DisputePacketBuilder() {
     renterName: allRenters.find((r) => r.id === renterId)?.name ?? null,
     disputeType,
     status,
+    notes: notes.trim() || null,
+    createdVia: "upload" as const,
     items: rows.map(({ key: _k, confirmed: _c, ...it }) => it),
   });
 
@@ -162,6 +218,8 @@ function DisputePacketBuilder() {
     try {
       const res = await save({ data: buildPayload("DRAFT") });
       setPacketId(res.id);
+      persistLocal(res.id);
+      void qc.invalidateQueries({ queryKey: ["packet-drafts"] });
       toast.success("Draft saved");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Save failed");
@@ -191,6 +249,9 @@ function DisputePacketBuilder() {
         data: { ...buildPayload("DISPUTED"), pdfBase64: btoa(bin) },
       });
       setPacketId(res.id);
+      removeLocalDraft({ ...(localKey ? { key: localKey } : {}), packetId: res.id });
+      setLocalKey(null);
+      void qc.invalidateQueries({ queryKey: ["packet-drafts"] });
       const url = URL.createObjectURL(new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" }));
       const a = document.createElement("a");
       a.href = url;
@@ -213,11 +274,16 @@ function DisputePacketBuilder() {
         title="Dispute Packet Builder"
         subtitle="Drop violation PDFs, confirm dates, generate one packet"
         action={
-          <Button variant="outline" asChild>
-            <Link to="/violations">
-              <ArrowLeft className="mr-1 h-4 w-4" /> Violations
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setDraftsOpen(true)}>
+              Saved drafts{drafts.length > 0 ? ` (${drafts.length})` : ""}
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/violations">
+                <ArrowLeft className="mr-1 h-4 w-4" /> Violations
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -395,6 +461,16 @@ function DisputePacketBuilder() {
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <Label>Notes</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Internal notes for this packet"
+              rows={2}
+            />
+          </div>
+
           <div className="flex flex-wrap gap-6 rounded-md bg-muted/40 p-3 text-sm">
             <span>
               <span className="text-muted-foreground">Violations:</span>{" "}
@@ -433,6 +509,28 @@ function DisputePacketBuilder() {
         onCreated={(r) => {
           setManualRenters((prev) => [r, ...prev]);
           setRenterId(r.id);
+        }}
+      />
+
+      <SavedPacketDraftsDialog
+        open={draftsOpen}
+        onOpenChange={setDraftsOpen}
+        onResume={(d) => {
+          setPacketId(d.id);
+          setName(d.name);
+          setRenterId(d.renterId ?? "");
+          if (d.renterId && d.renterName) {
+            setManualRenters((prev) =>
+              prev.some((m) => m.id === d.renterId)
+                ? prev
+                : [{ id: d.renterId as string, name: d.renterName as string }, ...prev],
+            );
+          }
+          setDisputeType(d.disputeType);
+          setNotes(d.notes ?? "");
+          setRows(
+            d.items.map((it, i) => ({ ...it, key: `resume-${d.id}-${i}`, confirmed: true })),
+          );
         }}
       />
     </div>
