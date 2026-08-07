@@ -175,3 +175,87 @@ export const saveDisputePacket = createServerFn({ method: "POST" })
 
     return { id: id!, pdfUrl };
   });
+
+/* ---------------- Manual renter creation + blank agreement ---------------- */
+
+export const createManualRenter = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        name: z.string().min(2).max(160),
+        address: z.string().min(3).max(300),
+        phone: z.string().max(40).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }): Promise<{ id: string; name: string }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const digits = (s: string) => (s || "").replace(/\D/g, "");
+    const rand = Math.random().toString(36).slice(2, 12).toUpperCase();
+    const id = `DR-${rand}`;
+    const phone = data.phone?.trim() || "";
+    const { error } = await supabaseAdmin.from("drivers").insert({
+      id,
+      full_name: data.name.trim(),
+      address: data.address.trim(),
+      phone: phone || null,
+      email: `${digits(phone) || rand.toLowerCase()}@manual.camauto.local`,
+      license_number: "",
+      license_expiry: "1970-01-01",
+      status: "active",
+      created_via: "manual",
+      import_source: "manual_violation_match",
+    } as never);
+    if (error) throw new Error(error.message);
+    return { id, name: data.name.trim() };
+  });
+
+export const saveBlankAgreement = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        renterId: z.string().min(1),
+        plate: z.string().max(20).nullable(),
+        pdfBase64: z.string().min(10),
+        signedDate: z.string().min(10).max(10),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }): Promise<{ path: string; url: string | null }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { normalizePlate } = await import("@/lib/plate");
+    const plate = normalizePlate(data.plate) || "NOPLATE";
+    const path = `agreements/${data.renterId}_${plate}.pdf`;
+    const bytes = Buffer.from(data.pdfBase64, "base64");
+    const { error } = await supabaseAdmin.storage
+      .from("agreements")
+      .upload(path, bytes, { contentType: "application/pdf", upsert: true });
+    if (error) throw new Error(error.message);
+    const { data: signed } = await supabaseAdmin.storage
+      .from("agreements")
+      .createSignedUrl(path, 60 * 60 * 24 * 30);
+    const url = signed?.signedUrl ?? null;
+
+    if (data.plate) {
+      const { data: vios } = await supabaseAdmin
+        .from("violations")
+        .select("id, license_plate")
+        .limit(2000);
+      const ids = (vios ?? [])
+        .filter((v) => normalizePlate(v.license_plate as string | null) === plate)
+        .map((v) => v.id as string);
+      if (ids.length > 0) {
+        await supabaseAdmin
+          .from("violations")
+          .update({
+            driver_id: data.renterId,
+            agreement_pdf_url: url,
+            agreement_signed_date: data.signedDate,
+          } as never)
+          .in("id", ids);
+      }
+    }
+    return { path, url };
+  });
