@@ -186,12 +186,15 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          created_via: string
           date_from: string | null
           date_to: string | null
           dispute_type: string
+          generated_at: string | null
           id: string
           items: Json
           name: string
+          notes: string | null
           pdf_path: string | null
           plate: string | null
           renter_id: string | null
@@ -204,12 +207,15 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          created_via?: string
           date_from?: string | null
           date_to?: string | null
           dispute_type?: string
+          generated_at?: string | null
           id?: string
           items?: Json
           name: string
+          notes?: string | null
           pdf_path?: string | null
           plate?: string | null
           renter_id?: string | null
@@ -222,12 +228,15 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          created_via?: string
           date_from?: string | null
           date_to?: string | null
           dispute_type?: string
+          generated_at?: string | null
           id?: string
           items?: Json
           name?: string
+          notes?: string | null
           pdf_path?: string | null
           plate?: string | null
           renter_id?: string | null
