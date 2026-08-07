@@ -152,6 +152,24 @@ function RentalsPage() {
   const downloadPacketFn = useServerFn(downloadClientPacket);
   const [packetDownloadingId, setPacketDownloadingId] = useState<string | null>(null);
   const sendCardRequestFn = useServerFn(sendCardRequest);
+  const sendRenewalLinkFn = useServerFn(sendRenewalLink);
+  const [renewalBusy, setRenewalBusy] = useState<string | null>(null);
+  async function handleSendRenewalLink(rentalId: string, reminder: boolean) {
+    setRenewalBusy(rentalId);
+    try {
+      const res = await sendRenewalLinkFn({ data: { rentalId, reminder } });
+      if (res?.success) {
+        toast.success(reminder ? "Renewal reminder sent" : "Renewal link sent");
+        await refreshStoreFromCloud();
+      }
+    } catch (e) {
+      toast.error("Could not send renewal link", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setRenewalBusy(null);
+    }
+  }
   const sendCardLink = async (r: Rental, via: "sms" | "email") => {
     try {
       await ensureRentalSynced(r.id);
