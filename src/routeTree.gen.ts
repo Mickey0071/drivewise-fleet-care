@@ -51,6 +51,7 @@ import { Route as ViolationsImportsRouteImport } from './routes/violations_.impo
 import { Route as ViolationsImportRouteImport } from './routes/violations_.import'
 import { Route as ViolationsExportsRouteImport } from './routes/violations_.exports'
 import { Route as ViolationsDisputesRouteImport } from './routes/violations_.disputes'
+import { Route as ViolationsDisputePacketsRouteImport } from './routes/violations_.dispute-packets'
 import { Route as ViolationsBulkUploadRouteImport } from './routes/violations_.bulk-upload'
 import { Route as ViolationsAuthoritiesRouteImport } from './routes/violations_.authorities'
 import { Route as ViolationTokenRouteImport } from './routes/violation.$token'
@@ -324,6 +325,12 @@ const ViolationsDisputesRoute = ViolationsDisputesRouteImport.update({
   path: '/violations/disputes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ViolationsDisputePacketsRoute =
+  ViolationsDisputePacketsRouteImport.update({
+    id: '/violations_/dispute-packets',
+    path: '/violations/dispute-packets',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ViolationsBulkUploadRoute = ViolationsBulkUploadRouteImport.update({
   id: '/violations_/bulk-upload',
   path: '/violations/bulk-upload',
@@ -733,6 +740,7 @@ export interface FileRoutesByFullPath {
   '/violation/$token': typeof ViolationTokenRoute
   '/violations/authorities': typeof ViolationsAuthoritiesRoute
   '/violations/bulk-upload': typeof ViolationsBulkUploadRoute
+  '/violations/dispute-packets': typeof ViolationsDisputePacketsRoute
   '/violations/disputes': typeof ViolationsDisputesRoute
   '/violations/exports': typeof ViolationsExportsRoute
   '/violations/import': typeof ViolationsImportRoute
@@ -839,6 +847,7 @@ export interface FileRoutesByTo {
   '/violation/$token': typeof ViolationTokenRoute
   '/violations/authorities': typeof ViolationsAuthoritiesRoute
   '/violations/bulk-upload': typeof ViolationsBulkUploadRoute
+  '/violations/dispute-packets': typeof ViolationsDisputePacketsRoute
   '/violations/disputes': typeof ViolationsDisputesRoute
   '/violations/exports': typeof ViolationsExportsRoute
   '/violations/import': typeof ViolationsImportRoute
@@ -946,6 +955,7 @@ export interface FileRoutesById {
   '/violation/$token': typeof ViolationTokenRoute
   '/violations_/authorities': typeof ViolationsAuthoritiesRoute
   '/violations_/bulk-upload': typeof ViolationsBulkUploadRoute
+  '/violations_/dispute-packets': typeof ViolationsDisputePacketsRoute
   '/violations_/disputes': typeof ViolationsDisputesRoute
   '/violations_/exports': typeof ViolationsExportsRoute
   '/violations_/import': typeof ViolationsImportRoute
@@ -1054,6 +1064,7 @@ export interface FileRouteTypes {
     | '/violation/$token'
     | '/violations/authorities'
     | '/violations/bulk-upload'
+    | '/violations/dispute-packets'
     | '/violations/disputes'
     | '/violations/exports'
     | '/violations/import'
@@ -1160,6 +1171,7 @@ export interface FileRouteTypes {
     | '/violation/$token'
     | '/violations/authorities'
     | '/violations/bulk-upload'
+    | '/violations/dispute-packets'
     | '/violations/disputes'
     | '/violations/exports'
     | '/violations/import'
@@ -1266,6 +1278,7 @@ export interface FileRouteTypes {
     | '/violation/$token'
     | '/violations_/authorities'
     | '/violations_/bulk-upload'
+    | '/violations_/dispute-packets'
     | '/violations_/disputes'
     | '/violations_/exports'
     | '/violations_/import'
@@ -1371,6 +1384,7 @@ export interface RootRouteChildren {
   ViolationTokenRoute: typeof ViolationTokenRoute
   ViolationsAuthoritiesRoute: typeof ViolationsAuthoritiesRoute
   ViolationsBulkUploadRoute: typeof ViolationsBulkUploadRoute
+  ViolationsDisputePacketsRoute: typeof ViolationsDisputePacketsRoute
   ViolationsDisputesRoute: typeof ViolationsDisputesRoute
   ViolationsExportsRoute: typeof ViolationsExportsRoute
   ViolationsImportRoute: typeof ViolationsImportRoute
@@ -1685,6 +1699,13 @@ declare module '@tanstack/react-router' {
       path: '/violations/disputes'
       fullPath: '/violations/disputes'
       preLoaderRoute: typeof ViolationsDisputesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/violations_/dispute-packets': {
+      id: '/violations_/dispute-packets'
+      path: '/violations/dispute-packets'
+      fullPath: '/violations/dispute-packets'
+      preLoaderRoute: typeof ViolationsDisputePacketsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/violations_/bulk-upload': {
@@ -2242,6 +2263,7 @@ const rootRouteChildren: RootRouteChildren = {
   ViolationTokenRoute: ViolationTokenRoute,
   ViolationsAuthoritiesRoute: ViolationsAuthoritiesRoute,
   ViolationsBulkUploadRoute: ViolationsBulkUploadRoute,
+  ViolationsDisputePacketsRoute: ViolationsDisputePacketsRoute,
   ViolationsDisputesRoute: ViolationsDisputesRoute,
   ViolationsExportsRoute: ViolationsExportsRoute,
   ViolationsImportRoute: ViolationsImportRoute,

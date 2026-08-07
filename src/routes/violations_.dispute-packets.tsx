@@ -183,7 +183,7 @@ function DisputePacketBuilder() {
         data: { ...buildPayload("DISPUTED"), pdfBase64: btoa(bin) },
       });
       setPacketId(res.id);
-      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const url = URL.createObjectURL(new Blob([bytes.slice().buffer as ArrayBuffer], { type: "application/pdf" }));
       const a = document.createElement("a");
       a.href = url;
       a.download = `${name.trim().replace(/[^\w\-]+/g, "_")}.pdf`;
