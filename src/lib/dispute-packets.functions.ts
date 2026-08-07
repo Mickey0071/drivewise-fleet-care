@@ -107,6 +107,8 @@ const saveSchema = z.object({
   disputeType: z.enum(["lessor_exemption_ezpass", "improper_notice_ppa", "other"]),
   status: z.enum(["DRAFT", "DISPUTED"]),
   items: z.array(itemSchema).min(1).max(500),
+  notes: z.string().max(4000).nullable().optional(),
+  createdVia: z.enum(["upload", "manual"]).optional(),
   /** base64 PDF, only when generating. */
   pdfBase64: z.string().optional(),
 });
@@ -136,6 +138,9 @@ export const saveDisputePacket = createServerFn({ method: "POST" })
       date_to: dates[dates.length - 1] ?? null,
       items: data.items as unknown,
       created_by: context.userId ?? null,
+      notes: data.notes ?? null,
+      created_via: data.createdVia ?? "upload",
+      generated_at: data.status === "DISPUTED" ? new Date().toISOString() : null,
     };
 
     let id = data.id ?? null;
@@ -174,6 +179,78 @@ export const saveDisputePacket = createServerFn({ method: "POST" })
     }
 
     return { id: id!, pdfUrl };
+  });
+
+/* ---------------- Draft list / resume / delete ---------------- */
+
+export interface PacketDraftSummary {
+  id: string;
+  name: string;
+  createdAt: string;
+  violationCount: number;
+  totalAmount: number;
+}
+
+export const listPacketDrafts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<PacketDraftSummary[]> => {
+    const { data, error } = await context.supabase
+      .from("dispute_packets")
+      .select("id, name, created_at, violation_count, total_amount")
+      .eq("status", "DRAFT")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((d) => ({
+      id: d.id as string,
+      name: (d.name as string) ?? "Untitled packet",
+      createdAt: d.created_at as string,
+      violationCount: Number(d.violation_count ?? 0),
+      totalAmount: Number(d.total_amount ?? 0),
+    }));
+  });
+
+export interface PacketDraftDetail {
+  id: string;
+  name: string;
+  renterId: string | null;
+  renterName: string | null;
+  disputeType: PacketDisputeType;
+  notes: string | null;
+  items: PacketViolationItem[];
+}
+
+export const getPacketDraft = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }): Promise<PacketDraftDetail> => {
+    const { data: row, error } = await context.supabase
+      .from("dispute_packets")
+      .select("id, name, renter_id, renter_name, dispute_type, notes, items")
+      .eq("id", data.id)
+      .single();
+    if (error) throw new Error(error.message);
+    return {
+      id: row.id as string,
+      name: (row.name as string) ?? "",
+      renterId: (row.renter_id as string | null) ?? null,
+      renterName: (row.renter_name as string | null) ?? null,
+      disputeType: (row.dispute_type as PacketDisputeType) ?? "lessor_exemption_ezpass",
+      notes: (row.notes as string | null) ?? null,
+      items: (row.items as unknown as PacketViolationItem[]) ?? [],
+    };
+  });
+
+export const deletePacketDraft = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const { error } = await context.supabase
+      .from("dispute_packets")
+      .update({ status: "DELETED" } as never)
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 /* ---------------- Manual renter creation + blank agreement ---------------- */
