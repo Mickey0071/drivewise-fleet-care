@@ -551,14 +551,19 @@ export type Database = {
           batch_id: string
           candidates: Json | null
           created_at: string
+          document_type: string | null
           driver_id: string | null
           driver_name: string | null
+          extraction_details: Json | null
           id: string
           location: string | null
           match_status: string
+          notice_date: string | null
+          ocr_confidence: number | null
           plate: string | null
           reference_number: string | null
           rental_id: string | null
+          requires_manual_review: boolean
           updated_at: string
           vehicle_id: string | null
           violation_date: string | null
@@ -571,14 +576,19 @@ export type Database = {
           batch_id: string
           candidates?: Json | null
           created_at?: string
+          document_type?: string | null
           driver_id?: string | null
           driver_name?: string | null
+          extraction_details?: Json | null
           id?: string
           location?: string | null
           match_status?: string
+          notice_date?: string | null
+          ocr_confidence?: number | null
           plate?: string | null
           reference_number?: string | null
           rental_id?: string | null
+          requires_manual_review?: boolean
           updated_at?: string
           vehicle_id?: string | null
           violation_date?: string | null
@@ -591,14 +601,19 @@ export type Database = {
           batch_id?: string
           candidates?: Json | null
           created_at?: string
+          document_type?: string | null
           driver_id?: string | null
           driver_name?: string | null
+          extraction_details?: Json | null
           id?: string
           location?: string | null
           match_status?: string
+          notice_date?: string | null
+          ocr_confidence?: number | null
           plate?: string | null
           reference_number?: string | null
           rental_id?: string | null
+          requires_manual_review?: boolean
           updated_at?: string
           vehicle_id?: string | null
           violation_date?: string | null
@@ -3415,6 +3430,7 @@ export type Database = {
           description: string | null
           dispute_method: string | null
           disputed_at: string | null
+          document_type: string | null
           driver_id: string | null
           extracted_confidence: number | null
           fee: number
@@ -3432,6 +3448,7 @@ export type Database = {
           mail_packet_printed_at: string | null
           mailed_at: string | null
           notes: string | null
+          notice_date: string | null
           ocr_candidates: Json | null
           ocr_secondary_ref: string | null
           paid_at: string | null
@@ -3483,6 +3500,7 @@ export type Database = {
           description?: string | null
           dispute_method?: string | null
           disputed_at?: string | null
+          document_type?: string | null
           driver_id?: string | null
           extracted_confidence?: number | null
           fee?: number
@@ -3500,6 +3518,7 @@ export type Database = {
           mail_packet_printed_at?: string | null
           mailed_at?: string | null
           notes?: string | null
+          notice_date?: string | null
           ocr_candidates?: Json | null
           ocr_secondary_ref?: string | null
           paid_at?: string | null
@@ -3551,6 +3570,7 @@ export type Database = {
           description?: string | null
           dispute_method?: string | null
           disputed_at?: string | null
+          document_type?: string | null
           driver_id?: string | null
           extracted_confidence?: number | null
           fee?: number
@@ -3568,6 +3588,7 @@ export type Database = {
           mail_packet_printed_at?: string | null
           mailed_at?: string | null
           notes?: string | null
+          notice_date?: string | null
           ocr_candidates?: Json | null
           ocr_secondary_ref?: string | null
           paid_at?: string | null
