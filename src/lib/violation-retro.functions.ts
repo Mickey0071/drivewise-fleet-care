@@ -661,10 +661,10 @@ export const createViolationAgreement = createServerFn({ method: "POST" })
       const driverPatch: Record<string, unknown> = {
         full_name: data.fullName,
         address: data.address,
-        license_number: data.licenseNumber,
-        date_of_birth: data.dateOfBirth,
         phone: data.phone,
       };
+      if (data.licenseNumber && data.licenseNumber !== "—") driverPatch.license_number = data.licenseNumber;
+      if (data.dateOfBirth) driverPatch.date_of_birth = data.dateOfBirth;
       if (data.dlState) driverPatch.dl_state = data.dlState;
       if (data.email) driverPatch.email = data.email;
       await supabaseAdmin.from("drivers").update(driverPatch as never).eq("id", t.driver.id);
