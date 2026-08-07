@@ -76,6 +76,7 @@ const DEFAULT_ITEMS: NavItem[] = [
   // Fleet
   { key: "/fleet", url: "/fleet", title: "Vehicles", icon: Car, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
   { key: "/maintenance", url: "/maintenance", title: "Maintenance", icon: Wrench, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
+  { key: "/vehicles-down", url: "/vehicles-down", title: "Vehicles Down", icon: AlertTriangle, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
   { key: "/repairs", url: "/repairs", title: "Repairs", icon: Wrench, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
   { key: "/admin/parts", url: "/admin/parts", title: "Parts", icon: Package, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
   { key: "/inspections", url: "/inspections", title: "Inspections", icon: ClipboardCheck, roles: ALL, sectionKey: "fleet", sectionLabel: "Fleet", sectionIcon: Car },
