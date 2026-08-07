@@ -933,6 +933,8 @@ export const matchAndCommitEzpassItem = createServerFn({ method: "POST" })
         description: `EZPass toll — ${item.location ?? ""}`.trim(),
         location: item.location,
         violation_time: item.violation_time,
+        notice_date: (item as { notice_date?: string | null }).notice_date ?? null,
+        document_type: (item as { document_type?: string | null }).document_type ?? null,
         notes: `Imported from EZPass batch ${(item as { batch_id: string }).batch_id} (manual match)`,
         status: "pending",
         reference_number: (item as { reference_number: string | null }).reference_number ?? null,
@@ -1316,4 +1318,92 @@ export const findDuplicateEzpassLinks = createServerFn({ method: "GET" })
     return Array.from(by.entries())
       .filter(([, g]) => g.item_ids.length > 1)
       .map(([violation_id, g]) => ({ violation_id, ...g }));
+  });
+
+
+/** Manually confirm / correct the incident (and notice) date on a reviewed
+ *  batch item. Used when the parser flags requires_manual_review. Re-runs the
+ *  renter match because attribution keys off plate + incident date. */
+export const setEzpassItemDates = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        itemId: z.string().min(1).max(64),
+        incident_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+        notice_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }): Promise<{ ok: true; match_status: string }> => {
+    const { data: item, error } = await supabaseAdmin
+      .from("ezpass_batch_items")
+      .select("*")
+      .eq("id", data.itemId)
+      .maybeSingle();
+    if (error || !item) throw new Error("Item not found");
+
+    const incident =
+      data.incident_date !== undefined
+        ? data.incident_date
+        : ((item as { violation_date: string | null }).violation_date ?? null);
+
+    const patch: Record<string, unknown> = {
+      violation_date: incident,
+      requires_manual_review: false,
+      ocr_confidence: 1,
+      extraction_details: {
+        matched_pattern: "Manually confirmed by admin",
+        source_text: null,
+        page_found: null,
+      },
+    };
+    if (data.notice_date !== undefined) patch.notice_date = data.notice_date;
+
+    // Re-match on the corrected incident date.
+    const it = item as unknown as {
+      plate: string | null;
+      violation_time: string | null;
+      location: string | null;
+      amount: number;
+      reference_number: string | null;
+      match_status: string;
+    };
+    let matchStatus = it.match_status;
+    if (incident && it.plate) {
+      const mr = await autoMatchToll({
+        violation_date: incident,
+        violation_time: it.violation_time,
+        plate: it.plate,
+        location: it.location,
+        amount: Number(it.amount || 0),
+        reference_number: it.reference_number ?? null,
+        authority_text: null,
+        authority_key: null,
+      });
+      matchStatus = mr.match_status;
+      patch.match_status = mr.match_status;
+      patch.rental_id = mr.rental_id;
+      patch.driver_id = mr.driver_id;
+      patch.vehicle_id = mr.vehicle_id;
+      patch.driver_name = mr.driver_name;
+      patch.candidates = mr.candidates as unknown;
+    }
+
+    const { error: uErr } = await supabaseAdmin
+      .from("ezpass_batch_items")
+      .update(patch as never)
+      .eq("id", data.itemId);
+    if (uErr) throw new Error(uErr.message);
+
+    // Keep an already-promoted violation in sync.
+    const violationId = (item as { violation_id: string | null }).violation_id;
+    if (violationId) {
+      const vPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (incident) vPatch.date_issued = incident;
+      if (data.notice_date !== undefined) vPatch.notice_date = data.notice_date;
+      await supabaseAdmin.from("violations").update(vPatch as never).eq("id", violationId);
+    }
+
+    return { ok: true, match_status: matchStatus };
   });
