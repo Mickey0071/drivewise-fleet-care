@@ -286,15 +286,34 @@ function validatePlate(p: string | null): string | null {
   return p;
 }
 
+/** Result of a full document read: the toll rows plus the document-level
+ *  classification / incident-vs-notice date parse. */
+export interface DocumentExtraction {
+  tolls: ExtractedToll[];
+  doc: ParsedViolationDocument;
+}
+
 /** Run Gemini vision over a set of image data URLs and return all toll rows found. */
 export async function extractTollsFromImages(dataUrls: string[]): Promise<ExtractedToll[]> {
+  return (await extractTollsAndDocFromImages(dataUrls)).tolls;
+}
+
+/** Run Gemini vision over the pages of one uploaded notice: returns the toll
+ *  rows AND an enhanced document parse (type, incident date, notice date,
+ *  confidence, manual-review flag). */
+export async function extractTollsAndDocFromImages(
+  dataUrls: string[],
+): Promise<DocumentExtraction> {
   const apiKey = process.env.LOVABLE_API_KEY;
+  const pages: OcrPage[] = [];
   if (!apiKey) {
     console.error("[ezpass] LOVABLE_API_KEY missing");
-    return [];
+    return { tolls: [], doc: parseViolationDocument([]) };
   }
   const all: ExtractedToll[] = [];
+  let pageNo = 0;
   for (const url of dataUrls) {
+    pageNo++;
     if (!url.startsWith("data:image/")) continue;
     try {
       const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
