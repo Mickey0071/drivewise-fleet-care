@@ -424,6 +424,17 @@ function DisputePacketBuilder() {
           </div>
         </CardContent>
       </Card>
+
+      <ManualRenterDialog
+        open={manualOpen}
+        onOpenChange={setManualOpen}
+        plate={rows.find((r) => r.plate)?.plate ?? null}
+        incidentDate={rows.find((r) => r.incident_date)?.incident_date ?? null}
+        onCreated={(r) => {
+          setManualRenters((prev) => [r, ...prev]);
+          setRenterId(r.id);
+        }}
+      />
     </div>
   );
 }
