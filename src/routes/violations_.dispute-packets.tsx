@@ -387,6 +387,16 @@ function DisputePacketBuilder() {
               No violations uploaded yet.
             </div>
           ) : (
+            <>
+            <div className="flex flex-wrap items-center gap-4 border-b p-3 text-sm">
+              <span>
+                Matched violations: <strong>{matchedRows.length}</strong> ✅
+              </span>
+              <span>
+                Unmatched violations: <strong>{unmatchedRows.length}</strong>{" "}
+                {unmatchedRows.length > 0 ? "❌" : "✅"}
+              </span>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
@@ -401,9 +411,15 @@ function DisputePacketBuilder() {
                 <tbody>
                   {rows.map((r) => {
                     const flagged = r.requires_manual_review && !r.confirmed;
+                    const match = plateMatches[norm(r.plate)];
                     return (
                       <tr key={r.key} className="border-b last:border-0 align-top">
-                        <td className="p-3">{r.plate || "—"}</td>
+                        <td className="p-3">
+                          <div>{r.plate || "—"}</div>
+                          {match ? (
+                            <div className="text-xs text-muted-foreground">{match.name}</div>
+                          ) : null}
+                        </td>
                         <td className="p-3">
                           {flagged ? (
                             <div className="flex items-center gap-2">
@@ -439,12 +455,29 @@ function DisputePacketBuilder() {
                         </td>
                         <td className="p-3 text-right font-semibold">{money(r.amount)}</td>
                         <td className="p-3">
-                          {flagged ? (
+                          {!match ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-destructive">Unmatched</span>
+                              {r.plate ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8"
+                                  onClick={() => {
+                                    setMatchPlate(r.plate);
+                                    setManualOpen(true);
+                                  }}
+                                >
+                                  Create agreement
+                                </Button>
+                              ) : null}
+                            </div>
+                          ) : flagged ? (
                             <span className="flex items-center gap-1 text-xs text-amber-600">
                               <AlertTriangle className="h-3.5 w-3.5" /> Confirm date
                             </span>
                           ) : (
-                            <span className="text-xs text-muted-foreground">Ready</span>
+                            <span className="text-xs text-muted-foreground">Matched — ready</span>
                           )}
                         </td>
                       </tr>
@@ -453,6 +486,27 @@ function DisputePacketBuilder() {
                 </tbody>
               </table>
             </div>
+            {unmatchedPlates.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 border-t p-3">
+                <span className="text-sm text-muted-foreground">
+                  Create agreements for unmatched violations:
+                </span>
+                {unmatchedPlates.map((p) => (
+                  <Button
+                    key={p}
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setMatchPlate(p);
+                      setManualOpen(true);
+                    }}
+                  >
+                    Create agreement — {p}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+            </>
           )}
         </CardContent>
       </Card>
