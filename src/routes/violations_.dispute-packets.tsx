@@ -22,6 +22,7 @@ import {
   parseViolationUpload,
   listPacketRenters,
   saveDisputePacket,
+  lookupPlateMatches,
   type PacketDisputeType,
   type PacketViolationItem,
 } from "@/lib/dispute-packets.functions";
@@ -91,6 +92,54 @@ function DisputePacketBuilder() {
   const [localKey, setLocalKey] = useState<string | null>(null);
   const [autoSaveAt, setAutoSaveAt] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const lookupMatches = useServerFn(lookupPlateMatches);
+  /** normalized plate → renter permanently matched to it */
+  const [plateMatches, setPlateMatches] = useState<
+    Record<string, { id: string; name: string }>
+  >({});
+  const [matchPlate, setMatchPlate] = useState<string | null>(null);
+
+  const norm = (p: string | null) => (p ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+  const matchedRows = useMemo(
+    () => rows.filter((r) => Boolean(plateMatches[norm(r.plate)])),
+    [rows, plateMatches],
+  );
+  const unmatchedRows = useMemo(
+    () => rows.filter((r) => !plateMatches[norm(r.plate)]),
+    [rows, plateMatches],
+  );
+  const unmatchedPlates = useMemo(
+    () => Array.from(new Set(unmatchedRows.map((r) => r.plate).filter(Boolean) as string[])),
+    [unmatchedRows],
+  );
+
+  // Resolve permanent plate → renter links whenever the plate set changes.
+  const plateKey = useMemo(
+    () => Array.from(new Set(rows.map((r) => norm(r.plate)).filter(Boolean))).sort().join(","),
+    [rows],
+  );
+  useEffect(() => {
+    if (!plateKey) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await lookupMatches({ data: { plates: plateKey.split(",") } });
+        if (cancelled) return;
+        setPlateMatches((prev) => {
+          const next = { ...prev };
+          for (const m of res) next[m.plate] = { id: m.driverId, name: m.renterName };
+          return next;
+        });
+      } catch {
+        /* matching is best-effort */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plateKey]);
 
   const summary = useMemo(() => {
     const dates = rows
@@ -236,7 +285,8 @@ function DisputePacketBuilder() {
     }
     setBusy("generate");
     try {
-      const items = rows.map(({ key: _k, confirmed: _c, ...it }) => it);
+      const source = matchedRows.length > 0 ? matchedRows : rows;
+      const items = source.map(({ key: _k, confirmed: _c, ...it }) => it);
       const bytes = await renderMultiViolationDisputePdf({
         packetName: name.trim(),
         renterName: allRenters.find((r) => r.id === renterId)?.name ?? null,
