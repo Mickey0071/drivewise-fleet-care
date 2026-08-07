@@ -25,12 +25,15 @@ export function ManualRenterDialog({
   plate,
   incidentDate,
   onCreated,
+  onMatched,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   plate: string | null;
   incidentDate: string | null;
   onCreated: (renter: { id: string; name: string }) => void;
+  /** Fired once the plate is permanently linked to the renter. */
+  onMatched?: (plate: string, renter: { id: string; name: string }) => void;
 }) {
   const create = useServerFn(createManualRenter);
   const saveAgreement = useServerFn(saveBlankAgreement);
@@ -96,6 +99,7 @@ export function ManualRenterDialog({
       await saveAgreement({
         data: {
           renterId: renter.id,
+          renterName: renter.name,
           plate,
           pdfBase64: btoa(bin),
           signedDate: today(),
@@ -111,7 +115,12 @@ export function ManualRenterDialog({
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast.success("Agreement generated and stored");
+      if (plate) {
+        onMatched?.(plate, renter);
+        toast.success(`${plate} is now permanently matched to ${renter.name}`);
+      } else {
+        toast.success("Agreement generated and stored");
+      }
       onOpenChange(false);
       reset();
     } catch (e) {
