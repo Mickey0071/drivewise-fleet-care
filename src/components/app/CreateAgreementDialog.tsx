@@ -54,10 +54,8 @@ export function CreateAgreementDialog({
     () =>
       fullName.trim().length >= 2 &&
       phone.trim().length >= 7 &&
-      address.trim().length >= 3 &&
-      licenseNumber.trim().length >= 2 &&
-      dob.trim().length >= 4,
-    [fullName, phone, address, licenseNumber, dob],
+      address.trim().length >= 3,
+    [fullName, phone, address],
   );
 
   const canSubmit = datesCover && requiredOk && !busy;
