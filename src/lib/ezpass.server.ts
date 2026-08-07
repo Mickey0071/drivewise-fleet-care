@@ -325,7 +325,7 @@ export async function extractTollsAndDocFromImages(
             {
               role: "system",
               content:
-                'You read toll authority statements (EZPass, DRPA, SJTA, NJTA, PA Turnpike). Extract ONLY from specific labeled fields. NEVER guess. If a field is not clearly present under an allowed label, return an empty string / 0 — a blank field is ALWAYS better than a wrong one.\n\nReturn ONLY compact JSON with this exact shape: {"authority_text":string,"violations":[{"date":string,"time":string,"plate_number":string,"toll_location":string,"amount":number,"reference_number":string}]}. No prose, no code fences.\n\nSTEP 1 — AUTHORITY (letterhead/header/return address only):\n"Delaware River Port Authority" → "Delaware River Port Authority"\n"NJ E-ZPass" / "E-ZPass New Jersey" → "NJ E-ZPass"\n"SJTA" / "South Jersey Transportation Authority" / "Atlantic City Expressway" → "SJTA"\n"NJ Turnpike Authority" / "Garden State Parkway" → "NJ Turnpike Authority"\n"PA Turnpike" → "PA Turnpike"\n"NY E-ZPass" / "MTA" / "Port Authority NY/NJ" → "NY E-ZPass"\nDefault when only a bare E-ZPass logo is visible: "NJ E-ZPass".\n\nSTEP 2 — VIOLATION ROWS. For DRPA notices the source is the "RECORDED VIOLATION TRANSACTIONS" table with columns: Violation Number | License Plate | Toll Plaza | Lane | Date | Time | Toll Due | Admin Fee. For NJ E-ZPass toll bills the source is the transaction table with columns like Transaction Date / Trip Date / Date | Plaza | Lane | Amount. Emit one violation object per row in that table.\n\nFIELD RULES (strict):\n\n• date — ONLY from the transaction-table "Date" / "Transaction Date" / "Trip Date" column, or an explicit "Bill Date" on E-ZPass. NEVER use "Notice Date", "Statement Date", "Print Date", "Due Date", "Payment Due", "Pay By", "Response Due", "Mail Date", or any deadline. Format MM/DD/YYYY. Convert MM/DD/YY by assuming 20YY. If uncertain, return "".\n\n• time — as shown in the same table row. Empty string if absent.\n\n• plate_number — from the "License Plate" column of the transaction table, or an explicit "License Plate:" field. Copy the plate exactly. Do NOT include state prefixes/suffixes like "(NJ)" or trailing " NJ". Empty string if absent.\n\n• toll_location — the "Toll Plaza" / "Plaza" / "Lane" / bridge or exit for that row (e.g. "BFB", "WWB", "40W", "Atlantic City Expressway"). Empty string if absent.\n\n• amount — positive USD decimal from the SAME row. If the row has "Toll Due" AND "Admin Fee" columns, RETURN THEIR SUM (e.g. Toll Due 6.00 + Admin Fee 25.00 = 31.00). NEVER use "Total Amount Due" / "Balance Due" / "Total Due" from a payment/remit summary — that can aggregate multiple violations plus penalties. 0 if unreadable.\n\n• reference_number — the official identifier for THIS violation row. Allowed labels ONLY: "Toll Bill No", "Bill No", "Violation#", "Violation No", "Violation Number", "Violation #", "Notice No", "Notice #", "Citation No", "Reference #" (when printed next to the row), or a prominent boxed identifier starting with "B0", "T0", or "T1" (e.g. "T072675709202", "B062675392939"). NEVER use "Account No" / "Account #" — that is the recipient\'s EZPass account, not the violation. If a single bill/notice number applies to every row on the page, repeat it on each row. Copy exactly as printed, including any letter prefix. Empty string only if truly not found.\n\nIf no violation transaction table is visible, return {"authority_text":"","violations":[]}.\n',
+                'You read toll authority statements (EZPass, DRPA, SJTA, NJTA, PA Turnpike). Extract ONLY from specific labeled fields. NEVER guess. If a field is not clearly present under an allowed label, return an empty string / 0 — a blank field is ALWAYS better than a wrong one.\n\nReturn ONLY compact JSON with this exact shape: {"authority_text":string,"page_text":string,"violations":[{"date":string,"time":string,"plate_number":string,"toll_location":string,"amount":number,"reference_number":string}]}. No prose, no code fences.\n\npage_text = a plain-text transcription of EVERYTHING printed on this page in reading order, keeping each label together with its value on the same line (e.g. "Violation Date: 06/15/2024", "Notice Date: 07/10/2024"). Separate lines with newlines. Never omit a line that contains a date.\n\nSTEP 1 — AUTHORITY (letterhead/header/return address only):\n"Delaware River Port Authority" → "Delaware River Port Authority"\n"NJ E-ZPass" / "E-ZPass New Jersey" → "NJ E-ZPass"\n"SJTA" / "South Jersey Transportation Authority" / "Atlantic City Expressway" → "SJTA"\n"NJ Turnpike Authority" / "Garden State Parkway" → "NJ Turnpike Authority"\n"PA Turnpike" → "PA Turnpike"\n"NY E-ZPass" / "MTA" / "Port Authority NY/NJ" → "NY E-ZPass"\nDefault when only a bare E-ZPass logo is visible: "NJ E-ZPass".\n\nSTEP 2 — VIOLATION ROWS. For DRPA notices the source is the "RECORDED VIOLATION TRANSACTIONS" table with columns: Violation Number | License Plate | Toll Plaza | Lane | Date | Time | Toll Due | Admin Fee. For NJ E-ZPass toll bills the source is the transaction table with columns like Transaction Date / Trip Date / Date | Plaza | Lane | Amount. Emit one violation object per row in that table.\n\nFIELD RULES (strict):\n\n• date — ONLY from the transaction-table "Date" / "Transaction Date" / "Trip Date" column, or an explicit "Bill Date" on E-ZPass. NEVER use "Notice Date", "Statement Date", "Print Date", "Due Date", "Payment Due", "Pay By", "Response Due", "Mail Date", or any deadline. Format MM/DD/YYYY. Convert MM/DD/YY by assuming 20YY. If uncertain, return "".\n\n• time — as shown in the same table row. Empty string if absent.\n\n• plate_number — from the "License Plate" column of the transaction table, or an explicit "License Plate:" field. Copy the plate exactly. Do NOT include state prefixes/suffixes like "(NJ)" or trailing " NJ". Empty string if absent.\n\n• toll_location — the "Toll Plaza" / "Plaza" / "Lane" / bridge or exit for that row (e.g. "BFB", "WWB", "40W", "Atlantic City Expressway"). Empty string if absent.\n\n• amount — positive USD decimal from the SAME row. If the row has "Toll Due" AND "Admin Fee" columns, RETURN THEIR SUM (e.g. Toll Due 6.00 + Admin Fee 25.00 = 31.00). NEVER use "Total Amount Due" / "Balance Due" / "Total Due" from a payment/remit summary — that can aggregate multiple violations plus penalties. 0 if unreadable.\n\n• reference_number — the official identifier for THIS violation row. Allowed labels ONLY: "Toll Bill No", "Bill No", "Violation#", "Violation No", "Violation Number", "Violation #", "Notice No", "Notice #", "Citation No", "Reference #" (when printed next to the row), or a prominent boxed identifier starting with "B0", "T0", or "T1" (e.g. "T072675709202", "B062675392939"). NEVER use "Account No" / "Account #" — that is the recipient\'s EZPass account, not the violation. If a single bill/notice number applies to every row on the page, repeat it on each row. Copy exactly as printed, including any letter prefix. Empty string only if truly not found.\n\nIf no violation transaction table is visible, return {"authority_text":"","violations":[]}.\n',
             },
             {
               role: "user",
@@ -348,13 +348,18 @@ export async function extractTollsAndDocFromImages(
       let raw = json?.choices?.[0]?.message?.content;
       if (typeof raw !== "string") continue;
       raw = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
-      let parsed: { violations?: unknown } = {};
+      let parsed: { violations?: unknown; page_text?: unknown } = {};
       try {
         parsed = JSON.parse(raw);
       } catch {
         console.error("[ezpass] parse failed:", raw.slice(0, 200));
         continue;
       }
+      const pageText =
+        typeof (parsed as { page_text?: unknown }).page_text === "string"
+          ? ((parsed as { page_text: string }).page_text)
+          : "";
+      if (pageText.trim()) pages.push({ page: pageNo, text: pageText });
       const rows = Array.isArray(parsed.violations) ? parsed.violations : [];
       const pageAuthorityText =
         typeof (parsed as { authority_text?: unknown }).authority_text === "string"
@@ -400,7 +405,24 @@ export async function extractTollsAndDocFromImages(
       console.error("[ezpass] extraction error:", e);
     }
   }
-  return all;
+
+  const doc = parseViolationDocument(pages);
+  // If the transaction table gave us a solid date but the text parse did not,
+  // trust the table row (it is the incident date by definition).
+  if (!doc.incident_date) {
+    const fromRows = all.find((t) => t.violation_date)?.violation_date ?? null;
+    if (fromRows) {
+      doc.incident_date = fromRows;
+      doc.extraction_details = {
+        matched_pattern: "Transaction table row",
+        source_text: null,
+        page_found: null,
+      };
+      doc.ocr_confidence = Math.max(doc.ocr_confidence, 0.8);
+      doc.requires_manual_review = doc.ocr_confidence < 0.75;
+    }
+  }
+  return { tolls: all, doc };
 }
 
 export interface MatchCandidate {
