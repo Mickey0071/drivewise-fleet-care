@@ -2362,6 +2362,8 @@ export type Database = {
           rate_amount: number | null
           receipt_pdf_generated_at: string | null
           receipt_pdf_url: string | null
+          renewal_link_sent: boolean
+          renewal_link_sent_at: string | null
           reservation_status: string | null
           return_inspection_id: string | null
           returned_at: string | null
@@ -2449,6 +2451,8 @@ export type Database = {
           rate_amount?: number | null
           receipt_pdf_generated_at?: string | null
           receipt_pdf_url?: string | null
+          renewal_link_sent?: boolean
+          renewal_link_sent_at?: string | null
           reservation_status?: string | null
           return_inspection_id?: string | null
           returned_at?: string | null
@@ -2536,6 +2540,8 @@ export type Database = {
           rate_amount?: number | null
           receipt_pdf_generated_at?: string | null
           receipt_pdf_url?: string | null
+          renewal_link_sent?: boolean
+          renewal_link_sent_at?: string | null
           reservation_status?: string | null
           return_inspection_id?: string | null
           returned_at?: string | null
