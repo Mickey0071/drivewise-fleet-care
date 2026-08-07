@@ -357,7 +357,7 @@ function DisputePacketBuilder() {
               <Label>Renter</Label>
               <Select value={renterId} onValueChange={setRenterId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select renter" />
+                  <SelectValue placeholder="Select renter from database" />
                 </SelectTrigger>
                 <SelectContent>
                   {allRenters.map((r) => (
@@ -367,6 +367,13 @@ function DisputePacketBuilder() {
                   ))}
                 </SelectContent>
               </Select>
+              <button
+                type="button"
+                onClick={() => setManualOpen(true)}
+                className="text-xs text-primary underline underline-offset-2"
+              >
+                Renter not found? Create one
+              </button>
             </div>
             <div className="space-y-1.5">
               <Label>Dispute type</Label>
