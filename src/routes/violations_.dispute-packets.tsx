@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { loadPdf } from "@/lib/pdf-to-image";
 import {
   parseViolationUpload,
   listPacketRenters,
@@ -171,7 +170,8 @@ function DisputePacketBuilder() {
     try {
       for (const file of list) {
         try {
-          const pdf = await loadPdf(file);
+          const { loadPdf } = await import("@/lib/pdf-to-image");
+        const pdf = await loadPdf(file);
           const images: string[] = [];
           for (let p = 1; p <= Math.min(pdf.pageCount, 10); p++) {
             images.push(await pdf.renderPage(p));
