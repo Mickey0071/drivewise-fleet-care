@@ -421,9 +421,9 @@ export const createViolationAgreement = createServerFn({ method: "POST" })
         phone: z.string().trim().min(7).max(30),
         email: z.string().trim().max(120).optional().default(""),
         address: z.string().trim().min(3, "Address is required").max(300),
-        licenseNumber: z.string().trim().min(2, "License # is required").max(40),
+        licenseNumber: z.string().trim().max(40).optional().default(""),
         dlState: z.string().trim().max(4).optional().default(""),
-        dateOfBirth: z.string().trim().min(4, "Date of birth is required").max(20),
+        dateOfBirth: z.string().trim().max(20).optional().default(""),
         signingMethod: z.enum(["link", "admin"]),
         signatureDataUrl: z.string().optional().default(""),
         customMessage: z.string().max(500).optional().nullable(),
@@ -480,9 +480,9 @@ export const createViolationAgreement = createServerFn({ method: "POST" })
       phone: data.phone,
       email: data.email || (d.email as string) || null,
       address: data.address,
-      dl_number: data.licenseNumber,
+      dl_number: data.licenseNumber || null,
       dl_state: data.dlState || (d.dl_state as string) || null,
-      dob: data.dateOfBirth,
+      dob: data.dateOfBirth || null,
     };
 
     if (!shellId) {
@@ -661,10 +661,10 @@ export const createViolationAgreement = createServerFn({ method: "POST" })
       const driverPatch: Record<string, unknown> = {
         full_name: data.fullName,
         address: data.address,
-        license_number: data.licenseNumber,
-        date_of_birth: data.dateOfBirth,
         phone: data.phone,
       };
+      if (data.licenseNumber && data.licenseNumber !== "—") driverPatch.license_number = data.licenseNumber;
+      if (data.dateOfBirth) driverPatch.date_of_birth = data.dateOfBirth;
       if (data.dlState) driverPatch.dl_state = data.dlState;
       if (data.email) driverPatch.email = data.email;
       await supabaseAdmin.from("drivers").update(driverPatch as never).eq("id", t.driver.id);

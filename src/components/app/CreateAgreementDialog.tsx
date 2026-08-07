@@ -54,10 +54,8 @@ export function CreateAgreementDialog({
     () =>
       fullName.trim().length >= 2 &&
       phone.trim().length >= 7 &&
-      address.trim().length >= 3 &&
-      licenseNumber.trim().length >= 2 &&
-      dob.trim().length >= 4,
-    [fullName, phone, address, licenseNumber, dob],
+      address.trim().length >= 3,
+    [fullName, phone, address],
   );
 
   const canSubmit = datesCover && requiredOk && !busy;
@@ -68,7 +66,7 @@ export function CreateAgreementDialog({
       return;
     }
     if (!requiredOk) {
-      toast.error("Fill in all required renter fields (name, phone, address, license #, DOB)");
+      toast.error("Fill in all required renter fields (name, phone, address)");
       return;
     }
     setBusy(true);
@@ -174,7 +172,7 @@ export function CreateAgreementDialog({
               <Input value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label>Date of Birth *</Label>
+              <Label>Date of Birth</Label>
               <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
             </div>
             <div className="space-y-1 sm:col-span-2">
@@ -182,7 +180,7 @@ export function CreateAgreementDialog({
               <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, City, State ZIP" />
             </div>
             <div className="space-y-1">
-              <Label>License # *</Label>
+              <Label>License #</Label>
               <Input value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} />
             </div>
             <div className="space-y-1">
