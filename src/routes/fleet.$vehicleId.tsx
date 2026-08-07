@@ -54,7 +54,9 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
   component: VehicleDetail,
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: string; maint?: number } => ({
     tab: typeof search.tab === "string" ? search.tab : undefined,
     maint: search.maint === "1" || search.maint === 1 ? 1 : undefined,
   }),
