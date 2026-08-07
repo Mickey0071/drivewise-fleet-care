@@ -182,6 +182,63 @@ export type Database = {
         }
         Relationships: []
       }
+      dispute_packets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date_from: string | null
+          date_to: string | null
+          dispute_type: string
+          id: string
+          items: Json
+          name: string
+          pdf_path: string | null
+          plate: string | null
+          renter_id: string | null
+          renter_name: string | null
+          status: string
+          total_amount: number
+          updated_at: string
+          violation_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date_from?: string | null
+          date_to?: string | null
+          dispute_type?: string
+          id?: string
+          items?: Json
+          name: string
+          pdf_path?: string | null
+          plate?: string | null
+          renter_id?: string | null
+          renter_name?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          violation_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date_from?: string | null
+          date_to?: string | null
+          dispute_type?: string
+          id?: string
+          items?: Json
+          name?: string
+          pdf_path?: string | null
+          plate?: string | null
+          renter_id?: string | null
+          renter_name?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          violation_count?: number
+        }
+        Relationships: []
+      }
       drivers: {
         Row: {
           address: string | null
