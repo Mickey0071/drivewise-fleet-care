@@ -258,6 +258,7 @@ export type Database = {
           card_saved_at: string | null
           city: string | null
           created_at: string
+          created_via: string
           date_added: string
           date_of_birth: string | null
           dl_state: string | null
@@ -304,6 +305,7 @@ export type Database = {
           card_saved_at?: string | null
           city?: string | null
           created_at?: string
+          created_via?: string
           date_added?: string
           date_of_birth?: string | null
           dl_state?: string | null
@@ -350,6 +352,7 @@ export type Database = {
           card_saved_at?: string | null
           city?: string | null
           created_at?: string
+          created_via?: string
           date_added?: string
           date_of_birth?: string | null
           dl_state?: string | null
@@ -3476,6 +3479,8 @@ export type Database = {
       }
       violations: {
         Row: {
+          agreement_pdf_url: string | null
+          agreement_signed_date: string | null
           amount: number
           authority_key: string | null
           confirmation_number: string | null
@@ -3546,6 +3551,8 @@ export type Database = {
           workflow_stage: string | null
         }
         Insert: {
+          agreement_pdf_url?: string | null
+          agreement_signed_date?: string | null
           amount?: number
           authority_key?: string | null
           confirmation_number?: string | null
@@ -3616,6 +3623,8 @@ export type Database = {
           workflow_stage?: string | null
         }
         Update: {
+          agreement_pdf_url?: string | null
+          agreement_signed_date?: string | null
           amount?: number
           authority_key?: string | null
           confirmation_number?: string | null
