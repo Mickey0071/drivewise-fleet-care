@@ -1913,6 +1913,39 @@ export type Database = {
         }
         Relationships: []
       }
+      plate_renter_matches: {
+        Row: {
+          agreement_path: string | null
+          agreement_url: string | null
+          created_at: string
+          created_by: string | null
+          driver_id: string
+          plate: string
+          renter_name: string
+          updated_at: string
+        }
+        Insert: {
+          agreement_path?: string | null
+          agreement_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          driver_id: string
+          plate: string
+          renter_name: string
+          updated_at?: string
+        }
+        Update: {
+          agreement_path?: string | null
+          agreement_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          driver_id?: string
+          plate?: string
+          renter_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       portal_tokens: {
         Row: {
           created_at: string
