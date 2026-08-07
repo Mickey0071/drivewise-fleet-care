@@ -26,6 +26,7 @@ import {
   type PacketViolationItem,
 } from "@/lib/dispute-packets.functions";
 import { renderMultiViolationDisputePdf } from "@/components/pdf/MultiViolationDisputePDF";
+import { ManualRenterDialog } from "@/components/app/ManualRenterDialog";
 
 export const Route = createFileRoute("/violations_/dispute-packets")({
   head: () => ({
@@ -71,6 +72,8 @@ function DisputePacketBuilder() {
   const [packetId, setPacketId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [renterId, setRenterId] = useState<string>("");
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualRenters, setManualRenters] = useState<{ id: string; name: string }[]>([]);
   const [disputeType, setDisputeType] = useState<PacketDisputeType>("lessor_exemption_ezpass");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -86,6 +89,11 @@ function DisputePacketBuilder() {
       to: dates[dates.length - 1] ?? null,
     };
   }, [rows]);
+
+  const allRenters = useMemo(
+    () => [...manualRenters, ...renterOptions.filter((r) => !manualRenters.some((m) => m.id === r.id))],
+    [manualRenters, renterOptions],
+  );
 
   const needsReview = rows.some((r) => r.requires_manual_review && !r.confirmed);
 
@@ -130,7 +138,7 @@ function DisputePacketBuilder() {
     ...(packetId ? { id: packetId } : {}),
     name: name.trim(),
     renterId: renterId || null,
-    renterName: renterOptions.find((r) => r.id === renterId)?.name ?? null,
+    renterName: allRenters.find((r) => r.id === renterId)?.name ?? null,
     disputeType,
     status,
     items: rows.map(({ key: _k, confirmed: _c, ...it }) => it),
@@ -173,7 +181,7 @@ function DisputePacketBuilder() {
       const items = rows.map(({ key: _k, confirmed: _c, ...it }) => it);
       const bytes = await renderMultiViolationDisputePdf({
         packetName: name.trim(),
-        renterName: renterOptions.find((r) => r.id === renterId)?.name ?? null,
+        renterName: allRenters.find((r) => r.id === renterId)?.name ?? null,
         disputeType,
         items,
       });
@@ -349,16 +357,23 @@ function DisputePacketBuilder() {
               <Label>Renter</Label>
               <Select value={renterId} onValueChange={setRenterId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select renter" />
+                  <SelectValue placeholder="Select renter from database" />
                 </SelectTrigger>
                 <SelectContent>
-                  {renterOptions.map((r) => (
+                  {allRenters.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <button
+                type="button"
+                onClick={() => setManualOpen(true)}
+                className="text-xs text-primary underline underline-offset-2"
+              >
+                Renter not found? Create one
+              </button>
             </div>
             <div className="space-y-1.5">
               <Label>Dispute type</Label>
@@ -409,6 +424,17 @@ function DisputePacketBuilder() {
           </div>
         </CardContent>
       </Card>
+
+      <ManualRenterDialog
+        open={manualOpen}
+        onOpenChange={setManualOpen}
+        plate={rows.find((r) => r.plate)?.plate ?? null}
+        incidentDate={rows.find((r) => r.incident_date)?.incident_date ?? null}
+        onCreated={(r) => {
+          setManualRenters((prev) => [r, ...prev]);
+          setRenterId(r.id);
+        }}
+      />
     </div>
   );
 }
