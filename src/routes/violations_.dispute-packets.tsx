@@ -296,7 +296,7 @@ function DisputePacketBuilder() {
       let bin = "";
       bytes.forEach((b) => (bin += String.fromCharCode(b)));
       const res = await save({
-        data: { ...buildPayload("DISPUTED"), pdfBase64: btoa(bin) },
+        data: { ...buildPayload("DISPUTED"), items, pdfBase64: btoa(bin) },
       });
       setPacketId(res.id);
       removeLocalDraft({ ...(localKey ? { key: localKey } : {}), packetId: res.id });
