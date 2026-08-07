@@ -56,6 +56,8 @@ import { downloadClientPacket } from "@/lib/client-packet.functions";
 import { sendPortalLink } from "@/lib/portal-link.functions";
 import { closeoutRental } from "@/lib/return.functions";
 import { createExtensionLink } from "@/lib/extension-link.functions";
+import { sendRenewalLink } from "@/lib/renewal-link.functions";
+import { calculateRenewalStatus, RENEWAL_BADGE_CLASS } from "@/lib/rentalStatus";
 import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 import { toast } from "sonner";
 import type { Rental, AccidentReport } from "@/lib/mock/data";
@@ -150,6 +152,24 @@ function RentalsPage() {
   const downloadPacketFn = useServerFn(downloadClientPacket);
   const [packetDownloadingId, setPacketDownloadingId] = useState<string | null>(null);
   const sendCardRequestFn = useServerFn(sendCardRequest);
+  const sendRenewalLinkFn = useServerFn(sendRenewalLink);
+  const [renewalBusy, setRenewalBusy] = useState<string | null>(null);
+  async function handleSendRenewalLink(rentalId: string, reminder: boolean) {
+    setRenewalBusy(rentalId);
+    try {
+      const res = await sendRenewalLinkFn({ data: { rentalId, reminder } });
+      if (res?.success) {
+        toast.success(reminder ? "Renewal reminder sent" : "Renewal link sent");
+        await refreshStoreFromCloud();
+      }
+    } catch (e) {
+      toast.error("Could not send renewal link", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setRenewalBusy(null);
+    }
+  }
   const sendCardLink = async (r: Rental, via: "sms" | "email") => {
     try {
       await ensureRentalSynced(r.id);
@@ -417,6 +437,11 @@ function RentalsPage() {
       .reduce((s, p) => s + Number(p.amount || 0), 0);
     const baseRental = Math.max(0, basePaid) + Number(r.depositPaid || 0);
     const totalPaid = baseRental + extensionsReceived;
+    const renewal = isPending ? null : calculateRenewalStatus({
+      extensionDueDate: r.currentPeriodEnd ?? null,
+      returnDueDate: r.endDate ?? null,
+      renewalLinkSent: r.renewalLinkSent ?? false,
+    });
     return (
       <Card key={r.id} className="overflow-hidden">
         <div className="flex flex-col md:flex-row">
@@ -439,10 +464,32 @@ function RentalsPage() {
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1">
+                {renewal && (
+                  <span className={`rounded-lg px-2.5 py-1 text-[11px] font-medium ${RENEWAL_BADGE_CLASS[renewal.color]}`}>
+                    {renewal.badgeLabel}
+                  </span>
+                )}
                 {isPending ? <PendingHoldBadge rental={r} /> : <StatusBadge status={r.paymentStatus} />}
                 <PaidBadge rental={r} />
               </div>
             </div>
+            {renewal && (
+              renewal.status === "LINK_SENT" ? (
+                <p className="text-xs text-muted-foreground">
+                  Renewal link sent to {d?.fullName ?? "renter"}
+                </p>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={renewalBusy === r.id}
+                  onClick={() => handleSendRenewalLink(r.id, renewal.status === "OVERDUE")}
+                >
+                  <Send className="mr-1 h-4 w-4" />
+                  {renewal.status === "OVERDUE" ? "Send renewal reminder" : "Send renewal link"}
+                </Button>
+              )
+            )}
             {isPending ? <PendingChecklist rental={r} /> : <HandoffStatus rental={r} />}
             <div className="grid grid-cols-3 gap-2 text-sm">
               <Stat label="Started" value={fmtDate(r.startDate)} />
