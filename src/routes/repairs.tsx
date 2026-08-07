@@ -60,7 +60,9 @@ import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
 
 export const Route = createFileRoute("/repairs")({
   head: () => ({ meta: [{ title: "Repairs — Camauto Rentals" }] }),
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (
+    s: Record<string, unknown>,
+  ): { vehicleId?: string; items?: string; openCreate?: boolean } => ({
     vehicleId: typeof s.vehicleId === "string" ? s.vehicleId : undefined,
     items: typeof s.items === "string" ? s.items : undefined,
     openCreate: s.openCreate === "1" || s.openCreate === true ? true : undefined,

@@ -42,6 +42,7 @@ import {
   dismissEzpassItem,
   createInternalRentalForItem,
   setEzpassBatchItemRef,
+  setEzpassItemDates,
   type EzpassBatchItem,
 } from "@/lib/ezpass.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
@@ -418,6 +419,9 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
   const visibleItems = items.filter((i) => i.match_status !== "dismissed");
   const matchedCount = visibleItems.filter((i) => i.match_status === "matched").length;
   const unmatchedCount = visibleItems.length - matchedCount;
+  const reviewCount = visibleItems.filter(
+    (i) => i.requires_manual_review || !i.violation_date,
+  ).length;
   const missingRefCount = visibleItems.filter(
     (i) => !i.violation_id && !(i.reference_number && i.reference_number.trim()),
   ).length;
@@ -517,6 +521,22 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
         </div>
       )}
 
+      {reviewCount > 0 && !approved && (
+        <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <div>
+            <p className="font-medium">
+              {reviewCount} item{reviewCount === 1 ? "" : "s"} need the incident date confirmed.
+            </p>
+            <p className="text-xs">
+              The scanner could not read the date of the violation with enough certainty. Confirm it
+              in the "Incident / Notice date" column — the incident date is what we use to match the
+              renter and to calculate dispute deadlines.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
@@ -526,7 +546,8 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
               <table className="w-full text-sm">
                 <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <tr>
-                    <th className="p-3">Date/Time</th>
+                    <th className="p-3">Incident / Notice date</th>
+                    <th className="p-3">Doc type</th>
                     <th className="p-3">Plate</th>
                     <th className="p-3">Violation #</th>
                     <th className="p-3">Toll Location</th>
@@ -540,10 +561,10 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                   {visibleItems.map((it) => (
                     <tr key={it.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-3">
-                        {fmtDate(it.violation_date)}
-                        {it.violation_time ? (
-                          <span className="ml-1 text-xs text-muted-foreground">{it.violation_time}</span>
-                        ) : null}
+                        <IncidentDateCell item={it} disabled={approved} onSaved={refresh} />
+                      </td>
+                      <td className="p-3">
+                        <DocTypeCell item={it} />
                       </td>
                       <td className="p-3 font-mono text-xs">{it.plate || "—"}</td>
                       <td className="p-3">
@@ -1542,5 +1563,114 @@ function ManualMatchDialog({
         </DialogContent>
       </Dialog>
     </Dialog>
+  );
+}
+
+
+function DocTypeCell({ item }: { item: EzpassBatchItem }) {
+  const type = item.document_type ?? "OTHER";
+  const conf = typeof item.ocr_confidence === "number" ? item.ocr_confidence : null;
+  const tone =
+    type === "EZPASS"
+      ? "bg-sky-600"
+      : type === "PPA"
+        ? "bg-violet-600"
+        : "bg-muted text-muted-foreground";
+  return (
+    <div className="space-y-1">
+      <Badge className={tone}>{type}</Badge>
+      {conf !== null && (
+        <div
+          className="text-[10px] text-muted-foreground"
+          title={
+            item.extraction_details?.source_text ??
+            item.extraction_details?.matched_pattern ??
+            undefined
+          }
+        >
+          {Math.round(conf * 100)}% confident
+          {item.extraction_details?.page_found
+            ? ` · p.${item.extraction_details.page_found}`
+            : ""}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IncidentDateCell({
+  item,
+  disabled,
+  onSaved,
+}: {
+  item: EzpassBatchItem;
+  disabled: boolean;
+  onSaved: () => void;
+}) {
+  const save = useServerFn(setEzpassItemDates);
+  const needsReview = Boolean(item.requires_manual_review) || !item.violation_date;
+  const [editing, setEditing] = useState(needsReview);
+  const [value, setValue] = useState((item.violation_date ?? "").slice(0, 10));
+  const [busy, setBusy] = useState(false);
+
+  const commit = async () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      toast.error("Enter the date the violation happened");
+      return;
+    }
+    setBusy(true);
+    try {
+      await save({ data: { itemId: item.id, incident_date: value } });
+      setEditing(false);
+      toast.success("Incident date confirmed");
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      {editing && !disabled ? (
+        <div className="flex items-center gap-1">
+          <Input
+            type="date"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="h-8 w-36 text-xs"
+            disabled={busy}
+          />
+          <Button size="sm" className="h-8 px-2" onClick={commit} disabled={busy}>
+            {busy ? "…" : "Confirm"}
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{fmtDate(item.violation_date)}</span>
+          {item.violation_time ? (
+            <span className="text-xs text-muted-foreground">{item.violation_time}</span>
+          ) : null}
+          {!disabled && (
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:underline"
+              onClick={() => setEditing(true)}
+            >
+              Edit
+            </button>
+          )}
+        </div>
+      )}
+      {needsReview && editing && (
+        <p className="text-[10px] font-medium text-amber-600">
+          ⚠️ Date unclear on the scan — please confirm
+        </p>
+      )}
+      <div className="text-[10px] text-muted-foreground">
+        Notice date: {item.notice_date ? fmtDate(item.notice_date) : "—"}
+      </div>
+    </div>
   );
 }

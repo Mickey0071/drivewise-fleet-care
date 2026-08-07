@@ -67,7 +67,15 @@ type StatusFilter = "on_rent" | "all" | "pending" | "returned" | "cancelled";
 
 export const Route = createFileRoute("/rentals")({
   head: () => ({ meta: [{ title: "Reservations — Camauto Rentals" }] }),
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    paid?: string;
+    session_id?: string;
+    review?: string;
+    detail?: string;
+    status?: StatusFilter;
+  } => ({
     paid: typeof search.paid === "string" ? search.paid : undefined,
     session_id: typeof search.session_id === "string" ? search.session_id : undefined,
     review: typeof search.review === "string" ? search.review : undefined,

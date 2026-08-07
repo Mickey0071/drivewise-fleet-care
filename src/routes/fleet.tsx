@@ -32,7 +32,12 @@ import { AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/fleet")({
   head: () => ({ meta: [{ title: "Fleet — Camauto Rentals" }] }),
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    status?: "available" | "rented" | "inspection" | "maintenance" | "impound";
+    view?: "archived";
+  } => ({
     status: (search.status as "available" | "rented" | "inspection" | "maintenance" | "impound" | undefined) ?? undefined,
     view: (search.view as "archived" | undefined) ?? undefined,
   }),
