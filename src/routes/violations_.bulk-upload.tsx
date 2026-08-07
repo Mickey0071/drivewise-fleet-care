@@ -102,6 +102,7 @@ function BulkUploadPage() {
       let images: string[] = [];
       if (file.type === "application/pdf") {
         setProgress("Rendering PDF pages…");
+        const { loadPdf } = await import("@/lib/pdf-to-image");
         const pdf = await loadPdf(file);
         const pageCount = Math.min(pdf.pageCount, 30);
         for (let p = 1; p <= pageCount; p++) {
