@@ -149,6 +149,44 @@ function DisputePacketBuilder() {
   const setRow = (key: string, patch: Partial<Row>) =>
     setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
 
+  const defaultName = () => {
+    const plate = rows.find((r) => r.plate)?.plate;
+    return name.trim() || `${plate ? `${plate} ` : ""}Dispute packet`;
+  };
+
+  const persistLocal = (id: string | null) => {
+    const key = saveLocalDraft({
+      ...(localKey ? { key: localKey } : {}),
+      packetId: id,
+      name: defaultName(),
+      renterId: renterId || null,
+      renterName: allRenters.find((r) => r.id === renterId)?.name ?? null,
+      disputeType,
+      notes: notes.trim() || null,
+      items: rows.map(({ key: _k, confirmed: _c, ...it }) => it),
+    });
+    if (key) setLocalKey(key);
+  };
+
+  // Auto-save: browser immediately after parsing, server a few seconds later.
+  useEffect(() => {
+    if (autoSaveAt === null || rows.length === 0) return;
+    persistLocal(packetId);
+    const t = window.setTimeout(async () => {
+      try {
+        const res = await save({ data: { ...buildPayload("DRAFT"), name: defaultName() } });
+        setPacketId(res.id);
+        persistLocal(res.id);
+        void qc.invalidateQueries({ queryKey: ["packet-drafts"] });
+        toast.success("Saved to browser and server");
+      } catch {
+        /* keep the browser copy; user can Save Draft manually */
+      }
+    }, 7000);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSaveAt]);
+
   const buildPayload = (status: "DRAFT" | "DISPUTED") => ({
     ...(packetId ? { id: packetId } : {}),
     name: name.trim(),
