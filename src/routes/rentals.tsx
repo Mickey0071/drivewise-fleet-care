@@ -437,6 +437,11 @@ function RentalsPage() {
       .reduce((s, p) => s + Number(p.amount || 0), 0);
     const baseRental = Math.max(0, basePaid) + Number(r.depositPaid || 0);
     const totalPaid = baseRental + extensionsReceived;
+    const renewal = isPending ? null : calculateRenewalStatus({
+      extensionDueDate: r.currentPeriodEnd ?? null,
+      returnDueDate: r.endDate ?? null,
+      renewalLinkSent: r.renewalLinkSent ?? false,
+    });
     return (
       <Card key={r.id} className="overflow-hidden">
         <div className="flex flex-col md:flex-row">
@@ -459,10 +464,32 @@ function RentalsPage() {
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1">
+                {renewal && (
+                  <span className={`rounded-lg px-2.5 py-1 text-[11px] font-medium ${RENEWAL_BADGE_CLASS[renewal.color]}`}>
+                    {renewal.badgeLabel}
+                  </span>
+                )}
                 {isPending ? <PendingHoldBadge rental={r} /> : <StatusBadge status={r.paymentStatus} />}
                 <PaidBadge rental={r} />
               </div>
             </div>
+            {renewal && (
+              renewal.status === "LINK_SENT" ? (
+                <p className="text-xs text-muted-foreground">
+                  Renewal link sent to {d?.fullName ?? "renter"}
+                </p>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={renewalBusy === r.id}
+                  onClick={() => handleSendRenewalLink(r.id, renewal.status === "OVERDUE")}
+                >
+                  <Send className="mr-1 h-4 w-4" />
+                  {renewal.status === "OVERDUE" ? "Send renewal reminder" : "Send renewal link"}
+                </Button>
+              )
+            )}
             {isPending ? <PendingChecklist rental={r} /> : <HandoffStatus rental={r} />}
             <div className="grid grid-cols-3 gap-2 text-sm">
               <Stat label="Started" value={fmtDate(r.startDate)} />
