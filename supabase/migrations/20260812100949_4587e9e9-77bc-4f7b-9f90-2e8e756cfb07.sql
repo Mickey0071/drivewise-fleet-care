@@ -1,0 +1,1 @@
+ALTER TABLE public.waitlist_entries ADD COLUMN IF NOT EXISTS payment_link_sent_at TIMESTAMP WITH TIME ZONE;

@@ -239,6 +239,7 @@ function WaiterCardDialog({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<{ url: string; label: string } | null>(null);
   // Locally track newly-uploaded doc URLs so the UI updates immediately.
   const [localDocs, setLocalDocs] = useState<Partial<Record<"license-front" | "license-back" | "rideshare-proof", string>>>({});
 
@@ -360,9 +361,9 @@ function WaiterCardDialog({
                 <div key={it.kind} className="space-y-1.5">
                   <div className="text-xs font-medium text-muted-foreground">{it.label}</div>
                   {it.url ? (
-                    <a href={it.url} target="_blank" rel="noreferrer">
-                      <img src={it.url} alt={it.label} className="h-32 w-full rounded border bg-muted/30 object-contain hover:opacity-90" />
-                    </a>
+                    <button type="button" className="block w-full" onClick={() => setZoom({ url: it.url!, label: it.label })}>
+                      <img src={it.url} alt={it.label} className="h-32 w-full cursor-zoom-in rounded border bg-muted/30 object-contain hover:opacity-90" />
+                    </button>
                   ) : (
                     <div className="flex h-32 w-full items-center justify-center rounded border bg-muted/20 text-xs text-muted-foreground">Not uploaded</div>
                   )}
@@ -396,6 +397,18 @@ function WaiterCardDialog({
             </Button>
           )}
         </DialogFooter>
+
+        <Dialog open={!!zoom} onOpenChange={(o) => { if (!o) setZoom(null); }}>
+          <DialogContent className="max-h-[95vh] max-w-4xl overflow-auto">
+            <DialogHeader>
+              <DialogTitle>{zoom?.label}</DialogTitle>
+            </DialogHeader>
+            {zoom && <img src={zoom.url} alt={zoom.label} className="max-h-[75vh] w-full object-contain" />}
+            <DialogFooter>
+              <a href={zoom?.url} target="_blank" rel="noreferrer" className="text-xs underline">Open in new tab</a>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );
@@ -417,6 +430,7 @@ function CreateWaiterDialog({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [sendText, setSendText] = useState(true);
+  const [docs, setDocs] = useState<{ front?: string; back?: string; rideshare?: string }>({});
   const [smsBody, setSmsBody] = useState(
     "Hi{{name}}, you're on the Camauto Rentals waitlist. Upload your info here so we're ready to roll when a vehicle opens up: {{link}}",
   );
@@ -426,6 +440,7 @@ function CreateWaiterDialog({
     if (open) {
       setName(""); setPhone(""); setEmail(""); setPref(""); setCadence(""); setNotes("");
       setSendText(true);
+      setDocs({});
       setSmsBody("Hi{{name}}, you're on the Camauto Rentals waitlist. Upload your info here so we're ready to roll when a vehicle opens up: {{link}}");
     }
   }, [open]);
@@ -439,6 +454,9 @@ function CreateWaiterDialog({
         vehiclePreference: pref || undefined,
         rentalCadence: cadence || undefined,
         adminNotes: notes || undefined,
+        licenseFrontDataUrl: docs.front,
+        licenseBackDataUrl: docs.back,
+        rideshareProofDataUrl: docs.rideshare,
       } });
       toast.success("Waiter added");
       if (sendText && phone.trim() && smsBody.trim()) {
@@ -514,6 +532,44 @@ function CreateWaiterDialog({
           <div className="space-y-1.5">
             <Label>Notes</Label>
             <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Documents (optional)</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { key: "front" as const, label: "License front" },
+                { key: "back" as const, label: "License back" },
+                { key: "rideshare" as const, label: "Rideshare proof" },
+              ]).map((d) => (
+                <label
+                  key={d.key}
+                  className="flex cursor-pointer flex-col items-center gap-1 rounded border border-dashed p-2 text-center text-[11px] hover:bg-muted/40"
+                >
+                  {docs[d.key] ? (
+                    <img src={docs[d.key]} alt={d.label} className="h-16 w-full rounded object-contain" />
+                  ) : (
+                    <Upload className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <span>{docs[d.key] ? `${d.label} ✓` : d.label}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!f) return;
+                      try {
+                        const url = await fileToDataUrl(f);
+                        setDocs((p) => ({ ...p, [d.key]: url }));
+                      } catch {
+                        toast.error("Could not read image");
+                      }
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
           </div>
           <div className="space-y-2 rounded-md border p-3">
             <label className="flex items-center gap-2 text-sm font-medium">
@@ -613,7 +669,7 @@ function AssignVehicleDialog({
         await (supabase.from("drivers") as any).update(driverExtras).eq("id", driver.id).then(() => {}, () => {});
       }
 
-      // Create the reservation (pending until the first payment lands).
+      // Create the reservation — active, no holds or expiry.
       const rental = addRental({
         driverId: driver.id,
         vehicleId,
@@ -625,6 +681,7 @@ function AssignVehicleDialog({
         weeklyRate: rate,
         rateAmount: rate,
         deposit: 0,
+        reservationStatus: "active",
         createdFromWaitlist: true,
         licenseImageUrl: (entry.license_front_url ?? entry.license_url) ?? undefined,
         selfieImageUrl: entry.selfie_url ?? undefined,
@@ -642,14 +699,12 @@ function AssignVehicleDialog({
       if (verifyErr) throw new Error(verifyErr.message);
       if (!savedRow) throw new Error("Reservation could not be saved — waiter left on the list");
       await (supabase.from("rentals") as any)
-        .update({ created_from_waitlist: true, end_date: endDate })
+        .update({ created_from_waitlist: true, end_date: endDate, reservation_status: "active" })
         .eq("id", rental.id)
         .then(() => {}, () => {});
 
-      // Only now flag the waitlist entry as converted.
-      await convert({ data: { id: entry.id, rentalId: rental.id } });
-
       // Finally, send the tokenized reservation/payment link via SMS.
+      let paymentLinkSentAt: string | null = null;
       try {
         await sendLink({ data: {
           phone: entry.phone,
@@ -661,10 +716,14 @@ function AssignVehicleDialog({
           rentalId: rental.id,
           sendSms: true,
         } });
+        paymentLinkSentAt = new Date().toISOString();
       } catch (e) {
         console.error("[waitlist convert] payment link failed", e);
         toast.warning("Reservation created, but SMS payment link could not be sent");
       }
+
+      // Flag the waiter as converted and log when the link went out.
+      await convert({ data: { id: entry.id, rentalId: rental.id, paymentLinkSentAt } });
       return rental.id;
     },
     onSuccess: (id) => {

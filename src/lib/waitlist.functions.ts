@@ -362,7 +362,7 @@ export const uploadWaitlistDoc = createServerFn({ method: "POST" })
 /** Admin: mark a waitlist entry as Converted after a reservation is created. */
 export const markWaitlistConverted = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string; rentalId: string }) => {
+  .inputValidator((input: { id: string; rentalId: string; paymentLinkSentAt?: string | null }) => {
     if (!input.id) throw new Error("id required");
     if (!input.rentalId) throw new Error("rentalId required");
     return input;
@@ -374,6 +374,9 @@ export const markWaitlistConverted = createServerFn({ method: "POST" })
         status: "Converted",
         converted_rental_id: data.rentalId,
         converted_at: new Date().toISOString(),
+        ...(data.paymentLinkSentAt !== undefined
+          ? { payment_link_sent_at: data.paymentLinkSentAt }
+          : {}),
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);

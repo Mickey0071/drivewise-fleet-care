@@ -3768,6 +3768,7 @@ export type Database = {
           license_front_url: string | null
           license_url: string | null
           name: string
+          payment_link_sent_at: string | null
           phone: string
           rental_cadence: string | null
           rideshare_proof_url: string | null
@@ -3790,6 +3791,7 @@ export type Database = {
           license_front_url?: string | null
           license_url?: string | null
           name: string
+          payment_link_sent_at?: string | null
           phone: string
           rental_cadence?: string | null
           rideshare_proof_url?: string | null
@@ -3812,6 +3814,7 @@ export type Database = {
           license_front_url?: string | null
           license_url?: string | null
           name?: string
+          payment_link_sent_at?: string | null
           phone?: string
           rental_cadence?: string | null
           rideshare_proof_url?: string | null
