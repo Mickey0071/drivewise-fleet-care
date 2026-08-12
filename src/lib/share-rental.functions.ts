@@ -300,6 +300,8 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     selfieDataUrl: string;
     signatureDataUrl: string;
     environment?: StripeEnv;
+    selectedPeriod?: "daily" | "weekly";
+    periods?: number;
   }) => {
     const reqStr = (s: unknown, label: string, max = 200) => {
       if (typeof s !== "string" || !s.trim() || s.length > max) throw new Error(`${label} required`);
@@ -327,6 +329,10 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     if (!input.signatureDataUrl?.startsWith("data:image/")) throw new Error("Signature required");
     if (input.environment && input.environment !== "sandbox" && input.environment !== "live")
       throw new Error("invalid environment");
+    if (input.selectedPeriod && !["daily", "weekly"].includes(input.selectedPeriod))
+      throw new Error("invalid rental type");
+    if (input.periods != null && (!Number.isFinite(input.periods) || input.periods < 1 || input.periods > 52))
+      throw new Error("invalid rental length");
     return input;
   })
   .handler(async ({ data }) => {
