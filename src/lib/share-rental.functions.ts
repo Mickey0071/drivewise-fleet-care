@@ -393,16 +393,35 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     ]);
 
     const nowIso = new Date().toISOString();
+    // Renter-chosen rate plan (daily vs weekly) and length.
+    const chosenPeriod: "daily" | "weekly" =
+      data.selectedPeriod ?? (link.billing_period === "daily" ? "daily" : "weekly");
+    const periods = Math.max(1, Math.floor(data.periods ?? 1));
+    const linkRate = Number(link.rate ?? 0);
+    const chosenRate =
+      chosenPeriod === link.billing_period
+        ? linkRate
+        : chosenPeriod === "daily"
+          ? Number(link.daily_rate ?? 0) || linkRate
+          : Number(link.weekly_rate ?? 0) || linkRate;
+    const spanDays = periods * (chosenPeriod === "daily" ? 1 : 7);
+    const endDate = (() => {
+      const d = new Date(`${link.start_date}T00:00:00`);
+      d.setDate(d.getDate() + spanDays);
+      return d.toISOString().slice(0, 10);
+    })();
+    const rentalTotal = chosenRate * periods;
     const { error: rErr } = await supabaseAdmin.from("rentals").insert({
       id: rentalId,
       vehicle_id: link.vehicle_id,
       driver_id: driverId,
       start_date: link.start_date,
-      weekly_rate: link.weekly_rate,
+      end_date: endDate,
+      weekly_rate: chosenPeriod === "weekly" ? chosenRate : Math.round(chosenRate * 7),
       deposit_paid: 0,
       payment_status: "current",
-      billing_period: link.billing_period,
-      rate: link.rate,
+      billing_period: chosenPeriod,
+      rate: chosenRate,
       reservation_status: "pending",
       payment_received: false,
       pending_created_at: nowIso,
@@ -426,7 +445,7 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     // First payment — same as a normal reservation: collect the first
     // period charge plus any deposit before the reservation activates.
     const deposit = Number(link.deposit ?? 0);
-    const firstCharge = Number(link.rate ?? 0) + (Number.isFinite(deposit) ? deposit : 0);
+    const firstCharge = rentalTotal + (Number.isFinite(deposit) ? deposit : 0);
     let paymentUrl: string | null = null;
     if (firstCharge >= 0.5) {
       try {
