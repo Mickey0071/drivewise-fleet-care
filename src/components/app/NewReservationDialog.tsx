@@ -317,9 +317,9 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       driverId: driver.id,
       startDate,
       endDate: endDate || undefined,
-      weeklyRate: toWeekly(rate, billingPeriod),
+      weeklyRate: toWeekly(effectiveRate, billingPeriod),
       billingPeriod,
-      rate,
+      rate: effectiveRate,
       depositPaid: deposit,
       skipDailyMinimum: billingPeriod === "daily" ? skipDailyMin : false,
       notes: isSwap && existingRental
@@ -804,7 +804,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border bg-card p-3">
                   <div className="text-xs uppercase text-muted-foreground">Rate</div>
-                  <div className="text-lg font-bold">{fmtMoney(rate)}<span className="text-xs font-normal text-muted-foreground">/{rateSuffix(billingPeriod)}</span></div>
+                  <div className="text-lg font-bold">{fmtMoney(effectiveRate)}<span className="text-xs font-normal text-muted-foreground">/{rateSuffix(billingPeriod)}</span></div>
+                  <div className="mt-1 text-xs text-muted-foreground">Total {fmtMoney(total)} · {units} {unitLabel(billingPeriod)}</div>
                 </div>
                 <div className="rounded-lg border bg-card p-3">
                   <div className="text-xs uppercase text-muted-foreground">Deposit</div>
