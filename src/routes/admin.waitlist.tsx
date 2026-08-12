@@ -239,6 +239,7 @@ function WaiterCardDialog({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<{ url: string; label: string } | null>(null);
   // Locally track newly-uploaded doc URLs so the UI updates immediately.
   const [localDocs, setLocalDocs] = useState<Partial<Record<"license-front" | "license-back" | "rideshare-proof", string>>>({});
 
@@ -360,9 +361,9 @@ function WaiterCardDialog({
                 <div key={it.kind} className="space-y-1.5">
                   <div className="text-xs font-medium text-muted-foreground">{it.label}</div>
                   {it.url ? (
-                    <a href={it.url} target="_blank" rel="noreferrer">
-                      <img src={it.url} alt={it.label} className="h-32 w-full rounded border bg-muted/30 object-contain hover:opacity-90" />
-                    </a>
+                    <button type="button" className="block w-full" onClick={() => setZoom({ url: it.url!, label: it.label })}>
+                      <img src={it.url} alt={it.label} className="h-32 w-full cursor-zoom-in rounded border bg-muted/30 object-contain hover:opacity-90" />
+                    </button>
                   ) : (
                     <div className="flex h-32 w-full items-center justify-center rounded border bg-muted/20 text-xs text-muted-foreground">Not uploaded</div>
                   )}
@@ -396,6 +397,18 @@ function WaiterCardDialog({
             </Button>
           )}
         </DialogFooter>
+
+        <Dialog open={!!zoom} onOpenChange={(o) => { if (!o) setZoom(null); }}>
+          <DialogContent className="max-h-[95vh] max-w-4xl overflow-auto">
+            <DialogHeader>
+              <DialogTitle>{zoom?.label}</DialogTitle>
+            </DialogHeader>
+            {zoom && <img src={zoom.url} alt={zoom.label} className="max-h-[75vh] w-full object-contain" />}
+            <DialogFooter>
+              <a href={zoom?.url} target="_blank" rel="noreferrer" className="text-xs underline">Open in new tab</a>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );
