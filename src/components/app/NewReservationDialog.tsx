@@ -45,6 +45,13 @@ function toWeekly(rate: number, p: BillingPeriod) {
   if (p === "daily") return Math.round(rate * 7);
   return Math.round(rate / 4.345);
 }
+function periodDays(p: BillingPeriod) { return p === "daily" ? 1 : p === "weekly" ? 7 : 30; }
+function unitLabel(p: BillingPeriod) { return p === "daily" ? "days" : p === "weekly" ? "weeks" : "months"; }
+function addDaysIso(iso: string, days: number) {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 interface Props {
   open: boolean;
@@ -65,6 +72,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [endDate, setEndDate] = useState("");
   const [billingPeriod, setBillingPeriod] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [rate, setRate] = useState<number>(0);
+  const [units, setUnits] = useState<number>(1);
+  const [totalOverride, setTotalOverride] = useState<string>("");
   const [deposit, setDeposit] = useState<number>(300);
   const [skipDailyMin, setSkipDailyMin] = useState<boolean>(false);
   const [notes, setNotes] = useState("");
@@ -98,6 +107,20 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const vehicle = vehicles.find(v => v.id === vehicleId) ?? null;
   const driver = drivers.find(d => d.id === driverId) ?? null;
   const existingRental = driver ? getActiveRentalForDriver(driver.id) : null;
+
+  // ---- Rate math (daily vs weekly vs monthly) --------------------------
+  const computedTotal = (Number(rate) || 0) * (Number(units) || 0);
+  const hasOverride = totalOverride.trim() !== "" && Number.isFinite(Number(totalOverride));
+  const total = hasOverride ? Number(totalOverride) : computedTotal;
+  const effectiveRate = hasOverride && units > 0
+    ? Math.round((Number(totalOverride) / units) * 100) / 100
+    : (Number(rate) || 0);
+
+  function applyUnits(n: number, period: BillingPeriod = billingPeriod, start: string = startDate) {
+    const safe = Math.max(1, Math.floor(n || 1));
+    setUnits(safe);
+    if (start) setEndDate(addDaysIso(start, safe * periodDays(period)));
+  }
 
   // Hard block: selected dates overlap a maintenance repair or on-rent window
   // for the chosen vehicle. Drives the calendar warning + disables Continue.
@@ -161,6 +184,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   function reset() {
     setStep(0); setVehicleId(null); setDriverId(null);
     setStartDate(""); setEndDate(""); setRate(0); setBillingPeriod("weekly");
+    setUnits(1); setTotalOverride("");
     setDeposit(300); setNotes(""); setVehQ(""); setDrvQ("");
     setShowAddDriver(false);
     setIsSwap(false);
@@ -293,9 +317,9 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       driverId: driver.id,
       startDate,
       endDate: endDate || undefined,
-      weeklyRate: toWeekly(rate, billingPeriod),
+      weeklyRate: toWeekly(effectiveRate, billingPeriod),
       billingPeriod,
-      rate,
+      rate: effectiveRate,
       depositPaid: deposit,
       skipDailyMinimum: billingPeriod === "daily" ? skipDailyMin : false,
       notes: isSwap && existingRental
@@ -662,7 +686,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                   <Input id="end" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
                 </div>
                 <div>
-                  <Label>Billing period</Label>
+                  <Label>Rate type</Label>
                   <div className="mt-1 grid grid-cols-3 gap-1 rounded-md border p-1">
                     {(["daily", "weekly", "monthly"] as const).map(p => (
                       <button
@@ -671,6 +695,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                         onClick={() => {
                           setBillingPeriod(p);
                           if (vehicle) setRate(defaultRate(vehicle, p));
+                          setTotalOverride("");
+                          applyUnits(units, p, startDate);
                         }}
                         className={cn(
                           "rounded px-2 py-1 text-xs capitalize transition",
@@ -684,12 +710,46 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                 </div>
                 <div>
                   <Label htmlFor="rate">Rate ({rateSuffix(billingPeriod)})</Label>
-                  <Input id="rate" type="number" inputMode="decimal" min={0} value={rate || ""} onChange={e => setRate(Number(e.target.value))} placeholder={vehicle ? String(defaultRate(vehicle, billingPeriod)) : "Pick a vehicle to auto-fill"} />
+                  <Input id="rate" type="number" inputMode="decimal" min={0} value={rate || ""} onChange={e => { setRate(Number(e.target.value)); setTotalOverride(""); }} placeholder={vehicle ? String(defaultRate(vehicle, billingPeriod)) : "Pick a vehicle to auto-fill"} />
+                </div>
+                <div>
+                  <Label htmlFor="units">Number of {unitLabel(billingPeriod)}</Label>
+                  <Input id="units" type="number" inputMode="numeric" min={1} value={units || ""} onChange={e => applyUnits(Number(e.target.value))} />
+                  <p className="mt-1 text-xs text-muted-foreground">Sets the end date automatically.</p>
                 </div>
                 <div>
                   <Label htmlFor="dep">Deposit</Label>
                   <Input id="dep" type="number" inputMode="decimal" min={0} placeholder="Enter amount" value={deposit || ""} onChange={e => setDeposit(Number(e.target.value))} />
                 </div>
+              </div>
+              <div className="rounded-md border bg-card p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs uppercase text-muted-foreground">Rental total</div>
+                    <div className="text-lg font-bold">{fmtMoney(total)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {fmtMoney(Number(rate) || 0)}/{rateSuffix(billingPeriod)} × {units} {unitLabel(billingPeriod)}
+                      {deposit > 0 ? ` · + ${fmtMoney(deposit)} deposit` : ""}
+                    </p>
+                  </div>
+                  <div className="w-36">
+                    <Label htmlFor="total-override" className="text-xs">Override total</Label>
+                    <Input
+                      id="total-override"
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      placeholder={String(computedTotal || "")}
+                      value={totalOverride}
+                      onChange={e => setTotalOverride(e.target.value)}
+                    />
+                  </div>
+                </div>
+                {hasOverride && (
+                  <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                    Override on — billed at {fmtMoney(effectiveRate)}/{rateSuffix(billingPeriod)}.
+                  </p>
+                )}
               </div>
               {billingPeriod === "daily" && (
                 <div className="flex items-center justify-between rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
@@ -744,7 +804,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border bg-card p-3">
                   <div className="text-xs uppercase text-muted-foreground">Rate</div>
-                  <div className="text-lg font-bold">{fmtMoney(rate)}<span className="text-xs font-normal text-muted-foreground">/{rateSuffix(billingPeriod)}</span></div>
+                  <div className="text-lg font-bold">{fmtMoney(effectiveRate)}<span className="text-xs font-normal text-muted-foreground">/{rateSuffix(billingPeriod)}</span></div>
+                  <div className="mt-1 text-xs text-muted-foreground">Total {fmtMoney(total)} · {units} {unitLabel(billingPeriod)}</div>
                 </div>
                 <div className="rounded-lg border bg-card p-3">
                   <div className="text-xs uppercase text-muted-foreground">Deposit</div>
