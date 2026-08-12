@@ -1,15 +1,30 @@
-import * as pdfjsLib from "pdfjs-dist";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
-
 export interface PdfRenderResult {
   pageCount: number;
   /** Render a single 1-based page to a JPEG data URL. */
   renderPage: (pageNumber: number) => Promise<string>;
 }
 
+type PdfJs = typeof import("pdfjs-dist");
+
+let pdfjsPromise: Promise<PdfJs> | null = null;
+
+/** Loads pdfjs-dist (and its worker) on demand so it never lands in the eager bundle. */
+export function getPdfjs(): Promise<PdfJs> {
+  if (!pdfjsPromise) {
+    pdfjsPromise = (async () => {
+      const [pdfjsLib, workerMod] = await Promise.all([
+        import("pdfjs-dist"),
+        import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
+      ]);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = (workerMod as { default: string }).default;
+      return pdfjsLib;
+    })();
+  }
+  return pdfjsPromise;
+}
+
 export async function loadPdf(file: File): Promise<PdfRenderResult> {
+  const pdfjsLib = await getPdfjs();
   const buffer = await file.arrayBuffer();
   const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
   const renderPage = async (pageNumber: number) => {
