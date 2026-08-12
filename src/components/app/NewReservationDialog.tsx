@@ -108,6 +108,20 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const driver = drivers.find(d => d.id === driverId) ?? null;
   const existingRental = driver ? getActiveRentalForDriver(driver.id) : null;
 
+  // ---- Rate math (daily vs weekly vs monthly) --------------------------
+  const computedTotal = (Number(rate) || 0) * (Number(units) || 0);
+  const hasOverride = totalOverride.trim() !== "" && Number.isFinite(Number(totalOverride));
+  const total = hasOverride ? Number(totalOverride) : computedTotal;
+  const effectiveRate = hasOverride && units > 0
+    ? Math.round((Number(totalOverride) / units) * 100) / 100
+    : (Number(rate) || 0);
+
+  function applyUnits(n: number, period: BillingPeriod = billingPeriod, start: string = startDate) {
+    const safe = Math.max(1, Math.floor(n || 1));
+    setUnits(safe);
+    if (start) setEndDate(addDaysIso(start, safe * periodDays(period)));
+  }
+
   // Hard block: selected dates overlap a maintenance repair or on-rent window
   // for the chosen vehicle. Drives the calendar warning + disables Continue.
   const dateOverlapBlock = useMemo(() => {
