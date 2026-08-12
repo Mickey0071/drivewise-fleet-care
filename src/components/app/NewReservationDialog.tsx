@@ -686,7 +686,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                   <Input id="end" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
                 </div>
                 <div>
-                  <Label>Billing period</Label>
+                  <Label>Rate type</Label>
                   <div className="mt-1 grid grid-cols-3 gap-1 rounded-md border p-1">
                     {(["daily", "weekly", "monthly"] as const).map(p => (
                       <button
@@ -695,6 +695,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                         onClick={() => {
                           setBillingPeriod(p);
                           if (vehicle) setRate(defaultRate(vehicle, p));
+                          setTotalOverride("");
+                          applyUnits(units, p, startDate);
                         }}
                         className={cn(
                           "rounded px-2 py-1 text-xs capitalize transition",
@@ -708,12 +710,46 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                 </div>
                 <div>
                   <Label htmlFor="rate">Rate ({rateSuffix(billingPeriod)})</Label>
-                  <Input id="rate" type="number" inputMode="decimal" min={0} value={rate || ""} onChange={e => setRate(Number(e.target.value))} placeholder={vehicle ? String(defaultRate(vehicle, billingPeriod)) : "Pick a vehicle to auto-fill"} />
+                  <Input id="rate" type="number" inputMode="decimal" min={0} value={rate || ""} onChange={e => { setRate(Number(e.target.value)); setTotalOverride(""); }} placeholder={vehicle ? String(defaultRate(vehicle, billingPeriod)) : "Pick a vehicle to auto-fill"} />
+                </div>
+                <div>
+                  <Label htmlFor="units">Number of {unitLabel(billingPeriod)}</Label>
+                  <Input id="units" type="number" inputMode="numeric" min={1} value={units || ""} onChange={e => applyUnits(Number(e.target.value))} />
+                  <p className="mt-1 text-xs text-muted-foreground">Sets the end date automatically.</p>
                 </div>
                 <div>
                   <Label htmlFor="dep">Deposit</Label>
                   <Input id="dep" type="number" inputMode="decimal" min={0} placeholder="Enter amount" value={deposit || ""} onChange={e => setDeposit(Number(e.target.value))} />
                 </div>
+              </div>
+              <div className="rounded-md border bg-card p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs uppercase text-muted-foreground">Rental total</div>
+                    <div className="text-lg font-bold">{fmtMoney(total)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {fmtMoney(Number(rate) || 0)}/{rateSuffix(billingPeriod)} × {units} {unitLabel(billingPeriod)}
+                      {deposit > 0 ? ` · + ${fmtMoney(deposit)} deposit` : ""}
+                    </p>
+                  </div>
+                  <div className="w-36">
+                    <Label htmlFor="total-override" className="text-xs">Override total</Label>
+                    <Input
+                      id="total-override"
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      placeholder={String(computedTotal || "")}
+                      value={totalOverride}
+                      onChange={e => setTotalOverride(e.target.value)}
+                    />
+                  </div>
+                </div>
+                {hasOverride && (
+                  <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                    Override on — billed at {fmtMoney(effectiveRate)}/{rateSuffix(billingPeriod)}.
+                  </p>
+                )}
               </div>
               {billingPeriod === "daily" && (
                 <div className="flex items-center justify-between rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
