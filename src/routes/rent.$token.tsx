@@ -155,7 +155,6 @@ function RentPage() {
     );
   }
 
-  const periodLabel = info.billingPeriod === "daily" ? "day" : info.billingPeriod === "monthly" ? "month" : "week";
   const dailyRate = info.dailyRate || (info.billingPeriod === "daily" ? info.rate : Math.round(info.rate / 7));
   const weeklyRate = info.weeklyRate || (info.billingPeriod === "weekly" ? info.rate : Math.round(info.rate * 7));
   const chosenRate = plan === "daily" ? dailyRate : weeklyRate;
@@ -337,11 +336,11 @@ function RentPage() {
             <div className="max-h-[70vh] overflow-y-auto">
               <RentalAgreement
                 rental={{
-                  billingPeriod: info.billingPeriod ?? "weekly",
-                  rate: info.rate,
-                  weeklyRate: info.rate,
+                  billingPeriod: plan,
+                  rate: chosenRate,
+                  weeklyRate: plan === "weekly" ? chosenRate : chosenRate * 7,
                   startDate: info.startDate,
-                  endDate: null,
+                  endDate: endDateStr,
                   depositPaid: null,
                   extensions: [],
                   signatureDataUrl: null,
