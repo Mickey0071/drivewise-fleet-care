@@ -588,6 +588,13 @@ function AssignVehicleDialog({
       const rate = Number(weeklyRate);
       if (!rate || rate <= 0) throw new Error("Enter a valid weekly rate");
 
+      // Cadence from the waiter card drives the billing period and the end date.
+      const daily = (entry.rental_cadence ?? "").toLowerCase() === "daily";
+      const cadence: "daily" | "weekly" = daily ? "daily" : "weekly";
+      const end = new Date(`${startDate}T00:00:00`);
+      end.setDate(end.getDate() + (daily ? 1 : 7));
+      const endDate = end.toISOString().slice(0, 10);
+
       // Create the driver from the waitlist info (license/selfie images carried in).
       const driver = addDriver({
         fullName: entry.name,
@@ -606,28 +613,43 @@ function AssignVehicleDialog({
         await (supabase.from("drivers") as any).update(driverExtras).eq("id", driver.id).then(() => {}, () => {});
       }
 
-      // Create the reservation (defaults to pending, weekly cadence).
+      // Create the reservation (pending until the first payment lands).
       const rental = addRental({
         driverId: driver.id,
         vehicleId,
         startDate,
-        billingPeriod: "weekly",
-        billingCadence: "weekly",
+        endDate,
+        billingPeriod: cadence,
+        billingCadence: cadence,
         rate,
         weeklyRate: rate,
         rateAmount: rate,
         deposit: 0,
+        createdFromWaitlist: true,
         licenseImageUrl: (entry.license_front_url ?? entry.license_url) ?? undefined,
         selfieImageUrl: entry.selfie_url ?? undefined,
       } as any);
       await (rental as any).cloudReady?.catch?.(() => {});
 
+      // The reservation row MUST exist in the database before the waiter is
+      // marked converted — otherwise a failed sync loses the waiter entirely.
+      await ensureRentalSynced(rental.id);
+      const { data: savedRow, error: verifyErr } = await (supabase
+        .from("rentals") as any)
+        .select("id")
+        .eq("id", rental.id)
+        .maybeSingle();
+      if (verifyErr) throw new Error(verifyErr.message);
+      if (!savedRow) throw new Error("Reservation could not be saved — waiter left on the list");
+      await (supabase.from("rentals") as any)
+        .update({ created_from_waitlist: true, end_date: endDate })
+        .eq("id", rental.id)
+        .then(() => {}, () => {});
+
+      // Only now flag the waitlist entry as converted.
       await convert({ data: { id: entry.id, rentalId: rental.id } });
 
-      // Immediately send the tokenized reservation/payment link via SMS.
-      try {
-        await ensureRentalSynced(rental.id);
-      } catch { /* best-effort */ }
+      // Finally, send the tokenized reservation/payment link via SMS.
       try {
         await sendLink({ data: {
           phone: entry.phone,

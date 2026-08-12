@@ -2327,6 +2327,7 @@ export type Database = {
           client_signature_url: string | null
           client_signed_at: string | null
           created_at: string
+          created_from_waitlist: boolean
           current_period_end: string | null
           deposit_paid: number
           discount_total: number
@@ -2416,6 +2417,7 @@ export type Database = {
           client_signature_url?: string | null
           client_signed_at?: string | null
           created_at?: string
+          created_from_waitlist?: boolean
           current_period_end?: string | null
           deposit_paid?: number
           discount_total?: number
@@ -2505,6 +2507,7 @@ export type Database = {
           client_signature_url?: string | null
           client_signed_at?: string | null
           created_at?: string
+          created_from_waitlist?: boolean
           current_period_end?: string | null
           deposit_paid?: number
           discount_total?: number
