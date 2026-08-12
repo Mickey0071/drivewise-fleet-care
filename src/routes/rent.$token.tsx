@@ -156,6 +156,18 @@ function RentPage() {
   }
 
   const periodLabel = info.billingPeriod === "daily" ? "day" : info.billingPeriod === "monthly" ? "month" : "week";
+  const dailyRate = info.dailyRate || (info.billingPeriod === "daily" ? info.rate : Math.round(info.rate / 7));
+  const weeklyRate = info.weeklyRate || (info.billingPeriod === "weekly" ? info.rate : Math.round(info.rate * 7));
+  const chosenRate = plan === "daily" ? dailyRate : weeklyRate;
+  const rentalTotal = chosenRate * periods;
+  const savingsPct = dailyRate > 0 && weeklyRate > 0
+    ? Math.max(0, Math.round((1 - weeklyRate / (dailyRate * 7)) * 100))
+    : 0;
+  const endDateStr = (() => {
+    const d = new Date(`${info.startDate}T00:00:00`);
+    d.setDate(d.getDate() + periods * (plan === "daily" ? 1 : 7));
+    return d.toISOString().slice(0, 10);
+  })();
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6 space-y-4">
@@ -168,10 +180,57 @@ function RentPage() {
           {info.vehicle.year} {info.vehicle.make} {info.vehicle.model}
         </p>
         <p className="text-sm font-medium">
-          ${info.rate}/{periodLabel}
-          {info.deposit > 0 ? ` · $${info.deposit} deposit` : ""} · Starts {info.startDate}
+          Starts {info.startDate}
+          {info.deposit > 0 ? ` · $${info.deposit} deposit` : ""}
         </p>
       </header>
+
+      <Card className="p-4 space-y-3">
+        <div className="text-sm font-medium">Choose your rental plan</div>
+        <div className="grid grid-cols-2 gap-2">
+          {(["daily", "weekly"] as const).map((p) => {
+            const active = plan === p;
+            return (
+              <button
+                key={p}
+                type="button"
+                onClick={() => { setPlan(p); setPeriods(1); }}
+                className={`rounded-lg border p-3 text-left transition ${active ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/40"}`}
+              >
+                <div className="text-sm font-semibold capitalize">{p} rental</div>
+                <div className="text-lg font-bold">${p === "daily" ? dailyRate : weeklyRate}<span className="text-xs font-normal text-muted-foreground">/{p === "daily" ? "day" : "week"}</span></div>
+                {p === "weekly" && savingsPct > 0 && (
+                  <div className="text-xs font-medium text-emerald-600">Save {savingsPct}%</div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <Label htmlFor="periods">Number of {plan === "daily" ? "days" : "weeks"}</Label>
+            <Input
+              id="periods"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={52}
+              value={periods || ""}
+              onChange={(e) => setPeriods(Math.max(1, Math.min(52, Math.floor(Number(e.target.value) || 1))))}
+            />
+          </div>
+          <div className="flex-1 text-right">
+            <div className="text-xs uppercase text-muted-foreground">Total due today</div>
+            <div className="text-xl font-bold">${(rentalTotal + (info.deposit || 0)).toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground">
+              ${rentalTotal} rental{info.deposit > 0 ? ` + $${info.deposit} deposit` : ""}
+            </div>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {info.startDate} → {endDateStr} · ${chosenRate}/{plan === "daily" ? "day" : "week"}
+        </p>
+      </Card>
 
       <div className="text-center text-xs text-muted-foreground">
         Step {step === "details" ? "1" : step === "agreement" ? "2" : "3"} of 3
