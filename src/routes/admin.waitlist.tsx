@@ -613,7 +613,7 @@ function AssignVehicleDialog({
         await (supabase.from("drivers") as any).update(driverExtras).eq("id", driver.id).then(() => {}, () => {});
       }
 
-      // Create the reservation (pending until the first payment lands).
+      // Create the reservation — active, no holds or expiry.
       const rental = addRental({
         driverId: driver.id,
         vehicleId,
@@ -625,6 +625,7 @@ function AssignVehicleDialog({
         weeklyRate: rate,
         rateAmount: rate,
         deposit: 0,
+        reservationStatus: "active",
         createdFromWaitlist: true,
         licenseImageUrl: (entry.license_front_url ?? entry.license_url) ?? undefined,
         selfieImageUrl: entry.selfie_url ?? undefined,
@@ -642,14 +643,12 @@ function AssignVehicleDialog({
       if (verifyErr) throw new Error(verifyErr.message);
       if (!savedRow) throw new Error("Reservation could not be saved — waiter left on the list");
       await (supabase.from("rentals") as any)
-        .update({ created_from_waitlist: true, end_date: endDate })
+        .update({ created_from_waitlist: true, end_date: endDate, reservation_status: "active" })
         .eq("id", rental.id)
         .then(() => {}, () => {});
 
-      // Only now flag the waitlist entry as converted.
-      await convert({ data: { id: entry.id, rentalId: rental.id } });
-
       // Finally, send the tokenized reservation/payment link via SMS.
+      let paymentLinkSentAt: string | null = null;
       try {
         await sendLink({ data: {
           phone: entry.phone,
@@ -661,10 +660,14 @@ function AssignVehicleDialog({
           rentalId: rental.id,
           sendSms: true,
         } });
+        paymentLinkSentAt = new Date().toISOString();
       } catch (e) {
         console.error("[waitlist convert] payment link failed", e);
         toast.warning("Reservation created, but SMS payment link could not be sent");
       }
+
+      // Flag the waiter as converted and log when the link went out.
+      await convert({ data: { id: entry.id, rentalId: rental.id, paymentLinkSentAt } });
       return rental.id;
     },
     onSuccess: (id) => {
