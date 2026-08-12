@@ -50,6 +50,8 @@ function RentPage() {
   const [done, setDone] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [step, setStep] = useState<"details" | "agreement" | "sign">("details");
+  const [plan, setPlan] = useState<"daily" | "weekly">("weekly");
+  const [periods, setPeriods] = useState(1);
 
   useEffect(() => {
     fetchInfo({ data: { token } })
@@ -83,6 +85,8 @@ function RentPage() {
       const res = await submit({
         data: {
           token,
+          selectedPeriod: plan,
+          periods,
           fullName: fullName.trim(),
           firstName: firstName.trim(),
           middleInitial: middleInitial.trim() || undefined,
