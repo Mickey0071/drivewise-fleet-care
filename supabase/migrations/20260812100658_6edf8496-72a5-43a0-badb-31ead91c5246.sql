@@ -1,0 +1,1 @@
+ALTER TABLE public.rentals ADD COLUMN IF NOT EXISTS created_from_waitlist BOOLEAN NOT NULL DEFAULT false;
