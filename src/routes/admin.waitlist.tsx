@@ -417,6 +417,7 @@ function CreateWaiterDialog({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [sendText, setSendText] = useState(true);
+  const [docs, setDocs] = useState<{ front?: string; back?: string; rideshare?: string }>({});
   const [smsBody, setSmsBody] = useState(
     "Hi{{name}}, you're on the Camauto Rentals waitlist. Upload your info here so we're ready to roll when a vehicle opens up: {{link}}",
   );
@@ -426,6 +427,7 @@ function CreateWaiterDialog({
     if (open) {
       setName(""); setPhone(""); setEmail(""); setPref(""); setCadence(""); setNotes("");
       setSendText(true);
+      setDocs({});
       setSmsBody("Hi{{name}}, you're on the Camauto Rentals waitlist. Upload your info here so we're ready to roll when a vehicle opens up: {{link}}");
     }
   }, [open]);
@@ -439,6 +441,9 @@ function CreateWaiterDialog({
         vehiclePreference: pref || undefined,
         rentalCadence: cadence || undefined,
         adminNotes: notes || undefined,
+        licenseFrontDataUrl: docs.front,
+        licenseBackDataUrl: docs.back,
+        rideshareProofDataUrl: docs.rideshare,
       } });
       toast.success("Waiter added");
       if (sendText && phone.trim() && smsBody.trim()) {
@@ -514,6 +519,44 @@ function CreateWaiterDialog({
           <div className="space-y-1.5">
             <Label>Notes</Label>
             <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Documents (optional)</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { key: "front" as const, label: "License front" },
+                { key: "back" as const, label: "License back" },
+                { key: "rideshare" as const, label: "Rideshare proof" },
+              ]).map((d) => (
+                <label
+                  key={d.key}
+                  className="flex cursor-pointer flex-col items-center gap-1 rounded border border-dashed p-2 text-center text-[11px] hover:bg-muted/40"
+                >
+                  {docs[d.key] ? (
+                    <img src={docs[d.key]} alt={d.label} className="h-16 w-full rounded object-contain" />
+                  ) : (
+                    <Upload className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <span>{docs[d.key] ? `${d.label} ✓` : d.label}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!f) return;
+                      try {
+                        const url = await fileToDataUrl(f);
+                        setDocs((p) => ({ ...p, [d.key]: url }));
+                      } catch {
+                        toast.error("Could not read image");
+                      }
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
           </div>
           <div className="space-y-2 rounded-md border p-3">
             <label className="flex items-center gap-2 text-sm font-medium">
