@@ -45,6 +45,13 @@ function toWeekly(rate: number, p: BillingPeriod) {
   if (p === "daily") return Math.round(rate * 7);
   return Math.round(rate / 4.345);
 }
+function periodDays(p: BillingPeriod) { return p === "daily" ? 1 : p === "weekly" ? 7 : 30; }
+function unitLabel(p: BillingPeriod) { return p === "daily" ? "days" : p === "weekly" ? "weeks" : "months"; }
+function addDaysIso(iso: string, days: number) {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 interface Props {
   open: boolean;
@@ -65,6 +72,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [endDate, setEndDate] = useState("");
   const [billingPeriod, setBillingPeriod] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [rate, setRate] = useState<number>(0);
+  const [units, setUnits] = useState<number>(1);
+  const [totalOverride, setTotalOverride] = useState<string>("");
   const [deposit, setDeposit] = useState<number>(300);
   const [skipDailyMin, setSkipDailyMin] = useState<boolean>(false);
   const [notes, setNotes] = useState("");
@@ -161,6 +170,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   function reset() {
     setStep(0); setVehicleId(null); setDriverId(null);
     setStartDate(""); setEndDate(""); setRate(0); setBillingPeriod("weekly");
+    setUnits(1); setTotalOverride("");
     setDeposit(300); setNotes(""); setVehQ(""); setDrvQ("");
     setShowAddDriver(false);
     setIsSwap(false);
