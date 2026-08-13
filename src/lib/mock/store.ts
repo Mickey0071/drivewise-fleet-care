@@ -297,7 +297,8 @@ export function extensionSignatureStatus(
     .filter(e => e.rentalId === rentalId)
     .filter(e => {
       const st = (e.status ?? "").toLowerCase();
-      return !st.includes("cancel") && !st.includes("expired");
+      // Paid extensions are settled — they must not keep showing as pending.
+      return !st.includes("cancel") && !st.includes("expired") && st !== "paid";
     });
   if (mine.length === 0) return { state: "none", label: "Not sent", date: null };
   const signed = mine.find(e => !!e.signedAt || (e.status ?? "").toLowerCase() === "signed");
