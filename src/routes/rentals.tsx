@@ -7,6 +7,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicles, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, rentalCredit, rentalViolationsUnpaid, rentalViolationPaymentsReceived, rentalCanonicalOwed, saveAccidentReport, ensureAccidentToken, deletePendingExtension } from "@/lib/mock/store";
 import { extensionSignatureStatus } from "@/lib/mock/store";
+import { pendingExtensions } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
 import { rentalNextDueDate } from "@/lib/mock/store";
 import { rentalPostedPeriods, rentalTimeCharge, rentalPaymentsReceived, rentalPriorBalance, rentalDiscountTotal } from "@/lib/mock/store";
