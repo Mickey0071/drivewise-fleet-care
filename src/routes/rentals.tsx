@@ -1009,6 +1009,12 @@ function RentalsPage() {
               const exts = [...(r.extensions ?? [])].sort((a, b) =>
                 (a.newEndDate ?? "") < (b.newEndDate ?? "") ? -1 : 1,
               );
+              const paidIds = new Set(paidPayments.map(p => p.id));
+              const paidEndDates = new Set(
+                pendingExtensions
+                  .filter(pe => pe.rentalId === r.id && (pe.status ?? "").toLowerCase() === "paid" && pe.newEndDate)
+                  .map(pe => pe.newEndDate as string),
+              );
               return (
                 <div className="rounded-md border border-border bg-muted/30 p-3">
                   <div className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
@@ -1017,16 +1023,19 @@ function RentalsPage() {
                   <div className="space-y-1.5">
                     {exts.map(e => {
                       const signed = !!e.signedBy || !!e.signatureDataUrl;
+                      const paid =
+                        (!!e.paymentId && paidIds.has(e.paymentId)) ||
+                        (!!e.newEndDate && paidEndDates.has(e.newEndDate));
                       return (
                         <div key={e.id} className="flex items-center justify-between gap-2 text-sm">
                           <span className="min-w-0 truncate">
                             {e.previousEndDate ? `${fmtDate(e.previousEndDate)} → ` : ""}{fmtDate(e.newEndDate)}
                             {" · "}
-                            <span className={signed ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
-                              {signed ? "Signed" : "Pending (unsigned)"}
+                            <span className={signed || paid ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
+                              {paid ? (signed ? "Paid · Signed" : "Paid") : signed ? "Signed" : "Pending (unsigned)"}
                             </span>
                           </span>
-                          {signed ? (
+                          {signed || paid ? (
                             <span className="text-xs text-muted-foreground">history</span>
                           ) : (
                             <Button
