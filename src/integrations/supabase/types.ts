@@ -3495,6 +3495,39 @@ export type Database = {
         }
         Relationships: []
       }
+      violation_matches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          override_end_date: string | null
+          override_start_date: string | null
+          reservation_id: string
+          updated_at: string
+          violation_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          override_end_date?: string | null
+          override_start_date?: string | null
+          reservation_id: string
+          updated_at?: string
+          violation_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          override_end_date?: string | null
+          override_start_date?: string | null
+          reservation_id?: string
+          updated_at?: string
+          violation_id?: string
+        }
+        Relationships: []
+      }
       violation_status_history: {
         Row: {
           changed_by: string | null
