@@ -99,6 +99,8 @@ export function FindRenterDialog({
   const matchFn = useServerFn(matchViolationToRental);
   const orphanFn = useServerFn(flagViolationOrphan);
   const sendLinkFn = useServerFn(sendViolationRetroLink);
+  const saveMatchFn = useServerFn(saveViolationMatch);
+  const statsFn = useServerFn(listReservationMatchStats);
   const navigate = useNavigate();
 
   const vDate = (violation?.date_issued || "").slice(0, 10);
@@ -111,6 +113,30 @@ export function FindRenterDialog({
   const [linked, setLinked] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [ovStart, setOvStart] = useState("");
+  const [ovEnd, setOvEnd] = useState("");
+  const [stats, setStats] = useState<ReservationMatchStat[]>([]);
+  const [cacheOpen, setCacheOpen] = useState<RentalOption | null>(null);
+
+  useEffect(() => {
+    if (!violation) return;
+    let live = true;
+    statsFn({})
+      .then((s) => live && setStats(s))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [violation?.id]);
+
+  const statFor = (rentalId: string): ReservationMatchStat | null => {
+    const s = stats.find((x) => x.reservationId === rentalId);
+    if (!s) return null;
+    const others = s.violationIds.filter((id) => id !== violation?.id);
+    if (others.length === 0) return null;
+    return { ...s, count: others.length, violationIds: others };
+  };
 
   // Reset when a new violation opens.
   const vId = violation?.id ?? null;
@@ -122,6 +148,8 @@ export function FindRenterDialog({
     setSearched(false);
     setSelected(null);
     setLinked(false);
+    setOvStart("");
+    setOvEnd("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vId]);
 
@@ -155,6 +183,14 @@ export function FindRenterDialog({
     if (!violation || !selected) return false;
     if (linked) return true;
     await matchFn({ data: { violationId: violation.id, rentalId: selected.id } });
+    await saveMatchFn({
+      data: {
+        violationId: violation.id,
+        reservationId: selected.id,
+        overrideStartDate: ovStart || null,
+        overrideEndDate: ovEnd || null,
+      },
+    });
     setLinked(true);
     return true;
   };
