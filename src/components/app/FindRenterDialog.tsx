@@ -532,6 +532,84 @@ export function FindRenterDialog({
           onClose();
         }}
       />
+
+      {/* Cached violation match details */}
+      <Dialog open={!!cacheOpen} onOpenChange={(o) => !o && setCacheOpen(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              <span className="mr-2 rounded bg-purple-500/15 px-1.5 py-0.5 text-xs text-purple-700 dark:text-purple-300">
+                ⚡ Violation Match
+              </span>
+              Cached reservation
+            </DialogTitle>
+          </DialogHeader>
+          {cacheOpen && (
+            <div className="space-y-3 text-sm">
+              <div className="rounded-md border p-3">
+                <div className="font-semibold">{cacheOpen.driver_name || "Unknown renter"}</div>
+                <div className="text-xs text-muted-foreground">
+                  {cacheOpen.vehicle_label || cacheOpen.plate || "—"}
+                </div>
+              </div>
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3">
+                <div className="text-xs font-medium uppercase text-destructive">
+                  Original reservation dates
+                </div>
+                <div>
+                  {statFor(cacheOpen.id)?.lastOverrideStart || cacheOpen.start_date || "?"} →{" "}
+                  {statFor(cacheOpen.id)?.lastOverrideEnd || cacheOpen.end_date || "ongoing"}
+                </div>
+              </div>
+              {(statFor(cacheOpen.id)?.lastOverrideEnd || cacheOpen.end_date) !==
+                cacheOpen.end_date && (
+                <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3">
+                  <div className="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-400">
+                    Current reservation end date
+                  </div>
+                  <div>{cacheOpen.end_date || "ongoing"}</div>
+                </div>
+              )}
+              <div className="rounded-md border p-3">
+                <div className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+                  Override dates for this dispute (optional)
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid gap-1">
+                    <Label>Start date</Label>
+                    <Input type="date" value={ovStart} onChange={(e) => setOvStart(e.target.value)} />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label>End date</Label>
+                    <Input type="date" value={ovEnd} onChange={(e) => setOvEnd(e.target.value)} />
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Leave blank to use the current reservation dates.
+                </p>
+              </div>
+              <p className="text-xs text-purple-700 dark:text-purple-300">
+                This reservation is used in {statFor(cacheOpen.id)?.count ?? 0} other violation
+                {(statFor(cacheOpen.id)?.count ?? 0) === 1 ? "" : "s"}. Overrides apply to this
+                dispute only.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                if (!cacheOpen) return;
+                setSelected(cacheOpen);
+                setLinked(false);
+                setStep("confirm");
+                setCacheOpen(null);
+              }}
+            >
+              Use this rental
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
