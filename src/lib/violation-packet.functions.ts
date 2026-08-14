@@ -257,7 +257,7 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
     if (inc.violationPhoto) parts.push({ label: "Violation Photo", url: v.photo_url as string | null | undefined });
 
     const coverPdf = inc.coverLetter
-      ? await buildCoverPdf({ v, vehicle, driver, rental })
+      ? await buildCoverPdf({ v, vehicle, driver, rental, override: overrideDates })
       : null;
 
     const merged = await mergePacket(coverPdf, parts, missing);
