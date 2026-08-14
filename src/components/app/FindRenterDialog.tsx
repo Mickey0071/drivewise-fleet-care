@@ -456,6 +456,34 @@ export function FindRenterDialog({
                   : "Violation date OUTSIDE rental period — verify match"}
               </div>
 
+              {/* Per-dispute date override */}
+              <div className="rounded-md border p-3 text-sm">
+                <div className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+                  Override dates for this dispute (optional)
+                </div>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Leave blank to use the reservation dates. Filled dates apply to this violation
+                  only — the reservation is not changed.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid gap-1">
+                    <Label>Start date</Label>
+                    <Input type="date" value={ovStart} onChange={(e) => setOvStart(e.target.value)} />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label>End date</Label>
+                    <Input type="date" value={ovEnd} onChange={(e) => setOvEnd(e.target.value)} />
+                  </div>
+                </div>
+                {statFor(selected.id) && (
+                  <p className="mt-2 text-xs text-purple-700 dark:text-purple-300">
+                    This reservation is used in {statFor(selected.id)!.count} other violation
+                    {statFor(selected.id)!.count === 1 ? "" : "s"}. Overrides apply to this dispute
+                    only.
+                  </p>
+                )}
+              </div>
+
               {/* Agreement section */}
               <div className="rounded-md border p-3 text-sm">
                 <div className="mb-2 text-xs font-medium uppercase text-muted-foreground">Rental Agreement</div>
@@ -485,7 +513,7 @@ export function FindRenterDialog({
                   Cancel
                 </Button>
                 <Button onClick={confirmLink} disabled={busy === "link"}>
-                  Confirm &amp; Link Violation
+                  Use this rental
                 </Button>
               </DialogFooter>
             </div>
