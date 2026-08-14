@@ -369,6 +369,16 @@ export function FindRenterDialog({
                                   🔎 Plate inferred from vehicle
                                 </span>
                               )}
+                              {statFor(r.id) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setCacheOpen(r)}
+                                  className="rounded bg-purple-500/15 px-1.5 py-0.5 text-xs font-medium text-purple-700 hover:bg-purple-500/25 dark:text-purple-300"
+                                >
+                                  ⚡ Violation Match · Used in {statFor(r.id)!.count} other violation
+                                  {statFor(r.id)!.count === 1 ? "" : "s"}
+                                </button>
+                              )}
                             </div>
                           </div>
                           <Button
@@ -376,6 +386,8 @@ export function FindRenterDialog({
                             onClick={() => {
                               setSelected(r);
                               setLinked(false);
+                              setOvStart("");
+                              setOvEnd("");
                               setStep("confirm");
                             }}
                           >
