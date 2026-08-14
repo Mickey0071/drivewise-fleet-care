@@ -199,6 +199,17 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
     const driver = driverRes.data;
     const rental = rentalRes.data;
 
+    // Per-dispute date override (does not change the reservation itself).
+    const { data: matchRow } = await supabaseAdmin
+      .from("violation_matches")
+      .select("override_start_date, override_end_date")
+      .eq("violation_id", data.violationId)
+      .maybeSingle();
+    const overrideDates = {
+      start: ((matchRow as any)?.override_start_date as string | null) ?? null,
+      end: ((matchRow as any)?.override_end_date as string | null) ?? null,
+    };
+
     // Guard: agreement cannot be included without renter address + signature.
     const [{ data: legacy }] = await Promise.all([
       v.legacy_rental_id
@@ -257,7 +268,7 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
     if (inc.violationPhoto) parts.push({ label: "Violation Photo", url: v.photo_url as string | null | undefined });
 
     const coverPdf = inc.coverLetter
-      ? await buildCoverPdf({ v, vehicle, driver, rental })
+      ? await buildCoverPdf({ v, vehicle, driver, rental, override: overrideDates })
       : null;
 
     const merged = await mergePacket(coverPdf, parts, missing);
@@ -347,9 +358,10 @@ interface CoverArgs {
   vehicle: Record<string, unknown> | null;
   driver: Record<string, unknown> | null;
   rental: Record<string, unknown> | null;
+  override?: { start: string | null; end: string | null };
 }
 
-async function buildCoverPdf({ v, vehicle, driver, rental }: CoverArgs): Promise<Uint8Array> {
+async function buildCoverPdf({ v, vehicle, driver, rental, override }: CoverArgs): Promise<Uint8Array> {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "letter", compress: true });
   const pageW = doc.internal.pageSize.getWidth();
@@ -442,9 +454,24 @@ async function buildCoverPdf({ v, vehicle, driver, rental }: CoverArgs): Promise
   // Rental / Customer
   bar("Rental & Customer");
   if (rental) {
+    const effStart = override?.start || (rental.start_date as string | null);
+    const effEnd = override?.end || (rental.end_date as string | null);
     field("Reservation #", String(rental.id ?? "—"));
-    field("Rental Period", `${fmtDate(rental.start_date as string)} → ${rental.end_date ? fmtDate(rental.end_date as string) : "ongoing"}`);
+    field("Rental Period", `${fmtDate(effStart)} → ${effEnd ? fmtDate(effEnd) : "ongoing"}`);
+    if (override?.start || override?.end) {
+      field("Dispute Date Override", "Dates above apply to this dispute only");
+    }
     if (rental.returned_at) field("Returned", fmtDate(rental.returned_at as string));
+    ensure(20);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...TEXT);
+    const possession = doc.splitTextToSize(
+      `Vehicle confirmed in renter's possession through ${effEnd ? fmtDate(effEnd) : "the present date"}.`,
+      right - left,
+    );
+    doc.text(possession, left, y);
+    y += 14 * (Array.isArray(possession) ? possession.length : 1) + 4;
   } else {
     field("Reservation", "Unlinked — no rental matched this plate + date");
   }

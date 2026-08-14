@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -13,6 +13,11 @@ import {
   matchViolationToRental,
   flagViolationOrphan,
 } from "@/lib/violations-workflow.functions";
+import {
+  saveViolationMatch,
+  listReservationMatchStats,
+  type ReservationMatchStat,
+} from "@/lib/violation-matches.functions";
 import { sendViolationRetroLink } from "@/lib/violation-retro.functions";
 import { CreateAgreementDialog } from "@/components/app/CreateAgreementDialog";
 import { normalizePlate } from "@/lib/plate";
@@ -94,6 +99,8 @@ export function FindRenterDialog({
   const matchFn = useServerFn(matchViolationToRental);
   const orphanFn = useServerFn(flagViolationOrphan);
   const sendLinkFn = useServerFn(sendViolationRetroLink);
+  const saveMatchFn = useServerFn(saveViolationMatch);
+  const statsFn = useServerFn(listReservationMatchStats);
   const navigate = useNavigate();
 
   const vDate = (violation?.date_issued || "").slice(0, 10);
@@ -106,6 +113,30 @@ export function FindRenterDialog({
   const [linked, setLinked] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [ovStart, setOvStart] = useState("");
+  const [ovEnd, setOvEnd] = useState("");
+  const [stats, setStats] = useState<ReservationMatchStat[]>([]);
+  const [cacheOpen, setCacheOpen] = useState<RentalOption | null>(null);
+
+  useEffect(() => {
+    if (!violation) return;
+    let live = true;
+    statsFn({})
+      .then((s) => live && setStats(s))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [violation?.id]);
+
+  const statFor = (rentalId: string): ReservationMatchStat | null => {
+    const s = stats.find((x) => x.reservationId === rentalId);
+    if (!s) return null;
+    const others = s.violationIds.filter((id) => id !== violation?.id);
+    if (others.length === 0) return null;
+    return { ...s, count: others.length, violationIds: others };
+  };
 
   // Reset when a new violation opens.
   const vId = violation?.id ?? null;
@@ -117,6 +148,8 @@ export function FindRenterDialog({
     setSearched(false);
     setSelected(null);
     setLinked(false);
+    setOvStart("");
+    setOvEnd("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vId]);
 
@@ -150,6 +183,14 @@ export function FindRenterDialog({
     if (!violation || !selected) return false;
     if (linked) return true;
     await matchFn({ data: { violationId: violation.id, rentalId: selected.id } });
+    await saveMatchFn({
+      data: {
+        violationId: violation.id,
+        reservationId: selected.id,
+        overrideStartDate: ovStart || null,
+        overrideEndDate: ovEnd || null,
+      },
+    });
     setLinked(true);
     return true;
   };
@@ -159,6 +200,14 @@ export function FindRenterDialog({
     setBusy("link");
     try {
       await ensureLinked();
+      await saveMatchFn({
+        data: {
+          violationId: violation.id,
+          reservationId: selected.id,
+          overrideStartDate: ovStart || null,
+          overrideEndDate: ovEnd || null,
+        },
+      });
       toast.success("Violation linked to renter");
       onDone();
       onClose();
@@ -320,6 +369,16 @@ export function FindRenterDialog({
                                   🔎 Plate inferred from vehicle
                                 </span>
                               )}
+                              {statFor(r.id) && (
+                                <button
+                                  type="button"
+                                  onClick={() => setCacheOpen(r)}
+                                  className="rounded bg-purple-500/15 px-1.5 py-0.5 text-xs font-medium text-purple-700 hover:bg-purple-500/25 dark:text-purple-300"
+                                >
+                                  ⚡ Violation Match · Used in {statFor(r.id)!.count} other violation
+                                  {statFor(r.id)!.count === 1 ? "" : "s"}
+                                </button>
+                              )}
                             </div>
                           </div>
                           <Button
@@ -327,6 +386,8 @@ export function FindRenterDialog({
                             onClick={() => {
                               setSelected(r);
                               setLinked(false);
+                              setOvStart("");
+                              setOvEnd("");
                               setStep("confirm");
                             }}
                           >
@@ -395,6 +456,34 @@ export function FindRenterDialog({
                   : "Violation date OUTSIDE rental period — verify match"}
               </div>
 
+              {/* Per-dispute date override */}
+              <div className="rounded-md border p-3 text-sm">
+                <div className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+                  Override dates for this dispute (optional)
+                </div>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Leave blank to use the reservation dates. Filled dates apply to this violation
+                  only — the reservation is not changed.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid gap-1">
+                    <Label>Start date</Label>
+                    <Input type="date" value={ovStart} onChange={(e) => setOvStart(e.target.value)} />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label>End date</Label>
+                    <Input type="date" value={ovEnd} onChange={(e) => setOvEnd(e.target.value)} />
+                  </div>
+                </div>
+                {statFor(selected.id) && (
+                  <p className="mt-2 text-xs text-purple-700 dark:text-purple-300">
+                    This reservation is used in {statFor(selected.id)!.count} other violation
+                    {statFor(selected.id)!.count === 1 ? "" : "s"}. Overrides apply to this dispute
+                    only.
+                  </p>
+                )}
+              </div>
+
               {/* Agreement section */}
               <div className="rounded-md border p-3 text-sm">
                 <div className="mb-2 text-xs font-medium uppercase text-muted-foreground">Rental Agreement</div>
@@ -424,7 +513,7 @@ export function FindRenterDialog({
                   Cancel
                 </Button>
                 <Button onClick={confirmLink} disabled={busy === "link"}>
-                  Confirm &amp; Link Violation
+                  Use this rental
                 </Button>
               </DialogFooter>
             </div>
@@ -443,6 +532,84 @@ export function FindRenterDialog({
           onClose();
         }}
       />
+
+      {/* Cached violation match details */}
+      <Dialog open={!!cacheOpen} onOpenChange={(o) => !o && setCacheOpen(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              <span className="mr-2 rounded bg-purple-500/15 px-1.5 py-0.5 text-xs text-purple-700 dark:text-purple-300">
+                ⚡ Violation Match
+              </span>
+              Cached reservation
+            </DialogTitle>
+          </DialogHeader>
+          {cacheOpen && (
+            <div className="space-y-3 text-sm">
+              <div className="rounded-md border p-3">
+                <div className="font-semibold">{cacheOpen.driver_name || "Unknown renter"}</div>
+                <div className="text-xs text-muted-foreground">
+                  {cacheOpen.vehicle_label || cacheOpen.plate || "—"}
+                </div>
+              </div>
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3">
+                <div className="text-xs font-medium uppercase text-destructive">
+                  Original reservation dates
+                </div>
+                <div>
+                  {statFor(cacheOpen.id)?.lastOverrideStart || cacheOpen.start_date || "?"} →{" "}
+                  {statFor(cacheOpen.id)?.lastOverrideEnd || cacheOpen.end_date || "ongoing"}
+                </div>
+              </div>
+              {(statFor(cacheOpen.id)?.lastOverrideEnd || cacheOpen.end_date) !==
+                cacheOpen.end_date && (
+                <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3">
+                  <div className="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-400">
+                    Current reservation end date
+                  </div>
+                  <div>{cacheOpen.end_date || "ongoing"}</div>
+                </div>
+              )}
+              <div className="rounded-md border p-3">
+                <div className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+                  Override dates for this dispute (optional)
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid gap-1">
+                    <Label>Start date</Label>
+                    <Input type="date" value={ovStart} onChange={(e) => setOvStart(e.target.value)} />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label>End date</Label>
+                    <Input type="date" value={ovEnd} onChange={(e) => setOvEnd(e.target.value)} />
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Leave blank to use the current reservation dates.
+                </p>
+              </div>
+              <p className="text-xs text-purple-700 dark:text-purple-300">
+                This reservation is used in {statFor(cacheOpen.id)?.count ?? 0} other violation
+                {(statFor(cacheOpen.id)?.count ?? 0) === 1 ? "" : "s"}. Overrides apply to this
+                dispute only.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                if (!cacheOpen) return;
+                setSelected(cacheOpen);
+                setLinked(false);
+                setStep("confirm");
+                setCacheOpen(null);
+              }}
+            >
+              Use this rental
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
