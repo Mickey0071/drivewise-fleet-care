@@ -358,9 +358,10 @@ interface CoverArgs {
   vehicle: Record<string, unknown> | null;
   driver: Record<string, unknown> | null;
   rental: Record<string, unknown> | null;
+  override?: { start: string | null; end: string | null };
 }
 
-async function buildCoverPdf({ v, vehicle, driver, rental }: CoverArgs): Promise<Uint8Array> {
+async function buildCoverPdf({ v, vehicle, driver, rental, override }: CoverArgs): Promise<Uint8Array> {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "letter", compress: true });
   const pageW = doc.internal.pageSize.getWidth();
