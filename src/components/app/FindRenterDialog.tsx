@@ -200,6 +200,14 @@ export function FindRenterDialog({
     setBusy("link");
     try {
       await ensureLinked();
+      await saveMatchFn({
+        data: {
+          violationId: violation.id,
+          reservationId: selected.id,
+          overrideStartDate: ovStart || null,
+          overrideEndDate: ovEnd || null,
+        },
+      });
       toast.success("Violation linked to renter");
       onDone();
       onClose();
