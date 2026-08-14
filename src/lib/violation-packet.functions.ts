@@ -454,9 +454,24 @@ async function buildCoverPdf({ v, vehicle, driver, rental, override }: CoverArgs
   // Rental / Customer
   bar("Rental & Customer");
   if (rental) {
+    const effStart = override?.start || (rental.start_date as string | null);
+    const effEnd = override?.end || (rental.end_date as string | null);
     field("Reservation #", String(rental.id ?? "—"));
-    field("Rental Period", `${fmtDate(rental.start_date as string)} → ${rental.end_date ? fmtDate(rental.end_date as string) : "ongoing"}`);
+    field("Rental Period", `${fmtDate(effStart)} → ${effEnd ? fmtDate(effEnd) : "ongoing"}`);
+    if (override?.start || override?.end) {
+      field("Dispute Date Override", "Dates above apply to this dispute only");
+    }
     if (rental.returned_at) field("Returned", fmtDate(rental.returned_at as string));
+    ensure(20);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...TEXT);
+    const possession = doc.splitTextToSize(
+      `Vehicle confirmed in renter's possession through ${effEnd ? fmtDate(effEnd) : "the present date"}.`,
+      right - left,
+    );
+    doc.text(possession, left, y);
+    y += 14 * (Array.isArray(possession) ? possession.length : 1) + 4;
   } else {
     field("Reservation", "Unlinked — no rental matched this plate + date");
   }
