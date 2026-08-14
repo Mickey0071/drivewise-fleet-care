@@ -199,6 +199,17 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
     const driver = driverRes.data;
     const rental = rentalRes.data;
 
+    // Per-dispute date override (does not change the reservation itself).
+    const { data: matchRow } = await supabaseAdmin
+      .from("violation_matches")
+      .select("override_start_date, override_end_date")
+      .eq("violation_id", data.violationId)
+      .maybeSingle();
+    const overrideDates = {
+      start: ((matchRow as any)?.override_start_date as string | null) ?? null,
+      end: ((matchRow as any)?.override_end_date as string | null) ?? null,
+    };
+
     // Guard: agreement cannot be included without renter address + signature.
     const [{ data: legacy }] = await Promise.all([
       v.legacy_rental_id
