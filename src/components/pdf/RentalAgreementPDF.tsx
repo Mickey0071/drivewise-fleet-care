@@ -155,6 +155,20 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     .filter(Boolean)
     .join(" / ");
 
+  const now = new Date();
+  const generatedOn = now.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const generatedAt = now.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const documentId = `RA-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+    rental.id,
+  ).toUpperCase()}`;
+
   const drawFooter = () => {
     // uses generatedOn / generatedAt / documentId defined above
     doc.setDrawColor(...RGB_GREEN);
