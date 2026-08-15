@@ -29,6 +29,27 @@ function fmtMoney(n: number) {
 }
 
 function statusLabel(r: RentalOption): { label: string; tone: string } {
+  return statusLabelBase(r);
+}
+
+/** Source-tag presentation for rental cards in violation search. */
+function sourceTag(r: RentalOption): { label: string; badge: string; border: string } | null {
+  if (r.legacy_id === "fleet-finesse")
+    return {
+      label: "Fleet Finesse",
+      badge: "bg-warning/20 text-warning-foreground",
+      border: "border-l-[3px] border-l-warning",
+    };
+  if (r.legacy_id === "manual-historic")
+    return {
+      label: "Manual Entry",
+      badge: "bg-muted text-muted-foreground border-[0.5px] border-border",
+      border: "border-l-[3px] border-l-foreground/40",
+    };
+  return null;
+}
+
+function statusLabelBase(r: RentalOption): { label: string; tone: string } {
   if (r.source === "migrated") return { label: "Migration", tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" };
   const s = (r.reservation_status || "").toLowerCase();
   if (s === "returned") return { label: "Returned", tone: "bg-muted text-muted-foreground" };
