@@ -72,6 +72,9 @@ const RGB_GREEN: [number, number, number] = [45, 184, 75];
 const RGB_TEXT: [number, number, number] = [26, 26, 26];
 const RGB_MUTED: [number, number, number] = [102, 102, 102];
 const RGB_BORDER: [number, number, number] = [204, 204, 204];
+const RGB_BLUE: [number, number, number] = [37, 99, 235];
+const RGB_BLUE_BG: [number, number, number] = [239, 246, 255];
+const RGB_GREEN_BG: [number, number, number] = [240, 253, 244];
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "";
