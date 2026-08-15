@@ -29,6 +29,27 @@ function fmtMoney(n: number) {
 }
 
 function statusLabel(r: RentalOption): { label: string; tone: string } {
+  return statusLabelBase(r);
+}
+
+/** Source-tag presentation for rental cards in violation search. */
+function sourceTag(r: RentalOption): { label: string; badge: string; border: string } | null {
+  if (r.legacy_id === "fleet-finesse")
+    return {
+      label: "Fleet Finesse",
+      badge: "bg-warning/20 text-warning-foreground",
+      border: "border-l-[3px] border-l-warning",
+    };
+  if (r.legacy_id === "manual-historic")
+    return {
+      label: "Manual Entry",
+      badge: "bg-muted text-muted-foreground border-[0.5px] border-border",
+      border: "border-l-[3px] border-l-foreground/40",
+    };
+  return null;
+}
+
+function statusLabelBase(r: RentalOption): { label: string; tone: string } {
   if (r.source === "migrated") return { label: "Migration", tone: "bg-amber-500/15 text-amber-700 dark:text-amber-400" };
   const s = (r.reservation_status || "").toLowerCase();
   if (s === "returned") return { label: "Returned", tone: "bg-muted text-muted-foreground" };
@@ -337,10 +358,11 @@ export function FindRenterDialog({
                   ) : (
                     results.map(({ r, rel }) => {
                       const st = statusLabel(r);
+                      const src = sourceTag(r);
                       return (
                         <div
                           key={r.id}
-                          className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
+                          className={`flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between ${src?.border ?? ""}`}
                         >
                           <div className="text-sm">
                             <div className="font-semibold">{r.driver_name || "Unknown renter"}</div>
@@ -351,6 +373,11 @@ export function FindRenterDialog({
                               {r.start_date || "?"} → {r.end_date || "ongoing"}
                             </div>
                             <div className="mt-1 flex flex-wrap gap-1">
+                              {src && (
+                                <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${src.badge}`}>
+                                  {src.label}
+                                </span>
+                              )}
                               <span className={`rounded px-1.5 py-0.5 text-xs ${st.tone}`}>{st.label}</span>
                               <span
                                 className={`rounded px-1.5 py-0.5 text-xs ${
@@ -359,7 +386,7 @@ export function FindRenterDialog({
                                     : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
                                 }`}
                               >
-                                {r.agreement_on_file ? "Has Agreement" : "No Agreement"}
+                                {r.agreement_on_file ? "✓ Rental Agreement Signed" : "⚠️ No Agreement on File"}
                               </span>
                               <span className={`rounded px-1.5 py-0.5 text-xs ${rel.tone}`}>
                                 {rel.icon} {rel.label}

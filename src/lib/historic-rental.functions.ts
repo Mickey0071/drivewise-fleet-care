@@ -58,6 +58,8 @@ const Input = z.object({
   noAgreementAvailable: z.boolean().optional().default(false),
   // Other
   notes: z.string().trim().max(1000).optional().default(""),
+  /** Optional source tag for the audit trail. Null = live rental. */
+  legacyId: z.enum(["fleet-finesse", "manual-historic"]).nullish().default(null),
   violationId: z.string().trim().max(64).optional().default(""),
 });
 
@@ -67,6 +69,8 @@ export interface CreateHistoricRentalResult {
   rentalId: string;
   driverId: string;
   linkedViolationId: string | null;
+  agreementPdfUrl?: string | null;
+  agreementWarning?: string | null;
 }
 
 /**
@@ -207,6 +211,7 @@ export const createHistoricRental = createServerFn({ method: "POST" })
       notes: notesCombined,
       source: "historic_entry",
       import_source: "historic_entry",
+      legacy_id: data.legacyId ?? null,
       created_at: nowIso,
       updated_at: nowIso,
     };
@@ -299,5 +304,28 @@ export const createHistoricRental = createServerFn({ method: "POST" })
       }
     }
 
-    return { rentalId, driverId, linkedViolationId };
+    // ---- 8. Auto-generate the rental agreement PDF (best-effort) ---------
+    // Never blocks rental creation — a failure just returns a warning.
+    let agreementPdfUrl: string | null = null;
+    let agreementWarning: string | null = null;
+    try {
+      const { data: current } = await supabaseAdmin
+        .from("rentals")
+        .select("agreement_pdf_url")
+        .eq("id", rentalId)
+        .maybeSingle();
+      if ((current as { agreement_pdf_url?: string | null } | null)?.agreement_pdf_url) {
+        agreementPdfUrl = (current as { agreement_pdf_url: string }).agreement_pdf_url;
+      } else {
+        const { generateAgreementPdf } = await import("@/lib/agreement-pdf.functions");
+        const res = await generateAgreementPdf({ data: { rentalId } });
+        agreementPdfUrl = res.url;
+        agreementWarning = res.error ?? null;
+      }
+    } catch (e) {
+      agreementWarning = e instanceof Error ? e.message : "Agreement generation failed";
+      console.warn("[historic-rental] agreement generation failed", e);
+    }
+
+    return { rentalId, driverId, linkedViolationId, agreementPdfUrl, agreementWarning };
   });

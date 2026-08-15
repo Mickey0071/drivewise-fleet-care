@@ -600,6 +600,8 @@ export interface RentalOption {
   end_date: string | null;
   reservation_status: string | null;
   source?: "live" | "migrated";
+  /** Source tag for the audit trail: null = live rental. */
+  legacy_id?: "fleet-finesse" | "manual-historic" | null;
   agreement_on_file?: boolean;
   agreement_pdf_url?: string | null;
   driver_phone?: string | null;
@@ -613,7 +615,7 @@ export const listRentalsForViolation = createServerFn({ method: "GET" })
   .handler(async (): Promise<RentalOption[]> => {
     const { data: rentals, error } = await supabaseAdmin
       .from("rentals")
-      .select("id, driver_id, vehicle_id, start_date, end_date, reservation_status, agreement_pdf_url, returned_at")
+      .select("id, driver_id, vehicle_id, start_date, end_date, reservation_status, agreement_pdf_url, returned_at, legacy_id")
       .order("start_date", { ascending: false })
       .limit(500);
     if (error) throw new Error(error.message);
@@ -646,6 +648,7 @@ export const listRentalsForViolation = createServerFn({ method: "GET" })
         end_date: r.end_date ?? null,
         reservation_status: (r as any).returned_at ? "returned" : r.reservation_status ?? null,
         source: "live",
+        legacy_id: ((r as any).legacy_id as "fleet-finesse" | "manual-historic" | null) ?? null,
         agreement_on_file: Boolean((r as any).agreement_pdf_url),
         agreement_pdf_url: ((r as any).agreement_pdf_url as string) ?? null,
       };
@@ -724,6 +727,7 @@ export const listRentalsForViolation = createServerFn({ method: "GET" })
         end_date: r.end_datetime ? r.end_datetime.slice(0, 10) : null,
         reservation_status: "migrated",
         source: "migrated",
+        legacy_id: "fleet-finesse",
         agreement_on_file: Boolean((r as any).retro_signed_at),
       };
     });
