@@ -158,14 +158,20 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   const drawFooter = () => {
     doc.setDrawColor(...RGB_GREEN);
     doc.setLineWidth(1);
-    doc.line(left, pageH - 30, right, pageH - 30);
+    doc.line(left, pageH - 34, right, pageH - 34);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(...RGB_MUTED);
     const footer = `${c.legalName} d/b/a ${c.dba}  |  ${c.address}  |  ${c.phone}  |  ${c.website}${
       rental.agreementVersion ? `   |   Agreement version: ${rental.agreementVersion}` : ""
     }`;
-    doc.text(footer, pageW / 2, pageH - 18, { align: "center" });
+    doc.text(footer, pageW / 2, pageH - 24, { align: "center" });
+    doc.text(
+      `Agreement generated on ${generatedOn} at ${generatedAt}  |  Document ID: ${documentId}`,
+      pageW / 2,
+      pageH - 14,
+      { align: "center" },
+    );
   };
 
   const ensureSpace = (needed: number) => {
