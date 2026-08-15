@@ -227,6 +227,9 @@ function HistoricReservationPage() {
         },
       });
       toast.success("Historic rental saved");
+      if (res.agreementWarning) {
+        toast.warning("Rental saved, but the agreement PDF could not be generated");
+      }
       if (res.linkedViolationId) {
         toast.success("Linked to violation");
         navigate({ to: "/violations" });
