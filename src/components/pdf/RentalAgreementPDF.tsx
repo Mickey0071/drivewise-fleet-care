@@ -72,6 +72,9 @@ const RGB_GREEN: [number, number, number] = [45, 184, 75];
 const RGB_TEXT: [number, number, number] = [26, 26, 26];
 const RGB_MUTED: [number, number, number] = [102, 102, 102];
 const RGB_BORDER: [number, number, number] = [204, 204, 204];
+const RGB_BLUE: [number, number, number] = [37, 99, 235];
+const RGB_BLUE_BG: [number, number, number] = [239, 246, 255];
+const RGB_GREEN_BG: [number, number, number] = [240, 253, 244];
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -152,17 +155,38 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     .filter(Boolean)
     .join(" / ");
 
+  const now = new Date();
+  const generatedOn = now.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const generatedAt = now.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const documentId = `RA-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+    rental.id,
+  ).toUpperCase()}`;
+
   const drawFooter = () => {
+    // uses generatedOn / generatedAt / documentId defined above
     doc.setDrawColor(...RGB_GREEN);
     doc.setLineWidth(1);
-    doc.line(left, pageH - 30, right, pageH - 30);
+    doc.line(left, pageH - 34, right, pageH - 34);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(...RGB_MUTED);
     const footer = `${c.legalName} d/b/a ${c.dba}  |  ${c.address}  |  ${c.phone}  |  ${c.website}${
       rental.agreementVersion ? `   |   Agreement version: ${rental.agreementVersion}` : ""
     }`;
-    doc.text(footer, pageW / 2, pageH - 18, { align: "center" });
+    doc.text(footer, pageW / 2, pageH - 24, { align: "center" });
+    doc.text(
+      `Agreement generated on ${generatedOn} at ${generatedAt}  |  Document ID: ${documentId}`,
+      pageW / 2,
+      pageH - 14,
+      { align: "center" },
+    );
   };
 
   const ensureSpace = (needed: number) => {
@@ -302,8 +326,15 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   ]);
 
   // ---- EXTENSIONS ----
-  if (extensions.length > 0) {
-    sectionBar("Extensions & Amendments");
+  sectionBar("Extensions & Amendments");
+  if (extensions.length === 0) {
+    ensureSpace(16);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.setTextColor(...RGB_MUTED);
+    doc.text("No extensions", left, y + 9);
+    y += 14;
+  } else {
     const cols = ["Extended", "Prev End", "New End", "Periods", "Additional", "Signed By"];
     const colW = contentW / cols.length;
     ensureSpace(20);
@@ -334,6 +365,29 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
       y += 14;
     });
     y += 4;
+  }
+
+  // ---- CURRENT RENTAL PERIOD (green box, left border) ----
+  {
+    ensureSpace(30);
+    const boxH = 26;
+    doc.setFillColor(...RGB_GREEN_BG);
+    doc.rect(left, y, contentW, boxH, "F");
+    doc.setFillColor(...RGB_GREEN);
+    doc.rect(left, y, 3, boxH, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(...RGB_MUTED);
+    doc.text("CURRENT RENTAL PERIOD", left + 10, y + 10);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...RGB_TEXT);
+    doc.text(
+      `${fmtDate(rental.startDate)} – ${currentEnd ? fmtDate(currentEnd) : "Open-ended"}`,
+      left + 10,
+      y + 21,
+    );
+    y += boxH + 6;
   }
 
   // ---- TERMS & CONDITIONS ----
@@ -528,6 +582,33 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     doc.line(f.x + 2, pnY + 10, f.x + halfW - 2, pnY + 10);
   });
   y = pnY + 12;
+
+  // ---- VEHICLE POSSESSION STATEMENT (blue box, left border) ----
+  {
+    const possessionDate = dateVal || fmtDate(rental.startDate);
+    const text =
+      `Vehicle was confirmed in renter's possession on ${possessionDate}, and remained in their ` +
+      `possession through ${currentEnd ? fmtDate(currentEnd) : "the current end date"}. ` +
+      `All extensions and return dates are documented above.`;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    const lines = doc.splitTextToSize(text, contentW - 18) as string[];
+    const boxH = lines.length * 10 + 16;
+    ensureSpace(boxH + 6);
+    doc.setFillColor(...RGB_BLUE_BG);
+    doc.rect(left, y, contentW, boxH, "F");
+    doc.setFillColor(...RGB_BLUE);
+    doc.rect(left, y, 3, boxH, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(...RGB_BLUE);
+    doc.text("VEHICLE POSSESSION STATEMENT", left + 10, y + 10);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...RGB_TEXT);
+    doc.text(lines, left + 10, y + 20);
+    y += boxH + 4;
+  }
 
   drawFooter();
 
