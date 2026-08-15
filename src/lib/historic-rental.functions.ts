@@ -58,6 +58,8 @@ const Input = z.object({
   noAgreementAvailable: z.boolean().optional().default(false),
   // Other
   notes: z.string().trim().max(1000).optional().default(""),
+  /** Optional source tag for the audit trail. Null = live rental. */
+  legacyId: z.enum(["fleet-finesse", "manual-historic"]).nullish().default(null),
   violationId: z.string().trim().max(64).optional().default(""),
 });
 
@@ -67,6 +69,8 @@ export interface CreateHistoricRentalResult {
   rentalId: string;
   driverId: string;
   linkedViolationId: string | null;
+  agreementPdfUrl?: string | null;
+  agreementWarning?: string | null;
 }
 
 /**
