@@ -2341,6 +2341,7 @@ export type Database = {
           id: string
           import_source: string | null
           last_auto_renew_date: string | null
+          legacy_id: string | null
           license_image_url: string | null
           mileage_in: number | null
           mileage_out: number | null
@@ -2431,6 +2432,7 @@ export type Database = {
           id: string
           import_source?: string | null
           last_auto_renew_date?: string | null
+          legacy_id?: string | null
           license_image_url?: string | null
           mileage_in?: number | null
           mileage_out?: number | null
@@ -2521,6 +2523,7 @@ export type Database = {
           id?: string
           import_source?: string | null
           last_auto_renew_date?: string | null
+          legacy_id?: string | null
           license_image_url?: string | null
           mileage_in?: number | null
           mileage_out?: number | null
