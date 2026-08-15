@@ -305,8 +305,15 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   ]);
 
   // ---- EXTENSIONS ----
-  if (extensions.length > 0) {
-    sectionBar("Extensions & Amendments");
+  sectionBar("Extensions & Amendments");
+  if (extensions.length === 0) {
+    ensureSpace(16);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8);
+    doc.setTextColor(...RGB_MUTED);
+    doc.text("No extensions", left, y + 9);
+    y += 14;
+  } else {
     const cols = ["Extended", "Prev End", "New End", "Periods", "Additional", "Signed By"];
     const colW = contentW / cols.length;
     ensureSpace(20);
@@ -337,6 +344,29 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
       y += 14;
     });
     y += 4;
+  }
+
+  // ---- CURRENT RENTAL PERIOD (green box, left border) ----
+  {
+    ensureSpace(30);
+    const boxH = 26;
+    doc.setFillColor(...RGB_GREEN_BG);
+    doc.rect(left, y, contentW, boxH, "F");
+    doc.setFillColor(...RGB_GREEN);
+    doc.rect(left, y, 3, boxH, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(...RGB_MUTED);
+    doc.text("CURRENT RENTAL PERIOD", left + 10, y + 10);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...RGB_TEXT);
+    doc.text(
+      `${fmtDate(rental.startDate)} – ${currentEnd ? fmtDate(currentEnd) : "Open-ended"}`,
+      left + 10,
+      y + 21,
+    );
+    y += boxH + 6;
   }
 
   // ---- TERMS & CONDITIONS ----
