@@ -358,10 +358,11 @@ export function FindRenterDialog({
                   ) : (
                     results.map(({ r, rel }) => {
                       const st = statusLabel(r);
+                      const src = sourceTag(r);
                       return (
                         <div
                           key={r.id}
-                          className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
+                          className={`flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between ${src?.border ?? ""}`}
                         >
                           <div className="text-sm">
                             <div className="font-semibold">{r.driver_name || "Unknown renter"}</div>
@@ -372,6 +373,11 @@ export function FindRenterDialog({
                               {r.start_date || "?"} → {r.end_date || "ongoing"}
                             </div>
                             <div className="mt-1 flex flex-wrap gap-1">
+                              {src && (
+                                <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${src.badge}`}>
+                                  {src.label}
+                                </span>
+                              )}
                               <span className={`rounded px-1.5 py-0.5 text-xs ${st.tone}`}>{st.label}</span>
                               <span
                                 className={`rounded px-1.5 py-0.5 text-xs ${
@@ -380,7 +386,7 @@ export function FindRenterDialog({
                                     : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
                                 }`}
                               >
-                                {r.agreement_on_file ? "Has Agreement" : "No Agreement"}
+                                {r.agreement_on_file ? "✓ Rental Agreement Signed" : "⚠️ No Agreement on File"}
                               </span>
                               <span className={`rounded px-1.5 py-0.5 text-xs ${rel.tone}`}>
                                 {rel.icon} {rel.label}
