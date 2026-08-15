@@ -122,6 +122,7 @@ function HistoricReservationPage() {
   const [noAgreement, setNoAgreement] = useState(false);
 
   const [notes, setNotes] = useState("");
+  const [legacyId, setLegacyId] = useState<string>("none");
   const [busy, setBusy] = useState(false);
 
   // Sync the prefill values in once vehicles load / route mounts.
@@ -221,6 +222,7 @@ function HistoricReservationPage() {
           agreementFileDataUrl: noAgreement ? "" : agreementDataUrl,
           noAgreementAvailable: noAgreement,
           notes: notes.trim(),
+          legacyId: legacyId === "none" ? null : (legacyId as "fleet-finesse" | "manual-historic"),
           violationId: sp.violationId || "",
         },
       });
@@ -511,7 +513,23 @@ function HistoricReservationPage() {
         <CardHeader>
           <CardTitle>Notes</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="grid gap-1">
+            <Label>Source (optional)</Label>
+            <Select value={legacyId} onValueChange={setLegacyId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Live rental" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Live rental</SelectItem>
+                <SelectItem value="fleet-finesse">Fleet Finesse import</SelectItem>
+                <SelectItem value="manual-historic">Manual historic entry</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Tags this rental for the audit trail. Leave as “Live rental” if it isn’t an import.
+            </p>
+          </div>
           <Textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
