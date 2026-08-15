@@ -583,6 +583,33 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   });
   y = pnY + 12;
 
+  // ---- VEHICLE POSSESSION STATEMENT (blue box, left border) ----
+  {
+    const possessionDate = dateVal || fmtDate(rental.startDate);
+    const text =
+      `Vehicle was confirmed in renter's possession on ${possessionDate}, and remained in their ` +
+      `possession through ${currentEnd ? fmtDate(currentEnd) : "the current end date"}. ` +
+      `All extensions and return dates are documented above.`;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    const lines = doc.splitTextToSize(text, contentW - 18) as string[];
+    const boxH = lines.length * 10 + 16;
+    ensureSpace(boxH + 6);
+    doc.setFillColor(...RGB_BLUE_BG);
+    doc.rect(left, y, contentW, boxH, "F");
+    doc.setFillColor(...RGB_BLUE);
+    doc.rect(left, y, 3, boxH, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(...RGB_BLUE);
+    doc.text("VEHICLE POSSESSION STATEMENT", left + 10, y + 10);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...RGB_TEXT);
+    doc.text(lines, left + 10, y + 20);
+    y += boxH + 4;
+  }
+
   drawFooter();
 
   const ab = doc.output("arraybuffer");
