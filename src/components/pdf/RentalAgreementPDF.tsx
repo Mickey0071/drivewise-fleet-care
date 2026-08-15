@@ -156,7 +156,7 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     .join(" / ");
 
   const drawFooter = () => {
-    // defined below via hoisted consts
+    // uses generatedOn / generatedAt / documentId defined above
     doc.setDrawColor(...RGB_GREEN);
     doc.setLineWidth(1);
     doc.line(left, pageH - 34, right, pageH - 34);
