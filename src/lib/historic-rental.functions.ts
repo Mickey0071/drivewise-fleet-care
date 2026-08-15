@@ -211,6 +211,7 @@ export const createHistoricRental = createServerFn({ method: "POST" })
       notes: notesCombined,
       source: "historic_entry",
       import_source: "historic_entry",
+      legacy_id: data.legacyId ?? null,
       created_at: nowIso,
       updated_at: nowIso,
     };
