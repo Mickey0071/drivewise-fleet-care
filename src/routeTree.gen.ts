@@ -113,6 +113,7 @@ import { Route as ApiPublicHooksVerificationRemindersRouteImport } from './route
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
 import { Route as ApiPublicHooksRepairDigestRouteImport } from './routes/api/public/hooks/repair-digest'
 import { Route as ApiPublicHooksMonthlyBackupRouteImport } from './routes/api/public/hooks/monthly-backup'
+import { Route as ApiPublicHooksGhlInboundRouteImport } from './routes/api/public/hooks/ghl-inbound'
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
 import { Route as ApiPublicHooksAutoExtensionLinksRouteImport } from './routes/api/public/hooks/auto-extension-links'
 
@@ -647,6 +648,12 @@ const ApiPublicHooksMonthlyBackupRoute =
     path: '/api/public/hooks/monthly-backup',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksGhlInboundRoute =
+  ApiPublicHooksGhlInboundRouteImport.update({
+    id: '/api/public/hooks/ghl-inbound',
+    path: '/api/public/hooks/ghl-inbound',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDailyReportsRoute =
   ApiPublicHooksDailyReportsRouteImport.update({
     id: '/api/public/hooks/daily-reports',
@@ -761,6 +768,7 @@ export interface FileRoutesByFullPath {
   '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
+  '/api/public/hooks/ghl-inbound': typeof ApiPublicHooksGhlInboundRoute
   '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
@@ -869,6 +877,7 @@ export interface FileRoutesByTo {
   '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
+  '/api/public/hooks/ghl-inbound': typeof ApiPublicHooksGhlInboundRoute
   '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
@@ -978,6 +987,7 @@ export interface FileRoutesById {
   '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
+  '/api/public/hooks/ghl-inbound': typeof ApiPublicHooksGhlInboundRoute
   '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
@@ -1088,6 +1098,7 @@ export interface FileRouteTypes {
     | '/waitlist/upload/$token'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
+    | '/api/public/hooks/ghl-inbound'
     | '/api/public/hooks/monthly-backup'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
@@ -1196,6 +1207,7 @@ export interface FileRouteTypes {
     | '/waitlist/upload/$token'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
+    | '/api/public/hooks/ghl-inbound'
     | '/api/public/hooks/monthly-backup'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
@@ -1304,6 +1316,7 @@ export interface FileRouteTypes {
     | '/waitlist/upload/$token'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
+    | '/api/public/hooks/ghl-inbound'
     | '/api/public/hooks/monthly-backup'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
@@ -1410,6 +1423,7 @@ export interface RootRouteChildren {
   RepairDeclineTokenRoute: typeof RepairDeclineTokenRoute
   ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
+  ApiPublicHooksGhlInboundRoute: typeof ApiPublicHooksGhlInboundRoute
   ApiPublicHooksMonthlyBackupRoute: typeof ApiPublicHooksMonthlyBackupRoute
   ApiPublicHooksRepairDigestRoute: typeof ApiPublicHooksRepairDigestRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
@@ -2148,6 +2162,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksMonthlyBackupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/ghl-inbound': {
+      id: '/api/public/hooks/ghl-inbound'
+      path: '/api/public/hooks/ghl-inbound'
+      fullPath: '/api/public/hooks/ghl-inbound'
+      preLoaderRoute: typeof ApiPublicHooksGhlInboundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/daily-reports': {
       id: '/api/public/hooks/daily-reports'
       path: '/api/public/hooks/daily-reports'
@@ -2297,6 +2318,7 @@ const rootRouteChildren: RootRouteChildren = {
   RepairDeclineTokenRoute: RepairDeclineTokenRoute,
   ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
+  ApiPublicHooksGhlInboundRoute: ApiPublicHooksGhlInboundRoute,
   ApiPublicHooksMonthlyBackupRoute: ApiPublicHooksMonthlyBackupRoute,
   ApiPublicHooksRepairDigestRoute: ApiPublicHooksRepairDigestRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,

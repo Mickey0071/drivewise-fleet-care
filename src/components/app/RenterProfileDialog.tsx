@@ -1,22 +1,29 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Ban,
   CreditCard,
   DollarSign,
   FileSignature,
+  IdCard,
+  Loader2,
   Mail,
   MapPin,
   MessageSquare,
   Phone,
   Plus,
+  Printer,
+  RefreshCw,
+  Send,
   ShieldCheck,
   Sparkles,
+  Upload,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import {
   drivers,
@@ -28,13 +35,21 @@ import {
   fmtMoney,
 } from "@/lib/mock/data";
 import type { Driver } from "@/lib/mock/data";
-import { rentalCanonicalOwed, useStoreVersion } from "@/lib/mock/store";
+import { rentalCanonicalOwed, updateDriver, useStoreVersion } from "@/lib/mock/store";
 import { formatAddressBlock } from "@/lib/us-states";
 import {
   addRenterIssue,
   addRenterNote,
   useRenterData,
 } from "@/lib/renter-notes";
+import { useServerFn } from "@tanstack/react-start";
+import { uploadDriverLicense } from "@/lib/driver-license.functions";
+import {
+  listRenterMessages,
+  markRenterMessagesRead,
+  sendRenterProfileMessage,
+  type RenterMessage,
+} from "@/lib/renter-messages.functions";
 import { toast } from "sonner";
 
 function initialsOf(name?: string) {
@@ -90,6 +105,26 @@ export function RenterProfileDialog({
   const data = useRenterData(driverId);
   const [noteText, setNoteText] = useState("");
   const [issueText, setIssueText] = useState("");
+  const [tab, setTab] = useState<"overview" | "messages">("overview");
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const uploadLicense = useServerFn(uploadDriverLicense);
+  const loadMessages = useServerFn(listRenterMessages);
+  const sendMessage = useServerFn(sendRenterProfileMessage);
+  const markRead = useServerFn(markRenterMessagesRead);
+  const [messages, setMessages] = useState<RenterMessage[]>([]);
+  const [msgLoading, setMsgLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [draft, setDraft] = useState("");
+  const threadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setTab("overview");
+      setMessages([]);
+      setDraft("");
+    }
+  }, [open]);
 
   const myRentals = useMemo(
     () =>
@@ -128,6 +163,133 @@ export function RenterProfileDialog({
           zipCode: d.zipCode,
         })
       : "");
+
+  // License photo: driver record first, then the most recent rental that captured one.
+  const licenseUrl =
+    d?.licenseImageUrl ||
+    myRentals.find((r) => r.licenseImageUrl)?.licenseImageUrl ||
+    "";
+
+  const refreshMessages = useCallback(
+    async (silent = false) => {
+      if (!d) return;
+      if (!silent) setMsgLoading(true);
+      try {
+        const res = await loadMessages({
+          data: { driverId: d.id, phone: d.phone ?? null, name: d.fullName },
+        });
+        setMessages(res.messages);
+        if (res.messages.some((m) => m.direction === "received" && !m.read)) {
+          await markRead({ data: { driverId: d.id } });
+        }
+      } catch (e) {
+        if (!silent) toast.error(e instanceof Error ? e.message : "Couldn't load messages");
+      } finally {
+        if (!silent) setMsgLoading(false);
+      }
+    },
+    [d, loadMessages, markRead],
+  );
+
+  useEffect(() => {
+    if (open && tab === "messages") void refreshMessages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, tab, driverId]);
+
+  useEffect(() => {
+    threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages.length]);
+
+  async function handleUpload(file: File) {
+    if (!d) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file");
+      return;
+    }
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("Could not read file"));
+        reader.readAsDataURL(file);
+      });
+      const res = await uploadLicense({ data: { driverId: d.id, dataUrl } });
+      updateDriver(d.id, { licenseImageUrl: res.url });
+      toast.success("ID uploaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleSend() {
+    const text = draft.trim();
+    if (!d || !text) return;
+    if (!d.phone) {
+      toast.error("No phone number on file");
+      return;
+    }
+    setSending(true);
+    try {
+      await sendMessage({ data: { driverId: d.id, phone: d.phone, message: text, name: d.fullName } });
+      setDraft("");
+      setMessages((m) => [
+        ...m,
+        { id: `local-${Date.now()}`, message: text, direction: "sent", sentAt: new Date().toISOString(), read: true },
+      ]);
+      setTimeout(() => void refreshMessages(true), 1500);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Message failed");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function printProfile() {
+    if (!d) return;
+    const esc = (s: string) =>
+      s.replace(/[&<>]/g, (c) => (c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;"));
+    const rows = myRentals
+      .map((r) => {
+        const v = vehicleById(r.vehicleId);
+        return `<tr><td>${esc(r.id)}</td><td>${esc(v ? `${v.year} ${v.make} ${v.model} · ${v.plate}` : "—")}</td><td>${esc(fmtDate(r.startDate))} → ${esc(r.endDate ? fmtDate(r.endDate) : "ongoing")}</td><td>${esc(r.reservationStatus ?? "")}</td></tr>`;
+      })
+      .join("");
+    const viols = myViolations
+      .map(
+        (v) =>
+          `<tr><td>${esc(v.type.toUpperCase())}</td><td>${esc(fmtDate(v.dateIssued))}</td><td>${esc(fmtMoney(v.totalAmount ?? v.amount))}</td><td>${esc(v.status)}</td></tr>`,
+      )
+      .join("");
+    const notes = [
+      ...data.issues.map((i) => `<li><strong>Issue</strong> · ${new Date(i.at).toLocaleString()}<br/>${esc(i.text)}</li>`),
+      ...data.notes.map((n) => `<li><strong>Note</strong> · ${new Date(n.at).toLocaleString()}<br/>${esc(n.text)}</li>`),
+    ].join("");
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(d.fullName)} — Renter Profile</title>
+<style>body{font-family:system-ui,sans-serif;margin:32px;color:#111}h1{margin:0 0 4px;font-size:22px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.05em;margin:24px 0 8px;border-bottom:1px solid #ddd;padding-bottom:4px}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{border-bottom:1px solid #eee;padding:6px 4px;text-align:left}
+img{max-width:340px;border:1px solid #ddd;border-radius:6px}.meta{font-size:12px;color:#555}ul{font-size:12px;padding-left:18px}li{margin-bottom:6px}</style></head>
+<body><h1>${esc(d.fullName)}</h1>
+<div class="meta">${esc(d.phone ?? "")} ${d.email ? "· " + esc(d.email) : ""} ${address ? "· " + esc(address) : ""}<br/>${esc(d.id)} · customer since ${esc(fmtDate(d.dateAdded))} · License ${esc(d.licenseNumber || "—")}${d.dlState ? " (" + esc(d.dlState) + ")" : ""}</div>
+<h2>ID on file</h2>${licenseUrl ? `<img src="${licenseUrl}" alt="Driver license"/>` : `<p class="meta">No ID photo on file.</p>`}
+<h2>Rentals (${myRentals.length}) · Total spent ${esc(fmtMoney(totalSpent))} · Outstanding ${esc(fmtMoney(outstanding))}</h2>
+${rows ? `<table><tr><th>ID</th><th>Vehicle</th><th>Period</th><th>Status</th></tr>${rows}</table>` : `<p class="meta">No rentals on record.</p>`}
+<h2>Violations (${myViolations.length})</h2>
+${viols ? `<table><tr><th>Type</th><th>Date</th><th>Amount</th><th>Status</th></tr>${viols}</table>` : `<p class="meta">None.</p>`}
+<h2>Notes &amp; issues</h2>${notes ? `<ul>${notes}</ul>` : `<p class="meta">None.</p>`}
+</body></html>`;
+    const w = window.open("", "_blank", "width=900,height=1000");
+    if (!w) {
+      toast.error("Allow pop-ups to print this profile");
+      return;
+    }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 600);
+  }
 
   function go(to: string, search?: Record<string, unknown>) {
     onClose();
@@ -184,10 +346,27 @@ export function RenterProfileDialog({
               </div>
             </DialogHeader>
 
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "overview" | "messages")}>
+              <TabsList>
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="messages">
+                  Messages
+                  {messages.some((m) => m.direction === "received" && !m.read) && (
+                    <span className="ml-1.5 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                      {messages.filter((m) => m.direction === "received" && !m.read).length}
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-4 pt-3">
             {/* Quick actions */}
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => go("/rentals", { chat: d.id })}>
-                <MessageSquare className="mr-1.5 h-3.5 w-3.5" /> Send SMS
+              <Button size="sm" variant="outline" onClick={() => setTab("messages")}>
+                <MessageSquare className="mr-1.5 h-3.5 w-3.5" /> Messages
+              </Button>
+              <Button size="sm" variant="outline" onClick={printProfile}>
+                <Printer className="mr-1.5 h-3.5 w-3.5" /> Print Profile
               </Button>
               <Button size="sm" variant="outline" onClick={() => go("/payments", { driver: d.id })}>
                 <DollarSign className="mr-1.5 h-3.5 w-3.5" /> Payment link
@@ -207,6 +386,47 @@ export function RenterProfileDialog({
                 <Plus className="mr-1.5 h-3.5 w-3.5" /> New rental
               </Button>
             </div>
+
+            {/* ID on file */}
+            <section>
+              <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+                <IdCard className="h-4 w-4" /> ID on file
+              </h3>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) void handleUpload(f);
+                }}
+              />
+              {licenseUrl ? (
+                <div className="space-y-2">
+                  <a href={licenseUrl} target="_blank" rel="noreferrer">
+                    <img
+                      src={licenseUrl}
+                      alt={`Driver license for ${d.fullName}`}
+                      className="max-h-56 rounded-md border border-border object-contain"
+                    />
+                  </a>
+                  <Button size="sm" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                    {uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
+                    Replace ID
+                  </Button>
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed p-4 text-center">
+                  <p className="mb-2 text-xs text-muted-foreground">No ID photo on file for this renter.</p>
+                  <Button size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                    {uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
+                    Upload ID
+                  </Button>
+                </div>
+              )}
+            </section>
 
             {/* Stat tiles */}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -391,6 +611,68 @@ export function RenterProfileDialog({
                 {d.dlState ? ` · ${d.dlState}` : ""}
               </p>
             )}
+              </TabsContent>
+
+              <TabsContent value="messages" className="space-y-3 pt-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    SMS thread · {d.phone || "no phone on file"}
+                  </p>
+                  <Button variant="ghost" size="sm" onClick={() => void refreshMessages()} disabled={msgLoading}>
+                    {msgLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <div ref={threadRef} className="h-80 space-y-2 overflow-y-auto rounded-md border bg-muted/30 p-3">
+                  {msgLoading && messages.length === 0 && (
+                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading conversation…
+                    </div>
+                  )}
+                  {!msgLoading && messages.length === 0 && (
+                    <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
+                      No messages yet. Send the first one below.
+                    </div>
+                  )}
+                  {messages.map((m) => (
+                    <div key={m.id} className={`flex ${m.direction === "sent" ? "justify-end" : "justify-start"}`}>
+                      <div
+                        className={`max-w-[75%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm ${
+                          m.direction === "sent"
+                            ? "rounded-br-sm bg-primary text-primary-foreground"
+                            : "rounded-bl-sm border bg-background"
+                        }`}
+                      >
+                        <div>{m.message}</div>
+                        <div
+                          className={`mt-1 text-[10px] opacity-70 ${
+                            m.direction === "sent" ? "text-primary-foreground" : "text-muted-foreground"
+                          }`}
+                        >
+                          {m.direction === "sent" ? "Sent" : "Received"} · {new Date(m.sentAt).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder="Type message here…"
+                    className="min-h-[60px] text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        void handleSend();
+                      }
+                    }}
+                  />
+                  <Button onClick={() => void handleSend()} disabled={sending || !draft.trim()}>
+                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </DialogContent>
