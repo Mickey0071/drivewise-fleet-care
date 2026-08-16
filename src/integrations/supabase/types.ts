@@ -2596,6 +2596,53 @@ export type Database = {
           },
         ]
       }
+      renter_messages: {
+        Row: {
+          created_at: string
+          direction: string
+          driver_id: string | null
+          ghl_message_id: string | null
+          id: string
+          message: string
+          phone: string | null
+          read: boolean
+          sent_at: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          driver_id?: string | null
+          ghl_message_id?: string | null
+          id?: string
+          message: string
+          phone?: string | null
+          read?: boolean
+          sent_at?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          driver_id?: string | null
+          ghl_message_id?: string | null
+          id?: string
+          message?: string
+          phone?: string | null
+          read?: boolean
+          sent_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renter_messages_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       repair_history: {
         Row: {
           completed_by: string | null
