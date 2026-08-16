@@ -611,6 +611,68 @@ ${viols ? `<table><tr><th>Type</th><th>Date</th><th>Amount</th><th>Status</th></
                 {d.dlState ? ` · ${d.dlState}` : ""}
               </p>
             )}
+              </TabsContent>
+
+              <TabsContent value="messages" className="space-y-3 pt-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    SMS thread · {d.phone || "no phone on file"}
+                  </p>
+                  <Button variant="ghost" size="sm" onClick={() => void refreshMessages()} disabled={msgLoading}>
+                    {msgLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <div ref={threadRef} className="h-80 space-y-2 overflow-y-auto rounded-md border bg-muted/30 p-3">
+                  {msgLoading && messages.length === 0 && (
+                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading conversation…
+                    </div>
+                  )}
+                  {!msgLoading && messages.length === 0 && (
+                    <div className="flex h-full items-center justify-center px-4 text-center text-sm text-muted-foreground">
+                      No messages yet. Send the first one below.
+                    </div>
+                  )}
+                  {messages.map((m) => (
+                    <div key={m.id} className={`flex ${m.direction === "sent" ? "justify-end" : "justify-start"}`}>
+                      <div
+                        className={`max-w-[75%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm ${
+                          m.direction === "sent"
+                            ? "rounded-br-sm bg-primary text-primary-foreground"
+                            : "rounded-bl-sm border bg-background"
+                        }`}
+                      >
+                        <div>{m.message}</div>
+                        <div
+                          className={`mt-1 text-[10px] opacity-70 ${
+                            m.direction === "sent" ? "text-primary-foreground" : "text-muted-foreground"
+                          }`}
+                        >
+                          {m.direction === "sent" ? "Sent" : "Received"} · {new Date(m.sentAt).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder="Type message here…"
+                    className="min-h-[60px] text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        void handleSend();
+                      }
+                    }}
+                  />
+                  <Button onClick={() => void handleSend()} disabled={sending || !draft.trim()}>
+                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </DialogContent>
