@@ -105,6 +105,26 @@ export function RenterProfileDialog({
   const data = useRenterData(driverId);
   const [noteText, setNoteText] = useState("");
   const [issueText, setIssueText] = useState("");
+  const [tab, setTab] = useState<"overview" | "messages">("overview");
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const uploadLicense = useServerFn(uploadDriverLicense);
+  const loadMessages = useServerFn(listRenterMessages);
+  const sendMessage = useServerFn(sendRenterProfileMessage);
+  const markRead = useServerFn(markRenterMessagesRead);
+  const [messages, setMessages] = useState<RenterMessage[]>([]);
+  const [msgLoading, setMsgLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [draft, setDraft] = useState("");
+  const threadRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setTab("overview");
+      setMessages([]);
+      setDraft("");
+    }
+  }, [open]);
 
   const myRentals = useMemo(
     () =>
@@ -143,6 +163,133 @@ export function RenterProfileDialog({
           zipCode: d.zipCode,
         })
       : "");
+
+  // License photo: driver record first, then the most recent rental that captured one.
+  const licenseUrl =
+    d?.licenseImageUrl ||
+    myRentals.find((r) => r.licenseImageUrl)?.licenseImageUrl ||
+    "";
+
+  const refreshMessages = useCallback(
+    async (silent = false) => {
+      if (!d) return;
+      if (!silent) setMsgLoading(true);
+      try {
+        const res = await loadMessages({
+          data: { driverId: d.id, phone: d.phone ?? null, name: d.fullName },
+        });
+        setMessages(res.messages);
+        if (res.messages.some((m) => m.direction === "received" && !m.read)) {
+          await markRead({ data: { driverId: d.id } });
+        }
+      } catch (e) {
+        if (!silent) toast.error(e instanceof Error ? e.message : "Couldn't load messages");
+      } finally {
+        if (!silent) setMsgLoading(false);
+      }
+    },
+    [d, loadMessages, markRead],
+  );
+
+  useEffect(() => {
+    if (open && tab === "messages") void refreshMessages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, tab, driverId]);
+
+  useEffect(() => {
+    threadRef.current?.scrollTo({ top: threadRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages.length]);
+
+  async function handleUpload(file: File) {
+    if (!d) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file");
+      return;
+    }
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("Could not read file"));
+        reader.readAsDataURL(file);
+      });
+      const res = await uploadLicense({ data: { driverId: d.id, dataUrl } });
+      updateDriver(d.id, { licenseImageUrl: res.url });
+      toast.success("ID uploaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleSend() {
+    const text = draft.trim();
+    if (!d || !text) return;
+    if (!d.phone) {
+      toast.error("No phone number on file");
+      return;
+    }
+    setSending(true);
+    try {
+      await sendMessage({ data: { driverId: d.id, phone: d.phone, message: text, name: d.fullName } });
+      setDraft("");
+      setMessages((m) => [
+        ...m,
+        { id: `local-${Date.now()}`, message: text, direction: "sent", sentAt: new Date().toISOString(), read: true },
+      ]);
+      setTimeout(() => void refreshMessages(true), 1500);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Message failed");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function printProfile() {
+    if (!d) return;
+    const esc = (s: string) =>
+      s.replace(/[&<>]/g, (c) => (c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;"));
+    const rows = myRentals
+      .map((r) => {
+        const v = vehicleById(r.vehicleId);
+        return `<tr><td>${esc(r.id)}</td><td>${esc(v ? `${v.year} ${v.make} ${v.model} · ${v.plate}` : "—")}</td><td>${esc(fmtDate(r.startDate))} → ${esc(r.endDate ? fmtDate(r.endDate) : "ongoing")}</td><td>${esc(r.reservationStatus ?? "")}</td></tr>`;
+      })
+      .join("");
+    const viols = myViolations
+      .map(
+        (v) =>
+          `<tr><td>${esc(v.type.toUpperCase())}</td><td>${esc(fmtDate(v.dateIssued))}</td><td>${esc(fmtMoney(v.totalAmount ?? v.amount))}</td><td>${esc(v.status)}</td></tr>`,
+      )
+      .join("");
+    const notes = [
+      ...data.issues.map((i) => `<li><strong>Issue</strong> · ${new Date(i.at).toLocaleString()}<br/>${esc(i.text)}</li>`),
+      ...data.notes.map((n) => `<li><strong>Note</strong> · ${new Date(n.at).toLocaleString()}<br/>${esc(n.text)}</li>`),
+    ].join("");
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(d.fullName)} — Renter Profile</title>
+<style>body{font-family:system-ui,sans-serif;margin:32px;color:#111}h1{margin:0 0 4px;font-size:22px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.05em;margin:24px 0 8px;border-bottom:1px solid #ddd;padding-bottom:4px}
+table{width:100%;border-collapse:collapse;font-size:12px}td,th{border-bottom:1px solid #eee;padding:6px 4px;text-align:left}
+img{max-width:340px;border:1px solid #ddd;border-radius:6px}.meta{font-size:12px;color:#555}ul{font-size:12px;padding-left:18px}li{margin-bottom:6px}</style></head>
+<body><h1>${esc(d.fullName)}</h1>
+<div class="meta">${esc(d.phone ?? "")} ${d.email ? "· " + esc(d.email) : ""} ${address ? "· " + esc(address) : ""}<br/>${esc(d.id)} · customer since ${esc(fmtDate(d.dateAdded))} · License ${esc(d.licenseNumber || "—")}${d.dlState ? " (" + esc(d.dlState) + ")" : ""}</div>
+<h2>ID on file</h2>${licenseUrl ? `<img src="${licenseUrl}" alt="Driver license"/>` : `<p class="meta">No ID photo on file.</p>`}
+<h2>Rentals (${myRentals.length}) · Total spent ${esc(fmtMoney(totalSpent))} · Outstanding ${esc(fmtMoney(outstanding))}</h2>
+${rows ? `<table><tr><th>ID</th><th>Vehicle</th><th>Period</th><th>Status</th></tr>${rows}</table>` : `<p class="meta">No rentals on record.</p>`}
+<h2>Violations (${myViolations.length})</h2>
+${viols ? `<table><tr><th>Type</th><th>Date</th><th>Amount</th><th>Status</th></tr>${viols}</table>` : `<p class="meta">None.</p>`}
+<h2>Notes &amp; issues</h2>${notes ? `<ul>${notes}</ul>` : `<p class="meta">None.</p>`}
+</body></html>`;
+    const w = window.open("", "_blank", "width=900,height=1000");
+    if (!w) {
+      toast.error("Allow pop-ups to print this profile");
+      return;
+    }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 600);
+  }
 
   function go(to: string, search?: Record<string, unknown>) {
     onClose();
