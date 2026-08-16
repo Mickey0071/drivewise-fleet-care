@@ -346,10 +346,27 @@ ${viols ? `<table><tr><th>Type</th><th>Date</th><th>Amount</th><th>Status</th></
               </div>
             </DialogHeader>
 
+            <Tabs value={tab} onValueChange={(v) => setTab(v as "overview" | "messages")}>
+              <TabsList>
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="messages">
+                  Messages
+                  {messages.some((m) => m.direction === "received" && !m.read) && (
+                    <span className="ml-1.5 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                      {messages.filter((m) => m.direction === "received" && !m.read).length}
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-4 pt-3">
             {/* Quick actions */}
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => go("/rentals", { chat: d.id })}>
-                <MessageSquare className="mr-1.5 h-3.5 w-3.5" /> Send SMS
+              <Button size="sm" variant="outline" onClick={() => setTab("messages")}>
+                <MessageSquare className="mr-1.5 h-3.5 w-3.5" /> Messages
+              </Button>
+              <Button size="sm" variant="outline" onClick={printProfile}>
+                <Printer className="mr-1.5 h-3.5 w-3.5" /> Print Profile
               </Button>
               <Button size="sm" variant="outline" onClick={() => go("/payments", { driver: d.id })}>
                 <DollarSign className="mr-1.5 h-3.5 w-3.5" /> Payment link
@@ -369,6 +386,47 @@ ${viols ? `<table><tr><th>Type</th><th>Date</th><th>Amount</th><th>Status</th></
                 <Plus className="mr-1.5 h-3.5 w-3.5" /> New rental
               </Button>
             </div>
+
+            {/* ID on file */}
+            <section>
+              <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+                <IdCard className="h-4 w-4" /> ID on file
+              </h3>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = "";
+                  if (f) void handleUpload(f);
+                }}
+              />
+              {licenseUrl ? (
+                <div className="space-y-2">
+                  <a href={licenseUrl} target="_blank" rel="noreferrer">
+                    <img
+                      src={licenseUrl}
+                      alt={`Driver license for ${d.fullName}`}
+                      className="max-h-56 rounded-md border border-border object-contain"
+                    />
+                  </a>
+                  <Button size="sm" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                    {uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
+                    Replace ID
+                  </Button>
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed p-4 text-center">
+                  <p className="mb-2 text-xs text-muted-foreground">No ID photo on file for this renter.</p>
+                  <Button size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+                    {uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
+                    Upload ID
+                  </Button>
+                </div>
+              )}
+            </section>
 
             {/* Stat tiles */}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
