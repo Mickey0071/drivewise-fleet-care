@@ -1,22 +1,29 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Ban,
   CreditCard,
   DollarSign,
   FileSignature,
+  IdCard,
+  Loader2,
   Mail,
   MapPin,
   MessageSquare,
   Phone,
   Plus,
+  Printer,
+  RefreshCw,
+  Send,
   ShieldCheck,
   Sparkles,
+  Upload,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import {
   drivers,
@@ -28,13 +35,21 @@ import {
   fmtMoney,
 } from "@/lib/mock/data";
 import type { Driver } from "@/lib/mock/data";
-import { rentalCanonicalOwed, useStoreVersion } from "@/lib/mock/store";
+import { rentalCanonicalOwed, updateDriver, useStoreVersion } from "@/lib/mock/store";
 import { formatAddressBlock } from "@/lib/us-states";
 import {
   addRenterIssue,
   addRenterNote,
   useRenterData,
 } from "@/lib/renter-notes";
+import { useServerFn } from "@tanstack/react-start";
+import { uploadDriverLicense } from "@/lib/driver-license.functions";
+import {
+  listRenterMessages,
+  markRenterMessagesRead,
+  sendRenterProfileMessage,
+  type RenterMessage,
+} from "@/lib/renter-messages.functions";
 import { toast } from "sonner";
 
 function initialsOf(name?: string) {
