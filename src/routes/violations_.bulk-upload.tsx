@@ -448,13 +448,21 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
           `${res.skippedNoRef} item${res.skippedNoRef === 1 ? "" : "s"} skipped — no EZPass violation #`,
         );
       }
+      if (res.failed > 0) {
+        toast.error(
+          `${res.failed} violation${res.failed === 1 ? "" : "s"} FAILED to save: ${res.errors.slice(0, 3).join(" | ")}`,
+          { duration: 12000 },
+        );
+        refresh();
+        return; // keep the dialog open so nothing looks saved when it isn't
+      }
       if (approveMode === "matched") {
         toast.success(
-          `Saved ${res.matched} matched violation${res.matched === 1 ? "" : "s"} — ${res.unmatched} unmatched left to match`,
+          `Saved ${res.saved} violation${res.saved === 1 ? "" : "s"} to the database (${res.matched} matched) — ${res.unmatched} unmatched left to match`,
         );
       } else {
         toast.success(
-          `Saved ${res.total} violation${res.total === 1 ? "" : "s"} — ${res.matched} matched, ${res.unmatched} unmatched`,
+          `Saved ${res.saved} of ${res.total} violation${res.total === 1 ? "" : "s"} to the database — ${res.matched} matched, ${res.unmatched} unmatched`,
         );
       }
       setConfirmOpen(false);
