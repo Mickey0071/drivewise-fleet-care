@@ -468,7 +468,16 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
     async ({
       data,
       context,
-    }): Promise<{ generated: number; matched: number; unmatched: number; total: number; skippedNoRef: number }> => {
+    }): Promise<{
+      generated: number;
+      matched: number;
+      unmatched: number;
+      total: number;
+      skippedNoRef: number;
+      saved: number;
+      failed: number;
+      errors: string[];
+    }> => {
       const mode = data.mode ?? "all";
       const { data: items, error: iErr } = await supabaseAdmin
         .from("ezpass_batch_items")
@@ -492,6 +501,9 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
       let unmatched = 0;
       let skippedUnmatched = 0;
       let skippedNoRef = 0;
+      let saved = 0;
+      let failed = 0;
+      const errors: string[] = [];
 
       for (const item of rows) {
         // Hard block: never persist a violation without its EZPass reference #.
@@ -585,7 +597,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
 
         // Permanently save the violation record if it doesn't exist yet.
         if (!item.violation_id) {
-          await supabaseAdmin.from("violations").insert({
+          const { error: insErr } = await supabaseAdmin.from("violations").insert({
             id: violationId,
             rental_id: rentalId,
             vehicle_id: vehicleId ?? "UNKNOWN",
@@ -614,6 +626,26 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
             photo_url: originalDocUrl,
             created_by: context.userId ?? null,
           } as never);
+          if (insErr) {
+            failed++;
+            errors.push(
+              `${item.plate ?? "?"} ${item.violation_date ?? ""}: ${insErr.message}`,
+            );
+            // Do NOT stamp violation_id — the row does not exist.
+            continue;
+          }
+          // Confirm the row is readable before moving on.
+          const { data: check } = await supabaseAdmin
+            .from("violations")
+            .select("id")
+            .eq("id", violationId)
+            .maybeSingle();
+          if (!check) {
+            failed++;
+            errors.push(`${item.plate ?? "?"}: violation could not be verified after save`);
+            continue;
+          }
+          saved++;
         } else {
           // Keep workflow stage in sync if it became matched on re-run.
           await supabaseAdmin
@@ -626,6 +658,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
               updated_at: new Date().toISOString(),
             } as never)
             .eq("id", violationId);
+          saved++;
         }
 
         // Only matched violations can get a pre-filled liability-transfer letter.
@@ -650,7 +683,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
       // download) once everything has been persisted. In "matched" mode with
       // unmatched rows still pending, keep the batch open for further matching.
       const fullyResolved = mode === "all" || skippedUnmatched === 0;
-      if (fullyResolved && skippedNoRef === 0) {
+      if (fullyResolved && skippedNoRef === 0 && failed === 0) {
         await supabaseAdmin
           .from("ezpass_batches")
           .update({ status: "approved", matched_count: matched } as never)
@@ -662,7 +695,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
           .eq("id", data.batchId);
       }
 
-      return { generated, matched, unmatched, total: rows.length, skippedNoRef };
+      return { generated, matched, unmatched, total: rows.length, skippedNoRef, saved, failed, errors };
     },
   );
 
