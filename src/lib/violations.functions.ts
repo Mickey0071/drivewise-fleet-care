@@ -582,10 +582,21 @@ export const createViolation = createServerFn({ method: "POST" })
         location: data.location,
         violation_time: data.time,
         authority_key: data.authorityKey,
+        // Explicit stage so the record lands in the right dashboard tab
+        // immediately instead of relying on derived state.
+        workflow_stage: rentalId ? "matched" : "uploaded",
       } as never)
       .select("*")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(`Violation was not saved: ${error.message}`);
+    if (!row) throw new Error("Violation was not saved (no record returned)");
+    // Confirm the record is readable before the UI moves on to the packet.
+    const { data: verify } = await supabaseAdmin
+      .from("violations")
+      .select("id")
+      .eq("id", newId)
+      .maybeSingle();
+    if (!verify) throw new Error("Violation could not be verified after saving");
     return { ok: true as const, violation: row as ViolationRow };
   });
 
