@@ -521,6 +521,19 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
         </div>
       )}
 
+      {visibleItems.length > 1 && (
+        <div className="mb-4 rounded-md border border-sky-500/40 bg-sky-500/10 p-3 text-sm text-sky-700 dark:text-sky-300">
+          <p className="font-medium">
+            Multi-violation document — {visibleItems.length} violations extracted from this one
+            upload.
+          </p>
+          <p className="text-xs">
+            Each transaction row is its own violation record with its own date and amount, all linked
+            to this source document.
+          </p>
+        </div>
+      )}
+
       {reviewCount > 0 && !approved && (
         <div className="mb-4 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
           <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
@@ -566,7 +579,15 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                       <td className="p-3">
                         <DocTypeCell item={it} />
                       </td>
-                      <td className="p-3 font-mono text-xs">{it.plate || "—"}</td>
+                      <td className="p-3 font-mono text-xs">
+                        {it.plate || "—"}
+                        {visibleItems.length > 1 && (
+                          <div className="font-sans text-[10px] text-muted-foreground">
+                            From same document as {visibleItems.length - 1} other
+                            {visibleItems.length - 1 === 1 ? "" : "s"}
+                          </div>
+                        )}
+                      </td>
                       <td className="p-3">
                         <RefNumberCell item={it} disabled={approved} onSaved={refresh} />
                       </td>
