@@ -1329,6 +1329,7 @@ function ViolationsPage() {
   const [filter, setFilter] = useState<TabKey>("uploaded");
   const [search, setSearch] = useState("");
   const [newOpen, setNewOpen] = useState(false);
+  const [sourceAskOpen, setSourceAskOpen] = useState(false);
   const [chargeFor, setChargeFor] = useState<ViolationRow | null>(null);
   const [statusFor, setStatusFor] = useState<ViolationRow | null>(null);
   const [submitFor, setSubmitFor] = useState<ViolationRow | null>(null);
@@ -1704,7 +1705,7 @@ function ViolationsPage() {
                 <DropdownMenuItem onClick={exportCsv}>Export CSV</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => setNewOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={() => setSourceAskOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
               <Plus className="mr-1 h-4 w-4" /> New Violation
             </Button>
           </div>
@@ -2052,6 +2053,34 @@ function ViolationsPage() {
             <BureauContactsCard />
             <AwaitingRetroSummary />
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sourceAskOpen} onOpenChange={setSourceAskOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Is this from an EZPass / toll document?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Toll notices often list several violations on one document. Bulk Upload reads the whole
+            transaction table and creates a separate record for each row.
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSourceAskOpen(false);
+                setNewOpen(true);
+              }}
+            >
+              No — single ticket (PPA / parking)
+            </Button>
+            <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
+              <Link to="/violations/bulk-upload" onClick={() => setSourceAskOpen(false)}>
+                Yes — go to Bulk Upload
+              </Link>
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
