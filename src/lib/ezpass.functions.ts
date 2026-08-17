@@ -196,6 +196,7 @@ export const createManualEzpassBatch = createServerFn({ method: "POST" })
               plate: z.string().max(20).nullable().optional(),
               location: z.string().max(200).nullable().optional(),
               amount: z.number().min(0).max(100000),
+              reference_number: z.string().max(64).nullable().optional(),
             }),
           )
           .min(1)
@@ -220,10 +221,10 @@ export const createManualEzpassBatch = createServerFn({ method: "POST" })
     const tolls: ExtractedToll[] = data.rows.map((r) => ({
       violation_date: normDate(r.violation_date),
       violation_time: r.violation_time?.trim() || null,
-      plate: r.plate?.trim().toUpperCase() || null,
+      plate: normalizePlate(r.plate ?? "") || null,
       location: r.location?.trim() || null,
       amount: Number(r.amount || 0),
-      reference_number: null,
+      reference_number: r.reference_number?.trim() || null,
       authority_text: null,
       authority_key: null,
     }));
@@ -250,6 +251,7 @@ export const createManualEzpassBatch = createServerFn({ method: "POST" })
         vehicle_id: mr.vehicle_id,
         driver_name: mr.driver_name,
         candidates: mr.candidates as unknown,
+        reference_number: t.reference_number,
       };
     });
 
