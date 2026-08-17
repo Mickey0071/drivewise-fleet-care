@@ -221,7 +221,7 @@ export const createManualEzpassBatch = createServerFn({ method: "POST" })
     const tolls: ExtractedToll[] = data.rows.map((r) => ({
       violation_date: normDate(r.violation_date),
       violation_time: r.violation_time?.trim() || null,
-      plate: r.plate?.trim().toUpperCase() || null,
+      plate: normalizePlate(r.plate ?? "") || null,
       location: r.location?.trim() || null,
       amount: Number(r.amount || 0),
       reference_number: r.reference_number?.trim() || null,
