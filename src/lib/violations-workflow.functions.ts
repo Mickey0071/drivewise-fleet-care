@@ -161,6 +161,42 @@ export const bulkSetViolationStage = createServerFn({ method: "POST" })
   });
 
 /** Flag a violation as an orphan dispute ("Plate Not Mine"). */
+export const bulkMarkDisputedByMail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { violationIds: string[] }) => {
+    if (!Array.isArray(input.violationIds) || input.violationIds.length === 0)
+      throw new Error("violationIds required");
+    if (input.violationIds.length > 500) throw new Error("Too many ids");
+    return { violationIds: input.violationIds };
+  })
+  .handler(async ({ data, context }) => {
+    const now = new Date().toISOString();
+    const { error } = await supabaseAdmin
+      .from("violations")
+      .update({
+        workflow_stage: "disputed",
+        dispute_method: "mail",
+        disputed_at: now,
+        mailed_at: now,
+        updated_at: now,
+      } as never)
+      .in("id", data.violationIds);
+    if (error) throw new Error(error.message);
+    const name = await changedByName(context.userId ?? null);
+    await supabaseAdmin.from("violation_status_history").insert(
+      data.violationIds.map((id) => ({
+        violation_id: id,
+        from_status: null,
+        to_status: "stage:disputed",
+        reason: "Bulk dispute packet mailed",
+        changed_by: context.userId ?? null,
+        changed_by_name: name,
+      })) as never,
+    );
+    return { updated: data.violationIds.length };
+  });
+
+/** Flag a violation as an orphan dispute ("Plate Not Mine"). */
 export const flagViolationOrphan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { violationId: string; flag?: boolean }) => {

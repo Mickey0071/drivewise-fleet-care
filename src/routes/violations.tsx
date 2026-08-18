@@ -79,6 +79,7 @@ import {
   flagViolationOrphan,
 } from "@/lib/violations-workflow.functions";
 import { bulkSetViolationStage } from "@/lib/violations-workflow.functions";
+import { bulkMarkDisputedByMail } from "@/lib/violations-workflow.functions";
 import { getMatchedAgreementsForPrint } from "@/lib/violation-packet.functions";
 import {
   generateTransferPacket,
@@ -1341,9 +1342,12 @@ function ViolationsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOnlineOpen, setBulkOnlineOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [mergeProgress, setMergeProgress] = useState<string | null>(null);
+  const [markMailedFor, setMarkMailedFor] = useState<string[] | null>(null);
   const genPacketFn = useServerFn(generateMailPacket);
   const getAgreementsFn = useServerFn(getMatchedAgreementsForPrint);
   const bulkStageFn = useServerFn(bulkSetViolationStage);
+  const bulkMailedFn = useServerFn(bulkMarkDisputedByMail);
   const batchTransferFn = useServerFn(batchGenerateTransferPackets);
   const [batchTransferBusy, setBatchTransferBusy] = useState(false);
   const [batchTransferReport, setBatchTransferReport] = useState<
@@ -1468,40 +1472,132 @@ function ViolationsPage() {
 
   const safeName = (s: string) => (s || "").replace(/[^a-z0-9]+/gi, "").toUpperCase() || "NA";
 
+  /**
+   * Build ONE merged PDF: for each selected violation a divider page,
+   * the cover letter, then the signed rental agreement pages.
+   */
+  const buildMergedPacket = async () => {
+    const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+    const out = await PDFDocument.create();
+    const bold = await out.embedFont(StandardFonts.HelveticaBold);
+    const reg = await out.embedFont(StandardFonts.Helvetica);
+    const missing: string[] = [];
+    const failed: string[] = [];
+    const okIds: string[] = [];
+
+    for (let i = 0; i < selectedRows.length; i++) {
+      const v = selectedRows[i]!;
+      setMergeProgress(`Generating packet ${i + 1} of ${selectedRows.length}…`);
+      try {
+        const res = await genPacketFn({ data: { violationId: v.id } });
+        // Divider page
+        const d = out.addPage([612, 792]);
+        d.drawText(`=== VIOLATION ${i + 1} OF ${selectedRows.length} ===`, {
+          x: 60, y: 470, size: 22, font: bold, color: rgb(0.05, 0.4, 0.2),
+        });
+        const lines = [
+          `Renter: ${v.driver_name || "—"}`,
+          `Plate: ${v.license_plate || v.vehicle_label || "—"}`,
+          `Violation Ref #: ${v.reference_number || v.id}`,
+          `Date Issued: ${(v.date_issued || "").slice(0, 10) || "—"}`,
+          `Amount: ${fmtMoney(Number(v.total_amount || v.amount || 0))}`,
+        ];
+        let y = 420;
+        for (const line of lines) {
+          d.drawText(line, { x: 60, y, size: 13, font: reg, color: rgb(0.15, 0.15, 0.15) });
+          y -= 22;
+        }
+        const bin = atob(res.base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+        const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+        const pages = await out.copyPages(src, src.getPageIndices());
+        for (const p of pages) out.addPage(p);
+        missing.push(...res.missing);
+        okIds.push(v.id);
+      } catch (e) {
+        failed.push(
+          `${v.reference_number || v.id}: ${e instanceof Error ? e.message : "failed"}`,
+        );
+      }
+    }
+    if (okIds.length === 0) {
+      throw new Error(failed[0] ?? "No packets could be generated");
+    }
+    setMergeProgress("Merging PDFs…");
+    const bytes = await out.save();
+    const blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
+    const stamp = new Date()
+      .toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      .replace(/,/g, "")
+      .replace(/ /g, "_");
+    const filename = `CamautoDisputes_${stamp}_${okIds.length}violations.pdf`;
+    return { blob, filename, missing, failed, okIds };
+  };
+
   const bulkDownloadPackets = async () => {
     if (selectedRows.length === 0) return;
     setBulkBusy(true);
     try {
-      const JSZip = (await import("jszip")).default;
-      const zip = new JSZip();
-      let missingTotal = 0;
-      for (const v of selectedRows) {
-        const res = await genPacketFn({ data: { violationId: v.id } });
-        const bin = atob(res.base64);
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        missingTotal += res.missing.length;
-        const plate = safeName(v.license_plate || v.vehicle_label || "");
-        const num = safeName(v.reference_number || v.id);
-        const date = (v.date_issued || "").slice(0, 10) || "nodate";
-        zip.file(`${plate}_${num}_${date}.pdf`, bytes);
-      }
-      const blob = await zip.generateAsync({ type: "blob" });
+      const { blob, filename, missing, failed, okIds } = await buildMergedPacket();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `dispute-packets-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      setMergeProgress("✅ Ready to download");
       toast.success(
-        `${selectedRows.length} packet(s) downloaded${missingTotal ? ` — ${missingTotal} item(s) missing across packets` : ""}`,
+        `${okIds.length} violation(s) in one PDF${missing.length ? ` — ${missing.length} item(s) missing` : ""}${failed.length ? ` · ${failed.length} failed` : ""}`,
       );
+      if (failed.length) toast.error(failed.join(" · "), { duration: 10_000 });
+      setMarkMailedFor(okIds);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not build packets");
     } finally {
       setBulkBusy(false);
+      setTimeout(() => setMergeProgress(null), 2000);
+    }
+  };
+
+  const bulkPrintPackets = async () => {
+    if (selectedRows.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const { blob, failed, okIds } = await buildMergedPacket();
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, "_blank");
+      if (w) {
+        w.addEventListener("load", () => {
+          try { w.print(); } catch { /* ignore */ }
+        });
+      } else {
+        toast.error("Pop-up blocked — allow pop-ups to print");
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      if (failed.length) toast.error(failed.join(" · "), { duration: 10_000 });
+      setMarkMailedFor(okIds);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not build packets");
+    } finally {
+      setBulkBusy(false);
+      setTimeout(() => setMergeProgress(null), 2000);
+    }
+  };
+
+  const confirmMarkMailed = async () => {
+    const ids = markMailedFor ?? [];
+    setMarkMailedFor(null);
+    if (ids.length === 0) return;
+    try {
+      await bulkMailedFn({ data: { violationIds: ids } });
+      qc.invalidateQueries({ queryKey: ["violations"] });
+      setSelected(new Set());
+      toast.success(`${ids.length} moved to Disputed (mailed)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update violations");
     }
   };
 
@@ -1754,17 +1850,46 @@ function ViolationsPage() {
           {filter === "matched" && filtered.length > 0 && (
             <div className="flex flex-wrap items-center gap-3 border-b bg-muted/30 p-3 text-sm">
               <span className="font-medium">
-                {selectedRows.length > 0 ? `${selectedRows.length} selected` : "Select violations to dispute in bulk"}
+                {selectedRows.length > 0
+                  ? `${selectedRows.length} violation${selectedRows.length === 1 ? "" : "s"} selected`
+                  : "Select violations to dispute in bulk"}
               </span>
-              {/* Primary action — one merged PDF per selected renter, ready to mail. */}
+              <Button size="sm" variant="outline" onClick={() => setSelected(new Set(filtered.map((v) => v.id)))}>
+                Select All
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedRows.length === 0}
+                onClick={() => setSelected(new Set())}
+              >
+                Deselect All
+              </Button>
+              {/* Primary action — ALL selected violations in ONE merged PDF. */}
               <Button
                 size="sm"
                 disabled={selectedRows.length === 0 || bulkBusy}
                 onClick={bulkDownloadPackets}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
-                {bulkBusy ? "Building…" : "🖨️ Print Dispute Packets"}
+                {bulkBusy ? "Building…" : "📦 Download All as One PDF"}
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedRows.length === 0 || bulkBusy}
+                onClick={bulkPrintPackets}
+              >
+                🖨️ Print All
+              </Button>
+              {selectedRows.length > 0 && !bulkBusy && (
+                <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                  Cancel
+                </Button>
+              )}
+              {mergeProgress && (
+                <span className="text-xs font-medium text-muted-foreground">{mergeProgress}</span>
+              )}
               {/* Bulk Set Authority — unblocks the "authority not set" gate on a batch. */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -2111,6 +2236,28 @@ function ViolationsPage() {
         onClose={() => setSubmitFor(null)}
         onDone={refresh}
       />
+
+      <AlertDialog
+        open={!!markMailedFor}
+        onOpenChange={(o) => !o && setMarkMailedFor(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark all as Disputed?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {markMailedFor?.length ?? 0} violation(s) were included in the merged packet.
+              Marking them mailed sets the dispute method to mail, stamps today's date, and
+              moves them to the Disputed tab.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No — Keep in Matched</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmMarkMailed}>
+              Yes — Mark All Mailed
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deleteFor} onOpenChange={(o) => !o && setDeleteFor(null)}>
         <AlertDialogContent>
