@@ -1342,9 +1342,12 @@ function ViolationsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOnlineOpen, setBulkOnlineOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [mergeProgress, setMergeProgress] = useState<string | null>(null);
+  const [markMailedFor, setMarkMailedFor] = useState<string[] | null>(null);
   const genPacketFn = useServerFn(generateMailPacket);
   const getAgreementsFn = useServerFn(getMatchedAgreementsForPrint);
   const bulkStageFn = useServerFn(bulkSetViolationStage);
+  const bulkMailedFn = useServerFn(bulkMarkDisputedByMail);
   const batchTransferFn = useServerFn(batchGenerateTransferPackets);
   const [batchTransferBusy, setBatchTransferBusy] = useState(false);
   const [batchTransferReport, setBatchTransferReport] = useState<
