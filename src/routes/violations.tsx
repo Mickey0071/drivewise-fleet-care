@@ -2237,8 +2237,29 @@ function ViolationsPage() {
         onDone={refresh}
       />
 
+      <AlertDialog
+        open={!!markMailedFor}
+        onOpenChange={(o) => !o && setMarkMailedFor(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark all as Disputed?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {markMailedFor?.length ?? 0} violation(s) were included in the merged packet.
+              Marking them mailed sets the dispute method to mail, stamps today's date, and
+              moves them to the Disputed tab.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No — Keep in Matched</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmMarkMailed}>
+              Yes — Mark All Mailed
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={!!deleteFor} onOpenChange={(o) => !o && setDeleteFor(null)}>
-        {null}
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this violation?</AlertDialogTitle>
