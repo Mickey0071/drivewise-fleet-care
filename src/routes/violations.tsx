@@ -94,6 +94,7 @@ import {
   ReadinessBadge,
   MissingFieldsSheet,
   FleetMissingSummary,
+  BulkRenterEditDialog,
   fieldStatus,
   type FieldKey,
 } from "@/components/app/ViolationMissingFields";
@@ -1360,6 +1361,7 @@ function ViolationsPage() {
   const setAuthorityFn = useServerFn(setViolationAuthority);
   const [missingFor, setMissingFor] = useState<ViolationRow | null>(null);
   const [missingFieldFilter, setMissingFieldFilter] = useState<FieldKey | null>(null);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
 
   /** Apply one authority to every selected row. Unblocker for the common case
    *  where a whole batch of tolls is obviously NJ EZ Pass but each row shows
@@ -1882,6 +1884,14 @@ function ViolationsPage() {
               >
                 🖨️ Print All
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedRows.length === 0}
+                onClick={() => setBulkEditOpen(true)}
+              >
+                ✏️ Edit Selected
+              </Button>
               {selectedRows.length > 0 && !bulkBusy && (
                 <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
                   Cancel
@@ -2047,7 +2057,11 @@ function ViolationsPage() {
                                 Fill missing →
                               </Button>
                             </div>
-                            <FieldChecklist v={v} />
+                            <FieldChecklist
+                              v={v}
+                              onDone={refresh}
+                              onAdminSign={(row) => setCreateAgreementFor(row)}
+                            />
                           </div>
                         )}
                       </td>
@@ -2165,6 +2179,13 @@ function ViolationsPage() {
       <MissingFieldsSheet
         violation={missingFor}
         onClose={() => setMissingFor(null)}
+      />
+
+      <BulkRenterEditDialog
+        open={bulkEditOpen}
+        onOpenChange={setBulkEditOpen}
+        rows={selectedRows}
+        onDone={refresh}
       />
 
       {/* Collapsed reference material — kept in a "More" dialog to keep the
