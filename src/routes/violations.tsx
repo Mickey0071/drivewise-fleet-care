@@ -1472,40 +1472,132 @@ function ViolationsPage() {
 
   const safeName = (s: string) => (s || "").replace(/[^a-z0-9]+/gi, "").toUpperCase() || "NA";
 
+  /**
+   * Build ONE merged PDF: for each selected violation a divider page,
+   * the cover letter, then the signed rental agreement pages.
+   */
+  const buildMergedPacket = async () => {
+    const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+    const out = await PDFDocument.create();
+    const bold = await out.embedFont(StandardFonts.HelveticaBold);
+    const reg = await out.embedFont(StandardFonts.Helvetica);
+    const missing: string[] = [];
+    const failed: string[] = [];
+    const okIds: string[] = [];
+
+    for (let i = 0; i < selectedRows.length; i++) {
+      const v = selectedRows[i]!;
+      setMergeProgress(`Generating packet ${i + 1} of ${selectedRows.length}…`);
+      try {
+        const res = await genPacketFn({ data: { violationId: v.id } });
+        // Divider page
+        const d = out.addPage([612, 792]);
+        d.drawText(`=== VIOLATION ${i + 1} OF ${selectedRows.length} ===`, {
+          x: 60, y: 470, size: 22, font: bold, color: rgb(0.05, 0.4, 0.2),
+        });
+        const lines = [
+          `Renter: ${v.driver_name || "—"}`,
+          `Plate: ${v.license_plate || v.vehicle_label || "—"}`,
+          `Violation Ref #: ${v.reference_number || v.id}`,
+          `Date Issued: ${(v.date_issued || "").slice(0, 10) || "—"}`,
+          `Amount: ${fmtMoney(Number(v.total_amount || v.amount || 0))}`,
+        ];
+        let y = 420;
+        for (const line of lines) {
+          d.drawText(line, { x: 60, y, size: 13, font: reg, color: rgb(0.15, 0.15, 0.15) });
+          y -= 22;
+        }
+        const bin = atob(res.base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+        const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+        const pages = await out.copyPages(src, src.getPageIndices());
+        for (const p of pages) out.addPage(p);
+        missing.push(...res.missing);
+        okIds.push(v.id);
+      } catch (e) {
+        failed.push(
+          `${v.reference_number || v.id}: ${e instanceof Error ? e.message : "failed"}`,
+        );
+      }
+    }
+    if (okIds.length === 0) {
+      throw new Error(failed[0] ?? "No packets could be generated");
+    }
+    setMergeProgress("Merging PDFs…");
+    const bytes = await out.save();
+    const blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
+    const stamp = new Date()
+      .toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      .replace(/,/g, "")
+      .replace(/ /g, "_");
+    const filename = `CamautoDisputes_${stamp}_${okIds.length}violations.pdf`;
+    return { blob, filename, missing, failed, okIds };
+  };
+
   const bulkDownloadPackets = async () => {
     if (selectedRows.length === 0) return;
     setBulkBusy(true);
     try {
-      const JSZip = (await import("jszip")).default;
-      const zip = new JSZip();
-      let missingTotal = 0;
-      for (const v of selectedRows) {
-        const res = await genPacketFn({ data: { violationId: v.id } });
-        const bin = atob(res.base64);
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        missingTotal += res.missing.length;
-        const plate = safeName(v.license_plate || v.vehicle_label || "");
-        const num = safeName(v.reference_number || v.id);
-        const date = (v.date_issued || "").slice(0, 10) || "nodate";
-        zip.file(`${plate}_${num}_${date}.pdf`, bytes);
-      }
-      const blob = await zip.generateAsync({ type: "blob" });
+      const { blob, filename, missing, failed, okIds } = await buildMergedPacket();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `dispute-packets-${new Date().toISOString().slice(0, 10)}.zip`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      setMergeProgress("✅ Ready to download");
       toast.success(
-        `${selectedRows.length} packet(s) downloaded${missingTotal ? ` — ${missingTotal} item(s) missing across packets` : ""}`,
+        `${okIds.length} violation(s) in one PDF${missing.length ? ` — ${missing.length} item(s) missing` : ""}${failed.length ? ` · ${failed.length} failed` : ""}`,
       );
+      if (failed.length) toast.error(failed.join(" · "), { duration: 10_000 });
+      setMarkMailedFor(okIds);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not build packets");
     } finally {
       setBulkBusy(false);
+      setTimeout(() => setMergeProgress(null), 2000);
+    }
+  };
+
+  const bulkPrintPackets = async () => {
+    if (selectedRows.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const { blob, failed, okIds } = await buildMergedPacket();
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, "_blank");
+      if (w) {
+        w.addEventListener("load", () => {
+          try { w.print(); } catch { /* ignore */ }
+        });
+      } else {
+        toast.error("Pop-up blocked — allow pop-ups to print");
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      if (failed.length) toast.error(failed.join(" · "), { duration: 10_000 });
+      setMarkMailedFor(okIds);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not build packets");
+    } finally {
+      setBulkBusy(false);
+      setTimeout(() => setMergeProgress(null), 2000);
+    }
+  };
+
+  const confirmMarkMailed = async () => {
+    const ids = markMailedFor ?? [];
+    setMarkMailedFor(null);
+    if (ids.length === 0) return;
+    try {
+      await bulkMailedFn({ data: { violationIds: ids } });
+      qc.invalidateQueries({ queryKey: ["violations"] });
+      setSelected(new Set());
+      toast.success(`${ids.length} moved to Disputed (mailed)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update violations");
     }
   };
 
