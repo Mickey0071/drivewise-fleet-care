@@ -1850,17 +1850,46 @@ function ViolationsPage() {
           {filter === "matched" && filtered.length > 0 && (
             <div className="flex flex-wrap items-center gap-3 border-b bg-muted/30 p-3 text-sm">
               <span className="font-medium">
-                {selectedRows.length > 0 ? `${selectedRows.length} selected` : "Select violations to dispute in bulk"}
+                {selectedRows.length > 0
+                  ? `${selectedRows.length} violation${selectedRows.length === 1 ? "" : "s"} selected`
+                  : "Select violations to dispute in bulk"}
               </span>
-              {/* Primary action — one merged PDF per selected renter, ready to mail. */}
+              <Button size="sm" variant="outline" onClick={() => setSelected(new Set(filtered.map((v) => v.id)))}>
+                Select All
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedRows.length === 0}
+                onClick={() => setSelected(new Set())}
+              >
+                Deselect All
+              </Button>
+              {/* Primary action — ALL selected violations in ONE merged PDF. */}
               <Button
                 size="sm"
                 disabled={selectedRows.length === 0 || bulkBusy}
                 onClick={bulkDownloadPackets}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
-                {bulkBusy ? "Building…" : "🖨️ Print Dispute Packets"}
+                {bulkBusy ? "Building…" : "📦 Download All as One PDF"}
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedRows.length === 0 || bulkBusy}
+                onClick={bulkPrintPackets}
+              >
+                🖨️ Print All
+              </Button>
+              {selectedRows.length > 0 && !bulkBusy && (
+                <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                  Cancel
+                </Button>
+              )}
+              {mergeProgress && (
+                <span className="text-xs font-medium text-muted-foreground">{mergeProgress}</span>
+              )}
               {/* Bulk Set Authority — unblocks the "authority not set" gate on a batch. */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
