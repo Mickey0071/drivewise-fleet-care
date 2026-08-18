@@ -2238,6 +2238,7 @@ function ViolationsPage() {
       />
 
       <AlertDialog open={!!deleteFor} onOpenChange={(o) => !o && setDeleteFor(null)}>
+        {null}
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this violation?</AlertDialogTitle>
