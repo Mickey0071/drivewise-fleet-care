@@ -79,6 +79,7 @@ import {
   flagViolationOrphan,
 } from "@/lib/violations-workflow.functions";
 import { bulkSetViolationStage } from "@/lib/violations-workflow.functions";
+import { bulkMarkDisputedByMail } from "@/lib/violations-workflow.functions";
 import { getMatchedAgreementsForPrint } from "@/lib/violation-packet.functions";
 import {
   generateTransferPacket,
