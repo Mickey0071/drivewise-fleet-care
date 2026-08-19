@@ -1,3 +1,4 @@
+import { DisputeMethodDialog as BulkDisputeMethodDialog, type DisputeGroups } from "@/components/app/DisputeMethodDialog";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -79,7 +80,6 @@ import {
   flagViolationOrphan,
 } from "@/lib/violations-workflow.functions";
 import { bulkSetViolationStage } from "@/lib/violations-workflow.functions";
-import { bulkMarkDisputedByMail } from "@/lib/violations-workflow.functions";
 import { getMatchedAgreementsForPrint } from "@/lib/violation-packet.functions";
 import {
   generateTransferPacket,
@@ -326,6 +326,14 @@ function DownloadAgreementButton({
 }
 
 /** Downloads the combined dispute / mail packet (cover letter + agreement + notice). */
+/** Philadelphia (PPA) violations can only be disputed by mail. */
+function isPhillyViolation(v: ViolationRow): boolean {
+  const key = (v.authority_key || "").toLowerCase();
+  if (key === "ppa" || key === "philadelphia_parking") return true;
+  const hay = `${v.location ?? ""} ${v.description ?? ""} ${v.type ?? ""}`.toLowerCase();
+  return /philadelphia|phila\.|\bppa\b/.test(hay);
+}
+
 function DownloadPacketButton({
   v,
   label = "📦 Download Dispute Packet",
@@ -333,8 +341,10 @@ function DownloadPacketButton({
   v: ViolationRow;
   label?: string;
 }) {
+  const qc = useQueryClient();
   const genPacket = useServerFn(generateMailPacket);
   const [busy, setBusy] = useState(false);
+  const [groups, setGroups] = useState<DisputeGroups | null>(null);
   const handle = async () => {
     setBusy(true);
     try {
@@ -357,6 +367,9 @@ function DownloadPacketButton({
       } else {
         toast.success("Dispute packet downloaded");
       }
+      setGroups(
+        isPhillyViolation(v) ? { ezpass: [], philly: [v.id] } : { ezpass: [v.id], philly: [] },
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not build packet");
     } finally {
@@ -364,9 +377,16 @@ function DownloadPacketButton({
     }
   };
   return (
-    <Button size="sm" variant="outline" onClick={handle} disabled={busy}>
-      {busy ? "Building…" : label}
-    </Button>
+    <>
+      <Button size="sm" variant="outline" onClick={handle} disabled={busy}>
+        {busy ? "Building…" : label}
+      </Button>
+      <BulkDisputeMethodDialog
+        groups={groups}
+        onClose={() => setGroups(null)}
+        onDone={() => qc.invalidateQueries({ queryKey: ["violations"] })}
+      />
+    </>
   );
 }
 
@@ -1344,11 +1364,10 @@ function ViolationsPage() {
   const [bulkOnlineOpen, setBulkOnlineOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [mergeProgress, setMergeProgress] = useState<string | null>(null);
-  const [markMailedFor, setMarkMailedFor] = useState<string[] | null>(null);
+  const [disputeGroups, setDisputeGroups] = useState<DisputeGroups | null>(null);
   const genPacketFn = useServerFn(generateMailPacket);
   const getAgreementsFn = useServerFn(getMatchedAgreementsForPrint);
   const bulkStageFn = useServerFn(bulkSetViolationStage);
-  const bulkMailedFn = useServerFn(bulkMarkDisputedByMail);
   const batchTransferFn = useServerFn(batchGenerateTransferPackets);
   const [batchTransferBusy, setBatchTransferBusy] = useState(false);
   const [batchTransferReport, setBatchTransferReport] = useState<
@@ -1475,10 +1494,11 @@ function ViolationsPage() {
   const safeName = (s: string) => (s || "").replace(/[^a-z0-9]+/gi, "").toUpperCase() || "NA";
 
   /**
-   * Build ONE merged PDF: for each selected violation a divider page,
-   * the cover letter, then the signed rental agreement pages.
+   * Build ONE merged PDF from the given rows: violations are grouped into
+   * EZPass/DRPA and Philadelphia sections, each section opening with a header
+   * page, then per violation a divider page + cover letter + agreement pages.
    */
-  const buildMergedPacket = async () => {
+  const buildMergedPacket = async (rowsIn: ViolationRow[]) => {
     const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
     const out = await PDFDocument.create();
     const bold = await out.embedFont(StandardFonts.HelveticaBold);
@@ -1486,41 +1506,76 @@ function ViolationsPage() {
     const missing: string[] = [];
     const failed: string[] = [];
     const okIds: string[] = [];
+    const okPhilly: string[] = [];
+    const okEzpass: string[] = [];
 
-    for (let i = 0; i < selectedRows.length; i++) {
-      const v = selectedRows[i]!;
-      setMergeProgress(`Generating packet ${i + 1} of ${selectedRows.length}…`);
-      try {
-        const res = await genPacketFn({ data: { violationId: v.id } });
-        // Divider page
-        const d = out.addPage([612, 792]);
-        d.drawText(`=== VIOLATION ${i + 1} OF ${selectedRows.length} ===`, {
-          x: 60, y: 470, size: 22, font: bold, color: rgb(0.05, 0.4, 0.2),
+    const groups: Array<{ title: string; rows: ViolationRow[]; philly: boolean }> = [
+      {
+        title: "=== EZPASS / DRPA VIOLATIONS ===",
+        rows: rowsIn.filter((r) => !isPhillyViolation(r)),
+        philly: false,
+      },
+      {
+        title: "=== PHILADELPHIA VIOLATIONS - MAIL ONLY ===",
+        rows: rowsIn.filter((r) => isPhillyViolation(r)),
+        philly: true,
+      },
+    ].filter((g) => g.rows.length > 0);
+
+    let done = 0;
+    for (const g of groups) {
+      // Section header page
+      const h = out.addPage([612, 792]);
+      h.drawText(g.title, {
+        x: 50, y: 520, size: 18, font: bold, color: rgb(0.05, 0.35, 0.2),
+      });
+      h.drawText(`${g.rows.length} violation${g.rows.length === 1 ? "" : "s"}`, {
+        x: 50, y: 490, size: 13, font: reg, color: rgb(0.25, 0.25, 0.25),
+      });
+      if (g.philly) {
+        h.drawText("These violations must be submitted by mail.", {
+          x: 50, y: 468, size: 12, font: reg, color: rgb(0.6, 0.25, 0.05),
         });
-        const lines = [
-          `Renter: ${v.driver_name || "—"}`,
-          `Plate: ${v.license_plate || v.vehicle_label || "—"}`,
-          `Violation Ref #: ${v.reference_number || v.id}`,
-          `Date Issued: ${(v.date_issued || "").slice(0, 10) || "—"}`,
-          `Amount: ${fmtMoney(Number(v.total_amount || v.amount || 0))}`,
-        ];
-        let y = 420;
-        for (const line of lines) {
-          d.drawText(line, { x: 60, y, size: 13, font: reg, color: rgb(0.15, 0.15, 0.15) });
-          y -= 22;
+      }
+
+      for (let i = 0; i < g.rows.length; i++) {
+        const v = g.rows[i]!;
+        done++;
+        setMergeProgress(`Generating packet ${done} of ${rowsIn.length}…`);
+        try {
+          const res = await genPacketFn({ data: { violationId: v.id } });
+          // Divider page
+          const d = out.addPage([612, 792]);
+          d.drawText(`=== VIOLATION ${i + 1} OF ${g.rows.length} ===`, {
+            x: 60, y: 470, size: 22, font: bold, color: rgb(0.05, 0.4, 0.2),
+          });
+          const lines = [
+            `Renter: ${v.driver_name || "—"}`,
+            `Plate: ${v.license_plate || v.vehicle_label || "—"}`,
+            `Violation Ref #: ${v.reference_number || v.id}`,
+            `Date Issued: ${(v.date_issued || "").slice(0, 10) || "—"}`,
+            `Amount: ${fmtMoney(Number(v.total_amount || v.amount || 0))}`,
+          ];
+          let y = 420;
+          for (const line of lines) {
+            d.drawText(line, { x: 60, y, size: 13, font: reg, color: rgb(0.15, 0.15, 0.15) });
+            y -= 22;
+          }
+          const bin = atob(res.base64);
+          const bytes = new Uint8Array(bin.length);
+          for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+          const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+          const pages = await out.copyPages(src, src.getPageIndices());
+          for (const p of pages) out.addPage(p);
+          missing.push(...res.missing);
+          okIds.push(v.id);
+          if (g.philly) okPhilly.push(v.id);
+          else okEzpass.push(v.id);
+        } catch (e) {
+          failed.push(
+            `${v.reference_number || v.id}: ${e instanceof Error ? e.message : "failed"}`,
+          );
         }
-        const bin = atob(res.base64);
-        const bytes = new Uint8Array(bin.length);
-        for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
-        const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
-        const pages = await out.copyPages(src, src.getPageIndices());
-        for (const p of pages) out.addPage(p);
-        missing.push(...res.missing);
-        okIds.push(v.id);
-      } catch (e) {
-        failed.push(
-          `${v.reference_number || v.id}: ${e instanceof Error ? e.message : "failed"}`,
-        );
       }
     }
     if (okIds.length === 0) {
@@ -1534,14 +1589,15 @@ function ViolationsPage() {
       .replace(/,/g, "")
       .replace(/ /g, "_");
     const filename = `CamautoDisputes_${stamp}_${okIds.length}violations.pdf`;
-    return { blob, filename, missing, failed, okIds };
+    return { blob, filename, missing, failed, okIds, okPhilly, okEzpass };
   };
 
-  const bulkDownloadPackets = async () => {
-    if (selectedRows.length === 0) return;
+  const bulkDownloadPackets = async (rowsIn: ViolationRow[] = selectedRows) => {
+    if (rowsIn.length === 0) return;
     setBulkBusy(true);
     try {
-      const { blob, filename, missing, failed, okIds } = await buildMergedPacket();
+      const { blob, filename, missing, failed, okIds, okPhilly, okEzpass } =
+        await buildMergedPacket(rowsIn);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -1550,12 +1606,13 @@ function ViolationsPage() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setMergeProgress("✅ Ready to download");
+      setMergeProgress("✅ Ready — downloading now");
       toast.success(
         `${okIds.length} violation(s) in one PDF${missing.length ? ` — ${missing.length} item(s) missing` : ""}${failed.length ? ` · ${failed.length} failed` : ""}`,
       );
       if (failed.length) toast.error(failed.join(" · "), { duration: 10_000 });
-      setMarkMailedFor(okIds);
+      void okIds;
+      setDisputeGroups({ ezpass: okEzpass, philly: okPhilly });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not build packets");
     } finally {
@@ -1568,7 +1625,7 @@ function ViolationsPage() {
     if (selectedRows.length === 0) return;
     setBulkBusy(true);
     try {
-      const { blob, failed, okIds } = await buildMergedPacket();
+      const { blob, failed, okIds, okPhilly, okEzpass } = await buildMergedPacket(selectedRows);
       const url = URL.createObjectURL(blob);
       const w = window.open(url, "_blank");
       if (w) {
@@ -1580,26 +1637,13 @@ function ViolationsPage() {
       }
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
       if (failed.length) toast.error(failed.join(" · "), { duration: 10_000 });
-      setMarkMailedFor(okIds);
+      void okIds;
+      setDisputeGroups({ ezpass: okEzpass, philly: okPhilly });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not build packets");
     } finally {
       setBulkBusy(false);
       setTimeout(() => setMergeProgress(null), 2000);
-    }
-  };
-
-  const confirmMarkMailed = async () => {
-    const ids = markMailedFor ?? [];
-    setMarkMailedFor(null);
-    if (ids.length === 0) return;
-    try {
-      await bulkMailedFn({ data: { violationIds: ids } });
-      qc.invalidateQueries({ queryKey: ["violations"] });
-      setSelected(new Set());
-      toast.success(`${ids.length} moved to Disputed (mailed)`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not update violations");
     }
   };
 
@@ -1867,11 +1911,20 @@ function ViolationsPage() {
               >
                 Deselect All
               </Button>
+              {/* Every matched violation in ONE merged PDF, grouped by authority. */}
+              <Button
+                size="sm"
+                disabled={filtered.length === 0 || bulkBusy}
+                onClick={() => bulkDownloadPackets(filtered)}
+                className="bg-emerald-700 hover:bg-emerald-800"
+              >
+                {bulkBusy ? "Building…" : `📥 Download All Letters (${filtered.length})`}
+              </Button>
               {/* Primary action — ALL selected violations in ONE merged PDF. */}
               <Button
                 size="sm"
                 disabled={selectedRows.length === 0 || bulkBusy}
-                onClick={bulkDownloadPackets}
+                onClick={() => bulkDownloadPackets()}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
                 {bulkBusy ? "Building…" : "📦 Download All as One PDF"}
@@ -2082,6 +2135,9 @@ function ViolationsPage() {
                           <div className="mt-1 text-xs text-muted-foreground">
                             Disputed via {v.dispute_method.replace("_", "-")}
                             {v.disputed_at ? ` · ${new Date(v.disputed_at).toLocaleDateString()}` : ""}
+                            {v.submission_notes ? (
+                              <div className="text-[11px] italic">📝 {v.submission_notes}</div>
+                            ) : null}
                           </div>
                         )}
                         {v.status === "paid" && v.paid_at && (
@@ -2258,27 +2314,14 @@ function ViolationsPage() {
         onDone={refresh}
       />
 
-      <AlertDialog
-        open={!!markMailedFor}
-        onOpenChange={(o) => !o && setMarkMailedFor(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Mark all as Disputed?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {markMailedFor?.length ?? 0} violation(s) were included in the merged packet.
-              Marking them mailed sets the dispute method to mail, stamps today's date, and
-              moves them to the Disputed tab.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>No — Keep in Matched</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmMarkMailed}>
-              Yes — Mark All Mailed
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <BulkDisputeMethodDialog
+        groups={disputeGroups}
+        onClose={() => setDisputeGroups(null)}
+        onDone={() => {
+          setSelected(new Set());
+          refresh();
+        }}
+      />
 
       <AlertDialog open={!!deleteFor} onOpenChange={(o) => !o && setDeleteFor(null)}>
         <AlertDialogContent>
