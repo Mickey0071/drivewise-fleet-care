@@ -554,6 +554,10 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
         }
 
         const isMatched = matchStatus === "matched" && !!rentalId;
+        // rentalId may be a legacy_rentals UUID — route it to the right column
+        // so the violations_rental_id_fkey constraint can never fail.
+        const { resolveRentalRef } = await import("@/lib/rental-ref.server");
+        const ref = await resolveRentalRef(rentalId);
         if (isMatched) {
           matched++;
         } else {
@@ -601,7 +605,8 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
         if (!item.violation_id) {
           const { error: insErr } = await supabaseAdmin.from("violations").insert({
             id: violationId,
-            rental_id: rentalId,
+            rental_id: ref.rental_id,
+            legacy_rental_id: ref.legacy_rental_id,
             vehicle_id: vehicleId ?? "UNKNOWN",
             driver_id: driverId,
             type: "toll",
@@ -653,7 +658,8 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
           await supabaseAdmin
             .from("violations")
             .update({
-              rental_id: rentalId,
+              rental_id: ref.rental_id,
+              legacy_rental_id: ref.legacy_rental_id,
               vehicle_id: vehicleId ?? "UNKNOWN",
               driver_id: driverId,
               workflow_stage: isMatched ? "matched" : "uploaded",

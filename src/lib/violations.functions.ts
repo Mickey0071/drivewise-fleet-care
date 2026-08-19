@@ -541,6 +541,9 @@ export const createViolation = createServerFn({ method: "POST" })
         }
       }
     }
+    const { resolveRentalRef } = await import("@/lib/rental-ref.server");
+    const ref = await resolveRentalRef(rentalId);
+    const legacyRentalId = data.legacyRentalId ?? ref.legacy_rental_id;
     // Use the actual citation / violation number as the system ID when provided
     // so the record matches the uploaded notice. Fall back to a generated ID.
     let newId =
@@ -562,10 +565,10 @@ export const createViolation = createServerFn({ method: "POST" })
       .from("violations")
       .insert({
         id: newId,
-        rental_id: rentalId,
+        rental_id: ref.rental_id,
         vehicle_id: vehicleId ?? "UNKNOWN",
         driver_id: driverId,
-        legacy_rental_id: data.legacyRentalId,
+        legacy_rental_id: legacyRentalId,
         type: data.type,
         date_issued: data.date,
         license_plate: normPlate(data.licensePlate) || data.licensePlate,
@@ -584,7 +587,7 @@ export const createViolation = createServerFn({ method: "POST" })
         authority_key: data.authorityKey,
         // Explicit stage so the record lands in the right dashboard tab
         // immediately instead of relying on derived state.
-        workflow_stage: rentalId ? "matched" : "uploaded",
+        workflow_stage: ref.rental_id || legacyRentalId ? "matched" : "uploaded",
       } as never)
       .select("*")
       .single();
