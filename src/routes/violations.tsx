@@ -341,8 +341,10 @@ function DownloadPacketButton({
   v: ViolationRow;
   label?: string;
 }) {
+  const qc = useQueryClient();
   const genPacket = useServerFn(generateMailPacket);
   const [busy, setBusy] = useState(false);
+  const [groups, setGroups] = useState<DisputeGroups | null>(null);
   const handle = async () => {
     setBusy(true);
     try {
@@ -365,6 +367,9 @@ function DownloadPacketButton({
       } else {
         toast.success("Dispute packet downloaded");
       }
+      setGroups(
+        isPhillyViolation(v) ? { ezpass: [], philly: [v.id] } : { ezpass: [v.id], philly: [] },
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not build packet");
     } finally {
@@ -372,9 +377,16 @@ function DownloadPacketButton({
     }
   };
   return (
-    <Button size="sm" variant="outline" onClick={handle} disabled={busy}>
-      {busy ? "Building…" : label}
-    </Button>
+    <>
+      <Button size="sm" variant="outline" onClick={handle} disabled={busy}>
+        {busy ? "Building…" : label}
+      </Button>
+      <BulkDisputeMethodDialog
+        groups={groups}
+        onClose={() => setGroups(null)}
+        onDone={() => qc.invalidateQueries({ queryKey: ["violations"] })}
+      />
+    </>
   );
 }
 
@@ -1899,6 +1911,15 @@ function ViolationsPage() {
               >
                 Deselect All
               </Button>
+              {/* Every matched violation in ONE merged PDF, grouped by authority. */}
+              <Button
+                size="sm"
+                disabled={filtered.length === 0 || bulkBusy}
+                onClick={() => bulkDownloadPackets(filtered)}
+                className="bg-emerald-700 hover:bg-emerald-800"
+              >
+                {bulkBusy ? "Building…" : `📥 Download All Letters (${filtered.length})`}
+              </Button>
               {/* Primary action — ALL selected violations in ONE merged PDF. */}
               <Button
                 size="sm"
@@ -2114,6 +2135,9 @@ function ViolationsPage() {
                           <div className="mt-1 text-xs text-muted-foreground">
                             Disputed via {v.dispute_method.replace("_", "-")}
                             {v.disputed_at ? ` · ${new Date(v.disputed_at).toLocaleDateString()}` : ""}
+                            {v.submission_notes ? (
+                              <div className="text-[11px] italic">📝 {v.submission_notes}</div>
+                            ) : null}
                           </div>
                         )}
                         {v.status === "paid" && v.paid_at && (
