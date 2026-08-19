@@ -1,4 +1,4 @@
-import { DisputeMethodDialog, type DisputeGroups } from "@/components/app/DisputeMethodDialog";
+import { DisputeMethodDialog as BulkDisputeMethodDialog, type DisputeGroups } from "@/components/app/DisputeMethodDialog";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -1903,7 +1903,7 @@ function ViolationsPage() {
               <Button
                 size="sm"
                 disabled={selectedRows.length === 0 || bulkBusy}
-                onClick={bulkDownloadPackets}
+                onClick={() => bulkDownloadPackets()}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
                 {bulkBusy ? "Building…" : "📦 Download All as One PDF"}
@@ -2290,7 +2290,7 @@ function ViolationsPage() {
         onDone={refresh}
       />
 
-      <DisputeMethodDialog
+      <BulkDisputeMethodDialog
         groups={disputeGroups}
         onClose={() => setDisputeGroups(null)}
         onDone={() => {
