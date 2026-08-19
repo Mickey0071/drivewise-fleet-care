@@ -22,6 +22,7 @@ export const DISPUTE_LANGUAGE: Record<PacketDisputeType, { title: string; body: 
     title: "Lessor Exemption — Rental Vehicle Toll Liability",
     body:
       "Camauto Rentals is a motor vehicle rental company and the registered owner (lessor) of the vehicle identified in this packet. At the date and time of each toll transaction listed above, the vehicle was under a written rental agreement with the renter identified in this packet. " +
+      "By executing that rental agreement, the renter expressly agreed to accept full financial and legal responsibility for all tolls, toll violations, administrative fees, fines, and penalties incurred during the rental period, and acknowledged that such charges would be transferred to them as the operator of record. " +
       "Pursuant to applicable rental-vehicle lessor provisions, including N.J.S.A. 39:4-138.1 and the corresponding toll authority regulations, liability for these toll transactions transfers to the lessee named above. " +
       "We respectfully request that these notices be dismissed as to Camauto Rentals and re-issued to the renter of record. Signed rental agreement documentation and renter identification are available upon request and are enclosed where applicable.",
   },
@@ -29,15 +30,25 @@ export const DISPUTE_LANGUAGE: Record<PacketDisputeType, { title: string; body: 
     title: "Improper Notice — Parking Violation Notices",
     body:
       "Camauto Rentals disputes the notices listed above on the grounds of improper notice. The notices were not served upon the registered owner within the time and manner required, and the vehicle was in the exclusive possession and control of the renter identified in this packet at the time of each cited incident. " +
+      "The renter executed a written rental agreement in which they expressly agreed to be responsible for all parking violations, citations, fines, and related administrative fees incurred while the vehicle was in their possession. " +
       "We respectfully request that these notices be dismissed as to Camauto Rentals and, where permitted, re-issued to the operator of record. Supporting rental documentation is available upon request.",
   },
   other: {
     title: "Statement of Dispute",
     body:
       "Camauto Rentals disputes the violations listed above. The vehicle identified in this packet was under a written rental agreement and in the exclusive possession and control of the renter identified above at the time of each cited incident. " +
+      "Under the executed rental agreement, the renter accepted responsibility for all violations, tolls, fines, and penalties arising during the rental period. " +
       "We respectfully request review and dismissal of these notices as to Camauto Rentals, with re-issuance to the renter of record where applicable.",
   },
 };
+
+/** Contractual clause quoted on every dispute packet. */
+const AGREEMENT_CLAUSE =
+  '"The Renter agrees to assume full responsibility for, and to pay, all tolls, toll violations, ' +
+  "parking tickets, traffic and camera citations, red-light and speed violations, impound charges, " +
+  "administrative fees, fines and penalties incurred during the rental period, and authorizes Camauto " +
+  "Rentals to transfer liability for any such notice to the Renter as the operator of record and to " +
+  'charge the Renter for any amounts advanced on their behalf."';
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
@@ -83,6 +94,8 @@ export async function renderMultiViolationDisputePdf(
   doc.setTextColor(...MUTED);
   doc.text(packetName, right, y + 38, { align: "right" });
   doc.text(`Generated ${new Date().toLocaleDateString("en-US")}`, right, y + 52, { align: "right" });
+  doc.setFontSize(8);
+  doc.text("Camauto Rentals · Fleet & Compliance Department", right, y + 66, { align: "right" });
   y += logoH + 8;
 
   doc.setDrawColor(...GREEN);
@@ -197,7 +210,44 @@ export async function renderMultiViolationDisputePdf(
     doc.text(line, left, y);
     y += 13;
   }
-  y += 24;
+  y += 20;
+
+  // Contractual acknowledgment — quoted clause from the signed agreement.
+  ensure(46);
+  doc.setFillColor(...GREEN);
+  doc.rect(left, y, right - left, 13, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("RENTER ACKNOWLEDGMENT OF RESPONSIBILITY (SIGNED RENTAL AGREEMENT)", left + 6, y + 9);
+  y += 20;
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9.5);
+  doc.setTextColor(...TEXT);
+  const clause = doc.splitTextToSize(AGREEMENT_CLAUSE, right - left - 20) as string[];
+  const clauseTop = y - 4;
+  for (const line of clause) {
+    ensure(13);
+    doc.text(line, left + 14, y + 6);
+    y += 12.5;
+  }
+  doc.setDrawColor(...GREEN);
+  doc.setLineWidth(3);
+  doc.line(left + 2, clauseTop, left + 2, y + 2);
+  y += 14;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  const ack = doc.splitTextToSize(
+    `${renterName || "The renter"} signed the rental agreement containing the clause above prior to taking possession of the vehicle. A copy of the executed agreement is enclosed with this packet.`,
+    right - left,
+  ) as string[];
+  for (const line of ack) {
+    ensure(13);
+    doc.text(line, left, y);
+    y += 12;
+  }
+  y += 22;
 
   // Signature block
   ensure(90);
