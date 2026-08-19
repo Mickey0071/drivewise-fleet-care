@@ -121,7 +121,9 @@ export const listViolations = createServerFn({ method: "GET" })
     const { data: legacyRows } = legacyIds.length
       ? await supabaseAdmin
           .from("legacy_rentals")
-          .select("id, retro_signed_at, renter_name, phone, email, address, dl_number, dl_state")
+          .select(
+            "id, retro_signed_at, renter_name, phone, email, address, dl_number, dl_state, start_datetime, end_datetime",
+          )
           .in("id", legacyIds)
       : { data: [] as any[] };
     const lMap = new Map((legacyRows ?? []).map((r) => [r.id, r]));
@@ -153,8 +155,12 @@ export const listViolations = createServerFn({ method: "GET" })
         driver_address: driverAddress,
         vehicle_label: r.vehicle_id ? vMap.get(r.vehicle_id) ?? null : null,
         agreement_on_file: agreementOnFile,
-        rental_start: rental?.start_date ?? null,
-        rental_end: rental?.end_date ?? null,
+        rental_start:
+          rental?.start_date ??
+          (legacy?.start_datetime ? String(legacy.start_datetime).slice(0, 10) : null),
+        rental_end:
+          rental?.end_date ??
+          (legacy?.end_datetime ? String(legacy.end_datetime).slice(0, 10) : null),
       };
     });
   });
