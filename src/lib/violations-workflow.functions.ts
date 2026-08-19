@@ -278,27 +278,6 @@ export const bulkRecordDispute = createServerFn({ method: "POST" })
     return { updated: data.violationIds.length };
   });
 
-/** Flag a violation as an orphan dispute ("Plate Not Mine"). */
-export const flagViolationOrphanLegacyAlias = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: { violationId: string; flag?: boolean }) => {
-    if (!input.violationId) throw new Error("violationId required");
-    return { violationId: input.violationId, flag: input.flag !== false };
-  })
-  .handler(async ({ data, context }) => {
-    const { error } = await supabaseAdmin
-      .from("violations")
-      .update({ is_orphan: data.flag, updated_at: new Date().toISOString() } as never)
-      .eq("id", data.violationId);
-    if (error) throw new Error(error.message);
-    await logAudit({
-      violationId: data.violationId,
-      toStatus: data.flag ? "flagged_orphan" : "unflagged_orphan",
-      reason: data.flag ? "Plate not mine — flagged as orphan dispute" : "Orphan flag removed",
-      userId: context.userId ?? null,
-    });
-    return { ok: true as const };
-  });
 
 /**
  * Resolve a downloadable signed-rental-agreement PDF URL for a violation.
