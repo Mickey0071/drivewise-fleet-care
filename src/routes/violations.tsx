@@ -79,7 +79,6 @@ import {
   flagViolationOrphan,
 } from "@/lib/violations-workflow.functions";
 import { bulkSetViolationStage } from "@/lib/violations-workflow.functions";
-import { bulkMarkDisputedByMail } from "@/lib/violations-workflow.functions";
 import { getMatchedAgreementsForPrint } from "@/lib/violation-packet.functions";
 import {
   generateTransferPacket,
@@ -1344,11 +1343,10 @@ function ViolationsPage() {
   const [bulkOnlineOpen, setBulkOnlineOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [mergeProgress, setMergeProgress] = useState<string | null>(null);
-  const [markMailedFor, setMarkMailedFor] = useState<string[] | null>(null);
+  const [disputeGroups, setDisputeGroups] = useState<DisputeGroups | null>(null);
   const genPacketFn = useServerFn(generateMailPacket);
   const getAgreementsFn = useServerFn(getMatchedAgreementsForPrint);
   const bulkStageFn = useServerFn(bulkSetViolationStage);
-  const bulkMailedFn = useServerFn(bulkMarkDisputedByMail);
   const batchTransferFn = useServerFn(batchGenerateTransferPackets);
   const [batchTransferBusy, setBatchTransferBusy] = useState(false);
   const [batchTransferReport, setBatchTransferReport] = useState<
@@ -1573,11 +1571,12 @@ function ViolationsPage() {
     return { blob, filename, missing, failed, okIds, okPhilly, okEzpass };
   };
 
-  const bulkDownloadPackets = async () => {
-    if (selectedRows.length === 0) return;
+  const bulkDownloadPackets = async (rowsIn: ViolationRow[] = selectedRows) => {
+    if (rowsIn.length === 0) return;
     setBulkBusy(true);
     try {
-      const { blob, filename, missing, failed, okIds } = await buildMergedPacket();
+      const { blob, filename, missing, failed, okIds, okPhilly, okEzpass } =
+        await buildMergedPacket(rowsIn);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -1586,12 +1585,13 @@ function ViolationsPage() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setMergeProgress("✅ Ready to download");
+      setMergeProgress("✅ Ready — downloading now");
       toast.success(
         `${okIds.length} violation(s) in one PDF${missing.length ? ` — ${missing.length} item(s) missing` : ""}${failed.length ? ` · ${failed.length} failed` : ""}`,
       );
       if (failed.length) toast.error(failed.join(" · "), { duration: 10_000 });
-      setMarkMailedFor(okIds);
+      void okIds;
+      setDisputeGroups({ ezpass: okEzpass, philly: okPhilly });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not build packets");
     } finally {
@@ -1604,7 +1604,7 @@ function ViolationsPage() {
     if (selectedRows.length === 0) return;
     setBulkBusy(true);
     try {
-      const { blob, failed, okIds } = await buildMergedPacket();
+      const { blob, failed, okIds, okPhilly, okEzpass } = await buildMergedPacket(selectedRows);
       const url = URL.createObjectURL(blob);
       const w = window.open(url, "_blank");
       if (w) {
@@ -1616,26 +1616,13 @@ function ViolationsPage() {
       }
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
       if (failed.length) toast.error(failed.join(" · "), { duration: 10_000 });
-      setMarkMailedFor(okIds);
+      void okIds;
+      setDisputeGroups({ ezpass: okEzpass, philly: okPhilly });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not build packets");
     } finally {
       setBulkBusy(false);
       setTimeout(() => setMergeProgress(null), 2000);
-    }
-  };
-
-  const confirmMarkMailed = async () => {
-    const ids = markMailedFor ?? [];
-    setMarkMailedFor(null);
-    if (ids.length === 0) return;
-    try {
-      await bulkMailedFn({ data: { violationIds: ids } });
-      qc.invalidateQueries({ queryKey: ["violations"] });
-      setSelected(new Set());
-      toast.success(`${ids.length} moved to Disputed (mailed)`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not update violations");
     }
   };
 
@@ -2294,27 +2281,14 @@ function ViolationsPage() {
         onDone={refresh}
       />
 
-      <AlertDialog
-        open={!!markMailedFor}
-        onOpenChange={(o) => !o && setMarkMailedFor(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Mark all as Disputed?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {markMailedFor?.length ?? 0} violation(s) were included in the merged packet.
-              Marking them mailed sets the dispute method to mail, stamps today's date, and
-              moves them to the Disputed tab.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>No — Keep in Matched</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmMarkMailed}>
-              Yes — Mark All Mailed
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DisputeMethodDialog
+        groups={disputeGroups}
+        onClose={() => setDisputeGroups(null)}
+        onDone={() => {
+          setSelected(new Set());
+          refresh();
+        }}
+      />
 
       <AlertDialog open={!!deleteFor} onOpenChange={(o) => !o && setDeleteFor(null)}>
         <AlertDialogContent>
