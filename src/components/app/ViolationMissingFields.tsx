@@ -180,6 +180,7 @@ export function FieldChecklist({
   const [text, setText] = useState("");
   const [start, setStart] = useState(v.rental_start ?? "");
   const [end, setEnd] = useState(v.rental_end ?? "");
+  const [dateError, setDateError] = useState<string | null>(null);
 
   const refFn = useServerFn(setViolationReference);
   const renterFn = useServerFn(updateRenterInfoForViolation);
@@ -205,6 +206,7 @@ export function FieldChecklist({
     setEditing(k);
     setStart(v.rental_start ?? "");
     setEnd(v.rental_end ?? "");
+    setDateError(null);
     setText(
       k === "ezpassRef"
         ? v.reference_number ?? ""
@@ -272,12 +274,22 @@ export function FieldChecklist({
   };
 
   const saveDates = async () => {
+    setDateError(null);
+    if (!start || !end) {
+      setDateError("Enter both a start and an end date.");
+      return;
+    }
+    if (start > end) {
+      setDateError("Start date must be on or before the end date.");
+      return;
+    }
     setBusy(true);
     try {
       await periodFn({ data: { violationId: v.id, startDate: start, endDate: end } });
       finish("Rental period saved — packet will use these dates");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      const msg = e instanceof Error ? e.message : "";
+      setDateError(`❌ ${msg || "Could not save dates. Try again or contact support."}`);
     } finally {
       setBusy(false);
     }
@@ -372,13 +384,17 @@ export function FieldChecklist({
       )}
 
       {isDateField && (
-        <div className="flex flex-wrap items-end gap-1 pt-1">
+        <div className="space-y-1 pt-1">
+        <div className="flex flex-wrap items-end gap-1">
           <div>
             <div className="text-[10px] uppercase text-muted-foreground">Start</div>
             <Input
               type="date"
               value={start}
-              onChange={(e) => setStart(e.target.value)}
+              onChange={(e) => {
+                setStart(e.target.value);
+                setDateError(null);
+              }}
               className="h-7 w-36 text-xs"
             />
           </div>
@@ -387,7 +403,10 @@ export function FieldChecklist({
             <Input
               type="date"
               value={end}
-              onChange={(e) => setEnd(e.target.value)}
+              onChange={(e) => {
+                setEnd(e.target.value);
+                setDateError(null);
+              }}
               className="h-7 w-36 text-xs"
             />
           </div>
@@ -397,6 +416,10 @@ export function FieldChecklist({
           <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setEditing(null)}>
             ✕
           </Button>
+        </div>
+        {dateError && (
+          <div className="text-[11px] font-medium text-red-600">{dateError}</div>
+        )}
         </div>
       )}
 
