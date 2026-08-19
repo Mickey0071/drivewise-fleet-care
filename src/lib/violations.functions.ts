@@ -40,6 +40,7 @@ export interface ViolationRow {
   submitted_to_authority_at?: string | null;
   submitted_to?: string | null;
   submission_method?: string | null;
+  submission_notes?: string | null;
   confirmation_number?: string | null;
   resolved_at?: string | null;
   resolution_reason?: string | null;
