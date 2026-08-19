@@ -94,6 +94,8 @@ export async function renderMultiViolationDisputePdf(
   doc.setTextColor(...MUTED);
   doc.text(packetName, right, y + 38, { align: "right" });
   doc.text(`Generated ${new Date().toLocaleDateString("en-US")}`, right, y + 52, { align: "right" });
+  doc.setFontSize(8);
+  doc.text("Camauto Rentals · Fleet & Compliance Department", right, y + 66, { align: "right" });
   y += logoH + 8;
 
   doc.setDrawColor(...GREEN);
@@ -208,7 +210,44 @@ export async function renderMultiViolationDisputePdf(
     doc.text(line, left, y);
     y += 13;
   }
-  y += 24;
+  y += 20;
+
+  // Contractual acknowledgment — quoted clause from the signed agreement.
+  ensure(46);
+  doc.setFillColor(...GREEN);
+  doc.rect(left, y, right - left, 13, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("RENTER ACKNOWLEDGMENT OF RESPONSIBILITY (SIGNED RENTAL AGREEMENT)", left + 6, y + 9);
+  y += 20;
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9.5);
+  doc.setTextColor(...TEXT);
+  const clause = doc.splitTextToSize(AGREEMENT_CLAUSE, right - left - 20) as string[];
+  const clauseTop = y - 4;
+  for (const line of clause) {
+    ensure(13);
+    doc.text(line, left + 14, y + 6);
+    y += 12.5;
+  }
+  doc.setDrawColor(...GREEN);
+  doc.setLineWidth(3);
+  doc.line(left + 2, clauseTop, left + 2, y + 2);
+  y += 14;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...MUTED);
+  const ack = doc.splitTextToSize(
+    `${renterName || "The renter"} signed the rental agreement containing the clause above prior to taking possession of the vehicle. A copy of the executed agreement is enclosed with this packet.`,
+    right - left,
+  ) as string[];
+  for (const line of ack) {
+    ensure(13);
+    doc.text(line, left, y);
+    y += 12;
+  }
+  y += 22;
 
   // Signature block
   ensure(90);
