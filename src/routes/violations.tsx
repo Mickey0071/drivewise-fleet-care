@@ -1,3 +1,4 @@
+import { DisputeMethodDialog, type DisputeGroups } from "@/components/app/DisputeMethodDialog";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo, useEffect, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -325,6 +326,14 @@ function DownloadAgreementButton({
 }
 
 /** Downloads the combined dispute / mail packet (cover letter + agreement + notice). */
+/** Philadelphia (PPA) violations can only be disputed by mail. */
+function isPhillyViolation(v: ViolationRow): boolean {
+  const key = (v.authority_key || "").toLowerCase();
+  if (key === "ppa" || key === "philadelphia_parking") return true;
+  const hay = `${v.location ?? ""} ${v.description ?? ""} ${v.type ?? ""}`.toLowerCase();
+  return /philadelphia|phila\.|\bppa\b/.test(hay);
+}
+
 function DownloadPacketButton({
   v,
   label = "📦 Download Dispute Packet",
