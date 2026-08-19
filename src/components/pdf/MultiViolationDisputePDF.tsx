@@ -22,6 +22,7 @@ export const DISPUTE_LANGUAGE: Record<PacketDisputeType, { title: string; body: 
     title: "Lessor Exemption — Rental Vehicle Toll Liability",
     body:
       "Camauto Rentals is a motor vehicle rental company and the registered owner (lessor) of the vehicle identified in this packet. At the date and time of each toll transaction listed above, the vehicle was under a written rental agreement with the renter identified in this packet. " +
+      "By executing that rental agreement, the renter expressly agreed to accept full financial and legal responsibility for all tolls, toll violations, administrative fees, fines, and penalties incurred during the rental period, and acknowledged that such charges would be transferred to them as the operator of record. " +
       "Pursuant to applicable rental-vehicle lessor provisions, including N.J.S.A. 39:4-138.1 and the corresponding toll authority regulations, liability for these toll transactions transfers to the lessee named above. " +
       "We respectfully request that these notices be dismissed as to Camauto Rentals and re-issued to the renter of record. Signed rental agreement documentation and renter identification are available upon request and are enclosed where applicable.",
   },
@@ -29,15 +30,25 @@ export const DISPUTE_LANGUAGE: Record<PacketDisputeType, { title: string; body: 
     title: "Improper Notice — Parking Violation Notices",
     body:
       "Camauto Rentals disputes the notices listed above on the grounds of improper notice. The notices were not served upon the registered owner within the time and manner required, and the vehicle was in the exclusive possession and control of the renter identified in this packet at the time of each cited incident. " +
+      "The renter executed a written rental agreement in which they expressly agreed to be responsible for all parking violations, citations, fines, and related administrative fees incurred while the vehicle was in their possession. " +
       "We respectfully request that these notices be dismissed as to Camauto Rentals and, where permitted, re-issued to the operator of record. Supporting rental documentation is available upon request.",
   },
   other: {
     title: "Statement of Dispute",
     body:
       "Camauto Rentals disputes the violations listed above. The vehicle identified in this packet was under a written rental agreement and in the exclusive possession and control of the renter identified above at the time of each cited incident. " +
+      "Under the executed rental agreement, the renter accepted responsibility for all violations, tolls, fines, and penalties arising during the rental period. " +
       "We respectfully request review and dismissal of these notices as to Camauto Rentals, with re-issuance to the renter of record where applicable.",
   },
 };
+
+/** Contractual clause quoted on every dispute packet. */
+const AGREEMENT_CLAUSE =
+  '"The Renter agrees to assume full responsibility for, and to pay, all tolls, toll violations, ' +
+  "parking tickets, traffic and camera citations, red-light and speed violations, impound charges, " +
+  "administrative fees, fines and penalties incurred during the rental period, and authorizes Camauto " +
+  "Rentals to transfer liability for any such notice to the Renter as the operator of record and to " +
+  'charge the Renter for any amounts advanced on their behalf."';
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
