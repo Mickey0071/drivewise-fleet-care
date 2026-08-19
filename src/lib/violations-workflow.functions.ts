@@ -218,6 +218,88 @@ export const flagViolationOrphan = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+const DISPUTE_METHODS = ["mail", "walk_in", "online", "phone"] as const;
+type DisputeMethod = (typeof DISPUTE_METHODS)[number];
+
+/**
+ * Record how a batch of violations was submitted (mail / walk-in / online /
+ * phone) and move every one of them to the Disputed tab.
+ */
+export const bulkRecordDispute = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    violationIds: string[];
+    method: DisputeMethod;
+    disputedDate?: string | null;
+    notes?: string | null;
+  }) => {
+    if (!Array.isArray(input.violationIds) || input.violationIds.length === 0)
+      throw new Error("violationIds required");
+    if (input.violationIds.length > 500) throw new Error("Too many ids");
+    if (!DISPUTE_METHODS.includes(input.method)) throw new Error("Invalid method");
+    return {
+      violationIds: input.violationIds,
+      method: input.method,
+      disputedDate: input.disputedDate?.trim() || null,
+      notes: input.notes?.trim() || null,
+    };
+  })
+  .handler(async ({ data, context }) => {
+    const now = new Date().toISOString();
+    // Keep the time-of-day when the admin left today's date as-is.
+    const disputedAt = data.disputedDate
+      ? new Date(`${data.disputedDate}T12:00:00`).toISOString()
+      : now;
+    const patch: Record<string, unknown> = {
+      workflow_stage: "disputed",
+      dispute_method: data.method,
+      disputed_at: disputedAt,
+      submission_method: data.method,
+      submission_notes: data.notes,
+      updated_at: now,
+    };
+    if (data.method === "mail") patch.mailed_at = disputedAt;
+    const { error } = await supabaseAdmin
+      .from("violations")
+      .update(patch as never)
+      .in("id", data.violationIds);
+    if (error) throw new Error(error.message);
+    const name = await changedByName(context.userId ?? null);
+    await supabaseAdmin.from("violation_status_history").insert(
+      data.violationIds.map((id) => ({
+        violation_id: id,
+        from_status: null,
+        to_status: "stage:disputed",
+        reason: `Disputed via ${data.method.replace("_", "-")}${data.notes ? ` — ${data.notes}` : ""}`,
+        changed_by: context.userId ?? null,
+        changed_by_name: name,
+      })) as never,
+    );
+    return { updated: data.violationIds.length };
+  });
+
+/** Flag a violation as an orphan dispute ("Plate Not Mine"). */
+export const flagViolationOrphanLegacyAlias = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { violationId: string; flag?: boolean }) => {
+    if (!input.violationId) throw new Error("violationId required");
+    return { violationId: input.violationId, flag: input.flag !== false };
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await supabaseAdmin
+      .from("violations")
+      .update({ is_orphan: data.flag, updated_at: new Date().toISOString() } as never)
+      .eq("id", data.violationId);
+    if (error) throw new Error(error.message);
+    await logAudit({
+      violationId: data.violationId,
+      toStatus: data.flag ? "flagged_orphan" : "unflagged_orphan",
+      reason: data.flag ? "Plate not mine — flagged as orphan dispute" : "Orphan flag removed",
+      userId: context.userId ?? null,
+    });
+    return { ok: true as const };
+  });
+
 /**
  * Resolve a downloadable signed-rental-agreement PDF URL for a violation.
  * Order of resolution:
