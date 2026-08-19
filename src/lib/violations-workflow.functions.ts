@@ -203,11 +203,6 @@ export const flagViolationOrphan = createServerFn({ method: "POST" })
     if (!input.violationId) throw new Error("violationId required");
     return { violationId: input.violationId, flag: input.flag !== false };
   })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: { violationId: string; flag?: boolean }) => {
-    if (!input.violationId) throw new Error("violationId required");
-    return { violationId: input.violationId, flag: input.flag !== false };
-  })
   .handler(async ({ data, context }) => {
     const { error } = await supabaseAdmin
       .from("violations")
