@@ -62,7 +62,31 @@ export const updateRentalPeriodForViolation = createServerFn({ method: "POST" })
       updated = true;
     }
     if (!updated) throw new Error("This violation is not matched to a rental yet");
-    return { ok: true as const, startDate: data.startDate, endDate: data.endDate };
+
+    // Verify: read the dates back from the row that owns them.
+    let savedStart: string | null = null;
+    let savedEnd: string | null = null;
+    if (v.rental_id) {
+      const { data: check } = await (supabaseAdmin as any)
+        .from("rentals")
+        .select("start_date, end_date")
+        .eq("id", v.rental_id)
+        .maybeSingle();
+      savedStart = check?.start_date ? String(check.start_date).slice(0, 10) : null;
+      savedEnd = check?.end_date ? String(check.end_date).slice(0, 10) : null;
+    } else if (legacyId) {
+      const { data: check } = await (supabaseAdmin as any)
+        .from("legacy_rentals")
+        .select("start_datetime, end_datetime")
+        .eq("id", legacyId)
+        .maybeSingle();
+      savedStart = check?.start_datetime ? String(check.start_datetime).slice(0, 10) : null;
+      savedEnd = check?.end_datetime ? String(check.end_datetime).slice(0, 10) : null;
+    }
+    if (savedStart !== data.startDate || savedEnd !== data.endDate) {
+      throw new Error("Could not save dates — the database did not confirm the update");
+    }
+    return { ok: true as const, startDate: savedStart, endDate: savedEnd };
   });
 
 /**
