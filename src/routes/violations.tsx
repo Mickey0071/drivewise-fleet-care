@@ -1475,10 +1475,11 @@ function ViolationsPage() {
   const safeName = (s: string) => (s || "").replace(/[^a-z0-9]+/gi, "").toUpperCase() || "NA";
 
   /**
-   * Build ONE merged PDF: for each selected violation a divider page,
-   * the cover letter, then the signed rental agreement pages.
+   * Build ONE merged PDF from the given rows: violations are grouped into
+   * EZPass/DRPA and Philadelphia sections, each section opening with a header
+   * page, then per violation a divider page + cover letter + agreement pages.
    */
-  const buildMergedPacket = async () => {
+  const buildMergedPacket = async (rowsIn: ViolationRow[]) => {
     const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
     const out = await PDFDocument.create();
     const bold = await out.embedFont(StandardFonts.HelveticaBold);
@@ -1486,41 +1487,76 @@ function ViolationsPage() {
     const missing: string[] = [];
     const failed: string[] = [];
     const okIds: string[] = [];
+    const okPhilly: string[] = [];
+    const okEzpass: string[] = [];
 
-    for (let i = 0; i < selectedRows.length; i++) {
-      const v = selectedRows[i]!;
-      setMergeProgress(`Generating packet ${i + 1} of ${selectedRows.length}…`);
-      try {
-        const res = await genPacketFn({ data: { violationId: v.id } });
-        // Divider page
-        const d = out.addPage([612, 792]);
-        d.drawText(`=== VIOLATION ${i + 1} OF ${selectedRows.length} ===`, {
-          x: 60, y: 470, size: 22, font: bold, color: rgb(0.05, 0.4, 0.2),
+    const groups: Array<{ title: string; rows: ViolationRow[]; philly: boolean }> = [
+      {
+        title: "=== EZPASS / DRPA VIOLATIONS ===",
+        rows: rowsIn.filter((r) => !isPhillyViolation(r)),
+        philly: false,
+      },
+      {
+        title: "=== PHILADELPHIA VIOLATIONS - MAIL ONLY ===",
+        rows: rowsIn.filter((r) => isPhillyViolation(r)),
+        philly: true,
+      },
+    ].filter((g) => g.rows.length > 0);
+
+    let done = 0;
+    for (const g of groups) {
+      // Section header page
+      const h = out.addPage([612, 792]);
+      h.drawText(g.title, {
+        x: 50, y: 520, size: 18, font: bold, color: rgb(0.05, 0.35, 0.2),
+      });
+      h.drawText(`${g.rows.length} violation${g.rows.length === 1 ? "" : "s"}`, {
+        x: 50, y: 490, size: 13, font: reg, color: rgb(0.25, 0.25, 0.25),
+      });
+      if (g.philly) {
+        h.drawText("These violations must be submitted by mail.", {
+          x: 50, y: 468, size: 12, font: reg, color: rgb(0.6, 0.25, 0.05),
         });
-        const lines = [
-          `Renter: ${v.driver_name || "—"}`,
-          `Plate: ${v.license_plate || v.vehicle_label || "—"}`,
-          `Violation Ref #: ${v.reference_number || v.id}`,
-          `Date Issued: ${(v.date_issued || "").slice(0, 10) || "—"}`,
-          `Amount: ${fmtMoney(Number(v.total_amount || v.amount || 0))}`,
-        ];
-        let y = 420;
-        for (const line of lines) {
-          d.drawText(line, { x: 60, y, size: 13, font: reg, color: rgb(0.15, 0.15, 0.15) });
-          y -= 22;
+      }
+
+      for (let i = 0; i < g.rows.length; i++) {
+        const v = g.rows[i]!;
+        done++;
+        setMergeProgress(`Generating packet ${done} of ${rowsIn.length}…`);
+        try {
+          const res = await genPacketFn({ data: { violationId: v.id } });
+          // Divider page
+          const d = out.addPage([612, 792]);
+          d.drawText(`=== VIOLATION ${i + 1} OF ${g.rows.length} ===`, {
+            x: 60, y: 470, size: 22, font: bold, color: rgb(0.05, 0.4, 0.2),
+          });
+          const lines = [
+            `Renter: ${v.driver_name || "—"}`,
+            `Plate: ${v.license_plate || v.vehicle_label || "—"}`,
+            `Violation Ref #: ${v.reference_number || v.id}`,
+            `Date Issued: ${(v.date_issued || "").slice(0, 10) || "—"}`,
+            `Amount: ${fmtMoney(Number(v.total_amount || v.amount || 0))}`,
+          ];
+          let y = 420;
+          for (const line of lines) {
+            d.drawText(line, { x: 60, y, size: 13, font: reg, color: rgb(0.15, 0.15, 0.15) });
+            y -= 22;
+          }
+          const bin = atob(res.base64);
+          const bytes = new Uint8Array(bin.length);
+          for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+          const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+          const pages = await out.copyPages(src, src.getPageIndices());
+          for (const p of pages) out.addPage(p);
+          missing.push(...res.missing);
+          okIds.push(v.id);
+          if (g.philly) okPhilly.push(v.id);
+          else okEzpass.push(v.id);
+        } catch (e) {
+          failed.push(
+            `${v.reference_number || v.id}: ${e instanceof Error ? e.message : "failed"}`,
+          );
         }
-        const bin = atob(res.base64);
-        const bytes = new Uint8Array(bin.length);
-        for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
-        const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
-        const pages = await out.copyPages(src, src.getPageIndices());
-        for (const p of pages) out.addPage(p);
-        missing.push(...res.missing);
-        okIds.push(v.id);
-      } catch (e) {
-        failed.push(
-          `${v.reference_number || v.id}: ${e instanceof Error ? e.message : "failed"}`,
-        );
       }
     }
     if (okIds.length === 0) {
@@ -1534,7 +1570,7 @@ function ViolationsPage() {
       .replace(/,/g, "")
       .replace(/ /g, "_");
     const filename = `CamautoDisputes_${stamp}_${okIds.length}violations.pdf`;
-    return { blob, filename, missing, failed, okIds };
+    return { blob, filename, missing, failed, okIds, okPhilly, okEzpass };
   };
 
   const bulkDownloadPackets = async () => {
