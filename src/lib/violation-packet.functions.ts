@@ -411,11 +411,10 @@ async function buildCoverPdf({ v, vehicle, driver, rental, override }: CoverArgs
   doc.text("CAMAUTO RENTALS", left, y);
   doc.setFontSize(13);
   doc.setTextColor(...TEXT);
-  doc.text("Violation Evidence Packet", left, y + 18);
+  doc.text("Dispute Evidence", left, y + 18);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(...MUTED);
-  doc.text(`Generated ${new Date().toLocaleString("en-US")}`, right, y, { align: "right" });
   doc.text("Camauto Rentals · 866-625-5550", right, y + 14, { align: "right" });
   y += 32;
   doc.setDrawColor(...GREEN);

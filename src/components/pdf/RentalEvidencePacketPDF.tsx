@@ -114,12 +114,11 @@ export async function renderEvidencePacketPdf(data: EvidencePacketData): Promise
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.setTextColor(...RGB_GREEN);
-  doc.text("EVIDENCE PACKET", left, y + 14);
+  doc.text("DISPUTE EVIDENCE", left, y + 14);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(...COLOR_MUTED);
   doc.text(`Reservation #${rental.id}`, left, y + 28);
-  doc.text(`Generated ${new Date().toLocaleString("en-US")}`, right, y + 14, { align: "right" });
   doc.text("Camauto Rentals", right, y + 28, { align: "right" });
   y += 40;
   doc.setDrawColor(...RGB_GREEN);
