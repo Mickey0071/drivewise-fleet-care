@@ -88,14 +88,13 @@ export async function renderMultiViolationDisputePdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(...GREEN);
-  doc.text("VIOLATION DISPUTE PACKET", right, y + 22, { align: "right" });
+  doc.text("DISPUTE EVIDENCE", right, y + 22, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(...MUTED);
   doc.text(packetName, right, y + 38, { align: "right" });
-  doc.text(`Generated ${new Date().toLocaleDateString("en-US")}`, right, y + 52, { align: "right" });
   doc.setFontSize(8);
-  doc.text("Camauto Rentals · Fleet & Compliance Department", right, y + 66, { align: "right" });
+  doc.text("Camauto Rentals · Fleet & Compliance Department", right, y + 52, { align: "right" });
   y += logoH + 8;
 
   doc.setDrawColor(...GREEN);
