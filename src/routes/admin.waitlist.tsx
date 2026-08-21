@@ -43,8 +43,11 @@ type Entry = {
   license_front_url: string | null;
   license_back_url: string | null;
   rideshare_proof_url: string | null;
+  rideshare_checkbox: boolean | null;
+  priority: string | null;
   vehicle_preference: string | null;
   rental_cadence: string | null;
+  rental_length: string | null;
   status: string;
   converted_rental_id: string | null;
   created_at: string;
@@ -118,12 +121,13 @@ function WaitlistAdminPage() {
               <thead>
                 <tr className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <th className="px-3 py-2">Name</th>
+                  <th className="px-3 py-2">Priority</th>
                   <th className="px-3 py-2">Phone</th>
                   <th className="px-3 py-2">Email</th>
                   <th className="px-3 py-2">Joined</th>
                   <th className="px-3 py-2">Source</th>
                   <th className="px-3 py-2">Preference</th>
-                  <th className="px-3 py-2">Cadence</th>
+                  <th className="px-3 py-2">Length</th>
                   <th className="px-3 py-2">Docs</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2 text-right">Action</th>
@@ -132,7 +136,7 @@ function WaitlistAdminPage() {
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                    <td colSpan={11} className="px-3 py-8 text-center text-sm text-muted-foreground">
                       {tab === "converted" ? "No converted waiters yet." : "No waitlist entries yet."}
                     </td>
                   </tr>

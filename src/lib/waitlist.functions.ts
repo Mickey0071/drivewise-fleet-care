@@ -50,10 +50,11 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
     phone: string;
     email: string;
     licenseFrontDataUrl: string;
-    licenseBackDataUrl: string;
-    rideshareProofDataUrl: string;
+    licenseBackDataUrl?: string;
+    rideshareCheckbox?: boolean;
+    rideshareProofDataUrl?: string;
     vehiclePreference?: string;
-    rentalCadence: "Daily" | "Weekly";
+    rentalLength: "1 week" | "2+ weeks";
   }) => {
     const name = (input.name ?? "").trim();
     const phone = (input.phone ?? "").trim();
@@ -61,18 +62,20 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
     if (name.length < 2 || name.length > 120) throw new Error("Please enter your full name");
     if (phone.length < 7 || phone.length > 40) throw new Error("Please enter a valid phone number");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) throw new Error("Please enter a valid email");
-    if (!input.licenseFrontDataUrl?.startsWith("data:image/")) throw new Error("License front photo required");
-    if (!input.licenseBackDataUrl?.startsWith("data:image/")) throw new Error("License back photo required");
-    if (!input.rideshareProofDataUrl?.startsWith("data:image/")) throw new Error("Rideshare proof screenshot required");
-    const cadence = input.rentalCadence === "Daily" ? "Daily" : "Weekly";
+    if (!input.licenseFrontDataUrl?.startsWith("data:image/")) throw new Error("ID / driver's license photo required");
+    if (input.licenseBackDataUrl && !input.licenseBackDataUrl.startsWith("data:image/")) throw new Error("Invalid license back image");
+    const rideshare = input.rideshareCheckbox === true;
+    if (input.rideshareProofDataUrl && !input.rideshareProofDataUrl.startsWith("data:image/")) throw new Error("Invalid rideshare proof image");
+    if (input.rentalLength !== "1 week" && input.rentalLength !== "2+ weeks") throw new Error("Please choose a rental length");
     const vehiclePreference = (input.vehiclePreference ?? "").trim() || null;
     return {
       name, phone, email,
       licenseFrontDataUrl: input.licenseFrontDataUrl,
-      licenseBackDataUrl: input.licenseBackDataUrl,
-      rideshareProofDataUrl: input.rideshareProofDataUrl,
+      licenseBackDataUrl: input.licenseBackDataUrl ?? null,
+      rideshareCheckbox: rideshare,
+      rideshareProofDataUrl: rideshare ? (input.rideshareProofDataUrl ?? null) : null,
       vehiclePreference,
-      rentalCadence: cadence,
+      rentalLength: input.rentalLength,
     };
   })
   .handler(async ({ data }) => {
@@ -84,38 +87,42 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
         email: data.email,
         status: "Waitlisted",
         vehicle_preference: data.vehiclePreference,
-        rental_cadence: data.rentalCadence,
+        rental_length: data.rentalLength,
+        rideshare_checkbox: data.rideshareCheckbox,
+        priority: data.rideshareCheckbox ? "high" : "normal",
         source: "Form",
       })
       .select("id")
       .single();
     if (error || !inserted) throw new Error(`Could not save: ${error?.message ?? "unknown"}`);
     const entryId = inserted.id as string;
-    const [licenseFrontUrl, licenseBackUrl, rideshareUrl] = await Promise.all([
-      uploadImage(entryId, "license-front", data.licenseFrontDataUrl),
-      uploadImage(entryId, "license-back", data.licenseBackDataUrl),
-      uploadImage(entryId, "rideshare-proof", data.rideshareProofDataUrl),
-    ]);
+    const licenseFrontUrl = await uploadImage(entryId, "license-front", data.licenseFrontDataUrl);
+    const patch: Record<string, string> = {
+      license_url: licenseFrontUrl,
+      license_front_url: licenseFrontUrl,
+    };
+    if (data.licenseBackDataUrl) {
+      patch.license_back_url = await uploadImage(entryId, "license-back", data.licenseBackDataUrl);
+    }
+    if (data.rideshareProofDataUrl) {
+      patch.rideshare_proof_url = await uploadImage(entryId, "rideshare-proof", data.rideshareProofDataUrl);
+    }
     const { error: updErr } = await db
       .from("waitlist_entries")
-      .update({
-        license_url: licenseFrontUrl,
-        license_front_url: licenseFrontUrl,
-        license_back_url: licenseBackUrl,
-        rideshare_proof_url: rideshareUrl,
-      })
+      .update(patch)
       .eq("id", entryId);
     if (updErr) throw new Error(`Could not attach uploads: ${updErr.message}`);
     return { ok: true as const, id: entryId };
   });
 
-/** Admin: list waitlist entries, oldest-first. */
+/** Admin: list waitlist entries — high priority (rideshare) first, then oldest-first. */
 export const listWaitlistEntries = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data, error } = await (context.supabase as any)
       .from("waitlist_entries")
       .select("*")
+      .order("priority", { ascending: true })
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
     return { entries: (data ?? []) as any[] };
