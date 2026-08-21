@@ -143,12 +143,18 @@ function WaitlistAdminPage() {
                 )}
                 {filtered.map((e) => {
                   const front = e.license_front_url ?? e.license_url;
-                  const back = e.license_back_url;
-                  const rideshare = e.rideshare_proof_url;
-                  const docsComplete = !!front && !!back && !!rideshare;
+                  const docsComplete = !!front;
+                  const isHigh = e.priority === "high";
                   return (
                   <tr key={e.id} className="cursor-pointer border-b hover:bg-muted/20" onClick={() => setCardTarget(e)}>
                     <td className="px-3 py-2 font-medium">{e.name}</td>
+                    <td className="px-3 py-2">
+                      {isHigh ? (
+                        <Badge className="bg-red-500/15 text-red-700 dark:text-red-400">🔥 Rideshare</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">Normal</Badge>
+                      )}
+                    </td>
                     <td className="px-3 py-2">{e.phone}</td>
                     <td className="px-3 py-2">{e.email}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">{fmtDate(e.created_at)}</td>
