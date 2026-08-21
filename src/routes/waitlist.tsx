@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { submitWaitlistEntry } from "@/lib/waitlist.functions";
 
 export const Route = createFileRoute("/waitlist")({
@@ -33,9 +33,10 @@ function WaitlistPage() {
   const [email, setEmail] = useState("");
   const [licenseFrontUrl, setLicenseFrontUrl] = useState<string | null>(null);
   const [licenseBackUrl, setLicenseBackUrl] = useState<string | null>(null);
+  const [rideshare, setRideshare] = useState(false);
   const [rideshareUrl, setRideshareUrl] = useState<string | null>(null);
   const [vehiclePreference, setVehiclePreference] = useState<string>("No preference");
-  const [rentalCadence, setRentalCadence] = useState<"Daily" | "Weekly" | "">("");
+  const [rentalLength, setRentalLength] = useState<"1 week" | "2+ weeks" | "">("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -44,15 +45,13 @@ function WaitlistPage() {
     phone.trim().length >= 7 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
     !!licenseFrontUrl &&
-    !!licenseBackUrl &&
-    !!rideshareUrl &&
-    (rentalCadence === "Daily" || rentalCadence === "Weekly") &&
+    (rentalLength === "1 week" || rentalLength === "2+ weeks") &&
     !submitting;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit || !licenseFrontUrl || !licenseBackUrl || !rideshareUrl) return;
-    if (rentalCadence !== "Daily" && rentalCadence !== "Weekly") return;
+    if (!canSubmit || !licenseFrontUrl) return;
+    if (rentalLength !== "1 week" && rentalLength !== "2+ weeks") return;
     setSubmitting(true);
     try {
       await submit({
@@ -61,10 +60,11 @@ function WaitlistPage() {
           phone: phone.trim(),
           email: email.trim(),
           licenseFrontDataUrl: licenseFrontUrl,
-          licenseBackDataUrl: licenseBackUrl,
-          rideshareProofDataUrl: rideshareUrl,
+          licenseBackDataUrl: licenseBackUrl ?? undefined,
+          rideshareCheckbox: rideshare,
+          rideshareProofDataUrl: rideshare ? (rideshareUrl ?? undefined) : undefined,
           vehiclePreference,
-          rentalCadence,
+          rentalLength,
         },
       });
       setDone(true);
@@ -82,10 +82,10 @@ function WaitlistPage() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
             <CheckCircle2 className="h-8 w-8" />
           </div>
-          <h1 className="text-xl font-semibold">You're on the list! ✅</h1>
+          <h1 className="text-xl font-semibold">You're on the waitlist! ✅</h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            Your info has been received and you're officially in line for the next
-            available vehicle. Someone from our team will be in contact with you shortly.
+            We'll contact you soon. You're officially in line for the next
+            available vehicle.
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             Your documents are on file. You're all set.
@@ -147,37 +147,55 @@ function WaitlistPage() {
         <div>
           <div className="mb-2 flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">1</span>
-            <h2 className="text-sm font-semibold">Driver's license — front</h2>
+            <h2 className="text-sm font-semibold">Photo ID / Driver's license</h2>
             {licenseFrontUrl && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />}
           </div>
-          <Card className="p-4">
-            <PhotoCapture label="Upload license (front)" onChange={setLicenseFrontUrl} value={licenseFrontUrl} />
+          <Card className="space-y-3 p-4">
+            <PhotoCapture label="Upload ID / license (front)" onChange={setLicenseFrontUrl} value={licenseFrontUrl} />
+            <div className="border-t pt-3">
+              <p className="mb-2 text-xs text-muted-foreground">Back of license (optional)</p>
+              <PhotoCapture label="Upload license (back)" onChange={setLicenseBackUrl} value={licenseBackUrl} />
+            </div>
           </Card>
         </div>
 
         <div>
           <div className="mb-2 flex items-center gap-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">2</span>
-            <h2 className="text-sm font-semibold">Driver's license — back</h2>
-            {licenseBackUrl && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />}
+            <h2 className="text-sm font-semibold">Rideshare driver?</h2>
+            {rideshare && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />}
           </div>
-          <Card className="p-4">
-            <PhotoCapture label="Upload license (back)" onChange={setLicenseBackUrl} value={licenseBackUrl} />
-          </Card>
-        </div>
-
-        <div>
-          <div className="mb-2 flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2db84b] text-xs font-bold text-white">3</span>
-            <h2 className="text-sm font-semibold">Rideshare proof (Uber/Lyft driver app screenshot)</h2>
-            {rideshareUrl && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />}
-          </div>
-          <Card className="p-4">
-            <PhotoCapture label="Upload rideshare screenshot" onChange={setRideshareUrl} value={rideshareUrl} />
+          <Card className="space-y-3 p-4">
+            <label className="flex items-center gap-3 text-sm font-medium">
+              <Checkbox
+                checked={rideshare}
+                onCheckedChange={(v) => setRideshare(v === true)}
+                id="wl-rideshare"
+              />
+              I use Uber/Lyft for work
+            </label>
+            {rideshare && (
+              <div className="border-t pt-3">
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Optional: upload a screenshot of your driver profile for faster approval.
+                </p>
+                <PhotoCapture label="Upload rideshare screenshot (optional)" onChange={setRideshareUrl} value={rideshareUrl} />
+              </div>
+            )}
           </Card>
         </div>
 
         <Card className="space-y-4 p-4">
+          <div className="space-y-1.5">
+            <Label>Rental length</Label>
+            <Select value={rentalLength} onValueChange={(v) => setRentalLength(v as "1 week" | "2+ weeks")}>
+              <SelectTrigger><SelectValue placeholder="How long do you need the car?" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1 week">1 week</SelectItem>
+                <SelectItem value="2+ weeks">2+ weeks</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-1.5">
             <Label>Vehicle preference (optional)</Label>
             <Select value={vehiclePreference} onValueChange={setVehiclePreference}>
@@ -189,17 +207,6 @@ function WaitlistPage() {
                 <SelectItem value="Minivan">Minivan</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Rental cadence</Label>
-            <RadioGroup value={rentalCadence} onValueChange={(v) => setRentalCadence(v as "Daily" | "Weekly")} className="flex gap-6">
-              <label className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="Daily" id="cadence-daily" /> Daily
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="Weekly" id="cadence-weekly" /> Weekly
-              </label>
-            </RadioGroup>
           </div>
         </Card>
 

@@ -43,8 +43,11 @@ type Entry = {
   license_front_url: string | null;
   license_back_url: string | null;
   rideshare_proof_url: string | null;
+  rideshare_checkbox: boolean | null;
+  priority: string | null;
   vehicle_preference: string | null;
   rental_cadence: string | null;
+  rental_length: string | null;
   status: string;
   converted_rental_id: string | null;
   created_at: string;
@@ -118,12 +121,13 @@ function WaitlistAdminPage() {
               <thead>
                 <tr className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <th className="px-3 py-2">Name</th>
+                  <th className="px-3 py-2">Priority</th>
                   <th className="px-3 py-2">Phone</th>
                   <th className="px-3 py-2">Email</th>
                   <th className="px-3 py-2">Joined</th>
                   <th className="px-3 py-2">Source</th>
                   <th className="px-3 py-2">Preference</th>
-                  <th className="px-3 py-2">Cadence</th>
+                  <th className="px-3 py-2">Length</th>
                   <th className="px-3 py-2">Docs</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2 text-right">Action</th>
@@ -132,19 +136,25 @@ function WaitlistAdminPage() {
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                    <td colSpan={11} className="px-3 py-8 text-center text-sm text-muted-foreground">
                       {tab === "converted" ? "No converted waiters yet." : "No waitlist entries yet."}
                     </td>
                   </tr>
                 )}
                 {filtered.map((e) => {
                   const front = e.license_front_url ?? e.license_url;
-                  const back = e.license_back_url;
-                  const rideshare = e.rideshare_proof_url;
-                  const docsComplete = !!front && !!back && !!rideshare;
+                  const docsComplete = !!front;
+                  const isHigh = e.priority === "high";
                   return (
                   <tr key={e.id} className="cursor-pointer border-b hover:bg-muted/20" onClick={() => setCardTarget(e)}>
                     <td className="px-3 py-2 font-medium">{e.name}</td>
+                    <td className="px-3 py-2">
+                      {isHigh ? (
+                        <Badge className="bg-red-500/15 text-red-700 dark:text-red-400">🔥 Rideshare</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">Normal</Badge>
+                      )}
+                    </td>
                     <td className="px-3 py-2">{e.phone}</td>
                     <td className="px-3 py-2">{e.email}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">{fmtDate(e.created_at)}</td>
@@ -154,7 +164,7 @@ function WaitlistAdminPage() {
                       </Badge>
                     </td>
                     <td className="px-3 py-2 text-xs">{e.vehicle_preference ?? "—"}</td>
-                    <td className="px-3 py-2 text-xs">{e.rental_cadence ?? "—"}</td>
+                    <td className="px-3 py-2 text-xs">{e.rental_length ?? e.rental_cadence ?? "—"}</td>
                     <td className="px-3 py-2">
                       {docsComplete ? (
                         <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
@@ -307,7 +317,13 @@ function WaiterCardDialog({
             {entry?.source && <Badge variant="outline" className="ml-2">{entry.source}</Badge>}
             {entry?.status === "Converted" && <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">Converted</Badge>}
           </DialogTitle>
-          <div className="text-xs text-muted-foreground">Added {fmtDate(entry?.created_at ?? null)}</div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Added {fmtDate(entry?.created_at ?? null)}</span>
+            {entry?.priority === "high" && <Badge className="bg-red-500/15 text-red-700 dark:text-red-400">🔥 Rideshare priority</Badge>}
+            {(entry?.rental_length || entry?.rental_cadence) && (
+              <Badge variant="outline">{entry.rental_length ?? entry.rental_cadence}</Badge>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="space-y-4">

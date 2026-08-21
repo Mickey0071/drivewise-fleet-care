@@ -3853,7 +3853,10 @@ export type Database = {
           name: string
           payment_link_sent_at: string | null
           phone: string
+          priority: string
           rental_cadence: string | null
+          rental_length: string | null
+          rideshare_checkbox: boolean
           rideshare_proof_url: string | null
           selfie_url: string | null
           source: string
@@ -3876,7 +3879,10 @@ export type Database = {
           name: string
           payment_link_sent_at?: string | null
           phone: string
+          priority?: string
           rental_cadence?: string | null
+          rental_length?: string | null
+          rideshare_checkbox?: boolean
           rideshare_proof_url?: string | null
           selfie_url?: string | null
           source?: string
@@ -3899,7 +3905,10 @@ export type Database = {
           name?: string
           payment_link_sent_at?: string | null
           phone?: string
+          priority?: string
           rental_cadence?: string | null
+          rental_length?: string | null
+          rideshare_checkbox?: boolean
           rideshare_proof_url?: string | null
           selfie_url?: string | null
           source?: string
