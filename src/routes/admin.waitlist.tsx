@@ -164,7 +164,7 @@ function WaitlistAdminPage() {
                       </Badge>
                     </td>
                     <td className="px-3 py-2 text-xs">{e.vehicle_preference ?? "—"}</td>
-                    <td className="px-3 py-2 text-xs">{e.rental_cadence ?? "—"}</td>
+                    <td className="px-3 py-2 text-xs">{e.rental_length ?? e.rental_cadence ?? "—"}</td>
                     <td className="px-3 py-2">
                       {docsComplete ? (
                         <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
