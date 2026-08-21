@@ -317,7 +317,13 @@ function WaiterCardDialog({
             {entry?.source && <Badge variant="outline" className="ml-2">{entry.source}</Badge>}
             {entry?.status === "Converted" && <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">Converted</Badge>}
           </DialogTitle>
-          <div className="text-xs text-muted-foreground">Added {fmtDate(entry?.created_at ?? null)}</div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Added {fmtDate(entry?.created_at ?? null)}</span>
+            {entry?.priority === "high" && <Badge className="bg-red-500/15 text-red-700 dark:text-red-400">🔥 Rideshare priority</Badge>}
+            {(entry?.rental_length || entry?.rental_cadence) && (
+              <Badge variant="outline">{entry.rental_length ?? entry.rental_cadence}</Badge>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="space-y-4">
