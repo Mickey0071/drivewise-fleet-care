@@ -198,12 +198,14 @@ export const getViolationAgreementPrefill = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ violationId: z.string().min(1).max(64) }).parse(input))
   .handler(async ({ data }): Promise<AgreementPrefill> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: v, error } = await supabaseAdmin
+    const { data: v0, error } = await supabaseAdmin
       .from("violations")
       .select("*")
       .eq("id", data.violationId)
       .maybeSingle();
-    if (error || !v) throw new Error("Violation not found");
+    if (error || !v0) throw new Error("Violation not found");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const v: any = v0;
     const t = await resolveTarget(supabaseAdmin, v);
 
     if (t.rental || t.driver) {
