@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { SignaturePad } from "@/components/app/SignaturePad";
-import { createViolationAgreement } from "@/lib/violation-retro.functions";
+import { createViolationAgreement, getViolationAgreementPrefill } from "@/lib/violation-retro.functions";
 
 interface Props {
   open: boolean;
@@ -45,6 +45,36 @@ export function CreateAgreementDialog({
   const [method, setMethod] = useState<"link" | "admin">("link");
   const [signature, setSignature] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [prefilled, setPrefilled] = useState(false);
+
+  // Auto-populate every field from the violation's matched rental (live or
+  // legacy/migrated) so the admin only reviews and signs — no re-typing.
+  const prefill = useServerFn(getViolationAgreementPrefill);
+  useEffect(() => {
+    if (!open || !violationId) return;
+    let cancelled = false;
+    prefill({ data: { violationId } })
+      .then((p) => {
+        if (cancelled || !p) return;
+        if (p.startDate) setStartDate(p.startDate);
+        if (p.endDate) setEndDate(p.endDate);
+        if (p.fullName) setFullName(p.fullName);
+        if (p.phone) setPhone(p.phone);
+        if (p.email) setEmail(p.email);
+        if (p.address) setAddress(p.address);
+        if (p.licenseNumber) setLicenseNumber(p.licenseNumber);
+        if (p.dlState) setDlState(p.dlState);
+        if (p.dateOfBirth) setDob(p.dateOfBirth);
+        if (p.matched) setPrefilled(true);
+      })
+      .catch(() => {
+        /* prefill is best-effort — form stays manually editable */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, violationId]);
 
   const startValid = Boolean(startDate) && startDate <= vDate;
   const endValid = Boolean(endDate) && endDate >= vDate;
@@ -107,6 +137,12 @@ export function CreateAgreementDialog({
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Agreement</DialogTitle>
+          {prefilled && (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+              Pre-filled from the matched rental — review, edit if needed, then sign.
+            </p>
+          )}
         </DialogHeader>
 
         {/* Date validation banner */}

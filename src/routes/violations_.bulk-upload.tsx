@@ -13,7 +13,7 @@ import {
   Search,
   Download,
 } from "lucide-react";
-import { Plus, Trash2, Send, Ban, FilePlus2, ShieldX } from "lucide-react";
+import { Plus, Trash2, Send, Ban, FilePlus2, ShieldX, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,6 +43,7 @@ import {
   createInternalRentalForItem,
   setEzpassBatchItemRef,
   setEzpassItemDates,
+  rescanUnmatchedEzpassItems,
   type EzpassBatchItem,
 } from "@/lib/ezpass.functions";
 import { downloadViolationPacket } from "@/lib/violation-packet.functions";
@@ -413,6 +414,8 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [approving, setApproving] = useState(false);
   const [approveMode, setApproveMode] = useState<"all" | "matched">("all");
+  const [rescanning, setRescanning] = useState(false);
+  const rescan = useServerFn(rescanUnmatchedEzpassItems);
 
   const items = data?.items ?? [];
   const batch = data?.batch;
@@ -490,6 +493,30 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
       URL.revokeObjectURL(url);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Download failed");
+    }
+  };
+
+  // Re-run the plate+date matcher against ALL rentals (live, manual,
+  // migrated/historic) for items still unmatched — catches rentals entered
+  // after the original upload.
+  const handleRescan = async () => {
+    setRescanning(true);
+    try {
+      const res = await rescan({ data: { batchId } });
+      if (res.newlyMatched > 0) {
+        toast.success(
+          `Re-scan matched ${res.newlyMatched} more — now ${res.matched} auto-matched, ${res.unmatched} unmatched`,
+        );
+      } else {
+        toast.message(
+          `Re-scan complete — no new matches (${res.unmatched} still unmatched)`,
+        );
+      }
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Re-scan failed");
+    } finally {
+      setRescanning(false);
     }
   };
 
@@ -658,6 +685,18 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                 {unmatchedCount} unmatched — save them too with "Approve All", or save only
                 matched now.
               </p>
+            )}
+            {unmatchedCount > 0 && (
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={handleRescan}
+                disabled={rescanning || approving}
+                title="Re-run the plate + date matcher against every rental in the system (manual, migrated, historic, auto-imported)"
+              >
+                <RefreshCw className={`mr-2 h-5 w-5 ${rescanning ? "animate-spin" : ""}`} />
+                {rescanning ? "Re-scanning…" : `Re-scan Unmatched (${unmatchedCount})`}
+              </Button>
             )}
             <Button
               size="lg"
