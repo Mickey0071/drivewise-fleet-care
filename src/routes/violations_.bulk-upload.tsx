@@ -686,6 +686,18 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
                 matched now.
               </p>
             )}
+            {unmatchedCount > 0 && (
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={handleRescan}
+                disabled={rescanning || approving}
+                title="Re-run the plate + date matcher against every rental in the system (manual, migrated, historic, auto-imported)"
+              >
+                <RefreshCw className={`mr-2 h-5 w-5 ${rescanning ? "animate-spin" : ""}`} />
+                {rescanning ? "Re-scanning…" : `Re-scan Unmatched (${unmatchedCount})`}
+              </Button>
+            )}
             <Button
               size="lg"
               variant="outline"
