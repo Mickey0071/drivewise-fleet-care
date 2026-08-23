@@ -137,6 +137,12 @@ export function CreateAgreementDialog({
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Agreement</DialogTitle>
+          {prefilled && (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+              Pre-filled from the matched rental — review, edit if needed, then sign.
+            </p>
+          )}
         </DialogHeader>
 
         {/* Date validation banner */}
