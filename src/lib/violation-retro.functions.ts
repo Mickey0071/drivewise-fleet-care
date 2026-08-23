@@ -175,6 +175,85 @@ export const getViolationReadiness = createServerFn({ method: "POST" })
     return computeReadiness(v, t);
   });
 
+export interface AgreementPrefill {
+  matched: boolean;
+  fullName: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  licenseNumber: string | null;
+  dlState: string | null;
+  dateOfBirth: string | null;
+  startDate: string | null;
+  endDate: string | null;
+}
+
+/**
+ * Everything the Create Agreement form needs, pulled from the violation's
+ * matched rental (live rental + driver, or legacy/migrated reservation), so
+ * the admin only reviews and signs instead of re-typing matched data.
+ */
+export const getViolationAgreementPrefill = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ violationId: z.string().min(1).max(64) }).parse(input))
+  .handler(async ({ data }): Promise<AgreementPrefill> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: v, error } = await supabaseAdmin
+      .from("violations")
+      .select("*")
+      .eq("id", data.violationId)
+      .maybeSingle();
+    if (error || !v) throw new Error("Violation not found");
+    const t = await resolveTarget(supabaseAdmin, v);
+
+    if (t.rental || t.driver) {
+      const d = t.driver ?? {};
+      const r = t.rental ?? {};
+      const composed = [d.street_address, d.city, d.state, d.zip_code]
+        .filter(Boolean)
+        .join(", ");
+      return {
+        matched: Boolean(t.rental),
+        fullName: d.full_name ?? v.driver_name ?? null,
+        phone: d.phone ?? v.driver_phone ?? null,
+        email: d.email ?? null,
+        address: (d.address as string) || composed || null,
+        licenseNumber: d.license_number ?? null,
+        dlState: d.license_state ?? d.dl_state ?? null,
+        dateOfBirth: d.date_of_birth ? String(d.date_of_birth).slice(0, 10) : null,
+        startDate: r.start_date ? String(r.start_date).slice(0, 10) : null,
+        endDate: r.end_date ? String(r.end_date).slice(0, 10) : null,
+      };
+    }
+    if (t.shell) {
+      const lr = t.shell;
+      return {
+        matched: true,
+        fullName: lr.renter_name ?? v.driver_name ?? null,
+        phone: lr.phone ?? v.driver_phone ?? null,
+        email: lr.email ?? null,
+        address: lr.address ?? null,
+        licenseNumber: lr.dl_number ?? null,
+        dlState: lr.dl_state ?? null,
+        dateOfBirth: lr.dob ? String(lr.dob).slice(0, 10) : null,
+        startDate: lr.start_datetime ? String(lr.start_datetime).slice(0, 10) : null,
+        endDate: lr.end_datetime ? String(lr.end_datetime).slice(0, 10) : null,
+      };
+    }
+    return {
+      matched: false,
+      fullName: v.driver_name ?? null,
+      phone: v.driver_phone ?? null,
+      email: null,
+      address: null,
+      licenseNumber: null,
+      dlState: null,
+      dateOfBirth: null,
+      startDate: null,
+      endDate: null,
+    };
+  });
+
 /**
  * Send the customer a retroactive-agreement signing link (existing
  * /sign-agreement-retro/[token] flow) via GHL SMS. For violations matched to a

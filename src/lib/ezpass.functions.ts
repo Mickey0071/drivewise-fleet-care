@@ -406,6 +406,69 @@ export const manualMatchEzpassItem = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/**
+ * Re-run the auto-matcher on every unmatched / multiple-candidate item in a
+ * batch. Catches rentals that were created (manually, migrated, historic,
+ * auto-imported) AFTER the original upload — the matcher treats live and
+ * legacy rentals equivalently: normalized plate + toll date inside the
+ * rental window.
+ */
+export const rescanUnmatchedEzpassItems = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ batchId: z.string().min(1).max(64) }).parse(input))
+  .handler(
+    async ({
+      data,
+    }): Promise<{ rescanned: number; newlyMatched: number; matched: number; unmatched: number }> => {
+      const { data: items, error } = await supabaseAdmin
+        .from("ezpass_batch_items")
+        .select("id, plate, violation_date, match_status")
+        .eq("batch_id", data.batchId)
+        .in("match_status", ["unmatched", "multiple"]);
+      if (error) throw new Error(error.message);
+      const rows = items ?? [];
+      let newlyMatched = 0;
+      for (const item of rows) {
+        const mr = await autoMatchToll({
+          violation_date: (item.violation_date as string | null) ?? null,
+          violation_time: null,
+          plate: (item.plate as string | null) ?? null,
+          location: null,
+          amount: 0,
+          reference_number: null,
+          authority_text: null,
+          authority_key: null,
+        });
+        if (mr.match_status === "matched") newlyMatched++;
+        const { error: uErr } = await supabaseAdmin
+          .from("ezpass_batch_items")
+          .update({
+            match_status: mr.match_status,
+            rental_id: mr.rental_id,
+            driver_id: mr.driver_id,
+            vehicle_id: mr.vehicle_id,
+            driver_name: mr.driver_name,
+            candidates: mr.candidates as unknown,
+          } as never)
+          .eq("id", item.id);
+        if (uErr) throw new Error(uErr.message);
+      }
+      await recomputeBatchCounts(data.batchId);
+      const { data: all } = await supabaseAdmin
+        .from("ezpass_batch_items")
+        .select("match_status")
+        .eq("batch_id", data.batchId)
+        .neq("match_status", "dismissed");
+      const total = (all ?? []).filter((r) => r.match_status === "matched").length;
+      return {
+        rescanned: rows.length,
+        newlyMatched,
+        matched: total,
+        unmatched: (all ?? []).length - total,
+      };
+    },
+  );
+
 /** Save the EZPass reference / violation number on a single batch item. Called
  *  from the bulk-review UI when OCR missed the number and the admin types it
  *  in from the physical notice. Approve is blocked until every item has one. */
