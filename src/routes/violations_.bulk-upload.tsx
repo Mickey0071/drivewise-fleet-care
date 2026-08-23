@@ -496,6 +496,30 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
     }
   };
 
+  // Re-run the plate+date matcher against ALL rentals (live, manual,
+  // migrated/historic) for items still unmatched — catches rentals entered
+  // after the original upload.
+  const handleRescan = async () => {
+    setRescanning(true);
+    try {
+      const res = await rescan({ data: { batchId } });
+      if (res.newlyMatched > 0) {
+        toast.success(
+          `Re-scan matched ${res.newlyMatched} more — now ${res.matched} auto-matched, ${res.unmatched} unmatched`,
+        );
+      } else {
+        toast.message(
+          `Re-scan complete — no new matches (${res.unmatched} still unmatched)`,
+        );
+      }
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Re-scan failed");
+    } finally {
+      setRescanning(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
