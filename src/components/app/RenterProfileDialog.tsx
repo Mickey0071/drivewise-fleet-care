@@ -4,6 +4,7 @@ import {
   Ban,
   CreditCard,
   DollarSign,
+  FileDown,
   FileSignature,
   IdCard,
   Loader2,
@@ -51,6 +52,8 @@ import {
   type RenterMessage,
 } from "@/lib/renter-messages.functions";
 import { toast } from "sonner";
+import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
+import { renderRenterProfilePdf } from "@/components/pdf/RenterProfilePDF";
 
 function initialsOf(name?: string) {
   if (!name) return "?";
@@ -60,6 +63,22 @@ function initialsOf(name?: string) {
     .slice(0, 2)
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("") || "?";
+}
+
+/** MM/DD/YYYY */
+function fmtDob(iso: string): string {
+  const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
+function PersonalDetail({ label, value, full }: { label: string; value: string; full?: boolean }) {
+  return (
+    <div className={full ? "sm:col-span-2" : undefined}>
+      <div className="mb-1.5 text-xs text-muted-foreground">{label}</div>
+      <div className="text-[13px] text-foreground">{value || "—"}</div>
+    </div>
+  );
 }
 
 function Stat({
@@ -152,6 +171,28 @@ export function RenterProfileDialog({
     [myRentals],
   );
 
+  // Latest rental (myRentals is sorted by startDate desc) — renter contact
+  // details captured at booking live on the driver record, refreshed by the
+  // most recent rental.
+  const latestRental = myRentals[0];
+  const rentalCost = useCallback(
+    (rentalId: string) =>
+      payments
+        .filter((p) => p.rentalId === rentalId && p.status === "paid")
+        .reduce((s, p) => s + p.amount, 0),
+    [],
+  );
+  const rateLabelOf = (r: (typeof myRentals)[number]) => {
+    const amt = r.rateAmount ?? r.rate ?? r.weeklyRate;
+    if (!amt) return "—";
+    const per =
+      r.billingCadence === "daily" || r.billingPeriod === "daily"
+        ? "/day"
+        : r.billingPeriod === "monthly"
+          ? "/mo"
+          : "/wk";
+    return `${fmtMoney(amt)}${per}`;
+  };
   const address =
     d?.address ||
     (d
@@ -163,6 +204,20 @@ export function RenterProfileDialog({
           zipCode: d.zipCode,
         })
       : "");
+  const personal = useMemo(
+    () => ({
+      phone: d?.phone ?? "",
+      email: d?.email ?? "",
+      license: d ? [d.dlState, d.licenseNumber].filter(Boolean).join(" ") : "",
+      dob: d?.dateOfBirth ? fmtDob(d.dateOfBirth) : "",
+      address,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [d, address],
+  );
+  const hasPersonal = Boolean(
+    personal.phone || personal.email || personal.license || personal.dob || personal.address,
+  );
 
   // License photo: driver record first, then the most recent rental that captured one.
   const licenseUrl =
@@ -251,34 +306,49 @@ export function RenterProfileDialog({
     if (!d) return;
     const esc = (s: string) =>
       s.replace(/[&<>]/g, (c) => (c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;"));
+    const printed = new Date().toLocaleString("en-US", {
+      year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
+    });
     const rows = myRentals
       .map((r) => {
         const v = vehicleById(r.vehicleId);
-        return `<tr><td>${esc(r.id)}</td><td>${esc(v ? `${v.year} ${v.make} ${v.model} · ${v.plate}` : "—")}</td><td>${esc(fmtDate(r.startDate))} → ${esc(r.endDate ? fmtDate(r.endDate) : "ongoing")}</td><td>${esc(r.reservationStatus ?? "")}</td></tr>`;
+        return `<tr><td>${esc(v ? `${v.year} ${v.make} ${v.model}` : "—")}</td><td>${esc(v?.plate ?? "—")}</td><td>${esc(fmtDate(r.startDate))}</td><td>${esc(r.endDate ? fmtDate(r.endDate) : "ongoing")}</td><td>${esc(r.reservationStatus ?? "—")}</td><td>${esc(fmtMoney(rentalCost(r.id)))}</td></tr>`;
       })
       .join("");
-    const viols = myViolations
-      .map(
-        (v) =>
-          `<tr><td>${esc(v.type.toUpperCase())}</td><td>${esc(fmtDate(v.dateIssued))}</td><td>${esc(fmtMoney(v.totalAmount ?? v.amount))}</td><td>${esc(v.status)}</td></tr>`,
-      )
-      .join("");
-    const notes = [
-      ...data.issues.map((i) => `<li><strong>Issue</strong> · ${new Date(i.at).toLocaleString()}<br/>${esc(i.text)}</li>`),
-      ...data.notes.map((n) => `<li><strong>Note</strong> · ${new Date(n.at).toLocaleString()}<br/>${esc(n.text)}</li>`),
-    ].join("");
+    const detail = (label: string, value: string) =>
+      `<div class="det"><div class="lbl">${label}</div><div>${esc(value || "—")}</div></div>`;
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(d.fullName)} — Renter Profile</title>
-<style>body{font-family:system-ui,sans-serif;margin:32px;color:#111}h1{margin:0 0 4px;font-size:22px}h2{font-size:14px;text-transform:uppercase;letter-spacing:.05em;margin:24px 0 8px;border-bottom:1px solid #ddd;padding-bottom:4px}
-table{width:100%;border-collapse:collapse;font-size:12px}td,th{border-bottom:1px solid #eee;padding:6px 4px;text-align:left}
-img{max-width:340px;border:1px solid #ddd;border-radius:6px}.meta{font-size:12px;color:#555}ul{font-size:12px;padding-left:18px}li{margin-bottom:6px}</style></head>
-<body><h1>${esc(d.fullName)}</h1>
-<div class="meta">${esc(d.phone ?? "")} ${d.email ? "· " + esc(d.email) : ""} ${address ? "· " + esc(address) : ""}<br/>${esc(d.id)} · customer since ${esc(fmtDate(d.dateAdded))} · License ${esc(d.licenseNumber || "—")}${d.dlState ? " (" + esc(d.dlState) + ")" : ""}</div>
-<h2>ID on file</h2>${licenseUrl ? `<img src="${licenseUrl}" alt="Driver license"/>` : `<p class="meta">No ID photo on file.</p>`}
-<h2>Rentals (${myRentals.length}) · Total spent ${esc(fmtMoney(totalSpent))} · Outstanding ${esc(fmtMoney(outstanding))}</h2>
-${rows ? `<table><tr><th>ID</th><th>Vehicle</th><th>Period</th><th>Status</th></tr>${rows}</table>` : `<p class="meta">No rentals on record.</p>`}
-<h2>Violations (${myViolations.length})</h2>
-${viols ? `<table><tr><th>Type</th><th>Date</th><th>Amount</th><th>Status</th></tr>${viols}</table>` : `<p class="meta">None.</p>`}
-<h2>Notes &amp; issues</h2>${notes ? `<ul>${notes}</ul>` : `<p class="meta">None.</p>`}
+<style>
+*{box-sizing:border-box}body{font-family:Helvetica,Arial,sans-serif;margin:40px;color:#111;background:#fff;font-size:12px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #00a854;padding-bottom:12px}
+.head img{height:52px}.co{font-size:11px;color:#444;text-align:right;line-height:1.5}
+h1{margin:18px 0 2px;font-size:20px}h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;margin:20px 0 8px;border-bottom:1px solid #ddd;padding-bottom:4px}
+.meta{font-size:11px;color:#555}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px}
+.det .lbl{font-size:10px;color:#666;margin-bottom:2px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px}
+.stat{border:1px solid #ddd;padding:8px;text-align:center}
+.stat .v{font-size:15px;font-weight:700}.stat .l{font-size:9px;text-transform:uppercase;color:#666}
+table{width:100%;border-collapse:collapse;font-size:11px}td,th{border-bottom:1px solid #e5e5e5;padding:5px 4px;text-align:left}
+th{font-size:9px;text-transform:uppercase;color:#666}
+</style></head>
+<body>
+<div class="head"><img src="${CAMAUTO_LOGO_BASE64}" alt="Camauto Rentals"/><div class="co"><strong>Camauto Rentals</strong><br/>416 Sicklerville Road, Sicklerville, NJ 08081<br/>(866) 625-5550 · violations@camautorentals.com</div></div>
+<h1>${esc(d.fullName)}</h1>
+<div class="meta">${esc(d.id)} · Status: ${esc(d.status)} · Printed ${esc(printed)}</div>
+<h2>Personal Details</h2>
+${hasPersonal ? `<div class="grid">${detail("Phone", personal.phone)}${detail("Email", personal.email)}${detail("License", personal.license)}${detail("Date of Birth", personal.dob)}${detail("Address", personal.address)}</div>` : `<p class="meta">No rental data available</p>`}
+<h2>Summary</h2>
+<div class="stats">
+<div class="stat"><div class="v">${myRentals.length}</div><div class="l">Total Rentals</div></div>
+<div class="stat"><div class="v">${esc(fmtMoney(totalSpent))}</div><div class="l">Total Spent</div></div>
+<div class="stat"><div class="v">${myViolations.length}</div><div class="l">Violations</div></div>
+<div class="stat"><div class="v">${esc(fmtMoney(outstanding))}</div><div class="l">Outstanding</div></div>
+</div>
+<h2>Rental History (${myRentals.length})</h2>
+${rows ? `<table><tr><th>Vehicle</th><th>Plate</th><th>Start Date</th><th>End Date</th><th>Status</th><th>Cost</th></tr>${rows}</table>` : `<p class="meta">No rental history</p>`}
+<h2>Violations</h2>
+<p class="meta">${myViolations.length > 0 ? `${myViolations.length} violation(s) on record: ${esc(myViolations.map((v) => v.id).join(", "))}` : "No violations"}</p>
 </body></html>`;
     const w = window.open("", "_blank", "width=900,height=1000");
     if (!w) {
@@ -289,6 +359,62 @@ ${viols ? `<table><tr><th>Type</th><th>Date</th><th>Amount</th><th>Status</th></
     w.document.close();
     w.focus();
     setTimeout(() => w.print(), 600);
+  }
+
+  const [pdfBusy, setPdfBusy] = useState(false);
+  async function downloadPdf() {
+    if (!d) return;
+    setPdfBusy(true);
+    try {
+      const bytes = await renderRenterProfilePdf({
+        renterId: d.id,
+        fullName: d.fullName,
+        status: d.status,
+        printedAt: new Date(),
+        personal,
+        stats: {
+          totalRentals: myRentals.length,
+          totalSpent,
+          violations: myViolations.length,
+          outstanding,
+        },
+        violations: myViolations.map((v) => ({
+          id: v.id,
+          type: v.type,
+          amount: v.totalAmount ?? v.amount,
+          dateIssued: v.dateIssued,
+          status: v.status,
+        })),
+        rentals: myRentals.map((r) => {
+          const v = vehicleById(r.vehicleId);
+          return {
+            id: r.id,
+            vehicle: v ? `${v.year} ${v.make} ${v.model}` : "Vehicle removed",
+            plate: v?.plate ?? "—",
+            startDate: r.startDate,
+            endDate: r.endDate ?? "",
+            status: r.reservationStatus ?? "—",
+            rateLabel: rateLabelOf(r),
+            cost: rentalCost(r.id),
+          };
+        }),
+      });
+      const date = new Date();
+      const stamp = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
+      const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "application/pdf" }));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `profile_${d.id}_${stamp}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Profile PDF downloaded");
+    } catch {
+      toast.error("Failed to generate PDF. Try again.");
+    } finally {
+      setPdfBusy(false);
+    }
   }
 
   function go(to: string, search?: Record<string, unknown>) {
@@ -360,13 +486,25 @@ ${viols ? `<table><tr><th>Type</th><th>Date</th><th>Amount</th><th>Status</th></
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4 pt-3">
+            {/* Print / PDF actions */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Button variant="outline" className="w-full" onClick={printProfile}>
+                <Printer className="mr-1.5 h-4 w-4" /> Print Profile
+              </Button>
+              <Button className="w-full" onClick={downloadPdf} disabled={pdfBusy}>
+                {pdfBusy ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <FileDown className="mr-1.5 h-4 w-4" />
+                )}
+                Download PDF
+              </Button>
+            </div>
+
             {/* Quick actions */}
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" onClick={() => setTab("messages")}>
                 <MessageSquare className="mr-1.5 h-3.5 w-3.5" /> Messages
-              </Button>
-              <Button size="sm" variant="outline" onClick={printProfile}>
-                <Printer className="mr-1.5 h-3.5 w-3.5" /> Print Profile
               </Button>
               <Button size="sm" variant="outline" onClick={() => go("/payments", { driver: d.id })}>
                 <DollarSign className="mr-1.5 h-3.5 w-3.5" /> Payment link
@@ -443,6 +581,27 @@ ${viols ? `<table><tr><th>Type</th><th>Date</th><th>Amount</th><th>Status</th></
                 tone={outstanding > 0 ? "danger" : "default"}
               />
             </div>
+
+            {/* Personal details (from the most recent rental record) */}
+            <section className="rounded-xl border border-border/60 bg-card p-5">
+              <h3 className="text-[13px] font-medium text-foreground">Personal Details</h3>
+              {latestRental && (
+                <p className="mb-3 mt-0.5 text-[11px] text-muted-foreground">
+                  From most recent rental · started {fmtDate(latestRental.startDate)}
+                </p>
+              )}
+              {hasPersonal ? (
+                <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 ${latestRental ? "" : "mt-3"}`}>
+                  <PersonalDetail label="Phone" value={personal.phone} />
+                  <PersonalDetail label="Email" value={personal.email} />
+                  <PersonalDetail label="License" value={personal.license} />
+                  <PersonalDetail label="Date of Birth" value={personal.dob} />
+                  <PersonalDetail label="Address" value={personal.address} full />
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-muted-foreground">No rental data available</p>
+              )}
+            </section>
 
             {/* Rental history */}
             <section>
