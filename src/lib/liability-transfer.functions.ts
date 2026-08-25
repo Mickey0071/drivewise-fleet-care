@@ -138,7 +138,7 @@ export const generateMailPacket = createServerFn({ method: "POST" })
       .replace(/[^a-z0-9]+/gi, "")
       .toUpperCase();
     return {
-      filename: `MAIL_PACKET_${data.violationId}_${plate}.pdf`,
+      filename: `dispute_packet_${data.violationId}.pdf`,
       base64: btoa(bin),
       missing,
     };

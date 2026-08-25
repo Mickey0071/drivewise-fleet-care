@@ -36,16 +36,6 @@ export const OWNER = {
   signer: "Rentalprise LLC Admin",
 };
 
-function fmtMoney(n: number | null | undefined): string {
-  return `$${(Math.round(Number(n ?? 0) * 100) / 100).toFixed(2)}`;
-}
-function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
-  if (Number.isNaN(d.getTime())) return String(iso);
-  return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
-}
-
 export interface ViolationCtx {
   v: Record<string, unknown>;
   vehicle: Record<string, unknown> | null;
@@ -76,7 +66,7 @@ export async function loadViolationCtx(violationId: string): Promise<ViolationCt
       ? supabaseAdmin
           .from("drivers")
           .select(
-            "id, full_name, first_name, last_name, phone, email, license_number, dl_state, license_expiry, date_of_birth, address, street_address, city, state, zip_code",
+            "id, full_name, first_name, last_name, phone, email, license_number, dl_state, license_expiry, date_of_birth, address, street_address, city, state, zip_code, license_image_url",
           )
           .eq("id", v.driver_id)
           .maybeSingle()
@@ -149,115 +139,286 @@ export async function loadViolationCtx(violationId: string): Promise<ViolationCt
   };
 }
 
+/** Exact error surfaced when a PPA packet is attempted without a license photo. */
+export const PPA_LICENSE_PHOTO_ERROR =
+  "Driver's license photo required for Philadelphia violations";
+
+/** Philadelphia PPA violations get a license-photo box on the cover letter. */
+function isPpaCtx(ctx: ViolationCtx): boolean {
+  const key = String(ctx.v.authority_key ?? "").toLowerCase();
+  if (key === "ppa" || key === "philadelphia_parking") return true;
+  const name = (ctx.authority?.name ?? "").toLowerCase();
+  return /philadelphia|\bppa\b/.test(name);
+}
+
+async function fetchImageBytes(
+  url: string,
+): Promise<{ bytes: Uint8Array; mime: string } | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    let mime = (res.headers.get("content-type") ?? "").toLowerCase().split(";")[0] ?? "";
+    if (!mime.startsWith("image/")) {
+      if (bytes[0] === 0x89 && bytes[1] === 0x50) mime = "image/png";
+      else if (bytes[0] === 0xff && bytes[1] === 0xd8) mime = "image/jpeg";
+      else return null;
+    }
+    return { bytes, mime };
+  } catch {
+    return null;
+  }
+}
+
+function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return `data:${mime};base64,${btoa(bin)}`;
+}
+
+/**
+ * Dispute packet cover letter (page 1 of the packet; the signed rental
+ * agreement follows as page 2). Camauto letterhead design with a highlighted
+ * violation-number box, renter information box, and — for Philadelphia PPA
+ * violations only — a renter driver's-license photo box top-right. PPA
+ * packets cannot be generated without the license photo on file.
+ */
 export async function buildCoverLetterPdf(ctx: ViolationCtx): Promise<Uint8Array> {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "letter", compress: true });
   const pageW = doc.internal.pageSize.getWidth();
-  const left = 54;
-  const right = pageW - 54;
-  let y = 64;
+  const pageH = doc.internal.pageSize.getHeight();
+  const left = 48;
+  const right = pageW - 48;
+  const width = right - left;
 
-  const { v, vehicle, driver, rental, authority } = ctx;
+  const GREEN: [number, number, number] = [0, 168, 84]; // #00a854 — logo only
+  const DARK: [number, number, number] = [51, 51, 51];
+  const BODY: [number, number, number] = [26, 26, 26];
+  const MUTED: [number, number, number] = [102, 102, 102];
+  const FAINT: [number, number, number] = [150, 150, 150];
+  const LINE: [number, number, number] = [229, 229, 229];
+  const BOX_BG: [number, number, number] = [249, 249, 249];
+  const YELLOW_BG: [number, number, number] = [255, 244, 230]; // #fff4e6
+  const ORANGE: [number, number, number] = [255, 165, 0]; // #ffa500
 
-  // ── Simplified single-page NOTICE OF LIABILITY TRANSFER ────────────────
-  // Never throws for missing data; unknown fields print as "[SEE ATTACHED
-  // NOTICE]" or a blank underline so the admin can hand-fill and mail.
-  const ref = (v.reference_number as string | null)?.trim() || "";
-  const plate =
-    String((v.license_plate as string | null) ?? vehicle?.plate ?? "").toUpperCase() || "—";
-  const amountLabel = fmtMoney(Number(v.total_amount ?? v.amount ?? 0));
-  const addr =
-    (driver?.address as string) ||
-    [driver?.street_address, driver?.city, driver?.state, driver?.zip_code]
+  const { v, driver } = ctx;
+  const ppa = isPpaCtx(ctx);
+  const renterName = (driver?.full_name as string | null) ?? "—";
+  const licenseNumber = ((driver?.license_number as string | null) ?? "").trim();
+  const dlState = ((driver?.dl_state as string | null) ?? "").trim().toUpperCase();
+  const licenseLine = [dlState, licenseNumber].filter(Boolean).join(" ");
+  const violationNumber =
+    (v.reference_number as string | null)?.trim() || String(v.id ?? "—");
+
+  // PPA gate — the license photo must exist before the packet can be built.
+  let licenseImg: { dataUrl: string; fmt: "PNG" | "JPEG"; ratio: number } | null = null;
+  if (ppa) {
+    const url =
+      (driver?.license_image_url as string | null) ??
+      (ctx.rental?.license_image_url as string | null) ??
+      null;
+    const img = url ? await fetchImageBytes(url) : null;
+    if (!img) throw new Error(PPA_LICENSE_PHOTO_ERROR);
+    const fmt = img.mime.includes("png") ? ("PNG" as const) : ("JPEG" as const);
+    let ratio = 1.58; // standard license aspect fallback
+    try {
+      const { PDFDocument } = await import("pdf-lib");
+      const probe = await PDFDocument.create();
+      const emb =
+        fmt === "PNG" ? await probe.embedPng(img.bytes) : await probe.embedJpg(img.bytes);
+      ratio = emb.width / emb.height;
+    } catch {
+      /* keep fallback ratio */
+    }
+    licenseImg = { dataUrl: bytesToDataUrl(img.bytes, img.mime), fmt, ratio };
+  }
+
+  // ---- Header: wordmark + (PPA only) license photo box ----
+  let y = 52;
+  doc.setFont("helvetica", "bold").setFontSize(34).setTextColor(...GREEN);
+  doc.text("camauto", left, y + 26);
+  doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(...FAINT);
+  doc.text("R E N T A L S", left + 3, y + 40); // letter-spacing simulation
+
+  let headerBottom = y + 48;
+  if (ppa) {
+    const boxW = 85;
+    const boxH = 105;
+    const boxX = right - boxW;
+    const boxY = y - 8;
+    doc.setDrawColor(170, 170, 170).setLineWidth(1);
+    doc.setLineDashPattern([3, 3], 0);
+    doc.rect(boxX, boxY, boxW, boxH, "S");
+    doc.setLineDashPattern([], 0);
+    let placed = false;
+    if (licenseImg) {
+      const pad = 5;
+      const maxW = boxW - pad * 2;
+      const maxH = boxH - pad * 2;
+      let w = maxW;
+      let h = w / licenseImg.ratio;
+      if (h > maxH) {
+        h = maxH;
+        w = h * licenseImg.ratio;
+      }
+      try {
+        doc.addImage(
+          licenseImg.dataUrl,
+          licenseImg.fmt,
+          boxX + (boxW - w) / 2,
+          boxY + (boxH - h) / 2,
+          w,
+          h,
+          undefined,
+          "FAST",
+        );
+        placed = true;
+      } catch {
+        placed = false;
+      }
+    }
+    if (!placed) {
+      doc.setFont("helvetica", "normal").setFontSize(7).setTextColor(...FAINT);
+      doc.text("Renter's", boxX + boxW / 2, boxY + boxH / 2 - 5, { align: "center" });
+      doc.text("Driver License", boxX + boxW / 2, boxY + boxH / 2 + 5, { align: "center" });
+    }
+    headerBottom = Math.max(headerBottom, boxY + boxH);
+  }
+
+  // ---- Divider ----
+  y = headerBottom + 14;
+  doc.setDrawColor(...LINE).setLineWidth(2).line(left, y, right, y);
+  y += 24;
+
+  // ---- Company info ----
+  doc.setFont("helvetica", "bold").setFontSize(11).setTextColor(...DARK);
+  doc.text("Camauto Rentals", left, y);
+  y += 15;
+  doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(...MUTED);
+  for (const line of [
+    "Rentalprise LLC",
+    "416 Sicklerville Road",
+    "Sicklerville, NJ 08081",
+    "Phone: (866) 625-5550",
+    "Email: violations@camautorentals.com",
+  ]) {
+    doc.text(line, left, y);
+    y += 13;
+  }
+  y += 12;
+
+  // ---- Violation number (yellow highlight, orange left border) ----
+  const vnH = 52;
+  doc.setFillColor(...YELLOW_BG);
+  doc.rect(left, y, width, vnH, "F");
+  doc.setFillColor(...ORANGE);
+  doc.rect(left, y, 4, vnH, "F");
+  doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(...MUTED);
+  doc.text("VIOLATION NUMBER", left + 16, y + 17);
+  doc.setFont("courier", "bold").setFontSize(15).setTextColor(...DARK);
+  doc.text(violationNumber, left + 16, y + 39);
+  y += vnH + 14;
+
+  // ---- Renter information box ----
+  let street = ((driver?.address as string | null) ?? "").trim();
+  let cityStateZip = [
+    ((driver?.city as string | null) ?? "").trim(),
+    [driver?.state, driver?.zip_code]
+      .map((x) => String(x ?? "").trim())
       .filter(Boolean)
-      .join(", ") ||
-    "________________________________________";
+      .join(" "),
+  ]
+    .filter(Boolean)
+    .join(", ");
+  if (street.includes(",")) {
+    const parts = street.split(",").map((p) => p.trim()).filter(Boolean);
+    street = parts[0] ?? street;
+    if (!cityStateZip) cityStateZip = parts.slice(1).join(", ");
+  }
+  const renterRows: Array<{ text: string; bold?: boolean; small?: boolean }> = [
+    { text: renterName, bold: true },
+    ...(street ? [{ text: street }] : []),
+    ...(cityStateZip ? [{ text: cityStateZip }] : []),
+    ...(licenseLine ? [{ text: `License: ${licenseLine}`, small: true }] : []),
+  ];
+  const riH = 18 + renterRows.length * 14 + 8;
+  doc.setFillColor(...BOX_BG).setDrawColor(...LINE).setLineWidth(1);
+  doc.rect(left, y, width, riH, "FD");
+  let iy = y + 16;
+  doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(...MUTED);
+  doc.text("RENTER INFORMATION", left + 12, iy);
+  iy += 16;
+  for (const row of renterRows) {
+    doc
+      .setFont("helvetica", row.bold ? "bold" : "normal")
+      .setFontSize(row.bold ? 11 : row.small ? 8.5 : 10)
+      .setTextColor(...(row.small ? MUTED : BODY));
+    const wrapped = doc.splitTextToSize(row.text, width - 24) as string[];
+    doc.text(wrapped[0]!, left + 12, iy);
+    iy += 14;
+  }
+  y += riH + 14;
 
-  const write = (
-    text: string,
-    opts?: { bold?: boolean; size?: number; color?: [number, number, number]; gap?: number },
-  ) => {
-    doc.setFont("helvetica", opts?.bold ? "bold" : "normal");
-    doc.setFontSize(opts?.size ?? 10.5);
-    const c = opts?.color ?? [20, 20, 20];
-    doc.setTextColor(c[0], c[1], c[2]);
-    const wrapped = doc.splitTextToSize(text, right - left);
-    doc.text(wrapped, left, y);
-    y += (opts?.gap ?? 14) * (Array.isArray(wrapped) ? wrapped.length : 1);
-  };
-  const blank = (h = 8) => {
-    y += h;
-  };
+  // ---- This packet includes ----
+  const includes = [
+    "This cover letter",
+    "Signed rental agreement",
+    ...(ppa ? ["Driver's license photo"] : []),
+  ];
+  const piH = 18 + includes.length * 14 + 8;
+  doc.setFillColor(...BOX_BG).setDrawColor(...LINE).setLineWidth(1);
+  doc.rect(left, y, width, piH, "FD");
+  let py = y + 16;
+  doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(...MUTED);
+  doc.text("THIS PACKET INCLUDES", left + 12, py);
+  py += 16;
+  doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(...BODY);
+  for (const item of includes) {
+    doc.text(`•  ${item}`, left + 14, py);
+    py += 14;
+  }
+  y += piH + 20;
 
-  // Letterhead
-  write("CAMAUTO RENTALS", { bold: true, size: 16, color: [16, 122, 60], gap: 18 });
-  write(OWNER.legal, { size: 9, color: [90, 90, 90], gap: 11 });
-  write(OWNER.address, { size: 9, color: [90, 90, 90], gap: 11 });
-  write(`${OWNER.phone} | ${OWNER.email}`, { size: 9, color: [90, 90, 90], gap: 11 });
-  blank(10);
-
-  write(`Date: ${fmtDate(new Date().toISOString())}`);
-  blank(10);
-
-  // Recipient
-  const authName = authority?.name ?? "NJ E-ZPass Violation Processing Center";
-  const authLines = (authority?.address_lines ?? "P.O. Box 4971\nTrenton, NJ 08650")
-    .split("\n")
-    .filter(Boolean);
-  write(`To: ${authName}`, { bold: true });
-  for (const al of authLines) write(al);
-  blank(8);
-
-  // Re: block
-  write("Re: NOTICE OF LIABILITY TRANSFER", { bold: true });
-  write(`EZPass Violation #: ${ref ? ref.toUpperCase() : "[SEE ATTACHED NOTICE]"}`);
-  write(`Vehicle Plate: ${plate}`);
-  write(`Violation Date: ${fmtDate(v.date_issued as string)}`);
-  write(`Amount: ${amountLabel}`);
-  blank(10);
-
-  const statute = statuteFor((v.authority_key as string | null) ?? null);
-  write(
-    `Pursuant to ${statute}, ${OWNER.legal} hereby identifies the operator of the above vehicle at the time of this violation and requests transfer of liability.`,
+  // ---- Body ----
+  doc.setFont("helvetica", "normal").setFontSize(10.5).setTextColor(...BODY);
+  doc.text(
+    ppa
+      ? "Dear Philadelphia Parking Authority,"
+      : `Dear ${ctx.authority?.name ?? "Issuing Authority"},`,
+    left,
+    y,
   );
-  blank(10);
+  y += 18;
+  const bodyText =
+    "We are submitting this dispute package for the violation referenced above. " +
+    "The documentation establishes the renter's identity and our rental company's " +
+    "liability framework under the vehicle rental agreement included herein.";
+  const bodyLines = doc.splitTextToSize(bodyText, width) as string[];
+  for (const line of bodyLines) {
+    doc.text(line, left, y);
+    y += 14;
+  }
+  y += 14;
+  doc.text("Respectfully submitted,", left, y);
+  y += 30;
 
-  // Vehicle
-  write("VEHICLE:", { bold: true });
-  const vehLine = [
-    [vehicle?.year, vehicle?.make, vehicle?.model].filter(Boolean).join(" ") || "—",
-    `Plate: ${plate}`,
-    `VIN: ${(vehicle?.vin as string) || "—"}`,
-  ].join(" · ");
-  write(vehLine);
-  blank(10);
+  // ---- Signature space ----
+  doc.setDrawColor(...LINE).setLineWidth(1).line(left, y, right, y);
+  y += 40; // blank space for physical signature
+  doc.setFont("helvetica", "bold").setFontSize(10).setTextColor(...DARK);
+  doc.text("Camauto Rentals Management", left, y);
+  y += 14;
+  doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(...MUTED);
+  doc.text("Rentalprise LLC d/b/a Camauto Rentals", left, y);
 
-  // Renter
-  write("RENTER (operator at time of violation):", { bold: true });
-  write(`Name: ${(driver?.full_name as string) || "________________________________________"}`);
-  write(`Address: ${addr}`);
-  write(`Phone: ${(driver?.phone as string) || "____________________"}`);
-  write(`License #: ${(driver?.license_number as string) || "____________________"}`);
-  write(
-    `Rental Period: ${
-      rental?.start_date ? fmtDate(rental?.start_date as string) : "____________"
-    } to ${rental?.end_date ? fmtDate(rental?.end_date as string) : "ongoing"}`,
-  );
-  write(`Rental Agreement #: ${(rental?.id as string) || "____________"}`);
-  blank(12);
-
-  write(
-    "The renter executed a signed rental agreement accepting full responsibility for all tolls, fines, and violations incurred during the rental period.",
-  );
-  blank(10);
-
-  write("Attached: Signed rental agreement", { bold: true });
-  blank(24);
-
-  write("Respectfully,");
-  blank(28);
-  write(OWNER.signer, { bold: true });
-  write("Camauto Rentals");
+  // ---- Footer: single line, no page numbers ----
+  doc.setDrawColor(...LINE).setLineWidth(1).line(left, pageH - 44, right, pageH - 44);
+  doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(...FAINT);
+  doc.text("Next page: Signed rental agreement", pageW / 2, pageH - 32, { align: "center" });
 
   return new Uint8Array(doc.output("arraybuffer"));
 }
