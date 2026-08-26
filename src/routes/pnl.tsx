@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { payments, expenses, payrollRuns, staffById, vehicles, vehicleById, driverById, rentals, violations, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion } from "@/lib/mock/store";
+import { useStoreVersion, extensionIncomeAttribution } from "@/lib/mock/store";
 import { maintenance } from "@/lib/mock/data";
 import { isIssueRecord, isServiceLogRecord } from "@/lib/maintenance-utils";
 import { isRepairCost, repairCost, countableExpenses } from "@/lib/money-rules";
@@ -51,9 +51,11 @@ function PnLPage() {
     };
     const matchesChannel = (m?: string) => channel === "all" || channelOf(m) === channel;
 
-    // Extension payment ids (so we don't double-count with rental income)
-    const extensionPaymentIds = new Set<string>();
-    rentals.forEach(r => r.extensions?.forEach(e => { if (e.paymentId) extensionPaymentIds.add(e.paymentId); }));
+    // Extension income attribution — single source of truth (store). Paid
+    // extension payments book to "extensions", everything else to "rental";
+    // PENDING extensions are tracked but never added to income totals.
+    const att = extensionIncomeAttribution();
+    const extensionPaymentIds = att.extensionPaymentIds;
 
     const filteredPaid = paid.filter(p => matchesChannel(p.method) && inRange(p.paidDate ?? p.dueDate));
 
@@ -61,8 +63,8 @@ function PnLPage() {
     const cashTotal = paid.filter(p => channelOf(p.method) === "cash" && inRange(p.paidDate ?? p.dueDate)).reduce((s, p) => s + p.amount, 0);
 
     // Income monthly buckets
-    const incomeByMonth: Record<string, { rental: number; extensions: number; violations: number }> = {};
-    const ensureI = (k: string) => (incomeByMonth[k] ??= { rental: 0, extensions: 0, violations: 0 });
+    const incomeByMonth: Record<string, { rental: number; extensions: number; violations: number; pending: number }> = {};
+    const ensureI = (k: string) => (incomeByMonth[k] ??= { rental: 0, extensions: 0, violations: 0, pending: 0 });
 
     filteredPaid.forEach(p => {
       const k = ymKey(p.paidDate ?? p.dueDate);
@@ -70,12 +72,15 @@ function PnLPage() {
       if (extensionPaymentIds.has(p.id)) bucket.extensions += p.amount;
       else bucket.rental += p.amount;
     });
-    // Extensions without an explicit payment record
-    rentals.forEach(r => r.extensions?.forEach(e => {
-      if (e.paymentId) return;
-      if (!inRange(e.extendedAt?.slice(0, 10))) return;
-      ensureI(ymKey(e.extendedAt)).extensions += e.additionalAmount;
-    }));
+    // PAID extensions with no payment row (cash/manual or paid links) count
+    // once, in the month they were paid. Pending extension rows never land
+    // in income — they are tracked per month for visibility only.
+    att.unlinkedPaidByMonth.forEach((amt, k) => {
+      ensureI(k).extensions += amt;
+    });
+    att.pendingByMonth.forEach((amt, k) => {
+      ensureI(k).pending += amt;
+    });
     // Violations (paid)
     const paidViolations = violations.filter(v => v.status === "paid" && inRange(v.dateIssued));
     paidViolations.forEach(v => { ensureI(ymKey(v.dateIssued)).violations += v.amount; });
@@ -443,7 +448,14 @@ function PnLPage() {
                       <tr key={r.ym}>
                         <td className="px-4 py-2 font-medium">{ymLabel(r.ym)}</td>
                         <td className="px-4 py-2 text-right">{fmtMoney(r.rental)}</td>
-                        <td className="px-4 py-2 text-right">{fmtMoney(r.extensions)}</td>
+                        <td className="px-4 py-2 text-right">
+                          {fmtMoney(r.extensions)}
+                          {r.pending > 0 && (
+                            <div className="text-[10px] font-normal text-amber-600 dark:text-amber-400">
+                              +{fmtMoney(r.pending)} pending
+                            </div>
+                          )}
+                        </td>
                         <td className="px-4 py-2 text-right">{fmtMoney(r.violations)}</td>
                         <td className="px-4 py-2 text-right font-semibold text-success">{fmtMoney(r.total)}</td>
                       </tr>
