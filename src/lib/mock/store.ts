@@ -368,6 +368,116 @@ export function rentalPeriodRate(r: Rental): { rate: number; weekly: boolean } {
   return { rate, weekly };
 }
 
+/** The locked original base charge for a rental — the first-period rate,
+ *  captured at creation (rentals.base_amount, enforced immutable by a DB
+ *  trigger). Extensions are NEVER folded into this number. */
+export function rentalBaseAmount(r: Rental): number {
+  return Number(r.baseAmount ?? rentalPeriodRate(r).rate ?? 0);
+}
+
+/** An extension counts as PAID when any of: its stored status is paid, its
+ *  linked payment row cleared, or a paid extension link matches it. */
+export function extensionIsPaid(ext: RentalExtension, rentalId: string): boolean {
+  if (ext.status === "paid") return true;
+  if (ext.status === "cancelled") return false;
+  if (ext.paymentId && payments.some(p => p.id === ext.paymentId && p.status === "paid")) return true;
+  return pendingExtensions.some(pe =>
+    pe.rentalId === rentalId &&
+    (pe.status ?? "").toLowerCase() === "paid" &&
+    (pe.rentalExtensionId === ext.id || (!!pe.newEndDate && pe.newEndDate === ext.newEndDate)));
+}
+
+export interface ExtensionChargeTotals {
+  paid: number;
+  paidCount: number;
+  pending: number;
+  pendingCount: number;
+}
+
+/** Per-rental extension charge breakdown. Extension links
+ *  (extension_requests) are deduped against logged extension rows by
+ *  newEndDate so the same extension is never counted twice. Pending amounts
+ *  are reported separately and never mixed into paid totals. */
+export function rentalExtensionChargeTotals(r: Rental): ExtensionChargeTotals {
+  const exts = r.extensions ?? [];
+  let paid = 0, paidCount = 0, pending = 0, pendingCount = 0;
+  for (const e of exts) {
+    const amt = Number(e.additionalAmount || 0);
+    if (extensionIsPaid(e, r.id)) { paid += amt; paidCount++; }
+    else if (e.status !== "cancelled") { pending += amt; pendingCount++; }
+  }
+  for (const pe of pendingExtensions) {
+    if (pe.rentalId !== r.id) continue;
+    if (pe.newEndDate && exts.some(e => e.newEndDate === pe.newEndDate)) continue;
+    const amt = Number(pe.additionalAmount || 0);
+    if ((pe.status ?? "").toLowerCase() === "paid") { paid += amt; paidCount++; }
+    else if (isUnpaidExtRequest(pe)) { pending += amt; pendingCount++; }
+  }
+  return { paid, paidCount, pending, pendingCount };
+}
+
+export interface ExtensionIncomeAttribution {
+  /** Payment ids that must be booked as EXTENSION income (not base rental). */
+  extensionPaymentIds: Set<string>;
+  /** Paid extension income with no payment row, keyed by YYYY-MM paid month. */
+  unlinkedPaidByMonth: Map<string, number>;
+  /** Unpaid (pending) extension amounts by YYYY-MM created month. Reporting
+   *  only — never included in income totals. */
+  pendingByMonth: Map<string, number>;
+}
+
+/** Single source of truth for splitting rental income into base vs
+ *  extension and for keeping PENDING extensions out of the totals.
+ *  Money received always comes from payment rows; paid extensions without
+ *  a payment row (cash/manual, or paid links) are added once, by paid month. */
+export function extensionIncomeAttribution(): ExtensionIncomeAttribution {
+  const extensionPaymentIds = new Set<string>();
+  const unlinkedPaidByMonth = new Map<string, number>();
+  const pendingByMonth = new Map<string, number>();
+  const bump = (m: Map<string, number>, when: string | null | undefined, amt: number) => {
+    const key = (when ?? "").slice(0, 7);
+    if (!key || !(amt > 0)) return;
+    m.set(key, (m.get(key) ?? 0) + amt);
+  };
+  const linkedRequestIds = new Set<string>();
+
+  for (const r of rentals) {
+    for (const e of r.extensions ?? []) {
+      const amt = Number(e.additionalAmount || 0);
+      if (e.paymentId) extensionPaymentIds.add(e.paymentId);
+      const match = pendingExtensions.find(pe =>
+        pe.rentalId === r.id &&
+        (pe.rentalExtensionId === e.id || (!!pe.newEndDate && pe.newEndDate === e.newEndDate)));
+      if (match) {
+        linkedRequestIds.add(match.id);
+        if (match.paymentId) extensionPaymentIds.add(match.paymentId);
+        if (match.appliedPaymentId) extensionPaymentIds.add(match.appliedPaymentId);
+      }
+      const coveredByPayment =
+        (!!e.paymentId && payments.some(p => p.id === e.paymentId && p.status === "paid")) ||
+        (!!match && !!(match.paymentId || match.appliedPaymentId));
+      if (extensionIsPaid(e, r.id)) {
+        // Only add when no payment row will carry this money.
+        if (!coveredByPayment) bump(unlinkedPaidByMonth, e.paidAt ?? match?.paidAt ?? e.extendedAt, amt);
+      } else if (e.status !== "cancelled") {
+        bump(pendingByMonth, e.extendedAt, amt);
+      }
+    }
+  }
+  for (const pe of pendingExtensions) {
+    if (pe.paymentId) extensionPaymentIds.add(pe.paymentId);
+    if (pe.appliedPaymentId) extensionPaymentIds.add(pe.appliedPaymentId);
+    if (linkedRequestIds.has(pe.id)) continue;
+    const amt = Number(pe.additionalAmount || 0);
+    if ((pe.status ?? "").toLowerCase() === "paid") {
+      if (!pe.paymentId && !pe.appliedPaymentId) bump(unlinkedPaidByMonth, pe.paidAt ?? pe.createdAt, amt);
+    } else if (isUnpaidExtRequest(pe)) {
+      bump(pendingByMonth, pe.createdAt, amt);
+    }
+  }
+  return { extensionPaymentIds, unlinkedPaidByMonth, pendingByMonth };
+}
+
 const DAY_MS = 86400000;
 
 /** Default initial deposit-covered days for a daily rental. */
@@ -1754,6 +1864,9 @@ export function extendRental(
     signatureDataUrl: opts?.signatureDataUrl,
     signedBy: opts?.signedBy,
     agreementVersion: opts?.agreementVersion,
+    // Base rate is never touched. The extension starts PENDING and only
+    // flips to paid when its payment clears (synced by DB trigger too).
+    status: "pending",
   };
   r.extensions = [...(r.extensions ?? []), ext];
   cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));
