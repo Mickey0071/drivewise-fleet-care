@@ -166,6 +166,7 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   extensionDeclinedAt: r.extension_declined_at ?? undefined,
   accidentReport: r.accident_report ?? undefined,
   accidentToken: r.accident_token ?? undefined,
+  baseAmount: r.base_amount != null ? Number(r.base_amount) : undefined,
   renewalLinkSent: !!r.renewal_link_sent,
   renewalLinkSentAt: r.renewal_link_sent_at ?? undefined,
 });
