@@ -2205,7 +2205,9 @@ export type Database = {
           created_at: string
           extended_at: string
           id: string
+          invoice_id: string | null
           new_end_date: string
+          paid_at: string | null
           payment_id: string | null
           period_label: string
           periods: number
@@ -2213,6 +2215,7 @@ export type Database = {
           rental_id: string
           signature_data_url: string | null
           signed_by: string | null
+          status: string
         }
         Insert: {
           additional_amount?: number
@@ -2220,7 +2223,9 @@ export type Database = {
           created_at?: string
           extended_at?: string
           id: string
+          invoice_id?: string | null
           new_end_date: string
+          paid_at?: string | null
           payment_id?: string | null
           period_label: string
           periods: number
@@ -2228,6 +2233,7 @@ export type Database = {
           rental_id: string
           signature_data_url?: string | null
           signed_by?: string | null
+          status?: string
         }
         Update: {
           additional_amount?: number
@@ -2235,7 +2241,9 @@ export type Database = {
           created_at?: string
           extended_at?: string
           id?: string
+          invoice_id?: string | null
           new_end_date?: string
+          paid_at?: string | null
           payment_id?: string | null
           period_label?: string
           periods?: number
@@ -2243,6 +2251,7 @@ export type Database = {
           rental_id?: string
           signature_data_url?: string | null
           signed_by?: string | null
+          status?: string
         }
         Relationships: [
           {
@@ -2314,6 +2323,7 @@ export type Database = {
           agreement_pdf_url: string | null
           agreement_version: string | null
           auto_renew: boolean
+          base_amount: number | null
           billing_cadence: string | null
           billing_period: string | null
           card_owner_id_url: string | null
@@ -2405,6 +2415,7 @@ export type Database = {
           agreement_pdf_url?: string | null
           agreement_version?: string | null
           auto_renew?: boolean
+          base_amount?: number | null
           billing_cadence?: string | null
           billing_period?: string | null
           card_owner_id_url?: string | null
@@ -2496,6 +2507,7 @@ export type Database = {
           agreement_pdf_url?: string | null
           agreement_version?: string | null
           auto_renew?: boolean
+          base_amount?: number | null
           billing_cadence?: string | null
           billing_period?: string | null
           card_owner_id_url?: string | null
