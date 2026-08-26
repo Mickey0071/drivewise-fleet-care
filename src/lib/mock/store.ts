@@ -203,6 +203,8 @@ const fromExt = (r: any): RentalExtension => ({
   additionalAmount: Number(r.additional_amount), paymentId: r.payment_id ?? undefined,
   signatureDataUrl: r.signature_data_url ?? undefined, signedBy: r.signed_by ?? undefined,
   agreementVersion: r.agreement_version ?? undefined,
+  status: r.status ?? "pending", paidAt: r.paid_at ?? undefined,
+  invoiceId: r.invoice_id ?? undefined,
 });
 const toExt = (rentalId: string, e: RentalExtension) => ({
   id: e.id, rental_id: rentalId, extended_at: e.extendedAt,
@@ -211,6 +213,8 @@ const toExt = (rentalId: string, e: RentalExtension) => ({
   additional_amount: e.additionalAmount, payment_id: e.paymentId ?? null,
   signature_data_url: e.signatureDataUrl ?? null, signed_by: e.signedBy ?? null,
   agreement_version: e.agreementVersion ?? null,
+  status: e.status ?? "pending", paid_at: e.paidAt ?? null,
+  invoice_id: e.invoiceId ?? null,
 });
 const fromPayment = (r: any): Payment => ({
   id: r.id, rentalId: r.rental_id, driverId: r.driver_id,
@@ -235,6 +239,11 @@ export interface PendingExtension {
   newEndDate: string | null;
   expiresAt: string | null;
   signedAt: string | null;
+  paidAt?: string | null;
+  createdAt?: string | null;
+  paymentId?: string | null;
+  appliedPaymentId?: string | null;
+  rentalExtensionId?: string | null;
 }
 export const pendingExtensions: PendingExtension[] = [];
 const fromPendingExt = (r: any): PendingExtension => ({
@@ -245,6 +254,11 @@ const fromPendingExt = (r: any): PendingExtension => ({
   newEndDate: r.new_end_date ?? null,
   expiresAt: r.expires_at ?? null,
   signedAt: r.signed_at ?? null,
+  paidAt: r.paid_at ?? null,
+  createdAt: r.created_at ?? null,
+  paymentId: r.payment_id ?? null,
+  appliedPaymentId: r.applied_payment_id ?? null,
+  rentalExtensionId: r.rental_extension_id ?? null,
 });
 
 /** Total still-owed for unpaid extensions on a rental.
