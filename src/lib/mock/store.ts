@@ -196,6 +196,9 @@ const toRental = (r: any) => ({
   extension_declined_at: r.extensionDeclinedAt ?? null,
   accident_report: r.accidentReport ?? null,
   accident_token: r.accidentToken ?? null,
+  // Locked by the DB trigger after creation; sent here only so brand-new
+  // rentals capture their original base.
+  base_amount: r.baseAmount ?? r.rateAmount ?? r.rate ?? r.weeklyRate ?? null,
 }) as any;
 const fromExt = (r: any): RentalExtension => ({
   id: r.id, extendedAt: r.extended_at, previousEndDate: r.previous_end_date ?? undefined,
@@ -907,7 +910,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
     try {
       const exr = await supabase
         .from("extension_requests")
-        .select("id, rental_id, additional_amount, status, new_end_date, expires_at");
+        .select("id, rental_id, additional_amount, status, new_end_date, expires_at, signed_at, paid_at, created_at, payment_id, applied_payment_id, rental_extension_id");
       if (!exr.error) {
         replaceArray(pendingExtensions, (exr.data ?? []).map(fromPendingExt));
       }
