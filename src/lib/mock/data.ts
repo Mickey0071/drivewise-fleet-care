@@ -172,6 +172,9 @@ export interface Rental {
   extensionDeclinedAt?: string;
   accidentReport?: AccidentReport;
   accidentToken?: string;
+  /** Original first-period charge, captured at creation and LOCKED forever
+   *  (enforced by a DB trigger). Extensions never change this value. */
+  baseAmount?: number;
 }
 export interface AccidentReport {
   /** ISO datetime the accident occurred (mandatory). */
@@ -200,6 +203,11 @@ export interface RentalExtension {
   signatureDataUrl?: string;
   signedBy?: string;
   agreementVersion?: string;
+  /** Whether the extension charge was actually paid. Pending extensions are
+   *  tracked but never counted in income totals. */
+  status?: "pending" | "paid" | "cancelled";
+  paidAt?: string;
+  invoiceId?: string;
 }
 export interface VehicleSwap {
   id: string;
