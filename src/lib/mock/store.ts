@@ -265,6 +265,19 @@ const fromPendingExt = (r: any): PendingExtension => ({
   rentalExtensionId: r.rental_extension_id ?? null,
 });
 
+/** An extension_request that still represents money owed: not paid, not
+ *  refunded/cancelled/expired, not past its expiry. Signed/active requests
+ *  always count; unsigned "pending" offers only when includePending. */
+function isUnpaidExtensionRequest(e: PendingExtension, includePending = false): boolean {
+  const st = (e.status ?? "").toLowerCase();
+  if (st === "paid") return false;
+  if (st.includes("refund") || st.includes("cancel") || st.includes("expired")) return false;
+  if (e.expiresAt && new Date(e.expiresAt).getTime() <= Date.now()) return false;
+  if (!!e.signedAt || st === "signed" || st === "active") return true;
+  return includePending;
+}
+
+
 /** Total still-owed for unpaid extensions on a rental.
  *
  *  By default this counts only extensions that have actually been SIGNED /
@@ -281,18 +294,8 @@ export function unpaidExtensionTotal(
   rentalId: string,
   opts: { includePending?: boolean } = {},
 ): number {
-  const now = Date.now();
-  const eligible = pendingExtensions.filter(e => {
-    if (e.rentalId !== rentalId) return false;
-    const st = (e.status ?? "").toLowerCase();
-    if (st === "paid") return false;
-    if (st.includes("refund") || st.includes("cancel") || st.includes("expired")) return false;
-    if (e.expiresAt && new Date(e.expiresAt).getTime() <= now) return false;
-    const signedOrActive = !!e.signedAt || st === "signed" || st === "active";
-    if (signedOrActive) return true;
-    // Unsigned "pending" offers only count when explicitly requested.
-    return !!opts.includePending;
-  });
+  const eligible = pendingExtensions.filter(e =>
+    e.rentalId === rentalId && isUnpaidExtensionRequest(e, !!opts.includePending));
 
   // De-duplicate: the same renewal can be represented by multiple requests
   // (offer re-sent) and/or a signed + pending pair. Collapse by the new end
