@@ -397,6 +397,12 @@ export interface ExtensionChargeTotals {
   pendingCount: number;
 }
 
+/** Returned/completed/cancelled rentals don't accrue new pending charges. */
+function rentalIsOpen(r: Rental): boolean {
+  const rs = r.reservationStatus ?? "active";
+  return rs !== "returned" && rs !== "completed" && rs !== "cancelled";
+}
+
 /** Per-rental extension charge breakdown. Extension links
  *  (extension_requests) are deduped against logged extension rows by
  *  newEndDate so the same extension is never counted twice. Pending amounts
@@ -414,7 +420,7 @@ export function rentalExtensionChargeTotals(r: Rental): ExtensionChargeTotals {
     if (pe.newEndDate && exts.some(e => e.newEndDate === pe.newEndDate)) continue;
     const amt = Number(pe.additionalAmount || 0);
     if ((pe.status ?? "").toLowerCase() === "paid") { paid += amt; paidCount++; }
-    else if (isUnpaidExtRequest(pe)) { pending += amt; pendingCount++; }
+    else if (isUnpaidExtensionRequest(pe, rentalIsOpen(r))) { pending += amt; pendingCount++; }
   }
   return { paid, paidCount, pending, pendingCount };
 }
@@ -443,6 +449,7 @@ export function extensionIncomeAttribution(): ExtensionIncomeAttribution {
     m.set(key, (m.get(key) ?? 0) + amt);
   };
   const linkedRequestIds = new Set<string>();
+  const openByRentalId = new Map(rentals.map(r => [r.id, rentalIsOpen(r)]));
 
   for (const r of rentals) {
     for (const e of r.extensions ?? []) {
@@ -474,7 +481,7 @@ export function extensionIncomeAttribution(): ExtensionIncomeAttribution {
     const amt = Number(pe.additionalAmount || 0);
     if ((pe.status ?? "").toLowerCase() === "paid") {
       if (!pe.paymentId && !pe.appliedPaymentId) bump(unlinkedPaidByMonth, pe.paidAt ?? pe.createdAt, amt);
-    } else if (isUnpaidExtRequest(pe)) {
+    } else if (isUnpaidExtensionRequest(pe, openByRentalId.get(pe.rentalId) ?? true)) {
       bump(pendingByMonth, pe.createdAt, amt);
     }
   }
