@@ -166,6 +166,7 @@ const fromRental = (r: any, exts: any[] = []): Rental => ({
   extensionDeclinedAt: r.extension_declined_at ?? undefined,
   accidentReport: r.accident_report ?? undefined,
   accidentToken: r.accident_token ?? undefined,
+  baseAmount: r.base_amount != null ? Number(r.base_amount) : undefined,
   renewalLinkSent: !!r.renewal_link_sent,
   renewalLinkSentAt: r.renewal_link_sent_at ?? undefined,
 });
@@ -196,6 +197,9 @@ const toRental = (r: any) => ({
   extension_declined_at: r.extensionDeclinedAt ?? null,
   accident_report: r.accidentReport ?? null,
   accident_token: r.accidentToken ?? null,
+  // Locked by the DB trigger after creation; sent here only so brand-new
+  // rentals capture their original base.
+  base_amount: r.baseAmount ?? r.rateAmount ?? r.rate ?? r.weeklyRate ?? null,
 }) as any;
 const fromExt = (r: any): RentalExtension => ({
   id: r.id, extendedAt: r.extended_at, previousEndDate: r.previous_end_date ?? undefined,
@@ -203,6 +207,8 @@ const fromExt = (r: any): RentalExtension => ({
   additionalAmount: Number(r.additional_amount), paymentId: r.payment_id ?? undefined,
   signatureDataUrl: r.signature_data_url ?? undefined, signedBy: r.signed_by ?? undefined,
   agreementVersion: r.agreement_version ?? undefined,
+  status: r.status ?? "pending", paidAt: r.paid_at ?? undefined,
+  invoiceId: r.invoice_id ?? undefined,
 });
 const toExt = (rentalId: string, e: RentalExtension) => ({
   id: e.id, rental_id: rentalId, extended_at: e.extendedAt,
@@ -211,6 +217,8 @@ const toExt = (rentalId: string, e: RentalExtension) => ({
   additional_amount: e.additionalAmount, payment_id: e.paymentId ?? null,
   signature_data_url: e.signatureDataUrl ?? null, signed_by: e.signedBy ?? null,
   agreement_version: e.agreementVersion ?? null,
+  status: e.status ?? "pending", paid_at: e.paidAt ?? null,
+  invoice_id: e.invoiceId ?? null,
 });
 const fromPayment = (r: any): Payment => ({
   id: r.id, rentalId: r.rental_id, driverId: r.driver_id,
@@ -235,6 +243,11 @@ export interface PendingExtension {
   newEndDate: string | null;
   expiresAt: string | null;
   signedAt: string | null;
+  paidAt?: string | null;
+  createdAt?: string | null;
+  paymentId?: string | null;
+  appliedPaymentId?: string | null;
+  rentalExtensionId?: string | null;
 }
 export const pendingExtensions: PendingExtension[] = [];
 const fromPendingExt = (r: any): PendingExtension => ({
@@ -245,7 +258,25 @@ const fromPendingExt = (r: any): PendingExtension => ({
   newEndDate: r.new_end_date ?? null,
   expiresAt: r.expires_at ?? null,
   signedAt: r.signed_at ?? null,
+  paidAt: r.paid_at ?? null,
+  createdAt: r.created_at ?? null,
+  paymentId: r.payment_id ?? null,
+  appliedPaymentId: r.applied_payment_id ?? null,
+  rentalExtensionId: r.rental_extension_id ?? null,
 });
+
+/** An extension_request that still represents money owed: not paid, not
+ *  refunded/cancelled/expired, not past its expiry. Signed/active requests
+ *  always count; unsigned "pending" offers only when includePending. */
+function isUnpaidExtensionRequest(e: PendingExtension, includePending = false): boolean {
+  const st = (e.status ?? "").toLowerCase();
+  if (st === "paid") return false;
+  if (st.includes("refund") || st.includes("cancel") || st.includes("expired")) return false;
+  if (e.expiresAt && new Date(e.expiresAt).getTime() <= Date.now()) return false;
+  if (!!e.signedAt || st === "signed" || st === "active") return true;
+  return includePending;
+}
+
 
 /** Total still-owed for unpaid extensions on a rental.
  *
@@ -263,18 +294,8 @@ export function unpaidExtensionTotal(
   rentalId: string,
   opts: { includePending?: boolean } = {},
 ): number {
-  const now = Date.now();
-  const eligible = pendingExtensions.filter(e => {
-    if (e.rentalId !== rentalId) return false;
-    const st = (e.status ?? "").toLowerCase();
-    if (st === "paid") return false;
-    if (st.includes("refund") || st.includes("cancel") || st.includes("expired")) return false;
-    if (e.expiresAt && new Date(e.expiresAt).getTime() <= now) return false;
-    const signedOrActive = !!e.signedAt || st === "signed" || st === "active";
-    if (signedOrActive) return true;
-    // Unsigned "pending" offers only count when explicitly requested.
-    return !!opts.includePending;
-  });
+  const eligible = pendingExtensions.filter(e =>
+    e.rentalId === rentalId && isUnpaidExtensionRequest(e, !!opts.includePending));
 
   // De-duplicate: the same renewal can be represented by multiple requests
   // (offer re-sent) and/or a signed + pending pair. Collapse by the new end
@@ -348,6 +369,123 @@ export function rentalPeriodRate(r: Rental): { rate: number; weekly: boolean } {
     ? (Number(r.weeklyRate) || Number(r.rate) || 0)
     : (Number(r.rate) || Number(r.weeklyRate) || 0);
   return { rate, weekly };
+}
+
+/** The locked original base charge for a rental — the first-period rate,
+ *  captured at creation (rentals.base_amount, enforced immutable by a DB
+ *  trigger). Extensions are NEVER folded into this number. */
+export function rentalBaseAmount(r: Rental): number {
+  return Number(r.baseAmount ?? rentalPeriodRate(r).rate ?? 0);
+}
+
+/** An extension counts as PAID when any of: its stored status is paid, its
+ *  linked payment row cleared, or a paid extension link matches it. */
+export function extensionIsPaid(ext: RentalExtension, rentalId: string): boolean {
+  if (ext.status === "paid") return true;
+  if (ext.status === "cancelled") return false;
+  if (ext.paymentId && payments.some(p => p.id === ext.paymentId && p.status === "paid")) return true;
+  return pendingExtensions.some(pe =>
+    pe.rentalId === rentalId &&
+    (pe.status ?? "").toLowerCase() === "paid" &&
+    (pe.rentalExtensionId === ext.id || (!!pe.newEndDate && pe.newEndDate === ext.newEndDate)));
+}
+
+export interface ExtensionChargeTotals {
+  paid: number;
+  paidCount: number;
+  pending: number;
+  pendingCount: number;
+}
+
+/** Returned/completed/cancelled rentals don't accrue new pending charges. */
+function rentalIsOpen(r: Rental): boolean {
+  const rs = r.reservationStatus ?? "active";
+  return rs !== "returned" && rs !== "completed" && rs !== "cancelled";
+}
+
+/** Per-rental extension charge breakdown. Extension links
+ *  (extension_requests) are deduped against logged extension rows by
+ *  newEndDate so the same extension is never counted twice. Pending amounts
+ *  are reported separately and never mixed into paid totals. */
+export function rentalExtensionChargeTotals(r: Rental): ExtensionChargeTotals {
+  const exts = r.extensions ?? [];
+  let paid = 0, paidCount = 0, pending = 0, pendingCount = 0;
+  for (const e of exts) {
+    const amt = Number(e.additionalAmount || 0);
+    if (extensionIsPaid(e, r.id)) { paid += amt; paidCount++; }
+    else if (e.status !== "cancelled") { pending += amt; pendingCount++; }
+  }
+  for (const pe of pendingExtensions) {
+    if (pe.rentalId !== r.id) continue;
+    if (pe.newEndDate && exts.some(e => e.newEndDate === pe.newEndDate)) continue;
+    const amt = Number(pe.additionalAmount || 0);
+    if ((pe.status ?? "").toLowerCase() === "paid") { paid += amt; paidCount++; }
+    else if (isUnpaidExtensionRequest(pe, rentalIsOpen(r))) { pending += amt; pendingCount++; }
+  }
+  return { paid, paidCount, pending, pendingCount };
+}
+
+export interface ExtensionIncomeAttribution {
+  /** Payment ids that must be booked as EXTENSION income (not base rental). */
+  extensionPaymentIds: Set<string>;
+  /** Paid extension income with no payment row, keyed by YYYY-MM paid month. */
+  unlinkedPaidByMonth: Map<string, number>;
+  /** Unpaid (pending) extension amounts by YYYY-MM created month. Reporting
+   *  only — never included in income totals. */
+  pendingByMonth: Map<string, number>;
+}
+
+/** Single source of truth for splitting rental income into base vs
+ *  extension and for keeping PENDING extensions out of the totals.
+ *  Money received always comes from payment rows; paid extensions without
+ *  a payment row (cash/manual, or paid links) are added once, by paid month. */
+export function extensionIncomeAttribution(): ExtensionIncomeAttribution {
+  const extensionPaymentIds = new Set<string>();
+  const unlinkedPaidByMonth = new Map<string, number>();
+  const pendingByMonth = new Map<string, number>();
+  const bump = (m: Map<string, number>, when: string | null | undefined, amt: number) => {
+    const key = (when ?? "").slice(0, 7);
+    if (!key || !(amt > 0)) return;
+    m.set(key, (m.get(key) ?? 0) + amt);
+  };
+  const linkedRequestIds = new Set<string>();
+  const openByRentalId = new Map(rentals.map(r => [r.id, rentalIsOpen(r)]));
+
+  for (const r of rentals) {
+    for (const e of r.extensions ?? []) {
+      const amt = Number(e.additionalAmount || 0);
+      if (e.paymentId) extensionPaymentIds.add(e.paymentId);
+      const match = pendingExtensions.find(pe =>
+        pe.rentalId === r.id &&
+        (pe.rentalExtensionId === e.id || (!!pe.newEndDate && pe.newEndDate === e.newEndDate)));
+      if (match) {
+        linkedRequestIds.add(match.id);
+        if (match.paymentId) extensionPaymentIds.add(match.paymentId);
+        if (match.appliedPaymentId) extensionPaymentIds.add(match.appliedPaymentId);
+      }
+      const coveredByPayment =
+        (!!e.paymentId && payments.some(p => p.id === e.paymentId && p.status === "paid")) ||
+        (!!match && !!(match.paymentId || match.appliedPaymentId));
+      if (extensionIsPaid(e, r.id)) {
+        // Only add when no payment row will carry this money.
+        if (!coveredByPayment) bump(unlinkedPaidByMonth, e.paidAt ?? match?.paidAt ?? e.extendedAt, amt);
+      } else if (e.status !== "cancelled") {
+        bump(pendingByMonth, e.extendedAt, amt);
+      }
+    }
+  }
+  for (const pe of pendingExtensions) {
+    if (pe.paymentId) extensionPaymentIds.add(pe.paymentId);
+    if (pe.appliedPaymentId) extensionPaymentIds.add(pe.appliedPaymentId);
+    if (linkedRequestIds.has(pe.id)) continue;
+    const amt = Number(pe.additionalAmount || 0);
+    if ((pe.status ?? "").toLowerCase() === "paid") {
+      if (!pe.paymentId && !pe.appliedPaymentId) bump(unlinkedPaidByMonth, pe.paidAt ?? pe.createdAt, amt);
+    } else if (isUnpaidExtensionRequest(pe, openByRentalId.get(pe.rentalId) ?? true)) {
+      bump(pendingByMonth, pe.createdAt, amt);
+    }
+  }
+  return { extensionPaymentIds, unlinkedPaidByMonth, pendingByMonth };
 }
 
 const DAY_MS = 86400000;
@@ -893,7 +1031,7 @@ export function hydrateFromCloud(options?: { force?: boolean }): Promise<void> {
     try {
       const exr = await supabase
         .from("extension_requests")
-        .select("id, rental_id, additional_amount, status, new_end_date, expires_at");
+        .select("id, rental_id, additional_amount, status, new_end_date, expires_at, signed_at, paid_at, created_at, payment_id, applied_payment_id, rental_extension_id");
       if (!exr.error) {
         replaceArray(pendingExtensions, (exr.data ?? []).map(fromPendingExt));
       }
@@ -1736,6 +1874,9 @@ export function extendRental(
     signatureDataUrl: opts?.signatureDataUrl,
     signedBy: opts?.signedBy,
     agreementVersion: opts?.agreementVersion,
+    // Base rate is never touched. The extension starts PENDING and only
+    // flips to paid when its payment clears (synced by DB trigger too).
+    status: "pending",
   };
   r.extensions = [...(r.extensions ?? []), ext];
   cloudWrite("rental:update", supabase.from("rentals").update(toRental(r)).eq("id", r.id));

@@ -36,7 +36,7 @@ import {
   fmtDate,
 } from "@/lib/mock/data";
 import { maintenance } from "@/lib/mock/data";
-import { useStoreVersion } from "@/lib/mock/store";
+import { useStoreVersion, extensionIncomeAttribution } from "@/lib/mock/store";
 import { getVehicleFinancials } from "@/lib/vehicle-financials";
 import { TrendingUp, TrendingDown, Wallet, Printer, Download, Send } from "lucide-react";
 import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
@@ -123,13 +123,10 @@ function MonthlyVehicleReportsPage() {
       s <= end && (!e || e >= start);
 
     const rentalById = new Map(rentals.map((r) => [r.id, r]));
-    // Extension payment ids -> attribute as extension income
-    const extensionPaymentIds = new Set<string>();
-    rentals.forEach((r) =>
-      r.extensions?.forEach((e) => {
-        if (e.paymentId) extensionPaymentIds.add(e.paymentId);
-      }),
-    );
+    // Extension payment ids -> attribute as extension income. Includes
+    // payments from paid extension links; pending extensions never reach
+    // income. Single source of truth: extensionIncomeAttribution().
+    const extensionPaymentIds = extensionIncomeAttribution().extensionPaymentIds;
 
     const paid = payments.filter(
       (p) => p.status === "paid" && inMonth(p.paidDate ?? p.dueDate),

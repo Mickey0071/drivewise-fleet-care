@@ -5,7 +5,7 @@ import { RentalAgreement } from "@/components/app/RentalAgreement";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { rentals, vehicles, vehicleById, driverById, payments, fmtMoney, fmtDate } from "@/lib/mock/data";
-import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, rentalCredit, rentalViolationsUnpaid, rentalViolationPaymentsReceived, rentalCanonicalOwed, saveAccidentReport, ensureAccidentToken, deletePendingExtension } from "@/lib/mock/store";
+import { useStoreVersion, updateRental, getInspectionsForRental, addInspection, addMaintenance, extendRental, computeExtensionCharge, prunePendingReservations, pendingExpiresAt, cancelReservation, captureSignature, markReservationPaid, ensureRentalSynced, currentPeriodPaid, isVehicleBookable, swapVehicle, refreshStoreFromCloud, syncLocalReturn, applyDiscount, rentalCredit, rentalViolationsUnpaid, rentalViolationPaymentsReceived, rentalCanonicalOwed, saveAccidentReport, ensureAccidentToken, deletePendingExtension, rentalBaseAmount, rentalExtensionChargeTotals } from "@/lib/mock/store";
 import { extensionSignatureStatus } from "@/lib/mock/store";
 import { pendingExtensions } from "@/lib/mock/store";
 import { calcCurrentPeriodEnd } from "@/lib/mock/store";
@@ -17,7 +17,7 @@ import { ReportActions } from "@/components/app/ReportActions";
 import { NewReservationDialog } from "@/components/app/NewReservationDialog";
 import { RenterName } from "@/components/app/RenterProfileProvider";
 import { useEffect, useRef, useState } from "react";
-import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download, Smartphone, Percent, CreditCard, Wrench } from "lucide-react";
+import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download, Smartphone, Percent, CreditCard, Wrench, Lock } from "lucide-react";
 import { Search as SearchIcon, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { LayoutDashboard } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -425,19 +425,15 @@ function RentalsPage() {
     const isPending = r.reservationStatus === "pending";
     // ---- Amount-paid summary ----
     const paidPayments = sched.filter(p => p.status === "paid");
-    const extensionPaymentIds = new Set(
-      (r.extensions ?? []).map(e => e.paymentId).filter(Boolean) as string[],
-    );
-    // Extensions actually paid: paid payment rows tagged as extension payments.
-    const extensionsReceived = paidPayments
-      .filter(p => extensionPaymentIds.has(p.id))
-      .reduce((s, p) => s + Number(p.amount || 0), 0);
-    // Base = paid payments that aren't tagged as extension payments
-    const basePaid = paidPayments
-      .filter(p => !extensionPaymentIds.has(p.id))
-      .reduce((s, p) => s + Number(p.amount || 0), 0);
-    const baseRental = Math.max(0, basePaid) + Number(r.depositPaid || 0);
-    const totalPaid = baseRental + extensionsReceived;
+    // Cash actually received (base + extensions + any other payment).
+    const totalPaid =
+      paidPayments.reduce((s, p) => s + Number(p.amount || 0), 0) +
+      Number(r.depositPaid || 0);
+    // Locked base + paid/pending extension split. The store helpers are the
+    // single source of truth: the base never changes, and pending
+    // extensions never mix into paid totals.
+    const lockedBase = rentalBaseAmount(r);
+    const extTotals = rentalExtensionChargeTotals(r);
     const renewal = isPending ? null : calculateRenewalStatus({
       extensionDueDate: r.currentPeriodEnd ?? null,
       returnDueDate: r.endDate ?? null,
@@ -507,17 +503,35 @@ function RentalsPage() {
                 </div>
                 <div className="text-base font-semibold">{fmtMoney(totalPaid)}</div>
               </div>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+              <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                 <div>
-                  <div className="text-muted-foreground">Base rental</div>
-                  <div className="font-medium text-sm">{fmtMoney(baseRental)}</div>
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Lock className="h-3 w-3" /> Base rental
+                  </div>
+                  <div className="font-medium text-sm text-muted-foreground">{fmtMoney(lockedBase)}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">
-                    Extensions{(r.extensions?.length ?? 0) > 0 ? ` (${r.extensions!.length})` : ""}
+                    Paid extensions{extTotals.paidCount > 0 ? ` (${extTotals.paidCount})` : ""}
                   </div>
-                  <div className="font-medium text-sm">{fmtMoney(extensionsReceived)}</div>
+                  <div className="font-medium text-sm">{fmtMoney(extTotals.paid)}</div>
                 </div>
+                <div>
+                  <div className={extTotals.pending > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}>
+                    Pending extensions{extTotals.pendingCount > 0 ? ` (${extTotals.pendingCount})` : ""}
+                  </div>
+                  <div className={`font-medium text-sm ${extTotals.pending > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+                    {fmtMoney(extTotals.pending)}
+                  </div>
+                  {extTotals.pending > 0 && (
+                    <div className="text-[10px] text-amber-600/80 dark:text-amber-400/80">
+                      Will be charged when approved
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="mt-2 border-t border-border pt-1.5 text-[10px] text-muted-foreground">
+                Base rental is locked and does not change. Extensions are added separately.
               </div>
             </div>
             {!isPending && (

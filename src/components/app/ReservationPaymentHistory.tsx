@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Download, CreditCard, Link2, Banknote, ShieldAlert, CalendarPlus, Receipt } from "lucide-react";
 import { payments, violations, driverById, fmtMoney, fmtDate } from "@/lib/mock/data";
 import type { Rental, Payment, Violation } from "@/lib/mock/data";
+import { extensionIsPaid } from "@/lib/mock/store";
 
 type RowType = "rental" | "violation" | "extension";
 type RowStatus = "paid" | "pending" | "failed";
@@ -78,7 +79,9 @@ export function ReservationPaymentHistory({ rental }: { rental: Rental }) {
       };
     });
 
-    // Extensions without a linked payment record (still show them)
+    // Extensions without a linked payment record (still show them). Paid
+    // only when the charge actually cleared — pending extensions stay
+    // pending and out of the "Total paid" sum.
     const extraExtRows: HistoryRow[] = (rental.extensions ?? [])
       .filter((e) => !e.paymentId)
       .map((e) => ({
@@ -87,7 +90,7 @@ export function ReservationPaymentHistory({ rental }: { rental: Rental }) {
         amount: Number(e.additionalAmount || 0),
         type: "extension" as RowType,
         source: "Extension charge",
-        status: "paid" as RowStatus,
+        status: (extensionIsPaid(e, rental.id) ? "paid" : "pending") as RowStatus,
       }));
 
     const rentalEnd = rental.endDate ?? new Date().toISOString().slice(0, 10);
