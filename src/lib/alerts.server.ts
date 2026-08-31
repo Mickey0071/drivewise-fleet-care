@@ -340,3 +340,16 @@ export async function isDigestDue(section: AlertSection): Promise<boolean> {
   }
   return true;
 }
+
+/**
+ * Escape hatch for admin-only alerts that don't belong to one of the five
+ * sections. Still respects the master switch and quiet hours.
+ * Customer-facing SMS must NOT use this — it always sends via sendSms.
+ */
+export async function sendAdminSmsIfEnabled(message: string): Promise<boolean> {
+  const global = await getAlertGlobalConfig();
+  if (!global.masterSmsEnabled) return false;
+  if (inQuietHours(global)) return false;
+  await sendSms(global.adminPhone, message, "Admin");
+  return true;
+}
