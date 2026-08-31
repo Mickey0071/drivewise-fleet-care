@@ -119,7 +119,8 @@ export const notifyCardCharge = createServerFn({ method: "POST" })
       }
     }
     try {
-      await sendSms("267-221-3977", `✓ Charged ${name} ${amt} — card on file (${data.reason}).`, "Admin");
+      const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
+      await sendAdminSmsIfEnabled(`✓ Charged ${name} ${amt} — card on file (${data.reason}).`);
     } catch (e) {
       console.error("[notifyCardCharge] admin sms failed", e);
     }

@@ -16,11 +16,17 @@ export const sendNewRepairAlert = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }) => {
-    const { isNotificationEnabled } = await import("@/lib/notifications.server");
-    if (!(await isNotificationEnabled("new_issue_alerts"))) {
-      return { ok: true, skipped: "disabled" };
-    }
-    const msg = `🔧 New repair logged\n• ${data.vehicle} — ${data.issue}`;
-    await sendSms(ADMIN_REPAIR_PHONE, msg, "Admin");
-    return { ok: true };
+    const { raiseAlert } = await import("@/lib/alerts.server");
+    const res = await raiseAlert(
+      {
+        section: "repairs",
+        alertType: "repair_opened",
+        vehicleLabel: data.vehicle,
+        headline: data.vehicle,
+        detail: `New repair — ${data.issue}`,
+        severity: 2,
+      },
+      { toggleKey: "sms_on_opened" },
+    );
+    return { ok: true, outcome: res.outcome };
   });

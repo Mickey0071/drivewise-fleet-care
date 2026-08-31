@@ -462,10 +462,16 @@ export const reviewInspection = createServerFn({ method: "POST" })
         })
         .eq("id", task.id);
       try {
-        await sendSms(
-          ADMIN_PHONE,
-          `Camauto: Vehicle forced available — ${vLabel}. No inspection logged.`,
-          "Admin",
+        const { raiseAlert } = await import("@/lib/alerts.server");
+        await raiseAlert(
+          {
+            section: "runner_tasks",
+            alertType: "force_available",
+            headline: vLabel,
+            detail: "Vehicle forced available — no inspection logged",
+            severity: 2,
+          },
+          { toggleKey: "sms_on_declined" },
         );
       } catch { /* SMS failure must not block */ }
       return { ok: true, action: "force_available" as const, maintenanceCreated: false };
@@ -564,10 +570,16 @@ export const reviewInspection = createServerFn({ method: "POST" })
 
     // Alert admin that the inspection was approved.
     try {
-      await sendSms(
-        ADMIN_PHONE,
-        `Camauto: ✓ Inspection approved — ${vLabel} by ${runnerName}.`,
-        "Admin",
+      const { raiseAlert } = await import("@/lib/alerts.server");
+      await raiseAlert(
+        {
+          section: "runner_tasks",
+          alertType: "inspection_approved",
+          headline: vLabel,
+          detail: `Inspection approved by ${runnerName}`,
+          severity: 1,
+        },
+        { toggleKey: "sms_on_completed" },
       );
     } catch { /* SMS failure must not block */ }
 

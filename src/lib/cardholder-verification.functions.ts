@@ -152,7 +152,8 @@ export const submitCardholderVerification = createServerFn({ method: "POST" })
       `Verification: submitted\n\n` +
       `Payment processed. Review fraud risk.`;
     try {
-      await sendSms(ADMIN_ALERT_PHONE, msg, "Admin");
+      const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
+      await sendAdminSmsIfEnabled(msg);
     } catch (e) {
       console.error("[cardholder-verify] admin SMS failed", e);
     }
@@ -192,7 +193,8 @@ export const refuseCardholderVerification = createServerFn({ method: "POST" })
       `Verification: refused\n\n` +
       `Payment processed. Review fraud risk.`;
     try {
-      await sendSms(ADMIN_ALERT_PHONE, msg, "Admin");
+      const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
+      await sendAdminSmsIfEnabled(msg);
     } catch (e) {
       console.error("[cardholder-verify] admin refuse SMS failed", e);
     }

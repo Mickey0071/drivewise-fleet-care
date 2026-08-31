@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_queue: {
+        Row: {
+          alert_type: string
+          created_at: string
+          detail: string
+          headline: string | null
+          id: string
+          link_path: string | null
+          plate: string | null
+          section: string
+          sent_at: string | null
+          severity: number
+          sub_line: string | null
+          updated_at: string
+          vehicle_id: string | null
+          vehicle_label: string | null
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          detail: string
+          headline?: string | null
+          id?: string
+          link_path?: string | null
+          plate?: string | null
+          section: string
+          sent_at?: string | null
+          severity?: number
+          sub_line?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_label?: string | null
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          detail?: string
+          headline?: string | null
+          id?: string
+          link_path?: string | null
+          plate?: string | null
+          section?: string
+          sent_at?: string | null
+          severity?: number
+          sub_line?: string | null
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_label?: string | null
+        }
+        Relationships: []
+      }
       authority_addresses: {
         Row: {
           address_lines: string | null
@@ -1479,39 +1530,69 @@ export type Database = {
       }
       notification_settings: {
         Row: {
+          admin_phone: string | null
+          app_enabled: boolean
           created_at: string
           enabled: boolean
+          frequency: string
           id: string
+          link_base_url: string | null
           link_template: string | null
+          master_sms_enabled: boolean
           message_template: string | null
           notification_type: string
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
           recipient_number: string | null
           recipient_type: string
+          send_day: string | null
           send_time: string | null
+          sms_enabled: boolean
+          toggles: Json
           updated_at: string
         }
         Insert: {
+          admin_phone?: string | null
+          app_enabled?: boolean
           created_at?: string
           enabled?: boolean
+          frequency?: string
           id?: string
+          link_base_url?: string | null
           link_template?: string | null
+          master_sms_enabled?: boolean
           message_template?: string | null
           notification_type: string
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
           recipient_number?: string | null
           recipient_type?: string
+          send_day?: string | null
           send_time?: string | null
+          sms_enabled?: boolean
+          toggles?: Json
           updated_at?: string
         }
         Update: {
+          admin_phone?: string | null
+          app_enabled?: boolean
           created_at?: string
           enabled?: boolean
+          frequency?: string
           id?: string
+          link_base_url?: string | null
           link_template?: string | null
+          master_sms_enabled?: boolean
           message_template?: string | null
           notification_type?: string
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
           recipient_number?: string | null
           recipient_type?: string
+          send_day?: string | null
           send_time?: string | null
+          sms_enabled?: boolean
+          toggles?: Json
           updated_at?: string
         }
         Relationships: []

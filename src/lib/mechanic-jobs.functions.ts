@@ -436,7 +436,19 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
       `✅ Accept: ${origin}/repair/accept/${acceptToken}\n` +
       `❌ Decline: ${origin}/repair/decline/${declineToken}`;
     try {
-      await sendSms(ADMIN_REPAIR_PHONE, adminMsg, "Admin");
+      const { raiseAlert } = await import("@/lib/alerts.server");
+      await raiseAlert(
+        {
+          section: "repairs",
+          alertType: "mechanic_submit",
+          plate: vehiclePlate || null,
+          vehicleLabel: vehicleLabel,
+          headline: vehicleLabel,
+          detail: adminMsg,
+          severity: 2,
+        },
+        { toggleKey: "sms_on_mechanic_submit" },
+      );
     } catch (e) {
       console.error("admin SMS failed", e);
     }

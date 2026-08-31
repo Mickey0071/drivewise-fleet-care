@@ -207,16 +207,10 @@ export const submitAutoExtension = createServerFn({ method: "POST" })
 
     // Notify admin that a customer is completing an extension.
     try {
-      const adminPhone = "267-221-3977";
-      await notifyRenter({
-        phone: adminPhone,
-        email: null,
-        name: "Admin",
-        sms: `Camauto: ${offer.driver_full_name || "Customer"} is extending ${offer.vehicle_year ?? ""} ${offer.vehicle_make ?? ""} ${offer.vehicle_model ?? ""} (${data.choice}).`,
-        emailSubject: "Extension in progress",
-        emailHeading: "Extension in progress",
-        emailIntro: "A customer is completing a rental extension.",
-      });
+      const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
+      await sendAdminSmsIfEnabled(
+        `Camauto: ${offer.driver_full_name || "Customer"} is extending ${offer.vehicle_year ?? ""} ${offer.vehicle_make ?? ""} ${offer.vehicle_model ?? ""} (${data.choice}).`,
+      );
     } catch (e) {
       console.error("[submitAutoExtension] admin notify failed", e);
     }
@@ -268,15 +262,10 @@ export const declineAutoExtension = createServerFn({ method: "POST" })
 
     // Notify admin.
     try {
-      await notifyRenter({
-        phone: "267-221-3977",
-        email: null,
-        name: "Admin",
-        sms: `Camauto: ${offer.driver_full_name || "Customer"} DECLINED to extend ${offer.vehicle_year ?? ""} ${offer.vehicle_make ?? ""} ${offer.vehicle_model ?? ""}. Auto-renew paused — arrange pickup.`,
-        emailSubject: "Renter declined to extend",
-        emailHeading: "Renter declined to extend",
-        emailIntro: "A renter declined their rental extension. Auto-renew has been paused.",
-      });
+      const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
+      await sendAdminSmsIfEnabled(
+        `Camauto: ${offer.driver_full_name || "Customer"} DECLINED to extend ${offer.vehicle_year ?? ""} ${offer.vehicle_make ?? ""} ${offer.vehicle_model ?? ""}. Auto-renew paused — arrange pickup.`,
+      );
     } catch (e) {
       console.error("[declineAutoExtension] admin notify failed", e);
     }

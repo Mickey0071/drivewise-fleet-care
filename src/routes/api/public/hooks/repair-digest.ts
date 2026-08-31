@@ -1,18 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sendSms } from "@/lib/ghl.server";
-import { isNotificationEnabled } from "@/lib/notifications.server";
-
-const ADMIN_REPAIR_PHONE = "267-221-3977";
+import { sendSectionDigestNow, type AlertItem } from "@/lib/alerts.server";
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
 /**
- * Daily 8AM active-repairs digest. Scheduled via a dedicated once-per-day cron
- * (NOT the every-15-min reminders hook), so it can never recur hourly.
- * Skips SMS entirely when there are no active repairs.
+ * Daily active-repairs digest, grouped by vehicle. Every send goes through the
+ * alert gate (master switch, section toggle, quiet hours) in alerts.server.
  */
 export const Route = createFileRoute("/api/public/hooks/repair-digest")({
   server: {
@@ -27,11 +23,6 @@ export const Route = createFileRoute("/api/public/hooks/repair-digest")({
         }
 
         const today = todayISO();
-
-        // Respect the admin Notifications Control Center toggle.
-        if (!(await isNotificationEnabled("admin_morning_text"))) {
-          return Response.json({ ok: true, skipped: "disabled" });
-        }
 
         // Dedupe: only one digest per calendar day, even if invoked twice.
         const { data: prior } = await supabaseAdmin
@@ -59,43 +50,52 @@ export const Route = createFileRoute("/api/public/hooks/repair-digest")({
         }
 
         const vehicleIds = Array.from(
-          new Set(activeRepairs.map((r) => r.vehicle_id).filter(Boolean))
+          new Set(activeRepairs.map((r) => r.vehicle_id).filter(Boolean)),
         );
-        const vehiclesById = new Map<string, string>();
+        const vehiclesById = new Map<string, { label: string; plate: string | null }>();
         if (vehicleIds.length) {
           const { data: vs } = await supabaseAdmin
             .from("vehicles")
-            .select("id, year, make, model")
+            .select("id, year, make, model, plate")
             .in("id", vehicleIds);
           (vs ?? []).forEach((v) =>
-            vehiclesById.set(v.id, `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}`.trim())
+            vehiclesById.set(v.id, {
+              label: `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}`.trim(),
+              plate: (v as { plate?: string | null }).plate ?? null,
+            }),
           );
         }
 
-        const lines = activeRepairs
-          .slice(0, 20)
-          .map((r) => {
-            const veh = vehiclesById.get(r.vehicle_id) || r.vehicle_id;
-            const issue = (r.diagnosis_title || r.issue_description || r.service_type || "Repair").toString();
-            return `• ${veh} — ${issue}`;
-          })
-          .join("\n");
-        const more = activeRepairs.length > 20 ? `\n…and ${activeRepairs.length - 20} more` : "";
-        const msg = `🔧 Active Repairs (${activeRepairs.length})\n${lines}${more}`;
+        const items: AlertItem[] = activeRepairs.map((r) => {
+          const veh = vehiclesById.get(r.vehicle_id);
+          const issue = (r.diagnosis_title || r.issue_description || r.service_type || "Repair").toString();
+          const inProgress = r.status === "in_progress" || r.status === "diagnosing";
+          return {
+            section: "repairs",
+            alertType: "active_repair",
+            vehicleId: r.vehicle_id,
+            plate: veh?.plate ?? null,
+            vehicleLabel: veh?.label || r.vehicle_id,
+            headline: veh?.label || r.vehicle_id,
+            detail: `${issue} — ${inProgress ? "in progress" : "waiting"}`,
+            severity: inProgress ? 1 : 2,
+            linkPath: "/repairs",
+          };
+        });
 
-        try {
-          await sendSms(ADMIN_REPAIR_PHONE, msg, "Admin");
-          await supabaseAdmin.from("reminder_log").insert({
-            rental_id: "ADMIN",
-            reminder_type: "admin_active_repairs",
-            target_date: today,
-            phone: ADMIN_REPAIR_PHONE,
-            message: msg,
-          });
-          return Response.json({ ok: true, count: activeRepairs.length, sent: true });
-        } catch (e: any) {
-          return Response.json({ ok: false, error: e?.message ?? String(e) }, { status: 500 });
+        const res = await sendSectionDigestNow("repairs", items);
+        if (res.outcome !== "sent") {
+          return Response.json({ ok: true, skipped: res.reason });
         }
+
+        await supabaseAdmin.from("reminder_log").insert({
+          rental_id: "ADMIN",
+          reminder_type: "admin_active_repairs",
+          target_date: today,
+          phone: "admin",
+          message: `Active repairs digest (${activeRepairs.length})`,
+        });
+        return Response.json({ ok: true, count: activeRepairs.length, sent: true });
       },
     },
   },

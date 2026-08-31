@@ -99,6 +99,7 @@ import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as AdminCategorizeRepairsRouteImport } from './routes/admin.categorize-repairs'
 import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
 import { Route as AdminBackfillPlatesRouteImport } from './routes/admin.backfill-plates'
+import { Route as AdminAlertSettingsRouteImport } from './routes/admin.alert-settings'
 import { Route as AddCardTokenRouteImport } from './routes/add-card.$token'
 import { Route as AccidentReportTokenRouteImport } from './routes/accident-report.$token'
 import { Route as WaitlistUploadTokenRouteImport } from './routes/waitlist.upload.$token'
@@ -116,6 +117,7 @@ import { Route as ApiPublicHooksMonthlyBackupRouteImport } from './routes/api/pu
 import { Route as ApiPublicHooksGhlInboundRouteImport } from './routes/api/public/hooks/ghl-inbound'
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
 import { Route as ApiPublicHooksAutoExtensionLinksRouteImport } from './routes/api/public/hooks/auto-extension-links'
+import { Route as ApiPublicHooksAlertFlushRouteImport } from './routes/api/public/hooks/alert-flush'
 
 const WaitlistRoute = WaitlistRouteImport.update({
   id: '/waitlist',
@@ -571,6 +573,11 @@ const AdminBackfillPlatesRoute = AdminBackfillPlatesRouteImport.update({
   path: '/admin/backfill-plates',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAlertSettingsRoute = AdminAlertSettingsRouteImport.update({
+  id: '/admin/alert-settings',
+  path: '/admin/alert-settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AddCardTokenRoute = AddCardTokenRouteImport.update({
   id: '/add-card/$token',
   path: '/add-card/$token',
@@ -666,6 +673,12 @@ const ApiPublicHooksAutoExtensionLinksRoute =
     path: '/api/public/hooks/auto-extension-links',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksAlertFlushRoute =
+  ApiPublicHooksAlertFlushRouteImport.update({
+    id: '/api/public/hooks/alert-flush',
+    path: '/api/public/hooks/alert-flush',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -708,6 +721,7 @@ export interface FileRoutesByFullPath {
   '/waitlist': typeof WaitlistRouteWithChildren
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
+  '/admin/alert-settings': typeof AdminAlertSettingsRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
@@ -766,6 +780,7 @@ export interface FileRoutesByFullPath {
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
   '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
+  '/api/public/hooks/alert-flush': typeof ApiPublicHooksAlertFlushRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/ghl-inbound': typeof ApiPublicHooksGhlInboundRoute
@@ -817,6 +832,7 @@ export interface FileRoutesByTo {
   '/waitlist': typeof WaitlistRouteWithChildren
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
+  '/admin/alert-settings': typeof AdminAlertSettingsRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
@@ -875,6 +891,7 @@ export interface FileRoutesByTo {
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
   '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
+  '/api/public/hooks/alert-flush': typeof ApiPublicHooksAlertFlushRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/ghl-inbound': typeof ApiPublicHooksGhlInboundRoute
@@ -927,6 +944,7 @@ export interface FileRoutesById {
   '/waitlist': typeof WaitlistRouteWithChildren
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
+  '/admin/alert-settings': typeof AdminAlertSettingsRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
@@ -985,6 +1003,7 @@ export interface FileRoutesById {
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
   '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
+  '/api/public/hooks/alert-flush': typeof ApiPublicHooksAlertFlushRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/ghl-inbound': typeof ApiPublicHooksGhlInboundRoute
@@ -1038,6 +1057,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/accident-report/$token'
     | '/add-card/$token'
+    | '/admin/alert-settings'
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
@@ -1096,6 +1116,7 @@ export interface FileRouteTypes {
     | '/repair/accept/$token'
     | '/repair/decline/$token'
     | '/waitlist/upload/$token'
+    | '/api/public/hooks/alert-flush'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/ghl-inbound'
@@ -1147,6 +1168,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/accident-report/$token'
     | '/add-card/$token'
+    | '/admin/alert-settings'
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
@@ -1205,6 +1227,7 @@ export interface FileRouteTypes {
     | '/repair/accept/$token'
     | '/repair/decline/$token'
     | '/waitlist/upload/$token'
+    | '/api/public/hooks/alert-flush'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/ghl-inbound'
@@ -1256,6 +1279,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/accident-report/$token'
     | '/add-card/$token'
+    | '/admin/alert-settings'
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
@@ -1314,6 +1338,7 @@ export interface FileRouteTypes {
     | '/repair/accept/$token'
     | '/repair/decline/$token'
     | '/waitlist/upload/$token'
+    | '/api/public/hooks/alert-flush'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/ghl-inbound'
@@ -1366,6 +1391,7 @@ export interface RootRouteChildren {
   WaitlistRoute: typeof WaitlistRouteWithChildren
   AccidentReportTokenRoute: typeof AccidentReportTokenRoute
   AddCardTokenRoute: typeof AddCardTokenRoute
+  AdminAlertSettingsRoute: typeof AdminAlertSettingsRoute
   AdminBackfillPlatesRoute: typeof AdminBackfillPlatesRoute
   AdminBackupsRoute: typeof AdminBackupsRoute
   AdminCategorizeRepairsRoute: typeof AdminCategorizeRepairsRoute
@@ -1421,6 +1447,7 @@ export interface RootRouteChildren {
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
   RepairAcceptTokenRoute: typeof RepairAcceptTokenRoute
   RepairDeclineTokenRoute: typeof RepairDeclineTokenRoute
+  ApiPublicHooksAlertFlushRoute: typeof ApiPublicHooksAlertFlushRoute
   ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
   ApiPublicHooksGhlInboundRoute: typeof ApiPublicHooksGhlInboundRoute
@@ -2064,6 +2091,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBackfillPlatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/alert-settings': {
+      id: '/admin/alert-settings'
+      path: '/admin/alert-settings'
+      fullPath: '/admin/alert-settings'
+      preLoaderRoute: typeof AdminAlertSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/add-card/$token': {
       id: '/add-card/$token'
       path: '/add-card/$token'
@@ -2183,6 +2217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksAutoExtensionLinksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/alert-flush': {
+      id: '/api/public/hooks/alert-flush'
+      path: '/api/public/hooks/alert-flush'
+      fullPath: '/api/public/hooks/alert-flush'
+      preLoaderRoute: typeof ApiPublicHooksAlertFlushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -2261,6 +2302,7 @@ const rootRouteChildren: RootRouteChildren = {
   WaitlistRoute: WaitlistRouteWithChildren,
   AccidentReportTokenRoute: AccidentReportTokenRoute,
   AddCardTokenRoute: AddCardTokenRoute,
+  AdminAlertSettingsRoute: AdminAlertSettingsRoute,
   AdminBackfillPlatesRoute: AdminBackfillPlatesRoute,
   AdminBackupsRoute: AdminBackupsRoute,
   AdminCategorizeRepairsRoute: AdminCategorizeRepairsRoute,
@@ -2316,6 +2358,7 @@ const rootRouteChildren: RootRouteChildren = {
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
   RepairAcceptTokenRoute: RepairAcceptTokenRoute,
   RepairDeclineTokenRoute: RepairDeclineTokenRoute,
+  ApiPublicHooksAlertFlushRoute: ApiPublicHooksAlertFlushRoute,
   ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
   ApiPublicHooksGhlInboundRoute: ApiPublicHooksGhlInboundRoute,

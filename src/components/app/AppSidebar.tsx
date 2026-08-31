@@ -118,6 +118,7 @@ const DEFAULT_ITEMS: NavItem[] = [
   { key: "/self-agreement", url: "/self-agreement", title: "Rental Agreement Violation", icon: FileSignature, roles: ["admin"], sectionKey: "other", sectionLabel: "Other", sectionIcon: FileText },
   { key: "/sms-log", url: "/sms-log", title: "SMS log", icon: MessageSquare, roles: ["admin"], sectionKey: "other", sectionLabel: "Other", sectionIcon: FileText },
   { key: "/admin/notifications", url: "/admin/notifications", title: "Notifications", icon: Bell, roles: ["admin"], sectionKey: "other", sectionLabel: "Other", sectionIcon: FileText },
+  { key: "/admin/alert-settings", url: "/admin/alert-settings", title: "Alert Settings", icon: Bell, roles: ["admin"], sectionKey: "other", sectionLabel: "Other", sectionIcon: FileText },
   { key: "/admin/extensions", url: "/admin/extensions", title: "Extension Offers", icon: CalendarPlus, roles: ["admin"], sectionKey: "other", sectionLabel: "Other", sectionIcon: FileText },
 
   // Settings
