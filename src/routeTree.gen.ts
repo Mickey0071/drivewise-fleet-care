@@ -99,6 +99,7 @@ import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
 import { Route as AdminCategorizeRepairsRouteImport } from './routes/admin.categorize-repairs'
 import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
 import { Route as AdminBackfillPlatesRouteImport } from './routes/admin.backfill-plates'
+import { Route as AdminAlertSettingsRouteImport } from './routes/admin.alert-settings'
 import { Route as AddCardTokenRouteImport } from './routes/add-card.$token'
 import { Route as AccidentReportTokenRouteImport } from './routes/accident-report.$token'
 import { Route as WaitlistUploadTokenRouteImport } from './routes/waitlist.upload.$token'
@@ -572,6 +573,11 @@ const AdminBackfillPlatesRoute = AdminBackfillPlatesRouteImport.update({
   path: '/admin/backfill-plates',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAlertSettingsRoute = AdminAlertSettingsRouteImport.update({
+  id: '/admin/alert-settings',
+  path: '/admin/alert-settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AddCardTokenRoute = AddCardTokenRouteImport.update({
   id: '/add-card/$token',
   path: '/add-card/$token',
@@ -715,6 +721,7 @@ export interface FileRoutesByFullPath {
   '/waitlist': typeof WaitlistRouteWithChildren
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
+  '/admin/alert-settings': typeof AdminAlertSettingsRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
@@ -825,6 +832,7 @@ export interface FileRoutesByTo {
   '/waitlist': typeof WaitlistRouteWithChildren
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
+  '/admin/alert-settings': typeof AdminAlertSettingsRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
@@ -936,6 +944,7 @@ export interface FileRoutesById {
   '/waitlist': typeof WaitlistRouteWithChildren
   '/accident-report/$token': typeof AccidentReportTokenRoute
   '/add-card/$token': typeof AddCardTokenRoute
+  '/admin/alert-settings': typeof AdminAlertSettingsRoute
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
@@ -1048,6 +1057,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/accident-report/$token'
     | '/add-card/$token'
+    | '/admin/alert-settings'
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
@@ -1158,6 +1168,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/accident-report/$token'
     | '/add-card/$token'
+    | '/admin/alert-settings'
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
@@ -1268,6 +1279,7 @@ export interface FileRouteTypes {
     | '/waitlist'
     | '/accident-report/$token'
     | '/add-card/$token'
+    | '/admin/alert-settings'
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
@@ -1379,6 +1391,7 @@ export interface RootRouteChildren {
   WaitlistRoute: typeof WaitlistRouteWithChildren
   AccidentReportTokenRoute: typeof AccidentReportTokenRoute
   AddCardTokenRoute: typeof AddCardTokenRoute
+  AdminAlertSettingsRoute: typeof AdminAlertSettingsRoute
   AdminBackfillPlatesRoute: typeof AdminBackfillPlatesRoute
   AdminBackupsRoute: typeof AdminBackupsRoute
   AdminCategorizeRepairsRoute: typeof AdminCategorizeRepairsRoute
@@ -2078,6 +2091,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBackfillPlatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/alert-settings': {
+      id: '/admin/alert-settings'
+      path: '/admin/alert-settings'
+      fullPath: '/admin/alert-settings'
+      preLoaderRoute: typeof AdminAlertSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/add-card/$token': {
       id: '/add-card/$token'
       path: '/add-card/$token'
@@ -2282,6 +2302,7 @@ const rootRouteChildren: RootRouteChildren = {
   WaitlistRoute: WaitlistRouteWithChildren,
   AccidentReportTokenRoute: AccidentReportTokenRoute,
   AddCardTokenRoute: AddCardTokenRoute,
+  AdminAlertSettingsRoute: AdminAlertSettingsRoute,
   AdminBackfillPlatesRoute: AdminBackfillPlatesRoute,
   AdminBackupsRoute: AdminBackupsRoute,
   AdminCategorizeRepairsRoute: AdminCategorizeRepairsRoute,
