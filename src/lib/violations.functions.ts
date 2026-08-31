@@ -1628,15 +1628,8 @@ export const submitViolationToAuthority = createServerFn({ method: "POST" })
     }
     const amt = `$${Number(current.total_amount || current.amount || 0).toFixed(2)}`;
     try {
-      await notifyRenter({
-        phone: VIOLATION_ADMIN_PHONE,
-        email: null,
-        name: "Admin",
-        sms: `✓ Violation submitted to ${data.authority}: ${customerName} ${amt}`,
-        emailSubject: "Violation submitted to authority",
-        emailHeading: "Violation submitted",
-        emailIntro: `Violation ${data.id} was submitted to ${data.authority}.`,
-      });
+      const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
+      await sendAdminSmsIfEnabled(`✓ Violation submitted to ${data.authority}: ${customerName} ${amt}`);
     } catch (e) {
       console.error("[submitViolationToAuthority] admin notify failed", e);
     }
