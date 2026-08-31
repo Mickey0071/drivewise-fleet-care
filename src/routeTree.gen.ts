@@ -116,6 +116,7 @@ import { Route as ApiPublicHooksMonthlyBackupRouteImport } from './routes/api/pu
 import { Route as ApiPublicHooksGhlInboundRouteImport } from './routes/api/public/hooks/ghl-inbound'
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
 import { Route as ApiPublicHooksAutoExtensionLinksRouteImport } from './routes/api/public/hooks/auto-extension-links'
+import { Route as ApiPublicHooksAlertFlushRouteImport } from './routes/api/public/hooks/alert-flush'
 
 const WaitlistRoute = WaitlistRouteImport.update({
   id: '/waitlist',
@@ -666,6 +667,12 @@ const ApiPublicHooksAutoExtensionLinksRoute =
     path: '/api/public/hooks/auto-extension-links',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksAlertFlushRoute =
+  ApiPublicHooksAlertFlushRouteImport.update({
+    id: '/api/public/hooks/alert-flush',
+    path: '/api/public/hooks/alert-flush',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -766,6 +773,7 @@ export interface FileRoutesByFullPath {
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
   '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
+  '/api/public/hooks/alert-flush': typeof ApiPublicHooksAlertFlushRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/ghl-inbound': typeof ApiPublicHooksGhlInboundRoute
@@ -875,6 +883,7 @@ export interface FileRoutesByTo {
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
   '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
+  '/api/public/hooks/alert-flush': typeof ApiPublicHooksAlertFlushRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/ghl-inbound': typeof ApiPublicHooksGhlInboundRoute
@@ -985,6 +994,7 @@ export interface FileRoutesById {
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
   '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
+  '/api/public/hooks/alert-flush': typeof ApiPublicHooksAlertFlushRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/ghl-inbound': typeof ApiPublicHooksGhlInboundRoute
@@ -1096,6 +1106,7 @@ export interface FileRouteTypes {
     | '/repair/accept/$token'
     | '/repair/decline/$token'
     | '/waitlist/upload/$token'
+    | '/api/public/hooks/alert-flush'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/ghl-inbound'
@@ -1205,6 +1216,7 @@ export interface FileRouteTypes {
     | '/repair/accept/$token'
     | '/repair/decline/$token'
     | '/waitlist/upload/$token'
+    | '/api/public/hooks/alert-flush'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/ghl-inbound'
@@ -1314,6 +1326,7 @@ export interface FileRouteTypes {
     | '/repair/accept/$token'
     | '/repair/decline/$token'
     | '/waitlist/upload/$token'
+    | '/api/public/hooks/alert-flush'
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/ghl-inbound'
@@ -1421,6 +1434,7 @@ export interface RootRouteChildren {
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
   RepairAcceptTokenRoute: typeof RepairAcceptTokenRoute
   RepairDeclineTokenRoute: typeof RepairDeclineTokenRoute
+  ApiPublicHooksAlertFlushRoute: typeof ApiPublicHooksAlertFlushRoute
   ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
   ApiPublicHooksGhlInboundRoute: typeof ApiPublicHooksGhlInboundRoute
@@ -2183,6 +2197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksAutoExtensionLinksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/alert-flush': {
+      id: '/api/public/hooks/alert-flush'
+      path: '/api/public/hooks/alert-flush'
+      fullPath: '/api/public/hooks/alert-flush'
+      preLoaderRoute: typeof ApiPublicHooksAlertFlushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -2316,6 +2337,7 @@ const rootRouteChildren: RootRouteChildren = {
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
   RepairAcceptTokenRoute: RepairAcceptTokenRoute,
   RepairDeclineTokenRoute: RepairDeclineTokenRoute,
+  ApiPublicHooksAlertFlushRoute: ApiPublicHooksAlertFlushRoute,
   ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
   ApiPublicHooksGhlInboundRoute: ApiPublicHooksGhlInboundRoute,
