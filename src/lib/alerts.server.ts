@@ -353,3 +353,23 @@ export async function sendAdminSmsIfEnabled(message: string): Promise<boolean> {
   await sendSms(global.adminPhone, message, "Admin");
   return true;
 }
+
+/**
+ * Send a ready-made list of items as one grouped digest right now,
+ * bypassing the queue (used by scheduled digest hooks).
+ */
+export async function sendSectionDigestNow(
+  section: AlertSection,
+  items: AlertItem[],
+  titleOverride?: string,
+): Promise<RaiseResult> {
+  if (items.length === 0) return { ok: true, outcome: "skipped", reason: "empty" };
+  const [global, cfg] = await Promise.all([getAlertGlobalConfig(), getAlertSectionConfig(section)]);
+  if (!global.masterSmsEnabled || !cfg.smsEnabled || cfg.frequency === "off") {
+    return { ok: true, outcome: "skipped", reason: "sms_disabled" };
+  }
+  if (inQuietHours(global)) return { ok: true, outcome: "skipped", reason: "quiet_hours" };
+  const messages = buildGroupedMessages(section, items, global.linkBaseUrl, titleOverride);
+  const count = await deliver(global.adminPhone, messages);
+  return { ok: true, outcome: "sent", count };
+}
