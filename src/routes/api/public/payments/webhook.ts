@@ -50,7 +50,8 @@ async function alertAdminNameMismatch(opts: {
     `Verification: ${opts.verification || "pending"}\n\n` +
     `Payment processed. Review for fraud.`;
   try {
-    await sendSms(ADMIN_ALERT_PHONE, msg, "Admin");
+    const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
+    await sendAdminSmsIfEnabled(msg);
   } catch (e) {
     console.error("[webhook] admin name-mismatch SMS failed", e);
   }
@@ -444,7 +445,8 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv, eventId?: s
         });
       }
       try {
-        await sendSms("267-221-3977", `💰 Violation paid: ${drv?.full_name || "Customer"} ${amt}`, null);
+        const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
+        await sendAdminSmsIfEnabled(`💰 Violation paid: ${drv?.full_name || "Customer"} ${amt}`);
       } catch (e) {
         console.error("[webhook:violation] admin sms failed", e);
       }
@@ -921,10 +923,9 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv, eventId?: s
         const vehLabel = veh
           ? `${veh.year ?? ""} ${veh.make ?? ""} ${veh.model ?? ""}`.trim()
           : rentalRow.vehicle_id;
-        await sendSms(
-          "267-221-3977",
+        const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
+        await sendAdminSmsIfEnabled(
           `✅ Extension complete: ${drv?.full_name || "Customer"} ${vehLabel} until ${newEndIso}`,
-          "Admin",
         );
       } catch (e) {
         console.error("[webhook:ext] admin notify failed", e);
@@ -1527,10 +1528,9 @@ async function handleChargeRefunded(obj: any, env: StripeEnv) {
       }
     }
     try {
-      await sendSms(
-        ADMIN_ALERT_PHONE,
+      const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
+      await sendAdminSmsIfEnabled(
         `⚠️ ERRONEOUS REFUND: ${amt} refunded to ${name}.\n\nSystem refund detected - investigate.\n\n[${notified ? "Customer notified" : "Customer NOT notified — no phone"}]`,
-        "Admin",
       );
     } catch (e) {
       console.error("[webhook:refund] admin alert failed", e);

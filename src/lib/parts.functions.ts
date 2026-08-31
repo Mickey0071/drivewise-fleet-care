@@ -251,7 +251,8 @@ export const submitPartQuote = createServerFn({ method: "POST" })
           `• ${full?.part_name ?? "Part"}` +
           (vehicle ? ` (${vehicle})` : "") +
           `\n• ${full?.supplier_name ?? "Supplier"}: $${price.toFixed(2)} — ${avail}`;
-        await sendSms("267-221-3977", msg, "Admin");
+        const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
+        await sendAdminSmsIfEnabled(msg);
       }
     } catch (e) {
       console.error("[parts] price-in SMS failed", e);

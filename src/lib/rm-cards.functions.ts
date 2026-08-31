@@ -262,10 +262,9 @@ export const submitRmCardByToken = createServerFn({ method: "POST" })
       const vv = (v as any) ?? {};
       const label = `${vv.year ?? ""} ${vv.make ?? ""} ${vv.model ?? ""}`.trim() || c.vehicle_id;
       const failed = data.items.filter((i) => i.status === "Fail").length;
-      await sendSms(
-        "267-221-3977",
+      const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
+      await sendAdminSmsIfEnabled(
         `🔔 RM Card submitted for review: ${label}\nBy ${c.inspector_name || "runner"} · ${failed} failed item(s). Approve in Maintenance.`,
-        "Camauto Admin",
       );
     } catch (e) {
       console.error("rm review notify failed", e);

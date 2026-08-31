@@ -549,10 +549,9 @@ export async function deliverBackupEmail(
 
 async function notifyEmailFailure(monthLabel: string): Promise<void> {
   try {
-    await sendSms(
-      ADMIN_SMS,
+    const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
+    await sendAdminSmsIfEnabled(
       `⚠️ Backup email failed for ${monthLabel}. Download manually from /admin/backups`,
-      "Management",
     );
   } catch (e) {
     console.error(`[backup] failure SMS failed: ${e instanceof Error ? e.message : String(e)}`);
