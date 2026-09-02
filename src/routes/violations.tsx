@@ -1496,7 +1496,7 @@ function ViolationsPage() {
   /**
    * Build ONE merged PDF from the given rows: violations are grouped into
    * EZPass/DRPA and Philadelphia sections, each section opening with a header
-   * page, then per violation a divider page + cover letter + agreement pages.
+   * page, then per violation its cover letter + agreement pages (no dividers).
    */
   const buildMergedPacket = async (rowsIn: ViolationRow[]) => {
     const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
