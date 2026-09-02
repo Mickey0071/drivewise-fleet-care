@@ -1544,23 +1544,7 @@ function ViolationsPage() {
         setMergeProgress(`Generating packet ${done} of ${rowsIn.length}…`);
         try {
           const res = await genPacketFn({ data: { violationId: v.id } });
-          // Divider page
-          const d = out.addPage([612, 792]);
-          d.drawText(`=== VIOLATION ${i + 1} OF ${g.rows.length} ===`, {
-            x: 60, y: 470, size: 22, font: bold, color: rgb(0.05, 0.4, 0.2),
-          });
-          const lines = [
-            `Renter: ${v.driver_name || "—"}`,
-            `Plate: ${v.license_plate || v.vehicle_label || "—"}`,
-            `Violation Ref #: ${v.reference_number || v.id}`,
-            `Date Issued: ${(v.date_issued || "").slice(0, 10) || "—"}`,
-            `Amount: ${fmtMoney(Number(v.total_amount || v.amount || 0))}`,
-          ];
-          let y = 420;
-          for (const line of lines) {
-            d.drawText(line, { x: 60, y, size: 13, font: reg, color: rgb(0.15, 0.15, 0.15) });
-            y -= 22;
-          }
+
           const bin = atob(res.base64);
           const bytes = new Uint8Array(bin.length);
           for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
