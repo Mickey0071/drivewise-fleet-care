@@ -4288,6 +4288,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_violations_access: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "runner" | "driver" | "va"

@@ -894,10 +894,10 @@ function DebugMatchPanel({ batchId }: { batchId: string }) {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["ezpass-debug", batchId],
     queryFn: () => debug({ data: { batchId } }),
-    enabled: role === "admin" && open,
+    enabled: (role === "admin" || role === "va") && open,
   });
 
-  if (role !== "admin") return null;
+  if (role !== "admin" && role !== "va") return null;
 
   return (
     <Card className="mt-6 border-amber-400/60">
