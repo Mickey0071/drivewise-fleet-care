@@ -826,11 +826,10 @@ export const debugEzpassMatch = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ batchId: z.string().min(1).max(64) }).parse(input))
   .handler(async ({ data, context }): Promise<EzpassDebugRow[]> => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+    const { data: canAccess } = await (context.supabase as any).rpc("has_violations_access", {
       _user_id: context.userId,
-      _role: "admin",
     });
-    if (!isAdmin) throw new Error("Forbidden");
+    if (!canAccess) throw new Error("Forbidden");
 
     const { data: items } = await supabaseAdmin
       .from("ezpass_batch_items")
