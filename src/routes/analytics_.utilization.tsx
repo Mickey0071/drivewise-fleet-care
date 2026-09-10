@@ -11,9 +11,9 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from "@/components/ui/table";
 import { useStoreVersion } from "@/lib/mock/store";
-import { rentals, vehicles, type Rental } from "@/lib/mock/data";
+import { rentals, vehicles, maintenance, type Rental } from "@/lib/mock/data";
 import { activeVehicles } from "@/lib/mock/store";
-import { Car, Activity, Clock } from "lucide-react";
+import { Car, Activity, Clock, Wrench } from "lucide-react";
 
 export const Route = createFileRoute("/analytics_/utilization")({
   head: () => ({ meta: [{ title: "Utilization — Analytics — Camauto Rentals" }] }),
@@ -56,6 +56,37 @@ function coversDay(r: Rental, d: string): boolean {
   return start <= d && d <= occupancyEnd(r);
 }
 
+/** Out-of-service windows per vehicle (repairs + hard status flags). */
+function buildDowntime(): Map<string, { from: string; to: string }[]> {
+  const map = new Map<string, { from: string; to: string }[]>();
+  const push = (id: string, from: string, to: string) => {
+    if (!from) return;
+    const arr = map.get(id) ?? [];
+    arr.push({ from: from.slice(0, 10), to: to.slice(0, 10) });
+    map.set(id, arr);
+  };
+  for (const m of maintenance) {
+    const from = (m.createdAt ?? m.dateCompleted ?? m.nextServiceDue ?? "").slice(0, 10);
+    const to = m.dateCompleted ? m.dateCompleted.slice(0, 10) : today;
+    if (!from) continue;
+    push(m.vehicleId, from, to < from ? from : to);
+  }
+  for (const v of vehicles) {
+    if (["maintenance", "impound", "inspection"].includes(v.status)) push(v.id, today, today);
+  }
+  return map;
+}
+
+function isDownOnDay(
+  downtime: Map<string, { from: string; to: string }[]>,
+  vehicleId: string,
+  d: string,
+): boolean {
+  const wins = downtime.get(vehicleId);
+  if (!wins) return false;
+  return wins.some((w) => w.from <= d && d <= w.to);
+}
+
 type Period = 7 | 30 | 90 | 0; // 0 = all time
 
 function Page() {
@@ -75,6 +106,13 @@ function Page() {
   const activeCount = activeVehicleIds.size;
   const currentPct = totalFleet > 0 ? Math.round((activeCount / totalFleet) * 100) : 0;
 
+  const downtime = useMemo(() => buildDowntime(), [maintenance.length, vehicles.length]);
+  const operableNow = useMemo(
+    () => activeFleet.filter((v) => activeVehicleIds.has(v.id) || !isDownOnDay(downtime, v.id, today)).length,
+    [activeFleet, downtime, activeVehicleIds],
+  );
+  const currentAdjPct = operableNow > 0 ? Math.round((activeCount / operableNow) * 100) : null;
+
   // ----- selected period range -----
   const periodFrom = useMemo(() => {
     if (period === 0) {
@@ -92,46 +130,57 @@ function Page() {
 
   // ----- HISTORICAL CHART: last 30 days utilization % per day -----
   const chartData = useMemo(() => {
-    const out: { date: string; label: string; pct: number; count: number }[] = [];
+    const out: { date: string; label: string; pct: number; count: number; operable: number }[] = [];
     for (let i = 29; i >= 0; i--) {
       const d = addDays(today, -i);
-      let count = 0;
-      for (const r of rentals) if (coversDay(r, d)) count++;
-      // count distinct vehicles
+      // distinct rented vehicles that day
       const ids = new Set<string>();
       for (const r of rentals) if (coversDay(r, d)) ids.add(r.vehicleId);
+      // operable = not down that day (a rented car always counts as operable)
+      let operable = 0;
+      for (const v of activeFleet) {
+        if (ids.has(v.id) || !isDownOnDay(downtime, v.id, d)) operable++;
+      }
       const dd = parse(d);
       out.push({
         date: d,
         label: `${dd.getMonth() + 1}/${dd.getDate()}`,
         count: ids.size,
-        pct: totalFleet > 0 ? Math.round((ids.size / totalFleet) * 100) : 0,
+        operable,
+        pct: operable > 0 ? Math.round((ids.size / operable) * 100) : 0,
       });
     }
     return out;
-  }, [rentals.length, totalFleet]);
+  }, [rentals.length, activeFleet, downtime]);
 
   // ----- PER-VEHICLE BREAKDOWN (selected period) -----
   const perVehicle = useMemo(() => {
     return activeFleet.map((v) => {
       let daysRented = 0;
+      let daysDown = 0;
       for (let i = 0; i < periodDays; i++) {
         const d = addDays(periodFrom, i);
         if (d > today) break;
-        if (rentals.some((r) => r.vehicleId === v.id && coversDay(r, d))) daysRented++;
+        const rented = rentals.some((r) => r.vehicleId === v.id && coversDay(r, d));
+        if (rented) daysRented++;
+        else if (isDownOnDay(downtime, v.id, d)) daysDown++;
       }
-      const daysIdle = periodDays - daysRented;
+      const available = periodDays - daysDown;
+      const daysIdle = available - daysRented;
       const pct = periodDays > 0 ? Math.round((daysRented / periodDays) * 100) : 0;
+      const adjPct = available > 0 ? Math.round((daysRented / available) * 100) : null;
       return {
         id: v.id,
         label: `${v.year} ${v.make} ${v.model}`.trim() || v.plate || v.id,
         plate: v.plate,
         daysRented,
         daysIdle,
+        daysDown,
         pct,
+        adjPct,
       };
-    }).sort((a, b) => b.pct - a.pct);
-  }, [activeFleet, rentals.length, periodFrom, periodDays]);
+    }).sort((a, b) => (b.adjPct ?? -1) - (a.adjPct ?? -1));
+  }, [activeFleet, rentals.length, periodFrom, periodDays, downtime]);
 
   // ----- IDLE RIGHT NOW -----
   const idleNow = useMemo(() => {
@@ -161,13 +210,24 @@ function Page() {
       <PageHeader title="📈 Utilization" subtitle="Fleet usage and idle vehicles" />
 
       {/* CURRENT UTILIZATION */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="sm:col-span-1">
           <CardContent className="flex flex-col items-center justify-center py-8 text-center">
             <Activity className="mb-2 h-5 w-5 text-muted-foreground" />
             <div className="text-5xl font-bold tracking-tight text-foreground">{currentPct}%</div>
             <p className="mt-2 text-sm text-muted-foreground">
               {activeCount} of {totalFleet} vehicles on rent right now
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+            <Wrench className="mb-2 h-5 w-5 text-sky-500" />
+            <div className="text-5xl font-bold tracking-tight text-foreground">
+              {currentAdjPct === null ? "—" : `${currentAdjPct}%`}
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Adjusted — {activeCount} of {operableNow} operable vehicles on rent
             </p>
           </CardContent>
         </Card>
@@ -199,7 +259,10 @@ function Page() {
               <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={2} />
               <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
               <Tooltip
-                formatter={(v: number, _n, p: any) => [`${v}% (${p.payload.count} cars)`, "Utilization"]}
+                formatter={(v: number, _n, p: any) => [
+                  `${v}% (${p.payload.count} of ${p.payload.operable} operable)`,
+                  "Utilization",
+                ]}
                 labelFormatter={(l) => `Day ${l}`}
               />
               <Bar dataKey="pct" fill="var(--primary)" radius={[3, 3, 0, 0]} />
@@ -235,7 +298,9 @@ function Page() {
                 <TableHead>Vehicle</TableHead>
                 <TableHead className="text-right">Days rented</TableHead>
                 <TableHead className="text-right">Days idle</TableHead>
+                <TableHead className="text-right">Days down</TableHead>
                 <TableHead className="text-right">Utilization</TableHead>
+                <TableHead className="text-right">Adjusted</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -247,18 +312,30 @@ function Page() {
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{v.daysRented}</TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">{v.daysIdle}</TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">{v.daysDown}</TableCell>
                   <TableCell className="text-right">
-                    <Badge variant={v.pct >= 70 ? "default" : v.pct >= 30 ? "secondary" : "outline"}>
-                      {v.pct}%
-                    </Badge>
+                    <Badge variant="outline">{v.pct}%</Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {v.adjPct === null ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <Badge variant={v.adjPct >= 70 ? "default" : v.adjPct >= 30 ? "secondary" : "outline"}>
+                        {v.adjPct}%
+                      </Badge>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
               {perVehicle.length === 0 && (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No vehicles.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No vehicles.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Adjusted utilization counts only the days a vehicle could actually earn: days rented ÷ (days in
+            period − days down for repairs, impound or inspection). A vehicle down the whole period shows “—”.
+          </p>
         </CardContent>
       </Card>
 
