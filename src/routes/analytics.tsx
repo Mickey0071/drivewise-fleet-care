@@ -102,6 +102,7 @@ function AnalyticsHub() {
       ...completedThisMonth.filter(m => m.isRentalBlocking),
       ...openRepairs.filter(m => m.isRentalBlocking),
     ];
+    const shopThisMonth = [...completedThisMonth, ...openRepairs];
     const rentalLost = blockingThisMonth.reduce(
       (s, m) => s + daysInShop(m, now) * dailyRateFor(m.vehicleId), 0,
     );
