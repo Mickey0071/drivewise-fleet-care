@@ -111,6 +111,19 @@ function AnalyticsHub() {
       openRepairs.filter(m => m.isRentalBlocking).map(m => m.vehicleId),
     ).size;
 
+    // Days in repair per vehicle (all repairs touching this month, blocking or not)
+    const repairDaysByVehicle = new Map<string, number>();
+    let totalRepairDays = 0;
+    for (const m of shopThisMonth) {
+      const d = daysInShop(m, now);
+      repairDaysByVehicle.set(m.vehicleId, (repairDaysByVehicle.get(m.vehicleId) ?? 0) + d);
+      totalRepairDays += d;
+    }
+    const repairDayBars = [...repairDaysByVehicle.entries()]
+      .map(([id, days]) => ({ id, days }))
+      .sort((a, b) => b.days - a.days)
+      .slice(0, 10);
+
     const avgDaysInShop = completedThisMonth.length
       ? completedThisMonth.reduce((s, m) => s + daysInShop(m, now), 0) / completedThisMonth.length
       : 0;
