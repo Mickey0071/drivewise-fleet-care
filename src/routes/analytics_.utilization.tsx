@@ -210,7 +210,7 @@ function Page() {
       <PageHeader title="📈 Utilization" subtitle="Fleet usage and idle vehicles" />
 
       {/* CURRENT UTILIZATION */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="sm:col-span-1">
           <CardContent className="flex flex-col items-center justify-center py-8 text-center">
             <Activity className="mb-2 h-5 w-5 text-muted-foreground" />
