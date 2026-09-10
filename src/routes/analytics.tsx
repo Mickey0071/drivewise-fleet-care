@@ -102,6 +102,7 @@ function AnalyticsHub() {
       ...completedThisMonth.filter(m => m.isRentalBlocking),
       ...openRepairs.filter(m => m.isRentalBlocking),
     ];
+    const shopThisMonth = [...completedThisMonth, ...openRepairs];
     const rentalLost = blockingThisMonth.reduce(
       (s, m) => s + daysInShop(m, now) * dailyRateFor(m.vehicleId), 0,
     );
@@ -109,6 +110,19 @@ function AnalyticsHub() {
     const carsDownNow = new Set(
       openRepairs.filter(m => m.isRentalBlocking).map(m => m.vehicleId),
     ).size;
+
+    // Days in repair per vehicle (all repairs touching this month, blocking or not)
+    const repairDaysByVehicle = new Map<string, number>();
+    let totalRepairDays = 0;
+    for (const m of shopThisMonth) {
+      const d = daysInShop(m, now);
+      repairDaysByVehicle.set(m.vehicleId, (repairDaysByVehicle.get(m.vehicleId) ?? 0) + d);
+      totalRepairDays += d;
+    }
+    const repairDayBars = [...repairDaysByVehicle.entries()]
+      .map(([id, days]) => ({ id, days }))
+      .sort((a, b) => b.days - a.days)
+      .slice(0, 10);
 
     const avgDaysInShop = completedThisMonth.length
       ? completedThisMonth.reduce((s, m) => s + daysInShop(m, now), 0) / completedThisMonth.length
@@ -170,6 +184,7 @@ function AnalyticsHub() {
     return {
       repairSpend, rentalLost, carsDownNow, avgDaysInShop, totalFleetImpact,
       costBars, lostBars, partsTotal, laborTotal, catBars, pipeline,
+      repairDayBars, totalRepairDays,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthKey, fleetRate]);
@@ -178,6 +193,7 @@ function AnalyticsHub() {
     { label: "Repair spend (this month)", value: fmtMoney(Math.round(data.repairSpend)) },
     { label: "Rental income lost", value: fmtMoney(Math.round(data.rentalLost)) },
     { label: "Cars down now", value: String(data.carsDownNow) },
+    { label: "Days in repair (this month)", value: `${Math.round(data.totalRepairDays)} d` },
     { label: "Avg days in shop", value: `${Math.round(data.avgDaysInShop)} d` },
     { label: "Awaiting approval", value: String(awaitingApproval) },
     { label: "Total fleet impact", value: fmtMoney(Math.round(data.totalFleetImpact)) },
@@ -186,6 +202,7 @@ function AnalyticsHub() {
   const maxCost = Math.max(1, ...data.costBars.map(b => b.amount));
   const maxLost = Math.max(1, ...data.lostBars.map(b => b.amount));
   const maxCat = Math.max(1, ...data.catBars.map(b => b.count));
+  const maxRepairDays = Math.max(1, ...data.repairDayBars.map(b => b.days));
   const splitTotal = data.partsTotal + data.laborTotal;
   const partsPct = splitTotal > 0 ? (data.partsTotal / splitTotal) * 100 : 0;
   const laborPct = splitTotal > 0 ? (data.laborTotal / splitTotal) * 100 : 0;
@@ -249,6 +266,22 @@ function AnalyticsHub() {
               pct={(b.amount / maxLost) * 100}
               value={fmtMoney(Math.round(b.amount))}
               color="bg-amber-500"
+            />
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* SECTION 3b — days in repair by vehicle */}
+      <Card className="mt-6">
+        <CardHeader><CardTitle className="text-base">Days in repair by vehicle (this month)</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {data.repairDayBars.length === 0 ? <Empty /> : data.repairDayBars.map((b) => (
+            <BarRow
+              key={b.id}
+              label={vLabel(b.id)}
+              pct={(b.days / maxRepairDays) * 100}
+              value={`${Math.round(b.days)} d`}
+              color="bg-red-500"
             />
           ))}
         </CardContent>
