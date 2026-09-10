@@ -259,7 +259,10 @@ function Page() {
               <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={2} />
               <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} unit="%" />
               <Tooltip
-                formatter={(v: number, _n, p: any) => [`${v}% (${p.payload.count} cars)`, "Utilization"]}
+                formatter={(v: number, _n, p: any) => [
+                  `${v}% (${p.payload.count} of ${p.payload.operable} operable)`,
+                  "Utilization",
+                ]}
                 labelFormatter={(l) => `Day ${l}`}
               />
               <Bar dataKey="pct" fill="var(--primary)" radius={[3, 3, 0, 0]} />
