@@ -130,46 +130,57 @@ function Page() {
 
   // ----- HISTORICAL CHART: last 30 days utilization % per day -----
   const chartData = useMemo(() => {
-    const out: { date: string; label: string; pct: number; count: number }[] = [];
+    const out: { date: string; label: string; pct: number; count: number; operable: number }[] = [];
     for (let i = 29; i >= 0; i--) {
       const d = addDays(today, -i);
-      let count = 0;
-      for (const r of rentals) if (coversDay(r, d)) count++;
-      // count distinct vehicles
+      // distinct rented vehicles that day
       const ids = new Set<string>();
       for (const r of rentals) if (coversDay(r, d)) ids.add(r.vehicleId);
+      // operable = not down that day (a rented car always counts as operable)
+      let operable = 0;
+      for (const v of activeFleet) {
+        if (ids.has(v.id) || !isDownOnDay(downtime, v.id, d)) operable++;
+      }
       const dd = parse(d);
       out.push({
         date: d,
         label: `${dd.getMonth() + 1}/${dd.getDate()}`,
         count: ids.size,
-        pct: totalFleet > 0 ? Math.round((ids.size / totalFleet) * 100) : 0,
+        operable,
+        pct: operable > 0 ? Math.round((ids.size / operable) * 100) : 0,
       });
     }
     return out;
-  }, [rentals.length, totalFleet]);
+  }, [rentals.length, activeFleet, downtime]);
 
   // ----- PER-VEHICLE BREAKDOWN (selected period) -----
   const perVehicle = useMemo(() => {
     return activeFleet.map((v) => {
       let daysRented = 0;
+      let daysDown = 0;
       for (let i = 0; i < periodDays; i++) {
         const d = addDays(periodFrom, i);
         if (d > today) break;
-        if (rentals.some((r) => r.vehicleId === v.id && coversDay(r, d))) daysRented++;
+        const rented = rentals.some((r) => r.vehicleId === v.id && coversDay(r, d));
+        if (rented) daysRented++;
+        else if (isDownOnDay(downtime, v.id, d)) daysDown++;
       }
-      const daysIdle = periodDays - daysRented;
+      const available = periodDays - daysDown;
+      const daysIdle = available - daysRented;
       const pct = periodDays > 0 ? Math.round((daysRented / periodDays) * 100) : 0;
+      const adjPct = available > 0 ? Math.round((daysRented / available) * 100) : null;
       return {
         id: v.id,
         label: `${v.year} ${v.make} ${v.model}`.trim() || v.plate || v.id,
         plate: v.plate,
         daysRented,
         daysIdle,
+        daysDown,
         pct,
+        adjPct,
       };
-    }).sort((a, b) => b.pct - a.pct);
-  }, [activeFleet, rentals.length, periodFrom, periodDays]);
+    }).sort((a, b) => (b.adjPct ?? -1) - (a.adjPct ?? -1));
+  }, [activeFleet, rentals.length, periodFrom, periodDays, downtime]);
 
   // ----- IDLE RIGHT NOW -----
   const idleNow = useMemo(() => {
