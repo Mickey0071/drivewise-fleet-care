@@ -202,6 +202,7 @@ function AnalyticsHub() {
   const maxCost = Math.max(1, ...data.costBars.map(b => b.amount));
   const maxLost = Math.max(1, ...data.lostBars.map(b => b.amount));
   const maxCat = Math.max(1, ...data.catBars.map(b => b.count));
+  const maxRepairDays = Math.max(1, ...data.repairDayBars.map(b => b.days));
   const splitTotal = data.partsTotal + data.laborTotal;
   const partsPct = splitTotal > 0 ? (data.partsTotal / splitTotal) * 100 : 0;
   const laborPct = splitTotal > 0 ? (data.laborTotal / splitTotal) * 100 : 0;
