@@ -106,6 +106,13 @@ function Page() {
   const activeCount = activeVehicleIds.size;
   const currentPct = totalFleet > 0 ? Math.round((activeCount / totalFleet) * 100) : 0;
 
+  const downtime = useMemo(() => buildDowntime(), [maintenance.length, vehicles.length]);
+  const operableNow = useMemo(
+    () => activeFleet.filter((v) => activeVehicleIds.has(v.id) || !isDownOnDay(downtime, v.id, today)).length,
+    [activeFleet, downtime, activeVehicleIds],
+  );
+  const currentAdjPct = operableNow > 0 ? Math.round((activeCount / operableNow) * 100) : null;
+
   // ----- selected period range -----
   const periodFrom = useMemo(() => {
     if (period === 0) {
