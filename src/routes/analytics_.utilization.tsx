@@ -13,7 +13,7 @@ import {
 import { useStoreVersion } from "@/lib/mock/store";
 import { rentals, vehicles, maintenance, type Rental } from "@/lib/mock/data";
 import { activeVehicles } from "@/lib/mock/store";
-import { Car, Activity, Clock } from "lucide-react";
+import { Car, Activity, Clock, Wrench } from "lucide-react";
 
 export const Route = createFileRoute("/analytics_/utilization")({
   head: () => ({ meta: [{ title: "Utilization — Analytics — Camauto Rentals" }] }),
