@@ -193,6 +193,7 @@ function AnalyticsHub() {
     { label: "Repair spend (this month)", value: fmtMoney(Math.round(data.repairSpend)) },
     { label: "Rental income lost", value: fmtMoney(Math.round(data.rentalLost)) },
     { label: "Cars down now", value: String(data.carsDownNow) },
+    { label: "Days in repair (this month)", value: `${Math.round(data.totalRepairDays)} d` },
     { label: "Avg days in shop", value: `${Math.round(data.avgDaysInShop)} d` },
     { label: "Awaiting approval", value: String(awaitingApproval) },
     { label: "Total fleet impact", value: fmtMoney(Math.round(data.totalFleetImpact)) },
