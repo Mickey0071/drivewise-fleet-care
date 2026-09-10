@@ -222,6 +222,17 @@ function Page() {
         </Card>
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+            <Wrench className="mb-2 h-5 w-5 text-sky-500" />
+            <div className="text-5xl font-bold tracking-tight text-foreground">
+              {currentAdjPct === null ? "—" : `${currentAdjPct}%`}
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Adjusted — {activeCount} of {operableNow} operable vehicles on rent
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-8 text-center">
             <Car className="mb-2 h-5 w-5 text-emerald-500" />
             <div className="text-4xl font-bold text-foreground">{activeCount}</div>
             <p className="mt-2 text-sm text-muted-foreground">Active rentals</p>
