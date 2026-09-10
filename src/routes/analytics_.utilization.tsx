@@ -298,7 +298,9 @@ function Page() {
                 <TableHead>Vehicle</TableHead>
                 <TableHead className="text-right">Days rented</TableHead>
                 <TableHead className="text-right">Days idle</TableHead>
+                <TableHead className="text-right">Days down</TableHead>
                 <TableHead className="text-right">Utilization</TableHead>
+                <TableHead className="text-right">Adjusted</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -310,18 +312,30 @@ function Page() {
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{v.daysRented}</TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">{v.daysIdle}</TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">{v.daysDown}</TableCell>
                   <TableCell className="text-right">
-                    <Badge variant={v.pct >= 70 ? "default" : v.pct >= 30 ? "secondary" : "outline"}>
-                      {v.pct}%
-                    </Badge>
+                    <Badge variant="outline">{v.pct}%</Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {v.adjPct === null ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <Badge variant={v.adjPct >= 70 ? "default" : v.adjPct >= 30 ? "secondary" : "outline"}>
+                        {v.adjPct}%
+                      </Badge>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
               {perVehicle.length === 0 && (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No vehicles.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No vehicles.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Adjusted utilization counts only the days a vehicle could actually earn: days rented ÷ (days in
+            period − days down for repairs, impound or inspection). A vehicle down the whole period shows “—”.
+          </p>
         </CardContent>
       </Card>
 
