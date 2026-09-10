@@ -56,6 +56,37 @@ function coversDay(r: Rental, d: string): boolean {
   return start <= d && d <= occupancyEnd(r);
 }
 
+/** Out-of-service windows per vehicle (repairs + hard status flags). */
+function buildDowntime(): Map<string, { from: string; to: string }[]> {
+  const map = new Map<string, { from: string; to: string }[]>();
+  const push = (id: string, from: string, to: string) => {
+    if (!from) return;
+    const arr = map.get(id) ?? [];
+    arr.push({ from: from.slice(0, 10), to: to.slice(0, 10) });
+    map.set(id, arr);
+  };
+  for (const m of maintenance) {
+    const from = (m.createdAt ?? m.dateCompleted ?? m.nextServiceDue ?? "").slice(0, 10);
+    const to = m.dateCompleted ? m.dateCompleted.slice(0, 10) : today;
+    if (!from) continue;
+    push(m.vehicleId, from, to < from ? from : to);
+  }
+  for (const v of vehicles) {
+    if (["maintenance", "impound", "inspection"].includes(v.status)) push(v.id, today, today);
+  }
+  return map;
+}
+
+function isDownOnDay(
+  downtime: Map<string, { from: string; to: string }[]>,
+  vehicleId: string,
+  d: string,
+): boolean {
+  const wins = downtime.get(vehicleId);
+  if (!wins) return false;
+  return wins.some((w) => w.from <= d && d <= w.to);
+}
+
 type Period = 7 | 30 | 90 | 0; // 0 = all time
 
 function Page() {
