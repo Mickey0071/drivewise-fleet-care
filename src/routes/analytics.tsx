@@ -184,6 +184,7 @@ function AnalyticsHub() {
     return {
       repairSpend, rentalLost, carsDownNow, avgDaysInShop, totalFleetImpact,
       costBars, lostBars, partsTotal, laborTotal, catBars, pipeline,
+      repairDayBars, totalRepairDays,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthKey, fleetRate]);
