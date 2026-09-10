@@ -11,7 +11,7 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from "@/components/ui/table";
 import { useStoreVersion } from "@/lib/mock/store";
-import { rentals, vehicles, type Rental } from "@/lib/mock/data";
+import { rentals, vehicles, maintenance, type Rental } from "@/lib/mock/data";
 import { activeVehicles } from "@/lib/mock/store";
 import { Car, Activity, Clock } from "lucide-react";
 
