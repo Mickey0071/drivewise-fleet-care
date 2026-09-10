@@ -271,6 +271,22 @@ function AnalyticsHub() {
         </CardContent>
       </Card>
 
+      {/* SECTION 3b — days in repair by vehicle */}
+      <Card className="mt-6">
+        <CardHeader><CardTitle className="text-base">Days in repair by vehicle (this month)</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {data.repairDayBars.length === 0 ? <Empty /> : data.repairDayBars.map((b) => (
+            <BarRow
+              key={b.id}
+              label={vLabel(b.id)}
+              pct={(b.days / maxRepairDays) * 100}
+              value={`${Math.round(b.days)} d`}
+              color="bg-red-500"
+            />
+          ))}
+        </CardContent>
+      </Card>
+
       {/* SECTION 4 — parts vs labour */}
       <Card className="mt-6">
         <CardHeader><CardTitle className="text-base">Parts vs labour (this month)</CardTitle></CardHeader>
