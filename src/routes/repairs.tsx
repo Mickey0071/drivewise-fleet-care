@@ -483,6 +483,12 @@ function RepairsPage() {
   const pendingRmCards = rmCards.filter(c => c.status === "submitted");
   const recentRmCards = rmCards.filter(c => c.status === "approved").slice(0, 5);
 
+  // --- Off road (vehicles with any open repair) ---
+  const offRoadGroups = buildOffRoadGroups(maintenance);
+  const openRepairCount = offRoadGroups.reduce((s, g) => s + g.repairs.length, 0);
+
+
+
   return (
     <TooltipProvider>
     <div>
