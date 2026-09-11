@@ -485,8 +485,8 @@ function RepairsPage() {
     <TooltipProvider>
     <div>
       <PageHeader
-        title="Maintenance"
-        subtitle={`${activeCount} active repair${activeCount === 1 ? "" : "s"} · Daily 8AM SMS until complete`}
+        title="Repairs"
+        subtitle={`${offRoadGroups.length} vehicle${offRoadGroups.length === 1 ? "" : "s"} off road · ${openRepairCount} open repair${openRepairCount === 1 ? "" : "s"}`}
         action={
           <div className="flex flex-wrap items-center gap-2">
             <ReportActions csv={{
@@ -501,19 +501,40 @@ function RepairsPage() {
               className="bg-amber-500 text-white hover:bg-amber-600"
               onClick={() => setCreateOpen(true)}
             >
-              <Plus className="mr-1 h-4 w-4" /> Create Repair
+              <Plus className="mr-1 h-4 w-4" /> New work order
             </Button>
           </div>
         }
       />
 
-      {/* ===================== ACTIVE REPAIRS (TOP) ===================== */}
+      {/* ===================== OFF ROAD (MAIN VIEW) ===================== */}
+      <OffRoadVehicles
+        repairs={maintenance}
+        onViewRepairs={(g) => {
+          setOpenPhases({ p1: true, p2: true, p3: true });
+          setExpandedId(g.repairs[0]?.id ?? null);
+          document.getElementById("all-work-orders")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+        onMechanic={(g) => setSendForRecord(g.repairs[0] ?? null)}
+        onApprove={(m) => {
+          setOpenPhases({ p1: true, p2: true, p3: true });
+          setExpandedId(m.id);
+          document.getElementById("all-work-orders")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      />
+
+      {/* ===================== ALL WORK ORDERS ===================== */}
+      <div id="all-work-orders" className="mb-4 border-t border-border pt-6">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">All work orders</h2>
+      </div>
+
       <section className="mb-8">
         <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
           <Flame className="h-5 w-5 text-amber-500" />
           Active Repairs ({activeCount})
         </h2>
         <div className="space-y-3">
+
           {/* Phase 1 — State Issue */}
           <Card className="border-yellow-500/40">
             <button type="button" onClick={() => togglePhase("p1")} className="w-full text-left">
