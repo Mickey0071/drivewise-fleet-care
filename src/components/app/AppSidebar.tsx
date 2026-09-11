@@ -97,6 +97,7 @@ const DEFAULT_ITEMS: NavItem[] = [
   { key: "/analytics/pnl-dashboard", url: "/analytics/pnl-dashboard", title: "P&L Dashboard", icon: TrendingUp, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
   { key: "/pnl", url: "/pnl", title: "P&L", icon: TrendingUp, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
   { key: "/admin/expenses", url: "/admin/expenses", title: "Expenses", icon: Receipt, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
+  { key: "/ram-expenses", url: "/ram-expenses", title: "RAM Auto Expenses", icon: Receipt, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
   { key: "/analytics/profitability", url: "/analytics/profitability", title: "Vehicle Profitability", icon: BarChart3, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
   { key: "/analytics", url: "/analytics", title: "Analytics", icon: BarChart3, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
   { key: "/payroll", url: "/payroll", title: "Payroll", icon: Banknote, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
