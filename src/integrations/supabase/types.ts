@@ -2099,6 +2099,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ram_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          expense_date: string
+          id: string
+          name: string
+          paid_by: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          expense_date: string
+          id?: string
+          name: string
+          paid_by: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          expense_date?: string
+          id?: string
+          name?: string
+          paid_by?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       refund_recovery: {
         Row: {
           amount: number
