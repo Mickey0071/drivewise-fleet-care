@@ -57,6 +57,8 @@ import {
 import { repairCost as effectiveRepairCost, isRepairCost } from "@/lib/money-rules";
 import type { Maintenance } from "@/lib/mock/data";
 import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
+import { OffRoadVehicles, buildOffRoadGroups } from "@/components/app/OffRoadVehicles";
+
 
 export const Route = createFileRoute("/repairs")({
   head: () => ({ meta: [{ title: "Repairs — Camauto Rentals" }] }),
