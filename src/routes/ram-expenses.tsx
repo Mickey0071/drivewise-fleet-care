@@ -207,10 +207,10 @@ function RamExpensesPage() {
     `rounded-full px-2 py-0.5 text-xs font-medium ${CATEGORY_STYLE[cat]?.badge ?? "bg-muted text-muted-foreground"}`;
 
   return (
-    <div className="-m-6 min-h-screen bg-background">
+    <div className="mx-auto max-w-6xl space-y-6">
       {/* Dark branded header */}
-      <header className="bg-zinc-950 px-6 py-8 text-zinc-50">
-        <div className="mx-auto flex max-w-6xl items-center gap-4">
+      <header className="rounded-xl bg-zinc-950 px-6 py-8 text-zinc-50">
+        <div className="flex items-center gap-4">
           <img src={logoUrl} alt="RAM Auto Group logo" className="h-12 w-12 rounded-md object-cover" />
           <div>
             <h1 className="text-2xl font-bold tracking-tight">RAM Auto Group</h1>
@@ -219,7 +219,7 @@ function RamExpensesPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-6 p-6">
+      <main className="space-y-6">
         {/* Input form */}
         <Card>
           <CardHeader><CardTitle className="text-base">Add expense</CardTitle></CardHeader>
