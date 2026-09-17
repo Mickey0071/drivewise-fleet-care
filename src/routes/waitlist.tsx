@@ -64,6 +64,8 @@ function WaitlistPage() {
           email: email.trim(),
           licenseFrontDataUrl: licenseFrontUrl,
           licenseBackDataUrl: licenseBackUrl ?? undefined,
+          selfieDataUrl: selfieUrl ?? undefined,
+
           rideshareCheckbox: rideshare,
           rideshareProofDataUrl: rideshare ? (rideshareUrl ?? undefined) : undefined,
           vehiclePreference,
