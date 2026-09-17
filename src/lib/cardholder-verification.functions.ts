@@ -7,6 +7,30 @@ import { createStripeClient } from "@/lib/stripe.server";
 
 const ADMIN_ALERT_PHONE = "267-221-3977";
 
+function appOrigin(): string {
+  return process.env.PUBLIC_APP_ORIGIN || "https://camautorentals.lovable.app";
+}
+
+/** Deep link to the rental detail view where the admin approves the verification. */
+function approvalLink(rentalId: string): string {
+  return `${appOrigin()}/rentals?detail=${encodeURIComponent(rentalId)}`;
+}
+
+/**
+ * Urgent admin alert: fraud-risk approvals must reach the admin's cell even
+ * during quiet hours. Still respects the master SMS switch.
+ */
+async function sendUrgentAdminSms(message: string): Promise<void> {
+  try {
+    const { getAlertGlobalConfig } = await import("@/lib/alerts.server");
+    const global = await getAlertGlobalConfig();
+    if (!global.masterSmsEnabled) return;
+    await sendSms(global.adminPhone || ADMIN_ALERT_PHONE, message, "Admin");
+  } catch (e) {
+    console.error("[cardholder-verify] urgent admin SMS failed", e);
+  }
+}
+
 const RELATIONSHIPS = ["Parent", "Spouse", "Friend", "Employer", "Self", "Other"] as const;
 
 async function assertAdmin(userId: string) {
