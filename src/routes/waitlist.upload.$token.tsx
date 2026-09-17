@@ -36,6 +36,7 @@ function WaitlistUploadPage() {
 
   const [licenseFrontUrl, setLicenseFrontUrl] = useState<string | null>(null);
   const [licenseBackUrl, setLicenseBackUrl] = useState<string | null>(null);
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [rideshareUrl, setRideshareUrl] = useState<string | null>(null);
   const [pref, setPref] = useState<string>("");
   const [cadence, setCadence] = useState<"Daily" | "Weekly" | "">("");
@@ -49,14 +50,18 @@ function WaitlistUploadPage() {
     }
   }, [entry]);
 
-  const needsFront = entry ? !entry.hasLicenseFront : true;
+  const rejected = entry?.status === "Docs rejected";
+  // After a rejection we always ask for fresh license + selfie photos.
+  const needsFront = entry ? (rejected || !entry.hasLicenseFront) : true;
   const needsBack = entry ? !entry.hasLicenseBack : true;
+  const needsSelfie = entry ? (rejected || !entry.hasSelfie) : true;
   const needsRideshare = entry ? !entry.hasRideshareProof : true;
 
   const canSubmit =
     !submitting &&
     ((!needsFront || !!licenseFrontUrl) &&
       (!needsBack || !!licenseBackUrl) &&
+      (!needsSelfie || !!selfieUrl) &&
       (!needsRideshare || !!rideshareUrl));
 
   async function onSubmit(e: React.FormEvent) {
@@ -69,11 +74,13 @@ function WaitlistUploadPage() {
           token,
           licenseFrontDataUrl: licenseFrontUrl ?? undefined,
           licenseBackDataUrl: licenseBackUrl ?? undefined,
+          selfieDataUrl: selfieUrl ?? undefined,
           rideshareProofDataUrl: rideshareUrl ?? undefined,
           vehiclePreference: pref || undefined,
           rentalCadence: cadence || undefined,
         },
       });
+
       setDone(true);
       refetch();
     } catch (err) {
@@ -132,7 +139,15 @@ function WaitlistUploadPage() {
         </p>
       </div>
 
+      {rejected && (
+        <Card className="mb-5 border-red-500/40 bg-red-500/10 p-4 text-sm">
+          <p className="font-medium text-red-700 dark:text-red-400">We need clearer photos</p>
+          {entry.rejectionReason && <p className="mt-1 text-muted-foreground">{entry.rejectionReason}</p>}
+        </Card>
+      )}
+
       <form onSubmit={onSubmit} className="space-y-5">
+
         {needsFront && (
           <DocSection step={1} title="Driver's license — front" done={!!licenseFrontUrl}>
             <PhotoCapture label="Upload license (front)" onChange={setLicenseFrontUrl} value={licenseFrontUrl} />
@@ -143,11 +158,17 @@ function WaitlistUploadPage() {
             <PhotoCapture label="Upload license (back)" onChange={setLicenseBackUrl} value={licenseBackUrl} />
           </DocSection>
         )}
+        {needsSelfie && (
+          <DocSection step={3} title="Selfie (so we can match your face to your license)" done={!!selfieUrl}>
+            <PhotoCapture label="Take a selfie" onChange={setSelfieUrl} value={selfieUrl} />
+          </DocSection>
+        )}
         {needsRideshare && (
-          <DocSection step={3} title="Rideshare proof (Uber/Lyft driver app screenshot)" done={!!rideshareUrl}>
+          <DocSection step={4} title="Rideshare proof (Uber/Lyft driver app screenshot)" done={!!rideshareUrl}>
             <PhotoCapture label="Upload rideshare screenshot" onChange={setRideshareUrl} value={rideshareUrl} />
           </DocSection>
         )}
+
 
         <Card className="space-y-4 p-4">
           <div className="space-y-1.5">

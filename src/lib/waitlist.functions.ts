@@ -43,6 +43,38 @@ async function uploadImage(
   return signed.signedUrl;
 }
 
+/** Statuses that must not be silently overwritten by a docs upload. */
+const TERMINAL_STATUSES = new Set(["Converted"]);
+
+/**
+ * After any document lands on an entry, move it to "Docs submitted" once we
+ * have both a license front and a selfie. Approval/rejection is a separate
+ * admin decision, so we never touch an already-reviewed entry unless new
+ * photos arrive after a rejection (which puts it back in the review queue).
+ */
+async function recomputeDocsStatus(entryId: string) {
+  const { data: row } = await db
+    .from("waitlist_entries")
+    .select("status, license_front_url, license_url, selfie_url, docs_submitted_at")
+    .eq("id", entryId)
+    .maybeSingle();
+  if (!row) return;
+  const status = (row.status as string) ?? "Waitlisted";
+  if (TERMINAL_STATUSES.has(status) || status === "Docs approved") return;
+  const hasLicense = !!(row.license_front_url || row.license_url);
+  const hasSelfie = !!row.selfie_url;
+  if (!hasLicense || !hasSelfie) return;
+  await db
+    .from("waitlist_entries")
+    .update({
+      status: "Docs submitted",
+      docs_submitted_at: new Date().toISOString(),
+      admin_seen_at: null,
+    })
+    .eq("id", entryId);
+}
+
+
 /** Public: create a waitlist entry from the /waitlist form. No auth required. */
 export const submitWaitlistEntry = createServerFn({ method: "POST" })
   .inputValidator((input: {
@@ -51,6 +83,7 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
     email: string;
     licenseFrontDataUrl: string;
     licenseBackDataUrl?: string;
+    selfieDataUrl?: string;
     rideshareCheckbox?: boolean;
     rideshareProofDataUrl?: string;
     vehiclePreference?: string;
@@ -64,6 +97,7 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) throw new Error("Please enter a valid email");
     if (!input.licenseFrontDataUrl?.startsWith("data:image/")) throw new Error("ID / driver's license photo required");
     if (input.licenseBackDataUrl && !input.licenseBackDataUrl.startsWith("data:image/")) throw new Error("Invalid license back image");
+    if (input.selfieDataUrl && !input.selfieDataUrl.startsWith("data:image/")) throw new Error("Invalid selfie image");
     const rideshare = input.rideshareCheckbox === true;
     if (input.rideshareProofDataUrl && !input.rideshareProofDataUrl.startsWith("data:image/")) throw new Error("Invalid rideshare proof image");
     if (input.rentalLength !== "1 week" && input.rentalLength !== "2+ weeks") throw new Error("Please choose a rental length");
@@ -72,6 +106,7 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
       name, phone, email,
       licenseFrontDataUrl: input.licenseFrontDataUrl,
       licenseBackDataUrl: input.licenseBackDataUrl ?? null,
+      selfieDataUrl: input.selfieDataUrl ?? null,
       rideshareCheckbox: rideshare,
       rideshareProofDataUrl: rideshare ? (input.rideshareProofDataUrl ?? null) : null,
       vehiclePreference,
@@ -104,6 +139,9 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
     if (data.licenseBackDataUrl) {
       patch.license_back_url = await uploadImage(entryId, "license-back", data.licenseBackDataUrl);
     }
+    if (data.selfieDataUrl) {
+      patch.selfie_url = await uploadImage(entryId, "selfie", data.selfieDataUrl);
+    }
     if (data.rideshareProofDataUrl) {
       patch.rideshare_proof_url = await uploadImage(entryId, "rideshare-proof", data.rideshareProofDataUrl);
     }
@@ -112,8 +150,10 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
       .update(patch)
       .eq("id", entryId);
     if (updErr) throw new Error(`Could not attach uploads: ${updErr.message}`);
+    await recomputeDocsStatus(entryId);
     return { ok: true as const, id: entryId };
   });
+
 
 /** Admin: list waitlist entries — high priority (rideshare) first, then oldest-first. */
 export const listWaitlistEntries = createServerFn({ method: "GET" })
@@ -235,7 +275,7 @@ export const getWaitlistEntryByToken = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { data: row, error } = await db
       .from("waitlist_entries")
-      .select("id, name, license_front_url, license_back_url, rideshare_proof_url, vehicle_preference, rental_cadence")
+      .select("id, name, status, docs_rejection_reason, license_front_url, license_back_url, selfie_url, rideshare_proof_url, vehicle_preference, rental_cadence")
       .eq("upload_token", data.token)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -243,8 +283,11 @@ export const getWaitlistEntryByToken = createServerFn({ method: "GET" })
     return {
       id: row.id as string,
       name: (row.name as string) ?? "",
+      status: (row.status as string) ?? "Waitlisted",
+      rejectionReason: (row.docs_rejection_reason as string) ?? "",
       hasLicenseFront: !!row.license_front_url,
       hasLicenseBack: !!row.license_back_url,
+      hasSelfie: !!row.selfie_url,
       hasRideshareProof: !!row.rideshare_proof_url,
       vehiclePreference: (row.vehicle_preference as string) ?? "",
       rentalCadence: (row.rental_cadence as string) ?? "",
@@ -257,6 +300,7 @@ export const submitWaitlistDocsByToken = createServerFn({ method: "POST" })
     token: string;
     licenseFrontDataUrl?: string;
     licenseBackDataUrl?: string;
+    selfieDataUrl?: string;
     rideshareProofDataUrl?: string;
     vehiclePreference?: string;
     rentalCadence?: "Daily" | "Weekly";
@@ -266,6 +310,7 @@ export const submitWaitlistDocsByToken = createServerFn({ method: "POST" })
     for (const [k, v] of Object.entries({
       licenseFrontDataUrl: input.licenseFrontDataUrl,
       licenseBackDataUrl: input.licenseBackDataUrl,
+      selfieDataUrl: input.selfieDataUrl,
       rideshareProofDataUrl: input.rideshareProofDataUrl,
     })) {
       if (v && !v.startsWith("data:image/")) throw new Error(`Invalid ${k}`);
@@ -274,6 +319,7 @@ export const submitWaitlistDocsByToken = createServerFn({ method: "POST" })
       token,
       licenseFrontDataUrl: input.licenseFrontDataUrl ?? null,
       licenseBackDataUrl: input.licenseBackDataUrl ?? null,
+      selfieDataUrl: input.selfieDataUrl ?? null,
       rideshareProofDataUrl: input.rideshareProofDataUrl ?? null,
       vehiclePreference: (input.vehiclePreference ?? "").trim() || null,
       rentalCadence:
@@ -283,7 +329,7 @@ export const submitWaitlistDocsByToken = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { data: row, error: findErr } = await db
       .from("waitlist_entries")
-      .select("id")
+      .select("id, status")
       .eq("upload_token", data.token)
       .maybeSingle();
     if (findErr) throw new Error(findErr.message);
@@ -298,17 +344,28 @@ export const submitWaitlistDocsByToken = createServerFn({ method: "POST" })
     if (data.licenseBackDataUrl) {
       patch.license_back_url = await uploadImage(entryId, "license-back", data.licenseBackDataUrl);
     }
+    if (data.selfieDataUrl) {
+      patch.selfie_url = await uploadImage(entryId, "selfie", data.selfieDataUrl);
+    }
     if (data.rideshareProofDataUrl) {
       patch.rideshare_proof_url = await uploadImage(entryId, "rideshare-proof", data.rideshareProofDataUrl);
     }
     if (data.vehiclePreference) patch.vehicle_preference = data.vehiclePreference;
     if (data.rentalCadence) patch.rental_cadence = data.rentalCadence;
+    // Fresh photos after a rejection put the entry back into the review queue.
+    if ((row.status as string) === "Docs rejected" && (patch.license_front_url || patch.selfie_url)) {
+      patch.status = "Waitlisted";
+      patch.docs_rejected_at = null;
+      patch.docs_rejection_reason = null;
+    }
     if (Object.keys(patch).length) {
       const { error: uErr } = await db.from("waitlist_entries").update(patch).eq("id", entryId);
       if (uErr) throw new Error(uErr.message);
     }
+    await recomputeDocsStatus(entryId);
     return { ok: true as const };
   });
+
 
 /** Admin: update editable fields on a waitlist card (notes, contact info, prefs). */
 export const updateWaitlistEntry = createServerFn({ method: "POST" })
@@ -345,11 +402,11 @@ export const uploadWaitlistDoc = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: {
     id: string;
-    kind: "license-front" | "license-back" | "rideshare-proof";
+    kind: "license-front" | "license-back" | "selfie" | "rideshare-proof";
     dataUrl: string;
   }) => {
     if (!input.id) throw new Error("id required");
-    if (!["license-front", "license-back", "rideshare-proof"].includes(input.kind)) throw new Error("kind invalid");
+    if (!["license-front", "license-back", "selfie", "rideshare-proof"].includes(input.kind)) throw new Error("kind invalid");
     if (!input.dataUrl?.startsWith("data:image/")) throw new Error("Image required");
     return input;
   })
@@ -358,13 +415,115 @@ export const uploadWaitlistDoc = createServerFn({ method: "POST" })
     const col =
       data.kind === "license-front" ? "license_front_url"
       : data.kind === "license-back" ? "license_back_url"
+      : data.kind === "selfie" ? "selfie_url"
       : "rideshare_proof_url";
     const patch: Record<string, string> = { [col]: url };
     if (data.kind === "license-front") patch.license_url = url;
     const { error } = await db.from("waitlist_entries").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
+    await recomputeDocsStatus(data.id);
     return { ok: true as const, url };
   });
+
+/**
+ * Admin: review the submitted ID documents.
+ * approve  → Docs approved (unlocks conversion)
+ * reject   → Docs rejected, reason required, optionally re-texts the upload link
+ * request  → re-texts the upload link asking for new photos
+ */
+export const reviewWaitlistDocs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    id: string;
+    action: "approve" | "reject" | "request";
+    reason?: string;
+    resendLink?: boolean;
+    licenseNumber?: string | null;
+    licenseExpiration?: string | null;
+    origin?: string;
+  }) => {
+    if (!input.id) throw new Error("id required");
+    if (!["approve", "reject", "request"].includes(input.action)) throw new Error("action invalid");
+    const reason = (input.reason ?? "").trim();
+    if (input.action === "reject" && reason.length < 3) throw new Error("A rejection reason is required");
+    return {
+      id: input.id,
+      action: input.action,
+      reason: reason || null,
+      resendLink: input.resendLink === true || input.action === "request",
+      licenseNumber: (input.licenseNumber ?? "").trim() || null,
+      licenseExpiration: (input.licenseExpiration ?? "").trim() || null,
+      origin: (input.origin ?? "").replace(/\/$/, ""),
+    };
+  })
+  .handler(async ({ data, context }) => {
+    const { data: row, error: findErr } = await db
+      .from("waitlist_entries")
+      .select("id, name, phone, status, upload_token, license_front_url, license_url, selfie_url")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (findErr) throw new Error(findErr.message);
+    if (!row) throw new Error("Waitlist entry not found");
+    if ((row.status as string) === "Converted") throw new Error("This waiter has already been converted");
+
+    const now = new Date().toISOString();
+    const patch: Record<string, unknown> = {};
+    if (data.licenseNumber !== null) patch.license_number = data.licenseNumber;
+    if (data.licenseExpiration !== null) patch.license_expiration = data.licenseExpiration;
+
+    if (data.action === "approve") {
+      if (!(row.license_front_url || row.license_url)) throw new Error("No license photo on file to approve");
+      if (!row.selfie_url) throw new Error("No selfie on file to approve");
+      patch.status = "Docs approved";
+      patch.docs_approved_at = now;
+      patch.docs_approved_by = context.userId ?? null;
+      patch.docs_rejected_at = null;
+      patch.docs_rejection_reason = null;
+    } else if (data.action === "reject") {
+      patch.status = "Docs rejected";
+      patch.docs_rejected_at = now;
+      patch.docs_rejection_reason = data.reason;
+      patch.docs_approved_at = null;
+      patch.docs_approved_by = null;
+    }
+
+    let link: string | null = null;
+    if (data.resendLink) {
+      const token = row.upload_token as string | null;
+      if (!token) throw new Error("This waiter has no upload link — create one from the card");
+      const origin = data.origin || "https://camautorentals.lovable.app";
+      link = `${origin}/waitlist/upload/${token}`;
+      patch.link_sent_at = now;
+      if (data.action === "request" && (row.status as string) !== "Docs rejected") {
+        patch.status = "Link sent";
+      }
+      const phone = (row.phone as string) ?? "";
+      if (phone) {
+        const first = String(row.name ?? "").trim().split(/\s+/)[0] || "";
+        const why = data.reason ? ` Reason: ${data.reason}.` : "";
+        const message = `Camauto Rentals: Hi${first ? ` ${first}` : ""}, we need new photos of your driver's license and a selfie.${why} Upload here: ${link}`;
+        try {
+          const { sendSms } = await import("@/lib/ghl.server");
+          await sendSms(phone, message, (row.name as string) ?? null);
+        } catch (e) {
+          console.error("[waitlist review] SMS failed", e);
+          return { ok: true as const, link, smsSent: false as const, status: (patch.status as string) ?? (row.status as string) };
+        }
+      }
+    }
+
+    if (Object.keys(patch).length) {
+      const { error } = await db.from("waitlist_entries").update(patch).eq("id", data.id);
+      if (error) throw new Error(error.message);
+    }
+    return {
+      ok: true as const,
+      link,
+      smsSent: data.resendLink,
+      status: (patch.status as string) ?? (row.status as string),
+    };
+  });
+
 
 /** Admin: mark a waitlist entry as Converted after a reservation is created. */
 export const markWaitlistConverted = createServerFn({ method: "POST" })

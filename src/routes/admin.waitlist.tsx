@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { UserPlus, CheckCircle2, AlertTriangle, Plus, Upload, ArrowRight } from "lucide-react";
+import { UserPlus, CheckCircle2, AlertTriangle, Plus, Upload, ArrowRight, ShieldCheck, XCircle, RefreshCw, Car } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -20,13 +21,16 @@ import {
 import {
   listWaitlistEntries, markWaitlistSeen, markWaitlistConverted,
   createWaitlistEntryAdmin, updateWaitlistEntry, uploadWaitlistDoc,
+  reviewWaitlistDocs,
 } from "@/lib/waitlist.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
+import { sendSigningLink } from "@/lib/sign.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
-import { vehicles } from "@/lib/mock/data";
-import { isVehicleBookable, addDriver, addRental, ensureRentalSynced, useStoreVersion } from "@/lib/mock/store";
+import { vehicles, drivers } from "@/lib/mock/data";
+import { isVehicleBookable, addDriver, updateDriver, addRental, ensureRentalSynced, useStoreVersion } from "@/lib/mock/store";
 import { supabase } from "@/integrations/supabase/client";
+
 
 export const Route = createFileRoute("/admin/waitlist")({
   head: () => ({ meta: [{ title: "Waitlist — Camauto Rentals" }] }),
@@ -53,7 +57,44 @@ type Entry = {
   created_at: string;
   source?: string | null;
   admin_notes?: string | null;
+  docs_submitted_at?: string | null;
+  docs_approved_at?: string | null;
+  docs_rejected_at?: string | null;
+  docs_rejection_reason?: string | null;
+  license_number?: string | null;
+  license_expiration?: string | null;
+  link_sent_at?: string | null;
 };
+
+/** Waitlisted → Link sent → Docs submitted → Docs approved → Converted */
+function statusMeta(status: string): { label: string; className: string } {
+  switch (status) {
+    case "Converted":
+      return { label: "Converted", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" };
+    case "Docs approved":
+      return { label: "Docs approved", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" };
+    case "Docs submitted":
+      return { label: "Docs submitted — needs review", className: "bg-amber-500/15 text-amber-700 dark:text-amber-400" };
+    case "Docs rejected":
+      return { label: "Docs rejected", className: "bg-red-500/15 text-red-700 dark:text-red-400" };
+    case "Link sent":
+      return { label: "Link sent", className: "bg-blue-500/15 text-blue-700 dark:text-blue-400" };
+    default:
+      return { label: status || "Waitlisted", className: "bg-muted text-muted-foreground" };
+  }
+}
+
+const STATUS_RANK: Record<string, number> = {
+  "Docs approved": 0,
+  "Docs submitted": 1,
+  "Docs rejected": 2,
+  "Link sent": 3,
+  Waitlisted: 4,
+};
+
+function hasDocs(e: Entry) {
+  return !!(e.license_front_url || e.license_url) || !!e.selfie_url;
+}
 
 function fmtDate(d: string | null) {
   return d ? new Date(d).toLocaleString("en-US") : "—";
@@ -67,6 +108,7 @@ async function fileToDataUrl(file: File): Promise<string> {
     r.readAsDataURL(file);
   });
 }
+
 
 function WaitlistAdminPage() {
   useStoreVersion();
@@ -90,10 +132,25 @@ function WaitlistAdminPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [cardTarget, setCardTarget] = useState<Entry | null>(null);
   const [assignTarget, setAssignTarget] = useState<Entry | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<Entry | null>(null);
 
-  const filtered = entries.filter((e) =>
-    tab === "converted" ? e.status === "Converted" : e.status !== "Converted",
-  );
+  const filtered = useMemo(() => {
+    const rows = entries.filter((e) =>
+      tab === "converted" ? e.status === "Converted" : e.status !== "Converted",
+    );
+    if (tab === "converted") return rows;
+    // Docs approved first, then docs submitted, then everyone else by
+    // priority (rideshare first) and join date.
+    return [...rows].sort((a, b) => {
+      const ra = STATUS_RANK[a.status] ?? 5;
+      const rb = STATUS_RANK[b.status] ?? 5;
+      if (ra !== rb) return ra - rb;
+      const pa = a.priority === "high" ? 0 : 1;
+      const pb = b.priority === "high" ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
+  }, [entries, tab]);
 
   return (
     <div>
@@ -143,8 +200,10 @@ function WaitlistAdminPage() {
                 )}
                 {filtered.map((e) => {
                   const front = e.license_front_url ?? e.license_url;
-                  const docsComplete = !!front;
+                  const docsComplete = !!front && !!e.selfie_url;
                   const isHigh = e.priority === "high";
+                  const approved = e.status === "Docs approved";
+                  const meta = statusMeta(e.status);
                   return (
                   <tr key={e.id} className="cursor-pointer border-b hover:bg-muted/20" onClick={() => setCardTarget(e)}>
                     <td className="px-3 py-2 font-medium">{e.name}</td>
@@ -168,30 +227,44 @@ function WaitlistAdminPage() {
                     <td className="px-3 py-2">
                       {docsComplete ? (
                         <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
-                          <CheckCircle2 className="mr-1 h-3 w-3" /> Docs complete
+                          <CheckCircle2 className="mr-1 h-3 w-3" /> ID + selfie
                         </Badge>
                       ) : (
                         <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400">
-                          <AlertTriangle className="mr-1 h-3 w-3" /> Docs missing
+                          <AlertTriangle className="mr-1 h-3 w-3" /> {front ? "Selfie missing" : "Docs missing"}
                         </Badge>
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      {e.status === "Converted" ? (
-                        <Badge variant="secondary" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
-                          <CheckCircle2 className="mr-1 h-3 w-3" /> Converted
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">{e.status}</Badge>
-                      )}
+                      <Badge className={meta.className}>{meta.label}</Badge>
                     </td>
                     <td className="px-3 py-2 text-right" onClick={(ev) => ev.stopPropagation()}>
                       {e.status === "Converted" ? (
                         <span className="text-xs text-muted-foreground">{e.converted_rental_id ?? ""}</span>
                       ) : (
-                        <Button size="sm" variant="outline" onClick={() => setAssignTarget(e)}>
-                          <ArrowRight className="mr-1.5 h-3.5 w-3.5" /> Convert
-                        </Button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {hasDocs(e) && !approved && (
+                            <Button size="sm" variant="outline" onClick={() => setReviewTarget(e)}>
+                              <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Review docs
+                            </Button>
+                          )}
+                          {approved ? (
+                            <Button size="sm" onClick={() => setAssignTarget(e)}>
+                              <ArrowRight className="mr-1.5 h-3.5 w-3.5" /> Convert to reservation
+                            </Button>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span tabIndex={0}>
+                                  <Button size="sm" variant="outline" disabled className="pointer-events-none opacity-50">
+                                    <ArrowRight className="mr-1.5 h-3.5 w-3.5" /> Convert
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Approve docs first</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -221,24 +294,34 @@ function WaitlistAdminPage() {
         }}
       />
 
+      <ReviewDocsDialog
+        entry={reviewTarget}
+        onOpenChange={(o) => { if (!o) setReviewTarget(null); }}
+        onChanged={() => qc.invalidateQueries({ queryKey: ["waitlist-entries"] })}
+      />
+
       <WaiterCardDialog
         entry={cardTarget}
         onOpenChange={(o) => { if (!o) setCardTarget(null); }}
         onConvert={(e) => { setCardTarget(null); setAssignTarget(e); }}
+        onReview={(e) => { setCardTarget(null); setReviewTarget(e); }}
         onChanged={() => qc.invalidateQueries({ queryKey: ["waitlist-entries"] })}
       />
+
     </div>
   );
 }
 
 function WaiterCardDialog({
-  entry, onOpenChange, onConvert, onChanged,
+  entry, onOpenChange, onConvert, onReview, onChanged,
 }: {
   entry: Entry | null;
   onOpenChange: (o: boolean) => void;
   onConvert: (e: Entry) => void;
+  onReview: (e: Entry) => void;
   onChanged: () => void;
 }) {
+
   const update = useServerFn(updateWaitlistEntry);
   const uploadDoc = useServerFn(uploadWaitlistDoc);
   const [name, setName] = useState("");
@@ -251,7 +334,7 @@ function WaiterCardDialog({
   const [uploading, setUploading] = useState<string | null>(null);
   const [zoom, setZoom] = useState<{ url: string; label: string } | null>(null);
   // Locally track newly-uploaded doc URLs so the UI updates immediately.
-  const [localDocs, setLocalDocs] = useState<Partial<Record<"license-front" | "license-back" | "rideshare-proof", string>>>({});
+  const [localDocs, setLocalDocs] = useState<Partial<Record<"license-front" | "license-back" | "selfie" | "rideshare-proof", string>>>({});
 
   useEffect(() => {
     if (entry) {
@@ -265,7 +348,7 @@ function WaiterCardDialog({
     }
   }, [entry?.id]);
 
-  async function handleUpload(kind: "license-front" | "license-back" | "rideshare-proof", file: File) {
+  async function handleUpload(kind: "license-front" | "license-back" | "selfie" | "rideshare-proof", file: File) {
     if (!entry) return;
     setUploading(kind);
     try {
@@ -302,11 +385,13 @@ function WaiterCardDialog({
     }
   }
 
-  const docs: Array<{ label: string; kind: "license-front" | "license-back" | "rideshare-proof"; url: string | null }> = entry ? [
+  const docs: Array<{ label: string; kind: "license-front" | "license-back" | "selfie" | "rideshare-proof"; url: string | null }> = entry ? [
     { label: "License — front", kind: "license-front", url: localDocs["license-front"] ?? entry.license_front_url ?? entry.license_url },
     { label: "License — back", kind: "license-back", url: localDocs["license-back"] ?? entry.license_back_url },
+    { label: "Selfie", kind: "selfie", url: localDocs["selfie"] ?? entry.selfie_url },
     { label: "Rideshare proof", kind: "rideshare-proof", url: localDocs["rideshare-proof"] ?? entry.rideshare_proof_url },
   ] : [];
+
 
   return (
     <Dialog open={!!entry} onOpenChange={onOpenChange}>
@@ -372,7 +457,7 @@ function WaiterCardDialog({
 
           <div>
             <div className="mb-1.5 text-sm font-medium">Documents</div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               {docs.map((it) => (
                 <div key={it.kind} className="space-y-1.5">
                   <div className="text-xs font-medium text-muted-foreground">{it.label}</div>
@@ -408,11 +493,32 @@ function WaiterCardDialog({
             {saving ? "Saving…" : "Save changes"}
           </Button>
           {entry && entry.status !== "Converted" && (
-            <Button onClick={() => onConvert(entry)}>
-              <ArrowRight className="mr-1.5 h-4 w-4" /> Convert to Reservation
-            </Button>
+            <div className="flex gap-2">
+              {hasDocs(entry) && entry.status !== "Docs approved" && (
+                <Button variant="outline" onClick={() => onReview(entry)}>
+                  <ShieldCheck className="mr-1.5 h-4 w-4" /> Review docs
+                </Button>
+              )}
+              {entry.status === "Docs approved" ? (
+                <Button onClick={() => onConvert(entry)}>
+                  <ArrowRight className="mr-1.5 h-4 w-4" /> Convert to Reservation
+                </Button>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={0}>
+                      <Button disabled className="pointer-events-none opacity-50">
+                        <ArrowRight className="mr-1.5 h-4 w-4" /> Convert to Reservation
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Approve docs first</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           )}
         </DialogFooter>
+
 
         <Dialog open={!!zoom} onOpenChange={(o) => { if (!o) setZoom(null); }}>
           <DialogContent className="max-h-[95vh] max-w-4xl overflow-auto">
@@ -618,6 +724,187 @@ function CreateWaiterDialog({
   );
 }
 
+/** PART 1 — review the submitted ID + selfie before anything converts. */
+function ReviewDocsDialog({
+  entry, onOpenChange, onChanged,
+}: {
+  entry: Entry | null;
+  onOpenChange: (o: boolean) => void;
+  onChanged: () => void;
+}) {
+  const review = useServerFn(reviewWaitlistDocs);
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [licenseExp, setLicenseExp] = useState("");
+  const [reason, setReason] = useState("");
+  const [resendOnReject, setResendOnReject] = useState(true);
+  const [busy, setBusy] = useState<null | "approve" | "reject" | "request">(null);
+  const [zoom, setZoom] = useState<{ url: string; label: string } | null>(null);
+
+  useEffect(() => {
+    if (entry) {
+      setLicenseNumber(entry.license_number ?? "");
+      setLicenseExp(entry.license_expiration ?? "");
+      setReason("");
+      setResendOnReject(true);
+    }
+  }, [entry?.id]);
+
+  const licenseUrl = entry ? (entry.license_front_url ?? entry.license_url) : null;
+  const selfieUrl = entry?.selfie_url ?? null;
+
+  async function act(action: "approve" | "reject" | "request") {
+    if (!entry) return;
+    if (action === "reject" && reason.trim().length < 3) {
+      toast.error("Enter a reason for the rejection");
+      return;
+    }
+    setBusy(action);
+    try {
+      const res = await review({ data: {
+        id: entry.id,
+        action,
+        reason: reason.trim() || undefined,
+        resendLink: action === "request" ? true : action === "reject" ? resendOnReject : false,
+        licenseNumber: licenseNumber || null,
+        licenseExpiration: licenseExp || null,
+        origin: window.location.origin,
+      } });
+      toast.success(
+        action === "approve"
+          ? "Docs approved — ready to convert"
+          : action === "reject"
+            ? res.smsSent ? "Docs rejected and new upload link texted" : "Docs rejected"
+            : "New photo request texted",
+      );
+      onChanged();
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save the review");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Dialog open={!!entry} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[92vh] max-w-4xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5" /> Review documents — {entry?.name}
+          </DialogTitle>
+        </DialogHeader>
+
+        {entry && (
+          <div className="space-y-4">
+            <div className="grid gap-3 rounded-md border p-3 text-sm sm:grid-cols-3">
+              <div><div className="text-xs text-muted-foreground">Name</div>{entry.name}</div>
+              <div><div className="text-xs text-muted-foreground">Phone</div>{entry.phone || "—"}</div>
+              <div><div className="text-xs text-muted-foreground">Email</div>{entry.email || "—"}</div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                { label: "Driver's license — front", url: licenseUrl },
+                { label: "Selfie", url: selfieUrl },
+              ].map((it) => (
+                <div key={it.label} className="space-y-1.5">
+                  <div className="text-xs font-medium text-muted-foreground">{it.label}</div>
+                  {it.url ? (
+                    <button type="button" className="block w-full" onClick={() => setZoom({ url: it.url!, label: it.label })}>
+                      <img src={it.url} alt={it.label} className="max-h-72 w-full cursor-zoom-in rounded border bg-muted/30 object-contain hover:opacity-90" />
+                    </button>
+                  ) : (
+                    <div className="flex h-72 items-center justify-center rounded border bg-muted/20 text-xs text-muted-foreground">
+                      Not uploaded
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="wl-dl">License number</Label>
+                <Input id="wl-dl" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="As shown on the license" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="wl-dl-exp">License expiration</Label>
+                <Input id="wl-dl-exp" value={licenseExp} onChange={(e) => setLicenseExp(e.target.value)} placeholder="MM/DD/YYYY" />
+              </div>
+            </div>
+
+            <div className="space-y-2 rounded-md border p-3">
+              <Label htmlFor="wl-reason">Reason (required to reject)</Label>
+              <Textarea id="wl-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Blurry photo, expired license, name mismatch…" />
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" className="h-4 w-4" checked={resendOnReject} onChange={(e) => setResendOnReject(e.target.checked)} />
+                Also text a new upload link when rejecting
+              </label>
+            </div>
+
+            {entry.status === "Docs rejected" && entry.docs_rejection_reason && (
+              <p className="text-xs text-red-600">Previously rejected: {entry.docs_rejection_reason}</p>
+            )}
+          </div>
+        )}
+
+        <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+          <Button variant="outline" disabled={!!busy} onClick={() => act("request")}>
+            <RefreshCw className="mr-1.5 h-4 w-4" /> {busy === "request" ? "Sending…" : "Request new photos"}
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="destructive" disabled={!!busy} onClick={() => act("reject")}>
+              <XCircle className="mr-1.5 h-4 w-4" /> {busy === "reject" ? "Saving…" : "Reject docs"}
+            </Button>
+            <Button disabled={!!busy || !licenseUrl || !selfieUrl} onClick={() => act("approve")}>
+              <CheckCircle2 className="mr-1.5 h-4 w-4" /> {busy === "approve" ? "Saving…" : "Approve docs"}
+            </Button>
+          </div>
+        </DialogFooter>
+
+        <Dialog open={!!zoom} onOpenChange={(o) => { if (!o) setZoom(null); }}>
+          <DialogContent className="max-h-[95vh] max-w-5xl overflow-auto">
+            <DialogHeader><DialogTitle>{zoom?.label}</DialogTitle></DialogHeader>
+            {zoom && <img src={zoom.url} alt={zoom.label} className="max-h-[78vh] w-full object-contain" />}
+            <DialogFooter>
+              <a href={zoom?.url} target="_blank" rel="noreferrer" className="text-xs underline">Open in new tab</a>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const RATE_MODES = {
+  Daily: { days: 1, label: "day" },
+  Weekly: { days: 7, label: "week" },
+  Monthly: { days: 28, label: "month" },
+} as const;
+type RateMode = keyof typeof RATE_MODES;
+
+function digitsOnly(s: string) {
+  return (s ?? "").replace(/\D/g, "");
+}
+
+/** Loose match of a stated preference (Sedan/SUV/Minivan) against a vehicle. */
+function matchesPreference(pref: string | null | undefined, v: any): boolean {
+  const p = (pref ?? "").trim().toLowerCase();
+  if (!p) return false;
+  const text = `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""} ${v.notes ?? ""}`.toLowerCase();
+  if (text.includes(p)) return true;
+  const seats = Number(v.seats ?? 0);
+  if (p === "suv") return seats >= 5 && seats <= 7 && /suv|explorer|equinox|rogue|rav4|cr-?v|highlander|pilot|tahoe|traverse/.test(text);
+  if (p === "minivan") return seats >= 7 || /odyssey|sienna|pacifica|carnival|caravan/.test(text);
+  if (p === "sedan") return /accord|camry|altima|malibu|civic|corolla|sonata|elantra|impala|jetta|sentra|fusion/.test(text);
+  return false;
+}
+
+/**
+ * PART 2 + 3 — creates a brand new reservation from the waitlist entry.
+ * Nothing here loads an existing reservation: the driver and rental rows are
+ * created, verified in the database, then the waiter is flagged Converted.
+ */
 function AssignVehicleDialog({
   entry, onOpenChange, onDone,
 }: {
@@ -628,84 +915,143 @@ function AssignVehicleDialog({
   useStoreVersion();
   const convert = useServerFn(markWaitlistConverted);
   const sendLink = useServerFn(sendPaymentLink);
+  const sendAgreement = useServerFn(sendSigningLink);
   const [vehicleId, setVehicleId] = useState<string>("");
   const [startDate, setStartDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
-  const [weeklyRate, setWeeklyRate] = useState<string>("");
+  const [mode, setMode] = useState<RateMode>("Weekly");
+  const [units, setUnits] = useState<string>("1");
+  const [rate, setRate] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
-  const available = useMemo(
-    () => vehicles.filter((v) => isVehicleBookable(v.id)),
+  const unitCount = Math.max(1, Math.floor(Number(units) || 1));
+  const endDate = useMemo(() => {
+    const d = new Date(`${startDate}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return startDate;
+    d.setDate(d.getDate() + RATE_MODES[mode].days * unitCount);
+    return d.toISOString().slice(0, 10);
+  }, [startDate, mode, unitCount]);
+
+  // Only genuinely available vehicles: not archived, not rented/off-road/in
+  // repair/impound/awaiting inspection, and free for the whole chosen window.
+  const available = useMemo(() => {
+    const list = vehicles.filter((v) => isVehicleBookable(v.id, startDate, endDate));
+    return list
+      .map((v) => ({ v, match: matchesPreference(entry?.vehicle_preference, v) }))
+      .sort((a, b) =>
+        a.match === b.match
+          ? `${a.v.year} ${a.v.make} ${a.v.model}`.localeCompare(`${b.v.year} ${b.v.make} ${b.v.model}`)
+          : a.match ? -1 : 1,
+      );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [entry?.id, vehicles.length],
-  );
+  }, [entry?.id, entry?.vehicle_preference, startDate, endDate, vehicles.length]);
 
   useEffect(() => {
     if (entry) {
       setVehicleId("");
       setStartDate(new Date().toISOString().slice(0, 10));
-      setWeeklyRate("");
+      const stated = `${entry.rental_length ?? ""} ${entry.rental_cadence ?? ""}`.toLowerCase();
+      setMode(stated.includes("daily") ? "Daily" : stated.includes("2+") ? "Monthly" : "Weekly");
+      setUnits(stated.includes("2+") ? "1" : "1");
+      setRate("");
     }
-  }, [entry]);
+  }, [entry?.id]);
 
-  const chosen = available.find((v) => v.id === vehicleId);
+  const chosen = available.find((o) => o.v.id === vehicleId)?.v as any;
+
+  // Default the rate from the vehicle's own pricing whenever the vehicle or
+  // billing period changes, unless the admin has typed their own number.
   useEffect(() => {
-    if (chosen && !weeklyRate) {
-      setWeeklyRate(String((chosen as any).weeklyRate ?? (chosen as any).weekly_rate ?? ""));
-    }
-  }, [chosen, weeklyRate]);
+    if (!chosen) return;
+    const weekly = Number(chosen.weeklyRate ?? 0);
+    const daily = Number(chosen.dailyRate ?? 0);
+    const suggested = mode === "Daily" ? daily : mode === "Weekly" ? weekly : weekly * 4;
+    setRate(suggested ? String(Math.round(suggested)) : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicleId, mode]);
+
+  const ratePerPeriod = Number(rate) || 0;
+  const total = ratePerPeriod * unitCount;
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!entry || !vehicleId || !startDate) throw new Error("Pick a vehicle and start date");
-      const rate = Number(weeklyRate);
-      if (!rate || rate <= 0) throw new Error("Enter a valid weekly rate");
+      if (!entry) throw new Error("No waitlist entry selected");
+      if (entry.status !== "Docs approved") throw new Error("Approve the documents before converting");
+      if (!vehicleId) throw new Error("Pick an available vehicle");
+      if (!startDate) throw new Error("Pick a start date");
+      if (ratePerPeriod <= 0) throw new Error("Enter a valid rate");
 
-      // Cadence from the waiter card drives the billing period and the end date.
-      const daily = (entry.rental_cadence ?? "").toLowerCase() === "daily";
-      const cadence: "daily" | "weekly" = daily ? "daily" : "weekly";
-      const end = new Date(`${startDate}T00:00:00`);
-      end.setDate(end.getDate() + (daily ? 1 : 7));
-      const endDate = end.toISOString().slice(0, 10);
+      const licenseImageUrl = (entry.license_front_url ?? entry.license_url) ?? undefined;
+      // Monthly is billed as 4-week blocks so the existing weekly billing
+      // cycle keeps working; daily stays daily.
+      const cadence: "daily" | "weekly" = mode === "Daily" ? "daily" : "weekly";
+      const perCycleRate = mode === "Monthly" ? Math.round(ratePerPeriod / 4) : ratePerPeriod;
 
-      // Create the driver from the waitlist info (license/selfie images carried in).
-      const driver = addDriver({
-        fullName: entry.name,
-        phone: entry.phone,
-        email: entry.email,
-        licenseImageUrl: (entry.license_front_url ?? entry.license_url) ?? undefined,
-      } as any);
-      await (driver as any).cloudReady?.catch?.(() => {});
+      // 1) Driver — dedupe on phone digits, otherwise create.
+      const phoneKey = digitsOnly(entry.phone);
+      const existing = phoneKey
+        ? drivers.find((d) => digitsOnly(d.phone ?? "") === phoneKey)
+        : undefined;
+      let driverId: string;
+      if (existing) {
+        driverId = existing.id;
+        await updateDriver(existing.id, {
+          fullName: existing.fullName || entry.name,
+          email: existing.email || entry.email,
+          ...(licenseImageUrl ? { licenseImageUrl } : {}),
+          ...(entry.license_number ? { licenseNumber: entry.license_number } : {}),
+          ...(entry.license_expiration ? { licenseExpiry: entry.license_expiration } : {}),
+        } as any).catch(() => {});
+      } else {
+        const driver = addDriver({
+          fullName: entry.name,
+          phone: entry.phone,
+          email: entry.email,
+          licenseImageUrl,
+          licenseNumber: entry.license_number ?? undefined,
+          licenseExpiry: entry.license_expiration ?? undefined,
+        } as any);
+        try {
+          await (driver as any).cloudReady;
+        } catch (err) {
+          throw new Error(`Renter record could not be saved: ${err instanceof Error ? err.message : "unknown error"}`);
+        }
+        driverId = driver.id;
+      }
 
-      // Carry over the license-back and rideshare-proof references onto the driver
-      // record directly (mock store doesn't map these columns).
+      // 2) Carry the remaining photos onto the driver record.
       const driverExtras: Record<string, unknown> = {};
+      if (entry.selfie_url) driverExtras.selfie_image_url = entry.selfie_url;
       if (entry.license_back_url) driverExtras.license_back_image_url = entry.license_back_url;
       if (entry.rideshare_proof_url) driverExtras.rideshare_proof_url = entry.rideshare_proof_url;
       if (Object.keys(driverExtras).length) {
-        await (supabase.from("drivers") as any).update(driverExtras).eq("id", driver.id).then(() => {}, () => {});
+        await (supabase.from("drivers") as any).update(driverExtras).eq("id", driverId).then(() => {}, () => {});
       }
 
-      // Create the reservation — active, no holds or expiry.
+      // 3) Create the reservation.
       const rental = addRental({
-        driverId: driver.id,
+        driverId,
         vehicleId,
         startDate,
         endDate,
         billingPeriod: cadence,
         billingCadence: cadence,
-        rate,
-        weeklyRate: rate,
-        rateAmount: rate,
+        rate: perCycleRate,
+        weeklyRate: perCycleRate,
+        rateAmount: perCycleRate,
+        baseAmount: total,
         deposit: 0,
         reservationStatus: "active",
         createdFromWaitlist: true,
-        licenseImageUrl: (entry.license_front_url ?? entry.license_url) ?? undefined,
+        licenseImageUrl,
         selfieImageUrl: entry.selfie_url ?? undefined,
       } as any);
-      await (rental as any).cloudReady?.catch?.(() => {});
+      try {
+        await (rental as any).cloudReady;
+      } catch (err) {
+        throw new Error(`Reservation could not be saved: ${err instanceof Error ? err.message : "unknown error"}`);
+      }
 
-      // The reservation row MUST exist in the database before the waiter is
-      // marked converted — otherwise a failed sync loses the waiter entirely.
+      // The row MUST exist before the waiter is marked converted.
       await ensureRentalSynced(rental.id);
       const { data: savedRow, error: verifyErr } = await (supabase
         .from("rentals") as any)
@@ -719,14 +1065,24 @@ function AssignVehicleDialog({
         .eq("id", rental.id)
         .then(() => {}, () => {});
 
-      // Finally, send the tokenized reservation/payment link via SMS.
+      // 4) Agreement signing link to the renter.
+      let agreementSent = false;
+      try {
+        await sendAgreement({ data: { rentalId: rental.id, origin: window.location.origin } });
+        agreementSent = true;
+      } catch (e) {
+        console.error("[waitlist convert] agreement link failed", e);
+        toast.warning("Reservation created, but the agreement link could not be sent");
+      }
+
+      // 5) Payment link (best effort — the reservation already exists).
       let paymentLinkSentAt: string | null = null;
       try {
         await sendLink({ data: {
           phone: entry.phone,
           name: entry.name,
           email: entry.email || null,
-          amountCents: Math.round(rate * 100),
+          amountCents: Math.round(perCycleRate * 100),
           description: `First payment — ${chosen?.year ?? ""} ${chosen?.make ?? ""} ${chosen?.model ?? ""}`.trim().slice(0, 200),
           environment: getStripeEnvironment(),
           rentalId: rental.id,
@@ -735,61 +1091,118 @@ function AssignVehicleDialog({
         paymentLinkSentAt = new Date().toISOString();
       } catch (e) {
         console.error("[waitlist convert] payment link failed", e);
-        toast.warning("Reservation created, but SMS payment link could not be sent");
+        toast.warning("Reservation created, but the SMS payment link could not be sent");
       }
 
-      // Flag the waiter as converted and log when the link went out.
+      // 6) Flag the waiter converted and link the reservation.
       await convert({ data: { id: entry.id, rentalId: rental.id, paymentLinkSentAt } });
-      return rental.id;
+      return { id: rental.id, agreementSent };
     },
-    onSuccess: (id) => {
-      toast.success(`Reservation ${id} created and payment link sent`);
+    onSuccess: ({ id, agreementSent }) => {
+      toast.success(`✅ Converted — reservation ${id} created${agreementSent ? " and agreement link sent" : ""}`);
       onDone();
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Could not assign vehicle");
+      toast.error(err instanceof Error ? err.message : "Could not create the reservation");
     },
     onSettled: () => setSaving(false),
   });
 
+  const noneAvailable = available.length === 0;
+
   return (
     <Dialog open={!!entry} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Assign Vehicle — {entry?.name}</DialogTitle>
+          <DialogTitle>Create reservation — {entry?.name}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Available Vehicle</Label>
-            <Select value={vehicleId} onValueChange={setVehicleId}>
-              <SelectTrigger><SelectValue placeholder={available.length ? "Choose a vehicle" : "No vehicles available"} /></SelectTrigger>
-              <SelectContent>
-                {available.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.year} {v.make} {v.model} · {v.plate}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid gap-3 rounded-md border bg-muted/20 p-3 text-sm sm:grid-cols-3">
+            <div><div className="text-xs text-muted-foreground">Name</div>{entry?.name}</div>
+            <div><div className="text-xs text-muted-foreground">Phone</div>{entry?.phone || "—"}</div>
+            <div><div className="text-xs text-muted-foreground">Email</div>{entry?.email || "—"}</div>
+            <div><div className="text-xs text-muted-foreground">Stated length</div>{entry?.rental_length ?? entry?.rental_cadence ?? "—"}</div>
+            <div><div className="text-xs text-muted-foreground">Vehicle preference</div>{entry?.vehicle_preference ?? "No preference"}</div>
+            <div className="flex items-end gap-2 text-xs text-muted-foreground">
+              {(entry?.license_front_url ?? entry?.license_url) && <span>License ✓</span>}
+              {entry?.selfie_url && <span>Selfie ✓</span>}
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+
+          {noneAvailable ? (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+              <div className="flex items-center gap-2 font-medium text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4" /> No vehicles available — keep on waitlist
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Every vehicle is on rent, off road, or already booked for these dates. Try different dates or free up a vehicle.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label>Available vehicle</Label>
+              <Select value={vehicleId} onValueChange={setVehicleId}>
+                <SelectTrigger><SelectValue placeholder="Choose a vehicle" /></SelectTrigger>
+                <SelectContent>
+                  {available.map(({ v, match }) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      <span className="flex items-center gap-2">
+                        <Car className="h-3.5 w-3.5" />
+                        {v.year} {v.make} {v.model} · {v.plate} · ${Math.round(Number((v as any).dailyRate ?? 0))}/day · ${Math.round(Number((v as any).weeklyRate ?? 0))}/wk
+                        {match && <Badge className="ml-1 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">Matches preference</Badge>}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label htmlFor="wl-start">Start date</Label>
               <Input id="wl-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="wl-rate">Weekly rate</Label>
-              <Input id="wl-rate" type="number" min="0" step="1" value={weeklyRate} onChange={(e) => setWeeklyRate(e.target.value)} placeholder="500" />
+              <Label>Rate period</Label>
+              <Select value={mode} onValueChange={(v) => setMode(v as RateMode)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Daily">Daily</SelectItem>
+                  <SelectItem value="Weekly">Weekly</SelectItem>
+                  <SelectItem value="Monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="wl-units">{RATE_MODES[mode].label === "day" ? "Days" : RATE_MODES[mode].label === "week" ? "Weeks" : "Months"}</Label>
+              <Input id="wl-units" type="number" min="1" step="1" value={units} onChange={(e) => setUnits(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="wl-rate">Rate per {RATE_MODES[mode].label}</Label>
+              <Input id="wl-rate" type="number" min="0" step="1" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="500" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Total</Label>
+              <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm font-semibold">
+                ${total.toLocaleString("en-US")}
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  {unitCount} × {RATE_MODES[mode].label} · ends {endDate}
+                </span>
+              </div>
             </div>
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
-            disabled={!vehicleId || !startDate || !weeklyRate || saving}
+            disabled={noneAvailable || !vehicleId || !startDate || ratePerPeriod <= 0 || saving}
             onClick={() => { setSaving(true); mutation.mutate(); }}
           >
-            {saving ? "Creating…" : "Create Reservation"}
+            {saving ? "Creating…" : "Create reservation"}
           </Button>
         </DialogFooter>
       </DialogContent>

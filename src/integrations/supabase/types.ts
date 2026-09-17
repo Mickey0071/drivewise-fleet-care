@@ -3971,11 +3971,19 @@ export type Database = {
           converted_at: string | null
           converted_rental_id: string | null
           created_at: string
+          docs_approved_at: string | null
+          docs_approved_by: string | null
+          docs_rejected_at: string | null
+          docs_rejection_reason: string | null
+          docs_submitted_at: string | null
           email: string
           id: string
           license_back_url: string | null
+          license_expiration: string | null
           license_front_url: string | null
+          license_number: string | null
           license_url: string | null
+          link_sent_at: string | null
           name: string
           payment_link_sent_at: string | null
           phone: string
@@ -3997,11 +4005,19 @@ export type Database = {
           converted_at?: string | null
           converted_rental_id?: string | null
           created_at?: string
+          docs_approved_at?: string | null
+          docs_approved_by?: string | null
+          docs_rejected_at?: string | null
+          docs_rejection_reason?: string | null
+          docs_submitted_at?: string | null
           email: string
           id?: string
           license_back_url?: string | null
+          license_expiration?: string | null
           license_front_url?: string | null
+          license_number?: string | null
           license_url?: string | null
+          link_sent_at?: string | null
           name: string
           payment_link_sent_at?: string | null
           phone: string
@@ -4023,11 +4039,19 @@ export type Database = {
           converted_at?: string | null
           converted_rental_id?: string | null
           created_at?: string
+          docs_approved_at?: string | null
+          docs_approved_by?: string | null
+          docs_rejected_at?: string | null
+          docs_rejection_reason?: string | null
+          docs_submitted_at?: string | null
           email?: string
           id?: string
           license_back_url?: string | null
+          license_expiration?: string | null
           license_front_url?: string | null
+          license_number?: string | null
           license_url?: string | null
+          link_sent_at?: string | null
           name?: string
           payment_link_sent_at?: string | null
           phone?: string
