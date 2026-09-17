@@ -36,6 +36,7 @@ function WaitlistUploadPage() {
 
   const [licenseFrontUrl, setLicenseFrontUrl] = useState<string | null>(null);
   const [licenseBackUrl, setLicenseBackUrl] = useState<string | null>(null);
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [rideshareUrl, setRideshareUrl] = useState<string | null>(null);
   const [pref, setPref] = useState<string>("");
   const [cadence, setCadence] = useState<"Daily" | "Weekly" | "">("");
@@ -49,14 +50,18 @@ function WaitlistUploadPage() {
     }
   }, [entry]);
 
-  const needsFront = entry ? !entry.hasLicenseFront : true;
+  const rejected = entry?.status === "Docs rejected";
+  // After a rejection we always ask for fresh license + selfie photos.
+  const needsFront = entry ? (rejected || !entry.hasLicenseFront) : true;
   const needsBack = entry ? !entry.hasLicenseBack : true;
+  const needsSelfie = entry ? (rejected || !entry.hasSelfie) : true;
   const needsRideshare = entry ? !entry.hasRideshareProof : true;
 
   const canSubmit =
     !submitting &&
     ((!needsFront || !!licenseFrontUrl) &&
       (!needsBack || !!licenseBackUrl) &&
+      (!needsSelfie || !!selfieUrl) &&
       (!needsRideshare || !!rideshareUrl));
 
   async function onSubmit(e: React.FormEvent) {
@@ -69,11 +74,13 @@ function WaitlistUploadPage() {
           token,
           licenseFrontDataUrl: licenseFrontUrl ?? undefined,
           licenseBackDataUrl: licenseBackUrl ?? undefined,
+          selfieDataUrl: selfieUrl ?? undefined,
           rideshareProofDataUrl: rideshareUrl ?? undefined,
           vehiclePreference: pref || undefined,
           rentalCadence: cadence || undefined,
         },
       });
+
       setDone(true);
       refetch();
     } catch (err) {
