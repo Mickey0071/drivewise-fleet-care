@@ -7,6 +7,30 @@ import { createStripeClient } from "@/lib/stripe.server";
 
 const ADMIN_ALERT_PHONE = "267-221-3977";
 
+function appOrigin(): string {
+  return process.env.PUBLIC_APP_ORIGIN || "https://camautorentals.lovable.app";
+}
+
+/** Deep link to the rental detail view where the admin approves the verification. */
+function approvalLink(rentalId: string): string {
+  return `${appOrigin()}/rentals?detail=${encodeURIComponent(rentalId)}`;
+}
+
+/**
+ * Urgent admin alert: fraud-risk approvals must reach the admin's cell even
+ * during quiet hours. Still respects the master SMS switch.
+ */
+async function sendUrgentAdminSms(message: string): Promise<void> {
+  try {
+    const { getAlertGlobalConfig } = await import("@/lib/alerts.server");
+    const global = await getAlertGlobalConfig();
+    if (!global.masterSmsEnabled) return;
+    await sendSms(global.adminPhone || ADMIN_ALERT_PHONE, message, "Admin");
+  } catch (e) {
+    console.error("[cardholder-verify] urgent admin SMS failed", e);
+  }
+}
+
 const RELATIONSHIPS = ["Parent", "Spouse", "Friend", "Employer", "Self", "Other"] as const;
 
 async function assertAdmin(userId: string) {
@@ -150,13 +174,13 @@ export const submitCardholderVerification = createServerFn({ method: "POST" })
       `Cardholder: ${(rental.cardholder_name as string) || "—"}\n` +
       `Rental: ${data.rentalId}\n` +
       `Verification: submitted\n\n` +
-      `Payment processed. Review fraud risk.`;
-    try {
-      const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
-      await sendAdminSmsIfEnabled(msg);
-    } catch (e) {
-      console.error("[cardholder-verify] admin SMS failed", e);
-    }
+      `Payment processed. Review fraud risk.\n` +
+      `Approve: ${approvalLink(data.rentalId)}`;
+    await sendUrgentAdminSms(msg);
+    await appendVerificationEvent(data.rentalId, {
+      type: "admin_alert_sent",
+      note: "approval needed",
+    }).catch(() => {});
     return { ok: true };
   });
 
@@ -191,13 +215,9 @@ export const refuseCardholderVerification = createServerFn({ method: "POST" })
       `Cardholder: ${(rental.cardholder_name as string) || "—"}\n` +
       `Rental: ${data.rentalId}\n` +
       `Verification: refused\n\n` +
-      `Payment processed. Review fraud risk.`;
-    try {
-      const { sendAdminSmsIfEnabled } = await import("@/lib/alerts.server");
-      await sendAdminSmsIfEnabled(msg);
-    } catch (e) {
-      console.error("[cardholder-verify] admin refuse SMS failed", e);
-    }
+      `Payment processed. Review fraud risk.\n` +
+      `Review: ${approvalLink(data.rentalId)}`;
+    await sendUrgentAdminSms(msg);
     return { ok: true };
   });
 
@@ -470,6 +490,20 @@ export const submitVerificationByToken = createServerFn({ method: "POST" })
       } as any)
       .eq("id", rental.id);
     await appendVerificationEvent(rental.id, { type: "submitted" });
+
+    const renterName = await renterNameFor(rental);
+    const msg =
+      `APPROVAL NEEDED - Card verification\n\n` +
+      `Renter: ${renterName || "—"}\n` +
+      `Cardholder: ${(rental.cardholder_name as string) || "—"}\n` +
+      `Rental: ${rental.id}\n\n` +
+      `License uploaded, waiting on your approval.\n` +
+      `Approve: ${approvalLink(rental.id)}`;
+    await sendUrgentAdminSms(msg);
+    await appendVerificationEvent(rental.id, {
+      type: "admin_alert_sent",
+      note: "approval needed",
+    }).catch(() => {});
     return { ok: true };
   });
 
