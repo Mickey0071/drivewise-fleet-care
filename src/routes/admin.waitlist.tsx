@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { UserPlus, CheckCircle2, AlertTriangle, Plus, Upload, ArrowRight } from "lucide-react";
+import { UserPlus, CheckCircle2, AlertTriangle, Plus, Upload, ArrowRight, ShieldCheck, XCircle, RefreshCw, Car } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -20,13 +21,16 @@ import {
 import {
   listWaitlistEntries, markWaitlistSeen, markWaitlistConverted,
   createWaitlistEntryAdmin, updateWaitlistEntry, uploadWaitlistDoc,
+  reviewWaitlistDocs,
 } from "@/lib/waitlist.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
+import { sendSigningLink } from "@/lib/sign.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
-import { vehicles } from "@/lib/mock/data";
-import { isVehicleBookable, addDriver, addRental, ensureRentalSynced, useStoreVersion } from "@/lib/mock/store";
+import { vehicles, drivers } from "@/lib/mock/data";
+import { isVehicleBookable, addDriver, updateDriver, addRental, ensureRentalSynced, useStoreVersion } from "@/lib/mock/store";
 import { supabase } from "@/integrations/supabase/client";
+
 
 export const Route = createFileRoute("/admin/waitlist")({
   head: () => ({ meta: [{ title: "Waitlist — Camauto Rentals" }] }),
@@ -53,7 +57,44 @@ type Entry = {
   created_at: string;
   source?: string | null;
   admin_notes?: string | null;
+  docs_submitted_at?: string | null;
+  docs_approved_at?: string | null;
+  docs_rejected_at?: string | null;
+  docs_rejection_reason?: string | null;
+  license_number?: string | null;
+  license_expiration?: string | null;
+  link_sent_at?: string | null;
 };
+
+/** Waitlisted → Link sent → Docs submitted → Docs approved → Converted */
+function statusMeta(status: string): { label: string; className: string } {
+  switch (status) {
+    case "Converted":
+      return { label: "Converted", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" };
+    case "Docs approved":
+      return { label: "Docs approved", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" };
+    case "Docs submitted":
+      return { label: "Docs submitted — needs review", className: "bg-amber-500/15 text-amber-700 dark:text-amber-400" };
+    case "Docs rejected":
+      return { label: "Docs rejected", className: "bg-red-500/15 text-red-700 dark:text-red-400" };
+    case "Link sent":
+      return { label: "Link sent", className: "bg-blue-500/15 text-blue-700 dark:text-blue-400" };
+    default:
+      return { label: status || "Waitlisted", className: "bg-muted text-muted-foreground" };
+  }
+}
+
+const STATUS_RANK: Record<string, number> = {
+  "Docs approved": 0,
+  "Docs submitted": 1,
+  "Docs rejected": 2,
+  "Link sent": 3,
+  Waitlisted: 4,
+};
+
+function hasDocs(e: Entry) {
+  return !!(e.license_front_url || e.license_url) || !!e.selfie_url;
+}
 
 function fmtDate(d: string | null) {
   return d ? new Date(d).toLocaleString("en-US") : "—";
@@ -67,6 +108,7 @@ async function fileToDataUrl(file: File): Promise<string> {
     r.readAsDataURL(file);
   });
 }
+
 
 function WaitlistAdminPage() {
   useStoreVersion();
@@ -90,10 +132,25 @@ function WaitlistAdminPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [cardTarget, setCardTarget] = useState<Entry | null>(null);
   const [assignTarget, setAssignTarget] = useState<Entry | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<Entry | null>(null);
 
-  const filtered = entries.filter((e) =>
-    tab === "converted" ? e.status === "Converted" : e.status !== "Converted",
-  );
+  const filtered = useMemo(() => {
+    const rows = entries.filter((e) =>
+      tab === "converted" ? e.status === "Converted" : e.status !== "Converted",
+    );
+    if (tab === "converted") return rows;
+    // Docs approved first, then docs submitted, then everyone else by
+    // priority (rideshare first) and join date.
+    return [...rows].sort((a, b) => {
+      const ra = STATUS_RANK[a.status] ?? 5;
+      const rb = STATUS_RANK[b.status] ?? 5;
+      if (ra !== rb) return ra - rb;
+      const pa = a.priority === "high" ? 0 : 1;
+      const pb = b.priority === "high" ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
+  }, [entries, tab]);
 
   return (
     <div>
@@ -143,8 +200,10 @@ function WaitlistAdminPage() {
                 )}
                 {filtered.map((e) => {
                   const front = e.license_front_url ?? e.license_url;
-                  const docsComplete = !!front;
+                  const docsComplete = !!front && !!e.selfie_url;
                   const isHigh = e.priority === "high";
+                  const approved = e.status === "Docs approved";
+                  const meta = statusMeta(e.status);
                   return (
                   <tr key={e.id} className="cursor-pointer border-b hover:bg-muted/20" onClick={() => setCardTarget(e)}>
                     <td className="px-3 py-2 font-medium">{e.name}</td>
@@ -168,30 +227,44 @@ function WaitlistAdminPage() {
                     <td className="px-3 py-2">
                       {docsComplete ? (
                         <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
-                          <CheckCircle2 className="mr-1 h-3 w-3" /> Docs complete
+                          <CheckCircle2 className="mr-1 h-3 w-3" /> ID + selfie
                         </Badge>
                       ) : (
                         <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400">
-                          <AlertTriangle className="mr-1 h-3 w-3" /> Docs missing
+                          <AlertTriangle className="mr-1 h-3 w-3" /> {front ? "Selfie missing" : "Docs missing"}
                         </Badge>
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      {e.status === "Converted" ? (
-                        <Badge variant="secondary" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
-                          <CheckCircle2 className="mr-1 h-3 w-3" /> Converted
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">{e.status}</Badge>
-                      )}
+                      <Badge className={meta.className}>{meta.label}</Badge>
                     </td>
                     <td className="px-3 py-2 text-right" onClick={(ev) => ev.stopPropagation()}>
                       {e.status === "Converted" ? (
                         <span className="text-xs text-muted-foreground">{e.converted_rental_id ?? ""}</span>
                       ) : (
-                        <Button size="sm" variant="outline" onClick={() => setAssignTarget(e)}>
-                          <ArrowRight className="mr-1.5 h-3.5 w-3.5" /> Convert
-                        </Button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {hasDocs(e) && !approved && (
+                            <Button size="sm" variant="outline" onClick={() => setReviewTarget(e)}>
+                              <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Review docs
+                            </Button>
+                          )}
+                          {approved ? (
+                            <Button size="sm" onClick={() => setAssignTarget(e)}>
+                              <ArrowRight className="mr-1.5 h-3.5 w-3.5" /> Convert to reservation
+                            </Button>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span tabIndex={0}>
+                                  <Button size="sm" variant="outline" disabled className="pointer-events-none opacity-50">
+                                    <ArrowRight className="mr-1.5 h-3.5 w-3.5" /> Convert
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Approve docs first</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -221,24 +294,34 @@ function WaitlistAdminPage() {
         }}
       />
 
+      <ReviewDocsDialog
+        entry={reviewTarget}
+        onOpenChange={(o) => { if (!o) setReviewTarget(null); }}
+        onChanged={() => qc.invalidateQueries({ queryKey: ["waitlist-entries"] })}
+      />
+
       <WaiterCardDialog
         entry={cardTarget}
         onOpenChange={(o) => { if (!o) setCardTarget(null); }}
         onConvert={(e) => { setCardTarget(null); setAssignTarget(e); }}
+        onReview={(e) => { setCardTarget(null); setReviewTarget(e); }}
         onChanged={() => qc.invalidateQueries({ queryKey: ["waitlist-entries"] })}
       />
+
     </div>
   );
 }
 
 function WaiterCardDialog({
-  entry, onOpenChange, onConvert, onChanged,
+  entry, onOpenChange, onConvert, onReview, onChanged,
 }: {
   entry: Entry | null;
   onOpenChange: (o: boolean) => void;
   onConvert: (e: Entry) => void;
+  onReview: (e: Entry) => void;
   onChanged: () => void;
 }) {
+
   const update = useServerFn(updateWaitlistEntry);
   const uploadDoc = useServerFn(uploadWaitlistDoc);
   const [name, setName] = useState("");
@@ -251,7 +334,7 @@ function WaiterCardDialog({
   const [uploading, setUploading] = useState<string | null>(null);
   const [zoom, setZoom] = useState<{ url: string; label: string } | null>(null);
   // Locally track newly-uploaded doc URLs so the UI updates immediately.
-  const [localDocs, setLocalDocs] = useState<Partial<Record<"license-front" | "license-back" | "rideshare-proof", string>>>({});
+  const [localDocs, setLocalDocs] = useState<Partial<Record<"license-front" | "license-back" | "selfie" | "rideshare-proof", string>>>({});
 
   useEffect(() => {
     if (entry) {
@@ -265,7 +348,7 @@ function WaiterCardDialog({
     }
   }, [entry?.id]);
 
-  async function handleUpload(kind: "license-front" | "license-back" | "rideshare-proof", file: File) {
+  async function handleUpload(kind: "license-front" | "license-back" | "selfie" | "rideshare-proof", file: File) {
     if (!entry) return;
     setUploading(kind);
     try {
@@ -302,11 +385,13 @@ function WaiterCardDialog({
     }
   }
 
-  const docs: Array<{ label: string; kind: "license-front" | "license-back" | "rideshare-proof"; url: string | null }> = entry ? [
+  const docs: Array<{ label: string; kind: "license-front" | "license-back" | "selfie" | "rideshare-proof"; url: string | null }> = entry ? [
     { label: "License — front", kind: "license-front", url: localDocs["license-front"] ?? entry.license_front_url ?? entry.license_url },
     { label: "License — back", kind: "license-back", url: localDocs["license-back"] ?? entry.license_back_url },
+    { label: "Selfie", kind: "selfie", url: localDocs["selfie"] ?? entry.selfie_url },
     { label: "Rideshare proof", kind: "rideshare-proof", url: localDocs["rideshare-proof"] ?? entry.rideshare_proof_url },
   ] : [];
+
 
   return (
     <Dialog open={!!entry} onOpenChange={onOpenChange}>
@@ -372,7 +457,7 @@ function WaiterCardDialog({
 
           <div>
             <div className="mb-1.5 text-sm font-medium">Documents</div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               {docs.map((it) => (
                 <div key={it.kind} className="space-y-1.5">
                   <div className="text-xs font-medium text-muted-foreground">{it.label}</div>
@@ -408,11 +493,32 @@ function WaiterCardDialog({
             {saving ? "Saving…" : "Save changes"}
           </Button>
           {entry && entry.status !== "Converted" && (
-            <Button onClick={() => onConvert(entry)}>
-              <ArrowRight className="mr-1.5 h-4 w-4" /> Convert to Reservation
-            </Button>
+            <div className="flex gap-2">
+              {hasDocs(entry) && entry.status !== "Docs approved" && (
+                <Button variant="outline" onClick={() => onReview(entry)}>
+                  <ShieldCheck className="mr-1.5 h-4 w-4" /> Review docs
+                </Button>
+              )}
+              {entry.status === "Docs approved" ? (
+                <Button onClick={() => onConvert(entry)}>
+                  <ArrowRight className="mr-1.5 h-4 w-4" /> Convert to Reservation
+                </Button>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={0}>
+                      <Button disabled className="pointer-events-none opacity-50">
+                        <ArrowRight className="mr-1.5 h-4 w-4" /> Convert to Reservation
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Approve docs first</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           )}
         </DialogFooter>
+
 
         <Dialog open={!!zoom} onOpenChange={(o) => { if (!o) setZoom(null); }}>
           <DialogContent className="max-h-[95vh] max-w-4xl overflow-auto">
