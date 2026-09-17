@@ -143,11 +143,17 @@ function WaitlistUploadPage() {
             <PhotoCapture label="Upload license (back)" onChange={setLicenseBackUrl} value={licenseBackUrl} />
           </DocSection>
         )}
+        {needsSelfie && (
+          <DocSection step={3} title="Selfie (so we can match your face to your license)" done={!!selfieUrl}>
+            <PhotoCapture label="Take a selfie" onChange={setSelfieUrl} value={selfieUrl} />
+          </DocSection>
+        )}
         {needsRideshare && (
-          <DocSection step={3} title="Rideshare proof (Uber/Lyft driver app screenshot)" done={!!rideshareUrl}>
+          <DocSection step={4} title="Rideshare proof (Uber/Lyft driver app screenshot)" done={!!rideshareUrl}>
             <PhotoCapture label="Upload rideshare screenshot" onChange={setRideshareUrl} value={rideshareUrl} />
           </DocSection>
         )}
+
 
         <Card className="space-y-4 p-4">
           <div className="space-y-1.5">
