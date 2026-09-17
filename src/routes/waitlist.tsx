@@ -33,6 +33,7 @@ function WaitlistPage() {
   const [email, setEmail] = useState("");
   const [licenseFrontUrl, setLicenseFrontUrl] = useState<string | null>(null);
   const [licenseBackUrl, setLicenseBackUrl] = useState<string | null>(null);
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [rideshare, setRideshare] = useState(false);
   const [rideshareUrl, setRideshareUrl] = useState<string | null>(null);
   const [vehiclePreference, setVehiclePreference] = useState<string>("No preference");
@@ -45,8 +46,10 @@ function WaitlistPage() {
     phone.trim().length >= 7 &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
     !!licenseFrontUrl &&
+    !!selfieUrl &&
     (rentalLength === "1 week" || rentalLength === "2+ weeks") &&
     !submitting;
+
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
