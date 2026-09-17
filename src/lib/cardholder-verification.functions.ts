@@ -490,6 +490,20 @@ export const submitVerificationByToken = createServerFn({ method: "POST" })
       } as any)
       .eq("id", rental.id);
     await appendVerificationEvent(rental.id, { type: "submitted" });
+
+    const renterName = await renterNameFor(rental);
+    const msg =
+      `APPROVAL NEEDED - Card verification\n\n` +
+      `Renter: ${renterName || "—"}\n` +
+      `Cardholder: ${(rental.cardholder_name as string) || "—"}\n` +
+      `Rental: ${rental.id}\n\n` +
+      `License uploaded, waiting on your approval.\n` +
+      `Approve: ${approvalLink(rental.id)}`;
+    await sendUrgentAdminSms(msg);
+    await appendVerificationEvent(rental.id, {
+      type: "admin_alert_sent",
+      note: "approval needed",
+    }).catch(() => {});
     return { ok: true };
   });
 
