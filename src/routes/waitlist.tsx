@@ -161,8 +161,13 @@ function WaitlistPage() {
               <p className="mb-2 text-xs text-muted-foreground">Back of license (optional)</p>
               <PhotoCapture label="Upload license (back)" onChange={setLicenseBackUrl} value={licenseBackUrl} />
             </div>
+            <div className="border-t pt-3">
+              <p className="mb-2 text-xs text-muted-foreground">Selfie (required — so we can match your face to your ID)</p>
+              <PhotoCapture label="Take a selfie" onChange={setSelfieUrl} value={selfieUrl} />
+            </div>
           </Card>
         </div>
+
 
         <div>
           <div className="mb-2 flex items-center gap-2">
