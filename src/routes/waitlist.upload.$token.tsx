@@ -139,7 +139,15 @@ function WaitlistUploadPage() {
         </p>
       </div>
 
+      {rejected && (
+        <Card className="mb-5 border-red-500/40 bg-red-500/10 p-4 text-sm">
+          <p className="font-medium text-red-700 dark:text-red-400">We need clearer photos</p>
+          {entry.rejectionReason && <p className="mt-1 text-muted-foreground">{entry.rejectionReason}</p>}
+        </Card>
+      )}
+
       <form onSubmit={onSubmit} className="space-y-5">
+
         {needsFront && (
           <DocSection step={1} title="Driver's license — front" done={!!licenseFrontUrl}>
             <PhotoCapture label="Upload license (front)" onChange={setLicenseFrontUrl} value={licenseFrontUrl} />
