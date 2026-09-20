@@ -92,7 +92,7 @@ export const saveChecklistItem = createServerFn({ method: "POST" })
     if (!cl) throw new Error("Invalid link");
     if (cl.status === "completed") throw new Error("This checklist is already submitted");
 
-    const patch: Record<string, unknown> = {};
+    const patch: { status?: string; checked_at?: string; notes?: string | null } = {};
     if (data.status !== undefined) {
       patch.status = data.status;
       patch.checked_at = new Date().toISOString();
