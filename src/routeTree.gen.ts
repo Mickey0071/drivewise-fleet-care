@@ -97,6 +97,7 @@ import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
 import { Route as AdminExpensesRouteImport } from './routes/admin.expenses'
 import { Route as AdminExpenseCategoriesRouteImport } from './routes/admin.expense-categories'
 import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
+import { Route as AdminChecklistsRouteImport } from './routes/admin.checklists'
 import { Route as AdminCategorizeRepairsRouteImport } from './routes/admin.categorize-repairs'
 import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
 import { Route as AdminBackfillPlatesRouteImport } from './routes/admin.backfill-plates'
@@ -104,6 +105,7 @@ import { Route as AdminAlertSettingsRouteImport } from './routes/admin.alert-set
 import { Route as AddCardTokenRouteImport } from './routes/add-card.$token'
 import { Route as AccidentReportTokenRouteImport } from './routes/accident-report.$token'
 import { Route as WaitlistUploadTokenRouteImport } from './routes/waitlist.upload.$token'
+import { Route as RunnerChecklistTokenRouteImport } from './routes/runner.checklist.$token'
 import { Route as RepairDeclineTokenRouteImport } from './routes/repair.decline.$token'
 import { Route as RepairAcceptTokenRouteImport } from './routes/repair.accept.$token'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
@@ -564,6 +566,11 @@ const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
   path: '/admin/create-task',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminChecklistsRoute = AdminChecklistsRouteImport.update({
+  id: '/admin/checklists',
+  path: '/admin/checklists',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCategorizeRepairsRoute = AdminCategorizeRepairsRouteImport.update({
   id: '/admin/categorize-repairs',
   path: '/admin/categorize-repairs',
@@ -598,6 +605,11 @@ const WaitlistUploadTokenRoute = WaitlistUploadTokenRouteImport.update({
   id: '/upload/$token',
   path: '/upload/$token',
   getParentRoute: () => WaitlistRoute,
+} as any)
+const RunnerChecklistTokenRoute = RunnerChecklistTokenRouteImport.update({
+  id: '/runner/checklist/$token',
+  path: '/runner/checklist/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const RepairDeclineTokenRoute = RepairDeclineTokenRouteImport.update({
   id: '/repair/decline/$token',
@@ -732,6 +744,7 @@ export interface FileRoutesByFullPath {
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
+  '/admin/checklists': typeof AdminChecklistsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/expense-categories': typeof AdminExpenseCategoriesRoute
   '/admin/expenses': typeof AdminExpensesRoute
@@ -786,6 +799,7 @@ export interface FileRoutesByFullPath {
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
+  '/runner/checklist/$token': typeof RunnerChecklistTokenRoute
   '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
   '/api/public/hooks/alert-flush': typeof ApiPublicHooksAlertFlushRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
@@ -844,6 +858,7 @@ export interface FileRoutesByTo {
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
+  '/admin/checklists': typeof AdminChecklistsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/expense-categories': typeof AdminExpenseCategoriesRoute
   '/admin/expenses': typeof AdminExpensesRoute
@@ -898,6 +913,7 @@ export interface FileRoutesByTo {
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
+  '/runner/checklist/$token': typeof RunnerChecklistTokenRoute
   '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
   '/api/public/hooks/alert-flush': typeof ApiPublicHooksAlertFlushRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
@@ -957,6 +973,7 @@ export interface FileRoutesById {
   '/admin/backfill-plates': typeof AdminBackfillPlatesRoute
   '/admin/backups': typeof AdminBackupsRoute
   '/admin/categorize-repairs': typeof AdminCategorizeRepairsRoute
+  '/admin/checklists': typeof AdminChecklistsRoute
   '/admin/create-task': typeof AdminCreateTaskRoute
   '/admin/expense-categories': typeof AdminExpenseCategoriesRoute
   '/admin/expenses': typeof AdminExpensesRoute
@@ -1011,6 +1028,7 @@ export interface FileRoutesById {
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
   '/repair/decline/$token': typeof RepairDeclineTokenRoute
+  '/runner/checklist/$token': typeof RunnerChecklistTokenRoute
   '/waitlist/upload/$token': typeof WaitlistUploadTokenRoute
   '/api/public/hooks/alert-flush': typeof ApiPublicHooksAlertFlushRoute
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
@@ -1071,6 +1089,7 @@ export interface FileRouteTypes {
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
+    | '/admin/checklists'
     | '/admin/create-task'
     | '/admin/expense-categories'
     | '/admin/expenses'
@@ -1125,6 +1144,7 @@ export interface FileRouteTypes {
     | '/rent/portal/$rentalId'
     | '/repair/accept/$token'
     | '/repair/decline/$token'
+    | '/runner/checklist/$token'
     | '/waitlist/upload/$token'
     | '/api/public/hooks/alert-flush'
     | '/api/public/hooks/auto-extension-links'
@@ -1183,6 +1203,7 @@ export interface FileRouteTypes {
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
+    | '/admin/checklists'
     | '/admin/create-task'
     | '/admin/expense-categories'
     | '/admin/expenses'
@@ -1237,6 +1258,7 @@ export interface FileRouteTypes {
     | '/rent/portal/$rentalId'
     | '/repair/accept/$token'
     | '/repair/decline/$token'
+    | '/runner/checklist/$token'
     | '/waitlist/upload/$token'
     | '/api/public/hooks/alert-flush'
     | '/api/public/hooks/auto-extension-links'
@@ -1295,6 +1317,7 @@ export interface FileRouteTypes {
     | '/admin/backfill-plates'
     | '/admin/backups'
     | '/admin/categorize-repairs'
+    | '/admin/checklists'
     | '/admin/create-task'
     | '/admin/expense-categories'
     | '/admin/expenses'
@@ -1349,6 +1372,7 @@ export interface FileRouteTypes {
     | '/rent/portal/$rentalId'
     | '/repair/accept/$token'
     | '/repair/decline/$token'
+    | '/runner/checklist/$token'
     | '/waitlist/upload/$token'
     | '/api/public/hooks/alert-flush'
     | '/api/public/hooks/auto-extension-links'
@@ -1408,6 +1432,7 @@ export interface RootRouteChildren {
   AdminBackfillPlatesRoute: typeof AdminBackfillPlatesRoute
   AdminBackupsRoute: typeof AdminBackupsRoute
   AdminCategorizeRepairsRoute: typeof AdminCategorizeRepairsRoute
+  AdminChecklistsRoute: typeof AdminChecklistsRoute
   AdminCreateTaskRoute: typeof AdminCreateTaskRoute
   AdminExpenseCategoriesRoute: typeof AdminExpenseCategoriesRoute
   AdminExpensesRoute: typeof AdminExpensesRoute
@@ -1460,6 +1485,7 @@ export interface RootRouteChildren {
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
   RepairAcceptTokenRoute: typeof RepairAcceptTokenRoute
   RepairDeclineTokenRoute: typeof RepairDeclineTokenRoute
+  RunnerChecklistTokenRoute: typeof RunnerChecklistTokenRoute
   ApiPublicHooksAlertFlushRoute: typeof ApiPublicHooksAlertFlushRoute
   ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
@@ -2090,6 +2116,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCreateTaskRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/checklists': {
+      id: '/admin/checklists'
+      path: '/admin/checklists'
+      fullPath: '/admin/checklists'
+      preLoaderRoute: typeof AdminChecklistsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/categorize-repairs': {
       id: '/admin/categorize-repairs'
       path: '/admin/categorize-repairs'
@@ -2138,6 +2171,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/waitlist/upload/$token'
       preLoaderRoute: typeof WaitlistUploadTokenRouteImport
       parentRoute: typeof WaitlistRoute
+    }
+    '/runner/checklist/$token': {
+      id: '/runner/checklist/$token'
+      path: '/runner/checklist/$token'
+      fullPath: '/runner/checklist/$token'
+      preLoaderRoute: typeof RunnerChecklistTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/repair/decline/$token': {
       id: '/repair/decline/$token'
@@ -2327,6 +2367,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminBackfillPlatesRoute: AdminBackfillPlatesRoute,
   AdminBackupsRoute: AdminBackupsRoute,
   AdminCategorizeRepairsRoute: AdminCategorizeRepairsRoute,
+  AdminChecklistsRoute: AdminChecklistsRoute,
   AdminCreateTaskRoute: AdminCreateTaskRoute,
   AdminExpenseCategoriesRoute: AdminExpenseCategoriesRoute,
   AdminExpensesRoute: AdminExpensesRoute,
@@ -2379,6 +2420,7 @@ const rootRouteChildren: RootRouteChildren = {
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
   RepairAcceptTokenRoute: RepairAcceptTokenRoute,
   RepairDeclineTokenRoute: RepairDeclineTokenRoute,
+  RunnerChecklistTokenRoute: RunnerChecklistTokenRoute,
   ApiPublicHooksAlertFlushRoute: ApiPublicHooksAlertFlushRoute,
   ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,

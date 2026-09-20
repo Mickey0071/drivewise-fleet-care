@@ -233,6 +233,50 @@ export type Database = {
         }
         Relationships: []
       }
+      checklist_items: {
+        Row: {
+          category: string
+          checked_at: string | null
+          checklist_id: string
+          created_at: string
+          id: string
+          item_name: string
+          notes: string | null
+          sort_order: number
+          status: string
+        }
+        Insert: {
+          category: string
+          checked_at?: string | null
+          checklist_id: string
+          created_at?: string
+          id?: string
+          item_name: string
+          notes?: string | null
+          sort_order?: number
+          status?: string
+        }
+        Update: {
+          category?: string
+          checked_at?: string | null
+          checklist_id?: string
+          created_at?: string
+          id?: string
+          item_name?: string
+          notes?: string | null
+          sort_order?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_items_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_checklists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispute_packets: {
         Row: {
           created_at: string
@@ -3345,6 +3389,59 @@ export type Database = {
         }
         Relationships: []
       }
+      tracker_items: {
+        Row: {
+          cost: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          installed_by: string | null
+          installed_date: string
+          next_service_due: string | null
+          parts_installed: string | null
+          tracker_type: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          installed_by?: string | null
+          installed_date?: string
+          next_service_due?: string | null
+          parts_installed?: string | null
+          tracker_type: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          cost?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          installed_by?: string | null
+          installed_date?: string
+          next_service_due?: string | null
+          parts_installed?: string | null
+          tracker_type?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracker_items_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_nav_layout: {
         Row: {
           created_at: string
@@ -3420,6 +3517,84 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_checklists: {
+        Row: {
+          assigned_runner_id: string | null
+          assigned_runner_name: string | null
+          assigned_runner_phone: string | null
+          completed_at: string | null
+          completed_by_name: string | null
+          completed_by_runner_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          sent_at: string | null
+          signature: string | null
+          status: string
+          token: string | null
+          token_expires_at: string | null
+          updated_at: string
+          vehicle_can_list: boolean
+          vehicle_id: string
+        }
+        Insert: {
+          assigned_runner_id?: string | null
+          assigned_runner_name?: string | null
+          assigned_runner_phone?: string | null
+          completed_at?: string | null
+          completed_by_name?: string | null
+          completed_by_runner_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          sent_at?: string | null
+          signature?: string | null
+          status?: string
+          token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          vehicle_can_list?: boolean
+          vehicle_id: string
+        }
+        Update: {
+          assigned_runner_id?: string | null
+          assigned_runner_name?: string | null
+          assigned_runner_phone?: string | null
+          completed_at?: string | null
+          completed_by_name?: string | null
+          completed_by_runner_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          sent_at?: string | null
+          signature?: string | null
+          status?: string
+          token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          vehicle_can_list?: boolean
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_checklists_assigned_runner_id_fkey"
+            columns: ["assigned_runner_id"]
+            isOneToOne: false
+            referencedRelation: "runners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_checklists_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_mileage_log: {
         Row: {
           actor: string | null
@@ -3487,6 +3662,8 @@ export type Database = {
         Row: {
           archive_notes: string | null
           archived: boolean
+          checklist_required: boolean
+          checklist_status: string | null
           color: string | null
           created_at: string
           current_location: string | null
@@ -3513,6 +3690,8 @@ export type Database = {
           notes: string | null
           plate: string
           preferred_mechanic_id: string | null
+          purchase_date: string | null
+          purchase_price: number | null
           registration_expiry: string | null
           repo_date: string | null
           repo_location: string | null
@@ -3534,6 +3713,8 @@ export type Database = {
         Insert: {
           archive_notes?: string | null
           archived?: boolean
+          checklist_required?: boolean
+          checklist_status?: string | null
           color?: string | null
           created_at?: string
           current_location?: string | null
@@ -3560,6 +3741,8 @@ export type Database = {
           notes?: string | null
           plate: string
           preferred_mechanic_id?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
           registration_expiry?: string | null
           repo_date?: string | null
           repo_location?: string | null
@@ -3581,6 +3764,8 @@ export type Database = {
         Update: {
           archive_notes?: string | null
           archived?: boolean
+          checklist_required?: boolean
+          checklist_status?: string | null
           color?: string | null
           created_at?: string
           current_location?: string | null
@@ -3607,6 +3792,8 @@ export type Database = {
           notes?: string | null
           plate?: string
           preferred_mechanic_id?: string | null
+          purchase_date?: string | null
+          purchase_price?: number | null
           registration_expiry?: string | null
           repo_date?: string | null
           repo_location?: string | null

@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.sync_vehicle_checklist_status() FROM anon, authenticated, public;
