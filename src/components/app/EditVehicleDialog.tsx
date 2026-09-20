@@ -11,6 +11,7 @@ import type { Vehicle, VehicleStatus } from "@/lib/mock/data";
 import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { syncVehicleAvailability } from "@/lib/ghl-vehicle-sync.functions";
+import { getVehicleChecklistGate } from "@/lib/prerental-checklist.functions";
 
 export function EditVehicleDialog({
   vehicle,
@@ -25,6 +26,7 @@ export function EditVehicleDialog({
 }) {
   const navigate = useNavigate();
   const syncVehicleAvailabilityFn = useServerFn(syncVehicleAvailability);
+  const checklistGateFn = useServerFn(getVehicleChecklistGate);
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState<number>(new Date().getFullYear());
@@ -87,6 +89,20 @@ export function EditVehicleDialog({
     setSaving(true);
     try {
       const previousStatus = vehicle.status;
+      if (status === "available" && previousStatus !== "available") {
+        try {
+          const gate = await checklistGateFn({ data: { vehicleId: vehicle.id } });
+          if (gate.required && !gate.canList) {
+            toast.error("Vehicle cannot be listed until pre-rental checklist is completed", {
+              description: "Send the checklist task to a runner from Pre-Rental Checklists.",
+            });
+            setSaving(false);
+            return;
+          }
+        } catch (err) {
+          console.error("[checklist-gate] check failed", err);
+        }
+      }
       await updateVehicle(vehicle.id, {
         make: make.trim(),
         model: model.trim(),
