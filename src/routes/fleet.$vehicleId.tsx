@@ -452,6 +452,7 @@ function VehicleDetail() {
           <TabsTrigger value="expenses">Expenses</TabsTrigger>
           <TabsTrigger value="repairs">Repair History</TabsTrigger>
           <TabsTrigger value="rm">RM History</TabsTrigger>
+          <TabsTrigger value="checklist">Checklist &amp; Trackers</TabsTrigger>
           <TabsTrigger value="renters">Renter History ({uniqueRenters.length})</TabsTrigger>
           <TabsTrigger value="other">Violations &amp; Inspections</TabsTrigger>
           <TabsTrigger value="tasks">Completed Tasks</TabsTrigger>

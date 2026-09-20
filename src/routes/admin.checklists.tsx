@@ -145,8 +145,8 @@ function ChecklistsPage() {
     <div className="space-y-4">
       <PageHeader
         title="Pre-Rental Checklists"
-        description={`${pendingCount} awaiting completion${overdue ? ` · ${overdue} overdue` : ""}`}
-        actions={
+        subtitle={`${pendingCount} awaiting completion${overdue ? ` · ${overdue} overdue` : ""}`}
+        action={
           <Button onClick={() => setNewOpen(true)}>
             <Plus className="mr-1.5 h-4 w-4" /> New checklist
           </Button>
