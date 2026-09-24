@@ -23,8 +23,9 @@ export const Route = createFileRoute("/api/public/waitlist-intake")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { authorizeWaitlistIntake, consumeIntakeRateLimit, normalizeIntakePhone, processWaitlistIntake, titleCaseName } =
+        const { authorizeWaitlistIntake, consumeIntakeRateLimit, processWaitlistIntake } =
           await import("@/lib/waitlist-intake.server");
+        const { normalizeIntakePhone, titleCaseName } = await import("@/lib/waitlist-utils");
         const key = request.headers.get("x-waitlist-key");
         if (!authorizeWaitlistIntake(key)) return json({ ok: false, error: "Unauthorized" }, 401);
         if (!key || !(await consumeIntakeRateLimit(key))) return json({ ok: false, error: "Too many requests" }, 429);

@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { normalizePhone } from "@/lib/ghl.server";
 import type { Json } from "@/integrations/supabase/types";
+import { normalizeIntakePhone } from "@/lib/waitlist-utils";
 
 export type WaitlistSource = "agency" | "facebook" | "manual" | "direct";
 export type WaitlistTier = "qualified" | "low_go" | "unvetted";
@@ -30,20 +30,6 @@ export function authorizeWaitlistIntake(received: string | null): boolean {
   return safeKeyMatches(received, process.env["WAITLIST_INTAKE_KEY"]);
 }
 
-export function titleCaseName(value: string): string {
-  return value
-    .trim()
-    .replace(/\s+/g, " ")
-    .toLocaleLowerCase("en-US")
-    .replace(/(^|[\s'-])\p{L}/gu, (letter) => letter.toLocaleUpperCase("en-US"));
-}
-
-export function normalizeIntakePhone(value: string): string {
-  const normalized = normalizePhone(value);
-  if (!/^\+1\d{10}$/.test(normalized)) throw new Error("phone must be a valid 10-digit US number");
-  return normalized;
-}
-
 export async function consumeIntakeRateLimit(key: string): Promise<boolean> {
   const keyHash = createHash("sha256").update(key).digest("hex");
   const { data, error } = await supabaseAdmin.rpc("consume_waitlist_intake_rate_limit", {
@@ -56,7 +42,7 @@ export async function consumeIntakeRateLimit(key: string): Promise<boolean> {
 }
 
 function tierFor(data: WaitlistIntakeData): WaitlistTier {
-  if (data.accepts_deposit === undefined && data.accepts_daily_rate === undefined) return "unvetted";
+  if (data.accepts_deposit === undefined && data.accepts_daily_rate === undefined) return "qualified";
   return data.accepts_deposit === true || data.accepts_daily_rate === true ? "qualified" : "low_go";
 }
 

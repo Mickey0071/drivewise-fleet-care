@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { normalizeIntakePhone, titleCaseName } from "@/lib/waitlist-intake.server";
+import { normalizeIntakePhone, titleCaseName } from "@/lib/waitlist-utils";
 
 const BUCKET = "waitlist-uploads";
 const DOCS_BUCKET = "waitlist-docs";
@@ -182,7 +182,6 @@ export const countNewWaitlistEntries = createServerFn({ method: "GET" })
     const { count, error } = await (context.supabase as any)
       .from("waitlist_entries")
       .select("id", { count: "exact", head: true })
-      .eq("status", "Waitlisted")
       .is("admin_seen_at", null);
     if (error) throw new Error(error.message);
     return { count: count ?? 0 };

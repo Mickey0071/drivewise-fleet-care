@@ -20,6 +20,8 @@ export const Route = createFileRoute("/waitlist")({
       { name: "description", content: "Reserve your spot for the next available vehicle from Camauto Rentals." },
       { property: "og:title", content: "Join the Waitlist — Camauto Rentals" },
       { property: "og:description", content: "Reserve your spot for the next available vehicle from Camauto Rentals." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
     ],
   }),

@@ -34,7 +34,14 @@ import { compareVehiclePickerOrder, formatVehiclePickerLabel } from "@/lib/vehic
 
 
 export const Route = createFileRoute("/admin/waitlist")({
-  head: () => ({ meta: [{ title: "Waitlist — Camauto Rentals" }] }),
+  head: () => ({ meta: [
+    { title: "Waitlist — Camauto Rentals" },
+    { name: "description", content: "Review, qualify, and convert Camauto Rentals waitlist applicants." },
+    { property: "og:title", content: "Waitlist — Camauto Rentals" },
+    { property: "og:description", content: "Review, qualify, and convert Camauto Rentals waitlist applicants." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: WaitlistAdminPage,
 });
 
@@ -263,7 +270,7 @@ function WaitlistAdminPage() {
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                     <td colSpan={10} className="px-3 py-8 text-center text-sm text-muted-foreground">
                       {tab === "converted" ? "No converted waiters yet." : "No waitlist entries yet."}
                     </td>
                   </tr>
@@ -271,7 +278,6 @@ function WaitlistAdminPage() {
                 {filtered.map((e) => {
                   const front = e.license_front_url ?? e.license_url;
                   const docsComplete = !!front && !!e.selfie_url;
-                  const isHigh = e.priority === "high";
                   const approved = e.status === "Docs approved";
                   const meta = statusMeta(e.status);
                   return (
