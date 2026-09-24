@@ -62,6 +62,8 @@ import { calculateRenewalStatus, RENEWAL_BADGE_CLASS } from "@/lib/rentalStatus"
 import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 import { toast } from "sonner";
 import type { Rental, AccidentReport } from "@/lib/mock/data";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 
 const getPublicAppOrigin = () =>
   typeof window !== "undefined" ? window.location.origin : "";
@@ -2656,7 +2658,7 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
               >
                 <option value="">Select a vehicle…</option>
                 {available.map(v => (
-                  <option key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</option>
+                  <option key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</option>
                 ))}
               </select>
             )}

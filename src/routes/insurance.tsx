@@ -19,6 +19,7 @@ import {
 } from "@/lib/mock/store";
 import { Shield, Trash2, ClipboardCheck, Plus, X, Loader2, Pencil, Upload, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 
 export const Route = createFileRoute("/insurance")({
   head: () => ({ meta: [{ title: "Insurance — Camauto Rentals" }] }),
@@ -189,7 +190,7 @@ function InsurancePage() {
               <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
                 <option value="">— Policy-wide / overhead —</option>
-                {activeVehicles().map(v => <option key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</option>)}
+                {activeVehicles().map(v => <option key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -263,7 +264,7 @@ function InsurancePage() {
               <select className="h-9 rounded-md border border-input bg-background px-2 text-xs"
                 value={filterVehicle} onChange={(e) => setFilterVehicle(e.target.value)}>
                 <option value="">All vehicles</option>
-                {activeVehicles().map(v => <option key={v.id} value={v.id}>{v.plate}</option>)}
+                {activeVehicles().map(v => <option key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</option>)}
               </select>
             </div>
           </CardHeader>

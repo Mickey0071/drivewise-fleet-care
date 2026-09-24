@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { activeVehicles, maintenance, type Expense } from "@/lib/mock/data";
 import { addExpense, updateExpense, uploadExpenseReceipt } from "@/lib/mock/store";
 import { useExpenseCategories } from "@/hooks/use-expense-categories";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 
 const PAYMENT_METHODS = ["Cash", "Card", "Check", "Bank Transfer", "Other"];
 
@@ -211,7 +212,7 @@ export function ExpenseDialog({ open, onOpenChange, expense, defaultVehicleId, o
                     value={vehicleId} onChange={(e) => { setVehicleId(e.target.value); setMaintenanceId(""); }}>
                     <option value="">— Select a vehicle —</option>
                     {activeVehicles().map((v) => (
-                      <option key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</option>
+                      <option key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</option>
                     ))}
                   </select>
                 </div>

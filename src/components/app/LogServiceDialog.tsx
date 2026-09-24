@@ -9,6 +9,7 @@ import { activeVehicles } from "@/lib/mock/data";
 import { addMaintenance, useStoreVersion } from "@/lib/mock/store";
 import { ServiceTypeCombobox } from "@/components/app/ServiceTypeCombobox";
 import { toast } from "sonner";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 
 interface Props {
   open: boolean;
@@ -79,7 +80,7 @@ export function LogServiceDialog({ open, onOpenChange, initialVehicleId }: Props
               <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
               <SelectContent>
                 {activeVehicles().map(v => (
-                  <SelectItem key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</SelectItem>
+                  <SelectItem key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

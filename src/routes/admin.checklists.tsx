@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { vehicles, fmtDate } from "@/lib/mock/data";
+import { formatVehiclePickerLabel, sortVehiclePickerOptions } from "@/lib/vehicle-labels";
 import { useStoreVersion } from "@/lib/mock/store";
 import { listRunners } from "@/lib/runners.functions";
 import {
@@ -92,7 +93,7 @@ function ChecklistsPage() {
   ).length;
 
   const activeVehicles = useMemo(
-    () => vehicles.filter((v) => !v.archived).sort((a, b) => a.plate.localeCompare(b.plate)),
+    () => sortVehiclePickerOptions(vehicles.filter((v) => !v.archived)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [vehicles.length],
   );
@@ -225,7 +226,7 @@ function ChecklistsPage() {
               <SelectContent>
                 {activeVehicles.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
-                    {v.plate} · {v.year} {v.make} {v.model}
+                    {formatVehiclePickerLabel(v)}
                   </SelectItem>
                 ))}
               </SelectContent>

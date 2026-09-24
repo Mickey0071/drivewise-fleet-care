@@ -23,6 +23,7 @@ import { analyzePartsTicketAdmin } from "@/lib/parts-photo.functions";
 import { compressImage } from "@/lib/image-compress";
 import { z } from "zod";
 import { vehicles, activeVehicles, maintenance, expenses } from "@/lib/mock/data";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 import type { RepairLineItem } from "@/lib/mock/data";
 import { addExpense, useStoreVersion, openRepairsForVehicle, addRepairLineItemToTicket } from "@/lib/mock/store";
 import { repairDisplayTitle } from "@/lib/maintenance-utils";
@@ -135,8 +136,7 @@ function RecordPartPurchase() {
       .filter((n): n is string => !!n),
   ])).sort((a, b) => a.localeCompare(b));
 
-  const sortedVehicles = [...activeVehicles()].sort((a, b) =>
-    (a.plate || "").localeCompare(b.plate || ""));
+  const sortedVehicles = activeVehicles();
 
   // In-queue tickets (reported / diagnosing) the part can be attached to.
   const openTickets = vehicleId
@@ -269,7 +269,7 @@ function RecordPartPurchase() {
             <SelectContent>
               {sortedVehicles.map((v) => (
                 <SelectItem key={v.id} value={v.id}>
-                  {v.plate ? `${v.plate} · ` : ""}{v.year} {v.make} {v.model}
+                  {formatVehiclePickerLabel(v)}
                 </SelectItem>
               ))}
             </SelectContent>

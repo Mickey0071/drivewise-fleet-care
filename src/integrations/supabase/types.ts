@@ -4153,18 +4153,24 @@ export type Database = {
       }
       waitlist_entries: {
         Row: {
+          accepts_daily_rate: boolean | null
+          accepts_deposit: boolean | null
           admin_notes: string | null
           admin_seen_at: string | null
+          campaign_param: string | null
           converted_at: string | null
           converted_rental_id: string | null
+          courtesy_sms_sent_at: string | null
           created_at: string
           docs_approved_at: string | null
           docs_approved_by: string | null
           docs_rejected_at: string | null
           docs_rejection_reason: string | null
           docs_submitted_at: string | null
+          drives_rideshare: boolean | null
           email: string
           id: string
+          intake_payload: Json | null
           license_back_url: string | null
           license_expiration: string | null
           license_front_url: string | null
@@ -4172,33 +4178,44 @@ export type Database = {
           license_url: string | null
           link_sent_at: string | null
           name: string
+          normalized_phone: string | null
           payment_link_sent_at: string | null
           phone: string
+          preferred_start: string | null
           priority: string
+          qualification_sms_sent_at: string | null
           rental_cadence: string | null
           rental_length: string | null
           rideshare_checkbox: boolean
           rideshare_proof_url: string | null
           selfie_url: string | null
           source: string
+          source_param: string
           status: string
           updated_at: string
           upload_token: string | null
           vehicle_preference: string | null
+          vetting_tier: string
         }
         Insert: {
+          accepts_daily_rate?: boolean | null
+          accepts_deposit?: boolean | null
           admin_notes?: string | null
           admin_seen_at?: string | null
+          campaign_param?: string | null
           converted_at?: string | null
           converted_rental_id?: string | null
+          courtesy_sms_sent_at?: string | null
           created_at?: string
           docs_approved_at?: string | null
           docs_approved_by?: string | null
           docs_rejected_at?: string | null
           docs_rejection_reason?: string | null
           docs_submitted_at?: string | null
+          drives_rideshare?: boolean | null
           email: string
           id?: string
+          intake_payload?: Json | null
           license_back_url?: string | null
           license_expiration?: string | null
           license_front_url?: string | null
@@ -4206,33 +4223,44 @@ export type Database = {
           license_url?: string | null
           link_sent_at?: string | null
           name: string
+          normalized_phone?: string | null
           payment_link_sent_at?: string | null
           phone: string
+          preferred_start?: string | null
           priority?: string
+          qualification_sms_sent_at?: string | null
           rental_cadence?: string | null
           rental_length?: string | null
           rideshare_checkbox?: boolean
           rideshare_proof_url?: string | null
           selfie_url?: string | null
           source?: string
+          source_param?: string
           status?: string
           updated_at?: string
           upload_token?: string | null
           vehicle_preference?: string | null
+          vetting_tier?: string
         }
         Update: {
+          accepts_daily_rate?: boolean | null
+          accepts_deposit?: boolean | null
           admin_notes?: string | null
           admin_seen_at?: string | null
+          campaign_param?: string | null
           converted_at?: string | null
           converted_rental_id?: string | null
+          courtesy_sms_sent_at?: string | null
           created_at?: string
           docs_approved_at?: string | null
           docs_approved_by?: string | null
           docs_rejected_at?: string | null
           docs_rejection_reason?: string | null
           docs_submitted_at?: string | null
+          drives_rideshare?: boolean | null
           email?: string
           id?: string
+          intake_payload?: Json | null
           license_back_url?: string | null
           license_expiration?: string | null
           license_front_url?: string | null
@@ -4240,19 +4268,45 @@ export type Database = {
           license_url?: string | null
           link_sent_at?: string | null
           name?: string
+          normalized_phone?: string | null
           payment_link_sent_at?: string | null
           phone?: string
+          preferred_start?: string | null
           priority?: string
+          qualification_sms_sent_at?: string | null
           rental_cadence?: string | null
           rental_length?: string | null
           rideshare_checkbox?: boolean
           rideshare_proof_url?: string | null
           selfie_url?: string | null
           source?: string
+          source_param?: string
           status?: string
           updated_at?: string
           upload_token?: string | null
           vehicle_preference?: string | null
+          vetting_tier?: string
+        }
+        Relationships: []
+      }
+      waitlist_intake_rate_limits: {
+        Row: {
+          key_hash: string
+          request_count: number
+          updated_at: string
+          window_started_at: string
+        }
+        Insert: {
+          key_hash: string
+          request_count?: number
+          updated_at?: string
+          window_started_at?: string
+        }
+        Update: {
+          key_hash?: string
+          request_count?: number
+          updated_at?: string
+          window_started_at?: string
         }
         Relationships: []
       }
@@ -4349,6 +4403,14 @@ export type Database = {
       admin_delete_payment: {
         Args: { _payment_id: string; _reason: string }
         Returns: undefined
+      }
+      consume_waitlist_intake_rate_limit: {
+        Args: {
+          _key_hash: string
+          _max_requests?: number
+          _window_seconds?: number
+        }
+        Returns: boolean
       }
       current_driver_id: { Args: never; Returns: string }
       get_accident_intake_public: {

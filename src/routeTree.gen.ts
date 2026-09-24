@@ -110,6 +110,7 @@ import { Route as RepairDeclineTokenRouteImport } from './routes/repair.decline.
 import { Route as RepairAcceptTokenRouteImport } from './routes/repair.accept.$token'
 import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
+import { Route as ApiPublicWaitlistIntakeRouteImport } from './routes/api/public/waitlist-intake'
 import { Route as ApiPublicCardholderRefuseRouteImport } from './routes/api/public/cardholder-refuse'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksViolationRemindersRouteImport } from './routes/api/public/hooks/violation-reminders'
@@ -631,6 +632,11 @@ const InspectVehicleIdTokenRoute = InspectVehicleIdTokenRouteImport.update({
   path: '/inspect/$vehicleId/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWaitlistIntakeRoute = ApiPublicWaitlistIntakeRouteImport.update({
+  id: '/api/public/waitlist-intake',
+  path: '/api/public/waitlist-intake',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCardholderRefuseRoute =
   ApiPublicCardholderRefuseRouteImport.update({
     id: '/api/public/cardholder-refuse',
@@ -795,6 +801,7 @@ export interface FileRoutesByFullPath {
   '/violations/imports': typeof ViolationsImportsRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/api/public/cardholder-refuse': typeof ApiPublicCardholderRefuseRoute
+  '/api/public/waitlist-intake': typeof ApiPublicWaitlistIntakeRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
@@ -909,6 +916,7 @@ export interface FileRoutesByTo {
   '/violations/imports': typeof ViolationsImportsRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/api/public/cardholder-refuse': typeof ApiPublicCardholderRefuseRoute
+  '/api/public/waitlist-intake': typeof ApiPublicWaitlistIntakeRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
@@ -1024,6 +1032,7 @@ export interface FileRoutesById {
   '/violations_/imports': typeof ViolationsImportsRoute
   '/work-order/$token': typeof WorkOrderTokenRoute
   '/api/public/cardholder-refuse': typeof ApiPublicCardholderRefuseRoute
+  '/api/public/waitlist-intake': typeof ApiPublicWaitlistIntakeRoute
   '/inspect/$vehicleId/$token': typeof InspectVehicleIdTokenRoute
   '/rent/portal/$rentalId': typeof RentPortalRentalIdRoute
   '/repair/accept/$token': typeof RepairAcceptTokenRoute
@@ -1140,6 +1149,7 @@ export interface FileRouteTypes {
     | '/violations/imports'
     | '/work-order/$token'
     | '/api/public/cardholder-refuse'
+    | '/api/public/waitlist-intake'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/repair/accept/$token'
@@ -1254,6 +1264,7 @@ export interface FileRouteTypes {
     | '/violations/imports'
     | '/work-order/$token'
     | '/api/public/cardholder-refuse'
+    | '/api/public/waitlist-intake'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/repair/accept/$token'
@@ -1368,6 +1379,7 @@ export interface FileRouteTypes {
     | '/violations_/imports'
     | '/work-order/$token'
     | '/api/public/cardholder-refuse'
+    | '/api/public/waitlist-intake'
     | '/inspect/$vehicleId/$token'
     | '/rent/portal/$rentalId'
     | '/repair/accept/$token'
@@ -1481,6 +1493,7 @@ export interface RootRouteChildren {
   ViolationsImportsRoute: typeof ViolationsImportsRoute
   WorkOrderTokenRoute: typeof WorkOrderTokenRoute
   ApiPublicCardholderRefuseRoute: typeof ApiPublicCardholderRefuseRoute
+  ApiPublicWaitlistIntakeRoute: typeof ApiPublicWaitlistIntakeRoute
   InspectVehicleIdTokenRoute: typeof InspectVehicleIdTokenRoute
   RentPortalRentalIdRoute: typeof RentPortalRentalIdRoute
   RepairAcceptTokenRoute: typeof RepairAcceptTokenRoute
@@ -2207,6 +2220,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InspectVehicleIdTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/waitlist-intake': {
+      id: '/api/public/waitlist-intake'
+      path: '/api/public/waitlist-intake'
+      fullPath: '/api/public/waitlist-intake'
+      preLoaderRoute: typeof ApiPublicWaitlistIntakeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cardholder-refuse': {
       id: '/api/public/cardholder-refuse'
       path: '/api/public/cardholder-refuse'
@@ -2416,6 +2436,7 @@ const rootRouteChildren: RootRouteChildren = {
   ViolationsImportsRoute: ViolationsImportsRoute,
   WorkOrderTokenRoute: WorkOrderTokenRoute,
   ApiPublicCardholderRefuseRoute: ApiPublicCardholderRefuseRoute,
+  ApiPublicWaitlistIntakeRoute: ApiPublicWaitlistIntakeRoute,
   InspectVehicleIdTokenRoute: InspectVehicleIdTokenRoute,
   RentPortalRentalIdRoute: RentPortalRentalIdRoute,
   RepairAcceptTokenRoute: RepairAcceptTokenRoute,

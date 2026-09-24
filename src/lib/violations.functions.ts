@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { compareVehiclePickerOrder, formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { createStripeClient, type StripeEnv } from "@/lib/stripe.server";
 import { notifyRenter } from "@/lib/renter-notify.server";
@@ -333,10 +334,10 @@ export const listFleetVehicles = createServerFn({ method: "GET" })
       .eq("archived", false)
       .order("make", { ascending: true });
     if (error) throw new Error(error.message);
-    return (data ?? []).map((v) => ({
+    return (data ?? []).sort(compareVehiclePickerOrder).map((v) => ({
       id: v.id,
       plate: v.plate ?? null,
-      label: `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}${v.plate ? ` (${v.plate})` : ""}`.trim(),
+      label: formatVehiclePickerLabel(v),
     }));
   });
 
