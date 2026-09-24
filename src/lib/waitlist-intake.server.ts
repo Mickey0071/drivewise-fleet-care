@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { normalizePhone } from "@/lib/ghl.server";
+import type { Json } from "@/integrations/supabase/types";
 
 export type WaitlistSource = "agency" | "facebook" | "manual" | "direct";
 export type WaitlistTier = "qualified" | "low_go" | "unvetted";
@@ -89,7 +90,7 @@ export async function processWaitlistIntake(data: WaitlistIntakeData) {
     source_param: data.src,
     source: data.src,
     campaign_param: data.campaign ?? null,
-    intake_payload: data.raw,
+    intake_payload: data.raw as Json,
     vetting_tier: tier,
     status,
     admin_seen_at: null,

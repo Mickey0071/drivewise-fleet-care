@@ -21,7 +21,7 @@ import {
 import {
   listWaitlistEntries, markWaitlistSeen, markWaitlistConverted,
   createWaitlistEntryAdmin, updateWaitlistEntry, uploadWaitlistDoc,
-  reviewWaitlistDocs,
+  reviewWaitlistDocs, promoteWaitlistEntry,
 } from "@/lib/waitlist.functions";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { sendRentalSms } from "@/lib/rental-sms.functions";
@@ -30,6 +30,7 @@ import { getStripeEnvironment } from "@/lib/stripe";
 import { vehicles, drivers } from "@/lib/mock/data";
 import { isVehicleBookable, addDriver, updateDriver, addRental, ensureRentalSynced, useStoreVersion } from "@/lib/mock/store";
 import { supabase } from "@/integrations/supabase/client";
+import { compareVehiclePickerOrder, formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 
 
 export const Route = createFileRoute("/admin/waitlist")({
@@ -64,6 +65,14 @@ type Entry = {
   license_number?: string | null;
   license_expiration?: string | null;
   link_sent_at?: string | null;
+  vetting_tier?: "qualified" | "low_go" | "unvetted" | null;
+  drives_rideshare?: boolean | null;
+  accepts_deposit?: boolean | null;
+  accepts_daily_rate?: boolean | null;
+  preferred_start?: string | null;
+  source_param?: "agency" | "facebook" | "manual" | "direct" | null;
+  campaign_param?: string | null;
+  converted_at?: string | null;
 };
 
 /** Waitlisted → Link sent → Docs submitted → Docs approved → Converted */
@@ -100,6 +109,18 @@ function fmtDate(d: string | null) {
   return d ? new Date(d).toLocaleString("en-US") : "—";
 }
 
+const TIER_RANK = { qualified: 0, unvetted: 1, low_go: 2 } as const;
+
+function tierMeta(tier: Entry["vetting_tier"]) {
+  if (tier === "qualified") return { label: "Qualified", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" };
+  if (tier === "low_go") return { label: "Low go", className: "bg-amber-500/15 text-amber-700 dark:text-amber-400" };
+  return { label: "Unvetted", className: "bg-muted text-muted-foreground" };
+}
+
+function yesNo(value: boolean | null | undefined) {
+  return value === true ? "Yes" : value === false ? "No" : "—";
+}
+
 async function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -114,6 +135,7 @@ function WaitlistAdminPage() {
   useStoreVersion();
   const list = useServerFn(listWaitlistEntries);
   const seen = useServerFn(markWaitlistSeen);
+  const promote = useServerFn(promoteWaitlistEntry);
   const qc = useQueryClient();
 
   const { data } = useQuery({
@@ -133,15 +155,37 @@ function WaitlistAdminPage() {
   const [cardTarget, setCardTarget] = useState<Entry | null>(null);
   const [assignTarget, setAssignTarget] = useState<Entry | null>(null);
   const [reviewTarget, setReviewTarget] = useState<Entry | null>(null);
+  const [tierFilter, setTierFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [promotingId, setPromotingId] = useState<string | null>(null);
+
+  const monthEntries = useMemo(() => {
+    const now = new Date();
+    return entries.filter((entry) => {
+      const created = new Date(entry.created_at);
+      return created.getFullYear() === now.getFullYear() && created.getMonth() === now.getMonth();
+    });
+  }, [entries]);
+  const sourceStats = useMemo(() => ["agency", "facebook", "manual", "direct"].map((source) => {
+    const rows = monthEntries.filter((entry) => (entry.source_param ?? "direct") === source);
+    const converted = rows.filter((entry) => entry.status === "Converted").length;
+    return { source, count: rows.length, conversion: rows.length ? Math.round((converted / rows.length) * 100) : 0 };
+  }), [monthEntries]);
 
   const filtered = useMemo(() => {
-    const rows = entries.filter((e) =>
-      tab === "converted" ? e.status === "Converted" : e.status !== "Converted",
-    );
+    const rows = entries.filter((e) => {
+      if (tab === "converted" ? e.status !== "Converted" : e.status === "Converted") return false;
+      if (tierFilter !== "all" && (e.vetting_tier ?? "unvetted") !== tierFilter) return false;
+      if (sourceFilter !== "all" && (e.source_param ?? "direct") !== sourceFilter) return false;
+      return true;
+    });
     if (tab === "converted") return rows;
     // Docs approved first, then docs submitted, then everyone else by
     // priority (rideshare first) and join date.
     return [...rows].sort((a, b) => {
+      const ta = TIER_RANK[a.vetting_tier ?? "unvetted"];
+      const tb = TIER_RANK[b.vetting_tier ?? "unvetted"];
+      if (ta !== tb) return ta - tb;
       const ra = STATUS_RANK[a.status] ?? 5;
       const rb = STATUS_RANK[b.status] ?? 5;
       if (ra !== rb) return ra - rb;
@@ -150,7 +194,20 @@ function WaitlistAdminPage() {
       if (pa !== pb) return pa - pb;
       return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
-  }, [entries, tab]);
+  }, [entries, tab, tierFilter, sourceFilter]);
+
+  async function promoteEntry(entry: Entry) {
+    setPromotingId(entry.id);
+    try {
+      await promote({ data: { id: entry.id, origin: window.location.origin } });
+      toast.success("Moved to qualified and upload link texted");
+      await qc.invalidateQueries({ queryKey: ["waitlist-entries"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not promote waiter");
+    } finally {
+      setPromotingId(null);
+    }
+  }
 
   return (
     <div>
@@ -163,13 +220,27 @@ function WaitlistAdminPage() {
           </Button>
         }
       />
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Signups this month</div><div className="mt-1 text-2xl font-semibold">{monthEntries.length}</div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">By source</div><div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">{sourceStats.map((item) => <span key={item.source}><span className="capitalize">{item.source}</span> {item.count}</span>)}</div></CardContent></Card>
+        <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">By tier</div><div className="mt-2 text-sm">Qualified {monthEntries.filter((e) => e.vetting_tier === "qualified").length} · Low go {monthEntries.filter((e) => e.vetting_tier === "low_go").length}</div></CardContent></Card>
+      </div>
+      <Card className="mb-4"><CardContent className="p-4"><div className="text-xs text-muted-foreground">Conversion rate by source</div><div className="mt-2 grid gap-2 text-sm sm:grid-cols-4">{sourceStats.map((item) => <div key={item.source} className="flex justify-between gap-3"><span className="capitalize">{item.source}</span><strong>{item.conversion}%</strong></div>)}</div></CardContent></Card>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <Button size="sm" variant={tab === "active" ? "default" : "outline"} onClick={() => setTab("active")}>
           Active ({entries.filter((e) => e.status !== "Converted").length})
         </Button>
         <Button size="sm" variant={tab === "converted" ? "default" : "outline"} onClick={() => setTab("converted")}>
           Converted ({entries.filter((e) => e.status === "Converted").length})
         </Button>
+        <Select value={tierFilter} onValueChange={setTierFilter}>
+          <SelectTrigger className="ml-auto w-40"><SelectValue placeholder="All tiers" /></SelectTrigger>
+          <SelectContent><SelectItem value="all">All tiers</SelectItem><SelectItem value="qualified">Qualified</SelectItem><SelectItem value="unvetted">Unvetted</SelectItem><SelectItem value="low_go">Low go</SelectItem></SelectContent>
+        </Select>
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <SelectTrigger className="w-40"><SelectValue placeholder="All sources" /></SelectTrigger>
+          <SelectContent><SelectItem value="all">All sources</SelectItem>{["agency", "facebook", "manual", "direct"].map((source) => <SelectItem key={source} value={source}><span className="capitalize">{source}</span></SelectItem>)}</SelectContent>
+        </Select>
       </div>
       <Card>
         <CardContent className="p-0">
@@ -178,13 +249,12 @@ function WaitlistAdminPage() {
               <thead>
                 <tr className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
                   <th className="px-3 py-2">Name</th>
-                  <th className="px-3 py-2">Priority</th>
+                   <th className="px-3 py-2">Tier</th>
                   <th className="px-3 py-2">Phone</th>
                   <th className="px-3 py-2">Email</th>
                   <th className="px-3 py-2">Joined</th>
                   <th className="px-3 py-2">Source</th>
-                  <th className="px-3 py-2">Preference</th>
-                  <th className="px-3 py-2">Length</th>
+                   <th className="px-3 py-2">Vetting answers</th>
                   <th className="px-3 py-2">Docs</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2 text-right">Action</th>
@@ -207,23 +277,16 @@ function WaitlistAdminPage() {
                   return (
                   <tr key={e.id} className="cursor-pointer border-b hover:bg-muted/20" onClick={() => setCardTarget(e)}>
                     <td className="px-3 py-2 font-medium">{e.name}</td>
-                    <td className="px-3 py-2">
-                      {isHigh ? (
-                        <Badge className="bg-red-500/15 text-red-700 dark:text-red-400">🔥 Rideshare</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-muted-foreground">Normal</Badge>
-                      )}
-                    </td>
+                     <td className="px-3 py-2"><Badge className={tierMeta(e.vetting_tier).className}>{tierMeta(e.vetting_tier).label}</Badge></td>
                     <td className="px-3 py-2">{e.phone}</td>
                     <td className="px-3 py-2">{e.email}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">{fmtDate(e.created_at)}</td>
                     <td className="px-3 py-2 text-xs">
-                      <Badge variant="outline" className={e.source === "Admin" ? "bg-blue-500/10 text-blue-700 dark:text-blue-400" : ""}>
-                        {e.source ?? "Form"}
+                       <Badge variant="outline" className={(e.source_param ?? "direct") === "manual" ? "bg-blue-500/10 text-blue-700 dark:text-blue-400" : ""}>
+                         <span className="capitalize">{e.source_param ?? "direct"}</span>
                       </Badge>
                     </td>
-                    <td className="px-3 py-2 text-xs">{e.vehicle_preference ?? "—"}</td>
-                    <td className="px-3 py-2 text-xs">{e.rental_length ?? e.rental_cadence ?? "—"}</td>
+                     <td className="min-w-64 px-3 py-2 text-xs">Rideshare: {yesNo(e.drives_rideshare ?? e.rideshare_checkbox)} · Deposit: {yesNo(e.accepts_deposit)} · Daily rate: {yesNo(e.accepts_daily_rate)}</td>
                     <td className="px-3 py-2">
                       {docsComplete ? (
                         <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
@@ -243,6 +306,9 @@ function WaitlistAdminPage() {
                         <span className="text-xs text-muted-foreground">{e.converted_rental_id ?? ""}</span>
                       ) : (
                         <div className="flex items-center justify-end gap-1.5">
+                           {e.vetting_tier === "low_go" && (
+                             <Button size="sm" variant="outline" disabled={promotingId === e.id} onClick={() => void promoteEntry(e)}>{promotingId === e.id ? "Moving…" : "Move to qualified"}</Button>
+                           )}
                           {hasDocs(e) && !approved && (
                             <Button size="sm" variant="outline" onClick={() => setReviewTarget(e)}>
                               <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Review docs
@@ -939,7 +1005,7 @@ function AssignVehicleDialog({
       .map((v) => ({ v, match: matchesPreference(entry?.vehicle_preference, v) }))
       .sort((a, b) =>
         a.match === b.match
-          ? `${a.v.year} ${a.v.make} ${a.v.model}`.localeCompare(`${b.v.year} ${b.v.make} ${b.v.model}`)
+          ? compareVehiclePickerOrder(a.v, b.v)
           : a.match ? -1 : 1,
       );
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1148,7 +1214,7 @@ function AssignVehicleDialog({
                     <SelectItem key={v.id} value={v.id}>
                       <span className="flex items-center gap-2">
                         <Car className="h-3.5 w-3.5" />
-                        {v.year} {v.make} {v.model} · {v.plate} · ${Math.round(Number((v as any).dailyRate ?? 0))}/day · ${Math.round(Number((v as any).weeklyRate ?? 0))}/wk
+                         {formatVehiclePickerLabel(v)} · ${Math.round(Number((v as any).dailyRate ?? 0))}/day · ${Math.round(Number((v as any).weeklyRate ?? 0))}/wk
                         {match && <Badge className="ml-1 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">Matches preference</Badge>}
                       </span>
                     </SelectItem>
