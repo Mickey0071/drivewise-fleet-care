@@ -1,5 +1,3 @@
-import { normalizePhone } from "@/lib/ghl.server";
-
 export function titleCaseName(value: string): string {
   return value
     .trim()
@@ -9,7 +7,8 @@ export function titleCaseName(value: string): string {
 }
 
 export function normalizeIntakePhone(value: string): string {
-  const normalized = normalizePhone(value);
+  const digits = value.replace(/\D/g, "");
+  const normalized = digits.length === 10 ? `+1${digits}` : digits.length === 11 && digits.startsWith("1") ? `+${digits}` : "";
   if (!/^\+1\d{10}$/.test(normalized)) throw new Error("phone must be a valid 10-digit US number");
   return normalized;
 }
