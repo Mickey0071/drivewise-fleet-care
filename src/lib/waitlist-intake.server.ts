@@ -140,5 +140,21 @@ export async function processWaitlistIntake(data: WaitlistIntakeData) {
     }
   }
 
+  if (tier === "qualified" && (created || existing?.status === "Waitlisted")) {
+    try {
+      const [{ sendSms }, { getAlertGlobalConfig }] = await Promise.all([
+        import("@/lib/ghl.server"),
+        import("@/lib/alerts.server"),
+      ]);
+      const config = await getAlertGlobalConfig();
+      if (config.masterSmsEnabled && config.adminPhone) {
+        const origin = (process.env["PUBLIC_APP_ORIGIN"] || "https://camautorentals.lovable.app").replace(/\/$/, "");
+        await sendSms(config.adminPhone, `New qualified waitlist entry: ${data.name} · ${normalizedPhone}. Review: ${origin}/admin/waitlist`, "Camauto Staff");
+      }
+    } catch (error) {
+      console.error("[waitlist-intake] staff notification failed", error);
+    }
+  }
+
   return { created, tier, status, smsSent };
 }

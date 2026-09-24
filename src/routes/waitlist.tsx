@@ -40,6 +40,12 @@ function WaitlistPage() {
   const [rentalLength, setRentalLength] = useState<"1 week" | "2+ weeks" | "">("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [sourceParam, setSourceParam] = useState<"agency" | "facebook" | "direct">("direct");
+
+  useEffect(() => {
+    const source = new URLSearchParams(window.location.search).get("src")?.toLowerCase();
+    setSourceParam(source === "agency" || source === "facebook" ? source : "direct");
+  }, []);
 
   const canSubmit =
     name.trim().length >= 2 &&
@@ -70,6 +76,7 @@ function WaitlistPage() {
           rideshareProofDataUrl: rideshare ? (rideshareUrl ?? undefined) : undefined,
           vehiclePreference,
           rentalLength,
+          sourceParam,
         },
       });
       setDone(true);

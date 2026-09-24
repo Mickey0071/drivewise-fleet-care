@@ -29,6 +29,7 @@ import { US_STATES, formatAddressBlock, formatFullName } from "@/lib/us-states";
 import { openIssueFor, summarizeOpenIssue } from "@/lib/maintenance-utils";
 import { VehicleAvailabilityCalendar } from "@/components/app/VehicleAvailabilityCalendar";
 import { getVehicleBlocks, rangeOverlapsBlocks } from "@/lib/vehicle-blocks";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 
 const STEPS = ["Dates", "Vehicle", "Client", "Review"] as const;
 type Step = 0 | 1 | 2 | 3;
@@ -453,7 +454,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                       <Car className="mt-0.5 h-5 w-5 text-muted-foreground" />
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 font-medium">
-                          <span>{v.year} {v.make} {v.model}</span>
+                           <span>{formatVehiclePickerLabel(v)}</span>
                           {needsInspection && (
                             <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
                               <AlertTriangle className="h-3 w-3" /> Needs inspection
@@ -465,7 +466,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-muted-foreground">{v.plate} · {v.mileage.toLocaleString()} mi · Tier {v.riskTier}</div>
+                         <div className="text-xs text-muted-foreground">{v.mileage.toLocaleString()} mi · Tier {v.riskTier}</div>
                         <div className="mt-1 text-sm font-semibold">{fmtMoney(v.weeklyRate)}/wk</div>
                       </div>
                       {selected && <Check className="h-4 w-4 text-primary" />}

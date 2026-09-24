@@ -6,6 +6,7 @@ import {
   CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator,
 } from "@/components/ui/command";
 import { activeVehicles, drivers, rentals } from "@/lib/mock/data";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 
 const navItems = [
   { label: "Dashboard", to: "/", icon: TrendingUp },
@@ -76,7 +77,7 @@ export function GlobalSearch() {
                 onSelect={() => go(`/fleet/${v.id}`)}
               >
                 <Car className="mr-2 h-4 w-4" />
-                {v.year} {v.make} {v.model} · {v.id} · {v.plate}
+                {formatVehiclePickerLabel(v)} · {v.id}
               </CommandItem>
             ))}
           </CommandGroup>

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { normalizeIntakePhone, titleCaseName } from "@/lib/waitlist-intake.server";
 
 const BUCKET = "waitlist-uploads";
 const DOCS_BUCKET = "waitlist-docs";
@@ -88,6 +89,7 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
     rideshareProofDataUrl?: string;
     vehiclePreference?: string;
     rentalLength: "1 week" | "2+ weeks";
+    sourceParam?: "agency" | "facebook" | "manual" | "direct";
   }) => {
     const name = (input.name ?? "").trim();
     const phone = (input.phone ?? "").trim();
@@ -111,21 +113,26 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
       rideshareProofDataUrl: rideshare ? (input.rideshareProofDataUrl ?? null) : null,
       vehiclePreference,
       rentalLength: input.rentalLength,
+      sourceParam: input.sourceParam === "facebook" || input.sourceParam === "agency" ? input.sourceParam : "direct",
     };
   })
   .handler(async ({ data }) => {
     const { data: inserted, error } = await db
       .from("waitlist_entries")
       .insert({
-        name: data.name,
-        phone: data.phone,
+        name: titleCaseName(data.name),
+        phone: normalizeIntakePhone(data.phone),
+        normalized_phone: normalizeIntakePhone(data.phone),
         email: data.email,
         status: "Waitlisted",
         vehicle_preference: data.vehiclePreference,
         rental_length: data.rentalLength,
         rideshare_checkbox: data.rideshareCheckbox,
         priority: data.rideshareCheckbox ? "high" : "normal",
-        source: "Form",
+        source: data.sourceParam,
+        source_param: data.sourceParam,
+        vetting_tier: "unvetted",
+        drives_rideshare: data.rideshareCheckbox,
       })
       .select("id")
       .single();
@@ -228,11 +235,14 @@ export const createWaitlistEntryAdmin = createServerFn({ method: "POST" })
     const { data: inserted, error } = await db
       .from("waitlist_entries")
       .insert({
-        name: data.name,
-        phone: data.phone,
+        name: titleCaseName(data.name),
+        phone: normalizeIntakePhone(data.phone),
+        normalized_phone: normalizeIntakePhone(data.phone),
         email: data.email ?? "",
         status: "Waitlisted",
         source: "Admin",
+        source_param: "manual",
+        vetting_tier: "unvetted",
         vehicle_preference: data.vehiclePreference,
         rental_cadence: data.rentalCadence,
         admin_notes: data.adminNotes,
@@ -545,6 +555,40 @@ export const markWaitlistConverted = createServerFn({ method: "POST" })
           : {}),
       })
       .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
+/** Admin: promote a low-go entry and send its document upload link. */
+export const promoteWaitlistEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; origin?: string }) => {
+    if (!input.id) throw new Error("id required");
+    return { id: input.id, origin: (input.origin ?? "").replace(/\/$/, "") };
+  })
+  .handler(async ({ data }) => {
+    const { data: row, error: findError } = await db
+      .from("waitlist_entries")
+      .select("id, name, phone, status, upload_token")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (findError) throw new Error(findError.message);
+    if (!row) throw new Error("Waitlist entry not found");
+    if (row.status === "Converted") throw new Error("This waiter has already been converted");
+    if (!row.upload_token) throw new Error("This waiter has no upload link");
+    const now = new Date().toISOString();
+    const origin = data.origin || "https://camautorentals.lovable.app";
+    const link = `${origin}/waitlist/upload/${row.upload_token}`;
+    const firstName = String(row.name ?? "").trim().split(/\s+/)[0] ?? "";
+    const { sendSms } = await import("@/lib/ghl.server");
+    await sendSms(String(row.phone ?? ""), `Camauto Rentals: Hi${firstName ? ` ${firstName}` : ""}, please upload your driver's license and selfie here: ${link}`, String(row.name ?? ""));
+    const { error } = await db.from("waitlist_entries").update({
+      vetting_tier: "qualified",
+      status: "Link sent",
+      link_sent_at: now,
+      qualification_sms_sent_at: now,
+      admin_seen_at: null,
+    }).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true as const };
   });

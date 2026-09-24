@@ -23,6 +23,7 @@ import { listMechanics, saveMechanic, type SavedMechanic } from "@/lib/mechanics
 import { createMechanicJob } from "@/lib/mechanic-jobs.functions";
 import { computeScheduledItems } from "@/lib/maintenance-utils";
 import { SendLinkPreview } from "@/components/app/SendLinkPreview";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 
 export const Route = createFileRoute("/admin/create-task")({
   head: () => ({ meta: [{ title: "Create Task — Camauto Rentals" }] }),
@@ -199,7 +200,7 @@ function CreateTaskPage() {
   }
 
   const vehicleOptions = useMemo(
-    () => activeVehicles().map((v) => ({ id: v.id, label: `${v.year} ${v.make} ${v.model} · ${v.plate}` })),
+    () => activeVehicles().map((v) => ({ id: v.id, label: formatVehiclePickerLabel(v) })),
     [],
   );
   const customerOptions = useMemo(
@@ -544,7 +545,7 @@ function CreateMechanicTask() {
   const replacementOptions = useMemo(
     () => activeVehicles()
       .filter((v) => v.id !== vehicleId && (v.status === "available" || !v.status))
-      .map((v) => ({ id: v.id, label: `${v.year} ${v.make} ${v.model} · ${v.plate}` })),
+      .map((v) => ({ id: v.id, label: formatVehiclePickerLabel(v) })),
     [vehicleId],
   );
 
