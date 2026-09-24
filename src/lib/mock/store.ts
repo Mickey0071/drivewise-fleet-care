@@ -2206,11 +2206,11 @@ export function deleteVehicle(id: string) {
 export function activeVehicles(): Vehicle[] {
   return vehicles
     .filter(v => !v.archived)
-    .sort(
-      (a, b) =>
-        (b.year ?? 0) - (a.year ?? 0) ||
-        (a.make ?? "").localeCompare(b.make ?? "") ||
-        (a.model ?? "").localeCompare(b.model ?? ""),
+    .sort((a, b) =>
+      (a.make ?? "").localeCompare(b.make ?? "", "en", { sensitivity: "base" }) ||
+      (a.model ?? "").localeCompare(b.model ?? "", "en", { sensitivity: "base" }) ||
+      (a.year ?? 0) - (b.year ?? 0) ||
+      (a.plate ?? "").localeCompare(b.plate ?? "", "en", { sensitivity: "base", numeric: true }),
     );
 }
 

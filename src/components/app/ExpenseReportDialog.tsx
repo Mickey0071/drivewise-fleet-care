@@ -8,6 +8,7 @@ import { activeVehicles, vehicleById, fmtMoney, fmtDate } from "@/lib/mock/data"
 import { downloadCSV } from "@/lib/exports";
 import { useExpenseCategories } from "@/hooks/use-expense-categories";
 import { buildCombinedExpenses, type CombinedExpense } from "@/lib/combined-expenses";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 
 interface Props {
   open: boolean;
@@ -101,7 +102,7 @@ export function ExpenseReportDialog({ open, onOpenChange }: Props) {
                 value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
                 <option value="">All</option>
                 <option value="__general">General (no vehicle)</option>
-                {activeVehicles().map((v) => <option key={v.id} value={v.id}>{v.plate}</option>)}
+                {activeVehicles().map((v) => <option key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</option>)}
               </select>
             </div>
             <div>

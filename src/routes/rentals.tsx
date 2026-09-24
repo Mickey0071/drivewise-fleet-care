@@ -2656,7 +2656,7 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
               >
                 <option value="">Select a vehicle…</option>
                 {available.map(v => (
-                  <option key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</option>
+                  <option key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</option>
                 ))}
               </select>
             )}

@@ -11,6 +11,7 @@ import { ReportActions } from "@/components/app/ReportActions";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 
 export const Route = createFileRoute("/expenses")({
   head: () => ({ meta: [{ title: "Expenses — Camauto Rentals" }] }),
@@ -139,7 +140,7 @@ function ExpensesPage() {
               >
                 <option value="">— Overhead / not tied to a vehicle —</option>
                 {activeVehicles().map(v => (
-                  <option key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</option>
+                  <option key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</option>
                 ))}
               </select>
             </div>

@@ -13,6 +13,7 @@ import { fmtMoney } from "@/lib/mock/data";
 import { toast } from "sonner";
 import { Trash2, Plus } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 
 interface Props {
   open: boolean;
@@ -146,7 +147,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
               <Label>Vehicle</Label>
               {lockedVehicle ? (
                 <Input
-                  value={`${lockedVehicle.year} ${lockedVehicle.make} ${lockedVehicle.model} · ${lockedVehicle.plate}`}
+                  value={formatVehiclePickerLabel(lockedVehicle)}
                   readOnly
                   disabled
                 />
@@ -155,7 +156,7 @@ export function AddIssueDialog({ open, onOpenChange, initialVehicleId, lockVehic
                 <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
                 <SelectContent>
                   {activeVehicles().map(v => (
-                    <SelectItem key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</SelectItem>
+                    <SelectItem key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

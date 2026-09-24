@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 import {
   dueSoonScheduledItems,
   computeScheduledItems,
@@ -1354,7 +1355,7 @@ function RepairsPage() {
                 <SelectTrigger><SelectValue placeholder="Select a vehicle" /></SelectTrigger>
                 <SelectContent>
                   {activeVehicles().map(v => (
-                    <SelectItem key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</SelectItem>
+                    <SelectItem key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

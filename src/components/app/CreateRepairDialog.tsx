@@ -11,6 +11,7 @@ import { createRepair } from "@/lib/mock/store";
 import { sendNewRepairAlert } from "@/lib/repair-alert.functions";
 import { toast } from "sonner";
 import { Trash2, Plus } from "lucide-react";
+import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 
 interface Props {
   open: boolean;
@@ -82,13 +83,13 @@ export function CreateRepairDialog({ open, onOpenChange, initialVehicleId, lockV
           <div className="grid gap-1.5">
             <Label>Vehicle</Label>
             {lockedVehicle ? (
-              <Input value={`${lockedVehicle.year} ${lockedVehicle.make} ${lockedVehicle.model} · ${lockedVehicle.plate}`} readOnly disabled />
+              <Input value={formatVehiclePickerLabel(lockedVehicle)} readOnly disabled />
             ) : (
               <Select value={vehicleId} onValueChange={setVehicleId}>
                 <SelectTrigger><SelectValue placeholder="Select vehicle" /></SelectTrigger>
                 <SelectContent>
                   {activeVehicles().map(v => (
-                    <SelectItem key={v.id} value={v.id}>{v.year} {v.make} {v.model} · {v.plate}</SelectItem>
+                    <SelectItem key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
