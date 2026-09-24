@@ -6,4 +6,4 @@
 - [x] Update public and manual waitlist sources.
 - [x] Add admin tier/source filters, compact vetting answers, promotion action, ordering, and monthly statistics.
 - [ ] Store the agency-provided `WAITLIST_INTAKE_KEY` securely.
-- [ ] Verify endpoint, messages, admin workflow, vehicle selectors, and build.
+- [x] Verify endpoint security, admin workflow, vehicle selectors, and build; live messaging awaits the agency key.
