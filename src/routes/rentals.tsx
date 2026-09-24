@@ -63,7 +63,6 @@ import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 import { toast } from "sonner";
 import type { Rental, AccidentReport } from "@/lib/mock/data";
 import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
-import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 
 const getPublicAppOrigin = () =>
   typeof window !== "undefined" ? window.location.origin : "";
