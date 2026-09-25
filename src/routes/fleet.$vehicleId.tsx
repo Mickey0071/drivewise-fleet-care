@@ -52,6 +52,8 @@ import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { downloadCSV } from "@/lib/exports";
 import { renderRepairHistoryPdf, type RepairHistoryRow } from "@/lib/repair-history-pdf";
 import { toast } from "sonner";
+import { GroupedExpenseTable } from "@/components/app/GroupedExpenseTable";
+import { groupExpenseItems } from "@/lib/grouped-expenses";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
   component: VehicleDetail,
@@ -518,12 +520,8 @@ function VehicleDetail() {
                 } />
             ))}
           </Section>
-          <Section title={`Expense breakdown (${expenseItems.length})`}>
-            {expenseItems.length === 0 ? <Empty/> : expenseItems.map(e => (
-              <Row key={`${e.source}-${e.id}`} title={e.description}
-                sub={`${fmtDate(e.date)} · ${e.category}`}
-                right={<span className="font-medium">{fmtMoney(e.amount)}</span>} />
-            ))}
+          <Section title={`Expense breakdown (${groupExpenseItems(expenseItems).length})`}>
+            <GroupedExpenseTable items={expenseItems} />
           </Section>
           <Button variant="outline" asChild className="w-full sm:w-auto"><Link to="/pnl">Open full P&amp;L report →</Link></Button>
         </TabsContent>
@@ -635,49 +633,26 @@ function VehicleDetail() {
               ))}
             </div>
           )}
-          <Section title={`Expenses (${expenseItems.length})`}>
-            {expenseItems.length === 0 ? <Empty/> : expenseItems.map(item => {
-              // Only manually-added operational expenses are editable here;
-              // repairs/maintenance live in the Maintenance module and
-              // EZPass and violations stay in the Violations module and never
-              // enter vehicle expenses or repair history.
-              const manual = item.source === "manual"
-                ? expenses.find(e => e.id === item.id)
-                : undefined;
-              // Two-line display: [Title] on top, [Description] below.
-              // For manual expenses we prefer the freeform notes captured in
-              // the expense form; for repairs/maintenance the
-              // description already carries the meaningful detail.
-              const title = manual
-                ? `${manual.category}${manual.vendor ? ` · ${manual.vendor}` : ""}`
-                : item.description;
-              const detail = manual ? (manual.notes ?? "") : (item.description === item.category ? "" : "");
+          <Section title={`Expenses (${groupExpenseItems(expenseItems).length})`}>
+            <GroupedExpenseTable items={expenseItems} actions={(row) => {
+              // Only single manually-added operational expenses are editable
+              // here; repairs live in the Maintenance module.
+              const only = row.items.length === 1 ? row.items[0] : undefined;
+              const manual = only && only.source === "manual" ? expenses.find(e => e.id === only.id) : undefined;
+              if (!manual) return <span className="text-[11px] text-muted-foreground capitalize">{row.source}</span>;
               return (
-              <Row key={`${item.source}-${item.id}`}
-                title={title}
-                note={detail}
-                sub={`${fmtDate(item.date)} · ${item.category}`}
-                right={
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{fmtMoney(item.amount)}</span>
-                    {manual ? (
-                      <>
-                        <Button variant="ghost" size="icon" className="h-8 w-8"
-                          onClick={() => { setEditExpense(manual); setExpenseOpen(true); }} title="Edit expense">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                          onClick={() => { if (window.confirm("Delete this expense?")) deleteExpense(item.id); }} title="Delete expense">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground capitalize">{item.source}</span>
-                    )}
-                  </div>
-                } />
+                <div className="flex justify-end gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8"
+                    onClick={() => { setEditExpense(manual); setExpenseOpen(true); }} title="Edit expense">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"
+                    onClick={() => { if (window.confirm("Delete this expense?")) deleteExpense(manual.id); }} title="Delete expense">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               );
-            })}
+            }} />
           </Section>
         </TabsContent>
 
@@ -694,6 +669,8 @@ function VehicleDetail() {
                 // list getVehicleFinancials used to produce the totals. Do NOT
                 // re-derive from raw completedRepairs / otherExpenses here;
                 // that path skips the auto-post dedupe and can outrun the total.
+                // Intentionally raw/ungrouped (one line per Parts/Labor record)
+                // for accounting; on-screen and PDF views use the grouped format.
                 const rows = fin.expenseLineItems.map(item => {
                   const isRepair = item.source === "repair" || item.source === "maintenance";
                   return [
@@ -724,19 +701,18 @@ function VehicleDetail() {
                 // list getVehicleFinancials used to produce the totals shown in
                 // the PDF header. Never re-derive from the raw maintenance /
                 // expenses arrays here.
-                const rows: RepairHistoryRow[] = fin.expenseLineItems.map(item => {
-                  const isRepair = item.source === "repair" || item.source === "maintenance";
-                  return {
-                    date: item.date,
-                    kind: isRepair ? "Repair" : "Expense",
-                    category: item.category,
-                    vendor: item.vendor ?? "",
-                    description: item.description,
-                    parts: item.category === "Parts" ? item.amount : null,
-                    labor: item.category === "Labor" ? item.amount : null,
-                    amount: item.amount,
-                  };
-                });
+                // Grouped for display: one row per repair with Parts/Labor columns.
+                // CSV stays raw/ungrouped for the accountant.
+                const rows: RepairHistoryRow[] = groupExpenseItems(fin.expenseLineItems).map(g => ({
+                  date: g.date,
+                  kind: g.isRepair ? "Repair" : "Expense",
+                  category: g.isRepair ? (g.source === "maintenance" ? "Maintenance" : "Repair") : g.category,
+                  vendor: g.vendor ?? "",
+                  description: g.name,
+                  parts: g.parts,
+                  labor: g.labor,
+                  amount: g.total,
+                }));
                 try {
                   const blob = await renderRepairHistoryPdf(
                     { year: v.year, make: v.make, model: v.model, plate: v.plate, vin: v.vin },

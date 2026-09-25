@@ -1,3 +1,4 @@
+import { groupExpenseItems } from "@/lib/grouped-expenses";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -177,11 +178,11 @@ function MonthlyVehicleReportsPage() {
         // and income come from getVehicleFinancials so this printable report
         // matches the vehicle's Analytics/P&L tab and the global P&L report.
         const fin = getVehicleFinancials(v.id, { from: start, to: end });
-        const expenseLines: ExpenseLine[] = fin.expenseLineItems
-          .map((e) => ({
-            label: repairFixLabel(e),
-            date: e.date,
-            amount: e.amount,
+        const expenseLines: ExpenseLine[] = groupExpenseItems(fin.expenseLineItems)
+          .map((g) => ({
+            label: repairFixLabel({ ...g.items[0], id: g.items[0].groupId ?? g.items[0].id, description: g.name, category: g.isRepair ? "Repair" : g.category }),
+            date: g.date,
+            amount: g.total,
           }))
           .sort((a, b) => a.date.localeCompare(b.date));
 
