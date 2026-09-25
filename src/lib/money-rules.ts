@@ -47,6 +47,9 @@ type MaintenanceLike = {
 type ExpenseLike = {
   maintenanceId?: string | null;
   maintenance_id?: string | null;
+  category?: string | null;
+  notes?: string | null;
+  vendor?: string | null;
 };
 
 /** Minimal maintenance row shape used for the parent lookup. */
@@ -123,6 +126,17 @@ export function isAutoPostedExpense(
   return isRepairCost(parent);
 }
 
+/**
+ * EZPass, toll, and violation records are operationally tracked in the
+ * Violations module. They are not company or vehicle expenses and must never
+ * enter repair history, expense totals, P&L, or ROI through a manually tagged
+ * expense row.
+ */
+export function isTollOrViolationExpense(e: ExpenseLike): boolean {
+  const label = `${e.category ?? ""} ${e.notes ?? ""} ${e.vendor ?? ""}`.toLowerCase();
+  return /\b(e[- ]?z\s*pass|tolls?|violations?)\b/i.test(label);
+}
+
 /** All expenses that should be summed into the operational expense total.
  *  Requires the maintenance list so the auto-post dedupe only fires when
  *  the parent repair row is actually being counted. */
@@ -130,5 +144,7 @@ export function countableExpenses<T extends ExpenseLike>(
   rows: T[],
   maintenanceRows: readonly MaintenanceRowLike[],
 ): T[] {
-  return rows.filter((r) => !isAutoPostedExpense(r, maintenanceRows));
+  return rows.filter(
+    (r) => !isAutoPostedExpense(r, maintenanceRows) && !isTollOrViolationExpense(r),
+  );
 }

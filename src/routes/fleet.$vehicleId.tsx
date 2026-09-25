@@ -639,13 +639,14 @@ function VehicleDetail() {
             {expenseItems.length === 0 ? <Empty/> : expenseItems.map(item => {
               // Only manually-added operational expenses are editable here;
               // repairs/maintenance live in the Maintenance module and
-              // violations in the Violations module.
+              // EZPass and violations stay in the Violations module and never
+              // enter vehicle expenses or repair history.
               const manual = item.source === "manual"
                 ? expenses.find(e => e.id === item.id)
                 : undefined;
               // Two-line display: [Title] on top, [Description] below.
               // For manual expenses we prefer the freeform notes captured in
-              // the expense form; for repairs/maintenance/violations the
+              // the expense form; for repairs/maintenance the
               // description already carries the meaningful detail.
               const title = manual
                 ? `${manual.category}${manual.vendor ? ` · ${manual.vendor}` : ""}`
