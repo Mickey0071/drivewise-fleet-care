@@ -180,7 +180,7 @@ function MonthlyVehicleReportsPage() {
         const fin = getVehicleFinancials(v.id, { from: start, to: end });
         const expenseLines: ExpenseLine[] = groupExpenseItems(fin.expenseLineItems)
           .map((g) => ({
-            label: repairFixLabel({ ...g.items[0], description: g.name, category: g.isRepair ? "Repair" : g.category }),
+            label: repairFixLabel({ ...g.items[0], id: g.items[0].groupId ?? g.items[0].id, description: g.name, category: g.isRepair ? "Repair" : g.category }),
             date: g.date,
             amount: g.total,
           }))
