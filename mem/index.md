@@ -7,3 +7,4 @@ Rental base_amount is locked forever; extensions are separate rows; pending exte
 ## Memories
 - [Violations packet address & signature](mem://constraints/violations-packet-address-signature) — Block packet generation on missing renter address or signature; prompt admin instead
 - [Locked base & extension revenue rules](mem://features/base-extension-money-rules) — base_amount immutable (DB trigger), extensions as pending/paid rows, pending excluded from all income metrics
+- [EZPass is not an expense](mem://constraints/ezpass-not-expense) — Exclude violations from repair history and vehicle/company expense totals
