@@ -7,3 +7,4 @@
 - [x] Add admin tier/source filters, compact vetting answers, promotion action, ordering, and monthly statistics.
 - [ ] Store the agency-provided `WAITLIST_INTAKE_KEY` securely.
 - [x] Verify endpoint security, admin workflow, vehicle selectors, and build; live messaging awaits the agency key.
+- [x] Exclude EZPass, toll, and violation records from repair history and vehicle/company expense totals.
