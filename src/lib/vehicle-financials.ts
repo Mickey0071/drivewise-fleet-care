@@ -4,7 +4,6 @@ import {
   payments,
   expenses,
   maintenance,
-  violations,
   driverById,
   type Maintenance,
 } from "@/lib/mock/data";
@@ -33,7 +32,7 @@ import { listOtherIncome } from "@/lib/other-income";
 // engine (rentalCanonicalOwed / rentalTimeCharge / rentalPaymentsReceived).
 // ---------------------------------------------------------------------------
 
-export type ExpenseSource = "manual" | "repair" | "maintenance" | "violation";
+export type ExpenseSource = "manual" | "repair" | "maintenance";
 
 export interface FinancialIncomeItem {
   id: string;
@@ -148,7 +147,10 @@ export function getVehicleFinancials(
   }
   incomeLineItems.sort((a, b) => b.date.localeCompare(a.date));
 
-  // ----- EXPENSES: manual + repairs/maintenance + violations -----
+  // ----- EXPENSES: manual + repairs/maintenance -----
+  // EZPass, toll, and violation records belong only in the Violations module.
+  // They are not vehicle/company expenses and are deliberately excluded from
+  // repair history, P&L, ROI, and every total derived from this engine.
   const expenseLineItems: FinancialExpenseItem[] = [];
 
   // 1. Operational expenses — countableExpenses removes any row whose
@@ -236,20 +238,6 @@ export function getVehicleFinancials(
     }
   }
 
-  // 3. Violations / impound charges tied to the vehicle.
-  for (const x of violations) {
-    if (x.vehicleId !== vehicleId) continue;
-    if (!inRange(x.dateIssued, range)) continue;
-    expenseLineItems.push({
-      id: x.id,
-      date: (x.dateIssued ?? "").slice(0, 10),
-      category: "Violation",
-      description: x.notes || `${x.type} charge`,
-      amount: Number(x.amount || 0),
-      source: "violation",
-    });
-  }
-
   expenseLineItems.sort((a, b) => b.date.localeCompare(a.date));
 
   const totalIncome = incomeLineItems.reduce((s, it) => s + it.amount, 0);
@@ -261,7 +249,6 @@ export function getVehicleFinancials(
     manual: 0,
     repair: 0,
     maintenance: 0,
-    violation: 0,
   };
   for (const it of expenseLineItems) expenseBySource[it.source] += it.amount;
 
@@ -270,7 +257,7 @@ export function getVehicleFinancials(
     .filter((it) => it.source === "repair" || it.source === "maintenance")
     .reduce((s, it) => s + it.amount, 0);
   const expensesTotal = expenseLineItems
-    .filter((it) => it.source === "manual" || it.source === "violation")
+    .filter((it) => it.source === "manual")
     .reduce((s, it) => s + it.amount, 0);
 
   return {
