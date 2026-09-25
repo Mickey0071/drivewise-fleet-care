@@ -53,6 +53,11 @@ export interface FinancialExpenseItem {
   /** Vendor / mechanic / paid-to for this line, when known. Used by the
    *  repair-history CSV & PDF so every repair row lists who did the work. */
   vendor?: string;
+  /** Display-only: rows sharing a groupId are the Parts/Labor split of one
+   *  repair and are shown as a single row. Never used for math. */
+  groupId?: string;
+  /** Display-only repair name (without vendor suffix). */
+  repairName?: string;
 }
 
 export interface VehicleFinancials {
@@ -169,6 +174,10 @@ export function getVehicleFinancials(
       amount: Number(e.amount || 0),
       source: "manual",
       vendor: e.vendor || undefined,
+      groupId: /^(parts|labor)$/i.test(e.category || "")
+        ? ((e as { maintenanceId?: string }).maintenanceId || `manual::${(e.date ?? "").slice(0, 10)}::${(e.notes || "").trim().toLowerCase()}`)
+        : undefined,
+      repairName: /^(parts|labor)$/i.test(e.category || "") ? (e.notes || e.vendor || undefined) : undefined,
     });
   }
 
@@ -198,6 +207,8 @@ export function getVehicleFinancials(
           amount: partsTotal,
           source,
           vendor: m.vendor || m.mechanicName || m.completedBy || undefined,
+          groupId: m.id,
+          repairName: label,
         });
       }
       if (laborTotal > 0) {
@@ -209,6 +220,8 @@ export function getVehicleFinancials(
           amount: laborTotal,
           source,
           vendor: m.mechanicName || m.completedBy || m.vendor || undefined,
+          groupId: m.id,
+          repairName: label,
         });
       }
       // If the aggregate `cost` exceeded parts+labor (e.g. rounding, fees),
@@ -223,6 +236,8 @@ export function getVehicleFinancials(
           amount: remainder,
           source,
           vendor: m.vendor || m.mechanicName || m.completedBy || undefined,
+          groupId: m.id,
+          repairName: label,
         });
       }
     } else {
