@@ -167,7 +167,7 @@ function PnLPage() {
   // Per-vehicle P&L (revenue mapped via rental → driver_id → paid payments)
   // Per-vehicle P&L — read straight from the unified engine so every row
   // matches that vehicle's own Analytics/P&L tab exactly (income, expenses
-  // across manual + repair/maintenance + violations, net, ROI).
+  // across manual + repair/maintenance, net, ROI; violations are excluded).
   const perVehicle = getFleetFinancials({ from: rangeFrom || undefined, to: rangeTo || undefined })
     .perVehicle
     .map(({ vehicle, financials }) => ({

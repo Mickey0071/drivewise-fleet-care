@@ -173,7 +173,7 @@ function MonthlyVehicleReportsPage() {
           });
         });
 
-        // UNIFIED ENGINE — expenses (manual + repair/maintenance + violations)
+        // UNIFIED ENGINE — expenses (manual + repair/maintenance; violations excluded)
         // and income come from getVehicleFinancials so this printable report
         // matches the vehicle's Analytics/P&L tab and the global P&L report.
         const fin = getVehicleFinancials(v.id, { from: start, to: end });

@@ -295,7 +295,7 @@ function FleetPage() {
                 </div>
                 {expenseTotal > 0 && (
                   <div className="mt-1 text-[11px] text-muted-foreground">
-                    Repairs {fmtMoney(byCat.repair + byCat.maintenance)} · Violations {fmtMoney(byCat.violation)} · Other {fmtMoney(byCat.manual)}
+                    Repairs {fmtMoney(byCat.repair + byCat.maintenance)} · Other {fmtMoney(byCat.manual)}
                   </div>
                 )}
               </CardContent>
