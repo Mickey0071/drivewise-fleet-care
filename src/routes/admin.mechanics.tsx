@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { MechanicJobsTabs } from "@/components/app/MechanicJobsTabs";
 import {
   listMechanics,
   saveMechanic,
@@ -94,9 +95,9 @@ function MechanicsAdminPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Mechanics" subtitle="Saved mechanics appear in the Create-Task Mechanic dropdown" />
-
+    <div className="mx-auto max-w-4xl space-y-6">
+      <PageHeader title="Mechanics" subtitle="Each mechanic's jobs, and who has finished them" />
+      <MechanicJobsTabs mechanics={rows} manage={<>
       <Card>
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><Plus className="h-4 w-4" /> Add mechanic</CardTitle></CardHeader>
         <CardContent className="space-y-3">
@@ -150,6 +151,7 @@ function MechanicsAdminPage() {
           )}
         </CardContent>
       </Card>
+      </>} />
     </div>
   );
 }

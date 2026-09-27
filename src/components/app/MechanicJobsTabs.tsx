@@ -106,7 +106,7 @@ export function MechanicJobsTabs({ mechanics, manage }: { mechanics: SavedMechan
     }
   }
 
-  function JobList({ list }: { list: MechanicJobRow[] }) {
+  function JobList({ list, showName }: { list: MechanicJobRow[]; showName?: boolean }) {
     const open = list.filter((j) => j.status === "sent").length;
     const done = list.filter((j) => j.status === "submitted");
     const hrs = done.map(hoursTaken).filter((h): h is number => h !== null);
@@ -157,7 +157,7 @@ export function MechanicJobsTabs({ mechanics, manage }: { mechanics: SavedMechan
                       <span>Sent {fmt(j.sent_at)}</span>
                       {j.status === "submitted" && <span>Completed {fmt(j.submitted_at)}</span>}
                       {h !== null && <span>Took {h.toFixed(1)} hr</span>}
-                      {filterAllName(j)}
+                      {showName && <span>{j.mechanic_name}</span>}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -192,11 +192,6 @@ export function MechanicJobsTabs({ mechanics, manage }: { mechanics: SavedMechan
     );
   }
 
-  let showNames = false;
-  function filterAllName(j: MechanicJobRow) {
-    return showNames ? <span>{j.mechanic_name}</span> : null;
-  }
-
   const defaultTab = mechanics[0]?.id ?? "all";
 
   return (
@@ -229,11 +224,10 @@ export function MechanicJobsTabs({ mechanics, manage }: { mechanics: SavedMechan
               </TabsContent>
             ))}
             <TabsContent value="all">
-              {(() => { showNames = true; return null; })()}
-              <Card><CardContent className="pt-4"><JobList list={jobs} /></CardContent></Card>
+              <Card><CardContent className="pt-4"><JobList list={jobs} showName /></CardContent></Card>
             </TabsContent>
             <TabsContent value="__other">
-              <Card><CardContent className="pt-4"><JobList list={other} /></CardContent></Card>
+              <Card><CardContent className="pt-4"><JobList list={other} showName /></CardContent></Card>
             </TabsContent>
           </>
         )}
