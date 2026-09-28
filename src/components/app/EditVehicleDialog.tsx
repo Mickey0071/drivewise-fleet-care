@@ -89,6 +89,14 @@ export function EditVehicleDialog({
     setSaving(true);
     try {
       const previousStatus = vehicle.status;
+      if (status === "available" && (vehicle.registrationMissing || vehicle.tagsMissing)) {
+        const what = [vehicle.registrationMissing && "registration", vehicle.tagsMissing && "tags"].filter(Boolean).join(" and ");
+        toast.error(`Vehicle cannot be set to Available — missing ${what}`, {
+          description: "Resolve it from the Title & Registration card on the vehicle page.",
+        });
+        setSaving(false);
+        return;
+      }
       if (status === "available" && previousStatus !== "available") {
         try {
           const gate = await checklistGateFn({ data: { vehicleId: vehicle.id } });
