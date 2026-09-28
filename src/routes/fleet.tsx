@@ -22,6 +22,8 @@ import { ExpenseDialog } from "@/components/app/ExpenseDialog";
 import { SendRmTaskDialog } from "@/components/app/SendRmTaskDialog";
 import { ShareRentalDialog } from "@/components/app/ShareRentalDialog";
 import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
+import { PaperworkStep } from "@/components/app/PaperworkStep";
+import { EMPTY_PAPERWORK, validatePaperwork, saveOnboardingRecord, type PaperworkForm, type DraftPaperworkTask } from "@/lib/vehicle-paperwork";
 import { VehiclePhotosDialog } from "@/components/app/VehiclePhotosDialog";
 import { VehicleRepairPanelDialog } from "@/components/app/VehicleRepairPanelDialog";
 import { SendVehicleToMechanicDialog } from "@/components/app/SendVehicleToMechanicDialog";
@@ -514,8 +516,20 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
+  const [paperwork, setPaperwork] = useState<PaperworkForm>({ ...EMPTY_PAPERWORK });
+  const [paperTasks, setPaperTasks] = useState<DraftPaperworkTask[]>([]);
+
+  function nextStep() {
+    const err = validatePaperwork(paperwork);
+    if (err) { toast.error(err); return; }
+    if (paperwork.tagsOnVehicle && paperwork.plate) setPlate(paperwork.plate);
+    if (paperwork.registrationOnFile) setRegistrationExpiry(paperwork.registrationExpiry);
+    setStep(2);
+  }
 
   function reset() {
+    setStep(1); setPaperwork({ ...EMPTY_PAPERWORK }); setPaperTasks([]);
     setMake(""); setModel(""); setYear(new Date().getFullYear()); setVin(""); setPlate("");
     setMileage(""); setDailyRate(""); setWeeklyRate(""); setRiskTier("A");
     setColor(""); setTransmission("Automatic"); setFuelType("Gas"); setSeats("5");
@@ -534,8 +548,18 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
   }
   async function save() {
     if (!make || !model || !plate) { toast.error("Make, model, and plate are required"); return; }
+    const perr = validatePaperwork(paperwork);
+    if (perr) { toast.error(perr); setStep(1); return; }
     setSaving(true);
+    const registrationMissing = paperwork.registrationOnFile === false;
+    const tagsMissing = paperwork.tagsOnVehicle === false;
     const v = addVehicle({
+      status: registrationMissing || tagsMissing ? "inspection" : "available",
+      titleMissing: paperwork.titled === false,
+      registrationMissing,
+      tagsMissing,
+      tagState: paperwork.tagsOnVehicle ? paperwork.tagState : undefined,
+      tagExpiry: paperwork.tagsOnVehicle ? paperwork.tagExpiry || undefined : undefined,
       make, model, year, vin, plate,
       mileage: Number(mileage) || 0,
       dailyRate: Number(dailyRate) || 0,
@@ -553,6 +577,11 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
     });
     try {
       await (v as { cloudReady?: Promise<unknown> }).cloudReady;
+      try {
+        await saveOnboardingRecord(v.id, paperwork, paperTasks);
+      } catch (e: any) {
+        toast.error("Title & Registration record was not saved", { description: e?.message });
+      }
       if (photoFile) {
         const url = await uploadVehiclePhoto(v.id, photoFile);
         await updateVehicleImage(v.id, url);
@@ -569,8 +598,13 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
     <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
       <DialogContent className="!bottom-2 !top-2 flex h-auto max-h-none max-w-xl !translate-y-0 flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="shrink-0 border-b px-3 py-1.5">
-          <DialogTitle className="text-sm">Add vehicle</DialogTitle>
+          <DialogTitle className="text-sm">Add vehicle · Step {step} of 2 — {step === 1 ? "Title & Registration" : "Vehicle details & overall inspection"}</DialogTitle>
         </DialogHeader>
+        {step === 1 ? (
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+            <PaperworkStep form={paperwork} setForm={setPaperwork} tasks={paperTasks} setTasks={setPaperTasks} />
+          </div>
+        ) : (
         <div className="grid min-h-0 flex-1 gap-1.5 overflow-y-auto px-3 py-2 text-sm sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Label>Profile photo</Label>
@@ -656,9 +690,13 @@ function AddVehicleDialog({ open, onClose }: { open: boolean; onClose: () => voi
             <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional" />
           </div>
         </div>
+        )}
         <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t bg-background px-3 py-2 sm:flex-row">
           <Button variant="outline" onClick={() => { reset(); onClose(); }}>Cancel</Button>
-          <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Add vehicle"}</Button>
+          {step === 2 && <Button variant="outline" onClick={() => setStep(1)}>Back</Button>}
+          {step === 1
+            ? <Button onClick={nextStep}>Next</Button>
+            : <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Add vehicle"}</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>

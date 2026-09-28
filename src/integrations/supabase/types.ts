@@ -1677,6 +1677,51 @@ export type Database = {
         }
         Relationships: []
       }
+      paperwork_tasks: {
+        Row: {
+          assignee: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          issue: string
+          notes: string | null
+          status: string
+          task_type: string
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          assignee: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          issue: string
+          notes?: string | null
+          status?: string
+          task_type: string
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          assignee?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          issue?: string
+          notes?: string | null
+          status?: string
+          task_type?: string
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
       part_inquiries: {
         Row: {
           created_at: string
@@ -3628,6 +3673,72 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_onboarding: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          insurance_card: boolean
+          notes: string | null
+          plate: string | null
+          registration_expiry: string | null
+          registration_on_file: boolean
+          registration_photo_path: string | null
+          tag_expiry: string | null
+          tag_state: string | null
+          tags_on_vehicle: boolean
+          title_number: string | null
+          title_photo_path: string | null
+          title_state: string | null
+          title_status: string | null
+          titled: boolean
+          updated_at: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          insurance_card: boolean
+          notes?: string | null
+          plate?: string | null
+          registration_expiry?: string | null
+          registration_on_file: boolean
+          registration_photo_path?: string | null
+          tag_expiry?: string | null
+          tag_state?: string | null
+          tags_on_vehicle: boolean
+          title_number?: string | null
+          title_photo_path?: string | null
+          title_state?: string | null
+          title_status?: string | null
+          titled: boolean
+          updated_at?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          insurance_card?: boolean
+          notes?: string | null
+          plate?: string | null
+          registration_expiry?: string | null
+          registration_on_file?: boolean
+          registration_photo_path?: string | null
+          tag_expiry?: string | null
+          tag_state?: string | null
+          tags_on_vehicle?: boolean
+          title_number?: string | null
+          title_photo_path?: string | null
+          title_state?: string | null
+          title_status?: string | null
+          titled?: boolean
+          updated_at?: string
+          vehicle_id?: string
+        }
+        Relationships: []
+      }
       vehicle_photos: {
         Row: {
           caption: string | null
@@ -3693,6 +3804,7 @@ export type Database = {
           purchase_date: string | null
           purchase_price: number | null
           registration_expiry: string | null
+          registration_missing: boolean
           repo_date: string | null
           repo_location: string | null
           risk_tier: string
@@ -3704,6 +3816,10 @@ export type Database = {
           shop_vendor: string | null
           sold_date: string | null
           status: string
+          tag_expiry: string | null
+          tag_state: string | null
+          tags_missing: boolean
+          title_missing: boolean
           transmission: string | null
           updated_at: string
           vin: string
@@ -3744,6 +3860,7 @@ export type Database = {
           purchase_date?: string | null
           purchase_price?: number | null
           registration_expiry?: string | null
+          registration_missing?: boolean
           repo_date?: string | null
           repo_location?: string | null
           risk_tier?: string
@@ -3755,6 +3872,10 @@ export type Database = {
           shop_vendor?: string | null
           sold_date?: string | null
           status?: string
+          tag_expiry?: string | null
+          tag_state?: string | null
+          tags_missing?: boolean
+          title_missing?: boolean
           transmission?: string | null
           updated_at?: string
           vin: string
@@ -3795,6 +3916,7 @@ export type Database = {
           purchase_date?: string | null
           purchase_price?: number | null
           registration_expiry?: string | null
+          registration_missing?: boolean
           repo_date?: string | null
           repo_location?: string | null
           risk_tier?: string
@@ -3806,6 +3928,10 @@ export type Database = {
           shop_vendor?: string | null
           sold_date?: string | null
           status?: string
+          tag_expiry?: string | null
+          tag_state?: string | null
+          tags_missing?: boolean
+          title_missing?: boolean
           transmission?: string | null
           updated_at?: string
           vin?: string

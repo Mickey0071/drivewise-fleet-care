@@ -37,6 +37,11 @@ const fromVehicle = (r: any) => ({
   fuelLevelPickup: r.fuel_level_pickup ?? undefined,
   ezPassTag: r.ez_pass_tag ?? undefined,
   registrationExpiry: r.registration_expiry ?? undefined,
+  tagState: r.tag_state ?? undefined,
+  tagExpiry: r.tag_expiry ?? undefined,
+  titleMissing: !!r.title_missing,
+  registrationMissing: !!r.registration_missing,
+  tagsMissing: !!r.tags_missing,
   insuranceExpiry: r.insurance_expiry ?? undefined,
   hasOpenIssues: !!r.has_open_issues,
   maintenanceSettings: r.maintenance_settings ?? undefined,
@@ -58,6 +63,11 @@ const toVehicle = (v: any) => ({
   fuel_level_pickup: v.fuelLevelPickup ?? null,
   ez_pass_tag: v.ezPassTag ?? null,
   registration_expiry: v.registrationExpiry ?? null,
+  tag_state: v.tagState ?? null,
+  tag_expiry: v.tagExpiry ?? null,
+  title_missing: !!v.titleMissing,
+  registration_missing: !!v.registrationMissing,
+  tags_missing: !!v.tagsMissing,
   insurance_expiry: v.insuranceExpiry ?? null,
   maintenance_settings: v.maintenanceSettings ?? {},
   archived: !!v.archived,
@@ -1996,6 +2006,11 @@ export function updateVehicle(id: string, fields: Partial<Omit<Vehicle, "id">>) 
   if (fields.fuelLevelPickup !== undefined) patch.fuel_level_pickup = fields.fuelLevelPickup ?? null;
   if (fields.ezPassTag !== undefined) patch.ez_pass_tag = fields.ezPassTag ?? null;
   if (fields.registrationExpiry !== undefined) patch.registration_expiry = fields.registrationExpiry ?? null;
+  if (fields.tagState !== undefined) patch.tag_state = fields.tagState ?? null;
+  if (fields.tagExpiry !== undefined) patch.tag_expiry = fields.tagExpiry ?? null;
+  if (fields.titleMissing !== undefined) patch.title_missing = fields.titleMissing;
+  if (fields.registrationMissing !== undefined) patch.registration_missing = fields.registrationMissing;
+  if (fields.tagsMissing !== undefined) patch.tags_missing = fields.tagsMissing;
   if (fields.insuranceExpiry !== undefined) patch.insurance_expiry = fields.insuranceExpiry ?? null;
   if (fields.hasOpenIssues !== undefined) patch.has_open_issues = fields.hasOpenIssues;
   if (fields.maintenanceSettings !== undefined) patch.maintenance_settings = fields.maintenanceSettings ?? {};

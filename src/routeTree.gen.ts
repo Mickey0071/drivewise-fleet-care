@@ -85,6 +85,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminPaymentReconciliationRouteImport } from './routes/admin.payment-reconciliation'
 import { Route as AdminPartsRouteImport } from './routes/admin.parts'
+import { Route as AdminPaperworkTasksRouteImport } from './routes/admin.paperwork-tasks'
 import { Route as AdminPacketSettingsRouteImport } from './routes/admin.packet-settings'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminMechanicsRouteImport } from './routes/admin.mechanics'
@@ -505,6 +506,11 @@ const AdminPartsRoute = AdminPartsRouteImport.update({
   path: '/admin/parts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPaperworkTasksRoute = AdminPaperworkTasksRouteImport.update({
+  id: '/admin/paperwork-tasks',
+  path: '/admin/paperwork-tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminPacketSettingsRoute = AdminPacketSettingsRouteImport.update({
   id: '/admin/packet-settings',
   path: '/admin/packet-settings',
@@ -763,6 +769,7 @@ export interface FileRoutesByFullPath {
   '/admin/mechanics': typeof AdminMechanicsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/packet-settings': typeof AdminPacketSettingsRoute
+  '/admin/paperwork-tasks': typeof AdminPaperworkTasksRoute
   '/admin/parts': typeof AdminPartsRoute
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
@@ -878,6 +885,7 @@ export interface FileRoutesByTo {
   '/admin/mechanics': typeof AdminMechanicsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/packet-settings': typeof AdminPacketSettingsRoute
+  '/admin/paperwork-tasks': typeof AdminPaperworkTasksRoute
   '/admin/parts': typeof AdminPartsRoute
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
@@ -994,6 +1002,7 @@ export interface FileRoutesById {
   '/admin/mechanics': typeof AdminMechanicsRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/packet-settings': typeof AdminPacketSettingsRoute
+  '/admin/paperwork-tasks': typeof AdminPaperworkTasksRoute
   '/admin/parts': typeof AdminPartsRoute
   '/admin/payment-reconciliation': typeof AdminPaymentReconciliationRoute
   '/admin/tasks': typeof AdminTasksRoute
@@ -1111,6 +1120,7 @@ export interface FileRouteTypes {
     | '/admin/mechanics'
     | '/admin/notifications'
     | '/admin/packet-settings'
+    | '/admin/paperwork-tasks'
     | '/admin/parts'
     | '/admin/payment-reconciliation'
     | '/admin/tasks'
@@ -1226,6 +1236,7 @@ export interface FileRouteTypes {
     | '/admin/mechanics'
     | '/admin/notifications'
     | '/admin/packet-settings'
+    | '/admin/paperwork-tasks'
     | '/admin/parts'
     | '/admin/payment-reconciliation'
     | '/admin/tasks'
@@ -1341,6 +1352,7 @@ export interface FileRouteTypes {
     | '/admin/mechanics'
     | '/admin/notifications'
     | '/admin/packet-settings'
+    | '/admin/paperwork-tasks'
     | '/admin/parts'
     | '/admin/payment-reconciliation'
     | '/admin/tasks'
@@ -1457,6 +1469,7 @@ export interface RootRouteChildren {
   AdminMechanicsRoute: typeof AdminMechanicsRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminPacketSettingsRoute: typeof AdminPacketSettingsRoute
+  AdminPaperworkTasksRoute: typeof AdminPaperworkTasksRoute
   AdminPartsRoute: typeof AdminPartsRoute
   AdminPaymentReconciliationRoute: typeof AdminPaymentReconciliationRoute
   AdminTasksRoute: typeof AdminTasksRoute
@@ -2045,6 +2058,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPartsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/paperwork-tasks': {
+      id: '/admin/paperwork-tasks'
+      path: '/admin/paperwork-tasks'
+      fullPath: '/admin/paperwork-tasks'
+      preLoaderRoute: typeof AdminPaperworkTasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/packet-settings': {
       id: '/admin/packet-settings'
       path: '/admin/packet-settings'
@@ -2400,6 +2420,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminMechanicsRoute: AdminMechanicsRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminPacketSettingsRoute: AdminPacketSettingsRoute,
+  AdminPaperworkTasksRoute: AdminPaperworkTasksRoute,
   AdminPartsRoute: AdminPartsRoute,
   AdminPaymentReconciliationRoute: AdminPaymentReconciliationRoute,
   AdminTasksRoute: AdminTasksRoute,

@@ -108,6 +108,7 @@ const DEFAULT_ITEMS: NavItem[] = [
   { key: "/admin/tasks", url: "/admin/tasks", title: "Runner Dispatch", icon: ClipboardList, roles: ALL, sectionKey: "staff", sectionLabel: "Staff & Tasks", sectionIcon: UsersRound },
   { key: "/admin/mechanics", url: "/admin/mechanics", title: "Mechanics", icon: Wrench, roles: ALL, sectionKey: "staff", sectionLabel: "Staff & Tasks", sectionIcon: UsersRound },
   { key: "/admin/checklists", url: "/admin/checklists", title: "Pre-Rental Checklists", icon: ClipboardList, roles: ALL, sectionKey: "staff", sectionLabel: "Staff & Tasks", sectionIcon: UsersRound },
+  { key: "/admin/paperwork-tasks", url: "/admin/paperwork-tasks", title: "Paperwork Tasks", icon: ClipboardList, roles: ["admin", "va"], sectionKey: "staff", sectionLabel: "Staff & Tasks", sectionIcon: UsersRound },
   { key: "/runner-reports", url: "/runner-reports", title: "Runner Reports", icon: ClipboardList, roles: ["admin"], sectionKey: "staff", sectionLabel: "Staff & Tasks", sectionIcon: UsersRound },
 
   // JV
