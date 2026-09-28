@@ -51,7 +51,7 @@ function PaperworkTasksPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Paperwork Tasks" description="DMV runs, title transfers, and tag orders from vehicle onboarding." />
+      <PageHeader title="Paperwork Tasks" subtitle="DMV runs, title transfers, and tag orders from vehicle onboarding." />
       <div className="flex gap-2">
         <Button size="sm" variant={show === "open" ? "default" : "outline"} onClick={() => setShow("open")}>Open</Button>
         <Button size="sm" variant={show === "all" ? "default" : "outline"} onClick={() => setShow("all")}>All</Button>
