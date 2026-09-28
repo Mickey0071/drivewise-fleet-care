@@ -38,6 +38,7 @@ import { ExpenseDialog } from "@/components/app/ExpenseDialog";
 import { BlockVehicleTab } from "@/components/app/BlockVehicleTab";
 import { RmHistoryTab } from "@/components/app/RmHistoryTab";
 import { VehicleChecklistTrackers } from "@/components/app/VehicleChecklistTrackers";
+import { VehiclePaperworkCard } from "@/components/app/VehiclePaperworkCard";
 
 import { LogPastRepairDialog } from "@/components/app/LogPastRepairDialog";
 import { AddOtherIncomeDialog } from "@/components/app/AddOtherIncomeDialog";
@@ -873,7 +874,10 @@ function VehicleDetail() {
         </TabsContent>
 
         <TabsContent value="checklist" className="mt-4">
-          <VehicleChecklistTrackers vehicleId={v.id} plate={v.plate} />
+          <div className="grid gap-4">
+            <VehiclePaperworkCard vehicle={v} />
+            <VehicleChecklistTrackers vehicleId={v.id} plate={v.plate} />
+          </div>
         </TabsContent>
 
         <TabsContent value="other" className="mt-4 grid gap-4 lg:grid-cols-2">
