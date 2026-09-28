@@ -133,7 +133,7 @@ export interface VehicleAlert {
 const MS_DAY = 86_400_000;
 const OIL_MILES_WARN = 500; // miles remaining threshold to surface alert
 const OIL_DAYS_WARN = 15; // days remaining threshold (time-based oil change)
-const REGISTRATION_LEAD_DAYS = 10; // alert this many days before expiration
+const REGISTRATION_LEAD_DAYS = 30; // alert this many days before expiration
 
 function parseDay(s?: string | null): Date | null {
   if (!s) return null;
@@ -212,7 +212,7 @@ export function computeVehicleAlerts(v: Vehicle, now: Date = new Date()): Vehicl
     });
   }
 
-  // --- Registration (alert 10 days before expiration) ---
+  // --- Registration (alert 30 days before expiration) ---
   const reg = parseDay(v.registrationExpiry);
   if (reg) {
     const daysLeft = daysBetween(reg, today);
@@ -220,6 +220,24 @@ export function computeVehicleAlerts(v: Vehicle, now: Date = new Date()): Vehicl
       alerts.push({
         key: "registration",
         label: "Registration Alert",
+        detail: daysLeft < 0
+          ? `expired ${Math.abs(daysLeft)} days ago`
+          : daysLeft === 0
+            ? "expires today"
+            : `expires in ${daysLeft} days`,
+        overdue: daysLeft <= 0,
+      });
+    }
+  }
+
+  // --- License plate tags (alert 30 days before expiration) ---
+  const tag = parseDay(v.tagExpiry);
+  if (tag) {
+    const daysLeft = daysBetween(tag, today);
+    if (daysLeft <= REGISTRATION_LEAD_DAYS) {
+      alerts.push({
+        key: "tags",
+        label: "Tag Expiration Alert",
         detail: daysLeft < 0
           ? `expired ${Math.abs(daysLeft)} days ago`
           : daysLeft === 0
