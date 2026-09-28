@@ -17,6 +17,12 @@ export interface Vehicle {
   fuelLevelPickup?: "Full" | "3/4" | "1/2" | "1/4" | "Empty";
   ezPassTag?: string;
   registrationExpiry?: string;
+  tagState?: string;
+  tagExpiry?: string;
+  /** Paperwork flags from onboarding. Registration/tags missing block "available". */
+  titleMissing?: boolean;
+  registrationMissing?: boolean;
+  tagsMissing?: boolean;
   insuranceExpiry?: string;
   hasOpenIssues?: boolean;
   maintenanceSettings?: MaintenanceSettings;
