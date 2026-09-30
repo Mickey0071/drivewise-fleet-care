@@ -202,8 +202,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   function reset() {
     setStep(0); setVehicleId(null); setDriverId(null);
     setStartDate(""); setEndDate(""); setRate(0); setBillingPeriod("weekly");
-    setUnits(1); setTotalOverride("");
-    setDeposit(300); setNotes(""); setVehQ(""); setDrvQ("");
+    setUnits(1); setUnitsText("1"); setTotalOverride("");
+    setDeposit(300); setDepositText("300"); setNotes(""); setVehQ(""); setDrvQ("");
     setShowAddDriver(false);
     setIsSwap(false);
     setNewDriver(emptyDriver);
