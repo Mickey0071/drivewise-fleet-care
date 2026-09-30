@@ -74,6 +74,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [billingPeriod, setBillingPeriod] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [rate, setRate] = useState<number>(0);
   const [units, setUnits] = useState<number>(1);
+  const [unitsText, setUnitsText] = useState<string>("1");
+  const [depositText, setDepositText] = useState<string>("300");
   const [totalOverride, setTotalOverride] = useState<string>("");
   const [deposit, setDeposit] = useState<number>(300);
   const [skipDailyMin, setSkipDailyMin] = useState<boolean>(false);
