@@ -732,7 +732,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                 </div>
                 <div>
                   <Label htmlFor="units">Number of {unitLabel(billingPeriod)}</Label>
-                  <Input id="units" type="number" inputMode="numeric" min={1} value={units || ""} onChange={e => applyUnits(Number(e.target.value))} />
+                  <Input id="units" type="number" inputMode="numeric" min={1} value={unitsText} onChange={e => onUnitsTextChange(e.target.value)} onBlur={() => setUnitsText(String(units))} />
                   <p className="mt-1 text-xs text-muted-foreground">Sets the end date automatically.</p>
                 </div>
                 <div>
