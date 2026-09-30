@@ -737,7 +737,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                 </div>
                 <div>
                   <Label htmlFor="dep">Deposit</Label>
-                  <Input id="dep" type="number" inputMode="decimal" min={0} placeholder="Enter amount" value={deposit || ""} onChange={e => setDeposit(Number(e.target.value))} />
+                  <Input id="dep" type="number" inputMode="decimal" min={0} placeholder="Enter amount" value={depositText} onChange={e => { setDepositText(e.target.value); const n = Number(e.target.value); if (e.target.value.trim() !== "" && Number.isFinite(n) && n >= 0) setDeposit(n); }} onBlur={() => setDepositText(deposit > 0 ? String(deposit) : "")} />
                 </div>
               </div>
               <div className="rounded-md border bg-card p-3">
