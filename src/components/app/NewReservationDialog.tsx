@@ -74,6 +74,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [billingPeriod, setBillingPeriod] = useState<"daily" | "weekly" | "monthly">("weekly");
   const [rate, setRate] = useState<number>(0);
   const [units, setUnits] = useState<number>(1);
+  const [unitsText, setUnitsText] = useState<string>("1");
+  const [depositText, setDepositText] = useState<string>("300");
   const [totalOverride, setTotalOverride] = useState<string>("");
   const [deposit, setDeposit] = useState<number>(300);
   const [skipDailyMin, setSkipDailyMin] = useState<boolean>(false);
@@ -120,7 +122,22 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   function applyUnits(n: number, period: BillingPeriod = billingPeriod, start: string = startDate) {
     const safe = Math.max(1, Math.floor(n || 1));
     setUnits(safe);
+    setUnitsText(String(safe));
     if (start) setEndDate(addDaysIso(start, safe * periodDays(period)));
+  }
+
+  // Free-typing handler for the units box: the text is what the user sees,
+  // so it can be emptied without snapping back to 1 mid-keystroke. The
+  // numeric value only updates when the text is a valid number; on blur an
+  // empty/invalid box settles back to the current value.
+  function onUnitsTextChange(v: string) {
+    setUnitsText(v);
+    const n = Number(v);
+    if (v.trim() !== "" && Number.isFinite(n) && n >= 1) {
+      const safe = Math.floor(n);
+      setUnits(safe);
+      if (startDate) setEndDate(addDaysIso(startDate, safe * periodDays(billingPeriod)));
+    }
   }
 
   // Hard block: selected dates overlap a maintenance repair or on-rent window
@@ -185,8 +202,8 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   function reset() {
     setStep(0); setVehicleId(null); setDriverId(null);
     setStartDate(""); setEndDate(""); setRate(0); setBillingPeriod("weekly");
-    setUnits(1); setTotalOverride("");
-    setDeposit(300); setNotes(""); setVehQ(""); setDrvQ("");
+    setUnits(1); setUnitsText("1"); setTotalOverride("");
+    setDeposit(300); setDepositText("300"); setNotes(""); setVehQ(""); setDrvQ("");
     setShowAddDriver(false);
     setIsSwap(false);
     setNewDriver(emptyDriver);
@@ -715,12 +732,12 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                 </div>
                 <div>
                   <Label htmlFor="units">Number of {unitLabel(billingPeriod)}</Label>
-                  <Input id="units" type="number" inputMode="numeric" min={1} value={units || ""} onChange={e => applyUnits(Number(e.target.value))} />
+                  <Input id="units" type="number" inputMode="numeric" min={1} value={unitsText} onChange={e => onUnitsTextChange(e.target.value)} onBlur={() => setUnitsText(String(units))} />
                   <p className="mt-1 text-xs text-muted-foreground">Sets the end date automatically.</p>
                 </div>
                 <div>
                   <Label htmlFor="dep">Deposit</Label>
-                  <Input id="dep" type="number" inputMode="decimal" min={0} placeholder="Enter amount" value={deposit || ""} onChange={e => setDeposit(Number(e.target.value))} />
+                  <Input id="dep" type="number" inputMode="decimal" min={0} placeholder="Enter amount" value={depositText} onChange={e => { setDepositText(e.target.value); const n = Number(e.target.value); if (e.target.value.trim() !== "" && Number.isFinite(n) && n >= 0) setDeposit(n); }} onBlur={() => setDepositText(deposit > 0 ? String(deposit) : "")} />
                 </div>
               </div>
               <div className="rounded-md border bg-card p-3">
