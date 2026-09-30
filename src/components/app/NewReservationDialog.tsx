@@ -122,7 +122,22 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   function applyUnits(n: number, period: BillingPeriod = billingPeriod, start: string = startDate) {
     const safe = Math.max(1, Math.floor(n || 1));
     setUnits(safe);
+    setUnitsText(String(safe));
     if (start) setEndDate(addDaysIso(start, safe * periodDays(period)));
+  }
+
+  // Free-typing handler for the units box: the text is what the user sees,
+  // so it can be emptied without snapping back to 1 mid-keystroke. The
+  // numeric value only updates when the text is a valid number; on blur an
+  // empty/invalid box settles back to the current value.
+  function onUnitsTextChange(v: string) {
+    setUnitsText(v);
+    const n = Number(v);
+    if (v.trim() !== "" && Number.isFinite(n) && n >= 1) {
+      const safe = Math.floor(n);
+      setUnits(safe);
+      if (startDate) setEndDate(addDaysIso(startDate, safe * periodDays(billingPeriod)));
+    }
   }
 
   // Hard block: selected dates overlap a maintenance repair or on-rent window
