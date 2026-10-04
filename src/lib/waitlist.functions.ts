@@ -90,6 +90,8 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
     vehiclePreference?: string;
     rentalLength: "1 week" | "2+ weeks";
     sourceParam?: "agency" | "facebook" | "manual" | "direct";
+    marketingConsent?: boolean;
+    visitorId?: string;
   }) => {
     const name = (input.name ?? "").trim();
     const phone = (input.phone ?? "").trim();

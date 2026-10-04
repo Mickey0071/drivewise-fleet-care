@@ -60,7 +60,46 @@ export const Route = createFileRoute("/api/public/hooks/ghl-inbound")({
         );
         if (error) return new Response(error.message, { status: 500 });
 
-        return Response.json({ ok: true, matched: Boolean(driverId) });
+        // Marketing consent keywords + campaign reply tracking.
+        const word = message.trim().toUpperCase().replace(/[^A-Z]/g, "");
+        const STOP_WORDS = ["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "OPTOUT"];
+        const YES_WORDS = ["YES", "START", "UNSTOP", "OPTIN"];
+        const now = new Date().toISOString();
+        let consent: "opted_out" | "opted_in" | null = null;
+        if (STOP_WORDS.includes(word)) consent = "opted_out";
+        else if (YES_WORDS.includes(word)) consent = "opted_in";
+        if (tail) {
+          if (consent) {
+            const patch = consent === "opted_out"
+              ? { consent_status: "opted_out" as const, consent_at: now, consent_note: `Replied ${word} by text` }
+              : { consent_status: "opted_in" as const, consent_source: "reply_YES" as const, consent_at: now, consent_note: `Replied ${word} by text` };
+            const { data: drv } = await supabaseAdmin.from("drivers").select("id, phone").not("phone", "is", null).limit(5000);
+            const dIds = (drv ?? []).filter((d) => digits(d.phone ?? "") === tail).map((d) => d.id);
+            if (dIds.length) await supabaseAdmin.from("drivers").update(patch).in("id", dIds);
+            const { data: wl } = await supabaseAdmin.from("waitlist_entries").select("id, phone").not("phone", "is", null).limit(5000);
+            const wIds = (wl ?? []).filter((w) => digits(w.phone ?? "") === tail).map((w) => w.id);
+            if (wIds.length) await supabaseAdmin.from("waitlist_entries").update(patch).in("id", wIds);
+          }
+          // Attribute the reply to the most recent campaign text to this number (last 14 days).
+          const since = new Date(Date.now() - 14 * 86400000).toISOString();
+          const { data: rec } = await supabaseAdmin
+            .from("marketing_recipients")
+            .select("id")
+            .eq("normalized_phone", tail)
+            .eq("status", "sent")
+            .gte("sent_at", since)
+            .order("sent_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (rec) {
+            await supabaseAdmin
+              .from("marketing_recipients")
+              .update({ replied_at: now, ...(consent === "opted_out" ? { opted_out_at: now } : {}) })
+              .eq("id", rec.id);
+          }
+        }
+
+        return Response.json({ ok: true, matched: Boolean(driverId), consent });
       },
     },
   },
