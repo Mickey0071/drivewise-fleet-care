@@ -361,11 +361,16 @@ export type Database = {
           card_last4: string | null
           card_saved_at: string | null
           city: string | null
+          consent_at: string | null
+          consent_note: string | null
+          consent_source: Database["public"]["Enums"]["consent_source"] | null
+          consent_status: Database["public"]["Enums"]["consent_status"]
           created_at: string
           created_via: string
           date_added: string
           date_of_birth: string | null
           dl_state: string | null
+          do_not_text: boolean
           email: string
           first_name: string | null
           full_name: string
@@ -373,15 +378,18 @@ export type Database = {
           import_source: string | null
           insurance_on_file: boolean
           last_name: string | null
+          lead_source: Database["public"]["Enums"]["lead_source"] | null
           license_back_image_url: string | null
           license_expiry: string
           license_image_url: string | null
           license_number: string
+          marketing_token: string | null
           middle_initial: string | null
           next_auto_charge_date: string | null
           phone: string
           rideshare: string
           rideshare_proof_url: string | null
+          source_detail: string | null
           state: string | null
           status: string
           street_address: string | null
@@ -408,11 +416,16 @@ export type Database = {
           card_last4?: string | null
           card_saved_at?: string | null
           city?: string | null
+          consent_at?: string | null
+          consent_note?: string | null
+          consent_source?: Database["public"]["Enums"]["consent_source"] | null
+          consent_status?: Database["public"]["Enums"]["consent_status"]
           created_at?: string
           created_via?: string
           date_added?: string
           date_of_birth?: string | null
           dl_state?: string | null
+          do_not_text?: boolean
           email: string
           first_name?: string | null
           full_name: string
@@ -420,15 +433,18 @@ export type Database = {
           import_source?: string | null
           insurance_on_file?: boolean
           last_name?: string | null
+          lead_source?: Database["public"]["Enums"]["lead_source"] | null
           license_back_image_url?: string | null
           license_expiry: string
           license_image_url?: string | null
           license_number: string
+          marketing_token?: string | null
           middle_initial?: string | null
           next_auto_charge_date?: string | null
           phone: string
           rideshare?: string
           rideshare_proof_url?: string | null
+          source_detail?: string | null
           state?: string | null
           status?: string
           street_address?: string | null
@@ -455,11 +471,16 @@ export type Database = {
           card_last4?: string | null
           card_saved_at?: string | null
           city?: string | null
+          consent_at?: string | null
+          consent_note?: string | null
+          consent_source?: Database["public"]["Enums"]["consent_source"] | null
+          consent_status?: Database["public"]["Enums"]["consent_status"]
           created_at?: string
           created_via?: string
           date_added?: string
           date_of_birth?: string | null
           dl_state?: string | null
+          do_not_text?: boolean
           email?: string
           first_name?: string | null
           full_name?: string
@@ -467,15 +488,18 @@ export type Database = {
           import_source?: string | null
           insurance_on_file?: boolean
           last_name?: string | null
+          lead_source?: Database["public"]["Enums"]["lead_source"] | null
           license_back_image_url?: string | null
           license_expiry?: string
           license_image_url?: string | null
           license_number?: string
+          marketing_token?: string | null
           middle_initial?: string | null
           next_auto_charge_date?: string | null
           phone?: string
           rideshare?: string
           rideshare_proof_url?: string | null
+          source_detail?: string | null
           state?: string | null
           status?: string
           street_address?: string | null
@@ -830,6 +854,69 @@ export type Database = {
           total_amount?: number
           total_count?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      form_visits: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          customer_id: string | null
+          form_name: string
+          id: string
+          page_url: string | null
+          referrer: string | null
+          submitted: boolean
+          submitted_at: string | null
+          tracking_token: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          visited_at: string
+          visitor_id: string | null
+          waitlist_entry_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          form_name: string
+          id?: string
+          page_url?: string | null
+          referrer?: string | null
+          submitted?: boolean
+          submitted_at?: string | null
+          tracking_token?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          visited_at?: string
+          visitor_id?: string | null
+          waitlist_entry_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          form_name?: string
+          id?: string
+          page_url?: string | null
+          referrer?: string | null
+          submitted?: boolean
+          submitted_at?: string | null
+          tracking_token?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          visited_at?: string
+          visitor_id?: string | null
+          waitlist_entry_id?: string | null
         }
         Relationships: []
       }
@@ -1460,6 +1547,185 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      marketing_campaigns: {
+        Row: {
+          audience_label: string | null
+          body: string
+          channel: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          scheduled_at: string | null
+          skipped_count: number
+          started_at: string | null
+          status: string
+          subject: string | null
+          total_recipients: number
+          unknown_consent_count: number
+          updated_at: string
+        }
+        Insert: {
+          audience_label?: string | null
+          body: string
+          channel?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          scheduled_at?: string | null
+          skipped_count?: number
+          started_at?: string | null
+          status?: string
+          subject?: string | null
+          total_recipients?: number
+          unknown_consent_count?: number
+          updated_at?: string
+        }
+        Update: {
+          audience_label?: string | null
+          body?: string
+          channel?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          scheduled_at?: string | null
+          skipped_count?: number
+          started_at?: string | null
+          status?: string
+          subject?: string | null
+          total_recipients?: number
+          unknown_consent_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      marketing_recipients: {
+        Row: {
+          campaign_id: string
+          clicked_at: string | null
+          consent_status: string | null
+          created_at: string
+          customer_id: string | null
+          error: string | null
+          id: string
+          message: string | null
+          name: string | null
+          normalized_phone: string | null
+          opted_out_at: string | null
+          phone: string | null
+          replied_at: string | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          clicked_at?: string | null
+          consent_status?: string | null
+          created_at?: string
+          customer_id?: string | null
+          error?: string | null
+          id?: string
+          message?: string | null
+          name?: string | null
+          normalized_phone?: string | null
+          opted_out_at?: string | null
+          phone?: string | null
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          clicked_at?: string | null
+          consent_status?: string | null
+          created_at?: string
+          customer_id?: string | null
+          error?: string | null
+          id?: string
+          message?: string | null
+          name?: string | null
+          normalized_phone?: string | null
+          opted_out_at?: string | null
+          phone?: string | null
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_segments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_ids: Json
+          filters: Json
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_ids?: Json
+          filters?: Json
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_ids?: Json
+          filters?: Json
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      marketing_templates: {
+        Row: {
+          body: string
+          category: string
+          channel: string
+          created_at: string
+          id: string
+          name: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          category?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          name: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          name?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       mechanic_jobs: {
         Row: {
@@ -4284,10 +4550,15 @@ export type Database = {
           admin_notes: string | null
           admin_seen_at: string | null
           campaign_param: string | null
+          consent_at: string | null
+          consent_note: string | null
+          consent_source: Database["public"]["Enums"]["consent_source"] | null
+          consent_status: Database["public"]["Enums"]["consent_status"]
           converted_at: string | null
           converted_rental_id: string | null
           courtesy_sms_sent_at: string | null
           created_at: string
+          do_not_text: boolean
           docs_approved_at: string | null
           docs_approved_by: string | null
           docs_rejected_at: string | null
@@ -4297,6 +4568,7 @@ export type Database = {
           email: string
           id: string
           intake_payload: Json | null
+          lead_source: Database["public"]["Enums"]["lead_source"] | null
           license_back_url: string | null
           license_expiration: string | null
           license_front_url: string | null
@@ -4316,6 +4588,7 @@ export type Database = {
           rideshare_proof_url: string | null
           selfie_url: string | null
           source: string
+          source_detail: string | null
           source_param: string
           status: string
           updated_at: string
@@ -4329,10 +4602,15 @@ export type Database = {
           admin_notes?: string | null
           admin_seen_at?: string | null
           campaign_param?: string | null
+          consent_at?: string | null
+          consent_note?: string | null
+          consent_source?: Database["public"]["Enums"]["consent_source"] | null
+          consent_status?: Database["public"]["Enums"]["consent_status"]
           converted_at?: string | null
           converted_rental_id?: string | null
           courtesy_sms_sent_at?: string | null
           created_at?: string
+          do_not_text?: boolean
           docs_approved_at?: string | null
           docs_approved_by?: string | null
           docs_rejected_at?: string | null
@@ -4342,6 +4620,7 @@ export type Database = {
           email: string
           id?: string
           intake_payload?: Json | null
+          lead_source?: Database["public"]["Enums"]["lead_source"] | null
           license_back_url?: string | null
           license_expiration?: string | null
           license_front_url?: string | null
@@ -4361,6 +4640,7 @@ export type Database = {
           rideshare_proof_url?: string | null
           selfie_url?: string | null
           source?: string
+          source_detail?: string | null
           source_param?: string
           status?: string
           updated_at?: string
@@ -4374,10 +4654,15 @@ export type Database = {
           admin_notes?: string | null
           admin_seen_at?: string | null
           campaign_param?: string | null
+          consent_at?: string | null
+          consent_note?: string | null
+          consent_source?: Database["public"]["Enums"]["consent_source"] | null
+          consent_status?: Database["public"]["Enums"]["consent_status"]
           converted_at?: string | null
           converted_rental_id?: string | null
           courtesy_sms_sent_at?: string | null
           created_at?: string
+          do_not_text?: boolean
           docs_approved_at?: string | null
           docs_approved_by?: string | null
           docs_rejected_at?: string | null
@@ -4387,6 +4672,7 @@ export type Database = {
           email?: string
           id?: string
           intake_payload?: Json | null
+          lead_source?: Database["public"]["Enums"]["lead_source"] | null
           license_back_url?: string | null
           license_expiration?: string | null
           license_front_url?: string | null
@@ -4406,6 +4692,7 @@ export type Database = {
           rideshare_proof_url?: string | null
           selfie_url?: string | null
           source?: string
+          source_detail?: string | null
           source_param?: string
           status?: string
           updated_at?: string
@@ -4721,9 +5008,29 @@ export type Database = {
         Returns: boolean
       }
       has_violations_access: { Args: { _user_id: string }; Returns: boolean }
+      marketing_arm_sender: { Args: never; Returns: undefined }
+      marketing_disarm_sender: { Args: never; Returns: undefined }
+      marketing_schedule_campaign: {
+        Args: { _at: string; _id: string }
+        Returns: undefined
+      }
+      marketing_start_campaign: { Args: { _id: string }; Returns: undefined }
+      marketing_unschedule_campaign: {
+        Args: { _id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "runner" | "driver" | "va"
+      consent_source: "online_form" | "manual_note" | "reply_YES"
+      consent_status: "unknown" | "opted_in" | "opted_out"
+      lead_source:
+        | "online_form"
+        | "funnel"
+        | "manual_entry"
+        | "waitlist"
+        | "csv_import"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4852,6 +5159,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "runner", "driver", "va"],
+      consent_source: ["online_form", "manual_note", "reply_YES"],
+      consent_status: ["unknown", "opted_in", "opted_out"],
+      lead_source: [
+        "online_form",
+        "funnel",
+        "manual_entry",
+        "waitlist",
+        "csv_import",
+        "other",
+      ],
     },
   },
 } as const
