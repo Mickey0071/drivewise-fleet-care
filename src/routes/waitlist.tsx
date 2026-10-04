@@ -238,6 +238,16 @@ function WaitlistPage() {
           Upload your documents once. When a vehicle opens up, we'll call you — no forms to fill out again.
         </p>
 
+        <label className="flex items-start gap-3 rounded-md border p-3 text-sm">
+          <Checkbox
+            checked={marketingConsent}
+            onCheckedChange={(v) => setMarketingConsent(v === true)}
+            id="wl-marketing-consent"
+            className="mt-0.5"
+          />
+          <span>{CONSENT_TEXT}</span>
+        </label>
+
         <Button
           type="submit"
           size="lg"
