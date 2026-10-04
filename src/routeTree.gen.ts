@@ -31,6 +31,7 @@ import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as MyRentalsRouteImport } from './routes/my-rentals'
 import { Route as MonthlyVehicleReportsRouteImport } from './routes/monthly-vehicle-reports'
 import { Route as MigratedReservationsRouteImport } from './routes/migrated-reservations'
+import { Route as MarketingRouteImport } from './routes/marketing'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JvUnitsRouteImport } from './routes/jv-units'
@@ -113,12 +114,14 @@ import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$re
 import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
 import { Route as ApiPublicWaitlistIntakeRouteImport } from './routes/api/public/waitlist-intake'
 import { Route as ApiPublicCardholderRefuseRouteImport } from './routes/api/public/cardholder-refuse'
+import { Route as ApiPublicRTokenRouteImport } from './routes/api/public/r.$token'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksViolationRemindersRouteImport } from './routes/api/public/hooks/violation-reminders'
 import { Route as ApiPublicHooksVerificationRemindersRouteImport } from './routes/api/public/hooks/verification-reminders'
 import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
 import { Route as ApiPublicHooksRepairDigestRouteImport } from './routes/api/public/hooks/repair-digest'
 import { Route as ApiPublicHooksMonthlyBackupRouteImport } from './routes/api/public/hooks/monthly-backup'
+import { Route as ApiPublicHooksMarketingSendRouteImport } from './routes/api/public/hooks/marketing-send'
 import { Route as ApiPublicHooksGhlInboundRouteImport } from './routes/api/public/hooks/ghl-inbound'
 import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
 import { Route as ApiPublicHooksAutoExtensionLinksRouteImport } from './routes/api/public/hooks/auto-extension-links'
@@ -232,6 +235,11 @@ const MonthlyVehicleReportsRoute = MonthlyVehicleReportsRouteImport.update({
 const MigratedReservationsRoute = MigratedReservationsRouteImport.update({
   id: '/migrated-reservations',
   path: '/migrated-reservations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketingRoute = MarketingRouteImport.update({
+  id: '/marketing',
+  path: '/marketing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MaintenanceRoute = MaintenanceRouteImport.update({
@@ -649,6 +657,11 @@ const ApiPublicCardholderRefuseRoute =
     path: '/api/public/cardholder-refuse',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicRTokenRoute = ApiPublicRTokenRouteImport.update({
+  id: '/api/public/r/$token',
+  path: '/api/public/r/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -683,6 +696,12 @@ const ApiPublicHooksMonthlyBackupRoute =
   ApiPublicHooksMonthlyBackupRouteImport.update({
     id: '/api/public/hooks/monthly-backup',
     path: '/api/public/hooks/monthly-backup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksMarketingSendRoute =
+  ApiPublicHooksMarketingSendRouteImport.update({
+    id: '/api/public/hooks/marketing-send',
+    path: '/api/public/hooks/marketing-send',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksGhlInboundRoute =
@@ -728,6 +747,7 @@ export interface FileRoutesByFullPath {
   '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/marketing': typeof MarketingRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
@@ -819,12 +839,14 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/ghl-inbound': typeof ApiPublicHooksGhlInboundRoute
+  '/api/public/hooks/marketing-send': typeof ApiPublicHooksMarketingSendRoute
   '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/hooks/verification-reminders': typeof ApiPublicHooksVerificationRemindersRoute
   '/api/public/hooks/violation-reminders': typeof ApiPublicHooksViolationRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/public/r/$token': typeof ApiPublicRTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -844,6 +866,7 @@ export interface FileRoutesByTo {
   '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/marketing': typeof MarketingRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
@@ -935,12 +958,14 @@ export interface FileRoutesByTo {
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/ghl-inbound': typeof ApiPublicHooksGhlInboundRoute
+  '/api/public/hooks/marketing-send': typeof ApiPublicHooksMarketingSendRoute
   '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/hooks/verification-reminders': typeof ApiPublicHooksVerificationRemindersRoute
   '/api/public/hooks/violation-reminders': typeof ApiPublicHooksViolationRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/public/r/$token': typeof ApiPublicRTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -961,6 +986,7 @@ export interface FileRoutesById {
   '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/marketing': typeof MarketingRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
@@ -1052,12 +1078,14 @@ export interface FileRoutesById {
   '/api/public/hooks/auto-extension-links': typeof ApiPublicHooksAutoExtensionLinksRoute
   '/api/public/hooks/daily-reports': typeof ApiPublicHooksDailyReportsRoute
   '/api/public/hooks/ghl-inbound': typeof ApiPublicHooksGhlInboundRoute
+  '/api/public/hooks/marketing-send': typeof ApiPublicHooksMarketingSendRoute
   '/api/public/hooks/monthly-backup': typeof ApiPublicHooksMonthlyBackupRoute
   '/api/public/hooks/repair-digest': typeof ApiPublicHooksRepairDigestRoute
   '/api/public/hooks/send-reminders': typeof ApiPublicHooksSendRemindersRoute
   '/api/public/hooks/verification-reminders': typeof ApiPublicHooksVerificationRemindersRoute
   '/api/public/hooks/violation-reminders': typeof ApiPublicHooksViolationRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/api/public/r/$token': typeof ApiPublicRTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1079,6 +1107,7 @@ export interface FileRouteTypes {
     | '/jv-units'
     | '/login'
     | '/maintenance'
+    | '/marketing'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
     | '/my-rentals'
@@ -1170,12 +1199,14 @@ export interface FileRouteTypes {
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/ghl-inbound'
+    | '/api/public/hooks/marketing-send'
     | '/api/public/hooks/monthly-backup'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
     | '/api/public/hooks/verification-reminders'
     | '/api/public/hooks/violation-reminders'
     | '/api/public/payments/webhook'
+    | '/api/public/r/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1195,6 +1226,7 @@ export interface FileRouteTypes {
     | '/jv-units'
     | '/login'
     | '/maintenance'
+    | '/marketing'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
     | '/my-rentals'
@@ -1286,12 +1318,14 @@ export interface FileRouteTypes {
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/ghl-inbound'
+    | '/api/public/hooks/marketing-send'
     | '/api/public/hooks/monthly-backup'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
     | '/api/public/hooks/verification-reminders'
     | '/api/public/hooks/violation-reminders'
     | '/api/public/payments/webhook'
+    | '/api/public/r/$token'
   id:
     | '__root__'
     | '/'
@@ -1311,6 +1345,7 @@ export interface FileRouteTypes {
     | '/jv-units'
     | '/login'
     | '/maintenance'
+    | '/marketing'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
     | '/my-rentals'
@@ -1402,12 +1437,14 @@ export interface FileRouteTypes {
     | '/api/public/hooks/auto-extension-links'
     | '/api/public/hooks/daily-reports'
     | '/api/public/hooks/ghl-inbound'
+    | '/api/public/hooks/marketing-send'
     | '/api/public/hooks/monthly-backup'
     | '/api/public/hooks/repair-digest'
     | '/api/public/hooks/send-reminders'
     | '/api/public/hooks/verification-reminders'
     | '/api/public/hooks/violation-reminders'
     | '/api/public/payments/webhook'
+    | '/api/public/r/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1428,6 +1465,7 @@ export interface RootRouteChildren {
   JvUnitsRoute: typeof JvUnitsRoute
   LoginRoute: typeof LoginRoute
   MaintenanceRoute: typeof MaintenanceRoute
+  MarketingRoute: typeof MarketingRoute
   MigratedReservationsRoute: typeof MigratedReservationsRoute
   MonthlyVehicleReportsRoute: typeof MonthlyVehicleReportsRoute
   MyRentalsRoute: typeof MyRentalsRouteWithChildren
@@ -1516,12 +1554,14 @@ export interface RootRouteChildren {
   ApiPublicHooksAutoExtensionLinksRoute: typeof ApiPublicHooksAutoExtensionLinksRoute
   ApiPublicHooksDailyReportsRoute: typeof ApiPublicHooksDailyReportsRoute
   ApiPublicHooksGhlInboundRoute: typeof ApiPublicHooksGhlInboundRoute
+  ApiPublicHooksMarketingSendRoute: typeof ApiPublicHooksMarketingSendRoute
   ApiPublicHooksMonthlyBackupRoute: typeof ApiPublicHooksMonthlyBackupRoute
   ApiPublicHooksRepairDigestRoute: typeof ApiPublicHooksRepairDigestRoute
   ApiPublicHooksSendRemindersRoute: typeof ApiPublicHooksSendRemindersRoute
   ApiPublicHooksVerificationRemindersRoute: typeof ApiPublicHooksVerificationRemindersRoute
   ApiPublicHooksViolationRemindersRoute: typeof ApiPublicHooksViolationRemindersRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
+  ApiPublicRTokenRoute: typeof ApiPublicRTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1678,6 +1718,13 @@ declare module '@tanstack/react-router' {
       path: '/migrated-reservations'
       fullPath: '/migrated-reservations'
       preLoaderRoute: typeof MigratedReservationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketing': {
+      id: '/marketing'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof MarketingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/maintenance': {
@@ -2254,6 +2301,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCardholderRefuseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/r/$token': {
+      id: '/api/public/r/$token'
+      path: '/api/public/r/$token'
+      fullPath: '/api/public/r/$token'
+      preLoaderRoute: typeof ApiPublicRTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -2294,6 +2348,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/monthly-backup'
       fullPath: '/api/public/hooks/monthly-backup'
       preLoaderRoute: typeof ApiPublicHooksMonthlyBackupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/marketing-send': {
+      id: '/api/public/hooks/marketing-send'
+      path: '/api/public/hooks/marketing-send'
+      fullPath: '/api/public/hooks/marketing-send'
+      preLoaderRoute: typeof ApiPublicHooksMarketingSendRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/ghl-inbound': {
@@ -2379,6 +2440,7 @@ const rootRouteChildren: RootRouteChildren = {
   JvUnitsRoute: JvUnitsRoute,
   LoginRoute: LoginRoute,
   MaintenanceRoute: MaintenanceRoute,
+  MarketingRoute: MarketingRoute,
   MigratedReservationsRoute: MigratedReservationsRoute,
   MonthlyVehicleReportsRoute: MonthlyVehicleReportsRoute,
   MyRentalsRoute: MyRentalsRouteWithChildren,
@@ -2467,6 +2529,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksAutoExtensionLinksRoute: ApiPublicHooksAutoExtensionLinksRoute,
   ApiPublicHooksDailyReportsRoute: ApiPublicHooksDailyReportsRoute,
   ApiPublicHooksGhlInboundRoute: ApiPublicHooksGhlInboundRoute,
+  ApiPublicHooksMarketingSendRoute: ApiPublicHooksMarketingSendRoute,
   ApiPublicHooksMonthlyBackupRoute: ApiPublicHooksMonthlyBackupRoute,
   ApiPublicHooksRepairDigestRoute: ApiPublicHooksRepairDigestRoute,
   ApiPublicHooksSendRemindersRoute: ApiPublicHooksSendRemindersRoute,
@@ -2474,6 +2537,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksVerificationRemindersRoute,
   ApiPublicHooksViolationRemindersRoute: ApiPublicHooksViolationRemindersRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
+  ApiPublicRTokenRoute: ApiPublicRTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

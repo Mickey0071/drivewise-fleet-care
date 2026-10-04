@@ -1,3 +1,5 @@
+import { Checkbox } from "@/components/ui/checkbox";
+import { CONSENT_TEXT, getVisitorId, useFormVisit } from "@/lib/form-tracking";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -24,6 +26,8 @@ function RentPage() {
   const { token } = Route.useParams();
   const fetchInfo = useServerFn(getShareLinkPublic);
   const submit = useServerFn(submitShareApplication);
+  useFormVisit("booking_link");
+  const [marketingConsent, setMarketingConsent] = useState(false);
 
   const [info, setInfo] = useState<Info | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -87,6 +91,8 @@ function RentPage() {
           token,
           selectedPeriod: plan,
           periods,
+          marketingConsent,
+          visitorId: getVisitorId(),
           fullName: fullName.trim(),
           firstName: firstName.trim(),
           middleInitial: middleInitial.trim() || undefined,
@@ -401,6 +407,15 @@ function RentPage() {
               and selfie are your own.
             </p>
             <SignaturePad value={sig ?? undefined} onChange={setSig} />
+            <label className="flex items-start gap-3 border-t pt-3 text-sm">
+              <Checkbox
+                checked={marketingConsent}
+                onCheckedChange={(v) => setMarketingConsent(v === true)}
+                id="rent-marketing-consent"
+                className="mt-0.5"
+              />
+              <span>{CONSENT_TEXT}</span>
+            </label>
           </Card>
           <div className="flex gap-2">
             <Button variant="outline" size="lg" onClick={() => setStep("agreement")} disabled={submitting || redirecting}>

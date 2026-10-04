@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { submitWaitlistEntry } from "@/lib/waitlist.functions";
+import { CONSENT_TEXT, getVisitorId, useFormVisit } from "@/lib/form-tracking";
 
 export const Route = createFileRoute("/waitlist")({
   head: () => ({
@@ -30,6 +31,8 @@ export const Route = createFileRoute("/waitlist")({
 
 function WaitlistPage() {
   const submit = useServerFn(submitWaitlistEntry);
+  useFormVisit("waitlist");
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -79,6 +82,8 @@ function WaitlistPage() {
           vehiclePreference,
           rentalLength,
           sourceParam,
+          marketingConsent,
+          visitorId: getVisitorId(),
         },
       });
       setDone(true);
@@ -232,6 +237,16 @@ function WaitlistPage() {
         <p className="rounded-md border border-[#2db84b]/30 bg-[#2db84b]/10 px-3 py-2 text-center text-xs text-foreground">
           Upload your documents once. When a vehicle opens up, we'll call you — no forms to fill out again.
         </p>
+
+        <label className="flex items-start gap-3 rounded-md border p-3 text-sm">
+          <Checkbox
+            checked={marketingConsent}
+            onCheckedChange={(v) => setMarketingConsent(v === true)}
+            id="wl-marketing-consent"
+            className="mt-0.5"
+          />
+          <span>{CONSENT_TEXT}</span>
+        </label>
 
         <Button
           type="submit"

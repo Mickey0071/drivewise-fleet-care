@@ -22,6 +22,11 @@ import { RenterDetailDialog } from "@/components/app/RenterDetailDialog";
 import { useServerFn } from "@tanstack/react-start";
 import { uploadDriverLicense } from "@/lib/driver-license.functions";
 import { Upload, IdCard } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { ConsentBadge, ConsentDialog, LeadSourceBadge, type ConsentTarget } from "@/components/app/ConsentDialog";
+import { CONSENT_LABEL, LEAD_SOURCE_LABEL, type ConsentStatus, type LeadSource } from "@/lib/marketing-shared";
+
+type MarketingInfo = { lead_source: LeadSource | null; consent_status: ConsentStatus; consent_note: string | null; do_not_text: boolean };
 
 export const Route = createFileRoute("/drivers")({
   head: () => ({ meta: [{ title: "Renters — Camauto Rentals" }] }),
@@ -35,12 +40,29 @@ function DriversPage() {
   const [blockDriver, setBlockDriver] = useState<Driver | null>(null);
   const [detailDriver, setDetailDriver] = useState<Driver | null>(null);
   const [query, setQuery] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<"all" | LeadSource>("all");
+  const [consentFilter, setConsentFilter] = useState<"all" | ConsentStatus>("all");
+  const [marketing, setMarketing] = useState<Record<string, MarketingInfo>>({});
+  const [consentTarget, setConsentTarget] = useState<ConsentTarget | null>(null);
+  async function loadMarketing() {
+    const map: Record<string, MarketingInfo> = {};
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase.from("drivers").select("id, lead_source, consent_status, consent_note, do_not_text").range(from, from + 999);
+      for (const r of data ?? []) map[r.id] = r as MarketingInfo;
+      if (!data || data.length < 1000) break;
+    }
+    setMarketing(map);
+  }
+  useEffect(() => { void loadMarketing(); }, []);
   const today = new Date();
   const soon = new Date(today); soon.setDate(today.getDate() + 60);
 
   const normalizedQuery = query.trim().toLowerCase();
   const digitsQuery = query.replace(/\D/g, "");
   const filteredDrivers = drivers.filter((d) => {
+    const m = marketing[d.id];
+    if (sourceFilter !== "all" && (m?.lead_source ?? "manual_entry") !== sourceFilter) return false;
+    if (consentFilter !== "all" && (m?.consent_status ?? "unknown") !== consentFilter) return false;
     if (!normalizedQuery) return true;
     const nameMatch = d.fullName.toLowerCase().includes(normalizedQuery);
     const phoneDigits = (d.phone ?? "").replace(/\D/g, "");
@@ -55,6 +77,22 @@ function DriversPage() {
         subtitle={`${drivers.length} renters · ${drivers.filter(d => d.status === "active").length} active`}
         action={<Button onClick={() => setOpen(true)}>+ Add Renter</Button>}
       />
+      <div className="mb-3 flex flex-wrap gap-2">
+        <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as typeof sourceFilter)}>
+          <SelectTrigger className="h-9 w-44" aria-label="Filter by lead source"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All lead sources</SelectItem>
+            {(Object.keys(LEAD_SOURCE_LABEL) as LeadSource[]).map((k) => <SelectItem key={k} value={k}>{LEAD_SOURCE_LABEL[k]}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={consentFilter} onValueChange={(v) => setConsentFilter(v as typeof consentFilter)}>
+          <SelectTrigger className="h-9 w-40" aria-label="Filter by consent"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All consent</SelectItem>
+            {(Object.keys(CONSENT_LABEL) as ConsentStatus[]).map((k) => <SelectItem key={k} value={k}>{CONSENT_LABEL[k]}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
       <div className="mb-3">
         <Input
           value={query}
@@ -91,6 +129,8 @@ function DriversPage() {
                       className="rounded font-semibold text-primary underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                     <StatusBadge status={d.status} />
+                    <LeadSourceBadge source={marketing[d.id]?.lead_source ?? "manual_entry"} />
+                    <ConsentBadge status={marketing[d.id]?.consent_status ?? "unknown"} />
                     {d.blocked && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
                         <Ban className="h-3 w-3" /> Blocked from renting
@@ -119,6 +159,19 @@ function DriversPage() {
                   >
                     {d.blocked ? <><ShieldCheck className="h-4 w-4" /> Unblock</> : <><Ban className="h-4 w-4" /> Block</>}
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConsentTarget({
+                      id: d.id,
+                      name: d.fullName,
+                      consentStatus: marketing[d.id]?.consent_status ?? "unknown",
+                      consentNote: marketing[d.id]?.consent_note,
+                      doNotText: marketing[d.id]?.do_not_text,
+                    })}
+                  >
+                    Consent
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => setEditDriver(d)}>Edit</Button>
                 </div>
               </CardContent>
@@ -130,6 +183,7 @@ function DriversPage() {
       <EditRenterDialog driver={editDriver} onClose={() => setEditDriver(null)} />
       <BlockRenterDialog driver={blockDriver} onClose={() => setBlockDriver(null)} />
       <RenterDetailDialog driver={detailDriver} onClose={() => setDetailDriver(null)} />
+      <ConsentDialog target={consentTarget} onClose={() => setConsentTarget(null)} onSaved={loadMarketing} />
     </div>
   );
 }

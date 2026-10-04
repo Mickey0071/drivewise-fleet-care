@@ -90,6 +90,8 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
     vehiclePreference?: string;
     rentalLength: "1 week" | "2+ weeks";
     sourceParam?: "agency" | "facebook" | "manual" | "direct";
+    marketingConsent?: boolean;
+    visitorId?: string;
   }) => {
     const name = (input.name ?? "").trim();
     const phone = (input.phone ?? "").trim();
@@ -114,6 +116,8 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
       vehiclePreference,
       rentalLength: input.rentalLength,
       sourceParam: input.sourceParam === "facebook" || input.sourceParam === "agency" ? input.sourceParam : "direct",
+      marketingConsent: input.marketingConsent === true,
+      visitorId: typeof input.visitorId === "string" ? input.visitorId.slice(0, 80) : null,
     };
   })
   .handler(async ({ data }) => {
@@ -133,11 +137,20 @@ export const submitWaitlistEntry = createServerFn({ method: "POST" })
         source_param: data.sourceParam,
         vetting_tier: "unvetted",
         drives_rideshare: data.rideshareCheckbox,
+        lead_source: "waitlist",
+        source_detail: `Waitlist form${data.sourceParam !== "direct" ? ` (${data.sourceParam})` : ""}`,
+        ...(data.marketingConsent
+          ? { consent_status: "opted_in" as const, consent_source: "online_form" as const, consent_at: new Date().toISOString() }
+          : {}),
       })
       .select("id")
       .single();
     if (error || !inserted) throw new Error(`Could not save: ${error?.message ?? "unknown"}`);
     const entryId = inserted.id as string;
+    {
+      const { linkVisitsToCustomer } = await import("@/lib/marketing.server");
+      await linkVisitsToCustomer(data.visitorId, `wl:${entryId}`, "waitlist");
+    }
     const licenseFrontUrl = await uploadImage(entryId, "license-front", data.licenseFrontDataUrl);
     const patch: Record<string, string> = {
       license_url: licenseFrontUrl,
