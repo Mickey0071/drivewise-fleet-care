@@ -31,6 +31,7 @@ import { Route as PaymentsRouteImport } from './routes/payments'
 import { Route as MyRentalsRouteImport } from './routes/my-rentals'
 import { Route as MonthlyVehicleReportsRouteImport } from './routes/monthly-vehicle-reports'
 import { Route as MigratedReservationsRouteImport } from './routes/migrated-reservations'
+import { Route as MarketingRouteImport } from './routes/marketing'
 import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as JvUnitsRouteImport } from './routes/jv-units'
@@ -234,6 +235,11 @@ const MonthlyVehicleReportsRoute = MonthlyVehicleReportsRouteImport.update({
 const MigratedReservationsRoute = MigratedReservationsRouteImport.update({
   id: '/migrated-reservations',
   path: '/migrated-reservations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketingRoute = MarketingRouteImport.update({
+  id: '/marketing',
+  path: '/marketing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MaintenanceRoute = MaintenanceRouteImport.update({
@@ -741,6 +747,7 @@ export interface FileRoutesByFullPath {
   '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/marketing': typeof MarketingRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
@@ -859,6 +866,7 @@ export interface FileRoutesByTo {
   '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/marketing': typeof MarketingRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
@@ -978,6 +986,7 @@ export interface FileRoutesById {
   '/jv-units': typeof JvUnitsRoute
   '/login': typeof LoginRoute
   '/maintenance': typeof MaintenanceRoute
+  '/marketing': typeof MarketingRoute
   '/migrated-reservations': typeof MigratedReservationsRoute
   '/monthly-vehicle-reports': typeof MonthlyVehicleReportsRoute
   '/my-rentals': typeof MyRentalsRouteWithChildren
@@ -1098,6 +1107,7 @@ export interface FileRouteTypes {
     | '/jv-units'
     | '/login'
     | '/maintenance'
+    | '/marketing'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
     | '/my-rentals'
@@ -1216,6 +1226,7 @@ export interface FileRouteTypes {
     | '/jv-units'
     | '/login'
     | '/maintenance'
+    | '/marketing'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
     | '/my-rentals'
@@ -1334,6 +1345,7 @@ export interface FileRouteTypes {
     | '/jv-units'
     | '/login'
     | '/maintenance'
+    | '/marketing'
     | '/migrated-reservations'
     | '/monthly-vehicle-reports'
     | '/my-rentals'
@@ -1453,6 +1465,7 @@ export interface RootRouteChildren {
   JvUnitsRoute: typeof JvUnitsRoute
   LoginRoute: typeof LoginRoute
   MaintenanceRoute: typeof MaintenanceRoute
+  MarketingRoute: typeof MarketingRoute
   MigratedReservationsRoute: typeof MigratedReservationsRoute
   MonthlyVehicleReportsRoute: typeof MonthlyVehicleReportsRoute
   MyRentalsRoute: typeof MyRentalsRouteWithChildren
@@ -1705,6 +1718,13 @@ declare module '@tanstack/react-router' {
       path: '/migrated-reservations'
       fullPath: '/migrated-reservations'
       preLoaderRoute: typeof MigratedReservationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketing': {
+      id: '/marketing'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof MarketingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/maintenance': {
@@ -2420,6 +2440,7 @@ const rootRouteChildren: RootRouteChildren = {
   JvUnitsRoute: JvUnitsRoute,
   LoginRoute: LoginRoute,
   MaintenanceRoute: MaintenanceRoute,
+  MarketingRoute: MarketingRoute,
   MigratedReservationsRoute: MigratedReservationsRoute,
   MonthlyVehicleReportsRoute: MonthlyVehicleReportsRoute,
   MyRentalsRoute: MyRentalsRouteWithChildren,
