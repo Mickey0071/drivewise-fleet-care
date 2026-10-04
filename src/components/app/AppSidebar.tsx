@@ -4,7 +4,7 @@ import {
   Wrench, AlertTriangle, TrendingUp, Receipt, Banknote, IdCard, ClipboardList,
   LogOut, ScrollText, RefreshCw, Shield, MessageSquare, UsersRound, Building2,
   Undo2, FileSignature, Bell, CalendarPlus, BarChart3, DatabaseBackup, Package,
-  Upload, Database, Gauge, Handshake, GripVertical, Star, RotateCcw, Search,
+  Upload, Database, Gauge, Handshake, GripVertical, Star, RotateCcw, Search, Megaphone,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader, useSidebar,
@@ -61,6 +61,9 @@ const DEFAULT_ITEMS: NavItem[] = [
   // Dashboard
   { key: "/", url: "/", title: "Dashboard", icon: LayoutDashboard, roles: ["admin"], sectionKey: "dashboard", sectionLabel: "Dashboard", sectionIcon: LayoutDashboard },
   { key: "/fleet-snapshot", url: "/fleet-snapshot", title: "Fleet Snapshot", icon: Gauge, roles: ["admin"], sectionKey: "dashboard", sectionLabel: "Dashboard", sectionIcon: LayoutDashboard },
+
+  // Marketing
+  { key: "/marketing", url: "/marketing", title: "Marketing", icon: Megaphone, roles: ["admin"], sectionKey: "marketing", sectionLabel: "Marketing", sectionIcon: Megaphone },
 
   // Reservations
   { key: "/rentals", url: "/rentals", title: "Active Reservations", icon: FileText, roles: ALL, sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
