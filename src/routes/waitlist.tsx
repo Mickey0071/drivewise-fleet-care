@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { submitWaitlistEntry } from "@/lib/waitlist.functions";
+import { CONSENT_TEXT, getVisitorId, useFormVisit } from "@/lib/form-tracking";
 
 export const Route = createFileRoute("/waitlist")({
   head: () => ({
@@ -30,6 +31,8 @@ export const Route = createFileRoute("/waitlist")({
 
 function WaitlistPage() {
   const submit = useServerFn(submitWaitlistEntry);
+  useFormVisit("waitlist");
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -79,6 +82,8 @@ function WaitlistPage() {
           vehiclePreference,
           rentalLength,
           sourceParam,
+          marketingConsent,
+          visitorId: getVisitorId(),
         },
       });
       setDone(true);

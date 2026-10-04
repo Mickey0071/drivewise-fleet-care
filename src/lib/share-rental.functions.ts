@@ -302,6 +302,8 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     environment?: StripeEnv;
     selectedPeriod?: "daily" | "weekly";
     periods?: number;
+    marketingConsent?: boolean;
+    visitorId?: string;
   }) => {
     const reqStr = (s: unknown, label: string, max = 200) => {
       if (typeof s !== "string" || !s.trim() || s.length > max) throw new Error(`${label} required`);
@@ -381,8 +383,17 @@ export const submitShareApplication = createServerFn({ method: "POST" })
       city: data.city?.trim() || null,
       state: data.state?.trim() || null,
       zip_code: data.zip?.trim() || null,
+      lead_source: "online_form",
+      source_detail: "Online booking link",
+      ...(data.marketingConsent === true
+        ? { consent_status: "opted_in" as const, consent_source: "online_form" as const, consent_at: new Date().toISOString() }
+        : {}),
     });
     if (dErr) throw new Error(`Could not create renter: ${dErr.message}`);
+    {
+      const { linkVisitsToCustomer } = await import("@/lib/marketing.server");
+      await linkVisitsToCustomer(typeof data.visitorId === "string" ? data.visitorId.slice(0, 80) : null, driverId, "booking_link");
+    }
 
     // Create rental
     const rentalId = await nextId("rentals", "R", 500);
