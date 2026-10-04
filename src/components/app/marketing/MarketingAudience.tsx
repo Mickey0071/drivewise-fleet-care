@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ConsentBadge, ConsentDialog, LeadSourceBadge, type ConsentTarget } from "@/components/app/ConsentDialog";
 import { deleteSegment, listSegments, saveSegment } from "@/lib/marketing.functions";
 import {
-  applyFilters, CONSENT_LABEL, EMPTY_FILTERS, filtersActive, hasPhone, isExcluded, LEAD_SOURCE_LABEL,
+  applyFilters, EMPTY_FILTERS, filtersActive, hasPhone, isExcluded, LEAD_SOURCE_LABEL,
   type AudienceCustomer, type AudienceFilters, type ConsentStatus, type LeadSource,
 } from "@/lib/marketing-shared";
 
@@ -305,7 +305,6 @@ export function MarketingAudience({
         </div>
       </div>
       <ConsentDialog target={consentTarget} onClose={() => setConsentTarget(null)} onSaved={onRefresh} />
-      <span className="sr-only">{Object.values(CONSENT_LABEL).join(",")}</span>
     </div>
   );
 }
