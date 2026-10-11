@@ -451,6 +451,17 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
           `${res.skippedNoRef} item${res.skippedNoRef === 1 ? "" : "s"} skipped — no EZPass violation #`,
         );
       }
+      if (res.reused && res.reused.length > 0) {
+        toast.message(
+          `${res.reused.length} violation${res.reused.length === 1 ? "" : "s"} already existed`,
+          {
+            description: res.reused
+              .map((r) => `${r.violationId}: Already existed - kept as ${r.stage}`)
+              .join("\n"),
+            duration: 15000,
+          },
+        );
+      }
       if (res.failed > 0) {
         toast.error(
           `${res.failed} violation${res.failed === 1 ? "" : "s"} FAILED to save: ${res.errors.slice(0, 3).join(" | ")}`,
