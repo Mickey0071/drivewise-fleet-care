@@ -585,6 +585,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
       failed: number;
       errors: string[];
       reused: Array<{ violationId: string; stage: string }>;
+      letterErrors: Array<{ renter: string; message: string }>;
     }> => {
       const mode = data.mode ?? "all";
       const { data: items, error: iErr } = await supabaseAdmin
@@ -613,6 +614,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
       let failed = 0;
       const errors: string[] = [];
       const reused: Array<{ violationId: string; stage: string }> = [];
+      const letterErrors: Array<{ renter: string; message: string }> = [];
 
       for (const item of rows) {
         // Hard block: never persist a violation without its EZPass reference #.
@@ -800,6 +802,10 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
             generated++;
           } catch (e) {
             console.error("[ezpass] liability transfer gen failed:", e);
+            letterErrors.push({
+              renter: driverName ?? item.plate ?? "Unknown renter",
+              message: e instanceof Error ? e.message : String(e),
+            });
           }
         }
 
@@ -825,7 +831,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
           .eq("id", data.batchId);
       }
 
-      return { generated, matched, unmatched, total: rows.length, skippedNoRef, saved, failed, errors, reused };
+      return { generated, matched, unmatched, total: rows.length, skippedNoRef, saved, failed, errors, reused, letterErrors };
     },
   );
 
