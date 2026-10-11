@@ -9,312 +9,127 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WaitlistRouteImport } from './routes/waitlist'
-import { Route as ViolationsRouteImport } from './routes/violations'
-import { Route as VendorsRouteImport } from './routes/vendors'
-import { Route as VehiclesDownRouteImport } from './routes/vehicles-down'
-import { Route as SmsLogRouteImport } from './routes/sms-log'
-import { Route as SelfAgreementRouteImport } from './routes/self-agreement'
-import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as RepairsRouteImport } from './routes/repairs'
-import { Route as RentalsRouteImport } from './routes/rentals'
-import { Route as RentalAgreementRouteImport } from './routes/rental-agreement'
-import { Route as RefundApprovalsRouteImport } from './routes/refund-approvals'
-import { Route as RamExpensesRouteImport } from './routes/ram-expenses'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as PnlRouteImport } from './routes/pnl'
-import { Route as PendingAgreementsRouteImport } from './routes/pending-agreements'
-import { Route as PayrollReturnRouteImport } from './routes/payroll-return'
-import { Route as PayrollRouteImport } from './routes/payroll'
-import { Route as PaymentsRouteImport } from './routes/payments'
-import { Route as MyRentalsRouteImport } from './routes/my-rentals'
-import { Route as MonthlyVehicleReportsRouteImport } from './routes/monthly-vehicle-reports'
-import { Route as MigratedReservationsRouteImport } from './routes/migrated-reservations'
-import { Route as MarketingRouteImport } from './routes/marketing'
-import { Route as MaintenanceRouteImport } from './routes/maintenance'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as JvUnitsRouteImport } from './routes/jv-units'
-import { Route as JvPayoutsRouteImport } from './routes/jv-payouts'
-import { Route as JvContractsRouteImport } from './routes/jv-contracts'
-import { Route as InsuranceRouteImport } from './routes/insurance'
-import { Route as InspectionsRouteImport } from './routes/inspections'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as FleetSnapshotRouteImport } from './routes/fleet-snapshot'
-import { Route as FleetRouteImport } from './routes/fleet'
-import { Route as ExpensesRouteImport } from './routes/expenses'
-import { Route as DriversRouteImport } from './routes/drivers'
-import { Route as DriverPortalRouteImport } from './routes/driver-portal'
-import { Route as ChecklistRouteImport } from './routes/checklist'
-import { Route as CalendarRouteImport } from './routes/calendar'
-import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as WorkOrderTokenRouteImport } from './routes/work-order.$token'
-import { Route as ViolationsImportsRouteImport } from './routes/violations_.imports'
-import { Route as ViolationsImportRouteImport } from './routes/violations_.import'
-import { Route as ViolationsExportsRouteImport } from './routes/violations_.exports'
-import { Route as ViolationsDisputesRouteImport } from './routes/violations_.disputes'
-import { Route as ViolationsDisputePacketsRouteImport } from './routes/violations_.dispute-packets'
-import { Route as ViolationsBulkUploadRouteImport } from './routes/violations_.bulk-upload'
-import { Route as ViolationsAuthoritiesRouteImport } from './routes/violations_.authorities'
-import { Route as ViolationTokenRouteImport } from './routes/violation.$token'
-import { Route as VerifyPaymentRentalIdRouteImport } from './routes/verify-payment.$rentalId'
-import { Route as VerifyCardTokenRouteImport } from './routes/verify-card.$token'
-import { Route as SignTokenRouteImport } from './routes/sign.$token'
-import { Route as SignAgreementRetroTokenRouteImport } from './routes/sign-agreement-retro.$token'
-import { Route as SetupTokenRouteImport } from './routes/setup.$token'
-import { Route as RunnerTaskTokenRouteImport } from './routes/runner-task.$token'
-import { Route as RmCardTokenRouteImport } from './routes/rm-card.$token'
-import { Route as RentPaidRouteImport } from './routes/rent.paid'
-import { Route as RentTokenRouteImport } from './routes/rent.$token'
-import { Route as PortalTokenRouteImport } from './routes/portal.$token'
-import { Route as PortalSignupRentalIdRouteImport } from './routes/portal-signup.$rentalId'
-import { Route as PartQuoteTokenRouteImport } from './routes/part-quote.$token'
-import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rentalId'
-import { Route as MechanicJobTokenRouteImport } from './routes/mechanic-job.$token'
-import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
-import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
-import { Route as AutoExtendTokenRouteImport } from './routes/auto-extend.$token'
-import { Route as AnalyticsUtilizationRouteImport } from './routes/analytics_.utilization'
-import { Route as AnalyticsProfitabilityRouteImport } from './routes/analytics_.profitability'
-import { Route as AnalyticsPnlDashboardRouteImport } from './routes/analytics_.pnl-dashboard'
-import { Route as AnalyticsFailuresRouteImport } from './routes/analytics_.failures'
-import { Route as AnalyticsCostsRouteImport } from './routes/analytics_.costs'
-import { Route as AnalyticsBreakevenRouteImport } from './routes/analytics_.breakeven'
-import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
-import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
-import { Route as AdminPaymentReconciliationRouteImport } from './routes/admin.payment-reconciliation'
-import { Route as AdminPartsRouteImport } from './routes/admin.parts'
-import { Route as AdminPaperworkTasksRouteImport } from './routes/admin.paperwork-tasks'
-import { Route as AdminPacketSettingsRouteImport } from './routes/admin.packet-settings'
-import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
-import { Route as AdminMechanicsRouteImport } from './routes/admin.mechanics'
-import { Route as AdminMalibuPlateReviewRouteImport } from './routes/admin.malibu-plate-review'
-import { Route as AdminMaintenanceNotificationsRouteImport } from './routes/admin.maintenance-notifications'
-import { Route as AdminImportLegacyRouteImport } from './routes/admin.import-legacy'
-import { Route as AdminImportDataRouteImport } from './routes/admin.import-data'
-import { Route as AdminHistoricReservationRouteImport } from './routes/admin.historic-reservation'
-import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
-import { Route as AdminExpensesRouteImport } from './routes/admin.expenses'
-import { Route as AdminExpenseCategoriesRouteImport } from './routes/admin.expense-categories'
-import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
-import { Route as AdminChecklistsRouteImport } from './routes/admin.checklists'
-import { Route as AdminCategorizeRepairsRouteImport } from './routes/admin.categorize-repairs'
-import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
-import { Route as AdminBackfillPlatesRouteImport } from './routes/admin.backfill-plates'
-import { Route as AdminAlertSettingsRouteImport } from './routes/admin.alert-settings'
-import { Route as AddCardTokenRouteImport } from './routes/add-card.$token'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as ChecklistRouteImport } from './routes/checklist'
+import { Route as DriverPortalRouteImport } from './routes/driver-portal'
+import { Route as DriversRouteImport } from './routes/drivers'
+import { Route as ExpensesRouteImport } from './routes/expenses'
+import { Route as FleetRouteImport } from './routes/fleet'
+import { Route as FleetSnapshotRouteImport } from './routes/fleet-snapshot'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as InspectionsRouteImport } from './routes/inspections'
+import { Route as InsuranceRouteImport } from './routes/insurance'
+import { Route as JvContractsRouteImport } from './routes/jv-contracts'
+import { Route as JvPayoutsRouteImport } from './routes/jv-payouts'
+import { Route as JvUnitsRouteImport } from './routes/jv-units'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MaintenanceRouteImport } from './routes/maintenance'
+import { Route as MarketingRouteImport } from './routes/marketing'
+import { Route as MigratedReservationsRouteImport } from './routes/migrated-reservations'
+import { Route as MonthlyVehicleReportsRouteImport } from './routes/monthly-vehicle-reports'
+import { Route as MyRentalsRouteImport } from './routes/my-rentals'
+import { Route as PaymentsRouteImport } from './routes/payments'
+import { Route as PayrollRouteImport } from './routes/payroll'
+import { Route as PayrollReturnRouteImport } from './routes/payroll-return'
+import { Route as PendingAgreementsRouteImport } from './routes/pending-agreements'
+import { Route as PnlRouteImport } from './routes/pnl'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as RamExpensesRouteImport } from './routes/ram-expenses'
+import { Route as RefundApprovalsRouteImport } from './routes/refund-approvals'
+import { Route as RentalAgreementRouteImport } from './routes/rental-agreement'
+import { Route as RentalsRouteImport } from './routes/rentals'
+import { Route as RepairsRouteImport } from './routes/repairs'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RunnerReportsRouteImport } from './routes/runner-reports'
+import { Route as SelfAgreementRouteImport } from './routes/self-agreement'
+import { Route as SmsLogRouteImport } from './routes/sms-log'
+import { Route as VehiclesDownRouteImport } from './routes/vehicles-down'
+import { Route as VendorsRouteImport } from './routes/vendors'
+import { Route as ViolationsRouteImport } from './routes/violations'
+import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as AccidentReportTokenRouteImport } from './routes/accident-report.$token'
-import { Route as WaitlistUploadTokenRouteImport } from './routes/waitlist.upload.$token'
-import { Route as RunnerChecklistTokenRouteImport } from './routes/runner.checklist.$token'
-import { Route as RepairDeclineTokenRouteImport } from './routes/repair.decline.$token'
-import { Route as RepairAcceptTokenRouteImport } from './routes/repair.accept.$token'
-import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
-import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
-import { Route as ApiPublicWaitlistIntakeRouteImport } from './routes/api/public/waitlist-intake'
+import { Route as AddCardTokenRouteImport } from './routes/add-card.$token'
+import { Route as AdminAlertSettingsRouteImport } from './routes/admin.alert-settings'
+import { Route as AdminBackfillPlatesRouteImport } from './routes/admin.backfill-plates'
+import { Route as AdminBackupsRouteImport } from './routes/admin.backups'
+import { Route as AdminCategorizeRepairsRouteImport } from './routes/admin.categorize-repairs'
+import { Route as AdminChecklistsRouteImport } from './routes/admin.checklists'
+import { Route as AdminCreateTaskRouteImport } from './routes/admin.create-task'
+import { Route as AdminExpenseCategoriesRouteImport } from './routes/admin.expense-categories'
+import { Route as AdminExpensesRouteImport } from './routes/admin.expenses'
+import { Route as AdminExtensionsRouteImport } from './routes/admin.extensions'
+import { Route as AdminHistoricReservationRouteImport } from './routes/admin.historic-reservation'
+import { Route as AdminImportDataRouteImport } from './routes/admin.import-data'
+import { Route as AdminImportLegacyRouteImport } from './routes/admin.import-legacy'
+import { Route as AdminMaintenanceNotificationsRouteImport } from './routes/admin.maintenance-notifications'
+import { Route as AdminMalibuPlateReviewRouteImport } from './routes/admin.malibu-plate-review'
+import { Route as AdminMechanicsRouteImport } from './routes/admin.mechanics'
+import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
+import { Route as AdminPacketSettingsRouteImport } from './routes/admin.packet-settings'
+import { Route as AdminPaperworkTasksRouteImport } from './routes/admin.paperwork-tasks'
+import { Route as AdminPartsRouteImport } from './routes/admin.parts'
+import { Route as AdminPaymentReconciliationRouteImport } from './routes/admin.payment-reconciliation'
+import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
+import { Route as AnalyticsBreakevenRouteImport } from './routes/analytics_.breakeven'
+import { Route as AnalyticsCostsRouteImport } from './routes/analytics_.costs'
+import { Route as AnalyticsFailuresRouteImport } from './routes/analytics_.failures'
+import { Route as AnalyticsPnlDashboardRouteImport } from './routes/analytics_.pnl-dashboard'
+import { Route as AnalyticsProfitabilityRouteImport } from './routes/analytics_.profitability'
+import { Route as AnalyticsUtilizationRouteImport } from './routes/analytics_.utilization'
+import { Route as AutoExtendTokenRouteImport } from './routes/auto-extend.$token'
+import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
+import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
+import { Route as MechanicJobTokenRouteImport } from './routes/mechanic-job.$token'
+import { Route as MyRentalsRentalIdRouteImport } from './routes/my-rentals.$rentalId'
+import { Route as PartQuoteTokenRouteImport } from './routes/part-quote.$token'
+import { Route as PortalSignupRentalIdRouteImport } from './routes/portal-signup.$rentalId'
+import { Route as PortalTokenRouteImport } from './routes/portal.$token'
+import { Route as RentTokenRouteImport } from './routes/rent.$token'
+import { Route as RentPaidRouteImport } from './routes/rent.paid'
+import { Route as RmCardTokenRouteImport } from './routes/rm-card.$token'
+import { Route as RunnerTaskTokenRouteImport } from './routes/runner-task.$token'
+import { Route as SetupTokenRouteImport } from './routes/setup.$token'
+import { Route as SignAgreementRetroTokenRouteImport } from './routes/sign-agreement-retro.$token'
+import { Route as SignTokenRouteImport } from './routes/sign.$token'
+import { Route as VerifyCardTokenRouteImport } from './routes/verify-card.$token'
+import { Route as VerifyPaymentRentalIdRouteImport } from './routes/verify-payment.$rentalId'
+import { Route as ViolationTokenRouteImport } from './routes/violation.$token'
+import { Route as ViolationsAuthoritiesRouteImport } from './routes/violations_.authorities'
+import { Route as ViolationsBulkUploadRouteImport } from './routes/violations_.bulk-upload'
+import { Route as ViolationsDisputePacketsRouteImport } from './routes/violations_.dispute-packets'
+import { Route as ViolationsDisputesRouteImport } from './routes/violations_.disputes'
+import { Route as ViolationsExportsRouteImport } from './routes/violations_.exports'
+import { Route as ViolationsImportRouteImport } from './routes/violations_.import'
+import { Route as ViolationsImportsRouteImport } from './routes/violations_.imports'
+import { Route as WorkOrderTokenRouteImport } from './routes/work-order.$token'
 import { Route as ApiPublicCardholderRefuseRouteImport } from './routes/api/public/cardholder-refuse'
-import { Route as ApiPublicRTokenRouteImport } from './routes/api/public/r.$token'
-import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
-import { Route as ApiPublicHooksViolationRemindersRouteImport } from './routes/api/public/hooks/violation-reminders'
-import { Route as ApiPublicHooksVerificationRemindersRouteImport } from './routes/api/public/hooks/verification-reminders'
-import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
-import { Route as ApiPublicHooksRepairDigestRouteImport } from './routes/api/public/hooks/repair-digest'
-import { Route as ApiPublicHooksMonthlyBackupRouteImport } from './routes/api/public/hooks/monthly-backup'
-import { Route as ApiPublicHooksMarketingSendRouteImport } from './routes/api/public/hooks/marketing-send'
-import { Route as ApiPublicHooksGhlInboundRouteImport } from './routes/api/public/hooks/ghl-inbound'
-import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
-import { Route as ApiPublicHooksAutoExtensionLinksRouteImport } from './routes/api/public/hooks/auto-extension-links'
+import { Route as ApiPublicWaitlistIntakeRouteImport } from './routes/api/public/waitlist-intake'
+import { Route as InspectVehicleIdTokenRouteImport } from './routes/inspect.$vehicleId.$token'
+import { Route as RentPortalRentalIdRouteImport } from './routes/rent.portal.$rentalId'
+import { Route as RepairAcceptTokenRouteImport } from './routes/repair.accept.$token'
+import { Route as RepairDeclineTokenRouteImport } from './routes/repair.decline.$token'
+import { Route as RunnerChecklistTokenRouteImport } from './routes/runner.checklist.$token'
+import { Route as WaitlistUploadTokenRouteImport } from './routes/waitlist.upload.$token'
 import { Route as ApiPublicHooksAlertFlushRouteImport } from './routes/api/public/hooks/alert-flush'
+import { Route as ApiPublicHooksAutoExtensionLinksRouteImport } from './routes/api/public/hooks/auto-extension-links'
+import { Route as ApiPublicHooksDailyReportsRouteImport } from './routes/api/public/hooks/daily-reports'
+import { Route as ApiPublicHooksGhlInboundRouteImport } from './routes/api/public/hooks/ghl-inbound'
+import { Route as ApiPublicHooksMarketingSendRouteImport } from './routes/api/public/hooks/marketing-send'
+import { Route as ApiPublicHooksMonthlyBackupRouteImport } from './routes/api/public/hooks/monthly-backup'
+import { Route as ApiPublicHooksRepairDigestRouteImport } from './routes/api/public/hooks/repair-digest'
+import { Route as ApiPublicHooksSendRemindersRouteImport } from './routes/api/public/hooks/send-reminders'
+import { Route as ApiPublicHooksVerificationRemindersRouteImport } from './routes/api/public/hooks/verification-reminders'
+import { Route as ApiPublicHooksViolationRemindersRouteImport } from './routes/api/public/hooks/violation-reminders'
+import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiPublicRTokenRouteImport } from './routes/api/public/r.$token'
 
-const WaitlistRoute = WaitlistRouteImport.update({
-  id: '/waitlist',
-  path: '/waitlist',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ViolationsRoute = ViolationsRouteImport.update({
-  id: '/violations',
-  path: '/violations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const VendorsRoute = VendorsRouteImport.update({
-  id: '/vendors',
-  path: '/vendors',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const VehiclesDownRoute = VehiclesDownRouteImport.update({
-  id: '/vehicles-down',
-  path: '/vehicles-down',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SmsLogRoute = SmsLogRouteImport.update({
-  id: '/sms-log',
-  path: '/sms-log',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SelfAgreementRoute = SelfAgreementRouteImport.update({
-  id: '/self-agreement',
-  path: '/self-agreement',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RunnerReportsRoute = RunnerReportsRouteImport.update({
-  id: '/runner-reports',
-  path: '/runner-reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RepairsRoute = RepairsRouteImport.update({
-  id: '/repairs',
-  path: '/repairs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RentalsRoute = RentalsRouteImport.update({
-  id: '/rentals',
-  path: '/rentals',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RentalAgreementRoute = RentalAgreementRouteImport.update({
-  id: '/rental-agreement',
-  path: '/rental-agreement',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RefundApprovalsRoute = RefundApprovalsRouteImport.update({
-  id: '/refund-approvals',
-  path: '/refund-approvals',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RamExpensesRoute = RamExpensesRouteImport.update({
-  id: '/ram-expenses',
-  path: '/ram-expenses',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PnlRoute = PnlRouteImport.update({
-  id: '/pnl',
-  path: '/pnl',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PendingAgreementsRoute = PendingAgreementsRouteImport.update({
-  id: '/pending-agreements',
-  path: '/pending-agreements',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PayrollReturnRoute = PayrollReturnRouteImport.update({
-  id: '/payroll-return',
-  path: '/payroll-return',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PayrollRoute = PayrollRouteImport.update({
-  id: '/payroll',
-  path: '/payroll',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PaymentsRoute = PaymentsRouteImport.update({
-  id: '/payments',
-  path: '/payments',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MyRentalsRoute = MyRentalsRouteImport.update({
-  id: '/my-rentals',
-  path: '/my-rentals',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MonthlyVehicleReportsRoute = MonthlyVehicleReportsRouteImport.update({
-  id: '/monthly-vehicle-reports',
-  path: '/monthly-vehicle-reports',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MigratedReservationsRoute = MigratedReservationsRouteImport.update({
-  id: '/migrated-reservations',
-  path: '/migrated-reservations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MarketingRoute = MarketingRouteImport.update({
-  id: '/marketing',
-  path: '/marketing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MaintenanceRoute = MaintenanceRouteImport.update({
-  id: '/maintenance',
-  path: '/maintenance',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JvUnitsRoute = JvUnitsRouteImport.update({
-  id: '/jv-units',
-  path: '/jv-units',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JvPayoutsRoute = JvPayoutsRouteImport.update({
-  id: '/jv-payouts',
-  path: '/jv-payouts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JvContractsRoute = JvContractsRouteImport.update({
-  id: '/jv-contracts',
-  path: '/jv-contracts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InsuranceRoute = InsuranceRouteImport.update({
-  id: '/insurance',
-  path: '/insurance',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InspectionsRoute = InspectionsRouteImport.update({
-  id: '/inspections',
-  path: '/inspections',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FleetSnapshotRoute = FleetSnapshotRouteImport.update({
-  id: '/fleet-snapshot',
-  path: '/fleet-snapshot',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FleetRoute = FleetRouteImport.update({
-  id: '/fleet',
-  path: '/fleet',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ExpensesRoute = ExpensesRouteImport.update({
-  id: '/expenses',
-  path: '/expenses',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DriversRoute = DriversRouteImport.update({
-  id: '/drivers',
-  path: '/drivers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DriverPortalRoute = DriverPortalRouteImport.update({
-  id: '/driver-portal',
-  path: '/driver-portal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChecklistRoute = ChecklistRouteImport.update({
-  id: '/checklist',
-  path: '/checklist',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CalendarRoute = CalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
@@ -322,237 +137,249 @@ const AnalyticsRoute = AnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WorkOrderTokenRoute = WorkOrderTokenRouteImport.update({
-  id: '/work-order/$token',
-  path: '/work-order/$token',
+const ChecklistRoute = ChecklistRouteImport.update({
+  id: '/checklist',
+  path: '/checklist',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ViolationsImportsRoute = ViolationsImportsRouteImport.update({
-  id: '/violations_/imports',
-  path: '/violations/imports',
+const DriverPortalRoute = DriverPortalRouteImport.update({
+  id: '/driver-portal',
+  path: '/driver-portal',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ViolationsImportRoute = ViolationsImportRouteImport.update({
-  id: '/violations_/import',
-  path: '/violations/import',
+const DriversRoute = DriversRouteImport.update({
+  id: '/drivers',
+  path: '/drivers',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ViolationsExportsRoute = ViolationsExportsRouteImport.update({
-  id: '/violations_/exports',
-  path: '/violations/exports',
+const ExpensesRoute = ExpensesRouteImport.update({
+  id: '/expenses',
+  path: '/expenses',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ViolationsDisputesRoute = ViolationsDisputesRouteImport.update({
-  id: '/violations_/disputes',
-  path: '/violations/disputes',
+const FleetRoute = FleetRouteImport.update({
+  id: '/fleet',
+  path: '/fleet',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ViolationsDisputePacketsRoute =
-  ViolationsDisputePacketsRouteImport.update({
-    id: '/violations_/dispute-packets',
-    path: '/violations/dispute-packets',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ViolationsBulkUploadRoute = ViolationsBulkUploadRouteImport.update({
-  id: '/violations_/bulk-upload',
-  path: '/violations/bulk-upload',
+const FleetSnapshotRoute = FleetSnapshotRouteImport.update({
+  id: '/fleet-snapshot',
+  path: '/fleet-snapshot',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ViolationsAuthoritiesRoute = ViolationsAuthoritiesRouteImport.update({
-  id: '/violations_/authorities',
-  path: '/violations/authorities',
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ViolationTokenRoute = ViolationTokenRouteImport.update({
-  id: '/violation/$token',
-  path: '/violation/$token',
+const InspectionsRoute = InspectionsRouteImport.update({
+  id: '/inspections',
+  path: '/inspections',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VerifyPaymentRentalIdRoute = VerifyPaymentRentalIdRouteImport.update({
-  id: '/verify-payment/$rentalId',
-  path: '/verify-payment/$rentalId',
+const InsuranceRoute = InsuranceRouteImport.update({
+  id: '/insurance',
+  path: '/insurance',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VerifyCardTokenRoute = VerifyCardTokenRouteImport.update({
-  id: '/verify-card/$token',
-  path: '/verify-card/$token',
+const JvContractsRoute = JvContractsRouteImport.update({
+  id: '/jv-contracts',
+  path: '/jv-contracts',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SignTokenRoute = SignTokenRouteImport.update({
-  id: '/sign/$token',
-  path: '/sign/$token',
+const JvPayoutsRoute = JvPayoutsRouteImport.update({
+  id: '/jv-payouts',
+  path: '/jv-payouts',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SignAgreementRetroTokenRoute = SignAgreementRetroTokenRouteImport.update({
-  id: '/sign-agreement-retro/$token',
-  path: '/sign-agreement-retro/$token',
+const JvUnitsRoute = JvUnitsRouteImport.update({
+  id: '/jv-units',
+  path: '/jv-units',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SetupTokenRoute = SetupTokenRouteImport.update({
-  id: '/setup/$token',
-  path: '/setup/$token',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RunnerTaskTokenRoute = RunnerTaskTokenRouteImport.update({
-  id: '/runner-task/$token',
-  path: '/runner-task/$token',
+const MaintenanceRoute = MaintenanceRouteImport.update({
+  id: '/maintenance',
+  path: '/maintenance',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RmCardTokenRoute = RmCardTokenRouteImport.update({
-  id: '/rm-card/$token',
-  path: '/rm-card/$token',
+const MarketingRoute = MarketingRouteImport.update({
+  id: '/marketing',
+  path: '/marketing',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RentPaidRoute = RentPaidRouteImport.update({
-  id: '/rent/paid',
-  path: '/rent/paid',
+const MigratedReservationsRoute = MigratedReservationsRouteImport.update({
+  id: '/migrated-reservations',
+  path: '/migrated-reservations',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RentTokenRoute = RentTokenRouteImport.update({
-  id: '/rent/$token',
-  path: '/rent/$token',
+const MonthlyVehicleReportsRoute = MonthlyVehicleReportsRouteImport.update({
+  id: '/monthly-vehicle-reports',
+  path: '/monthly-vehicle-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PortalTokenRoute = PortalTokenRouteImport.update({
-  id: '/portal/$token',
-  path: '/portal/$token',
+const MyRentalsRoute = MyRentalsRouteImport.update({
+  id: '/my-rentals',
+  path: '/my-rentals',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PortalSignupRentalIdRoute = PortalSignupRentalIdRouteImport.update({
-  id: '/portal-signup/$rentalId',
-  path: '/portal-signup/$rentalId',
+const PaymentsRoute = PaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PartQuoteTokenRoute = PartQuoteTokenRouteImport.update({
-  id: '/part-quote/$token',
-  path: '/part-quote/$token',
+const PayrollRoute = PayrollRouteImport.update({
+  id: '/payroll',
+  path: '/payroll',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MyRentalsRentalIdRoute = MyRentalsRentalIdRouteImport.update({
-  id: '/$rentalId',
-  path: '/$rentalId',
-  getParentRoute: () => MyRentalsRoute,
-} as any)
-const MechanicJobTokenRoute = MechanicJobTokenRouteImport.update({
-  id: '/mechanic-job/$token',
-  path: '/mechanic-job/$token',
+const PayrollReturnRoute = PayrollReturnRouteImport.update({
+  id: '/payroll-return',
+  path: '/payroll-return',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FleetVehicleIdRoute = FleetVehicleIdRouteImport.update({
-  id: '/$vehicleId',
-  path: '/$vehicleId',
-  getParentRoute: () => FleetRoute,
-} as any)
-const ExtendTokenRoute = ExtendTokenRouteImport.update({
-  id: '/extend/$token',
-  path: '/extend/$token',
+const PendingAgreementsRoute = PendingAgreementsRouteImport.update({
+  id: '/pending-agreements',
+  path: '/pending-agreements',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AutoExtendTokenRoute = AutoExtendTokenRouteImport.update({
-  id: '/auto-extend/$token',
-  path: '/auto-extend/$token',
+const PnlRoute = PnlRouteImport.update({
+  id: '/pnl',
+  path: '/pnl',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnalyticsUtilizationRoute = AnalyticsUtilizationRouteImport.update({
-  id: '/analytics_/utilization',
-  path: '/analytics/utilization',
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnalyticsProfitabilityRoute = AnalyticsProfitabilityRouteImport.update({
-  id: '/analytics_/profitability',
-  path: '/analytics/profitability',
+const RamExpensesRoute = RamExpensesRouteImport.update({
+  id: '/ram-expenses',
+  path: '/ram-expenses',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnalyticsPnlDashboardRoute = AnalyticsPnlDashboardRouteImport.update({
-  id: '/analytics_/pnl-dashboard',
-  path: '/analytics/pnl-dashboard',
+const RefundApprovalsRoute = RefundApprovalsRouteImport.update({
+  id: '/refund-approvals',
+  path: '/refund-approvals',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnalyticsFailuresRoute = AnalyticsFailuresRouteImport.update({
-  id: '/analytics_/failures',
-  path: '/analytics/failures',
+const RentalAgreementRoute = RentalAgreementRouteImport.update({
+  id: '/rental-agreement',
+  path: '/rental-agreement',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnalyticsCostsRoute = AnalyticsCostsRouteImport.update({
-  id: '/analytics_/costs',
-  path: '/analytics/costs',
+const RentalsRoute = RentalsRouteImport.update({
+  id: '/rentals',
+  path: '/rentals',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnalyticsBreakevenRoute = AnalyticsBreakevenRouteImport.update({
-  id: '/analytics_/breakeven',
-  path: '/analytics/breakeven',
+const RepairsRoute = RepairsRouteImport.update({
+  id: '/repairs',
+  path: '/repairs',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminWaitlistRoute = AdminWaitlistRouteImport.update({
-  id: '/admin/waitlist',
-  path: '/admin/waitlist',
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/admin/users',
-  path: '/admin/users',
+const RunnerReportsRoute = RunnerReportsRouteImport.update({
+  id: '/runner-reports',
+  path: '/runner-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminTasksRoute = AdminTasksRouteImport.update({
-  id: '/admin/tasks',
-  path: '/admin/tasks',
+const SelfAgreementRoute = SelfAgreementRouteImport.update({
+  id: '/self-agreement',
+  path: '/self-agreement',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminPaymentReconciliationRoute =
-  AdminPaymentReconciliationRouteImport.update({
-    id: '/admin/payment-reconciliation',
-    path: '/admin/payment-reconciliation',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const AdminPartsRoute = AdminPartsRouteImport.update({
-  id: '/admin/parts',
-  path: '/admin/parts',
+const SmsLogRoute = SmsLogRouteImport.update({
+  id: '/sms-log',
+  path: '/sms-log',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminPaperworkTasksRoute = AdminPaperworkTasksRouteImport.update({
-  id: '/admin/paperwork-tasks',
-  path: '/admin/paperwork-tasks',
+const VehiclesDownRoute = VehiclesDownRouteImport.update({
+  id: '/vehicles-down',
+  path: '/vehicles-down',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminPacketSettingsRoute = AdminPacketSettingsRouteImport.update({
-  id: '/admin/packet-settings',
-  path: '/admin/packet-settings',
+const VendorsRoute = VendorsRouteImport.update({
+  id: '/vendors',
+  path: '/vendors',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
-  id: '/admin/notifications',
-  path: '/admin/notifications',
+const ViolationsRoute = ViolationsRouteImport.update({
+  id: '/violations',
+  path: '/violations',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminMechanicsRoute = AdminMechanicsRouteImport.update({
-  id: '/admin/mechanics',
-  path: '/admin/mechanics',
+const WaitlistRoute = WaitlistRouteImport.update({
+  id: '/waitlist',
+  path: '/waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminMalibuPlateReviewRoute = AdminMalibuPlateReviewRouteImport.update({
-  id: '/admin/malibu-plate-review',
-  path: '/admin/malibu-plate-review',
+const AccidentReportTokenRoute = AccidentReportTokenRouteImport.update({
+  id: '/accident-report/$token',
+  path: '/accident-report/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminMaintenanceNotificationsRoute =
-  AdminMaintenanceNotificationsRouteImport.update({
-    id: '/admin/maintenance-notifications',
-    path: '/admin/maintenance-notifications',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const AdminImportLegacyRoute = AdminImportLegacyRouteImport.update({
-  id: '/admin/import-legacy',
-  path: '/admin/import-legacy',
+const AddCardTokenRoute = AddCardTokenRouteImport.update({
+  id: '/add-card/$token',
+  path: '/add-card/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminImportDataRoute = AdminImportDataRouteImport.update({
-  id: '/admin/import-data',
-  path: '/admin/import-data',
+const AdminAlertSettingsRoute = AdminAlertSettingsRouteImport.update({
+  id: '/admin/alert-settings',
+  path: '/admin/alert-settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminBackfillPlatesRoute = AdminBackfillPlatesRouteImport.update({
+  id: '/admin/backfill-plates',
+  path: '/admin/backfill-plates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminBackupsRoute = AdminBackupsRouteImport.update({
+  id: '/admin/backups',
+  path: '/admin/backups',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCategorizeRepairsRoute = AdminCategorizeRepairsRouteImport.update({
+  id: '/admin/categorize-repairs',
+  path: '/admin/categorize-repairs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminChecklistsRoute = AdminChecklistsRouteImport.update({
+  id: '/admin/checklists',
+  path: '/admin/checklists',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
+  id: '/admin/create-task',
+  path: '/admin/create-task',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminExpenseCategoriesRoute = AdminExpenseCategoriesRouteImport.update({
+  id: '/admin/expense-categories',
+  path: '/admin/expense-categories',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminExpensesRoute = AdminExpensesRouteImport.update({
+  id: '/admin/expenses',
+  path: '/admin/expenses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminExtensionsRoute = AdminExtensionsRouteImport.update({
+  id: '/admin/extensions',
+  path: '/admin/extensions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminHistoricReservationRoute =
@@ -561,94 +388,232 @@ const AdminHistoricReservationRoute =
     path: '/admin/historic-reservation',
     getParentRoute: () => rootRouteImport,
   } as any)
-const AdminExtensionsRoute = AdminExtensionsRouteImport.update({
-  id: '/admin/extensions',
-  path: '/admin/extensions',
+const AdminImportDataRoute = AdminImportDataRouteImport.update({
+  id: '/admin/import-data',
+  path: '/admin/import-data',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminExpensesRoute = AdminExpensesRouteImport.update({
-  id: '/admin/expenses',
-  path: '/admin/expenses',
+const AdminImportLegacyRoute = AdminImportLegacyRouteImport.update({
+  id: '/admin/import-legacy',
+  path: '/admin/import-legacy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminExpenseCategoriesRoute = AdminExpenseCategoriesRouteImport.update({
-  id: '/admin/expense-categories',
-  path: '/admin/expense-categories',
+const AdminMaintenanceNotificationsRoute =
+  AdminMaintenanceNotificationsRouteImport.update({
+    id: '/admin/maintenance-notifications',
+    path: '/admin/maintenance-notifications',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AdminMalibuPlateReviewRoute = AdminMalibuPlateReviewRouteImport.update({
+  id: '/admin/malibu-plate-review',
+  path: '/admin/malibu-plate-review',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminCreateTaskRoute = AdminCreateTaskRouteImport.update({
-  id: '/admin/create-task',
-  path: '/admin/create-task',
+const AdminMechanicsRoute = AdminMechanicsRouteImport.update({
+  id: '/admin/mechanics',
+  path: '/admin/mechanics',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminChecklistsRoute = AdminChecklistsRouteImport.update({
-  id: '/admin/checklists',
-  path: '/admin/checklists',
+const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
+  id: '/admin/notifications',
+  path: '/admin/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminCategorizeRepairsRoute = AdminCategorizeRepairsRouteImport.update({
-  id: '/admin/categorize-repairs',
-  path: '/admin/categorize-repairs',
+const AdminPacketSettingsRoute = AdminPacketSettingsRouteImport.update({
+  id: '/admin/packet-settings',
+  path: '/admin/packet-settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminBackupsRoute = AdminBackupsRouteImport.update({
-  id: '/admin/backups',
-  path: '/admin/backups',
+const AdminPaperworkTasksRoute = AdminPaperworkTasksRouteImport.update({
+  id: '/admin/paperwork-tasks',
+  path: '/admin/paperwork-tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminBackfillPlatesRoute = AdminBackfillPlatesRouteImport.update({
-  id: '/admin/backfill-plates',
-  path: '/admin/backfill-plates',
+const AdminPartsRoute = AdminPartsRouteImport.update({
+  id: '/admin/parts',
+  path: '/admin/parts',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminAlertSettingsRoute = AdminAlertSettingsRouteImport.update({
-  id: '/admin/alert-settings',
-  path: '/admin/alert-settings',
+const AdminPaymentReconciliationRoute =
+  AdminPaymentReconciliationRouteImport.update({
+    id: '/admin/payment-reconciliation',
+    path: '/admin/payment-reconciliation',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AdminTasksRoute = AdminTasksRouteImport.update({
+  id: '/admin/tasks',
+  path: '/admin/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AddCardTokenRoute = AddCardTokenRouteImport.update({
-  id: '/add-card/$token',
-  path: '/add-card/$token',
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AccidentReportTokenRoute = AccidentReportTokenRouteImport.update({
-  id: '/accident-report/$token',
-  path: '/accident-report/$token',
+const AdminWaitlistRoute = AdminWaitlistRouteImport.update({
+  id: '/admin/waitlist',
+  path: '/admin/waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WaitlistUploadTokenRoute = WaitlistUploadTokenRouteImport.update({
-  id: '/upload/$token',
-  path: '/upload/$token',
-  getParentRoute: () => WaitlistRoute,
-} as any)
-const RunnerChecklistTokenRoute = RunnerChecklistTokenRouteImport.update({
-  id: '/runner/checklist/$token',
-  path: '/runner/checklist/$token',
+const AnalyticsBreakevenRoute = AnalyticsBreakevenRouteImport.update({
+  id: '/analytics_/breakeven',
+  path: '/analytics/breakeven',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RepairDeclineTokenRoute = RepairDeclineTokenRouteImport.update({
-  id: '/repair/decline/$token',
-  path: '/repair/decline/$token',
+const AnalyticsCostsRoute = AnalyticsCostsRouteImport.update({
+  id: '/analytics_/costs',
+  path: '/analytics/costs',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RepairAcceptTokenRoute = RepairAcceptTokenRouteImport.update({
-  id: '/repair/accept/$token',
-  path: '/repair/accept/$token',
+const AnalyticsFailuresRoute = AnalyticsFailuresRouteImport.update({
+  id: '/analytics_/failures',
+  path: '/analytics/failures',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RentPortalRentalIdRoute = RentPortalRentalIdRouteImport.update({
-  id: '/rent/portal/$rentalId',
-  path: '/rent/portal/$rentalId',
+const AnalyticsPnlDashboardRoute = AnalyticsPnlDashboardRouteImport.update({
+  id: '/analytics_/pnl-dashboard',
+  path: '/analytics/pnl-dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InspectVehicleIdTokenRoute = InspectVehicleIdTokenRouteImport.update({
-  id: '/inspect/$vehicleId/$token',
-  path: '/inspect/$vehicleId/$token',
+const AnalyticsProfitabilityRoute = AnalyticsProfitabilityRouteImport.update({
+  id: '/analytics_/profitability',
+  path: '/analytics/profitability',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicWaitlistIntakeRoute = ApiPublicWaitlistIntakeRouteImport.update({
-  id: '/api/public/waitlist-intake',
-  path: '/api/public/waitlist-intake',
+const AnalyticsUtilizationRoute = AnalyticsUtilizationRouteImport.update({
+  id: '/analytics_/utilization',
+  path: '/analytics/utilization',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AutoExtendTokenRoute = AutoExtendTokenRouteImport.update({
+  id: '/auto-extend/$token',
+  path: '/auto-extend/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExtendTokenRoute = ExtendTokenRouteImport.update({
+  id: '/extend/$token',
+  path: '/extend/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FleetVehicleIdRoute = FleetVehicleIdRouteImport.update({
+  id: '/$vehicleId',
+  path: '/$vehicleId',
+  getParentRoute: () => FleetRoute,
+} as any)
+const MechanicJobTokenRoute = MechanicJobTokenRouteImport.update({
+  id: '/mechanic-job/$token',
+  path: '/mechanic-job/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyRentalsRentalIdRoute = MyRentalsRentalIdRouteImport.update({
+  id: '/$rentalId',
+  path: '/$rentalId',
+  getParentRoute: () => MyRentalsRoute,
+} as any)
+const PartQuoteTokenRoute = PartQuoteTokenRouteImport.update({
+  id: '/part-quote/$token',
+  path: '/part-quote/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalSignupRentalIdRoute = PortalSignupRentalIdRouteImport.update({
+  id: '/portal-signup/$rentalId',
+  path: '/portal-signup/$rentalId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalTokenRoute = PortalTokenRouteImport.update({
+  id: '/portal/$token',
+  path: '/portal/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RentTokenRoute = RentTokenRouteImport.update({
+  id: '/rent/$token',
+  path: '/rent/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RentPaidRoute = RentPaidRouteImport.update({
+  id: '/rent/paid',
+  path: '/rent/paid',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RmCardTokenRoute = RmCardTokenRouteImport.update({
+  id: '/rm-card/$token',
+  path: '/rm-card/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RunnerTaskTokenRoute = RunnerTaskTokenRouteImport.update({
+  id: '/runner-task/$token',
+  path: '/runner-task/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetupTokenRoute = SetupTokenRouteImport.update({
+  id: '/setup/$token',
+  path: '/setup/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignAgreementRetroTokenRoute = SignAgreementRetroTokenRouteImport.update({
+  id: '/sign-agreement-retro/$token',
+  path: '/sign-agreement-retro/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignTokenRoute = SignTokenRouteImport.update({
+  id: '/sign/$token',
+  path: '/sign/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyCardTokenRoute = VerifyCardTokenRouteImport.update({
+  id: '/verify-card/$token',
+  path: '/verify-card/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyPaymentRentalIdRoute = VerifyPaymentRentalIdRouteImport.update({
+  id: '/verify-payment/$rentalId',
+  path: '/verify-payment/$rentalId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ViolationTokenRoute = ViolationTokenRouteImport.update({
+  id: '/violation/$token',
+  path: '/violation/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ViolationsAuthoritiesRoute = ViolationsAuthoritiesRouteImport.update({
+  id: '/violations_/authorities',
+  path: '/violations/authorities',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ViolationsBulkUploadRoute = ViolationsBulkUploadRouteImport.update({
+  id: '/violations_/bulk-upload',
+  path: '/violations/bulk-upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ViolationsDisputePacketsRoute =
+  ViolationsDisputePacketsRouteImport.update({
+    id: '/violations_/dispute-packets',
+    path: '/violations/dispute-packets',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ViolationsDisputesRoute = ViolationsDisputesRouteImport.update({
+  id: '/violations_/disputes',
+  path: '/violations/disputes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ViolationsExportsRoute = ViolationsExportsRouteImport.update({
+  id: '/violations_/exports',
+  path: '/violations/exports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ViolationsImportRoute = ViolationsImportRouteImport.update({
+  id: '/violations_/import',
+  path: '/violations/import',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ViolationsImportsRoute = ViolationsImportsRouteImport.update({
+  id: '/violations_/imports',
+  path: '/violations/imports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WorkOrderTokenRoute = WorkOrderTokenRouteImport.update({
+  id: '/work-order/$token',
+  path: '/work-order/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicCardholderRefuseRoute =
@@ -657,63 +622,45 @@ const ApiPublicCardholderRefuseRoute =
     path: '/api/public/cardholder-refuse',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicRTokenRoute = ApiPublicRTokenRouteImport.update({
-  id: '/api/public/r/$token',
-  path: '/api/public/r/$token',
+const ApiPublicWaitlistIntakeRoute = ApiPublicWaitlistIntakeRouteImport.update({
+  id: '/api/public/waitlist-intake',
+  path: '/api/public/waitlist-intake',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicPaymentsWebhookRoute =
-  ApiPublicPaymentsWebhookRouteImport.update({
-    id: '/api/public/payments/webhook',
-    path: '/api/public/payments/webhook',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksViolationRemindersRoute =
-  ApiPublicHooksViolationRemindersRouteImport.update({
-    id: '/api/public/hooks/violation-reminders',
-    path: '/api/public/hooks/violation-reminders',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksVerificationRemindersRoute =
-  ApiPublicHooksVerificationRemindersRouteImport.update({
-    id: '/api/public/hooks/verification-reminders',
-    path: '/api/public/hooks/verification-reminders',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksSendRemindersRoute =
-  ApiPublicHooksSendRemindersRouteImport.update({
-    id: '/api/public/hooks/send-reminders',
-    path: '/api/public/hooks/send-reminders',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksRepairDigestRoute =
-  ApiPublicHooksRepairDigestRouteImport.update({
-    id: '/api/public/hooks/repair-digest',
-    path: '/api/public/hooks/repair-digest',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksMonthlyBackupRoute =
-  ApiPublicHooksMonthlyBackupRouteImport.update({
-    id: '/api/public/hooks/monthly-backup',
-    path: '/api/public/hooks/monthly-backup',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksMarketingSendRoute =
-  ApiPublicHooksMarketingSendRouteImport.update({
-    id: '/api/public/hooks/marketing-send',
-    path: '/api/public/hooks/marketing-send',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksGhlInboundRoute =
-  ApiPublicHooksGhlInboundRouteImport.update({
-    id: '/api/public/hooks/ghl-inbound',
-    path: '/api/public/hooks/ghl-inbound',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicHooksDailyReportsRoute =
-  ApiPublicHooksDailyReportsRouteImport.update({
-    id: '/api/public/hooks/daily-reports',
-    path: '/api/public/hooks/daily-reports',
+const InspectVehicleIdTokenRoute = InspectVehicleIdTokenRouteImport.update({
+  id: '/inspect/$vehicleId/$token',
+  path: '/inspect/$vehicleId/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RentPortalRentalIdRoute = RentPortalRentalIdRouteImport.update({
+  id: '/rent/portal/$rentalId',
+  path: '/rent/portal/$rentalId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepairAcceptTokenRoute = RepairAcceptTokenRouteImport.update({
+  id: '/repair/accept/$token',
+  path: '/repair/accept/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepairDeclineTokenRoute = RepairDeclineTokenRouteImport.update({
+  id: '/repair/decline/$token',
+  path: '/repair/decline/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RunnerChecklistTokenRoute = RunnerChecklistTokenRouteImport.update({
+  id: '/runner/checklist/$token',
+  path: '/runner/checklist/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WaitlistUploadTokenRoute = WaitlistUploadTokenRouteImport.update({
+  id: '/upload/$token',
+  path: '/upload/$token',
+  getParentRoute: () => WaitlistRoute,
+} as any)
+const ApiPublicHooksAlertFlushRoute =
+  ApiPublicHooksAlertFlushRouteImport.update({
+    id: '/api/public/hooks/alert-flush',
+    path: '/api/public/hooks/alert-flush',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksAutoExtensionLinksRoute =
@@ -722,12 +669,65 @@ const ApiPublicHooksAutoExtensionLinksRoute =
     path: '/api/public/hooks/auto-extension-links',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicHooksAlertFlushRoute =
-  ApiPublicHooksAlertFlushRouteImport.update({
-    id: '/api/public/hooks/alert-flush',
-    path: '/api/public/hooks/alert-flush',
+const ApiPublicHooksDailyReportsRoute =
+  ApiPublicHooksDailyReportsRouteImport.update({
+    id: '/api/public/hooks/daily-reports',
+    path: '/api/public/hooks/daily-reports',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksGhlInboundRoute =
+  ApiPublicHooksGhlInboundRouteImport.update({
+    id: '/api/public/hooks/ghl-inbound',
+    path: '/api/public/hooks/ghl-inbound',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksMarketingSendRoute =
+  ApiPublicHooksMarketingSendRouteImport.update({
+    id: '/api/public/hooks/marketing-send',
+    path: '/api/public/hooks/marketing-send',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksMonthlyBackupRoute =
+  ApiPublicHooksMonthlyBackupRouteImport.update({
+    id: '/api/public/hooks/monthly-backup',
+    path: '/api/public/hooks/monthly-backup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksRepairDigestRoute =
+  ApiPublicHooksRepairDigestRouteImport.update({
+    id: '/api/public/hooks/repair-digest',
+    path: '/api/public/hooks/repair-digest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksSendRemindersRoute =
+  ApiPublicHooksSendRemindersRouteImport.update({
+    id: '/api/public/hooks/send-reminders',
+    path: '/api/public/hooks/send-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksVerificationRemindersRoute =
+  ApiPublicHooksVerificationRemindersRouteImport.update({
+    id: '/api/public/hooks/verification-reminders',
+    path: '/api/public/hooks/verification-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksViolationRemindersRoute =
+  ApiPublicHooksViolationRemindersRouteImport.update({
+    id: '/api/public/hooks/violation-reminders',
+    path: '/api/public/hooks/violation-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicPaymentsWebhookRoute =
+  ApiPublicPaymentsWebhookRouteImport.update({
+    id: '/api/public/payments/webhook',
+    path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicRTokenRoute = ApiPublicRTokenRouteImport.update({
+  id: '/api/public/r/$token',
+  path: '/api/public/r/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -1566,270 +1566,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/waitlist': {
-      id: '/waitlist'
-      path: '/waitlist'
-      fullPath: '/waitlist'
-      preLoaderRoute: typeof WaitlistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/violations': {
-      id: '/violations'
-      path: '/violations'
-      fullPath: '/violations'
-      preLoaderRoute: typeof ViolationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/vendors': {
-      id: '/vendors'
-      path: '/vendors'
-      fullPath: '/vendors'
-      preLoaderRoute: typeof VendorsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/vehicles-down': {
-      id: '/vehicles-down'
-      path: '/vehicles-down'
-      fullPath: '/vehicles-down'
-      preLoaderRoute: typeof VehiclesDownRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sms-log': {
-      id: '/sms-log'
-      path: '/sms-log'
-      fullPath: '/sms-log'
-      preLoaderRoute: typeof SmsLogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/self-agreement': {
-      id: '/self-agreement'
-      path: '/self-agreement'
-      fullPath: '/self-agreement'
-      preLoaderRoute: typeof SelfAgreementRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/runner-reports': {
-      id: '/runner-reports'
-      path: '/runner-reports'
-      fullPath: '/runner-reports'
-      preLoaderRoute: typeof RunnerReportsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/repairs': {
-      id: '/repairs'
-      path: '/repairs'
-      fullPath: '/repairs'
-      preLoaderRoute: typeof RepairsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rentals': {
-      id: '/rentals'
-      path: '/rentals'
-      fullPath: '/rentals'
-      preLoaderRoute: typeof RentalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rental-agreement': {
-      id: '/rental-agreement'
-      path: '/rental-agreement'
-      fullPath: '/rental-agreement'
-      preLoaderRoute: typeof RentalAgreementRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/refund-approvals': {
-      id: '/refund-approvals'
-      path: '/refund-approvals'
-      fullPath: '/refund-approvals'
-      preLoaderRoute: typeof RefundApprovalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ram-expenses': {
-      id: '/ram-expenses'
-      path: '/ram-expenses'
-      fullPath: '/ram-expenses'
-      preLoaderRoute: typeof RamExpensesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pnl': {
-      id: '/pnl'
-      path: '/pnl'
-      fullPath: '/pnl'
-      preLoaderRoute: typeof PnlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pending-agreements': {
-      id: '/pending-agreements'
-      path: '/pending-agreements'
-      fullPath: '/pending-agreements'
-      preLoaderRoute: typeof PendingAgreementsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/payroll-return': {
-      id: '/payroll-return'
-      path: '/payroll-return'
-      fullPath: '/payroll-return'
-      preLoaderRoute: typeof PayrollReturnRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/payroll': {
-      id: '/payroll'
-      path: '/payroll'
-      fullPath: '/payroll'
-      preLoaderRoute: typeof PayrollRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/payments': {
-      id: '/payments'
-      path: '/payments'
-      fullPath: '/payments'
-      preLoaderRoute: typeof PaymentsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/my-rentals': {
-      id: '/my-rentals'
-      path: '/my-rentals'
-      fullPath: '/my-rentals'
-      preLoaderRoute: typeof MyRentalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/monthly-vehicle-reports': {
-      id: '/monthly-vehicle-reports'
-      path: '/monthly-vehicle-reports'
-      fullPath: '/monthly-vehicle-reports'
-      preLoaderRoute: typeof MonthlyVehicleReportsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/migrated-reservations': {
-      id: '/migrated-reservations'
-      path: '/migrated-reservations'
-      fullPath: '/migrated-reservations'
-      preLoaderRoute: typeof MigratedReservationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/marketing': {
-      id: '/marketing'
-      path: '/marketing'
-      fullPath: '/marketing'
-      preLoaderRoute: typeof MarketingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/maintenance': {
-      id: '/maintenance'
-      path: '/maintenance'
-      fullPath: '/maintenance'
-      preLoaderRoute: typeof MaintenanceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/jv-units': {
-      id: '/jv-units'
-      path: '/jv-units'
-      fullPath: '/jv-units'
-      preLoaderRoute: typeof JvUnitsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/jv-payouts': {
-      id: '/jv-payouts'
-      path: '/jv-payouts'
-      fullPath: '/jv-payouts'
-      preLoaderRoute: typeof JvPayoutsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/jv-contracts': {
-      id: '/jv-contracts'
-      path: '/jv-contracts'
-      fullPath: '/jv-contracts'
-      preLoaderRoute: typeof JvContractsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/insurance': {
-      id: '/insurance'
-      path: '/insurance'
-      fullPath: '/insurance'
-      preLoaderRoute: typeof InsuranceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/inspections': {
-      id: '/inspections'
-      path: '/inspections'
-      fullPath: '/inspections'
-      preLoaderRoute: typeof InspectionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fleet-snapshot': {
-      id: '/fleet-snapshot'
-      path: '/fleet-snapshot'
-      fullPath: '/fleet-snapshot'
-      preLoaderRoute: typeof FleetSnapshotRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fleet': {
-      id: '/fleet'
-      path: '/fleet'
-      fullPath: '/fleet'
-      preLoaderRoute: typeof FleetRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/expenses': {
-      id: '/expenses'
-      path: '/expenses'
-      fullPath: '/expenses'
-      preLoaderRoute: typeof ExpensesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/drivers': {
-      id: '/drivers'
-      path: '/drivers'
-      fullPath: '/drivers'
-      preLoaderRoute: typeof DriversRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/driver-portal': {
-      id: '/driver-portal'
-      path: '/driver-portal'
-      fullPath: '/driver-portal'
-      preLoaderRoute: typeof DriverPortalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/checklist': {
-      id: '/checklist'
-      path: '/checklist'
-      fullPath: '/checklist'
-      preLoaderRoute: typeof ChecklistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/calendar': {
-      id: '/calendar'
-      path: '/calendar'
-      fullPath: '/calendar'
-      preLoaderRoute: typeof CalendarRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analytics': {
@@ -1839,403 +1580,270 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/work-order/$token': {
-      id: '/work-order/$token'
-      path: '/work-order/$token'
-      fullPath: '/work-order/$token'
-      preLoaderRoute: typeof WorkOrderTokenRouteImport
+    '/checklist': {
+      id: '/checklist'
+      path: '/checklist'
+      fullPath: '/checklist'
+      preLoaderRoute: typeof ChecklistRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/violations_/imports': {
-      id: '/violations_/imports'
-      path: '/violations/imports'
-      fullPath: '/violations/imports'
-      preLoaderRoute: typeof ViolationsImportsRouteImport
+    '/driver-portal': {
+      id: '/driver-portal'
+      path: '/driver-portal'
+      fullPath: '/driver-portal'
+      preLoaderRoute: typeof DriverPortalRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/violations_/import': {
-      id: '/violations_/import'
-      path: '/violations/import'
-      fullPath: '/violations/import'
-      preLoaderRoute: typeof ViolationsImportRouteImport
+    '/drivers': {
+      id: '/drivers'
+      path: '/drivers'
+      fullPath: '/drivers'
+      preLoaderRoute: typeof DriversRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/violations_/exports': {
-      id: '/violations_/exports'
-      path: '/violations/exports'
-      fullPath: '/violations/exports'
-      preLoaderRoute: typeof ViolationsExportsRouteImport
+    '/expenses': {
+      id: '/expenses'
+      path: '/expenses'
+      fullPath: '/expenses'
+      preLoaderRoute: typeof ExpensesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/violations_/disputes': {
-      id: '/violations_/disputes'
-      path: '/violations/disputes'
-      fullPath: '/violations/disputes'
-      preLoaderRoute: typeof ViolationsDisputesRouteImport
+    '/fleet': {
+      id: '/fleet'
+      path: '/fleet'
+      fullPath: '/fleet'
+      preLoaderRoute: typeof FleetRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/violations_/dispute-packets': {
-      id: '/violations_/dispute-packets'
-      path: '/violations/dispute-packets'
-      fullPath: '/violations/dispute-packets'
-      preLoaderRoute: typeof ViolationsDisputePacketsRouteImport
+    '/fleet-snapshot': {
+      id: '/fleet-snapshot'
+      path: '/fleet-snapshot'
+      fullPath: '/fleet-snapshot'
+      preLoaderRoute: typeof FleetSnapshotRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/violations_/bulk-upload': {
-      id: '/violations_/bulk-upload'
-      path: '/violations/bulk-upload'
-      fullPath: '/violations/bulk-upload'
-      preLoaderRoute: typeof ViolationsBulkUploadRouteImport
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/violations_/authorities': {
-      id: '/violations_/authorities'
-      path: '/violations/authorities'
-      fullPath: '/violations/authorities'
-      preLoaderRoute: typeof ViolationsAuthoritiesRouteImport
+    '/inspections': {
+      id: '/inspections'
+      path: '/inspections'
+      fullPath: '/inspections'
+      preLoaderRoute: typeof InspectionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/violation/$token': {
-      id: '/violation/$token'
-      path: '/violation/$token'
-      fullPath: '/violation/$token'
-      preLoaderRoute: typeof ViolationTokenRouteImport
+    '/insurance': {
+      id: '/insurance'
+      path: '/insurance'
+      fullPath: '/insurance'
+      preLoaderRoute: typeof InsuranceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/verify-payment/$rentalId': {
-      id: '/verify-payment/$rentalId'
-      path: '/verify-payment/$rentalId'
-      fullPath: '/verify-payment/$rentalId'
-      preLoaderRoute: typeof VerifyPaymentRentalIdRouteImport
+    '/jv-contracts': {
+      id: '/jv-contracts'
+      path: '/jv-contracts'
+      fullPath: '/jv-contracts'
+      preLoaderRoute: typeof JvContractsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/verify-card/$token': {
-      id: '/verify-card/$token'
-      path: '/verify-card/$token'
-      fullPath: '/verify-card/$token'
-      preLoaderRoute: typeof VerifyCardTokenRouteImport
+    '/jv-payouts': {
+      id: '/jv-payouts'
+      path: '/jv-payouts'
+      fullPath: '/jv-payouts'
+      preLoaderRoute: typeof JvPayoutsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sign/$token': {
-      id: '/sign/$token'
-      path: '/sign/$token'
-      fullPath: '/sign/$token'
-      preLoaderRoute: typeof SignTokenRouteImport
+    '/jv-units': {
+      id: '/jv-units'
+      path: '/jv-units'
+      fullPath: '/jv-units'
+      preLoaderRoute: typeof JvUnitsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sign-agreement-retro/$token': {
-      id: '/sign-agreement-retro/$token'
-      path: '/sign-agreement-retro/$token'
-      fullPath: '/sign-agreement-retro/$token'
-      preLoaderRoute: typeof SignAgreementRetroTokenRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/setup/$token': {
-      id: '/setup/$token'
-      path: '/setup/$token'
-      fullPath: '/setup/$token'
-      preLoaderRoute: typeof SetupTokenRouteImport
+    '/maintenance': {
+      id: '/maintenance'
+      path: '/maintenance'
+      fullPath: '/maintenance'
+      preLoaderRoute: typeof MaintenanceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/runner-task/$token': {
-      id: '/runner-task/$token'
-      path: '/runner-task/$token'
-      fullPath: '/runner-task/$token'
-      preLoaderRoute: typeof RunnerTaskTokenRouteImport
+    '/marketing': {
+      id: '/marketing'
+      path: '/marketing'
+      fullPath: '/marketing'
+      preLoaderRoute: typeof MarketingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/rm-card/$token': {
-      id: '/rm-card/$token'
-      path: '/rm-card/$token'
-      fullPath: '/rm-card/$token'
-      preLoaderRoute: typeof RmCardTokenRouteImport
+    '/migrated-reservations': {
+      id: '/migrated-reservations'
+      path: '/migrated-reservations'
+      fullPath: '/migrated-reservations'
+      preLoaderRoute: typeof MigratedReservationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/rent/paid': {
-      id: '/rent/paid'
-      path: '/rent/paid'
-      fullPath: '/rent/paid'
-      preLoaderRoute: typeof RentPaidRouteImport
+    '/monthly-vehicle-reports': {
+      id: '/monthly-vehicle-reports'
+      path: '/monthly-vehicle-reports'
+      fullPath: '/monthly-vehicle-reports'
+      preLoaderRoute: typeof MonthlyVehicleReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/rent/$token': {
-      id: '/rent/$token'
-      path: '/rent/$token'
-      fullPath: '/rent/$token'
-      preLoaderRoute: typeof RentTokenRouteImport
+    '/my-rentals': {
+      id: '/my-rentals'
+      path: '/my-rentals'
+      fullPath: '/my-rentals'
+      preLoaderRoute: typeof MyRentalsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/portal/$token': {
-      id: '/portal/$token'
-      path: '/portal/$token'
-      fullPath: '/portal/$token'
-      preLoaderRoute: typeof PortalTokenRouteImport
+    '/payments': {
+      id: '/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof PaymentsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/portal-signup/$rentalId': {
-      id: '/portal-signup/$rentalId'
-      path: '/portal-signup/$rentalId'
-      fullPath: '/portal-signup/$rentalId'
-      preLoaderRoute: typeof PortalSignupRentalIdRouteImport
+    '/payroll': {
+      id: '/payroll'
+      path: '/payroll'
+      fullPath: '/payroll'
+      preLoaderRoute: typeof PayrollRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/part-quote/$token': {
-      id: '/part-quote/$token'
-      path: '/part-quote/$token'
-      fullPath: '/part-quote/$token'
-      preLoaderRoute: typeof PartQuoteTokenRouteImport
+    '/payroll-return': {
+      id: '/payroll-return'
+      path: '/payroll-return'
+      fullPath: '/payroll-return'
+      preLoaderRoute: typeof PayrollReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/my-rentals/$rentalId': {
-      id: '/my-rentals/$rentalId'
-      path: '/$rentalId'
-      fullPath: '/my-rentals/$rentalId'
-      preLoaderRoute: typeof MyRentalsRentalIdRouteImport
-      parentRoute: typeof MyRentalsRoute
-    }
-    '/mechanic-job/$token': {
-      id: '/mechanic-job/$token'
-      path: '/mechanic-job/$token'
-      fullPath: '/mechanic-job/$token'
-      preLoaderRoute: typeof MechanicJobTokenRouteImport
+    '/pending-agreements': {
+      id: '/pending-agreements'
+      path: '/pending-agreements'
+      fullPath: '/pending-agreements'
+      preLoaderRoute: typeof PendingAgreementsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/fleet/$vehicleId': {
-      id: '/fleet/$vehicleId'
-      path: '/$vehicleId'
-      fullPath: '/fleet/$vehicleId'
-      preLoaderRoute: typeof FleetVehicleIdRouteImport
-      parentRoute: typeof FleetRoute
-    }
-    '/extend/$token': {
-      id: '/extend/$token'
-      path: '/extend/$token'
-      fullPath: '/extend/$token'
-      preLoaderRoute: typeof ExtendTokenRouteImport
+    '/pnl': {
+      id: '/pnl'
+      path: '/pnl'
+      fullPath: '/pnl'
+      preLoaderRoute: typeof PnlRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auto-extend/$token': {
-      id: '/auto-extend/$token'
-      path: '/auto-extend/$token'
-      fullPath: '/auto-extend/$token'
-      preLoaderRoute: typeof AutoExtendTokenRouteImport
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/analytics_/utilization': {
-      id: '/analytics_/utilization'
-      path: '/analytics/utilization'
-      fullPath: '/analytics/utilization'
-      preLoaderRoute: typeof AnalyticsUtilizationRouteImport
+    '/ram-expenses': {
+      id: '/ram-expenses'
+      path: '/ram-expenses'
+      fullPath: '/ram-expenses'
+      preLoaderRoute: typeof RamExpensesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/analytics_/profitability': {
-      id: '/analytics_/profitability'
-      path: '/analytics/profitability'
-      fullPath: '/analytics/profitability'
-      preLoaderRoute: typeof AnalyticsProfitabilityRouteImport
+    '/refund-approvals': {
+      id: '/refund-approvals'
+      path: '/refund-approvals'
+      fullPath: '/refund-approvals'
+      preLoaderRoute: typeof RefundApprovalsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/analytics_/pnl-dashboard': {
-      id: '/analytics_/pnl-dashboard'
-      path: '/analytics/pnl-dashboard'
-      fullPath: '/analytics/pnl-dashboard'
-      preLoaderRoute: typeof AnalyticsPnlDashboardRouteImport
+    '/rental-agreement': {
+      id: '/rental-agreement'
+      path: '/rental-agreement'
+      fullPath: '/rental-agreement'
+      preLoaderRoute: typeof RentalAgreementRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/analytics_/failures': {
-      id: '/analytics_/failures'
-      path: '/analytics/failures'
-      fullPath: '/analytics/failures'
-      preLoaderRoute: typeof AnalyticsFailuresRouteImport
+    '/rentals': {
+      id: '/rentals'
+      path: '/rentals'
+      fullPath: '/rentals'
+      preLoaderRoute: typeof RentalsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/analytics_/costs': {
-      id: '/analytics_/costs'
-      path: '/analytics/costs'
-      fullPath: '/analytics/costs'
-      preLoaderRoute: typeof AnalyticsCostsRouteImport
+    '/repairs': {
+      id: '/repairs'
+      path: '/repairs'
+      fullPath: '/repairs'
+      preLoaderRoute: typeof RepairsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/analytics_/breakeven': {
-      id: '/analytics_/breakeven'
-      path: '/analytics/breakeven'
-      fullPath: '/analytics/breakeven'
-      preLoaderRoute: typeof AnalyticsBreakevenRouteImport
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/waitlist': {
-      id: '/admin/waitlist'
-      path: '/admin/waitlist'
-      fullPath: '/admin/waitlist'
-      preLoaderRoute: typeof AdminWaitlistRouteImport
+    '/runner-reports': {
+      id: '/runner-reports'
+      path: '/runner-reports'
+      fullPath: '/runner-reports'
+      preLoaderRoute: typeof RunnerReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/admin/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
+    '/self-agreement': {
+      id: '/self-agreement'
+      path: '/self-agreement'
+      fullPath: '/self-agreement'
+      preLoaderRoute: typeof SelfAgreementRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/tasks': {
-      id: '/admin/tasks'
-      path: '/admin/tasks'
-      fullPath: '/admin/tasks'
-      preLoaderRoute: typeof AdminTasksRouteImport
+    '/sms-log': {
+      id: '/sms-log'
+      path: '/sms-log'
+      fullPath: '/sms-log'
+      preLoaderRoute: typeof SmsLogRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/payment-reconciliation': {
-      id: '/admin/payment-reconciliation'
-      path: '/admin/payment-reconciliation'
-      fullPath: '/admin/payment-reconciliation'
-      preLoaderRoute: typeof AdminPaymentReconciliationRouteImport
+    '/vehicles-down': {
+      id: '/vehicles-down'
+      path: '/vehicles-down'
+      fullPath: '/vehicles-down'
+      preLoaderRoute: typeof VehiclesDownRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/parts': {
-      id: '/admin/parts'
-      path: '/admin/parts'
-      fullPath: '/admin/parts'
-      preLoaderRoute: typeof AdminPartsRouteImport
+    '/vendors': {
+      id: '/vendors'
+      path: '/vendors'
+      fullPath: '/vendors'
+      preLoaderRoute: typeof VendorsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/paperwork-tasks': {
-      id: '/admin/paperwork-tasks'
-      path: '/admin/paperwork-tasks'
-      fullPath: '/admin/paperwork-tasks'
-      preLoaderRoute: typeof AdminPaperworkTasksRouteImport
+    '/violations': {
+      id: '/violations'
+      path: '/violations'
+      fullPath: '/violations'
+      preLoaderRoute: typeof ViolationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/packet-settings': {
-      id: '/admin/packet-settings'
-      path: '/admin/packet-settings'
-      fullPath: '/admin/packet-settings'
-      preLoaderRoute: typeof AdminPacketSettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/notifications': {
-      id: '/admin/notifications'
-      path: '/admin/notifications'
-      fullPath: '/admin/notifications'
-      preLoaderRoute: typeof AdminNotificationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/mechanics': {
-      id: '/admin/mechanics'
-      path: '/admin/mechanics'
-      fullPath: '/admin/mechanics'
-      preLoaderRoute: typeof AdminMechanicsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/malibu-plate-review': {
-      id: '/admin/malibu-plate-review'
-      path: '/admin/malibu-plate-review'
-      fullPath: '/admin/malibu-plate-review'
-      preLoaderRoute: typeof AdminMalibuPlateReviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/maintenance-notifications': {
-      id: '/admin/maintenance-notifications'
-      path: '/admin/maintenance-notifications'
-      fullPath: '/admin/maintenance-notifications'
-      preLoaderRoute: typeof AdminMaintenanceNotificationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/import-legacy': {
-      id: '/admin/import-legacy'
-      path: '/admin/import-legacy'
-      fullPath: '/admin/import-legacy'
-      preLoaderRoute: typeof AdminImportLegacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/import-data': {
-      id: '/admin/import-data'
-      path: '/admin/import-data'
-      fullPath: '/admin/import-data'
-      preLoaderRoute: typeof AdminImportDataRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/historic-reservation': {
-      id: '/admin/historic-reservation'
-      path: '/admin/historic-reservation'
-      fullPath: '/admin/historic-reservation'
-      preLoaderRoute: typeof AdminHistoricReservationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/extensions': {
-      id: '/admin/extensions'
-      path: '/admin/extensions'
-      fullPath: '/admin/extensions'
-      preLoaderRoute: typeof AdminExtensionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/expenses': {
-      id: '/admin/expenses'
-      path: '/admin/expenses'
-      fullPath: '/admin/expenses'
-      preLoaderRoute: typeof AdminExpensesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/expense-categories': {
-      id: '/admin/expense-categories'
-      path: '/admin/expense-categories'
-      fullPath: '/admin/expense-categories'
-      preLoaderRoute: typeof AdminExpenseCategoriesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/create-task': {
-      id: '/admin/create-task'
-      path: '/admin/create-task'
-      fullPath: '/admin/create-task'
-      preLoaderRoute: typeof AdminCreateTaskRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/checklists': {
-      id: '/admin/checklists'
-      path: '/admin/checklists'
-      fullPath: '/admin/checklists'
-      preLoaderRoute: typeof AdminChecklistsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/categorize-repairs': {
-      id: '/admin/categorize-repairs'
-      path: '/admin/categorize-repairs'
-      fullPath: '/admin/categorize-repairs'
-      preLoaderRoute: typeof AdminCategorizeRepairsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/backups': {
-      id: '/admin/backups'
-      path: '/admin/backups'
-      fullPath: '/admin/backups'
-      preLoaderRoute: typeof AdminBackupsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/backfill-plates': {
-      id: '/admin/backfill-plates'
-      path: '/admin/backfill-plates'
-      fullPath: '/admin/backfill-plates'
-      preLoaderRoute: typeof AdminBackfillPlatesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/alert-settings': {
-      id: '/admin/alert-settings'
-      path: '/admin/alert-settings'
-      fullPath: '/admin/alert-settings'
-      preLoaderRoute: typeof AdminAlertSettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/add-card/$token': {
-      id: '/add-card/$token'
-      path: '/add-card/$token'
-      fullPath: '/add-card/$token'
-      preLoaderRoute: typeof AddCardTokenRouteImport
+    '/waitlist': {
+      id: '/waitlist'
+      path: '/waitlist'
+      fullPath: '/waitlist'
+      preLoaderRoute: typeof WaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/accident-report/$token': {
@@ -2245,53 +1853,396 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccidentReportTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/waitlist/upload/$token': {
-      id: '/waitlist/upload/$token'
-      path: '/upload/$token'
-      fullPath: '/waitlist/upload/$token'
-      preLoaderRoute: typeof WaitlistUploadTokenRouteImport
-      parentRoute: typeof WaitlistRoute
-    }
-    '/runner/checklist/$token': {
-      id: '/runner/checklist/$token'
-      path: '/runner/checklist/$token'
-      fullPath: '/runner/checklist/$token'
-      preLoaderRoute: typeof RunnerChecklistTokenRouteImport
+    '/add-card/$token': {
+      id: '/add-card/$token'
+      path: '/add-card/$token'
+      fullPath: '/add-card/$token'
+      preLoaderRoute: typeof AddCardTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/repair/decline/$token': {
-      id: '/repair/decline/$token'
-      path: '/repair/decline/$token'
-      fullPath: '/repair/decline/$token'
-      preLoaderRoute: typeof RepairDeclineTokenRouteImport
+    '/admin/alert-settings': {
+      id: '/admin/alert-settings'
+      path: '/admin/alert-settings'
+      fullPath: '/admin/alert-settings'
+      preLoaderRoute: typeof AdminAlertSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/repair/accept/$token': {
-      id: '/repair/accept/$token'
-      path: '/repair/accept/$token'
-      fullPath: '/repair/accept/$token'
-      preLoaderRoute: typeof RepairAcceptTokenRouteImport
+    '/admin/backfill-plates': {
+      id: '/admin/backfill-plates'
+      path: '/admin/backfill-plates'
+      fullPath: '/admin/backfill-plates'
+      preLoaderRoute: typeof AdminBackfillPlatesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/rent/portal/$rentalId': {
-      id: '/rent/portal/$rentalId'
-      path: '/rent/portal/$rentalId'
-      fullPath: '/rent/portal/$rentalId'
-      preLoaderRoute: typeof RentPortalRentalIdRouteImport
+    '/admin/backups': {
+      id: '/admin/backups'
+      path: '/admin/backups'
+      fullPath: '/admin/backups'
+      preLoaderRoute: typeof AdminBackupsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/inspect/$vehicleId/$token': {
-      id: '/inspect/$vehicleId/$token'
-      path: '/inspect/$vehicleId/$token'
-      fullPath: '/inspect/$vehicleId/$token'
-      preLoaderRoute: typeof InspectVehicleIdTokenRouteImport
+    '/admin/categorize-repairs': {
+      id: '/admin/categorize-repairs'
+      path: '/admin/categorize-repairs'
+      fullPath: '/admin/categorize-repairs'
+      preLoaderRoute: typeof AdminCategorizeRepairsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/waitlist-intake': {
-      id: '/api/public/waitlist-intake'
-      path: '/api/public/waitlist-intake'
-      fullPath: '/api/public/waitlist-intake'
-      preLoaderRoute: typeof ApiPublicWaitlistIntakeRouteImport
+    '/admin/checklists': {
+      id: '/admin/checklists'
+      path: '/admin/checklists'
+      fullPath: '/admin/checklists'
+      preLoaderRoute: typeof AdminChecklistsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/create-task': {
+      id: '/admin/create-task'
+      path: '/admin/create-task'
+      fullPath: '/admin/create-task'
+      preLoaderRoute: typeof AdminCreateTaskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/expense-categories': {
+      id: '/admin/expense-categories'
+      path: '/admin/expense-categories'
+      fullPath: '/admin/expense-categories'
+      preLoaderRoute: typeof AdminExpenseCategoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/expenses': {
+      id: '/admin/expenses'
+      path: '/admin/expenses'
+      fullPath: '/admin/expenses'
+      preLoaderRoute: typeof AdminExpensesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/extensions': {
+      id: '/admin/extensions'
+      path: '/admin/extensions'
+      fullPath: '/admin/extensions'
+      preLoaderRoute: typeof AdminExtensionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/historic-reservation': {
+      id: '/admin/historic-reservation'
+      path: '/admin/historic-reservation'
+      fullPath: '/admin/historic-reservation'
+      preLoaderRoute: typeof AdminHistoricReservationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/import-data': {
+      id: '/admin/import-data'
+      path: '/admin/import-data'
+      fullPath: '/admin/import-data'
+      preLoaderRoute: typeof AdminImportDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/import-legacy': {
+      id: '/admin/import-legacy'
+      path: '/admin/import-legacy'
+      fullPath: '/admin/import-legacy'
+      preLoaderRoute: typeof AdminImportLegacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/maintenance-notifications': {
+      id: '/admin/maintenance-notifications'
+      path: '/admin/maintenance-notifications'
+      fullPath: '/admin/maintenance-notifications'
+      preLoaderRoute: typeof AdminMaintenanceNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/malibu-plate-review': {
+      id: '/admin/malibu-plate-review'
+      path: '/admin/malibu-plate-review'
+      fullPath: '/admin/malibu-plate-review'
+      preLoaderRoute: typeof AdminMalibuPlateReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/mechanics': {
+      id: '/admin/mechanics'
+      path: '/admin/mechanics'
+      fullPath: '/admin/mechanics'
+      preLoaderRoute: typeof AdminMechanicsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/notifications': {
+      id: '/admin/notifications'
+      path: '/admin/notifications'
+      fullPath: '/admin/notifications'
+      preLoaderRoute: typeof AdminNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/packet-settings': {
+      id: '/admin/packet-settings'
+      path: '/admin/packet-settings'
+      fullPath: '/admin/packet-settings'
+      preLoaderRoute: typeof AdminPacketSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/paperwork-tasks': {
+      id: '/admin/paperwork-tasks'
+      path: '/admin/paperwork-tasks'
+      fullPath: '/admin/paperwork-tasks'
+      preLoaderRoute: typeof AdminPaperworkTasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/parts': {
+      id: '/admin/parts'
+      path: '/admin/parts'
+      fullPath: '/admin/parts'
+      preLoaderRoute: typeof AdminPartsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/payment-reconciliation': {
+      id: '/admin/payment-reconciliation'
+      path: '/admin/payment-reconciliation'
+      fullPath: '/admin/payment-reconciliation'
+      preLoaderRoute: typeof AdminPaymentReconciliationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/tasks': {
+      id: '/admin/tasks'
+      path: '/admin/tasks'
+      fullPath: '/admin/tasks'
+      preLoaderRoute: typeof AdminTasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/waitlist': {
+      id: '/admin/waitlist'
+      path: '/admin/waitlist'
+      fullPath: '/admin/waitlist'
+      preLoaderRoute: typeof AdminWaitlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics_/breakeven': {
+      id: '/analytics_/breakeven'
+      path: '/analytics/breakeven'
+      fullPath: '/analytics/breakeven'
+      preLoaderRoute: typeof AnalyticsBreakevenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics_/costs': {
+      id: '/analytics_/costs'
+      path: '/analytics/costs'
+      fullPath: '/analytics/costs'
+      preLoaderRoute: typeof AnalyticsCostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics_/failures': {
+      id: '/analytics_/failures'
+      path: '/analytics/failures'
+      fullPath: '/analytics/failures'
+      preLoaderRoute: typeof AnalyticsFailuresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics_/pnl-dashboard': {
+      id: '/analytics_/pnl-dashboard'
+      path: '/analytics/pnl-dashboard'
+      fullPath: '/analytics/pnl-dashboard'
+      preLoaderRoute: typeof AnalyticsPnlDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics_/profitability': {
+      id: '/analytics_/profitability'
+      path: '/analytics/profitability'
+      fullPath: '/analytics/profitability'
+      preLoaderRoute: typeof AnalyticsProfitabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics_/utilization': {
+      id: '/analytics_/utilization'
+      path: '/analytics/utilization'
+      fullPath: '/analytics/utilization'
+      preLoaderRoute: typeof AnalyticsUtilizationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auto-extend/$token': {
+      id: '/auto-extend/$token'
+      path: '/auto-extend/$token'
+      fullPath: '/auto-extend/$token'
+      preLoaderRoute: typeof AutoExtendTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/extend/$token': {
+      id: '/extend/$token'
+      path: '/extend/$token'
+      fullPath: '/extend/$token'
+      preLoaderRoute: typeof ExtendTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fleet/$vehicleId': {
+      id: '/fleet/$vehicleId'
+      path: '/$vehicleId'
+      fullPath: '/fleet/$vehicleId'
+      preLoaderRoute: typeof FleetVehicleIdRouteImport
+      parentRoute: typeof FleetRoute
+    }
+    '/mechanic-job/$token': {
+      id: '/mechanic-job/$token'
+      path: '/mechanic-job/$token'
+      fullPath: '/mechanic-job/$token'
+      preLoaderRoute: typeof MechanicJobTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-rentals/$rentalId': {
+      id: '/my-rentals/$rentalId'
+      path: '/$rentalId'
+      fullPath: '/my-rentals/$rentalId'
+      preLoaderRoute: typeof MyRentalsRentalIdRouteImport
+      parentRoute: typeof MyRentalsRoute
+    }
+    '/part-quote/$token': {
+      id: '/part-quote/$token'
+      path: '/part-quote/$token'
+      fullPath: '/part-quote/$token'
+      preLoaderRoute: typeof PartQuoteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal-signup/$rentalId': {
+      id: '/portal-signup/$rentalId'
+      path: '/portal-signup/$rentalId'
+      fullPath: '/portal-signup/$rentalId'
+      preLoaderRoute: typeof PortalSignupRentalIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal/$token': {
+      id: '/portal/$token'
+      path: '/portal/$token'
+      fullPath: '/portal/$token'
+      preLoaderRoute: typeof PortalTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rent/$token': {
+      id: '/rent/$token'
+      path: '/rent/$token'
+      fullPath: '/rent/$token'
+      preLoaderRoute: typeof RentTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rent/paid': {
+      id: '/rent/paid'
+      path: '/rent/paid'
+      fullPath: '/rent/paid'
+      preLoaderRoute: typeof RentPaidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rm-card/$token': {
+      id: '/rm-card/$token'
+      path: '/rm-card/$token'
+      fullPath: '/rm-card/$token'
+      preLoaderRoute: typeof RmCardTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/runner-task/$token': {
+      id: '/runner-task/$token'
+      path: '/runner-task/$token'
+      fullPath: '/runner-task/$token'
+      preLoaderRoute: typeof RunnerTaskTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup/$token': {
+      id: '/setup/$token'
+      path: '/setup/$token'
+      fullPath: '/setup/$token'
+      preLoaderRoute: typeof SetupTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-agreement-retro/$token': {
+      id: '/sign-agreement-retro/$token'
+      path: '/sign-agreement-retro/$token'
+      fullPath: '/sign-agreement-retro/$token'
+      preLoaderRoute: typeof SignAgreementRetroTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign/$token': {
+      id: '/sign/$token'
+      path: '/sign/$token'
+      fullPath: '/sign/$token'
+      preLoaderRoute: typeof SignTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify-card/$token': {
+      id: '/verify-card/$token'
+      path: '/verify-card/$token'
+      fullPath: '/verify-card/$token'
+      preLoaderRoute: typeof VerifyCardTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify-payment/$rentalId': {
+      id: '/verify-payment/$rentalId'
+      path: '/verify-payment/$rentalId'
+      fullPath: '/verify-payment/$rentalId'
+      preLoaderRoute: typeof VerifyPaymentRentalIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/violation/$token': {
+      id: '/violation/$token'
+      path: '/violation/$token'
+      fullPath: '/violation/$token'
+      preLoaderRoute: typeof ViolationTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/violations_/authorities': {
+      id: '/violations_/authorities'
+      path: '/violations/authorities'
+      fullPath: '/violations/authorities'
+      preLoaderRoute: typeof ViolationsAuthoritiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/violations_/bulk-upload': {
+      id: '/violations_/bulk-upload'
+      path: '/violations/bulk-upload'
+      fullPath: '/violations/bulk-upload'
+      preLoaderRoute: typeof ViolationsBulkUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/violations_/dispute-packets': {
+      id: '/violations_/dispute-packets'
+      path: '/violations/dispute-packets'
+      fullPath: '/violations/dispute-packets'
+      preLoaderRoute: typeof ViolationsDisputePacketsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/violations_/disputes': {
+      id: '/violations_/disputes'
+      path: '/violations/disputes'
+      fullPath: '/violations/disputes'
+      preLoaderRoute: typeof ViolationsDisputesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/violations_/exports': {
+      id: '/violations_/exports'
+      path: '/violations/exports'
+      fullPath: '/violations/exports'
+      preLoaderRoute: typeof ViolationsExportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/violations_/import': {
+      id: '/violations_/import'
+      path: '/violations/import'
+      fullPath: '/violations/import'
+      preLoaderRoute: typeof ViolationsImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/violations_/imports': {
+      id: '/violations_/imports'
+      path: '/violations/imports'
+      fullPath: '/violations/imports'
+      preLoaderRoute: typeof ViolationsImportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/work-order/$token': {
+      id: '/work-order/$token'
+      path: '/work-order/$token'
+      fullPath: '/work-order/$token'
+      preLoaderRoute: typeof WorkOrderTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/cardholder-refuse': {
@@ -2301,74 +2252,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCardholderRefuseRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/r/$token': {
-      id: '/api/public/r/$token'
-      path: '/api/public/r/$token'
-      fullPath: '/api/public/r/$token'
-      preLoaderRoute: typeof ApiPublicRTokenRouteImport
+    '/api/public/waitlist-intake': {
+      id: '/api/public/waitlist-intake'
+      path: '/api/public/waitlist-intake'
+      fullPath: '/api/public/waitlist-intake'
+      preLoaderRoute: typeof ApiPublicWaitlistIntakeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/payments/webhook': {
-      id: '/api/public/payments/webhook'
-      path: '/api/public/payments/webhook'
-      fullPath: '/api/public/payments/webhook'
-      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+    '/inspect/$vehicleId/$token': {
+      id: '/inspect/$vehicleId/$token'
+      path: '/inspect/$vehicleId/$token'
+      fullPath: '/inspect/$vehicleId/$token'
+      preLoaderRoute: typeof InspectVehicleIdTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/violation-reminders': {
-      id: '/api/public/hooks/violation-reminders'
-      path: '/api/public/hooks/violation-reminders'
-      fullPath: '/api/public/hooks/violation-reminders'
-      preLoaderRoute: typeof ApiPublicHooksViolationRemindersRouteImport
+    '/rent/portal/$rentalId': {
+      id: '/rent/portal/$rentalId'
+      path: '/rent/portal/$rentalId'
+      fullPath: '/rent/portal/$rentalId'
+      preLoaderRoute: typeof RentPortalRentalIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/verification-reminders': {
-      id: '/api/public/hooks/verification-reminders'
-      path: '/api/public/hooks/verification-reminders'
-      fullPath: '/api/public/hooks/verification-reminders'
-      preLoaderRoute: typeof ApiPublicHooksVerificationRemindersRouteImport
+    '/repair/accept/$token': {
+      id: '/repair/accept/$token'
+      path: '/repair/accept/$token'
+      fullPath: '/repair/accept/$token'
+      preLoaderRoute: typeof RepairAcceptTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/send-reminders': {
-      id: '/api/public/hooks/send-reminders'
-      path: '/api/public/hooks/send-reminders'
-      fullPath: '/api/public/hooks/send-reminders'
-      preLoaderRoute: typeof ApiPublicHooksSendRemindersRouteImport
+    '/repair/decline/$token': {
+      id: '/repair/decline/$token'
+      path: '/repair/decline/$token'
+      fullPath: '/repair/decline/$token'
+      preLoaderRoute: typeof RepairDeclineTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/repair-digest': {
-      id: '/api/public/hooks/repair-digest'
-      path: '/api/public/hooks/repair-digest'
-      fullPath: '/api/public/hooks/repair-digest'
-      preLoaderRoute: typeof ApiPublicHooksRepairDigestRouteImport
+    '/runner/checklist/$token': {
+      id: '/runner/checklist/$token'
+      path: '/runner/checklist/$token'
+      fullPath: '/runner/checklist/$token'
+      preLoaderRoute: typeof RunnerChecklistTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/monthly-backup': {
-      id: '/api/public/hooks/monthly-backup'
-      path: '/api/public/hooks/monthly-backup'
-      fullPath: '/api/public/hooks/monthly-backup'
-      preLoaderRoute: typeof ApiPublicHooksMonthlyBackupRouteImport
-      parentRoute: typeof rootRouteImport
+    '/waitlist/upload/$token': {
+      id: '/waitlist/upload/$token'
+      path: '/upload/$token'
+      fullPath: '/waitlist/upload/$token'
+      preLoaderRoute: typeof WaitlistUploadTokenRouteImport
+      parentRoute: typeof WaitlistRoute
     }
-    '/api/public/hooks/marketing-send': {
-      id: '/api/public/hooks/marketing-send'
-      path: '/api/public/hooks/marketing-send'
-      fullPath: '/api/public/hooks/marketing-send'
-      preLoaderRoute: typeof ApiPublicHooksMarketingSendRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/ghl-inbound': {
-      id: '/api/public/hooks/ghl-inbound'
-      path: '/api/public/hooks/ghl-inbound'
-      fullPath: '/api/public/hooks/ghl-inbound'
-      preLoaderRoute: typeof ApiPublicHooksGhlInboundRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/hooks/daily-reports': {
-      id: '/api/public/hooks/daily-reports'
-      path: '/api/public/hooks/daily-reports'
-      fullPath: '/api/public/hooks/daily-reports'
-      preLoaderRoute: typeof ApiPublicHooksDailyReportsRouteImport
+    '/api/public/hooks/alert-flush': {
+      id: '/api/public/hooks/alert-flush'
+      path: '/api/public/hooks/alert-flush'
+      fullPath: '/api/public/hooks/alert-flush'
+      preLoaderRoute: typeof ApiPublicHooksAlertFlushRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/auto-extension-links': {
@@ -2378,11 +2315,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksAutoExtensionLinksRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/alert-flush': {
-      id: '/api/public/hooks/alert-flush'
-      path: '/api/public/hooks/alert-flush'
-      fullPath: '/api/public/hooks/alert-flush'
-      preLoaderRoute: typeof ApiPublicHooksAlertFlushRouteImport
+    '/api/public/hooks/daily-reports': {
+      id: '/api/public/hooks/daily-reports'
+      path: '/api/public/hooks/daily-reports'
+      fullPath: '/api/public/hooks/daily-reports'
+      preLoaderRoute: typeof ApiPublicHooksDailyReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/ghl-inbound': {
+      id: '/api/public/hooks/ghl-inbound'
+      path: '/api/public/hooks/ghl-inbound'
+      fullPath: '/api/public/hooks/ghl-inbound'
+      preLoaderRoute: typeof ApiPublicHooksGhlInboundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/marketing-send': {
+      id: '/api/public/hooks/marketing-send'
+      path: '/api/public/hooks/marketing-send'
+      fullPath: '/api/public/hooks/marketing-send'
+      preLoaderRoute: typeof ApiPublicHooksMarketingSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/monthly-backup': {
+      id: '/api/public/hooks/monthly-backup'
+      path: '/api/public/hooks/monthly-backup'
+      fullPath: '/api/public/hooks/monthly-backup'
+      preLoaderRoute: typeof ApiPublicHooksMonthlyBackupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/repair-digest': {
+      id: '/api/public/hooks/repair-digest'
+      path: '/api/public/hooks/repair-digest'
+      fullPath: '/api/public/hooks/repair-digest'
+      preLoaderRoute: typeof ApiPublicHooksRepairDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/send-reminders': {
+      id: '/api/public/hooks/send-reminders'
+      path: '/api/public/hooks/send-reminders'
+      fullPath: '/api/public/hooks/send-reminders'
+      preLoaderRoute: typeof ApiPublicHooksSendRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/verification-reminders': {
+      id: '/api/public/hooks/verification-reminders'
+      path: '/api/public/hooks/verification-reminders'
+      fullPath: '/api/public/hooks/verification-reminders'
+      preLoaderRoute: typeof ApiPublicHooksVerificationRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/violation-reminders': {
+      id: '/api/public/hooks/violation-reminders'
+      path: '/api/public/hooks/violation-reminders'
+      fullPath: '/api/public/hooks/violation-reminders'
+      preLoaderRoute: typeof ApiPublicHooksViolationRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/payments/webhook': {
+      id: '/api/public/payments/webhook'
+      path: '/api/public/payments/webhook'
+      fullPath: '/api/public/payments/webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/r/$token': {
+      id: '/api/public/r/$token'
+      path: '/api/public/r/$token'
+      fullPath: '/api/public/r/$token'
+      preLoaderRoute: typeof ApiPublicRTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
