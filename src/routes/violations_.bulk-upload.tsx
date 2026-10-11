@@ -36,6 +36,7 @@ import {
   getEzpassBatch,
   manualMatchEzpassItem,
   approveEzpassBatch,
+  retryBatchLetters,
   downloadAffidavitsZip,
   matchAndCommitEzpassItem,
   getRentalAgreementUrl,
@@ -415,7 +416,10 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
   const [approving, setApproving] = useState(false);
   const [approveMode, setApproveMode] = useState<"all" | "matched">("all");
   const [rescanning, setRescanning] = useState(false);
+  const [retryingLetters, setRetryingLetters] = useState(false);
+  const [letterErrors, setLetterErrors] = useState<Array<{ renter: string; message: string }>>([]);
   const rescan = useServerFn(rescanUnmatchedEzpassItems);
+  const retryLetters = useServerFn(retryBatchLetters);
 
   const items = data?.items ?? [];
   const batch = data?.batch;
@@ -461,6 +465,20 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
             duration: 15000,
           },
         );
+      }
+      if (res.letterErrors && res.letterErrors.length > 0) {
+        setLetterErrors(res.letterErrors);
+        toast.error(
+          `${res.letterErrors.length} letter${res.letterErrors.length === 1 ? "" : "s"} not generated`,
+          {
+            description: res.letterErrors
+              .map((le) => `${le.renter}: ${le.message}`)
+              .join("\n"),
+            duration: 20000,
+          },
+        );
+      } else {
+        setLetterErrors([]);
       }
       if (res.failed > 0) {
         toast.error(
