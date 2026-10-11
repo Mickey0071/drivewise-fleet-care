@@ -519,6 +519,48 @@ async function recomputeBatchCounts(batchId: string) {
  * workflow stage, re-run the plate matcher on commit to catch backfilled plates,
  * and auto-generate liability-transfer letters for matched ones.
  */
+/**
+ * Write the same audit trail Find Renter writes (matchViolationToRental +
+ * saveViolationMatch) when a bulk-upload row is saved as "matched".
+ */
+async function recordBulkAutoMatch(opts: {
+  violationId: string;
+  rentalId: string;
+  label: string;
+  userId: string | null;
+}) {
+  try {
+    let changedByName: string | null = null;
+    if (opts.userId) {
+      const { data: p } = await supabaseAdmin
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", opts.userId)
+        .maybeSingle();
+      changedByName = p?.full_name || p?.email || null;
+    }
+    await supabaseAdmin.from("violation_status_history").insert({
+      violation_id: opts.violationId,
+      from_status: null,
+      to_status: "matched_to_rental",
+      reason: `Auto-matched via bulk upload to ${opts.label} (${opts.rentalId})`,
+      changed_by: opts.userId,
+      changed_by_name: changedByName,
+    } as never);
+    await supabaseAdmin.from("violation_matches").upsert(
+      {
+        violation_id: opts.violationId,
+        reservation_id: opts.rentalId,
+        created_by: opts.userId,
+        updated_at: new Date().toISOString(),
+      } as never,
+      { onConflict: "violation_id" },
+    );
+  } catch (e) {
+    console.error("[ezpass] recordBulkAutoMatch failed:", e);
+  }
+}
+
 export const approveEzpassBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -542,6 +584,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
       saved: number;
       failed: number;
       errors: string[];
+      reused: Array<{ violationId: string; stage: string }>;
     }> => {
       const mode = data.mode ?? "all";
       const { data: items, error: iErr } = await supabaseAdmin
@@ -569,6 +612,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
       let saved = 0;
       let failed = 0;
       const errors: string[] = [];
+      const reused: Array<{ violationId: string; stage: string }> = [];
 
       for (const item of rows) {
         // Hard block: never persist a violation without its EZPass reference #.
@@ -638,15 +682,19 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
         // toll already exists as a violation. Instead of creating a duplicate,
         // update the existing record with the freshly-extracted EZPass ref #.
         let existingDupId: string | null = null;
+        let existingDupStage: string | null = null;
         if (!item.violation_id && item.plate && item.violation_date) {
           const { data: dups } = await supabaseAdmin
             .from("violations")
-            .select("id, reference_number")
+            .select("id, reference_number, workflow_stage")
             .eq("license_plate", item.plate)
             .eq("date_issued", item.violation_date)
             .eq("amount", item.amount)
             .limit(1);
-          if (dups && dups.length > 0) existingDupId = (dups[0] as { id: string }).id;
+          if (dups && dups.length > 0) {
+            existingDupId = (dups[0] as { id: string }).id;
+            existingDupStage = (dups[0] as { workflow_stage: string | null }).workflow_stage ?? null;
+          }
         }
 
         if (existingDupId) {
@@ -661,6 +709,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
             .from("ezpass_batch_items")
             .update({ violation_id: existingDupId } as never)
             .eq("id", item.id);
+          reused.push({ violationId: existingDupId, stage: existingDupStage ?? "uploaded" });
           continue;
         }
 
@@ -732,6 +781,16 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
           saved++;
         }
 
+        if (isMatched && rentalId) {
+          await recordBulkAutoMatch({
+            violationId,
+            rentalId,
+            label: driverName ?? rentalId,
+            userId: context.userId ?? null,
+          });
+        }
+
+
         // Only matched violations can get a pre-filled liability-transfer letter.
         let transferUrl: string | null = item.affidavit_pdf_url;
         if (isMatched) {
@@ -766,7 +825,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
           .eq("id", data.batchId);
       }
 
-      return { generated, matched, unmatched, total: rows.length, skippedNoRef, saved, failed, errors };
+      return { generated, matched, unmatched, total: rows.length, skippedNoRef, saved, failed, errors, reused };
     },
   );
 
@@ -1048,6 +1107,13 @@ export const matchAndCommitEzpassItem = createServerFn({ method: "POST" })
         created_by: context.userId ?? null,
       } as never);
     }
+
+    await recordBulkAutoMatch({
+      violationId: violationId!,
+      rentalId: rental.id,
+      label: driverName ?? rental.id,
+      userId: context.userId ?? null,
+    });
 
     await supabaseAdmin
       .from("ezpass_batch_items")

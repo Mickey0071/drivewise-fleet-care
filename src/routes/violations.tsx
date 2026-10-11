@@ -367,9 +367,12 @@ function DownloadPacketButton({
       } else {
         toast.success("Dispute packet downloaded");
       }
-      setGroups(
-        isPhillyViolation(v) ? { ezpass: [], philly: [v.id] } : { ezpass: [v.id], philly: [] },
-      );
+      // Only offer "How are you submitting?" for violations on the Matched tab.
+      if (tabOf(v) === "matched") {
+        setGroups(
+          isPhillyViolation(v) ? { ezpass: [], philly: [v.id] } : { ezpass: [v.id], philly: [] },
+        );
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not build packet");
     } finally {
@@ -1674,8 +1677,11 @@ function ViolationsPage() {
   };
 
   const printAllAgreements = async () => {
-    const targets = selectedRows.length > 0 ? selectedRows : filtered;
-    if (targets.length === 0) return;
+    const targets = selectedRows;
+    if (targets.length === 0) {
+      toast.error("Select the violations to print first");
+      return;
+    }
     setPrintBusy(true);
     try {
       const { items, skipped } = await getAgreementsFn({
@@ -1736,15 +1742,20 @@ function ViolationsPage() {
         });
       }
 
-      // Move printed violations to "disputed"
-      const printedIds = items.flatMap((i) => i.violationIds);
-      await bulkStageFn({ data: { violationIds: printedIds, stage: "disputed" } });
-      qc.invalidateQueries({ queryKey: ["violations"] });
-      setSelected(new Set());
+      // Do NOT change stage here. Ask how they're submitting — only for
+      // printed violations that are currently on the Matched tab.
+      const printedIds = new Set(items.flatMap((i) => i.violationIds));
+      const matchedPrinted = targets.filter((v) => printedIds.has(v.id) && tabOf(v) === "matched");
       const skippedCount = skipped.length;
       toast.success(
-        `${printedIds.length} moved to Disputed${skippedCount ? ` · ${skippedCount} skipped (no agreement)` : ""}`,
+        `${printedIds.size} agreement${printedIds.size === 1 ? "" : "s"} printed${skippedCount ? ` · ${skippedCount} skipped (no agreement)` : ""}`,
       );
+      if (matchedPrinted.length > 0) {
+        setDisputeGroups({
+          ezpass: matchedPrinted.filter((v) => !isPhillyViolation(v)).map((v) => v.id),
+          philly: matchedPrinted.filter((v) => isPhillyViolation(v)).map((v) => v.id),
+        });
+      }
       // Revoke after a delay so the print window can render
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (e) {
