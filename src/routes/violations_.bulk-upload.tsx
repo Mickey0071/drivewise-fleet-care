@@ -525,6 +525,33 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
     }
   };
 
+  const handleRetryLetters = async () => {
+    setRetryingLetters(true);
+    try {
+      const res = await retryLetters({ data: { batchId } });
+      setLetterErrors(res.letterErrors);
+      if (res.letterErrors.length > 0) {
+        toast.error(
+          `${res.letterErrors.length} letter${res.letterErrors.length === 1 ? "" : "s"} not generated`,
+          {
+            description: res.letterErrors.map((le) => `${le.renter}: ${le.message}`).join("\n"),
+            duration: 20000,
+          },
+        );
+      }
+      if (res.generated > 0) {
+        toast.success(`Generated ${res.generated} letter${res.generated === 1 ? "" : "s"}`);
+      } else if (res.letterErrors.length === 0) {
+        toast.message("Nothing to retry — every matched item already has a letter");
+      }
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Retry failed");
+    } finally {
+      setRetryingLetters(false);
+    }
+  };
+
   // Re-run the plate+date matcher against ALL rentals (live, manual,
   // migrated/historic) for items still unmatched — catches rentals entered
   // after the original upload.
