@@ -36,6 +36,7 @@ import {
   getEzpassBatch,
   manualMatchEzpassItem,
   approveEzpassBatch,
+  retryBatchLetters,
   downloadAffidavitsZip,
   matchAndCommitEzpassItem,
   getRentalAgreementUrl,
@@ -415,7 +416,10 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
   const [approving, setApproving] = useState(false);
   const [approveMode, setApproveMode] = useState<"all" | "matched">("all");
   const [rescanning, setRescanning] = useState(false);
+  const [retryingLetters, setRetryingLetters] = useState(false);
+  const [letterErrors, setLetterErrors] = useState<Array<{ renter: string; message: string }>>([]);
   const rescan = useServerFn(rescanUnmatchedEzpassItems);
+  const retryLetters = useServerFn(retryBatchLetters);
 
   const items = data?.items ?? [];
   const batch = data?.batch;
@@ -462,6 +466,20 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
           },
         );
       }
+      if (res.letterErrors && res.letterErrors.length > 0) {
+        setLetterErrors(res.letterErrors);
+        toast.error(
+          `${res.letterErrors.length} letter${res.letterErrors.length === 1 ? "" : "s"} not generated`,
+          {
+            description: res.letterErrors
+              .map((le) => `${le.renter}: ${le.message}`)
+              .join("\n"),
+            duration: 20000,
+          },
+        );
+      } else {
+        setLetterErrors([]);
+      }
       if (res.failed > 0) {
         toast.error(
           `${res.failed} violation${res.failed === 1 ? "" : "s"} FAILED to save: ${res.errors.slice(0, 3).join(" | ")}`,
@@ -504,6 +522,33 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
       URL.revokeObjectURL(url);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Download failed");
+    }
+  };
+
+  const handleRetryLetters = async () => {
+    setRetryingLetters(true);
+    try {
+      const res = await retryLetters({ data: { batchId } });
+      setLetterErrors(res.letterErrors);
+      if (res.letterErrors.length > 0) {
+        toast.error(
+          `${res.letterErrors.length} letter${res.letterErrors.length === 1 ? "" : "s"} not generated`,
+          {
+            description: res.letterErrors.map((le) => `${le.renter}: ${le.message}`).join("\n"),
+            duration: 20000,
+          },
+        );
+      }
+      if (res.generated > 0) {
+        toast.success(`Generated ${res.generated} letter${res.generated === 1 ? "" : "s"}`);
+      } else if (res.letterErrors.length === 0) {
+        toast.message("Nothing to retry — every matched item already has a letter");
+      }
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Retry failed");
+    } finally {
+      setRetryingLetters(false);
     }
   };
 
@@ -686,9 +731,51 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
 
       <div className="mt-6 flex items-center justify-end gap-3">
         {approved ? (
-          <Button onClick={handleZip} className="bg-emerald-600 hover:bg-emerald-700">
-            <Download className="mr-2 h-4 w-4" /> Download All Letters
-          </Button>
+          (() => {
+            const withLetters = visibleItems.filter((i) => i.affidavit_pdf_url);
+            const missingLetters = visibleItems.filter(
+              (i) => i.violation_id && !i.affidavit_pdf_url && i.match_status === "matched",
+            );
+            return (
+              <div className="flex w-full flex-col items-end gap-3">
+                {withLetters.length === 0 && letterErrors.length > 0 && (
+                  <div className="w-full rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    <p className="font-medium">
+                      {letterErrors.length} letter{letterErrors.length === 1 ? "" : "s"} not
+                      generated
+                    </p>
+                    <ul className="mt-1 list-disc pl-5 text-xs">
+                      {letterErrors.map((le, idx) => (
+                        <li key={idx}>
+                          {le.renter}: {le.message}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  {missingLetters.length > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={handleRetryLetters}
+                      disabled={retryingLetters}
+                      title="Re-run letter generation for items without one (e.g. after uploading the license photo)"
+                    >
+                      <RefreshCw
+                        className={`mr-2 h-4 w-4 ${retryingLetters ? "animate-spin" : ""}`}
+                      />
+                      {retryingLetters ? "Retrying…" : `Retry Letters (${missingLetters.length})`}
+                    </Button>
+                  )}
+                  {withLetters.length > 0 && (
+                    <Button onClick={handleZip} className="bg-emerald-600 hover:bg-emerald-700">
+                      <Download className="mr-2 h-4 w-4" /> Download All Letters
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })()
         ) : (
           <>
             {unmatchedCount > 0 && (

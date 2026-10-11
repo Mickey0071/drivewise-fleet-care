@@ -585,6 +585,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
       failed: number;
       errors: string[];
       reused: Array<{ violationId: string; stage: string }>;
+      letterErrors: Array<{ renter: string; message: string }>;
     }> => {
       const mode = data.mode ?? "all";
       const { data: items, error: iErr } = await supabaseAdmin
@@ -613,6 +614,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
       let failed = 0;
       const errors: string[] = [];
       const reused: Array<{ violationId: string; stage: string }> = [];
+      const letterErrors: Array<{ renter: string; message: string }> = [];
 
       for (const item of rows) {
         // Hard block: never persist a violation without its EZPass reference #.
@@ -800,6 +802,10 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
             generated++;
           } catch (e) {
             console.error("[ezpass] liability transfer gen failed:", e);
+            letterErrors.push({
+              renter: driverName ?? item.plate ?? "Unknown renter",
+              message: e instanceof Error ? e.message : String(e),
+            });
           }
         }
 
@@ -825,7 +831,7 @@ export const approveEzpassBatch = createServerFn({ method: "POST" })
           .eq("id", data.batchId);
       }
 
-      return { generated, matched, unmatched, total: rows.length, skippedNoRef, saved, failed, errors, reused };
+      return { generated, matched, unmatched, total: rows.length, skippedNoRef, saved, failed, errors, reused, letterErrors };
     },
   );
 
@@ -863,6 +869,47 @@ export const downloadAffidavitsZip = createServerFn({ method: "POST" })
     }
     return { filename: `EZPASS_LIABILITY_TRANSFERS_${data.batchId}.zip`, base64: btoa(bin) };
   });
+
+/**
+ * Re-run liability-transfer letter generation for batch items that have a
+ * saved violation but no letter yet (e.g. PPA letter failed for a missing
+ * license photo that has since been uploaded).
+ */
+export const retryBatchLetters = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ batchId: z.string().min(1).max(64) }).parse(input))
+  .handler(
+    async ({ data }): Promise<{
+      generated: number;
+      letterErrors: Array<{ renter: string; message: string }>;
+    }> => {
+      const { data: items, error } = await supabaseAdmin
+        .from("ezpass_batch_items")
+        .select("id, violation_id, affidavit_pdf_url, match_status, driver_name, plate")
+        .eq("batch_id", data.batchId);
+      if (error) throw new Error(error.message);
+      let generated = 0;
+      const letterErrors: Array<{ renter: string; message: string }> = [];
+      for (const item of items ?? []) {
+        if (!item.violation_id || item.affidavit_pdf_url) continue;
+        if (item.match_status !== "matched") continue;
+        try {
+          const res = await generateAndStoreLiabilityTransfer(item.violation_id as string);
+          await supabaseAdmin
+            .from("ezpass_batch_items")
+            .update({ affidavit_pdf_url: res.pdfUrl } as never)
+            .eq("id", item.id);
+          generated++;
+        } catch (e) {
+          letterErrors.push({
+            renter: (item.driver_name as string | null) ?? (item.plate as string | null) ?? "Unknown renter",
+            message: e instanceof Error ? e.message : String(e),
+          });
+        }
+      }
+      return { generated, letterErrors };
+    },
+  );
 
 export interface EzpassDebugRow {
   itemId: string;
