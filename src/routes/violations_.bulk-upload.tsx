@@ -731,9 +731,51 @@ function ReviewBatch({ batchId, onBack }: { batchId: string; onBack: () => void 
 
       <div className="mt-6 flex items-center justify-end gap-3">
         {approved ? (
-          <Button onClick={handleZip} className="bg-emerald-600 hover:bg-emerald-700">
-            <Download className="mr-2 h-4 w-4" /> Download All Letters
-          </Button>
+          (() => {
+            const withLetters = visibleItems.filter((i) => i.affidavit_pdf_url);
+            const missingLetters = visibleItems.filter(
+              (i) => i.violation_id && !i.affidavit_pdf_url && i.match_status === "matched",
+            );
+            return (
+              <div className="flex w-full flex-col items-end gap-3">
+                {withLetters.length === 0 && letterErrors.length > 0 && (
+                  <div className="w-full rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                    <p className="font-medium">
+                      {letterErrors.length} letter{letterErrors.length === 1 ? "" : "s"} not
+                      generated
+                    </p>
+                    <ul className="mt-1 list-disc pl-5 text-xs">
+                      {letterErrors.map((le, idx) => (
+                        <li key={idx}>
+                          {le.renter}: {le.message}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  {missingLetters.length > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={handleRetryLetters}
+                      disabled={retryingLetters}
+                      title="Re-run letter generation for items without one (e.g. after uploading the license photo)"
+                    >
+                      <RefreshCw
+                        className={`mr-2 h-4 w-4 ${retryingLetters ? "animate-spin" : ""}`}
+                      />
+                      {retryingLetters ? "Retrying…" : `Retry Letters (${missingLetters.length})`}
+                    </Button>
+                  )}
+                  {withLetters.length > 0 && (
+                    <Button onClick={handleZip} className="bg-emerald-600 hover:bg-emerald-700">
+                      <Download className="mr-2 h-4 w-4" /> Download All Letters
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })()
         ) : (
           <>
             {unmatchedCount > 0 && (
