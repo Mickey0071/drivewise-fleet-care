@@ -2656,7 +2656,7 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
           </div>
           <div>
             <Label>Replacement vehicle</Label>
-            {available.length === 0 ? (
+            {available.length === 0 && inRepair.length === 0 ? (
               <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">No available vehicles in the fleet.</div>
             ) : (
               <select
@@ -2668,7 +2668,20 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
                 {available.map(v => (
                   <option key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</option>
                 ))}
+                {inRepair.length > 0 && (
+                  <optgroup label="In repair — override">
+                    {inRepair.map(v => (
+                      <option key={v.id} value={v.id}>{formatVehiclePickerLabel(v)} · IN REPAIR</option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
+            )}
+            {swapTargetInRepair && (
+              <p className="mt-1.5 flex items-start gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-300">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                This vehicle is in the shop. Swapping onto it overrides the repair block — the reason below is recorded on the rental.
+              </p>
             )}
           </div>
           <div>
