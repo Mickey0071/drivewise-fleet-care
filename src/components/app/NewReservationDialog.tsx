@@ -307,13 +307,13 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       });
       return;
     }
-    // Open maintenance issue is a HARD block — the vehicle cannot be rented
-    // until the repair ticket is marked completed.
-    if (vehicle.hasOpenIssues) {
+    // Open maintenance issue blocks renting until the repair ticket is
+    // marked completed — unless an admin explicitly overrides it.
+    if (repairBlocked && !repairOverrideActive) {
       setOpenIssueWarning(true);
       return;
     }
-    if (!isVehicleBookable(vehicle.id, startDate, endDate || null, isAdmin && inspectionOverride)) {
+    if (!isVehicleBookable(vehicle.id, startDate, endDate || null, isAdmin && inspectionOverride, undefined, repairOverrideActive)) {
       toast.error("Vehicle unavailable", { description: "This vehicle is currently on rent, in repair, or manually blocked." });
       return;
     }
@@ -350,9 +350,11 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       rate: effectiveRate,
       depositPaid: deposit,
       skipDailyMinimum: billingPeriod === "daily" ? skipDailyMin : false,
-      notes: isSwap && existingRental
-        ? `Vehicle swap from rental ${existingRental.id}.${notes ? ` ${notes}` : ""}`
-        : (notes || undefined),
+      notes: [
+        isSwap && existingRental ? `Vehicle swap from rental ${existingRental.id}.` : "",
+        repairOverrideActive ? "REPAIR OVERRIDE: booked while vehicle has open repair / is in the shop." : "",
+        notes || "",
+      ].filter(Boolean).join(" ") || undefined,
     });
     await (newRental as { cloudReady?: Promise<unknown> }).cloudReady;
     if (isSwap && existingRental) {
