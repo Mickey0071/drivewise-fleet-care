@@ -23,9 +23,14 @@ import {
   approveRmTask, rejectRmTask,
   type RunnerTaskReport,
 } from "@/lib/runner-tasks-admin.functions";
+import { listMechanics, type SavedMechanic } from "@/lib/mechanics.functions";
+import { MechanicJobsTabs } from "@/components/app/MechanicJobsTabs";
+import { CompletedTaskAlerts } from "@/components/app/CompletedTaskAlerts";
 
 export const Route = createFileRoute("/admin/tasks")({
-  head: () => ({ meta: [{ title: "Runner Tasks — Camauto Rentals" }] }),
+  head: () => ({ meta: [{ title: "Tasks — Camauto Rentals" }] }),
+  validateSearch: (s: Record<string, unknown>): { tab?: string } =>
+    typeof s.tab === "string" ? { tab: s.tab } : {},
   component: TasksPage,
 });
 
@@ -49,16 +54,26 @@ function statusBadge(status: string) {
   return <Badge variant={m.variant}>{m.label}</Badge>;
 }
 
+function MechanicTasksTab() {
+  const listFn = useServerFn(listMechanics);
+  const { data: mechs = [] } = useQuery({ queryKey: ["saved-mechanics"], queryFn: () => listFn() });
+  return <MechanicJobsTabs mechanics={mechs as SavedMechanic[]} manage={null} />;
+}
+
 function TasksPage() {
+  const { tab } = Route.useSearch();
   return (
     <div>
-      <PageHeader title="Runner Tasks" subtitle="Submitted reports and runner performance" />
-      <Tabs defaultValue="tasks">
+      <PageHeader title="Tasks" subtitle="Runner and mechanic task completions" />
+      <CompletedTaskAlerts />
+      <Tabs defaultValue={tab === "mechanic" ? "mechanic" : "tasks"}>
         <TabsList className="mb-4">
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
+          <TabsTrigger value="tasks">Runner Tasks</TabsTrigger>
+          <TabsTrigger value="mechanic">Mechanic Tasks</TabsTrigger>
           <TabsTrigger value="history">Runner History</TabsTrigger>
         </TabsList>
         <TabsContent value="tasks"><TasksList /></TabsContent>
+        <TabsContent value="mechanic"><MechanicTasksTab /></TabsContent>
         <TabsContent value="history"><RunnerHistory /></TabsContent>
       </Tabs>
     </div>
