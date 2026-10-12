@@ -2612,6 +2612,15 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
   const currentV = vehicleById(rental.vehicleId);
   const d = driverById(rental.driverId);
   const available = vehicles.filter(v => isVehicleBookable(v.id) && v.id !== rental.vehicleId);
+  // In-repair vehicles can be swapped onto with an override (reason required below).
+  const inRepair = vehicles.filter(v =>
+    v.id !== rental.vehicleId &&
+    !v.archived &&
+    (v.hasOpenIssues || v.status === "maintenance") &&
+    v.status !== "rented" && v.status !== "impound" &&
+    isVehicleBookable(v.id, null, null, false, undefined, true)
+  );
+  const swapTargetInRepair = inRepair.some(v => v.id === newVehicleId);
   function confirm() {
     if (!rental || !newVehicleId) { toast.error("Pick a replacement vehicle"); return; }
     if (!reason.trim()) { toast.error("Reason for swap is required"); return; }
