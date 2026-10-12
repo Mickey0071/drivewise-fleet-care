@@ -2630,7 +2630,7 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
         (user?.user_metadata?.full_name as string | undefined) ||
         user?.email ||
         "Admin";
-      const { newVehicle } = swapVehicle(rental.id, newVehicleId, reason.trim(), swappedBy);
+      const { newVehicle } = swapVehicle(rental.id, newVehicleId, reason.trim(), swappedBy, swapTargetInRepair);
       if (d?.phone) {
         const msg = `Your vehicle has been swapped to ${newVehicle.year} ${newVehicle.make} ${newVehicle.model} (Plate ${newVehicle.plate}). Your rental continues.`;
         sendSmsFn({ data: { phone: d.phone, message: msg.slice(0, 1000), name: d.fullName } })

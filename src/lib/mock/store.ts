@@ -1819,7 +1819,8 @@ export function swapVehicle(rentalId: string, newVehicleId: string, reason?: str
   r.swapHistory = [...(r.swapHistory ?? []), swap];
   const historyLine =
     `Swapped vehicle ${oldVehicleId} → ${newVehicleId} on ${stamp.slice(0, 10)}` +
-    (reason ? ` — Reason: ${reason}` : "");
+    (reason ? ` — Reason: ${reason}` : "") +
+    (repairOverride && repairBlocked ? " — REPAIR OVERRIDE: target vehicle has open repair / is in the shop" : "");
   r.notes = [r.notes, historyLine].filter(Boolean).join(" · ");
   newV.status = "rented";
   if (oldV) {
