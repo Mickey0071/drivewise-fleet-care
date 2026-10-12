@@ -684,14 +684,16 @@ export function isVehicleBookable(
   newEnd?: Date | string | null,
   allowOverride = false,
   ignoreRentalId?: string,
+  repairOverride = false,
 ) {
   const vehicle = vehicles.find(v => v.id === vehicleId);
   if (!vehicle) return false;
   if (vehicle.archived) return false;
-  if (vehicle.status === "maintenance" || vehicle.status === "impound" || vehicle.status === "rented") return false;
+  if (vehicle.status === "impound" || vehicle.status === "rented") return false;
+  if (vehicle.status === "maintenance" && !repairOverride) return false;
   // An open maintenance issue (repair ticket) blocks the vehicle from rentals
-  // until the ticket is marked completed.
-  if (vehicle.hasOpenIssues) return false;
+  // until the ticket is marked completed — unless an admin overrides it.
+  if (vehicle.hasOpenIssues && !repairOverride) return false;
   if (vehicle.status === "inspection" && !allowOverride) return false;
   const s = newStart == null ? null : (newStart instanceof Date ? newStart : new Date(newStart));
   const e = newEnd == null ? null : (newEnd instanceof Date ? newEnd : new Date(newEnd));
