@@ -97,6 +97,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [saving, setSaving] = useState(false);
   const [openIssueWarning, setOpenIssueWarning] = useState(false);
   const [inspectionOverride, setInspectionOverride] = useState(false);
+  const [repairOverride, setRepairOverride] = useState(false);
 
   useEffect(() => {
     if (open && initialVehicleId) {
@@ -142,30 +143,34 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
 
   // Hard block: selected dates overlap a maintenance repair or on-rent window
   // for the chosen vehicle. Drives the calendar warning + disables Continue.
+  // With an admin repair override, repair/manual blocks warn but don't stop;
+  // on-rent overlaps always block.
   const dateOverlapBlock = useMemo(() => {
     if (!vehicleId || !startDate) return null;
-    return rangeOverlapsBlocks(getVehicleBlocks(vehicleId), new Date(`${startDate}T00:00:00`), endDate ? new Date(`${endDate}T00:00:00`) : null);
-  }, [vehicleId, startDate, endDate]);
+    const hit = rangeOverlapsBlocks(getVehicleBlocks(vehicleId), new Date(`${startDate}T00:00:00`), endDate ? new Date(`${endDate}T00:00:00`) : null);
+    if (hit && repairOverride && hit.kind !== "onrent") return null;
+    return hit;
+  }, [vehicleId, startDate, endDate, repairOverride]);
 
   const selectedVehicleUnavailable = useMemo(() => {
     if (!vehicleId || !startDate) return false;
-    return !isVehicleBookable(vehicleId, startDate, endDate || null, isAdmin && inspectionOverride);
-  }, [vehicleId, startDate, endDate, isAdmin, inspectionOverride]);
+    return !isVehicleBookable(vehicleId, startDate, endDate || null, isAdmin && inspectionOverride, undefined, isAdmin && repairOverride);
+  }, [vehicleId, startDate, endDate, isAdmin, inspectionOverride, repairOverride]);
 
   const availableVehicles = useMemo(
     () => activeVehicles().filter(v => {
       const bookable = startDate
         ? isVehicleBookable(v.id, startDate, endDate || null)
         : isVehicleBookable(v.id);
-      // Keep blocked-for-issue and awaiting-inspection vehicles in the list so
-      // the user gets an explanatory alert when they try to book them.
-      if (!bookable && !awaitingPostReturnInspection(v.id) && !v.hasOpenIssues) return false;
+      // Keep blocked-for-issue, in-maintenance and awaiting-inspection vehicles
+      // in the list so the user gets an explanatory alert when they try to book them.
+      if (!bookable && !awaitingPostReturnInspection(v.id) && !v.hasOpenIssues && !(isAdmin && v.status === "maintenance")) return false;
       return (
         vehQ === "" ||
         `${v.year} ${v.make} ${v.model} ${v.plate}`.toLowerCase().includes(vehQ.toLowerCase())
       );
     }),
-    [vehQ, startDate, endDate]
+    [vehQ, startDate, endDate, isAdmin]
   );
 
   // If dates change after a vehicle is picked, clear stale selection.
