@@ -179,12 +179,13 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     if (!vehicleId || !startDate) return;
     const stillOk = isVehicleBookable(vehicleId, startDate, endDate || null)
       || awaitingPostReturnInspection(vehicleId)
-      || (vehicles.find(v => v.id === vehicleId)?.hasOpenIssues ?? false);
+      || (vehicles.find(v => v.id === vehicleId)?.hasOpenIssues ?? false)
+      || (repairOverride && vehicles.find(v => v.id === vehicleId)?.status === "maintenance");
     if (!stillOk) {
       setVehicleId(null);
       setVehicleClearedNotice(true);
     }
-  }, [startDate, endDate, vehicleId]);
+  }, [startDate, endDate, vehicleId, repairOverride]);
 
   const filteredDrivers = useMemo(
     () => drivers.filter(d => d.status !== "suspended" && (
@@ -213,6 +214,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     setIsSwap(false);
     setNewDriver(emptyDriver);
     setInspectionOverride(false);
+    setRepairOverride(false);
   }
   async function createDriver() {
     if (!newDriver.firstName.trim() || !newDriver.lastName.trim()) {
