@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -468,12 +469,12 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                 {availableVehicles.map(v => {
                   const selected = v.id === vehicleId;
                   const needsInspection = awaitingPostReturnInspection(v.id);
-                  const blockedForIssue = v.hasOpenIssues;
+                  const blockedForIssue = v.hasOpenIssues || v.status === "maintenance";
                   return (
                     <button
                       key={v.id}
                       type="button"
-                      onClick={() => { setVehicleId(v.id); if (v.hasOpenIssues) setOpenIssueWarning(true); }}
+                      onClick={() => { setVehicleId(v.id); if (blockedForIssue && !(isAdmin && repairOverride)) setOpenIssueWarning(true); }}
                       className={cn(
                         "flex items-start gap-3 rounded-lg border bg-card p-3 text-left transition hover:border-primary/50",
                         selected && "border-primary ring-2 ring-primary/20",
@@ -491,7 +492,12 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                           )}
                           {blockedForIssue && (
                             <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
-                              <AlertTriangle className="h-3 w-3" /> Open maintenance issue
+                              <AlertTriangle className="h-3 w-3" /> {v.hasOpenIssues ? "Open maintenance issue" : "In the shop"}
+                            </span>
+                          )}
+                          {selected && blockedForIssue && isAdmin && repairOverride && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                              <AlertTriangle className="h-3 w-3" /> Repair override active
                             </span>
                           )}
                         </div>
