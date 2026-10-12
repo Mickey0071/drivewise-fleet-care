@@ -209,7 +209,7 @@ export function MechanicJobsTabs({ mechanics, manage }: { mechanics: SavedMechan
           })}
           <TabsTrigger value="all">All</TabsTrigger>
           {other.length > 0 && <TabsTrigger value="__other">Other</TabsTrigger>}
-          <TabsTrigger value="manage">Manage mechanics</TabsTrigger>
+          {manage ? <TabsTrigger value="manage">Manage mechanics</TabsTrigger> : null}
         </TabsList>
 
         {loading ? (
@@ -231,7 +231,7 @@ export function MechanicJobsTabs({ mechanics, manage }: { mechanics: SavedMechan
             </TabsContent>
           </>
         )}
-        <TabsContent value="manage" className="space-y-6">{manage}</TabsContent>
+        {manage ? <TabsContent value="manage" className="space-y-6">{manage}</TabsContent> : null}
       </Tabs>
       <ViewDiagnosisDialog job={viewing} onClose={() => setViewing(null)} />
     </>
