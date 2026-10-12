@@ -1786,13 +1786,16 @@ export function markReturnedAwaitingInspection(id: string, endDate?: string) {
 }
 
 /** Swap the vehicle on an active rental. Old vehicle → available, new → rented. */
-export function swapVehicle(rentalId: string, newVehicleId: string, reason?: string, swappedBy?: string) {
+export function swapVehicle(rentalId: string, newVehicleId: string, reason?: string, swappedBy?: string, repairOverride = false) {
   const r = rentals.find(x => x.id === rentalId);
   if (!r) throw new Error("Rental not found");
   if (r.vehicleId === newVehicleId) throw new Error("Already on that vehicle");
   const newV = vehicles.find(v => v.id === newVehicleId);
   if (!newV) throw new Error("New vehicle not found");
-  if (newV.status !== "available") throw new Error("Target vehicle is not available");
+  const repairBlocked = newV.status === "maintenance" || !!newV.hasOpenIssues;
+  if (newV.status !== "available" && !(repairOverride && repairBlocked && newV.status !== "rented" && newV.status !== "impound" && !newV.archived)) {
+    throw new Error("Target vehicle is not available");
+  }
   // Guard against double-booking the target vehicle for this rental's window.
   if (hasConflict(newVehicleId, r.startDate, r.endDate ?? undefined, r.id)) {
     throw new Error(`Cannot swap: ${newV.year} ${newV.make} ${newV.model} is already booked during this rental's dates.`);
