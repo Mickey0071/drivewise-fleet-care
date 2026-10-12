@@ -922,6 +922,19 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel rental</AlertDialogCancel>
+          {isAdmin && (
+            <AlertDialogAction
+              onClick={() => {
+                setRepairOverride(true);
+                setOpenIssueWarning(false);
+                toast.warning("Repair override active", {
+                  description: "This reservation will be booked while the vehicle has an open repair.",
+                });
+              }}
+            >
+              Rent anyway (override)
+            </AlertDialogAction>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
