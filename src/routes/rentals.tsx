@@ -19,7 +19,7 @@ import { RenterName } from "@/components/app/RenterProfileProvider";
 import { useEffect, useRef, useState } from "react";
 import { Car, Truck, ClipboardCheck, CheckCircle2, CalendarPlus, FileSignature, Clock, DollarSign, X as XIcon, MessageSquare, Printer, Send, PackageCheck, ListChecks, Mail, Copy, ChevronDown, ArrowLeftRight, Undo2, Ban, Download, Smartphone, Percent, CreditCard, Wrench, Lock } from "lucide-react";
 import { Search as SearchIcon, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
-import { LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, AlertTriangle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -2612,6 +2612,15 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
   const currentV = vehicleById(rental.vehicleId);
   const d = driverById(rental.driverId);
   const available = vehicles.filter(v => isVehicleBookable(v.id) && v.id !== rental.vehicleId);
+  // In-repair vehicles can be swapped onto with an override (reason required below).
+  const inRepair = vehicles.filter(v =>
+    v.id !== rental.vehicleId &&
+    !v.archived &&
+    (v.hasOpenIssues || v.status === "maintenance") &&
+    v.status !== "rented" && v.status !== "impound" &&
+    isVehicleBookable(v.id, null, null, false, undefined, true)
+  );
+  const swapTargetInRepair = inRepair.some(v => v.id === newVehicleId);
   function confirm() {
     if (!rental || !newVehicleId) { toast.error("Pick a replacement vehicle"); return; }
     if (!reason.trim()) { toast.error("Reason for swap is required"); return; }
@@ -2621,7 +2630,7 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
         (user?.user_metadata?.full_name as string | undefined) ||
         user?.email ||
         "Admin";
-      const { newVehicle } = swapVehicle(rental.id, newVehicleId, reason.trim(), swappedBy);
+      const { newVehicle } = swapVehicle(rental.id, newVehicleId, reason.trim(), swappedBy, swapTargetInRepair);
       if (d?.phone) {
         const msg = `Your vehicle has been swapped to ${newVehicle.year} ${newVehicle.make} ${newVehicle.model} (Plate ${newVehicle.plate}). Your rental continues.`;
         sendSmsFn({ data: { phone: d.phone, message: msg.slice(0, 1000), name: d.fullName } })
@@ -2647,7 +2656,7 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
           </div>
           <div>
             <Label>Replacement vehicle</Label>
-            {available.length === 0 ? (
+            {available.length === 0 && inRepair.length === 0 ? (
               <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">No available vehicles in the fleet.</div>
             ) : (
               <select
@@ -2659,7 +2668,20 @@ function SwapVehicleDialog({ rental, onClose }: { rental: Rental | null; onClose
                 {available.map(v => (
                   <option key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</option>
                 ))}
+                {inRepair.length > 0 && (
+                  <optgroup label="In repair — override">
+                    {inRepair.map(v => (
+                      <option key={v.id} value={v.id}>{formatVehiclePickerLabel(v)} · IN REPAIR</option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
+            )}
+            {swapTargetInRepair && (
+              <p className="mt-1.5 flex items-start gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-300">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                This vehicle is in the shop. Swapping onto it overrides the repair block — the reason below is recorded on the rental.
+              </p>
             )}
           </div>
           <div>

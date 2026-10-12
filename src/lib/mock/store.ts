@@ -684,14 +684,16 @@ export function isVehicleBookable(
   newEnd?: Date | string | null,
   allowOverride = false,
   ignoreRentalId?: string,
+  repairOverride = false,
 ) {
   const vehicle = vehicles.find(v => v.id === vehicleId);
   if (!vehicle) return false;
   if (vehicle.archived) return false;
-  if (vehicle.status === "maintenance" || vehicle.status === "impound" || vehicle.status === "rented") return false;
+  if (vehicle.status === "impound" || vehicle.status === "rented") return false;
+  if (vehicle.status === "maintenance" && !repairOverride) return false;
   // An open maintenance issue (repair ticket) blocks the vehicle from rentals
-  // until the ticket is marked completed.
-  if (vehicle.hasOpenIssues) return false;
+  // until the ticket is marked completed — unless an admin overrides it.
+  if (vehicle.hasOpenIssues && !repairOverride) return false;
   if (vehicle.status === "inspection" && !allowOverride) return false;
   const s = newStart == null ? null : (newStart instanceof Date ? newStart : new Date(newStart));
   const e = newEnd == null ? null : (newEnd instanceof Date ? newEnd : new Date(newEnd));
@@ -1784,13 +1786,16 @@ export function markReturnedAwaitingInspection(id: string, endDate?: string) {
 }
 
 /** Swap the vehicle on an active rental. Old vehicle → available, new → rented. */
-export function swapVehicle(rentalId: string, newVehicleId: string, reason?: string, swappedBy?: string) {
+export function swapVehicle(rentalId: string, newVehicleId: string, reason?: string, swappedBy?: string, repairOverride = false) {
   const r = rentals.find(x => x.id === rentalId);
   if (!r) throw new Error("Rental not found");
   if (r.vehicleId === newVehicleId) throw new Error("Already on that vehicle");
   const newV = vehicles.find(v => v.id === newVehicleId);
   if (!newV) throw new Error("New vehicle not found");
-  if (newV.status !== "available") throw new Error("Target vehicle is not available");
+  const repairBlocked = newV.status === "maintenance" || !!newV.hasOpenIssues;
+  if (newV.status !== "available" && !(repairOverride && repairBlocked && newV.status !== "rented" && newV.status !== "impound" && !newV.archived)) {
+    throw new Error("Target vehicle is not available");
+  }
   // Guard against double-booking the target vehicle for this rental's window.
   if (hasConflict(newVehicleId, r.startDate, r.endDate ?? undefined, r.id)) {
     throw new Error(`Cannot swap: ${newV.year} ${newV.make} ${newV.model} is already booked during this rental's dates.`);
@@ -1814,7 +1819,8 @@ export function swapVehicle(rentalId: string, newVehicleId: string, reason?: str
   r.swapHistory = [...(r.swapHistory ?? []), swap];
   const historyLine =
     `Swapped vehicle ${oldVehicleId} → ${newVehicleId} on ${stamp.slice(0, 10)}` +
-    (reason ? ` — Reason: ${reason}` : "");
+    (reason ? ` — Reason: ${reason}` : "") +
+    (repairOverride && repairBlocked ? " — REPAIR OVERRIDE: target vehicle has open repair / is in the shop" : "");
   r.notes = [r.notes, historyLine].filter(Boolean).join(" · ");
   newV.status = "rented";
   if (oldV) {

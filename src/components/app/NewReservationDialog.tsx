@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -97,6 +98,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
   const [saving, setSaving] = useState(false);
   const [openIssueWarning, setOpenIssueWarning] = useState(false);
   const [inspectionOverride, setInspectionOverride] = useState(false);
+  const [repairOverride, setRepairOverride] = useState(false);
 
   useEffect(() => {
     if (open && initialVehicleId) {
@@ -142,30 +144,34 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
 
   // Hard block: selected dates overlap a maintenance repair or on-rent window
   // for the chosen vehicle. Drives the calendar warning + disables Continue.
+  // With an admin repair override, repair/manual blocks warn but don't stop;
+  // on-rent overlaps always block.
   const dateOverlapBlock = useMemo(() => {
     if (!vehicleId || !startDate) return null;
-    return rangeOverlapsBlocks(getVehicleBlocks(vehicleId), new Date(`${startDate}T00:00:00`), endDate ? new Date(`${endDate}T00:00:00`) : null);
-  }, [vehicleId, startDate, endDate]);
+    const hit = rangeOverlapsBlocks(getVehicleBlocks(vehicleId), new Date(`${startDate}T00:00:00`), endDate ? new Date(`${endDate}T00:00:00`) : null);
+    if (hit && repairOverride && hit.kind !== "onrent") return null;
+    return hit;
+  }, [vehicleId, startDate, endDate, repairOverride]);
 
   const selectedVehicleUnavailable = useMemo(() => {
     if (!vehicleId || !startDate) return false;
-    return !isVehicleBookable(vehicleId, startDate, endDate || null, isAdmin && inspectionOverride);
-  }, [vehicleId, startDate, endDate, isAdmin, inspectionOverride]);
+    return !isVehicleBookable(vehicleId, startDate, endDate || null, isAdmin && inspectionOverride, undefined, isAdmin && repairOverride);
+  }, [vehicleId, startDate, endDate, isAdmin, inspectionOverride, repairOverride]);
 
   const availableVehicles = useMemo(
     () => activeVehicles().filter(v => {
       const bookable = startDate
         ? isVehicleBookable(v.id, startDate, endDate || null)
         : isVehicleBookable(v.id);
-      // Keep blocked-for-issue and awaiting-inspection vehicles in the list so
-      // the user gets an explanatory alert when they try to book them.
-      if (!bookable && !awaitingPostReturnInspection(v.id) && !v.hasOpenIssues) return false;
+      // Keep blocked-for-issue, in-maintenance and awaiting-inspection vehicles
+      // in the list so the user gets an explanatory alert when they try to book them.
+      if (!bookable && !awaitingPostReturnInspection(v.id) && !v.hasOpenIssues && !(isAdmin && v.status === "maintenance")) return false;
       return (
         vehQ === "" ||
         `${v.year} ${v.make} ${v.model} ${v.plate}`.toLowerCase().includes(vehQ.toLowerCase())
       );
     }),
-    [vehQ, startDate, endDate]
+    [vehQ, startDate, endDate, isAdmin]
   );
 
   // If dates change after a vehicle is picked, clear stale selection.
@@ -174,12 +180,13 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     if (!vehicleId || !startDate) return;
     const stillOk = isVehicleBookable(vehicleId, startDate, endDate || null)
       || awaitingPostReturnInspection(vehicleId)
-      || (vehicles.find(v => v.id === vehicleId)?.hasOpenIssues ?? false);
+      || (vehicles.find(v => v.id === vehicleId)?.hasOpenIssues ?? false)
+      || (repairOverride && vehicles.find(v => v.id === vehicleId)?.status === "maintenance");
     if (!stillOk) {
       setVehicleId(null);
       setVehicleClearedNotice(true);
     }
-  }, [startDate, endDate, vehicleId]);
+  }, [startDate, endDate, vehicleId, repairOverride]);
 
   const filteredDrivers = useMemo(
     () => drivers.filter(d => d.status !== "suspended" && (
@@ -208,6 +215,7 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     setIsSwap(false);
     setNewDriver(emptyDriver);
     setInspectionOverride(false);
+    setRepairOverride(false);
   }
   async function createDriver() {
     if (!newDriver.firstName.trim() || !newDriver.lastName.trim()) {
@@ -264,16 +272,19 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     if (!v) setTimeout(reset, 200);
   }
 
+  const repairBlocked = !!vehicle && (vehicle.hasOpenIssues || vehicle.status === "maintenance");
+  const repairOverrideActive = isAdmin && repairOverride && repairBlocked;
+
   const canNext =
     (step === 0 && !!startDate && !dateOverlapBlock && !selectedVehicleUnavailable) ||
-    (step === 1 && !!vehicle && !vehicle.hasOpenIssues && isVehicleBookable(vehicle.id, startDate || null, endDate || null, isAdmin && inspectionOverride)) ||
+    (step === 1 && !!vehicle && (!repairBlocked || repairOverrideActive) && isVehicleBookable(vehicle.id, startDate || null, endDate || null, isAdmin && inspectionOverride, undefined, repairOverrideActive)) ||
     (step === 2 && !!driver && (!existingRental || isSwap)) ||
     step === 3;
 
   function next() {
-    // Open maintenance issue is a HARD block — cannot advance past the
-    // Vehicle step until the repair ticket is marked completed.
-    if (step === 1 && vehicle?.hasOpenIssues) {
+    // Open maintenance issue blocks the Vehicle step until the repair ticket
+    // is marked completed — unless an admin explicitly overrides it.
+    if (step === 1 && repairBlocked && !repairOverrideActive) {
       setOpenIssueWarning(true);
       return;
     }
@@ -297,13 +308,13 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       });
       return;
     }
-    // Open maintenance issue is a HARD block — the vehicle cannot be rented
-    // until the repair ticket is marked completed.
-    if (vehicle.hasOpenIssues) {
+    // Open maintenance issue blocks renting until the repair ticket is
+    // marked completed — unless an admin explicitly overrides it.
+    if (repairBlocked && !repairOverrideActive) {
       setOpenIssueWarning(true);
       return;
     }
-    if (!isVehicleBookable(vehicle.id, startDate, endDate || null, isAdmin && inspectionOverride)) {
+    if (!isVehicleBookable(vehicle.id, startDate, endDate || null, isAdmin && inspectionOverride, undefined, repairOverrideActive)) {
       toast.error("Vehicle unavailable", { description: "This vehicle is currently on rent, in repair, or manually blocked." });
       return;
     }
@@ -340,9 +351,11 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
       rate: effectiveRate,
       depositPaid: deposit,
       skipDailyMinimum: billingPeriod === "daily" ? skipDailyMin : false,
-      notes: isSwap && existingRental
-        ? `Vehicle swap from rental ${existingRental.id}.${notes ? ` ${notes}` : ""}`
-        : (notes || undefined),
+      notes: [
+        isSwap && existingRental ? `Vehicle swap from rental ${existingRental.id}.` : "",
+        repairOverrideActive ? "REPAIR OVERRIDE: booked while vehicle has open repair / is in the shop." : "",
+        notes || "",
+      ].filter(Boolean).join(" ") || undefined,
     });
     await (newRental as { cloudReady?: Promise<unknown> }).cloudReady;
     if (isSwap && existingRental) {
@@ -456,12 +469,12 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                 {availableVehicles.map(v => {
                   const selected = v.id === vehicleId;
                   const needsInspection = awaitingPostReturnInspection(v.id);
-                  const blockedForIssue = v.hasOpenIssues;
+                  const blockedForIssue = v.hasOpenIssues || v.status === "maintenance";
                   return (
                     <button
                       key={v.id}
                       type="button"
-                      onClick={() => { setVehicleId(v.id); if (v.hasOpenIssues) setOpenIssueWarning(true); }}
+                      onClick={() => { setVehicleId(v.id); if (blockedForIssue && !(isAdmin && repairOverride)) setOpenIssueWarning(true); }}
                       className={cn(
                         "flex items-start gap-3 rounded-lg border bg-card p-3 text-left transition hover:border-primary/50",
                         selected && "border-primary ring-2 ring-primary/20",
@@ -479,7 +492,12 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
                           )}
                           {blockedForIssue && (
                             <span className="inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
-                              <AlertTriangle className="h-3 w-3" /> Open maintenance issue
+                              <AlertTriangle className="h-3 w-3" /> {v.hasOpenIssues ? "Open maintenance issue" : "In the shop"}
+                            </span>
+                          )}
+                          {selected && blockedForIssue && isAdmin && repairOverride && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                              <AlertTriangle className="h-3 w-3" /> Repair override active
                             </span>
                           )}
                         </div>
@@ -910,6 +928,19 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel rental</AlertDialogCancel>
+          {isAdmin && (
+            <AlertDialogAction
+              onClick={() => {
+                setRepairOverride(true);
+                setOpenIssueWarning(false);
+                toast.warning("Repair override active", {
+                  description: "This reservation will be booked while the vehicle has an open repair.",
+                });
+              }}
+            >
+              Rent anyway (override)
+            </AlertDialogAction>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
