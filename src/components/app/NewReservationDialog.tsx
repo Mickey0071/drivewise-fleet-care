@@ -271,16 +271,19 @@ export function NewReservationDialog({ open, onOpenChange, initialVehicleId }: P
     if (!v) setTimeout(reset, 200);
   }
 
+  const repairBlocked = !!vehicle && (vehicle.hasOpenIssues || vehicle.status === "maintenance");
+  const repairOverrideActive = isAdmin && repairOverride && repairBlocked;
+
   const canNext =
     (step === 0 && !!startDate && !dateOverlapBlock && !selectedVehicleUnavailable) ||
-    (step === 1 && !!vehicle && !vehicle.hasOpenIssues && isVehicleBookable(vehicle.id, startDate || null, endDate || null, isAdmin && inspectionOverride)) ||
+    (step === 1 && !!vehicle && (!repairBlocked || repairOverrideActive) && isVehicleBookable(vehicle.id, startDate || null, endDate || null, isAdmin && inspectionOverride, undefined, repairOverrideActive)) ||
     (step === 2 && !!driver && (!existingRental || isSwap)) ||
     step === 3;
 
   function next() {
-    // Open maintenance issue is a HARD block — cannot advance past the
-    // Vehicle step until the repair ticket is marked completed.
-    if (step === 1 && vehicle?.hasOpenIssues) {
+    // Open maintenance issue blocks the Vehicle step until the repair ticket
+    // is marked completed — unless an admin explicitly overrides it.
+    if (step === 1 && repairBlocked && !repairOverrideActive) {
       setOpenIssueWarning(true);
       return;
     }
