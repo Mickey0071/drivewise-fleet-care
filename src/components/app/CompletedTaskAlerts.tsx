@@ -79,7 +79,7 @@ export function CompletedTaskAlerts() {
         const v = j.vehicle_id ? vehicleById(j.vehicle_id) : null;
         return (
           <div key={j.id} className="flex items-start justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 px-4 py-3">
-            <Link to="/admin/tasks" search={{ tab: "mechanic" } as any} className="flex min-w-0 items-start gap-3">
+            <Link to="/admin/tasks" search={{ tab: "mechanic" }} className="flex min-w-0 items-start gap-3">
               <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
                 <Wrench className="h-4 w-4" />
               </span>
@@ -101,7 +101,7 @@ export function CompletedTaskAlerts() {
           key={a.id}
           className="flex items-start justify-between gap-3 rounded-lg border border-green-600/40 bg-green-600/10 px-4 py-3"
         >
-          <Link to="/admin/tasks" className="flex min-w-0 items-start gap-3">
+          <Link to="/admin/tasks" search={{}} className="flex min-w-0 items-start gap-3">
             <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-600/20 text-green-700 dark:text-green-400">
               <CheckCircle2 className="h-4 w-4" />
             </span>
