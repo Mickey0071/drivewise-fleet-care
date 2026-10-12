@@ -435,19 +435,12 @@ export const submitMechanicJob = createServerFn({ method: "POST" })
       `Labour: $${data.labourCost.toFixed(2)}\nTotal: $${total.toFixed(2)}\n\n` +
       `✅ Accept: ${origin}/repair/accept/${acceptToken}\n` +
       `❌ Decline: ${origin}/repair/decline/${declineToken}`;
+    // Always text the admin's cell directly when a mechanic task is completed.
     try {
-      const { raiseAlert } = await import("@/lib/alerts.server");
-      await raiseAlert(
-        {
-          section: "repairs",
-          alertType: "mechanic_submit",
-          plate: vehiclePlate || null,
-          vehicleLabel: vehicleLabel,
-          headline: vehicleLabel,
-          detail: adminMsg,
-          severity: 2,
-        },
-        { toggleKey: "sms_on_mechanic_submit" },
+      await sendSms(
+        ADMIN_REPAIR_PHONE,
+        `Mechanic task complete\n${adminMsg}\n\nView: ${origin}/admin/tasks`,
+        "Camauto Admin",
       );
     } catch (e) {
       console.error("admin SMS failed", e);
