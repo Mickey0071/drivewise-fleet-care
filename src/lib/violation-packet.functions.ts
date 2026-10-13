@@ -261,6 +261,10 @@ export const downloadViolationPacket = createServerFn({ method: "POST" })
     const missing: string[] = [];
     const parts: Array<{ label: string; url?: string | null }> = [];
     if (inc.agreement) parts.push({ label: "Signed Rental Agreement", url: rental?.agreement_pdf_url });
+    if (inc.agreement && rental?.id) {
+      const { addendumPartsFor } = await import("@/lib/additional-drivers.functions");
+      parts.push(...(await addendumPartsFor(rental.id as string, (v.date_issued as string | null) ?? null)));
+    }
     if (inc.license) parts.push({ label: "Driver's License", url: rental?.license_image_url });
     if (inc.selfie) parts.push({ label: "Renter Selfie", url: rental?.selfie_image_url });
     if (inc.signature) parts.push({ label: "Renter Signature", url: rental?.client_signature_url });

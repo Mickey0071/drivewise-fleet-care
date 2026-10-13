@@ -42,6 +42,10 @@ export const downloadClientPacket = createServerFn({ method: "POST" })
       { label: "Renter Selfie", url: rental.selfie_image_url },
       { label: "Renter Signature", url: rental.client_signature_url },
     ];
+    {
+      const { addendumPartsFor } = await import("@/lib/additional-drivers.functions");
+      parts.splice(1, 0, ...(await addendumPartsFor(rental.id)));
+    }
 
     const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
     const out = await PDFDocument.create();
