@@ -503,21 +503,4 @@ export function authorizedAt<T extends { reviewed_at?: string | null; revoked_at
   });
 }
 
-/** Short-lived URLs for addendum PDFs to merge into packets. */
-export async function addendumPartsFor(rentalId: string | null | undefined, date?: string | null): Promise<Array<{ label: string; url: string | null }>> {
-  if (!rentalId) return [];
-  const { data: rows } = await supabaseAdmin
-    .from("additional_drivers")
-    .select("full_name, status, reviewed_at, revoked_at, addendum_pdf_url")
-    .eq("rental_id", rentalId)
-    .in("status", ["approved", "revoked"]);
-  const list = date === undefined ? ((rows ?? []) as any[]).filter((r) => r.status === "approved") : authorizedAt((rows ?? []) as any[], date);
-  return Promise.all(
-    list.filter((r) => r.addendum_pdf_url).map(async (r) => ({
-      label: `Additional Driver Addendum — ${r.full_name}`,
-      url: await signedUrl(r.addendum_pdf_url, 600),
-    })),
-  );
-}
-
 export type { AckKey };

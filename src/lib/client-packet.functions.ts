@@ -43,7 +43,7 @@ export const downloadClientPacket = createServerFn({ method: "POST" })
       { label: "Renter Signature", url: rental.client_signature_url },
     ];
     {
-      const { addendumPartsFor } = await import("@/lib/additional-drivers.functions");
+      const { addendumPartsFor } = await import("@/lib/additional-drivers.server");
       parts.splice(1, 0, ...(await addendumPartsFor(rental.id)));
     }
 
