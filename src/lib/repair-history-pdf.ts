@@ -1,3 +1,5 @@
+import { BRAND_RGB } from "@/lib/branding";
+import { drawBrandedPdfHeader, finalizeBrandedPdf } from "@/lib/branded-pdf";
 import type { Vehicle } from "@/lib/mock/data";
 
 // ---------------------------------------------------------------------------
@@ -19,10 +21,10 @@ export interface RepairHistoryRow {
   amount: number;
 }
 
-const COLOR_TEXT: [number, number, number] = [26, 26, 26];
+const COLOR_TEXT: [number, number, number] = BRAND_RGB.dark;
 const COLOR_MUTED: [number, number, number] = [102, 102, 102];
 const COLOR_BORDER: [number, number, number] = [204, 204, 204];
-const RGB_GREEN: [number, number, number] = [45, 184, 75];
+const RGB_GREEN: [number, number, number] = BRAND_RGB.green;
 
 const money = (n: number | null) =>
   n == null || Number.isNaN(n)
@@ -41,12 +43,12 @@ export async function renderRepairHistoryPdf(
   const left = 40;
   const right = pageW - 40;
   const contentW = right - left;
-  let y = 50;
+  let y = drawBrandedPdfHeader(doc) + 10;
 
   const ensure = (need: number) => {
     if (y + need > pageH - 50) {
       doc.addPage();
-      y = 50;
+      y = 100;
     }
   };
 
@@ -182,5 +184,6 @@ export async function renderRepairHistoryPdf(
     doc.text(`Page ${p} of ${pageCount}`, right, pageH - 20, { align: "right" });
   }
 
+  finalizeBrandedPdf(doc, { title: "Repair History & Expenses" });
   return doc.output("blob");
 }

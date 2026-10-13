@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import logoUrl from "@/assets/camauto-logo.jpeg";
+import { BRAND_COLORS, logoBytes } from "@/lib/branding";
 
 export interface PnLExportData {
   periodLabel: string;
@@ -50,17 +50,12 @@ export interface PnLExportData {
   }[];
 }
 
-const BRAND = "0F172A"; // dark slate
-const ACCENT = "2563EB"; // primary blue
-const SOFT = "F1F5F9";
+const BRAND = BRAND_COLORS.dark;
+const ACCENT = BRAND_COLORS.green;
+const SOFT = BRAND_COLORS.band;
 
 async function fetchLogoBuffer(): Promise<ArrayBuffer | null> {
-  try {
-    const res = await fetch(logoUrl);
-    return await res.arrayBuffer();
-  } catch {
-    return null;
-  }
+  return logoBytes().buffer as ArrayBuffer;
 }
 
 export async function downloadPnLExcel(data: PnLExportData, filename = "pnl-summary.xlsx") {
