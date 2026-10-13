@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Download } from "lucide-react";
 import { activeVehicles, vehicleById, fmtMoney, fmtDate } from "@/lib/mock/data";
 import { downloadCSV } from "@/lib/exports";
+import { downloadBrandedXlsx } from "@/lib/branded-xlsx";
+import { downloadBrandedTablePdf } from "@/lib/branded-pdf";
 import { useExpenseCategories } from "@/hooks/use-expense-categories";
 import { buildCombinedExpenses, type CombinedExpense } from "@/lib/combined-expenses";
 import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
@@ -57,15 +59,28 @@ export function ExpenseReportDialog({ open, onOpenChange }: Props) {
 
   const grandTotal = filtered.reduce((s, e) => s + e.amount, 0);
 
+  const headers = ["Date", "Category", "Amount", "Vehicle", "Vendor", "Payment", "Description"];
+  const rows = () => filtered.map((e) => [
+    e.date, e.category, e.amount, vehicleLabel(e.vehicleId),
+    e.vendor ?? "", e.expense?.paymentMethod ?? "", e.notes ?? "",
+  ]);
+  const period = from || to ? `${from || "start"} → ${to || "today"}` : "All dates";
   function exportCSV() {
-    downloadCSV(
-      "expense-report.csv",
-      ["Date", "Category", "Amount", "Vehicle", "Vendor", "Payment", "Description"],
-      filtered.map((e) => [
-        e.date, e.category, e.amount, vehicleLabel(e.vehicleId),
-        e.vendor ?? "", e.expense?.paymentMethod ?? "", e.notes ?? "",
-      ]),
-    );
+    downloadCSV("expense-report.csv", headers, rows());
+  }
+  async function exportXlsx() {
+    await downloadBrandedXlsx("expense-report.xlsx", [
+      { name: "Expenses", title: "Expense Report", period, headers, rows: rows() },
+      {
+        name: "Summary", title: `Expense Summary by ${groupBy}`, period,
+        headers: [groupBy === "month" ? "Month" : groupBy === "vehicle" ? "Vehicle" : "Category", "Items", "Total"],
+        kinds: ["text", "number", "currency"],
+        rows: groups.map(([k, g]) => [k, g.items.length, g.total]),
+      },
+    ]);
+  }
+  async function exportPdf() {
+    await downloadBrandedTablePdf("expense-report.pdf", { title: "Expense Report", period, headers, rows: rows() });
   }
 
   return (
@@ -141,8 +156,14 @@ export function ExpenseReportDialog({ open, onOpenChange }: Props) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-          <Button onClick={exportCSV} disabled={filtered.length === 0}>
-            <Download className="mr-1.5 h-4 w-4" /> Export CSV
+          <Button variant="ghost" onClick={exportCSV} disabled={filtered.length === 0}>
+            Raw data (CSV)
+          </Button>
+          <Button variant="outline" onClick={exportPdf} disabled={filtered.length === 0}>
+            PDF
+          </Button>
+          <Button onClick={exportXlsx} disabled={filtered.length === 0}>
+            <Download className="mr-1.5 h-4 w-4" /> Download Excel
           </Button>
         </DialogFooter>
       </DialogContent>
