@@ -103,6 +103,7 @@ const DEFAULT_ITEMS: NavItem[] = [
   { key: "/ram-expenses", url: "/ram-expenses", title: "RAM Auto Expenses", icon: Receipt, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
   { key: "/analytics/profitability", url: "/analytics/profitability", title: "Vehicle Profitability", icon: BarChart3, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
   { key: "/analytics", url: "/analytics", title: "Analytics", icon: BarChart3, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
+  { key: "/analytics/vehicles", url: "/analytics/vehicles", title: "Vehicle Analytics", icon: BarChart3, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
   { key: "/payroll", url: "/payroll", title: "Payroll", icon: Banknote, roles: ALL, sectionKey: "pnl", sectionLabel: "P&L / Finance", sectionIcon: TrendingUp },
 
   // Staff & Tasks

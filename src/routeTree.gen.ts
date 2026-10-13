@@ -80,6 +80,7 @@ import { Route as AnalyticsFailuresRouteImport } from './routes/analytics_.failu
 import { Route as AnalyticsPnlDashboardRouteImport } from './routes/analytics_.pnl-dashboard'
 import { Route as AnalyticsProfitabilityRouteImport } from './routes/analytics_.profitability'
 import { Route as AnalyticsUtilizationRouteImport } from './routes/analytics_.utilization'
+import { Route as AnalyticsVehiclesRouteImport } from './routes/analytics_.vehicles'
 import { Route as AutoExtendTokenRouteImport } from './routes/auto-extend.$token'
 import { Route as ExtendTokenRouteImport } from './routes/extend.$token'
 import { Route as FleetVehicleIdRouteImport } from './routes/fleet.$vehicleId'
@@ -485,6 +486,11 @@ const AnalyticsUtilizationRoute = AnalyticsUtilizationRouteImport.update({
   path: '/analytics/utilization',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalyticsVehiclesRoute = AnalyticsVehiclesRouteImport.update({
+  id: '/analytics_/vehicles',
+  path: '/analytics/vehicles',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AutoExtendTokenRoute = AutoExtendTokenRouteImport.update({
   id: '/auto-extend/$token',
   path: '/auto-extend/$token',
@@ -801,6 +807,7 @@ export interface FileRoutesByFullPath {
   '/analytics/pnl-dashboard': typeof AnalyticsPnlDashboardRoute
   '/analytics/profitability': typeof AnalyticsProfitabilityRoute
   '/analytics/utilization': typeof AnalyticsUtilizationRoute
+  '/analytics/vehicles': typeof AnalyticsVehiclesRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -920,6 +927,7 @@ export interface FileRoutesByTo {
   '/analytics/pnl-dashboard': typeof AnalyticsPnlDashboardRoute
   '/analytics/profitability': typeof AnalyticsProfitabilityRoute
   '/analytics/utilization': typeof AnalyticsUtilizationRoute
+  '/analytics/vehicles': typeof AnalyticsVehiclesRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -1040,6 +1048,7 @@ export interface FileRoutesById {
   '/analytics_/pnl-dashboard': typeof AnalyticsPnlDashboardRoute
   '/analytics_/profitability': typeof AnalyticsProfitabilityRoute
   '/analytics_/utilization': typeof AnalyticsUtilizationRoute
+  '/analytics_/vehicles': typeof AnalyticsVehiclesRoute
   '/auto-extend/$token': typeof AutoExtendTokenRoute
   '/extend/$token': typeof ExtendTokenRoute
   '/fleet/$vehicleId': typeof FleetVehicleIdRoute
@@ -1161,6 +1170,7 @@ export interface FileRouteTypes {
     | '/analytics/pnl-dashboard'
     | '/analytics/profitability'
     | '/analytics/utilization'
+    | '/analytics/vehicles'
     | '/auto-extend/$token'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -1280,6 +1290,7 @@ export interface FileRouteTypes {
     | '/analytics/pnl-dashboard'
     | '/analytics/profitability'
     | '/analytics/utilization'
+    | '/analytics/vehicles'
     | '/auto-extend/$token'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -1399,6 +1410,7 @@ export interface FileRouteTypes {
     | '/analytics_/pnl-dashboard'
     | '/analytics_/profitability'
     | '/analytics_/utilization'
+    | '/analytics_/vehicles'
     | '/auto-extend/$token'
     | '/extend/$token'
     | '/fleet/$vehicleId'
@@ -1519,6 +1531,7 @@ export interface RootRouteChildren {
   AnalyticsPnlDashboardRoute: typeof AnalyticsPnlDashboardRoute
   AnalyticsProfitabilityRoute: typeof AnalyticsProfitabilityRoute
   AnalyticsUtilizationRoute: typeof AnalyticsUtilizationRoute
+  AnalyticsVehiclesRoute: typeof AnalyticsVehiclesRoute
   AutoExtendTokenRoute: typeof AutoExtendTokenRoute
   ExtendTokenRoute: typeof ExtendTokenRoute
   MechanicJobTokenRoute: typeof MechanicJobTokenRoute
@@ -2063,6 +2076,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsUtilizationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analytics_/vehicles': {
+      id: '/analytics_/vehicles'
+      path: '/analytics/vehicles'
+      fullPath: '/analytics/vehicles'
+      preLoaderRoute: typeof AnalyticsVehiclesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auto-extend/$token': {
       id: '/auto-extend/$token'
       path: '/auto-extend/$token'
@@ -2494,6 +2514,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsPnlDashboardRoute: AnalyticsPnlDashboardRoute,
   AnalyticsProfitabilityRoute: AnalyticsProfitabilityRoute,
   AnalyticsUtilizationRoute: AnalyticsUtilizationRoute,
+  AnalyticsVehiclesRoute: AnalyticsVehiclesRoute,
   AutoExtendTokenRoute: AutoExtendTokenRoute,
   ExtendTokenRoute: ExtendTokenRoute,
   MechanicJobTokenRoute: MechanicJobTokenRoute,

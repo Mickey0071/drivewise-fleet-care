@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis,
@@ -603,37 +603,14 @@ function PnLDashboard() {
         </CardContent>
       </Card>
 
-      {/* Per-vehicle breakdown */}
+      {/* Vehicle Analytics moved to its own page */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Per-Vehicle Breakdown</CardTitle></CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b text-left text-muted-foreground">
-              <th className="py-2">Vehicle</th>
-              <th className="py-2 text-right">Days Rented{mode === "week" ? " (wk)" : mode === "month" ? " (mo)" : mode === "year" ? " (yr)" : ""}</th>
-              <th className="py-2 text-right">Util %</th>
-              <th className="py-2 text-right">Revenue</th>
-              <th className="py-2 text-right">Expenses</th>
-              <th className="py-2 text-right">Net</th>
-              {mode === "year" && <th className="py-2 text-right">Best Month</th>}
-            </tr></thead>
-            <tbody>
-              {data.perVehicle.filter(v => v.rev > 0 || v.daysRented > 0 || v.exp > 0).map(v => (
-                <tr key={v.id} className="border-b last:border-0">
-                  <td className="py-2">{v.label}</td>
-                  <td className="py-2 text-right">{v.daysRented}</td>
-                  <td className="py-2 text-right">{v.utilization.toFixed(0)}%</td>
-                  <td className="py-2 text-right">{fmtMoney(v.rev)}</td>
-                  <td className="py-2 text-right">{fmtMoney(v.exp)}</td>
-                  <td className={`py-2 text-right font-medium ${v.net >= 0 ? "text-emerald-600" : "text-destructive"}`}>{fmtMoney(v.net)}</td>
-                  {mode === "year" && <td className="py-2 text-right">{v.bestMonth || "—"}</td>}
-                </tr>
-              ))}
-              {data.perVehicle.every(v => v.rev === 0 && v.daysRented === 0 && v.exp === 0) && (
-                <tr><td colSpan={mode === "year" ? 7 : 6} className="py-4 text-center text-muted-foreground">No vehicle activity in this period.</td></tr>
-              )}
-            </tbody>
-          </table>
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div>
+            <p className="font-medium">Vehicle Analytics</p>
+            <p className="text-xs text-muted-foreground">Per-vehicle days rented, utilization, revenue, expenses and net — ranked, with Lifetime / Year / Month views.</p>
+          </div>
+          <Button asChild size="sm"><Link to="/analytics/vehicles">Open Vehicle Analytics</Link></Button>
         </CardContent>
       </Card>
     </div>
