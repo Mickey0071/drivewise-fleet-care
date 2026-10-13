@@ -14,6 +14,134 @@ export type Database = {
   }
   public: {
     Tables: {
+      additional_drivers: {
+        Row: {
+          acknowledgements: Json
+          addendum_pdf_url: string | null
+          address: string | null
+          city: string | null
+          created_at: string
+          date_of_birth: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          invited_by: string | null
+          invited_name: string | null
+          is_also_payer: boolean
+          license_expiration: string | null
+          license_number: string | null
+          license_photo_url: string | null
+          license_state: string | null
+          ocr_license_number: string | null
+          ocr_match_status: string | null
+          phone: string | null
+          printed_name: string | null
+          rejection_reason: string | null
+          rental_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          selfie_url: string | null
+          signature_url: string | null
+          state: string | null
+          status: string
+          street_address: string | null
+          submitted_at: string | null
+          token: string
+          token_expires_at: string
+          token_used_at: string | null
+          updated_at: string
+          zip_code: string | null
+        }
+        Insert: {
+          acknowledgements?: Json
+          addendum_pdf_url?: string | null
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          invited_by?: string | null
+          invited_name?: string | null
+          is_also_payer?: boolean
+          license_expiration?: string | null
+          license_number?: string | null
+          license_photo_url?: string | null
+          license_state?: string | null
+          ocr_license_number?: string | null
+          ocr_match_status?: string | null
+          phone?: string | null
+          printed_name?: string | null
+          rejection_reason?: string | null
+          rental_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          selfie_url?: string | null
+          signature_url?: string | null
+          state?: string | null
+          status?: string
+          street_address?: string | null
+          submitted_at?: string | null
+          token: string
+          token_expires_at: string
+          token_used_at?: string | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Update: {
+          acknowledgements?: Json
+          addendum_pdf_url?: string | null
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          invited_by?: string | null
+          invited_name?: string | null
+          is_also_payer?: boolean
+          license_expiration?: string | null
+          license_number?: string | null
+          license_photo_url?: string | null
+          license_state?: string | null
+          ocr_license_number?: string | null
+          ocr_match_status?: string | null
+          phone?: string | null
+          printed_name?: string | null
+          rejection_reason?: string | null
+          rental_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          selfie_url?: string | null
+          signature_url?: string | null
+          state?: string | null
+          status?: string
+          street_address?: string | null
+          submitted_at?: string | null
+          token?: string
+          token_expires_at?: string
+          token_used_at?: string | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "additional_drivers_rental_id_fkey"
+            columns: ["rental_id"]
+            isOneToOne: false
+            referencedRelation: "rentals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alert_queue: {
         Row: {
           alert_type: string

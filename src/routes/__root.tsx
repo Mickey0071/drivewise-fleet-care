@@ -68,6 +68,8 @@ const PUBLIC_ROUTES = [
   "/repair/accept",
   "/repair/decline",
   "/waitlist",
+  "/add-driver",
+  "/verify-card",
 ];
 
 function NotFoundComponent() {

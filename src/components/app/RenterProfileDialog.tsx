@@ -45,6 +45,7 @@ import {
 } from "@/lib/renter-notes";
 import { useServerFn } from "@tanstack/react-start";
 import { uploadDriverLicense } from "@/lib/driver-license.functions";
+import { AdditionalDriverHistory } from "@/components/app/AdditionalDriverHistory";
 import {
   listRenterMessages,
   markRenterMessagesRead,
@@ -581,6 +582,8 @@ ${rows ? `<table><tr><th>Vehicle</th><th>Plate</th><th>Start Date</th><th>End Da
                 tone={outstanding > 0 ? "danger" : "default"}
               />
             </div>
+
+            {d?.licenseNumber && <AdditionalDriverHistory licenseNumber={d.licenseNumber} />}
 
             {/* Personal details (from the most recent rental record) */}
             <section className="rounded-xl border border-border/60 bg-card p-5">

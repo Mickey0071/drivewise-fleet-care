@@ -21,6 +21,7 @@ import {
 import { sendViolationRetroLink } from "@/lib/violation-retro.functions";
 import { CreateAgreementDialog } from "@/components/app/CreateAgreementDialog";
 import { normalizePlate } from "@/lib/plate";
+import { AuthorizedDriversAt } from "@/components/app/AuthorizedDriversAt";
 
 const normPlate = normalizePlate;
 
@@ -468,6 +469,8 @@ export function FindRenterDialog({
                   {selected.start_date || "?"} → {selected.end_date || "ongoing"}
                 </div>
               </div>
+
+              <AuthorizedDriversAt rentalId={selected.id} date={vDate} />
 
               {/* Date validation */}
               <div
