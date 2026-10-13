@@ -1,3 +1,5 @@
+import { BRAND_RGB } from "@/lib/branding";
+import { drawBrandedPdfHeader, finalizeBrandedPdf } from "@/lib/branded-pdf";
 import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
 import type { AgreementSettings } from "@/lib/agreementSettings";
 
@@ -25,8 +27,8 @@ export interface WorkOrderPdfData {
   settings: AgreementSettings;
 }
 
-const RGB_GREEN: [number, number, number] = [45, 184, 75];
-const COLOR_TEXT: [number, number, number] = [26, 26, 26];
+const RGB_GREEN: [number, number, number] = BRAND_RGB.green;
+const COLOR_TEXT: [number, number, number] = BRAND_RGB.dark;
 const COLOR_MUTED: [number, number, number] = [102, 102, 102];
 const COLOR_BORDER: [number, number, number] = [204, 204, 204];
 
@@ -44,7 +46,7 @@ export async function renderWorkOrderPdf(data: WorkOrderPdfData): Promise<Blob> 
   let y = 40;
 
   const ensure = (need: number) => {
-    if (y + need > pageH - 50) { doc.addPage(); y = 50; }
+    if (y + need > pageH - 50) { doc.addPage(); y = 100; }
   };
 
   // ---- Logo + company header ----
@@ -189,5 +191,6 @@ export async function renderWorkOrderPdf(data: WorkOrderPdfData): Promise<Blob> 
     doc.text(`Page ${p} of ${pageCount}`, right, pageH - 18, { align: "right" });
   }
 
+  finalizeBrandedPdf(doc, { title: "Work Order" });
   return doc.output("blob");
 }
