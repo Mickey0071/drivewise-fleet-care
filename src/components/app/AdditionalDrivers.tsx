@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { UserPlus, Users, Loader2, AlertTriangle, CheckCircle2, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -248,5 +247,3 @@ export function AdditionalDriversSection({ rentalId }: { rentalId: string }) {
 function Row({ k, v }: { k: string; v: string | null | undefined }) {
   return <div><span className="text-muted-foreground">{k}: </span>{v || "—"}</div>;
 }
-
-export { Badge as _unusedBadge };

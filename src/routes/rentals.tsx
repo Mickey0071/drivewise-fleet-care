@@ -43,6 +43,7 @@ import { ReservationPaymentHistory } from "@/components/app/ReservationPaymentHi
 import { SwapHistoryTimeline } from "@/components/app/SwapHistoryTimeline";
 import { ReservationLog } from "@/components/app/ReservationLog";
 import { ReservationDocuments } from "@/components/app/ReservationDocuments";
+import { AdditionalDriversBadge, AddAdditionalDriverButton, AdditionalDriversSection } from "@/components/app/AdditionalDrivers";
 import { RentalVerificationPanel } from "@/components/app/RentalVerificationPanel";
 import { useAuth } from "@/hooks/use-auth";
 import { useServerFn } from "@tanstack/react-start";
@@ -469,8 +470,14 @@ function RentalsPage() {
                 )}
                 {isPending ? <PendingHoldBadge rental={r} /> : <StatusBadge status={r.paymentStatus} />}
                 <PaidBadge rental={r} />
+                <AdditionalDriversBadge rentalId={r.id} />
               </div>
             </div>
+            {(r.reservationStatus ?? "active") !== "cancelled" && (
+              <div>
+                <AddAdditionalDriverButton rentalId={r.id} renterName={d?.fullName ?? ""} renterPhone={d?.phone ?? ""} />
+              </div>
+            )}
             {renewal && (
               renewal.status === "LINK_SENT" ? (
                 <p className="text-xs text-muted-foreground">
@@ -1427,6 +1434,7 @@ function RentalsPage() {
             <DialogTitle>Reservation details</DialogTitle>
           </DialogHeader>
           {detail && renderCard(detail)}
+          {detail && <AdditionalDriversSection rentalId={detail.id} />}
         </DialogContent>
       </Dialog>
       <EditRentalDialog rental={editing} onClose={() => setEditing(null)} />
