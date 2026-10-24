@@ -797,18 +797,27 @@ function VehicleDetail() {
             {otherExpenses.length === 0 ? (
               <p className="text-sm text-muted-foreground">No other expenses recorded for this vehicle.</p>
             ) : (
-              otherExpenses.map(e => (
-                <Row
-                  key={`${e.source}-${e.id}`}
-                  title={e.description || e.category}
-                  sub={`${fmtDate(e.date)} · ${e.category}${e.vendor ? ` · ${e.vendor}` : ""}`}
-                  right={
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{fmtMoney(e.amount)}</span>
-                      <span className="text-[11px] text-muted-foreground capitalize">{e.source}</span>
-                    </div>
-                  }
-                />
+              ([
+                ["Parts", otherExpenses.filter(e => (e.category || "").toLowerCase() === "parts")],
+                ["Labor", otherExpenses.filter(e => (e.category || "").toLowerCase() === "labor")],
+                ["Other Expenses", otherExpenses.filter(e => !["parts", "labor"].includes((e.category || "").toLowerCase()))],
+              ] as const).filter(([, list]) => list.length > 0).map(([label, list]) => (
+                <div key={label} className="space-y-2">
+                  <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label} ({list.length})</h4>
+                  {list.map(e => (
+                    <Row
+                      key={`${e.source}-${e.id}`}
+                      title={e.description || e.category}
+                      sub={`${fmtDate(e.date)} · ${e.category}${e.vendor ? ` · ${e.vendor}` : ""}`}
+                      right={
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{fmtMoney(e.amount)}</span>
+                          <span className="text-[11px] text-muted-foreground capitalize">{e.source}</span>
+                        </div>
+                      }
+                    />
+                  ))}
+                </div>
               ))
             )}
           </Section>

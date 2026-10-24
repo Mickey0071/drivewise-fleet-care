@@ -92,7 +92,7 @@ export function ManualRenterDialog({
         endDate,
         weeklyRate: Number(weeklyRate || 0),
         signatureDataUrl: signature,
-        signedDate: today(),
+        signedDate: startDate,
       });
       let bin = "";
       bytes.forEach((b) => (bin += String.fromCharCode(b)));
@@ -102,7 +102,7 @@ export function ManualRenterDialog({
           renterName: renter.name,
           plate,
           pdfBase64: btoa(bin),
-          signedDate: today(),
+          signedDate: startDate,
         },
       });
       const url = URL.createObjectURL(
