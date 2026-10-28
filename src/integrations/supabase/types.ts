@@ -2687,6 +2687,75 @@ export type Database = {
         }
         Relationships: []
       }
+      receipts: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          created_by: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          id: string
+          items: Json
+          notes: string | null
+          period_end: string | null
+          period_start: string | null
+          receipt_date: string
+          receipt_number: string
+          rental_id: string | null
+          subtotal: number
+          tax_amount: number
+          tax_rate: number
+          total: number
+          updated_at: string
+          vehicle_label: string | null
+        }
+        Insert: {
+          amount_paid?: number
+          created_at?: string
+          created_by?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          receipt_date?: string
+          receipt_number?: string
+          rental_id?: string | null
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total?: number
+          updated_at?: string
+          vehicle_label?: string | null
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          created_by?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          receipt_date?: string
+          receipt_number?: string
+          rental_id?: string | null
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total?: number
+          updated_at?: string
+          vehicle_label?: string | null
+        }
+        Relationships: []
+      }
       refund_recovery: {
         Row: {
           amount: number
