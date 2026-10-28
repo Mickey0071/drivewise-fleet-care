@@ -311,3 +311,32 @@ function ReceiptsPage() {
     </div>
   );
 }
+
+function RateCalculator({ onApply }: { onApply: (desc: string, qty: number, price: number) => void }) {
+  const [period, setPeriod] = useState<"daily" | "weekly">("weekly");
+  const [rate, setRate] = useState("");
+  const [units, setUnits] = useState("");
+  const r = Number(rate) || 0;
+  const u = Number(units) || 0;
+  const unitWord = period === "daily" ? (u === 1 ? "day" : "days") : (u === 1 ? "week" : "weeks");
+  return (
+    <div className="rounded-md border p-3">
+      <Label>Rate calculator</Label>
+      <div className="mt-2 flex gap-1">
+        {(["daily", "weekly"] as const).map((p) => (
+          <Button key={p} type="button" size="sm" variant={period === p ? "default" : "outline"} onClick={() => setPeriod(p)}>
+            {p === "daily" ? "Daily" : "Weekly"}
+          </Button>
+        ))}
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <div><Label className="text-xs">{period === "daily" ? "Daily" : "Weekly"} rate</Label><Input type="number" inputMode="decimal" placeholder="0.00" value={rate} onChange={(e) => setRate(e.target.value)} /></div>
+        <div><Label className="text-xs">Number of {period === "daily" ? "days" : "weeks"}</Label><Input type="number" inputMode="numeric" placeholder="1" value={units} onChange={(e) => setUnits(e.target.value)} /></div>
+      </div>
+      <div className="mt-2 flex items-center justify-between text-sm">
+        <span>Rental: <b>{money(r * u)}</b></span>
+        <Button type="button" size="sm" disabled={!r || !u} onClick={() => onApply(`Vehicle rental (${u} ${unitWord})`, u, r)}>Apply to receipt</Button>
+      </div>
+    </div>
+  );
+}
