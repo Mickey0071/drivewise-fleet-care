@@ -229,14 +229,22 @@ function ReceiptsPage() {
                 <div><Label>Rental start</Label><Input type="date" value={draft.period_start} onChange={(e) => set("period_start", e.target.value)} /></div>
                 <div><Label>Rental end</Label><Input type="date" value={draft.period_end} onChange={(e) => set("period_end", e.target.value)} /></div>
               </div>
+              <RateCalculator onApply={(desc, qty, price) => setDraft((d) => {
+                const items = [...d.items];
+                const line = { description: desc, quantity: qty, unitPrice: price, taxable: true };
+                if (items.length && /rental/i.test(items[0].description)) items[0] = line; else items.unshift(line);
+                let end = d.period_end;
+                if (d.period_start) { const dt = new Date(`${d.period_start}T00:00:00`); dt.setDate(dt.getDate() + (desc.includes("week") ? qty * 7 : qty)); end = dt.toISOString().slice(0, 10); }
+                return { ...d, items, period_end: end };
+              })} />
               <div>
                 <Label>Line items</Label>
                 <div className="mt-1 space-y-2">
                   {draft.items.map((it, i) => (
                     <div key={i} className="grid grid-cols-12 items-center gap-1">
                       <Input className="col-span-5" placeholder="Description" value={it.description} onChange={(e) => setItem(i, { description: e.target.value })} />
-                      <Input className="col-span-2" type="number" value={it.quantity} onChange={(e) => setItem(i, { quantity: Number(e.target.value) })} />
-                      <Input className="col-span-3" type="number" step="0.01" value={it.unitPrice} onChange={(e) => setItem(i, { unitPrice: Number(e.target.value) })} />
+                      <Input className="col-span-2" type="number" inputMode="numeric" placeholder="1" value={it.quantity || ""} onChange={(e) => setItem(i, { quantity: Number(e.target.value) || 0 })} />
+                      <Input className="col-span-3" type="number" inputMode="decimal" step="0.01" placeholder="0.00" value={it.unitPrice || ""} onChange={(e) => setItem(i, { unitPrice: Number(e.target.value) || 0 })} />
                       <label className="col-span-1 flex items-center justify-center" title="Taxable">
                         <Checkbox checked={it.taxable} onCheckedChange={(c) => setItem(i, { taxable: !!c })} />
                       </label>
@@ -247,7 +255,7 @@ function ReceiptsPage() {
                   <Button size="sm" variant="outline" onClick={() => set("items", [...draft.items, { description: "", quantity: 1, unitPrice: 0, taxable: true }])}><Plus className="mr-1 h-4 w-4" />Add item</Button>
                 </div>
               </div>
-              <div><Label>Amount paid</Label><Input type="number" step="0.01" value={draft.amount_paid} onChange={(e) => set("amount_paid", Number(e.target.value))} /></div>
+              <div><Label>Amount paid</Label><Input type="number" inputMode="decimal" step="0.01" placeholder="0.00" value={draft.amount_paid || ""} onChange={(e) => set("amount_paid", Number(e.target.value) || 0)} /></div>
               <div><Label>Notes</Label><Textarea value={draft.notes} onChange={(e) => set("notes", e.target.value)} /></div>
               <div className="flex gap-2">
                 <Button onClick={save} disabled={saving}><Save className="mr-1 h-4 w-4" />{draft.id ? "Update" : "Save"}</Button>
