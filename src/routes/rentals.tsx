@@ -752,6 +752,11 @@ function RentalsPage() {
               );
             })()}
             {!isPending && <ReservationDocuments rental={r} />}
+            {!isPending && (
+              <Link to="/receipts" search={{ rentalId: r.id }} className="inline-flex w-fit items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium hover:bg-accent">
+                🧾 Receipt (with NJ tax)
+              </Link>
+            )}
             <div className="flex flex-wrap gap-2">
               {isPending ? (
                 <>

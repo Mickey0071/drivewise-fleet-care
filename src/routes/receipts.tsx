@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BRAND } from "@/lib/branding";
+import { BRAND_COMPANY, BRAND_LOGO_DATA_URL } from "@/lib/branding";
 import { computeReceiptTotals, NJ_SALES_TAX_RATE, type ReceiptItem } from "@/lib/receipt-math";
 
 export const Route = createFileRoute("/receipts")({
@@ -258,8 +258,10 @@ function ReceiptsPage() {
             <Card className="print:border-0 print:shadow-none"><CardContent className="p-6 text-sm" id="receipt-print">
               <div className="flex items-start justify-between border-b pb-3">
                 <div>
-                  <div className="text-lg font-bold">{BRAND?.companyName ?? "Camauto Rentals"}</div>
-                  <div className="text-xs text-muted-foreground">Receipt</div>
+                  <img src={BRAND_LOGO_DATA_URL} alt="Camauto Rentals" className="mb-1 h-10" />
+                  <div className="text-xs">{BRAND_COMPANY.legal}</div>
+                  <div className="text-xs text-muted-foreground">{BRAND_COMPANY.address} · {BRAND_COMPANY.contact}</div>
+                  <div className="mt-1 text-base font-bold">RECEIPT</div>
                 </div>
                 <div className="text-right text-xs">
                   <div className="font-semibold">{draft.receipt_number ?? "Draft"}</div>
