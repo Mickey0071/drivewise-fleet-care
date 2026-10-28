@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      accidents: {
+        Row: {
+          accident_date: string | null
+          checklist: Json
+          claim_number: string | null
+          created_at: string
+          created_by: string | null
+          driver_id: string | null
+          id: string
+          insurance_company: string | null
+          insurance_phone: string | null
+          notes: string | null
+          other_driver_insurance: string | null
+          other_driver_name: string | null
+          other_driver_phone: string | null
+          other_driver_plate: string | null
+          policy_number: string | null
+          rental_id: string | null
+          renter_name: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string | null
+          vehicle_label: string | null
+        }
+        Insert: {
+          accident_date?: string | null
+          checklist?: Json
+          claim_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          driver_id?: string | null
+          id?: string
+          insurance_company?: string | null
+          insurance_phone?: string | null
+          notes?: string | null
+          other_driver_insurance?: string | null
+          other_driver_name?: string | null
+          other_driver_phone?: string | null
+          other_driver_plate?: string | null
+          policy_number?: string | null
+          rental_id?: string | null
+          renter_name?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_label?: string | null
+        }
+        Update: {
+          accident_date?: string | null
+          checklist?: Json
+          claim_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          driver_id?: string | null
+          id?: string
+          insurance_company?: string | null
+          insurance_phone?: string | null
+          notes?: string | null
+          other_driver_insurance?: string | null
+          other_driver_name?: string | null
+          other_driver_phone?: string | null
+          other_driver_plate?: string | null
+          policy_number?: string | null
+          rental_id?: string | null
+          renter_name?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+          vehicle_label?: string | null
+        }
+        Relationships: []
+      }
       additional_drivers: {
         Row: {
           acknowledgements: Json

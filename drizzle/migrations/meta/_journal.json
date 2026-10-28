@@ -8,6 +8,13 @@
       "when": 1791898015311,
       "tag": "0000_create_additional_drivers",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793217289894,
+      "tag": "0001_create_accidents",
+      "breakpoints": true
     }
   ]
 }
