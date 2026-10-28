@@ -176,3 +176,10 @@
   a { color: inherit; text-decoration: none; }
   @page { margin: 0.5in; }
 }
+
+@media print {
+  body:has(#receipt-print) * { visibility: hidden; }
+  body:has(#receipt-print) #receipt-print,
+  body:has(#receipt-print) #receipt-print * { visibility: visible; }
+  body:has(#receipt-print) #receipt-print { position: absolute; left: 0; top: 0; width: 100%; }
+}
