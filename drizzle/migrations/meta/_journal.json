@@ -15,6 +15,13 @@
       "when": 1793217289894,
       "tag": "0001_create_accidents",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793217354598,
+      "tag": "0002_create_receipts",
+      "breakpoints": true
     }
   ]
 }

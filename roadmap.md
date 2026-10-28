@@ -10,3 +10,5 @@
 - [x] Exclude EZPass, toll, and violation records from repair history and vehicle/company expense totals.
 - [x] Separate vehicle Expenses list into Parts, Labor, and Other sections.
 - [x] Violation agreements: signature date equals rental start date.
+- [ ] Accidents tab: claim checklist (7 items from spreadsheet) linked to reservation/vehicle — database ready, page in progress.
+- [x] Receipts tab: reservation-based and manual receipts, NJ 6.625% sales tax, printable.

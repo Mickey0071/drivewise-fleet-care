@@ -93,6 +93,7 @@ const DEFAULT_ITEMS: NavItem[] = [
 
   // Customers & Payments
   { key: "/drivers", url: "/drivers", title: "Customers", icon: Users, roles: ["admin"], sectionKey: "customers", sectionLabel: "Customers & Payments", sectionIcon: Users },
+  { key: "/receipts", url: "/receipts", title: "Receipts", icon: FileText, roles: ["admin", "va"], sectionKey: "customers", sectionLabel: "Customers & Payments", sectionIcon: Users },
   { key: "/payments", url: "/payments", title: "Payments", icon: DollarSign, roles: ["admin"], sectionKey: "customers", sectionLabel: "Customers & Payments", sectionIcon: Users },
   { key: "/refund-approvals", url: "/refund-approvals", title: "Refund Approvals", icon: Undo2, roles: ["admin", "va"], sectionKey: "customers", sectionLabel: "Customers & Payments", sectionIcon: Users },
 

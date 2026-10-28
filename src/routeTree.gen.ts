@@ -37,6 +37,7 @@ import { Route as PendingAgreementsRouteImport } from './routes/pending-agreemen
 import { Route as PnlRouteImport } from './routes/pnl'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RamExpensesRouteImport } from './routes/ram-expenses'
+import { Route as ReceiptsRouteImport } from './routes/receipts'
 import { Route as RefundApprovalsRouteImport } from './routes/refund-approvals'
 import { Route as RentalAgreementRouteImport } from './routes/rental-agreement'
 import { Route as RentalsRouteImport } from './routes/rentals'
@@ -267,6 +268,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const RamExpensesRoute = RamExpensesRouteImport.update({
   id: '/ram-expenses',
   path: '/ram-expenses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReceiptsRoute = ReceiptsRouteImport.update({
+  id: '/receipts',
+  path: '/receipts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RefundApprovalsRoute = RefundApprovalsRouteImport.update({
@@ -770,6 +776,7 @@ export interface FileRoutesByFullPath {
   '/pnl': typeof PnlRoute
   '/profile': typeof ProfileRoute
   '/ram-expenses': typeof RamExpensesRoute
+  '/receipts': typeof ReceiptsRoute
   '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
@@ -891,6 +898,7 @@ export interface FileRoutesByTo {
   '/pnl': typeof PnlRoute
   '/profile': typeof ProfileRoute
   '/ram-expenses': typeof RamExpensesRoute
+  '/receipts': typeof ReceiptsRoute
   '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
@@ -1013,6 +1021,7 @@ export interface FileRoutesById {
   '/pnl': typeof PnlRoute
   '/profile': typeof ProfileRoute
   '/ram-expenses': typeof RamExpensesRoute
+  '/receipts': typeof ReceiptsRoute
   '/refund-approvals': typeof RefundApprovalsRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
@@ -1136,6 +1145,7 @@ export interface FileRouteTypes {
     | '/pnl'
     | '/profile'
     | '/ram-expenses'
+    | '/receipts'
     | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
@@ -1257,6 +1267,7 @@ export interface FileRouteTypes {
     | '/pnl'
     | '/profile'
     | '/ram-expenses'
+    | '/receipts'
     | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
@@ -1378,6 +1389,7 @@ export interface FileRouteTypes {
     | '/pnl'
     | '/profile'
     | '/ram-expenses'
+    | '/receipts'
     | '/refund-approvals'
     | '/rental-agreement'
     | '/rentals'
@@ -1500,6 +1512,7 @@ export interface RootRouteChildren {
   PnlRoute: typeof PnlRoute
   ProfileRoute: typeof ProfileRoute
   RamExpensesRoute: typeof RamExpensesRoute
+  ReceiptsRoute: typeof ReceiptsRoute
   RefundApprovalsRoute: typeof RefundApprovalsRoute
   RentalAgreementRoute: typeof RentalAgreementRoute
   RentalsRoute: typeof RentalsRoute
@@ -1786,6 +1799,13 @@ declare module '@tanstack/react-router' {
       path: '/ram-expenses'
       fullPath: '/ram-expenses'
       preLoaderRoute: typeof RamExpensesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/receipts': {
+      id: '/receipts'
+      path: '/receipts'
+      fullPath: '/receipts'
+      preLoaderRoute: typeof ReceiptsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/refund-approvals': {
@@ -2491,6 +2511,7 @@ const rootRouteChildren: RootRouteChildren = {
   PnlRoute: PnlRoute,
   ProfileRoute: ProfileRoute,
   RamExpensesRoute: RamExpensesRoute,
+  ReceiptsRoute: ReceiptsRoute,
   RefundApprovalsRoute: RefundApprovalsRoute,
   RentalAgreementRoute: RentalAgreementRoute,
   RentalsRoute: RentalsRoute,
