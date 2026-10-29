@@ -3,6 +3,7 @@ import type { Driver, Rental, Vehicle } from "@/lib/mock/data";
 import { fmtDate, fmtMoney } from "@/lib/mock/data";
 import { useAgreementSettings, renderClauseBody } from "@/lib/agreementSettings";
 import { formatAddressBlock, formatFullName } from "@/lib/us-states";
+import { useEffect, useRef } from "react";
 
 interface Props {
   rental: Rental;
@@ -30,6 +31,29 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function RentalAgreement({ rental, driver, vehicle }: Props) {
+  const printRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const fit = () => {
+      const element = printRef.current;
+      if (!element) return;
+      element.classList.add("agreement-print-layout");
+      element.style.zoom = "1";
+      const height = element.getBoundingClientRect().height;
+      element.style.zoom = String(Math.min(1, 950 / height));
+    };
+    const reset = () => {
+      const element = printRef.current;
+      if (!element) return;
+      element.classList.remove("agreement-print-layout");
+      element.style.removeProperty("zoom");
+    };
+    window.addEventListener("beforeprint", fit);
+    window.addEventListener("afterprint", reset);
+    return () => {
+      window.removeEventListener("beforeprint", fit);
+      window.removeEventListener("afterprint", reset);
+    };
+  }, []);
   const settings = useAgreementSettings();
   const periodLabel = rental.billingPeriod === "daily" ? "day" : rental.billingPeriod === "monthly" ? "month" : "week";
   const rate = Number(rental.rate ?? rental.weeklyRate ?? 0);
@@ -47,7 +71,7 @@ export function RentalAgreement({ rental, driver, vehicle }: Props) {
   const dlStateExp = [driver.dlState, driver.licenseExpiry ? fmtDate(driver.licenseExpiry) : ""].filter(Boolean).join(" / ");
 
   return (
-    <div className="mx-auto max-w-[8.5in] bg-white p-10 font-sans text-[13px] text-zinc-900 print:p-8">
+    <div ref={printRef} className="rental-agreement-document mx-auto max-w-[8.5in] bg-white p-10 font-sans text-[13px] text-zinc-900 print:p-8">
       {/* HEADER */}
       <div className="mb-5 border-b-[3px] border-[#2db84b] pb-4">
         <div className="flex justify-center">
