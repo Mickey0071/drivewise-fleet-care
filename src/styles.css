@@ -177,6 +177,10 @@
   @page { margin: 0.5in; }
 }
 
+/* Keep receipt charge controls within narrow editor columns. */
+body:has(#receipt-print) button.col-span-1 { width: 100%; min-width: 0; padding-inline: 0; }
+body:has(#receipt-print) input { min-width: 0; }
+
 @media print {
   body:has(#receipt-print) * { visibility: hidden; }
   body:has(#receipt-print) #receipt-print,
