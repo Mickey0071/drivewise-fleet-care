@@ -177,9 +177,28 @@
   @page { margin: 0.5in; }
 }
 
+/* Keep receipt charge controls within narrow editor columns. */
+body:has(#receipt-print) button.col-span-1 { width: 100%; min-width: 0; padding-inline: 0; }
+body:has(#receipt-print) input { min-width: 0; }
+
 @media print {
   body:has(#receipt-print) * { visibility: hidden; }
   body:has(#receipt-print) #receipt-print,
   body:has(#receipt-print) #receipt-print * { visibility: visible; }
-  body:has(#receipt-print) #receipt-print { position: absolute; left: 0; top: 0; width: 100%; }
+  body:has(#receipt-print) #receipt-print {
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.18 0.03 155);
+    --foreground: oklch(0.18 0.03 155);
+    --primary: oklch(0.52 0.16 152);
+    --muted: oklch(0.96 0.01 150);
+    --muted-foreground: oklch(0.5 0.02 155);
+    --accent: oklch(0.93 0.06 150);
+    --accent-foreground: oklch(0.25 0.08 155);
+    --border: oklch(0.9 0.02 150);
+    position: absolute; left: 0; top: 0; width: 100%;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  #receipt-print section { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #receipt-print tr, #receipt-print dl, #receipt-print footer { break-inside: avoid; }
 }
