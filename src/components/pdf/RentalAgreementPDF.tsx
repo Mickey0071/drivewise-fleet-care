@@ -1,5 +1,6 @@
 import type { AgreementSettings } from "@/lib/agreementSettings";
 import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
+import { fitAgreementToOnePage } from "@/lib/one-page-agreement";
 
 /**
  * Server-rendered Vehicle Rental Agreement PDF using jsPDF (no WASM, no DOM).
@@ -130,13 +131,13 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   const { rental, driver, vehicle, extensions, settings, signaturePng } = data;
   const c = settings.company;
 
-  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  // Lay out without pagination, then fit the complete vector document to Letter.
+  const doc = new jsPDF({ unit: "pt", format: [612, 14400], compress: true });
   const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
+  let pageH = doc.internal.pageSize.getHeight();
   const left = 32;
   const right = pageW - 32;
   const contentW = right - left;
-  const bottomLimit = pageH - 34;
   let y = 28;
 
   const periodLabel =
@@ -189,13 +190,7 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     );
   };
 
-  const ensureSpace = (needed: number) => {
-    if (y + needed > bottomLimit) {
-      drawFooter();
-      doc.addPage();
-      y = 40;
-    }
-  };
+  const ensureSpace = (_needed: number) => { /* Single continuous layout; no page breaks. */ };
 
   // ---- HEADER (first page) ----
   const logoW = 64;
@@ -253,6 +248,7 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
   ) => {
     ensureSpace(17);
     let x = left;
+    let rowHeight = 12;
     fields.forEach((f) => {
       const w = (contentW * f.widthPct) / 100;
       doc.setFont("helvetica", "bold");
@@ -264,14 +260,16 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
       doc.setTextColor(...RGB_TEXT);
       const v = f.value || " ";
       const wrapped = doc.splitTextToSize(v, w - 4);
+      const fieldHeight = 12 + (wrapped.length - 1) * 8.7;
+      rowHeight = Math.max(rowHeight, fieldHeight);
       doc.text(wrapped, x + 2, y + 11);
       // bottom underline
       doc.setDrawColor(68, 68, 68);
       doc.setLineWidth(0.4);
-      doc.line(x + 2, y + 12, x + w - 2, y + 12);
+      doc.line(x + 2, y + fieldHeight, x + w - 2, y + fieldHeight);
       x += w;
     });
-    y += 12;
+    y += rowHeight + 2;
   };
 
   // ---- RENTER ----
@@ -358,11 +356,13 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
         fmtMoney(e.additionalAmount),
         e.signedBy ?? "—",
       ];
-      row.forEach((cell, i) => doc.text(String(cell), left + i * colW + 4, y + 10));
+      const cells = row.map((cell) => doc.splitTextToSize(String(cell), colW - 8) as string[]);
+      const rowHeight = Math.max(14, ...cells.map((lines) => lines.length * 9.2 + 5));
+      cells.forEach((cell, i) => doc.text(cell, left + i * colW + 4, y + 10));
       doc.setDrawColor(...RGB_BORDER);
       doc.setLineWidth(0.4);
-      doc.line(left, y + 14, right, y + 14);
-      y += 14;
+      doc.line(left, y + rowHeight, right, y + rowHeight);
+      y += rowHeight;
     });
     y += 4;
   }
@@ -610,8 +610,9 @@ export async function renderRentalAgreementPdf(data: RentalAgreementPDFData): Pr
     y += boxH + 4;
   }
 
+  pageH = y + 38;
   drawFooter();
 
   const ab = doc.output("arraybuffer");
-  return new Uint8Array(ab);
+  return fitAgreementToOnePage(new Uint8Array(ab), pageH);
 }

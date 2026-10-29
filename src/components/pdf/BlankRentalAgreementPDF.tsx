@@ -4,6 +4,7 @@
  * lessor-exemption boilerplate, and two signature blocks.
  */
 import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
+import { fitAgreementToOnePage } from "@/lib/one-page-agreement";
 
 const GREEN: [number, number, number] = [45, 184, 75];
 const TEXT: [number, number, number] = [26, 26, 26];
@@ -35,7 +36,7 @@ export async function renderBlankRentalAgreementPdf(
   input: BlankAgreementInput,
 ): Promise<Uint8Array> {
   const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ unit: "pt", format: "letter", compress: true });
+  const doc = new jsPDF({ unit: "pt", format: [612, 14400], compress: true });
   const pageW = doc.internal.pageSize.getWidth();
   const left = 44;
   const right = pageW - 44;
@@ -58,8 +59,9 @@ export async function renderBlankRentalAgreementPdf(
     doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(...MUTED);
     doc.text(label.toUpperCase(), left, y);
     doc.setFont("helvetica", "normal").setFontSize(11).setTextColor(...TEXT);
-    doc.text(value || "—", left + 150, y);
-    y += 20;
+    const lines = doc.splitTextToSize(value || "—", right - left - 150) as string[];
+    doc.text(lines, left + 150, y);
+    y += Math.max(20, lines.length * 13 + 5);
   };
 
   doc.setFont("helvetica", "bold").setFontSize(11).setTextColor(...TEXT);
@@ -97,7 +99,7 @@ export async function renderBlankRentalAgreementPdf(
   y += lines.length * 12 + 24;
 
   const sigW = (right - left - 30) / 2;
-  const sigY = Math.min(y, 640);
+  const sigY = y + 24;
   if (input.signatureDataUrl) {
     try {
       doc.addImage(input.signatureDataUrl, "PNG", left, sigY - 46, sigW, 44);
@@ -109,10 +111,13 @@ export async function renderBlankRentalAgreementPdf(
   doc.line(left, sigY, left + sigW, sigY);
   doc.line(left + sigW + 30, sigY, right, sigY);
   doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(...MUTED);
-  doc.text(`Renter signature — ${input.renterName}`, left, sigY + 13);
+  doc.text("Renter signature", left, sigY + 13);
+  const nameLines = doc.splitTextToSize(input.renterName, sigW) as string[];
+  doc.text(nameLines, left, sigY + 26);
   doc.text("Camauto Rentals representative", left + sigW + 30, sigY + 13);
-  doc.text(`Date: ${fmt(input.signedDate)}`, left, sigY + 27);
+  const dateY = sigY + 26 + nameLines.length * 11;
+  doc.text(`Date: ${fmt(input.signedDate)}`, left, dateY);
   doc.text("Date: ______________________", left + sigW + 30, sigY + 27);
 
-  return new Uint8Array(doc.output("arraybuffer"));
+  return fitAgreementToOnePage(new Uint8Array(doc.output("arraybuffer")), dateY + 24);
 }
