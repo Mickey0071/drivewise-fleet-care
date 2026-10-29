@@ -235,7 +235,7 @@ body:has(#receipt-print) input { min-width: 0; }
 @media print {
   @page rental-agreement { size: letter; margin: 0.5in; }
   body:has(.rental-agreement-document) { margin: 0; }
-  body:has(.rental-agreement-document) * { visibility: hidden; }
+  body:has(.rental-agreement-document) *:not(:has(.rental-agreement-document)):not(.rental-agreement-document):not(.rental-agreement-document *) { display: none !important; }
   .rental-agreement-document,
   .rental-agreement-document * { visibility: visible !important; }
   .rental-agreement-document {
