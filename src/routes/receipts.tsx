@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Printer, Save, Trash2, Search, FileText, Car, UserRound, CalendarDays } from "lucide-react";
+import { Plus, Printer, Save, Trash2, Search, FileText, Car, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -286,7 +286,6 @@ function ReceiptsPage() {
                     <div className="text-right">
                       <h2 className="text-2xl font-semibold text-primary">RECEIPT</h2>
                       <div className="mt-2 text-sm font-medium">{draft.receipt_number ?? "DRAFT"}</div>
-                      <div className="mt-1 flex items-center justify-end gap-1.5 text-xs text-muted-foreground"><CalendarDays className="h-3 w-3" />{receiptDate(draft.receipt_date)}</div>
                     </div>
                   </div>
                   {draft.rental_id && <div className="mt-5 break-all border-t pt-3 text-xs text-muted-foreground">Reservation reference <span className="font-medium text-foreground">{draft.rental_id}</span></div>}
