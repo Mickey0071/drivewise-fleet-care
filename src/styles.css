@@ -202,3 +202,50 @@ body:has(#receipt-print) input { min-width: 0; }
   #receipt-print section { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #receipt-print tr, #receipt-print dl, #receipt-print footer { break-inside: avoid; }
 }
+
+/* Compact agreement print layout, measured before printing to retain every line. */
+.agreement-print-layout {
+  width: 720px !important;
+  max-width: none !important;
+  padding: 0 !important;
+  font-size: 10px !important;
+  line-height: 1.15 !important;
+}
+.agreement-print-layout .h-24 { height: 48px; }
+.agreement-print-layout .mb-5 { margin-bottom: 8px; }
+.agreement-print-layout .pb-4 { padding-bottom: 6px; }
+.agreement-print-layout .my-3 { margin-block: 5px; }
+.agreement-print-layout .mt-6 { margin-top: 8px; }
+.agreement-print-layout .mt-3,
+.agreement-print-layout .mb-3 { margin-top: 5px; margin-bottom: 5px; }
+.agreement-print-layout .mt-2,
+.agreement-print-layout .mb-2 { margin-top: 3px; margin-bottom: 3px; }
+.agreement-print-layout .gap-2 { gap: 4px; }
+.agreement-print-layout .leading-relaxed { line-height: 1.15; }
+.agreement-print-layout .space-y-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
+.agreement-print-layout .space-y-2 > * { margin: 0; }
+.agreement-print-layout h4 { margin-top: 0; font-size: 9px; }
+.agreement-print-layout p,
+.agreement-print-layout li,
+.agreement-print-layout table { font-size: 8.5px; }
+.agreement-print-layout span { font-size: 8px; }
+.agreement-print-layout span.border-b { min-height: 16px; font-size: 10px; overflow-wrap: anywhere; }
+.agreement-print-layout .h-12 { height: 28px; }
+.agreement-print-layout .max-h-12 { max-height: 28px; }
+@media print {
+  @page rental-agreement { size: letter; margin: 0.5in; }
+  body:has(.rental-agreement-document) { margin: 0; }
+  body:has(.rental-agreement-document) *:not(:has(.rental-agreement-document)):not(.rental-agreement-document):not(.rental-agreement-document *) { display: none !important; }
+  .rental-agreement-document,
+  .rental-agreement-document * { visibility: visible !important; }
+  .rental-agreement-document {
+    page: rental-agreement;
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0 !important;
+    break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
