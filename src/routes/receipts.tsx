@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Printer, Save, Trash2, Search, FileText } from "lucide-react";
+import { Plus, Printer, Save, Trash2, Search, FileText, Car, UserRound, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,6 +55,11 @@ const blank = (): Draft => ({
   tax_rate: NJ_SALES_TAX_RATE, amount_paid: 0, notes: "",
 });
 const money = (n: number) => `$${(Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const receiptDate = (value: string) => {
+  if (!value) return "—";
+  const date = new Date(`${value.slice(0, 10)}T12:00:00`);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
 const sb = supabase as any;
 
 async function draftFromRental(rentalId: string): Promise<Draft | null> {
@@ -165,7 +170,7 @@ function ReceiptsPage() {
       <div className="print:hidden">
         <PageHeader
           title="Receipts"
-          subtitle="Reservation and manual receipts with NJ sales tax"
+          subtitle="Camauto Rentals"
           action={<Button onClick={() => { setDraft(blank()); setTab("edit"); }}><Plus className="mr-1 h-4 w-4" />Manual receipt</Button>}
         />
       </div>
@@ -217,10 +222,11 @@ function ReceiptsPage() {
         </TabsContent>
 
         <TabsContent value="edit">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card className="print:hidden"><CardContent className="space-y-3 p-4">
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label>Customer name</Label><Input value={draft.customer_name} onChange={(e) => set("customer_name", e.target.value)} /></div>
+          <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+            <div className="min-w-0 space-y-6 print:hidden">
+              <div className="flex items-center gap-2 border-b pb-3"><UserRound className="h-4 w-4 text-primary" /><h2 className="text-base font-semibold">Receipt details</h2></div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2"><Label>Customer name</Label><Input value={draft.customer_name} onChange={(e) => set("customer_name", e.target.value)} /></div>
                 <div><Label>Phone</Label><Input value={draft.customer_phone} onChange={(e) => set("customer_phone", e.target.value)} /></div>
                 <div><Label>Email</Label><Input value={draft.customer_email} onChange={(e) => set("customer_email", e.target.value)} /></div>
                 <div><Label>Vehicle</Label><Input placeholder="2016 Hyundai Sonata · ABC123" value={draft.vehicle_label} onChange={(e) => set("vehicle_label", e.target.value)} /></div>
@@ -237,18 +243,18 @@ function ReceiptsPage() {
                 if (d.period_start) { const dt = new Date(`${d.period_start}T00:00:00`); dt.setDate(dt.getDate() + (desc.includes("week") ? qty * 7 : qty)); end = dt.toISOString().slice(0, 10); }
                 return { ...d, items, period_end: end };
               })} />
-              <div>
-                <Label>Line items</Label>
+              <div className="border-t pt-5">
+                <h2 className="mb-3 text-base font-semibold">Charges</h2>
                 <div className="mt-1 space-y-2">
                   {draft.items.map((it, i) => (
-                    <div key={i} className="grid grid-cols-12 items-center gap-1">
-                      <Input className="col-span-5" placeholder="Description" value={it.description} onChange={(e) => setItem(i, { description: e.target.value })} />
+                    <div key={i} className="grid grid-cols-12 items-center gap-2">
+                      <Input className="col-span-5" aria-label={`Item ${i + 1} description`} placeholder="Description" value={it.description} onChange={(e) => setItem(i, { description: e.target.value })} />
                       <Input className="col-span-2" type="number" inputMode="numeric" placeholder="1" value={it.quantity || ""} onChange={(e) => setItem(i, { quantity: Number(e.target.value) || 0 })} />
                       <Input className="col-span-3" type="number" inputMode="decimal" step="0.01" placeholder="0.00" value={it.unitPrice || ""} onChange={(e) => setItem(i, { unitPrice: Number(e.target.value) || 0 })} />
                       <label className="col-span-1 flex items-center justify-center" title="Taxable">
                         <Checkbox checked={it.taxable} onCheckedChange={(c) => setItem(i, { taxable: !!c })} />
                       </label>
-                      <Button className="col-span-1" size="icon" variant="ghost" onClick={() => set("items", draft.items.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
+                      <Button className="col-span-1" size="icon" variant="ghost" aria-label={`Remove item ${i + 1}`} title="Remove item" onClick={() => set("items", draft.items.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   ))}
                   <p className="text-[11px] text-muted-foreground">Description · Qty · Price · Taxable</p>
@@ -257,54 +263,77 @@ function ReceiptsPage() {
               </div>
               <div><Label>Amount paid</Label><Input type="number" inputMode="decimal" step="0.01" placeholder="0.00" value={draft.amount_paid || ""} onChange={(e) => set("amount_paid", Number(e.target.value) || 0)} /></div>
               <div><Label>Notes</Label><Textarea value={draft.notes} onChange={(e) => set("notes", e.target.value)} /></div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 border-t pt-4">
                 <Button onClick={save} disabled={saving}><Save className="mr-1 h-4 w-4" />{draft.id ? "Update" : "Save"}</Button>
                 <Button variant="outline" onClick={() => window.print()}><Printer className="mr-1 h-4 w-4" />Print</Button>
               </div>
-            </CardContent></Card>
+            </div>
 
-            <Card className="print:border-0 print:shadow-none"><CardContent className="p-6 text-sm" id="receipt-print">
-              <div className="flex items-start justify-between border-b pb-3">
-                <div>
-                  <img src={BRAND_LOGO_DATA_URL} alt="Camauto Rentals" className="mb-1 h-10" />
-                  <div className="text-xs">{BRAND_COMPANY.legal}</div>
-                  <div className="text-xs text-muted-foreground">{BRAND_COMPANY.address} · {BRAND_COMPANY.contact}</div>
-                  <div className="mt-1 text-base font-bold">RECEIPT</div>
+            <div className="min-w-0 bg-muted/60 p-3 sm:p-6 print:bg-transparent print:p-0">
+              <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground print:hidden">
+                <span className="font-medium">Receipt preview</span>
+                <span>{draft.id ? "Saved receipt" : "Unsaved draft"}</span>
+              </div>
+              <article className="receipt-document min-w-0 border border-border bg-card text-card-foreground shadow-sm print:border-0 print:shadow-none" id="receipt-print">
+                <header className="border-t-4 border-primary px-5 pb-6 pt-7 sm:px-8">
+                  <div className="flex flex-wrap items-start justify-between gap-5">
+                    <div className="min-w-0">
+                      <img src={BRAND_LOGO_DATA_URL} alt="Camauto Rentals" className="mb-3 h-auto w-40 max-w-full object-contain object-left" />
+                      <div className="text-xs font-medium">{BRAND_COMPANY.legal}</div>
+                      <div className="mt-1 max-w-64 text-xs leading-relaxed text-muted-foreground">{BRAND_COMPANY.address}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">{BRAND_COMPANY.contact}</div>
+                    </div>
+                    <div className="text-right">
+                      <h2 className="text-2xl font-semibold text-primary">RECEIPT</h2>
+                      <div className="mt-2 text-sm font-medium">{draft.receipt_number ?? "DRAFT"}</div>
+                      <div className="mt-1 flex items-center justify-end gap-1.5 text-xs text-muted-foreground"><CalendarDays className="h-3 w-3" />{receiptDate(draft.receipt_date)}</div>
+                    </div>
+                  </div>
+                  {draft.rental_id && <div className="mt-5 break-all border-t pt-3 text-xs text-muted-foreground">Reservation reference <span className="font-medium text-foreground">{draft.rental_id}</span></div>}
+                </header>
+                <section className="grid grid-cols-1 gap-5 border-y bg-muted/40 px-5 py-5 sm:grid-cols-2 sm:px-8">
+                  <div className="min-w-0">
+                    <h3 className="mb-2 text-[10px] font-semibold uppercase text-muted-foreground">Billed to</h3>
+                    <div className="break-words text-sm font-semibold">{draft.customer_name || "—"}</div>
+                    {draft.customer_phone && <div className="mt-1 text-xs text-muted-foreground">{draft.customer_phone}</div>}
+                    {draft.customer_email && <div className="mt-1 break-all text-xs text-muted-foreground">{draft.customer_email}</div>}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground"><Car className="h-3 w-3" />Vehicle & rental period</h3>
+                    <div className="break-words text-sm font-semibold">{draft.vehicle_label || "—"}</div>
+                    {(draft.period_start || draft.period_end) && <div className="mt-2 text-xs leading-relaxed text-muted-foreground">{receiptDate(draft.period_start)} – {receiptDate(draft.period_end)}</div>}
+                  </div>
+                </section>
+                <div className="px-5 py-6 sm:px-8">
+                  <table className="w-full table-fixed text-xs tabular-nums">
+                    <colgroup><col className="w-[46%]" /><col className="w-[10%]" /><col className="w-[22%]" /><col className="w-[22%]" /></colgroup>
+                    <thead><tr className="border-b-2 text-left text-[10px] uppercase text-muted-foreground"><th className="pb-3 pr-2 font-medium">Description</th><th className="pb-3 text-right font-medium">Qty</th><th className="pb-3 text-right font-medium">Rate</th><th className="pb-3 text-right font-medium">Amount</th></tr></thead>
+                    <tbody>
+                      {draft.items.map((it, i) => (
+                        <tr key={i} className="border-b align-top">
+                          <td className="break-words py-4 pr-3 font-medium">{it.description || "—"}{!it.taxable && <span className="mt-1 block text-[10px] font-normal text-muted-foreground">Non-taxable</span>}</td>
+                          <td className="py-4 text-right">{it.quantity}</td>
+                          <td className="break-words py-4 text-right">{money(it.unitPrice)}</td>
+                          <td className="break-words py-4 text-right font-semibold">{money(it.quantity * it.unitPrice)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <dl className="ml-auto mt-6 w-full max-w-72 space-y-3 text-xs tabular-nums">
+                    <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Subtotal</dt><dd className="font-medium">{money(totals.subtotal)}</dd></div>
+                    <div className="flex justify-between gap-4"><dt className="text-muted-foreground">NJ sales tax ({draft.tax_rate}%)<span className="mt-1 block text-[10px]">Taxable amount: {money(totals.taxableBase)}</span></dt><dd className="font-medium">{money(totals.tax)}</dd></div>
+                    <div className="flex justify-between gap-4 border-y py-4 text-base"><dt className="font-semibold">Receipt total</dt><dd className="font-bold">{money(totals.total)}</dd></div>
+                    <div className="flex justify-between gap-4"><dt className="text-muted-foreground">Amount paid</dt><dd className="font-medium">{money(draft.amount_paid)}</dd></div>
+                    <div className="flex items-center justify-between gap-4 border-l-4 border-primary bg-accent px-4 py-4 text-accent-foreground"><dt className="text-sm font-semibold">Balance due</dt><dd className="text-lg font-bold">{money(totals.balance)}</dd></div>
+                  </dl>
+                  {draft.notes && <section className="mt-7 border-t pt-4"><h3 className="mb-2 text-[10px] font-semibold uppercase text-muted-foreground">Notes</h3><p className="whitespace-pre-wrap break-words text-xs leading-relaxed">{draft.notes}</p></section>}
                 </div>
-                <div className="text-right text-xs">
-                  <div className="font-semibold">{draft.receipt_number ?? "Draft"}</div>
-                  <div>{draft.receipt_date}</div>
-                  {draft.rental_id && <div>Reservation {draft.rental_id}</div>}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 py-3 text-xs">
-                <div><div className="font-semibold">Customer</div><div>{draft.customer_name || "—"}</div><div>{draft.customer_phone}</div><div>{draft.customer_email}</div></div>
-                <div><div className="font-semibold">Vehicle</div><div>{draft.vehicle_label || "—"}</div>
-                  {(draft.period_start || draft.period_end) && <div>{draft.period_start} – {draft.period_end}</div>}</div>
-              </div>
-              <table className="w-full text-xs">
-                <thead><tr className="border-b text-left"><th className="py-1">Description</th><th className="text-right">Qty</th><th className="text-right">Price</th><th className="text-right">Amount</th></tr></thead>
-                <tbody>
-                  {draft.items.map((it, i) => (
-                    <tr key={i} className="border-b border-dashed">
-                      <td className="py-1">{it.description}{!it.taxable && <span className="text-muted-foreground"> (non-taxable)</span>}</td>
-                      <td className="text-right">{it.quantity}</td>
-                      <td className="text-right">{money(it.unitPrice)}</td>
-                      <td className="text-right">{money(it.quantity * it.unitPrice)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="ml-auto mt-3 w-60 space-y-1 text-xs">
-                <div className="flex justify-between"><span>Subtotal</span><span>{money(totals.subtotal)}</span></div>
-                <div className="flex justify-between"><span>NJ sales tax ({draft.tax_rate}% on {money(totals.taxableBase)})</span><span>{money(totals.tax)}</span></div>
-                <div className="flex justify-between border-t pt-1 text-sm font-bold"><span>Total</span><span>{money(totals.total)}</span></div>
-                <div className="flex justify-between"><span>Paid</span><span>{money(draft.amount_paid)}</span></div>
-                <div className="flex justify-between font-semibold"><span>Balance</span><span>{money(totals.balance)}</span></div>
-              </div>
-              {draft.notes && <p className="mt-4 whitespace-pre-wrap text-xs">{draft.notes}</p>}
-              <p className="mt-6 text-center text-[10px] text-muted-foreground">Thank you for renting with us.</p>
-            </CardContent></Card>
+                <footer className="border-t px-5 py-5 text-center sm:px-8">
+                  <p className="text-xs font-medium">Thank you for choosing Camauto Rentals.</p>
+                  <p className="mt-2 text-[10px] text-muted-foreground">{BRAND_COMPANY.footer}</p>
+                </footer>
+              </article>
+            </div>
           </div>
         </TabsContent>
       </Tabs>
@@ -320,7 +349,7 @@ function RateCalculator({ onApply }: { onApply: (desc: string, qty: number, pric
   const u = Number(units) || 0;
   const unitWord = period === "daily" ? (u === 1 ? "day" : "days") : (u === 1 ? "week" : "weeks");
   return (
-    <div className="rounded-md border p-3">
+    <div className="border-y bg-muted/40 py-4">
       <Label>Rate calculator</Label>
       <div className="mt-2 flex gap-1">
         {(["daily", "weekly"] as const).map((p) => (
