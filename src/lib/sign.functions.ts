@@ -76,7 +76,7 @@ export const sendSigningLink = createServerFn({ method: "POST" })
     if (!driver?.phone) throw new Error("Renter has no phone on file");
 
     const link = `${data.origin.replace(/\/$/, "")}/sign/${token}`;
-    const message = `Camauto Rentals: Please complete your rental agreement online and upload your driver's license + selfie here: ${link}. You do not need to come in to sign.`;
+    const message = `Camauto Rentals: Please complete your rental agreement here: ${link}. Eligible returning renters can use their verified ID and selfie on file. You do not need to come in to sign.`;
     await notifyRenter({
       phone: driver.phone,
       email: driver.email ?? null,
@@ -85,7 +85,7 @@ export const sendSigningLink = createServerFn({ method: "POST" })
       emailSubject: "Your Camauto Rental Agreement",
       emailHeading: "Sign Your Rental Agreement",
       emailIntro:
-        "Please complete your rental agreement online and upload your driver's license + selfie. You do not need to come in to sign.",
+        "Please complete your rental agreement online. Eligible returning renters can use their verified ID and selfie on file. You do not need to come in to sign.",
       emailCta: { label: "Sign Agreement Now", url: link },
       emailFootnote: "After signing, we'll text you a secure payment link.",
     });
@@ -172,7 +172,10 @@ export const getRentalForSigning = createServerFn({ method: "POST" })
     } catch (e) {
       console.error("[getRentalForSigning] vehicle/driver query threw:", e);
     }
+    const { findSigningReturningRenter } = await import("./returning-renter.server");
+    const returning = rental.client_signature_url ? null : await findSigningReturningRenter(rental.driver_id, rental.id);
     const payload = {
+      returningRenterEligible: !!returning,
       rentalId: rental.id,
       startDate: rental.start_date,
       endDate: rental.end_date ?? null,
@@ -219,8 +222,9 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
   .inputValidator((input: {
     token: string;
     signatureDataUrl: string;
-    licenseDataUrl: string;
-    selfieDataUrl: string;
+    licenseDataUrl?: string;
+    selfieDataUrl?: string;
+    reuseVerifiedDocuments?: boolean;
     signedBy: string;
     thirdPartyPayer?: boolean;
     payerIdDataUrl?: string;
@@ -228,8 +232,10 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
   }) => {
     if (!input.token || input.token.length < 8) throw new Error("Invalid token");
     if (!input.signatureDataUrl?.startsWith("data:image/")) throw new Error("Signature required");
-    if (!input.licenseDataUrl?.startsWith("data:image/")) throw new Error("License photo required");
-    if (!input.selfieDataUrl?.startsWith("data:image/")) throw new Error("Selfie required");
+    if (!input.reuseVerifiedDocuments) {
+      if (!input.licenseDataUrl?.startsWith("data:image/")) throw new Error("License photo required");
+      if (!input.selfieDataUrl?.startsWith("data:image/")) throw new Error("Selfie required");
+    }
     if (!input.signedBy || input.signedBy.length > 200) throw new Error("Name required");
     if (input.thirdPartyPayer) {
       if (!input.payerIdDataUrl?.startsWith("data:image/")) throw new Error("Payer's ID photo required");
@@ -250,11 +256,16 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
       return { ok: true, alreadySigned: true };
     }
 
+    const { findSigningReturningRenter } = await import("./returning-renter.server");
+    const returning = data.reuseVerifiedDocuments ? await findSigningReturningRenter(rental.driver_id, rental.id) : null;
+    if (data.reuseVerifiedDocuments && !returning) throw new Error("Your saved verification is no longer eligible. Please upload your license and selfie.");
+    if (!returning && (!data.licenseDataUrl?.startsWith("data:image/") || !data.selfieDataUrl?.startsWith("data:image/"))) throw new Error("License photo and selfie required");
     const [signatureUrl, licenseUrl, selfieUrl] = await Promise.all([
       uploadDataUrl(rental.id, "signature", data.signatureDataUrl),
-      uploadDataUrl(rental.id, "license", data.licenseDataUrl),
-      uploadDataUrl(rental.id, "selfie", data.selfieDataUrl),
+      returning ? Promise.resolve(returning.license_image_url) : uploadDataUrl(rental.id, "license", data.licenseDataUrl ?? ""),
+      returning ? Promise.resolve(returning.selfie_image_url) : uploadDataUrl(rental.id, "selfie", data.selfieDataUrl ?? ""),
     ]);
+    if (!licenseUrl || !selfieUrl) throw new Error("Saved documents are missing. Please upload new photos.");
 
     // Third-party payer: upload the payer's ID and OCR the name so the
     // webhook can compare it to the Stripe cardholder_name later.
@@ -353,7 +364,7 @@ export const submitSigningPackage = createServerFn({ method: "POST" })
           !isBlank((existing as any)?.dl_state) &&
           !isBlank(existing?.license_expiry) &&
           !isBlank((existing as any)?.date_of_birth);
-        if (!hasAddr || !hasLicenseFields) {
+        if ((!hasAddr || !hasLicenseFields) && !returning && data.licenseDataUrl) {
           const fields = await extractLicenseFieldsFromImage(data.licenseDataUrl);
           if (fields) {
             console.log(
