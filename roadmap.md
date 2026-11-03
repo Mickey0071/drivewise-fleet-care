@@ -12,4 +12,3 @@
 - [x] Violation agreements: signature date equals rental start date.
 - [ ] Accidents tab: claim checklist (7 items from spreadsheet) linked to reservation/vehicle — database ready, page in progress.
 - [x] Receipts tab: reservation-based and manual receipts, NJ 6.625% sales tax, printable.
-- [ ] Vendor payments Phase 1: admin vendor directory, secure Stripe test onboarding, vendor portal, and verified account-status webhook (confirm supported server-only approach).
