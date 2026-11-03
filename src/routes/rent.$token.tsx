@@ -3,7 +3,7 @@ import { CONSENT_TEXT, getVisitorId, useFormVisit } from "@/lib/form-tracking";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { getShareLinkPublic, submitShareApplication } from "@/lib/share-rental.functions";
+import { getShareLinkPublic, submitShareApplication, checkReturningRenter } from "@/lib/share-rental.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,9 @@ function RentPage() {
   const { token } = Route.useParams();
   const fetchInfo = useServerFn(getShareLinkPublic);
   const submit = useServerFn(submitShareApplication);
+  const checkReturning = useServerFn(checkReturningRenter);
+  const [returning, setReturning] = useState<{ lastRentalEnd: string } | null>(null);
+  const [useNewDocs, setUseNewDocs] = useState(false);
   useFormVisit("booking_link");
   const [marketingConsent, setMarketingConsent] = useState(false);
 
@@ -64,6 +67,19 @@ function RentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  useEffect(() => {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10 || licenseNumber.trim().length < 4) { setReturning(null); return; }
+    const t = setTimeout(() => {
+      checkReturning({ data: { token, phone, licenseNumber } })
+        .then((r) => setReturning(r.eligible ? { lastRentalEnd: r.lastRentalEnd } : null))
+        .catch(() => setReturning(null));
+    }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phone, licenseNumber, token]);
+  const skipDocs = !!returning && !useNewDocs;
+
   async function handleSubmit() {
     if (!firstName.trim() || !lastName.trim()) return toast.error("Enter your first and last name");
     if (!phone.trim()) return toast.error("Enter your phone");
@@ -74,8 +90,8 @@ function RentPage() {
     if (!city.trim()) return toast.error("Enter your city");
     if (!stateRegion.trim()) return toast.error("Enter your state");
     if (!licenseNumber.trim()) return toast.error("Enter your license number");
-    if (!licenseUrl) return toast.error("Upload your driver's license");
-    if (!selfieUrl) return toast.error("Take a selfie");
+    if (!skipDocs && !licenseUrl) return toast.error("Upload your driver's license");
+    if (!skipDocs && !selfieUrl) return toast.error("Take a selfie");
     if (!sig) return toast.error("Sign the agreement");
     setSubmitting(true);
     try {
@@ -109,8 +125,8 @@ function RentPage() {
           city: city.trim() || undefined,
           state: stateRegion.trim() || undefined,
           zip: zip.trim() || undefined,
-          licenseDataUrl: licenseUrl,
-          selfieDataUrl: selfieUrl,
+          licenseDataUrl: skipDocs ? null : licenseUrl,
+          selfieDataUrl: skipDocs ? null : selfieUrl,
           signatureDataUrl: sig,
           environment,
         },
@@ -311,6 +327,19 @@ function RentPage() {
             </div>
           </Card>
 
+          {returning && (
+            <Card className="p-4 space-y-2 border-primary/40 bg-primary/5">
+              <div className="flex items-center gap-2 font-medium"><CheckCircle2 className="h-4 w-4 text-primary" /> Welcome back — you're already verified</div>
+              <p className="text-sm text-muted-foreground">
+                You rented with us recently (through {returning.lastRentalEnd}), so we'll use the license and selfie already on file.
+              </p>
+              <Button variant="link" className="h-auto p-0 text-sm" onClick={() => setUseNewDocs((v) => !v)}>
+                {useNewDocs ? "Use documents on file instead" : "I have a new license — upload new photos"}
+              </Button>
+            </Card>
+          )}
+
+          {!skipDocs && (<>
           <Card className="p-4 space-y-3">
             <SectionHeader icon={<IdCard className="h-4 w-4" />} title="Driver's license photo" done={!!licenseUrl} />
             <PhotoCapture label="Upload license" onChange={setLicenseUrl} value={licenseUrl} />
@@ -320,12 +349,13 @@ function RentPage() {
             <SectionHeader icon={<Camera className="h-4 w-4" />} title="Selfie" done={!!selfieUrl} />
             <PhotoCapture label="Take selfie" onChange={setSelfieUrl} value={selfieUrl} useCamera />
           </Card>
+          </>)}
 
           <Button
             className="w-full"
             size="lg"
             onClick={() => {
-              if (!firstName.trim() || !lastName.trim() || !phone.trim() || !email.trim() || !dateOfBirth || !address.trim() || !city.trim() || !stateRegion.trim() || !licenseNumber.trim() || !licenseUrl || !selfieUrl) {
+              if (!firstName.trim() || !lastName.trim() || !phone.trim() || !email.trim() || !dateOfBirth || !address.trim() || !city.trim() || !stateRegion.trim() || !licenseNumber.trim() || (!skipDocs && (!licenseUrl || !selfieUrl))) {
                 return toast.error("Complete all fields, license photo, and selfie first");
               }
               setStep("agreement");

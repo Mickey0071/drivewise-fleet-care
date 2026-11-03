@@ -276,6 +276,59 @@ export const getShareLinkPublic = createServerFn({ method: "POST" })
   });
 
 /** Public: customer submits the rental application — creates driver + rental, marks vehicle rented. */
+const RETURNING_WINDOW_DAYS = 90;
+const digitsOnly = (s: string) => (s || "").replace(/\D/g, "").slice(-10);
+const normLicense = (s: string) => (s || "").replace(/[^a-z0-9]/gi, "").toUpperCase();
+
+/** Renter who rented in the last 90 days with license + selfie on file can skip re-verification. */
+async function findReturningRenter(phone: string, licenseNumber: string) {
+  const p = digitsOnly(phone);
+  const lic = normLicense(licenseNumber);
+  if (p.length !== 10 || lic.length < 4) return null;
+  const { data: drivers } = await supabaseAdmin
+    .from("drivers")
+    .select("id, phone, license_number, license_expiry, status")
+    .ilike("phone", `%${p.slice(-4)}%`)
+    .limit(50);
+  const today = new Date().toISOString().slice(0, 10);
+  const matches = (drivers ?? []).filter(
+    (d) =>
+      digitsOnly(d.phone ?? "") === p &&
+      normLicense(d.license_number ?? "") === lic &&
+      !["blacklisted", "banned", "inactive", "flagged"].includes(String(d.status ?? "").toLowerCase()) &&
+      (!d.license_expiry || d.license_expiry >= today),
+  );
+  if (!matches.length) return null;
+  const since = new Date(Date.now() - RETURNING_WINDOW_DAYS * 86400000).toISOString().slice(0, 10);
+  const { data: rentals } = await supabaseAdmin
+    .from("rentals")
+    .select("id, driver_id, end_date, license_image_url, selfie_image_url")
+    .in("driver_id", matches.map((d) => d.id))
+    .gte("end_date", since)
+    .not("license_image_url", "is", null)
+    .not("selfie_image_url", "is", null)
+    .order("end_date", { ascending: false })
+    .limit(1);
+  const r = rentals?.[0];
+  if (!r) return null;
+  return { driverId: r.driver_id as string, rentalId: r.id as string, lastRentalEnd: r.end_date as string,
+    licenseUrl: r.license_image_url as string, selfieUrl: r.selfie_image_url as string };
+}
+
+export const checkReturningRenter = createServerFn({ method: "POST" })
+  .inputValidator((i: { token: string; phone: string; licenseNumber: string }) => {
+    if (!i?.token || i.token.length < 8) throw new Error("invalid token");
+    if (typeof i.phone !== "string" || i.phone.length > 40) throw new Error("invalid phone");
+    if (typeof i.licenseNumber !== "string" || i.licenseNumber.length > 60) throw new Error("invalid license");
+    return i;
+  })
+  .handler(async ({ data }) => {
+    const { data: link } = await supabaseAdmin.from("rental_share_links").select("token, consumed_rental_id").eq("token", data.token).maybeSingle();
+    if (!link || link.consumed_rental_id) return { eligible: false as const };
+    const r = await findReturningRenter(data.phone, data.licenseNumber);
+    return r ? { eligible: true as const, lastRentalEnd: r.lastRentalEnd } : { eligible: false as const };
+  });
+
 export const submitShareApplication = createServerFn({ method: "POST" })
   .inputValidator((input: {
     token: string;
@@ -296,8 +349,8 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     city?: string;
     state?: string;
     zip?: string;
-    licenseDataUrl: string;
-    selfieDataUrl: string;
+    licenseDataUrl?: string | null;
+    selfieDataUrl?: string | null;
     signatureDataUrl: string;
     environment?: StripeEnv;
     selectedPeriod?: "daily" | "weekly";
@@ -326,8 +379,8 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     if (input.city && input.city.length > 120) throw new Error("City too long");
     if (input.state && input.state.length > 60) throw new Error("State too long");
     if (input.zip && input.zip.length > 20) throw new Error("ZIP too long");
-    if (!input.licenseDataUrl?.startsWith("data:image/")) throw new Error("License photo required");
-    if (!input.selfieDataUrl?.startsWith("data:image/")) throw new Error("Selfie required");
+    if (input.licenseDataUrl && !input.licenseDataUrl.startsWith("data:image/")) throw new Error("Invalid license photo");
+    if (input.selfieDataUrl && !input.selfieDataUrl.startsWith("data:image/")) throw new Error("Invalid selfie");
     if (!input.signatureDataUrl?.startsWith("data:image/")) throw new Error("Signature required");
     if (input.environment && input.environment !== "sandbox" && input.environment !== "live")
       throw new Error("invalid environment");
@@ -357,9 +410,14 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     if (["maintenance", "impound"].includes(vehicle.status)) throw new Error("This vehicle is no longer available");
     if (await vehicleHasOpenReservation(link.vehicle_id)) throw new Error("This vehicle is no longer available");
 
-    // Create driver
-    const driverId = await nextId("drivers", "D", 100);
-    const { error: dErr } = await supabaseAdmin.from("drivers").insert({
+    // Returning renter (rented within 90 days, docs on file) may skip photo re-upload.
+    const needsDocs = !data.licenseDataUrl || !data.selfieDataUrl;
+    const returning = needsDocs ? await findReturningRenter(data.phone, data.licenseNumber) : null;
+    if (needsDocs && !returning) throw new Error("License photo and selfie required");
+
+    // Create driver (or reuse verified returning renter)
+    const driverId = returning?.driverId ?? (await nextId("drivers", "D", 100));
+    const { error: dErr } = returning ? { error: null } : await supabaseAdmin.from("drivers").insert({
       id: driverId,
       full_name: data.fullName.trim(),
       phone: data.phone.trim(),
@@ -390,7 +448,7 @@ export const submitShareApplication = createServerFn({ method: "POST" })
         : {}),
     });
     if (dErr) throw new Error(`Could not create renter: ${dErr.message}`);
-    {
+    if (!returning) {
       const { linkVisitsToCustomer } = await import("@/lib/marketing.server");
       await linkVisitsToCustomer(typeof data.visitorId === "string" ? data.visitorId.slice(0, 80) : null, driverId, "booking_link");
     }
@@ -399,8 +457,8 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     const rentalId = await nextId("rentals", "R", 500);
     const [signatureUrl, licenseUrl, selfieUrl] = await Promise.all([
       uploadDataUrl(rentalId, "signature", data.signatureDataUrl),
-      uploadDataUrl(rentalId, "license", data.licenseDataUrl),
-      uploadDataUrl(rentalId, "selfie", data.selfieDataUrl),
+      returning ? Promise.resolve(returning.licenseUrl) : uploadDataUrl(rentalId, "license", data.licenseDataUrl!),
+      returning ? Promise.resolve(returning.selfieUrl) : uploadDataUrl(rentalId, "selfie", data.selfieDataUrl!),
     ]);
 
     const nowIso = new Date().toISOString();
