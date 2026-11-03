@@ -13,7 +13,14 @@ import { toast } from "sonner";
 import { CheckCircle2, Loader2, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/sign/$token")({
-  head: () => ({ meta: [{ title: "Complete your reservation — Camauto Rentals" }] }),
+  head: () => ({ meta: [
+    { title: "Sign your rental agreement — Camauto Rentals" },
+    { name: "description", content: "Review and sign your Camauto rental agreement with secure renter verification." },
+    { property: "og:title", content: "Sign your rental agreement — Camauto Rentals" },
+    { property: "og:description", content: "Review and sign your Camauto rental agreement with secure renter verification." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: SignPage,
 });
 
@@ -51,6 +58,8 @@ function SignPage() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [step, setStep] = useState<"identity" | "agreement">(initial.step);
+  const [useNewDocs, setUseNewDocs] = useState(false);
+  const skipDocs = !!info?.returningRenterEligible && !useNewDocs;
   const [verifying, setVerifying] = useState(false);
   const [licenseError, setLicenseError] = useState<string | null>(null);
   const [checkingLicense, setCheckingLicense] = useState(false);
@@ -97,6 +106,7 @@ function SignPage() {
         console.log("[sign] fetchInfo success:", r);
         setInfo(r);
         if (r.driverName) setSignedBy(r.driverName);
+        if (r.returningRenterEligible) setStep("agreement");
         if (r.alreadySigned) setDone(true);
       })
       .catch((e) => {
@@ -151,8 +161,8 @@ function SignPage() {
 
   async function handleSubmit() {
     if (!sig) return toast.error("Please sign the agreement");
-    if (!licenseUrl) return toast.error("Please upload your driver's license");
-    if (!selfieUrl) return toast.error("Please take a selfie");
+    if (!skipDocs && !licenseUrl) return toast.error("Please upload your driver's license");
+    if (!skipDocs && !selfieUrl) return toast.error("Please take a selfie");
     if (!signedBy.trim()) return toast.error("Please type your full name");
     setSubmitting(true);
     try {
@@ -160,8 +170,9 @@ function SignPage() {
         data: {
           token,
           signatureDataUrl: sig,
-          licenseDataUrl: licenseUrl,
-          selfieDataUrl: selfieUrl,
+          licenseDataUrl: skipDocs ? undefined : licenseUrl ?? undefined,
+          selfieDataUrl: skipDocs ? undefined : selfieUrl ?? undefined,
+          reuseVerifiedDocuments: skipDocs,
           signedBy: signedBy.trim(),
         },
       });
@@ -273,9 +284,16 @@ function SignPage() {
 
   return (
     <div className="mx-auto max-w-2xl p-4 md:p-6 space-y-6">
-      <div className="text-center text-xs text-muted-foreground">
+      {skipDocs && (
+        <div className="rounded-md border border-primary/30 bg-primary/10 p-4 space-y-2">
+          <p className="font-semibold flex items-center gap-2"><CheckCircle2 className="h-5 w-5" /> Welcome back — your ID is already verified</p>
+          <p className="text-sm">We’ll use your approved license and selfie from your recent rental. Please sign your new agreement below.</p>
+          <Button variant="link" className="px-0" onClick={() => { setUseNewDocs(true); setStep("identity"); }}>I have a new license — upload new photos</Button>
+        </div>
+      )}
+      {!skipDocs && <div className="text-center text-xs text-muted-foreground">
         Step {step === "identity" ? "1" : "2"} of 2
-      </div>
+      </div>}
 
       {step === "identity" ? (
         <>
@@ -367,9 +385,9 @@ function SignPage() {
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" size="lg" onClick={() => setStep("identity")} disabled={submitting}>
+            {!skipDocs && <Button variant="outline" size="lg" onClick={() => setStep("identity")} disabled={submitting}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
+            </Button>}
             <Button
               className="flex-1 bg-[#2db84b] hover:bg-[#27a341] text-white"
               size="lg"

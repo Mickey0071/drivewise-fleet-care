@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Agreement signing: reuse approved recent renter documents, retain new signature/payment, and verify eligibility rules (15 tests; real agreement page checked without submitting).
+
 - [x] Standardize every fleet-vehicle selector to uppercase `MAKE MODEL · YEAR · PLATE`, sorted by type then year.
 - [x] Add secure agency waitlist intake endpoint with validation, deduplication, vetting, messaging, and retry protection.
 - [x] Extend waitlist records for tier, source, campaign, intake answers, normalized phone, and message timestamps.
