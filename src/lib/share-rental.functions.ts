@@ -276,7 +276,6 @@ export const getShareLinkPublic = createServerFn({ method: "POST" })
   });
 
 /** Public: customer submits the rental application — creates driver + rental, marks vehicle rented. */
-const RETURNING_WINDOW_DAYS = 90;
 const digitsOnly = (s: string) => (s || "").replace(/\D/g, "").slice(-10);
 const normLicense = (s: string) => (s || "").replace(/[^a-z0-9]/gi, "").toUpperCase();
 
