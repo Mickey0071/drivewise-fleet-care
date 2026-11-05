@@ -1,5 +1,3 @@
-export const RETURNING_RENTER_DAYS = 90;
-
 export type ReturningDriver = { id: string; status: string | null; license_number: string | null; license_expiry: string | null };
 export type ReturningRental = {
   id: string; driver_id: string; start_date: string; end_date: string | null;
@@ -8,7 +6,7 @@ export type ReturningRental = {
   name_mismatch_flag: boolean;
 };
 
-/** Reuse only this driver's reviewed documents from a real, recent rental. */
+/** Reuse only this driver's reviewed documents from a real past rental. */
 export function isReturningRentalEligible(driver: ReturningDriver, rental: ReturningRental, now = new Date()): boolean {
   const today = now.toISOString().slice(0, 10);
   if (["blacklisted", "banned", "inactive", "flagged"].includes((driver.status ?? "").toLowerCase())) return false;
@@ -21,6 +19,5 @@ export function isReturningRentalEligible(driver: ReturningDriver, rental: Retur
   if (!Number.isFinite(start) || rental.start_date.slice(0, 10) > today) return false;
   const lastDay = rental.reservation_status === "active" ? today : rental.end_date?.slice(0, 10);
   if (!lastDay || lastDay > today || lastDay < rental.start_date.slice(0, 10)) return false;
-  const elapsed = Date.parse(today) - Date.parse(lastDay);
-  return Number.isFinite(elapsed) && elapsed >= 0 && elapsed <= RETURNING_RENTER_DAYS * 86400000;
+  return true; // no time limit: saved ID stays valid until the license expires
 }
