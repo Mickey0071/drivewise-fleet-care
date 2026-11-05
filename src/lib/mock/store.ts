@@ -3,6 +3,7 @@ import { rentals, vehicles, payments, drivers, inspections, maintenance, expense
 import type { RepairLineItem } from "./data";
 import { supabase } from "@/integrations/supabase/client";
 import { computeScheduledItems, type ScheduledItem } from "@/lib/maintenance-utils";
+import { repairCloseoutAmounts } from "@/lib/repair-closeout";
 
 const listeners = new Set<() => void>();
 let version = 0;
@@ -2687,6 +2688,7 @@ export function recordRepairPayment(id: string, amount: number) {
 /** Summary of everything that changed when a repair was completed. */
 export interface ScheduledDueInfo { type: string; label: string; dueDate?: string; dueMileage?: number; }
 export interface RepairCompletionSummary {
+  cloudReady?: Promise<void>;
   maintenanceId: string;
   vehicleId: string;
   vehicleLabel: string;
@@ -2732,21 +2734,34 @@ export function completeRepair(
   },
 ): RepairCompletionSummary | undefined {
   const m = maintenance.find(x => x.id === id);
-  if (!m) return;
+  if (!m || m.status === "complete") return;
   const today = new Date().toISOString().slice(0, 10);
-  // Payments recorded so far (down payment + any recorded payments) were each
-  // already posted to P&L, so only the difference is posted at completion.
-  const alreadyExpensed = Math.max(0, m.amountPaid ?? 0);
-  const parts = Math.max(0, opts?.partsCost ?? m.partsCost ?? m.selectedSolution?.partsCost ?? 0);
-  const labor = Math.max(0, opts?.laborCost ?? m.laborCost ?? m.selectedSolution?.laborCost ?? 0);
-  const total = parts + labor;
+  const original = structuredClone(m);
+  const writes: Promise<void>[] = [];
+  const persist = (label: string, query: PromiseLike<{ error: any }>) => {
+    const table = label.startsWith("repair_history") ? "repair_history" : "repair_scorecard";
+    writes.push((async () => {
+      const { data, error } = await supabase.from(table).select("id").eq("maintenance_id", id).limit(1);
+      if (error) throw new Error("Could not verify existing repair history. Please try again.");
+      if (!data?.length) await cloudWrite(label, query);
+    })());
+  };
+  const alreadyExpensed = expenses.filter(e => e.maintenanceId === id || (e.notes ?? "").includes(`repair ${id}`) || (e.notes ?? "").includes(`Repair ${id}`)).reduce((sum, e) => sum + e.amount, 0);
+  const { parts, labor, total, paid, balance, remaining } = repairCloseoutAmounts({
+    ...m,
+    partsCost: opts?.partsCost ?? m.partsCost ?? m.selectedSolution?.partsCost,
+    laborCost: opts?.laborCost ?? m.laborCost ?? m.selectedSolution?.laborCost,
+  }, alreadyExpensed);
 
   m.status = "complete";
   m.partsCost = parts;
   m.laborCost = labor;
   m.cost = total;
-  m.balance = 0;
-  m.amountPaid = total;
+  m.balance = balance;
+  m.amountPaid = paid;
+  if (m.lineItems) m.lineItems = m.lineItems.map(item => item.status === "complete" ? item : {
+    ...item, status: "complete", completedAt: new Date().toISOString(), completedBy: opts?.completedBy?.trim() || "Admin",
+  });
   m.completionDate = new Date().toISOString();
   m.dateCompleted = today;
   if (m.selectedSolution) {
@@ -2760,25 +2775,22 @@ export function completeRepair(
 
   const resolution = `Repair completed ${today} by ${m.completedBy}: parts $${parts.toFixed(2)} + labor $${labor.toFixed(2)} = $${total.toFixed(2)}`;
   m.notes = m.notes ? `${m.notes}\n\n${resolution}` : resolution;
-  cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", id));
-
   // Post the remaining (not-yet-expensed) cost to P&L so the total lands once.
-  const remaining = Math.max(0, total - alreadyExpensed);
   const mechanic = m.mechanicName || (m.vendor && m.vendor !== "Pending assignment" ? m.vendor : undefined) || m.completedBy;
   const repairNote = `Repair ${m.id} completed — ${m.serviceType}`;
   if (remaining > 0) {
-    if (alreadyExpensed <= 0 && parts > 0 && labor > 0) {
+    if (alreadyExpensed <= 0 && parts > 0 && labor > 0 && parts + labor === total) {
       // No prior payments posted: split into Parts and Labour for clean P&L breakdown.
-      addExpense({
+      writes.push(addExpense({
         category: "Parts", amount: parts, date: today, vehicleId: m.vehicleId,
         maintenanceId: m.id, vendor: mechanic, notes: `${repairNote} (parts)`,
-      });
-      addExpense({
+      }).cloudReady);
+      writes.push(addExpense({
         category: "Labour", amount: labor, date: today, vehicleId: m.vehicleId,
         maintenanceId: m.id, vendor: mechanic, notes: `${repairNote} (labour)`,
-      });
+      }).cloudReady);
     } else {
-      addExpense({
+      writes.push(addExpense({
         category: "Repair & Maintenance",
         amount: remaining,
         date: today,
@@ -2786,7 +2798,7 @@ export function completeRepair(
         maintenanceId: m.id,
         vendor: mechanic,
         notes: `${repairNote} (parts $${parts.toFixed(2)} + labor $${labor.toFixed(2)})`,
-      });
+      }).cloudReady);
     }
   }
 
@@ -2809,7 +2821,7 @@ export function completeRepair(
   // Skip if this ticket was already posted to repair_history when the admin
   // accepted the mechanic diagnosis — prevents double-posting on Complete.
   if (!m.historyPostedAt) {
-    cloudWrite(
+    persist(
       "repair_history:insert",
       supabase.from("repair_history").insert({
         vehicle_id: m.vehicleId,
@@ -2825,7 +2837,7 @@ export function completeRepair(
         notes: m.mechanicNotes ?? m.notes ?? null,
       } as never),
     );
-    cloudWrite(
+    persist(
       "repair_scorecard:insert",
       supabase.from("repair_scorecard").insert({
         vehicle_id: m.vehicleId,
@@ -2837,6 +2849,17 @@ export function completeRepair(
       } as never),
     );
   }
+
+  m.historyPostedAt = m.historyPostedAt || new Date().toISOString();
+  const saved = toMaintenance(m);
+  const cloudReady = Promise.all(writes).then(async () => {
+    await cloudWrite("maintenance:complete", supabase.from("maintenance").update(saved).eq("id", id));
+    const { data, error } = await supabase.from("maintenance").select("status, cost, amount_paid, balance").eq("id", id).single();
+    if (error || data?.status !== "complete" || Number(data.cost) !== total || Number(data.amount_paid) !== paid || Number(data.balance) !== balance) {
+      throw new Error("Repair close-out could not be confirmed. Refresh and try again.");
+    }
+  }).catch(error => { Object.assign(m, original); syncVehicleOpenIssues(m.vehicleId); emit(); throw error; });
+  cloudReady.catch(() => {});
 
   // --- Reset the related scheduled-maintenance marker so the alert clears
   //     and the next due date recalculates from today. ---
@@ -2883,6 +2906,7 @@ export function completeRepair(
     : [];
 
   return {
+    cloudReady,
     maintenanceId: m.id,
     vehicleId: m.vehicleId,
     vehicleLabel: vNow ? `${vNow.year} ${vNow.make} ${vNow.model}` : m.vehicleId,
@@ -3102,9 +3126,9 @@ export function completeRepairLineItem(
   item.mechanicName = mechanicName;
   if (opts?.notes?.trim()) item.notes = opts.notes.trim();
 
-  recomputeTicketFromLineItems(m);
-  m.amountPaid = lineItemTotals(m.lineItems.filter(x => x.status === "complete")).total;
-  m.balance = Math.max(0, (m.cost ?? 0) - m.amountPaid);
+  const itemAmounts = repairCloseoutAmounts(m);
+  m.cost = itemAmounts.total;
+  m.balance = itemAmounts.balance;
 
   // Log this item individually to the vehicle's fleet-card repair history.
   cloudWrite(
@@ -3152,7 +3176,7 @@ export function completeRepairLineItem(
     m.completionDate = new Date().toISOString();
     m.completedBy = completedBy;
     if (mechanicName) m.mechanicName = mechanicName;
-    m.balance = 0;
+    m.balance = Math.max(0, (m.cost ?? 0) - (m.amountPaid ?? 0));
   }
 
   cloudWrite("maintenance:update", supabase.from("maintenance").update(toMaintenance(m)).eq("id", ticketId));
