@@ -280,7 +280,7 @@ const RETURNING_WINDOW_DAYS = 90;
 const digitsOnly = (s: string) => (s || "").replace(/\D/g, "").slice(-10);
 const normLicense = (s: string) => (s || "").replace(/[^a-z0-9]/gi, "").toUpperCase();
 
-/** Renter who rented in the last 90 days with license + selfie on file can skip re-verification. */
+/** Renter who with a past rental with license + selfie on file can skip re-verification. */
 async function findReturningRenter(phone: string, licenseNumber: string) {
   const p = digitsOnly(phone);
   const lic = normLicense(licenseNumber);
@@ -299,12 +299,10 @@ async function findReturningRenter(phone: string, licenseNumber: string) {
       (!d.license_expiry || d.license_expiry >= today),
   );
   if (!matches.length) return null;
-  const since = new Date(Date.now() - RETURNING_WINDOW_DAYS * 86400000).toISOString().slice(0, 10);
   const { data: rentals } = await supabaseAdmin
     .from("rentals")
     .select("id, driver_id, end_date, license_image_url, selfie_image_url")
     .in("driver_id", matches.map((d) => d.id))
-    .gte("end_date", since)
     .not("license_image_url", "is", null)
     .not("selfie_image_url", "is", null)
     .order("end_date", { ascending: false })
@@ -410,7 +408,7 @@ export const submitShareApplication = createServerFn({ method: "POST" })
     if (["maintenance", "impound"].includes(vehicle.status)) throw new Error("This vehicle is no longer available");
     if (await vehicleHasOpenReservation(link.vehicle_id)) throw new Error("This vehicle is no longer available");
 
-    // Returning renter (rented within 90 days, docs on file) may skip photo re-upload.
+    // Returning renter (docs on file, license not expired) may skip photo re-upload.
     const needsDocs = !data.licenseDataUrl || !data.selfieDataUrl;
     const returning = needsDocs ? await findReturningRenter(data.phone, data.licenseNumber) : null;
     if (needsDocs && !returning) throw new Error("License photo and selfie required");
