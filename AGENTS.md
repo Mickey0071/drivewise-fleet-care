@@ -3,3 +3,4 @@
 - Additional-driver files (license, selfie, signature, addendum) are stored as private rental-signing bucket paths and signed on demand (short TTL); packet merges use src/lib/additional-drivers.server.ts. Why: IDs must never have long-lived public links.
 - Rental agreement PDF renderers use a continuous vector layout and the shared one-page fitting helper; browser printing measures its compact template before print. Why: preserve full content and signatures without page breaks or clipping.
 - Returning-renter agreement signing resolves eligibility through returning-renter.server.ts using the token-bound driver and rechecks on submission; returning-renter.ts owns the tested rules. Why: clients must never authorize reuse or supply prior document URLs.
+- Repair close-out uses repair-closeout.ts for cost/balance rules and waits for cloudReady plus a saved-row read-back before success. Why: completed work must not erase ticket costs or imply payment.

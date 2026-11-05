@@ -59,10 +59,18 @@ import { repairCost as effectiveRepairCost, isRepairCost } from "@/lib/money-rul
 import type { Maintenance } from "@/lib/mock/data";
 import { ProblemCategorySelect } from "@/components/app/ProblemCategorySelect";
 import { OffRoadVehicles, buildOffRoadGroups } from "@/components/app/OffRoadVehicles";
+import { repairCloseoutAmounts } from "@/lib/repair-closeout";
 
 
 export const Route = createFileRoute("/repairs")({
-  head: () => ({ meta: [{ title: "Repairs — Camauto Rentals" }] }),
+  head: () => ({ meta: [
+    { title: "Repairs — Camauto Rentals" },
+    { name: "description", content: "Manage Camauto fleet repairs, mechanic diagnoses, payments and repair close-out." },
+    { property: "og:title", content: "Repairs — Camauto Rentals" },
+    { property: "og:description", content: "Manage fleet repair tickets and completed work." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   validateSearch: (
     s: Record<string, unknown>,
   ): { vehicleId?: string; items?: string; openCreate?: boolean } => ({
@@ -362,6 +370,7 @@ function RepairsPage() {
   const [mechanicName, setMechanicName] = useState("");
   const [completionNotes, setCompletionNotes] = useState("");
   const [completionSummary, setCompletionSummary] = useState<RepairCompletionSummary | null>(null);
+  const [closingRepair, setClosingRepair] = useState(false);
   const [adminName, setAdminName] = useState("Admin");
 
   useEffect(() => {
@@ -382,17 +391,23 @@ function RepairsPage() {
     setCompleteRecord(m);
   }
 
-  function confirmCompleteRepair() {
-    if (!completeRecord) return;
+  async function confirmCompleteRepair() {
+    if (!completeRecord || closingRepair) return;
+    setClosingRepair(true);
+    try {
     const summary = completeRepair(completeRecord.id, {
       completedBy: adminName,
       mechanicName: mechanicName.trim() || undefined,
       mechanicNotes: completionNotes.trim() || undefined,
     });
     if (summary) {
+      await summary.cloudReady;
       setCompletionSummary(summary);
-      toast.success(`Repair completed — ${fmtMoney(summary.total)} posted to P&L`);
+      toast.success(`Repair closed — ${fmtMoney(summary.expensePosted)} newly posted to expenses`);
     }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not close repair. Please try again.");
+    } finally { setClosingRepair(false); }
   }
 
   // Repairs (kanban-tracked)
@@ -792,7 +807,7 @@ function RepairsPage() {
                   <span className="flex items-center gap-2 text-green-600">
                     {openPhases["p3"] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-                    Phase 3 · Complete Pending Approval
+                    Phase 3 · Ready to Close
                   </span>
                   <span className="rounded-full bg-green-600/15 px-2 py-0.5 text-xs font-medium text-green-600">{phase3.length}</span>
                 </CardTitle>
@@ -871,7 +886,7 @@ function RepairsPage() {
                           );
                         })}
                         <div className="flex justify-between rounded bg-muted/40 px-2 py-1 text-xs font-medium">
-                          <span>Ticket total</span><span>{fmtMoney(lineItemTotals(m.lineItems).total)}</span>
+                          <span>Ticket total</span><span>{fmtMoney(total)}</span>
                         </div>
                         {/* Add another item (Phase 3 pre-complete) */}
                         {newItemOpen[m.id] ? (
@@ -965,11 +980,11 @@ function RepairsPage() {
                         + Process Payment
                       </Button>
                     )}
-                    <Button size="sm" className="w-full" disabled={balance > 0} onClick={() => handleCompleteRepair(m)}>
-                      Complete Repair
-                    </Button>
                     </>
                     )}
+                    <Button size="sm" className="w-full" onClick={() => handleCompleteRepair(m)}>
+                      <CheckCircle2 className="mr-2 h-4 w-4" /> Complete & Close Ticket
+                    </Button>
                           </div>
                         )}
                       </li>
@@ -1449,14 +1464,12 @@ function RepairsPage() {
       <Dialog open={!!completeRecord} onOpenChange={(o) => { if (!o) { setCompleteRecord(null); setCompletionSummary(null); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{completionSummary ? "Repair Completed" : "Complete Repair"}</DialogTitle>
+            <DialogTitle>{completionSummary ? "Repair Completed" : "Complete & Close Ticket"}</DialogTitle>
           </DialogHeader>
           {completeRecord && (() => {
             const m = completeRecord;
             const v = vehicleById(m.vehicleId);
-            const parts = m.partsCost ?? 0;
-            const labour = m.laborCost ?? 0;
-            const total = parts + labour;
+            const { parts, labor: labour, total, paid, balance } = repairCloseoutAmounts(m);
             const today = new Date().toISOString().slice(0, 10);
             return (
               <div className="space-y-4">
@@ -1464,14 +1477,18 @@ function RepairsPage() {
                   <div><span className="font-medium">Vehicle:</span> {v ? `${v.year} ${v.make} ${v.model}` : m.vehicleId}</div>
                   <div><span className="font-medium">Issue:</span> {m.serviceType}</div>
                   <div className="flex items-center gap-1 font-medium text-green-600">
-                    <CheckCircle2 className="h-4 w-4" /> Completed
+                    <CheckCircle2 className="h-4 w-4" /> {completionSummary ? "Completed" : "Ready to close"}
                   </div>
                 </div>
                 <div className="space-y-1 rounded-md border border-border p-3 text-sm">
                   <div className="flex justify-between"><span>Parts</span><span>{fmtMoney(parts)}</span></div>
                   <div className="flex justify-between"><span>Labour</span><span>{fmtMoney(labour)}</span></div>
                   <div className="flex justify-between border-t border-border pt-1 font-medium"><span>Total</span><span>{fmtMoney(total)}</span></div>
+                  <div className="flex justify-between"><span>Amount paid</span><span>{fmtMoney(paid)}</span></div>
+                  <div className="flex justify-between"><span>Unpaid balance</span><span>{fmtMoney(balance)}</span></div>
                 </div>
+                {!completionSummary && balance > 0 && <p className="text-sm text-muted-foreground">Closing records the work as finished. The unpaid balance of {fmtMoney(balance)} stays unpaid.</p>}
+                {!completionSummary && m.lineItems?.some(item => item.status !== "complete") && <p className="text-sm text-muted-foreground">Confirm that all remaining repair items are finished before closing this ticket.</p>}
                 <div className="text-sm text-muted-foreground space-y-1">
                   <div><span className="font-medium text-foreground">Completion date:</span> {fmtDate(today)}</div>
                   <div><span className="font-medium text-foreground">Completed by:</span> {adminName}</div>
@@ -1508,7 +1525,7 @@ function RepairsPage() {
             {!completionSummary ? (
               <>
                 <Button variant="outline" onClick={() => setCompleteRecord(null)}>Cancel</Button>
-                <Button onClick={confirmCompleteRepair}>Complete Repair</Button>
+                <Button disabled={closingRepair} onClick={confirmCompleteRepair}>{closingRepair ? "Closing…" : "Complete & Close Ticket"}</Button>
               </>
             ) : (
               <Button onClick={() => { setCompleteRecord(null); setCompletionSummary(null); }}>Done</Button>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -317,6 +317,8 @@ function CompleteCard({ m, adminName }: { m: Maintenance; adminName: string }) {
   const hasItems = items.length > 0;
   const [mechanicName, setMechanicName] = useState(m.mechanicName ?? "");
   const [notes, setNotes] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
   // Adjustable pre-complete fields (single-repair path)
   const [partsCostAdj, setPartsCostAdj] = useState(m.partsCost != null ? String(m.partsCost) : "");
   const [laborCostAdj, setLaborCostAdj] = useState(m.laborCost != null ? String(m.laborCost) : "");
@@ -348,13 +350,22 @@ function CompleteCard({ m, adminName }: { m: Maintenance; adminName: string }) {
     toast.success("Item added");
   }
 
-  function complete() {
+  async function complete() {
+    if (closing) return;
+    setClosing(true);
+    try {
     const summary = completeRepair(m.id, {
       completedBy: adminName,
       mechanicName: mechanicName.trim() || undefined,
       mechanicNotes: notes.trim() || undefined,
     });
-    if (summary) toast.success(`Repair completed — ${fmtMoney(summary.total)} posted to P&L`);
+    if (summary) {
+      await summary.cloudReady;
+      setConfirmOpen(false);
+      toast.success(`Repair closed — ${fmtMoney(summary.expensePosted)} newly posted to expenses`);
+    }
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not close repair."); }
+    finally { setClosing(false); }
   }
 
   return (
@@ -375,7 +386,7 @@ function CompleteCard({ m, adminName }: { m: Maintenance; adminName: string }) {
             <LineItemRow key={it.id} m={m} itemId={it.id} adminName={adminName} />
           ))}
           <div className="text-right text-xs text-muted-foreground">
-            Total {fmtMoney(lineItemTotals(items).total)}
+            Total {fmtMoney(effectiveRepairCost(m))}
           </div>
           {newItemOpen ? (
             <div className="space-y-1.5 rounded-md border border-dashed border-green-600/40 bg-green-500/5 p-2">
@@ -438,10 +449,17 @@ function CompleteCard({ m, adminName }: { m: Maintenance; adminName: string }) {
               <Switch checked={!!m.isRentalBlocking} onCheckedChange={(c) => setRepairRentalBlocking(m.id, c)} />
               <span className="text-muted-foreground">Off rental</span>
             </div>
-            <Button size="sm" onClick={complete}>Mark complete</Button>
           </div>
         </div>
       )}
+      <Button size="sm" className="mt-2 w-full" onClick={() => setConfirmOpen(true)}>Complete & Close Ticket</Button>
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Complete & Close Ticket</DialogTitle><DialogDescription>Confirm all work on this ticket is finished. Closing does not mark an unpaid balance as paid.</DialogDescription></DialogHeader>
+          <p className="text-sm">Total: {fmtMoney(effectiveRepairCost(m))} · Unpaid balance: {fmtMoney(Math.max(0, effectiveRepairCost(m) - (m.amountPaid ?? 0)))}</p>
+          <DialogFooter><Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button><Button disabled={closing} onClick={complete}>{closing ? "Closing…" : "Complete & Close Ticket"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
       <NoteBox m={m} />
     </div>
   );
