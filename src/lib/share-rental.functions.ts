@@ -279,7 +279,7 @@ export const getShareLinkPublic = createServerFn({ method: "POST" })
 const digitsOnly = (s: string) => (s || "").replace(/\D/g, "").slice(-10);
 const normLicense = (s: string) => (s || "").replace(/[^a-z0-9]/gi, "").toUpperCase();
 
-/** Renter who with a past rental with license + selfie on file can skip re-verification. */
+/** Renter with a past rental with license + selfie on file can skip re-verification. */
 async function findReturningRenter(phone: string, licenseNumber: string) {
   const p = digitsOnly(phone);
   const lic = normLicense(licenseNumber);
