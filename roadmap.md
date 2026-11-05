@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Repair close-out: permanent close button, preserve unpaid balances and ticket costs, verify closure and duplicate prevention.
+- [x] Repair close-out: permanent close button, preserve unpaid balances and ticket costs, wait for save/read-back, and check existing expenses/history. Four rule tests pass; real $950 confirmation checked on desktop/mobile without closing the customer's ticket.
 
 - [x] Agreement signing: reuse approved recent renter documents, retain new signature/payment, and verify eligibility rules (15 tests; real agreement page checked without submitting).
 
