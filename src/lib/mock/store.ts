@@ -2738,7 +2738,14 @@ export function completeRepair(
   const today = new Date().toISOString().slice(0, 10);
   const original = structuredClone(m);
   const writes: Promise<void>[] = [];
-  const persist = (label: string, query: PromiseLike<{ error: any }>) => writes.push(cloudWrite(label, query));
+  const persist = (label: string, query: PromiseLike<{ error: any }>) => {
+    const table = label.startsWith("repair_history") ? "repair_history" : "repair_scorecard";
+    writes.push((async () => {
+      const { data, error } = await supabase.from(table).select("id").eq("maintenance_id", id).limit(1);
+      if (error) throw new Error("Could not verify existing repair history. Please try again.");
+      if (!data?.length) await cloudWrite(label, query);
+    })());
+  };
   const alreadyExpensed = expenses.filter(e => e.maintenanceId === id || (e.notes ?? "").includes(`repair ${id}`) || (e.notes ?? "").includes(`Repair ${id}`)).reduce((sum, e) => sum + e.amount, 0);
   const { parts, labor, total, paid, balance, remaining } = repairCloseoutAmounts({
     ...m,
