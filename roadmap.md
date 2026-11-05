@@ -15,4 +15,5 @@
 - [x] Separate vehicle Expenses list into Parts, Labor, and Other sections.
 - [x] Violation agreements: signature date equals rental start date.
 - [ ] Accidents tab: claim checklist (7 items from spreadsheet) linked to reservation/vehicle — database ready, page in progress.
+- [x] Analytics: Average Expense tab (per vehicle per month) + tile on each vehicle.
 - [x] Receipts tab: reservation-based and manual receipts, NJ 6.625% sales tax, printable.

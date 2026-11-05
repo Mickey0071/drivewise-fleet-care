@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useStoreVersion } from "@/lib/mock/store";
 import { fmtMoney } from "@/lib/mock/data";
-import { computeVehicleAnalytics, periodFileTag, periodLabel, type VAPeriod } from "@/lib/vehicle-analytics";
+import { computeAverageMonthlyExpense, computeVehicleAnalytics, periodFileTag, periodLabel, type VAPeriod } from "@/lib/vehicle-analytics";
 import { exportVehicleAnalyticsPdf, exportVehicleAnalyticsXlsx } from "@/lib/vehicle-analytics-export";
 
 export const Route = createFileRoute("/analytics_/vehicles")({
@@ -31,6 +31,8 @@ const TABS: { key: VAPeriod; label: string }[] = [
 function VehicleAnalyticsPage() {
   const version = useStoreVersion();
   const [period, setPeriod] = useState<VAPeriod>("lifetime");
+  const [view, setView] = useState<"perf" | "avg">("perf");
+  const avg = useMemo(() => computeAverageMonthlyExpense(), [version]);
   const [busy, setBusy] = useState<"x" | "p" | null>(null);
   const rows = useMemo(() => computeVehicleAnalytics(period), [period, version]);
   const totals = rows.reduce((t, r) => ({ d: t.d + r.daysRented, rev: t.rev + r.rev, exp: t.exp + r.exp, net: t.net + r.net }), { d: 0, rev: 0, exp: 0, net: 0 });
@@ -56,6 +58,36 @@ function VehicleAnalyticsPage() {
           </Button>
         }
       />
+      <div className="mb-4 inline-flex rounded-md border border-border p-0.5">
+        <Button size="sm" variant={view === "perf" ? "default" : "ghost"} onClick={() => setView("perf")}>Performance</Button>
+        <Button size="sm" variant={view === "avg" ? "default" : "ghost"} onClick={() => setView("avg")}>Average Expense</Button>
+      </div>
+      {view === "avg" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Average Expense per Vehicle per Month</CardTitle>
+            <p className="text-sm text-muted-foreground">Fleet average: <span className="font-semibold text-foreground">{fmtMoney(avg.fleetAvgPerVehicle)}</span> per vehicle per month · lifetime expenses ÷ months in fleet</p>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b text-left text-muted-foreground">
+                <th className="py-2">Vehicle</th><th className="py-2 text-right">Total Expenses</th><th className="py-2 text-right">Months</th><th className="py-2 text-right">Avg / Month</th>
+              </tr></thead>
+              <tbody>
+                {avg.rows.map(r => (
+                  <tr key={r.id} className="border-b">
+                    <td className="py-2"><Link to="/fleet/$vehicleId" params={{ vehicleId: r.id }} className="hover:underline">{r.label}</Link></td>
+                    <td className="py-2 text-right">{fmtMoney(r.total)}</td>
+                    <td className="py-2 text-right">{r.months.toFixed(1)}</td>
+                    <td className={`py-2 text-right font-medium ${r.avg > avg.fleetAvgPerVehicle ? "text-destructive" : ""}`}>{fmtMoney(r.avg)}</td>
+                  </tr>
+                ))}
+                {avg.rows.length === 0 && <tr><td colSpan={4} className="py-4 text-center text-muted-foreground">No expenses recorded yet.</td></tr>}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      ) : (<>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="inline-flex rounded-md border border-border p-0.5">
           {TABS.map(t => (
@@ -113,6 +145,7 @@ function VehicleAnalyticsPage() {
           </table>
         </CardContent>
       </Card>
+      </>)}
     </div>
   );
 }
