@@ -70,3 +70,32 @@ export function computeVehicleAnalytics(p: VAPeriod): VARow[] {
   });
   return rows.filter(r => r.rev > 0 || r.daysRented > 0 || r.exp > 0).sort((a, b) => b.net - a.net);
 }
+
+// ---- Average monthly expense (lifetime) ----
+export interface AvgExpRow { id: string; label: string; total: number; months: number; avg: number }
+
+/** Months between two ISO dates, counting partial months; minimum 1. */
+export function monthsSpan(fromIso: string, toIso: string): number {
+  const days = Math.max(0, daysBetween(fromIso.slice(0, 10), toIso.slice(0, 10)) + 1);
+  return Math.max(1, Math.round((days / 30.4375) * 10) / 10);
+}
+
+/** Lifetime expenses ÷ months in fleet (from purchase date, else first activity). */
+export function computeAverageMonthlyExpense(): { rows: AvgExpRow[]; fleetAvgPerVehicle: number } {
+  const today = iso(new Date());
+  const countable = countableExpenses(expenses, maintenance);
+  const rows = getActiveFleet().map(v => {
+    const vExp = countable.filter(e => e.vehicleId === v.id);
+    const vRep = maintenance.filter(m => m.vehicleId === v.id && isRepairCost(m) && !!m.dateCompleted);
+    const total = vExp.reduce((s, e) => s + (e.amount || 0), 0) + vRep.reduce((s, m) => s + repairCost(m), 0);
+    const starts = [
+      (v as { purchaseDate?: string }).purchaseDate,
+      ...vExp.map(e => e.date), ...vRep.map(m => m.dateCompleted),
+      ...rentals.filter(r => r.vehicleId === v.id).map(r => r.startDate),
+    ].filter(Boolean).map(d => d!.slice(0, 10)).filter(d => d <= today).sort();
+    const months = starts[0] ? monthsSpan(starts[0], today) : 1;
+    return { id: v.id, label: label(v.id), total, months, avg: total / months };
+  }).filter(r => r.total > 0).sort((a, b) => b.avg - a.avg);
+  const fleetAvgPerVehicle = rows.length ? rows.reduce((s, r) => s + r.avg, 0) / rows.length : 0;
+  return { rows, fleetAvgPerVehicle };
+}
