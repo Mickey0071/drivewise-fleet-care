@@ -145,6 +145,7 @@ function VehicleAnalyticsPage() {
           </table>
         </CardContent>
       </Card>
+      </>)}
     </div>
   );
 }

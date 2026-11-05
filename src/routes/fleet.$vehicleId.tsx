@@ -17,6 +17,7 @@ import { EditVehicleDialog } from "@/components/app/EditVehicleDialog";
 import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { computeAverageMonthlyExpense } from "@/lib/vehicle-analytics";
 import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2, ChevronDown, Download, CheckCircle2, DollarSign } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { listCompletedTasksForVehicle } from "@/lib/runner-tasks-admin.functions";
@@ -486,6 +487,14 @@ function VehicleDetail() {
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4 space-y-4">
+          {(() => { const a = computeAverageMonthlyExpense(); const mine = a.rows.find(r => r.id === v.id); return (
+            <Card><CardContent className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm">
+              <div><div className="text-muted-foreground">Average expense per month</div>
+                <div className="text-2xl font-semibold">{fmtMoney(mine?.avg ?? 0)}</div>
+                <div className="text-xs text-muted-foreground">{mine ? `${fmtMoney(mine.total)} over ${mine.months.toFixed(1)} months` : "No expenses yet"}</div></div>
+              <div className="text-right"><div className="text-muted-foreground">Fleet average</div>
+                <div className="text-lg font-medium">{fmtMoney(a.fleetAvgPerVehicle)}</div></div>
+            </CardContent></Card>); })()}
           <div className="grid gap-3 sm:grid-cols-4">
             <Stat label="Income (paid)" value={fmtMoney(incomeTotal)} />
             <Stat label="Expenses" value={fmtMoney(expenseTotal)} />
