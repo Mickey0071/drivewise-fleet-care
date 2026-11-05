@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Repair close-out: permanent close button, preserve unpaid balances and ticket costs, verify closure and duplicate prevention.
+
 - [x] Agreement signing: reuse approved recent renter documents, retain new signature/payment, and verify eligibility rules (15 tests; real agreement page checked without submitting).
 
 - [x] Standardize every fleet-vehicle selector to uppercase `MAKE MODEL · YEAR · PLATE`, sorted by type then year.
