@@ -39,11 +39,11 @@ import {
 import { maintenance } from "@/lib/mock/data";
 import { useStoreVersion, extensionIncomeAttribution } from "@/lib/mock/store";
 import { getVehicleFinancials } from "@/lib/vehicle-financials";
-import { TrendingUp, TrendingDown, Wallet, Printer, Download, Send } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Printer, Download, Send, Eye } from "lucide-react";
 import { CAMAUTO_LOGO_BASE64 } from "@/assets/camauto-logo-base64";
 
 export const Route = createFileRoute("/monthly-vehicle-reports")({
-  head: () => ({ meta: [{ title: "Monthly Vehicle Reports — Camauto Rentals" }] }),
+  head: () => ({ meta: [{ title: "Vehicle Reports — Camauto Rentals" }, { name: "description", content: "Monthly and all-time income, expenses and net per vehicle." }, { property: "og:title", content: "Vehicle Reports — Camauto Rentals" }, { property: "og:description", content: "Monthly and all-time vehicle statements." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: MonthlyVehicleReportsPage,
 });
 
@@ -74,6 +74,7 @@ function repairFixLabel(e: {
   return `${e.category} — ${e.description}`;
 }
 function monthLabel(ym: string) {
+  if (ym === "all") return "All Time";
   const [y, m] = ym.split("-").map(Number);
   return new Date(Date.UTC(y, (m ?? 1) - 1, 1)).toLocaleDateString("en-US", {
     month: "long",
@@ -82,6 +83,7 @@ function monthLabel(ym: string) {
   });
 }
 function monthBounds(ym: string) {
+  if (ym === "all") return { start: "1900-01-01", end: "9999-12-31" };
   return { start: `${ym}-01`, end: `${ym}-31` };
 }
 
@@ -113,13 +115,17 @@ interface VehicleReport {
 
 function MonthlyVehicleReportsPage() {
   useStoreVersion();
-  const [ym, setYm] = useState<string>(currentMonth());
+  const [month, setMonth] = useState<string>(currentMonth());
+  const [mode, setMode] = useState<"month" | "all">("month");
+  const ym = mode === "all" ? "all" : month;
+  const [viewTarget, setViewTarget] = useState<VehicleReport | null>(null);
+  const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [shareTarget, setShareTarget] = useState<VehicleReport | null>(null);
 
   const reports = useMemo<VehicleReport[]>(() => {
     const { start, end } = monthBounds(ym);
-    const inMonth = (d?: string) => !!d && d.slice(0, 7) === ym;
+    const inMonth = (d?: string) => !!d && (ym === "all" || d.slice(0, 7) === ym);
     const overlaps = (s: string, e?: string) =>
       s <= end && (!e || e >= start);
 
@@ -207,11 +213,12 @@ function MonthlyVehicleReportsPage() {
       .sort((a, b) => b.net - a.net);
   }, [ym]);
 
-  const visible = showAll
+  const q = search.trim().toLowerCase();
+  const visible = (showAll
     ? reports
     : reports.filter(
         (r) => r.income > 0 || r.expenseTotal > 0 || r.renters.length > 0,
-      );
+      )).filter((r) => !q || `${r.title} ${r.plate}`.toLowerCase().includes(q));
 
   const totals = useMemo(() => {
     const income = reports.reduce((s, r) => s + r.income, 0);
@@ -220,7 +227,7 @@ function MonthlyVehicleReportsPage() {
   }, [reports]);
 
   const csv = {
-    filename: `monthly-vehicle-report-${ym}.csv`,
+    filename: `vehicle-reports-${ym}.csv`,
     headers: [
       "Vehicle",
       "Plate",
@@ -245,30 +252,48 @@ function MonthlyVehicleReportsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Monthly Vehicle Reports" />
+      <PageHeader title="Vehicle Reports" />
 
       <div className="no-print flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="month">Month</Label>
-          <Input
-            id="month"
-            type="month"
-            value={ym}
-            onChange={(e) => setYm(e.target.value || currentMonth())}
-            className="w-[180px]"
-          />
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1.5">
+            <Label>Period</Label>
+            <div className="inline-flex rounded-md border border-border p-0.5">
+              {(["month", "all"] as const).map((m) => (
+                <Button key={m} size="sm" variant={mode === m ? "default" : "ghost"} onClick={() => setMode(m)}>
+                  {m === "month" ? "Monthly" : "All Time"}
+                </Button>
+              ))}
+            </div>
+          </div>
+          {mode === "month" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="month">Month</Label>
+              <Input id="month" type="month" value={month} onChange={(e) => setMonth(e.target.value || currentMonth())} className="w-[170px]" />
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="vsearch">Search</Label>
+            <Input id="vsearch" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Vehicle or plate" className="w-[180px]" />
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Switch id="show-all" checked={showAll} onCheckedChange={setShowAll} />
             <Label htmlFor="show-all">Show all vehicles</Label>
           </div>
+          <Button variant="outline" size="sm" disabled={!visible.length} onClick={() => printAllReports(visible, ym)}>
+            <Printer className="mr-1.5 h-4 w-4" /> Print / PDF all
+          </Button>
+          <Button variant="outline" size="sm" disabled={!visible.length} onClick={() => { const spec = allDetailCsv(visible, ym); downloadCSV(spec.filename, spec.headers, spec.rows); }}>
+            <Download className="mr-1.5 h-4 w-4" /> Detailed CSV
+          </Button>
           <ReportActions csv={csv} />
         </div>
       </div>
 
       <div className="print-only hidden text-lg font-semibold">
-        Monthly Vehicle Report — {monthLabel(ym)}
+        Vehicle Reports — {monthLabel(ym)}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -284,97 +309,52 @@ function MonthlyVehicleReportsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {visible.map((r) => (
-            <Card key={r.vehicleId}>
-              <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-                <CardTitle className="text-base">
-                  {r.title}
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    {r.plate}
-                  </span>
-                </CardTitle>
-                <div className="text-right">
-                  <div className="text-xs text-muted-foreground">Net</div>
-                  <div className={`text-lg font-semibold ${r.net >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                    {fmtMoney(r.net)}
-                  </div>
-                </div>
-                <div className="no-print flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const spec = vehicleCsv(r, ym);
-                      downloadCSV(spec.filename, spec.headers, spec.rows);
-                    }}
-                  >
-                    <Download className="mr-1.5 h-4 w-4" />
-                    CSV
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => printVehicleReport(r, ym)}>
-                    <Printer className="mr-1.5 h-4 w-4" />
-                    Print
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setShareTarget(r)}>
-                    <Send className="mr-1.5 h-4 w-4" />
-                    Send
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="grid gap-6 md:grid-cols-3">
-                <div>
-                  <div className="mb-2 text-sm font-medium">
-                    Income · {fmtMoney(r.income)}
-                  </div>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <Row label="Rental" value={fmtMoney(r.rentalIncome)} />
-                    {r.extensionIncome > 0 && (
-                      <Row label="Extensions" value={fmtMoney(r.extensionIncome)} />
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <div className="mb-2 text-sm font-medium">Renters</div>
-                  {r.renters.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">—</div>
-                  ) : (
-                    <ul className="space-y-1 text-sm">
-                      {r.renters.map((x) => (
-                        <li key={x.driverId} className="text-muted-foreground">
-                          <span className="text-foreground">{x.name}</span>{" "}
-                          ({fmtDate(x.startDate)} – {x.endDate ? fmtDate(x.endDate) : "ongoing"})
-                          {x.paid > 0 && <> — {fmtMoney(x.paid)}</>}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                <div>
-                  <div className="mb-2 text-sm font-medium">
-                    Expenses · {fmtMoney(r.expenseTotal)}
-                  </div>
-                  {r.expenseLines.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">—</div>
-                  ) : (
-                    <ul className="space-y-1 text-sm">
-                      {r.expenseLines.map((e, i) => (
-                        <li key={i} className="flex justify-between gap-2 text-muted-foreground">
-                          <span className="truncate">
-                            {e.label}
-                            {e.vendor ? ` · ${e.vendor}` : ""}
-                          </span>
-                          <span className="shrink-0 text-foreground">{fmtMoney(e.amount)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card>
+          <CardContent className="overflow-x-auto p-0">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2">Vehicle</th>
+                  <th className="px-3 py-2">Renters</th>
+                  <th className="px-3 py-2 text-right">Income</th>
+                  <th className="px-3 py-2 text-right">Expenses</th>
+                  <th className="px-3 py-2 text-right">Net</th>
+                  <th className="no-print px-3 py-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((r) => (
+                  <tr key={r.vehicleId} className="border-b border-border last:border-0 hover:bg-muted/30">
+                    <td className="px-3 py-2">
+                      <div className="font-medium">{r.title}</div>
+                      <div className="text-xs text-muted-foreground">{r.plate}</div>
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">{r.renters.length}</td>
+                    <td className="px-3 py-2 text-right">{fmtMoney(r.income)}</td>
+                    <td className="px-3 py-2 text-right">{fmtMoney(r.expenseTotal)}</td>
+                    <td className={`px-3 py-2 text-right font-semibold ${r.net >= 0 ? "text-emerald-600" : "text-red-600"}`}>{fmtMoney(r.net)}</td>
+                    <td className="no-print px-3 py-2">
+                      <div className="flex justify-end gap-1">
+                        <Button size="sm" onClick={() => setViewTarget(r)}><Eye className="mr-1 h-4 w-4" />View</Button>
+                        <Button size="icon" variant="ghost" title="Print" onClick={() => printVehicleReport(r, ym)}><Printer className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" title="CSV" onClick={() => { const spec = vehicleCsv(r, ym); downloadCSV(spec.filename, spec.headers, spec.rows); }}><Download className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" title="Send" onClick={() => setShareTarget(r)}><Send className="h-4 w-4" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
       )}
+
+      <ViewReportDialog
+        report={viewTarget}
+        ym={ym}
+        onClose={() => setViewTarget(null)}
+        onSend={(r) => { setViewTarget(null); setShareTarget(r); }}
+      />
 
       <ShareReportDialog
         report={shareTarget}
@@ -632,7 +612,7 @@ function buildVehicleReportHtml(r: VehicleReport, ym: string): string {
         </div>
       </div>
       <div class="doc">
-        <div class="t">Monthly Statement</div>
+        <div class="t">${ym === "all" ? "All-Time Statement" : "Monthly Statement"}</div>
         <div class="d">${esc(monthLabel(ym))}</div>
       </div>
     </div>
@@ -670,4 +650,89 @@ function printVehicleReport(r: VehicleReport, ym: string) {
   w.document.close();
   w.focus();
   setTimeout(() => w.print(), 300);
+}
+function ViewReportDialog({ report, ym, onClose, onSend }: { report: VehicleReport | null; ym: string; onClose: () => void; onSend: (r: VehicleReport) => void }) {
+  return (
+    <Dialog open={report !== null} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        {report && (
+          <>
+            <DialogHeader>
+              <DialogTitle>{report.title} <span className="text-sm font-normal text-muted-foreground">{report.plate}</span></DialogTitle>
+              <DialogDescription>{monthLabel(ym)} statement</DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-md border border-border p-2"><div className="text-xs text-muted-foreground">Income</div><div className="font-semibold">{fmtMoney(report.income)}</div></div>
+              <div className="rounded-md border border-border p-2"><div className="text-xs text-muted-foreground">Expenses</div><div className="font-semibold">{fmtMoney(report.expenseTotal)}</div></div>
+              <div className="rounded-md border border-border p-2"><div className="text-xs text-muted-foreground">Net</div><div className={`font-semibold ${report.net >= 0 ? "text-emerald-600" : "text-red-600"}`}>{fmtMoney(report.net)}</div></div>
+            </div>
+            <div className="space-y-1 text-sm">
+              <div className="font-medium">Income</div>
+              <Row label="Rental" value={fmtMoney(report.rentalIncome)} />
+              {report.extensionIncome > 0 && <Row label="Extensions" value={fmtMoney(report.extensionIncome)} />}
+            </div>
+            <div className="text-sm">
+              <div className="mb-1 font-medium">Renters</div>
+              {report.renters.length === 0 ? <div className="text-muted-foreground">—</div> : (
+                <table className="w-full"><tbody>
+                  {report.renters.map((x) => (
+                    <tr key={x.driverId} className="border-b border-border last:border-0">
+                      <td className="py-1">{x.name}</td>
+                      <td className="py-1 text-muted-foreground">{fmtDate(x.startDate)} – {x.endDate ? fmtDate(x.endDate) : "ongoing"}</td>
+                      <td className="py-1 text-right">{fmtMoney(x.paid)}</td>
+                    </tr>
+                  ))}
+                </tbody></table>
+              )}
+            </div>
+            <div className="text-sm">
+              <div className="mb-1 font-medium">Expenses</div>
+              {report.expenseLines.length === 0 ? <div className="text-muted-foreground">—</div> : (
+                <table className="w-full"><tbody>
+                  {report.expenseLines.map((e, i) => (
+                    <tr key={i} className="border-b border-border last:border-0">
+                      <td className="py-1">{e.label}</td>
+                      <td className="py-1 text-muted-foreground">{fmtDate(e.date)}</td>
+                      <td className="py-1 text-right">{fmtMoney(e.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody></table>
+              )}
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => { const spec = vehicleCsv(report, ym); downloadCSV(spec.filename, spec.headers, spec.rows); }}><Download className="mr-1.5 h-4 w-4" />CSV</Button>
+              <Button variant="outline" onClick={() => onSend(report)}><Send className="mr-1.5 h-4 w-4" />Send</Button>
+              <Button onClick={() => printVehicleReport(report, ym)}><Printer className="mr-1.5 h-4 w-4" />Print / PDF</Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function allDetailCsv(list: VehicleReport[], ym: string) {
+  const rows: (string | number)[][] = [];
+  list.forEach((r) => {
+    const one = vehicleCsv(r, ym);
+    one.rows.forEach((row) => rows.push([`${r.title} ${r.plate}`, ...row]));
+  });
+  return { filename: `vehicle-reports-detailed-${ym}.csv`, headers: ["Vehicle", "Section", "Detail", "Date", "Amount"], rows };
+}
+
+function printAllReports(list: VehicleReport[], ym: string) {
+  if (typeof window === "undefined") return;
+  const w = window.open("", "_blank", "width=900,height=900");
+  if (!w) return;
+  const pages = list.map((r) => {
+    const html = buildVehicleReportHtml(r, ym);
+    const body = html.slice(html.indexOf("<body>") + 6, html.lastIndexOf("</body>"));
+    return `<section style="page-break-after:always">${body}</section>`;
+  });
+  const first = buildVehicleReportHtml(list[0], ym);
+  const head = first.slice(0, first.indexOf("<body>")).replace(/<title>[\s\S]*?<\/title>/, `<title>Vehicle Reports — ${monthLabel(ym)}</title>`);
+  w.document.write(`${head}<body>${pages.join("")}</body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 400);
 }
