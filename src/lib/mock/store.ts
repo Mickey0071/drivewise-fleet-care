@@ -3119,8 +3119,9 @@ export function completeRepairLineItem(
   item.mechanicName = mechanicName;
   if (opts?.notes?.trim()) item.notes = opts.notes.trim();
 
-  recomputeTicketFromLineItems(m);
-  m.balance = Math.max(0, (m.cost ?? 0) - m.amountPaid);
+  const itemAmounts = repairCloseoutAmounts(m);
+  m.cost = itemAmounts.total;
+  m.balance = itemAmounts.balance;
 
   // Log this item individually to the vehicle's fleet-card repair history.
   cloudWrite(
