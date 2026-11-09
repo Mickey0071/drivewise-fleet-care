@@ -18,6 +18,7 @@ import { PartsQuotedCard } from "@/components/app/PartsQuotedCard";
 import { NewDiagnosisAlertCard } from "@/components/app/NewDiagnosisAlertCard";
 import { CompletedTaskAlerts } from "@/components/app/CompletedTaskAlerts";
 import { WaitlistAlertCard } from "@/components/app/WaitlistAlertCard";
+import { RtoAlertCard } from "@/components/app/RtoAlertCard";
 import { useAuth } from "@/hooks/use-auth";
 import { RenterName } from "@/components/app/RenterProfileProvider";
 
@@ -220,6 +221,7 @@ function Index() {
       {role === "admin" && <PendingPaymentReviews />}
 
       {role === "admin" && <WaitlistAlertCard />}
+      {role === "admin" && <RtoAlertCard />}
 
       {role === "admin" && <CompletedTaskAlerts />}
 

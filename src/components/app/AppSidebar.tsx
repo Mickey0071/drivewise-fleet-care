@@ -67,6 +67,7 @@ const DEFAULT_ITEMS: NavItem[] = [
 
   // Reservations
   { key: "/rentals", url: "/rentals", title: "Active Reservations", icon: FileText, roles: ALL, sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
+  { key: "/rent-to-own", url: "/rent-to-own", title: "Rent To Own", icon: Handshake, roles: ["admin"], sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
   { key: "/admin/waitlist", url: "/admin/waitlist", title: "Waitlist", icon: ClipboardList, roles: ALL, sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
   { key: "/calendar", url: "/calendar", title: "Calendar", icon: Calendar, roles: ALL, sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },
   { key: "/driver-portal", url: "/driver-portal", title: "Client Portal Activity", icon: IdCard, roles: ALL, sectionKey: "reservations", sectionLabel: "Reservations", sectionIcon: FileText },

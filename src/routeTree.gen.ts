@@ -39,6 +39,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RamExpensesRouteImport } from './routes/ram-expenses'
 import { Route as ReceiptsRouteImport } from './routes/receipts'
 import { Route as RefundApprovalsRouteImport } from './routes/refund-approvals'
+import { Route as RentToOwnRouteImport } from './routes/rent-to-own'
 import { Route as RentalAgreementRouteImport } from './routes/rental-agreement'
 import { Route as RentalsRouteImport } from './routes/rentals'
 import { Route as RepairsRouteImport } from './routes/repairs'
@@ -94,6 +95,7 @@ import { Route as PortalTokenRouteImport } from './routes/portal.$token'
 import { Route as RentTokenRouteImport } from './routes/rent.$token'
 import { Route as RentPaidRouteImport } from './routes/rent.paid'
 import { Route as RmCardTokenRouteImport } from './routes/rm-card.$token'
+import { Route as RtoSignTokenRouteImport } from './routes/rto-sign.$token'
 import { Route as RunnerTaskTokenRouteImport } from './routes/runner-task.$token'
 import { Route as SetupTokenRouteImport } from './routes/setup.$token'
 import { Route as SignAgreementRetroTokenRouteImport } from './routes/sign-agreement-retro.$token'
@@ -278,6 +280,11 @@ const ReceiptsRoute = ReceiptsRouteImport.update({
 const RefundApprovalsRoute = RefundApprovalsRouteImport.update({
   id: '/refund-approvals',
   path: '/refund-approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RentToOwnRoute = RentToOwnRouteImport.update({
+  id: '/rent-to-own',
+  path: '/rent-to-own',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RentalAgreementRoute = RentalAgreementRouteImport.update({
@@ -558,6 +565,11 @@ const RmCardTokenRoute = RmCardTokenRouteImport.update({
   path: '/rm-card/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RtoSignTokenRoute = RtoSignTokenRouteImport.update({
+  id: '/rto-sign/$token',
+  path: '/rto-sign/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RunnerTaskTokenRoute = RunnerTaskTokenRouteImport.update({
   id: '/runner-task/$token',
   path: '/runner-task/$token',
@@ -778,6 +790,7 @@ export interface FileRoutesByFullPath {
   '/ram-expenses': typeof RamExpensesRoute
   '/receipts': typeof ReceiptsRoute
   '/refund-approvals': typeof RefundApprovalsRoute
+  '/rent-to-own': typeof RentToOwnRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/repairs': typeof RepairsRoute
@@ -833,6 +846,7 @@ export interface FileRoutesByFullPath {
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/rm-card/$token': typeof RmCardTokenRoute
+  '/rto-sign/$token': typeof RtoSignTokenRoute
   '/runner-task/$token': typeof RunnerTaskTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign-agreement-retro/$token': typeof SignAgreementRetroTokenRoute
@@ -900,6 +914,7 @@ export interface FileRoutesByTo {
   '/ram-expenses': typeof RamExpensesRoute
   '/receipts': typeof ReceiptsRoute
   '/refund-approvals': typeof RefundApprovalsRoute
+  '/rent-to-own': typeof RentToOwnRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/repairs': typeof RepairsRoute
@@ -955,6 +970,7 @@ export interface FileRoutesByTo {
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/rm-card/$token': typeof RmCardTokenRoute
+  '/rto-sign/$token': typeof RtoSignTokenRoute
   '/runner-task/$token': typeof RunnerTaskTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign-agreement-retro/$token': typeof SignAgreementRetroTokenRoute
@@ -1023,6 +1039,7 @@ export interface FileRoutesById {
   '/ram-expenses': typeof RamExpensesRoute
   '/receipts': typeof ReceiptsRoute
   '/refund-approvals': typeof RefundApprovalsRoute
+  '/rent-to-own': typeof RentToOwnRoute
   '/rental-agreement': typeof RentalAgreementRoute
   '/rentals': typeof RentalsRoute
   '/repairs': typeof RepairsRoute
@@ -1078,6 +1095,7 @@ export interface FileRoutesById {
   '/rent/$token': typeof RentTokenRoute
   '/rent/paid': typeof RentPaidRoute
   '/rm-card/$token': typeof RmCardTokenRoute
+  '/rto-sign/$token': typeof RtoSignTokenRoute
   '/runner-task/$token': typeof RunnerTaskTokenRoute
   '/setup/$token': typeof SetupTokenRoute
   '/sign-agreement-retro/$token': typeof SignAgreementRetroTokenRoute
@@ -1147,6 +1165,7 @@ export interface FileRouteTypes {
     | '/ram-expenses'
     | '/receipts'
     | '/refund-approvals'
+    | '/rent-to-own'
     | '/rental-agreement'
     | '/rentals'
     | '/repairs'
@@ -1202,6 +1221,7 @@ export interface FileRouteTypes {
     | '/rent/$token'
     | '/rent/paid'
     | '/rm-card/$token'
+    | '/rto-sign/$token'
     | '/runner-task/$token'
     | '/setup/$token'
     | '/sign-agreement-retro/$token'
@@ -1269,6 +1289,7 @@ export interface FileRouteTypes {
     | '/ram-expenses'
     | '/receipts'
     | '/refund-approvals'
+    | '/rent-to-own'
     | '/rental-agreement'
     | '/rentals'
     | '/repairs'
@@ -1324,6 +1345,7 @@ export interface FileRouteTypes {
     | '/rent/$token'
     | '/rent/paid'
     | '/rm-card/$token'
+    | '/rto-sign/$token'
     | '/runner-task/$token'
     | '/setup/$token'
     | '/sign-agreement-retro/$token'
@@ -1391,6 +1413,7 @@ export interface FileRouteTypes {
     | '/ram-expenses'
     | '/receipts'
     | '/refund-approvals'
+    | '/rent-to-own'
     | '/rental-agreement'
     | '/rentals'
     | '/repairs'
@@ -1446,6 +1469,7 @@ export interface FileRouteTypes {
     | '/rent/$token'
     | '/rent/paid'
     | '/rm-card/$token'
+    | '/rto-sign/$token'
     | '/runner-task/$token'
     | '/setup/$token'
     | '/sign-agreement-retro/$token'
@@ -1514,6 +1538,7 @@ export interface RootRouteChildren {
   RamExpensesRoute: typeof RamExpensesRoute
   ReceiptsRoute: typeof ReceiptsRoute
   RefundApprovalsRoute: typeof RefundApprovalsRoute
+  RentToOwnRoute: typeof RentToOwnRoute
   RentalAgreementRoute: typeof RentalAgreementRoute
   RentalsRoute: typeof RentalsRoute
   RepairsRoute: typeof RepairsRoute
@@ -1567,6 +1592,7 @@ export interface RootRouteChildren {
   RentTokenRoute: typeof RentTokenRoute
   RentPaidRoute: typeof RentPaidRoute
   RmCardTokenRoute: typeof RmCardTokenRoute
+  RtoSignTokenRoute: typeof RtoSignTokenRoute
   RunnerTaskTokenRoute: typeof RunnerTaskTokenRoute
   SetupTokenRoute: typeof SetupTokenRoute
   SignAgreementRetroTokenRoute: typeof SignAgreementRetroTokenRoute
@@ -1813,6 +1839,13 @@ declare module '@tanstack/react-router' {
       path: '/refund-approvals'
       fullPath: '/refund-approvals'
       preLoaderRoute: typeof RefundApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rent-to-own': {
+      id: '/rent-to-own'
+      path: '/rent-to-own'
+      fullPath: '/rent-to-own'
+      preLoaderRoute: typeof RentToOwnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rental-agreement': {
@@ -2200,6 +2233,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RmCardTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/rto-sign/$token': {
+      id: '/rto-sign/$token'
+      path: '/rto-sign/$token'
+      fullPath: '/rto-sign/$token'
+      preLoaderRoute: typeof RtoSignTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/runner-task/$token': {
       id: '/runner-task/$token'
       path: '/runner-task/$token'
@@ -2513,6 +2553,7 @@ const rootRouteChildren: RootRouteChildren = {
   RamExpensesRoute: RamExpensesRoute,
   ReceiptsRoute: ReceiptsRoute,
   RefundApprovalsRoute: RefundApprovalsRoute,
+  RentToOwnRoute: RentToOwnRoute,
   RentalAgreementRoute: RentalAgreementRoute,
   RentalsRoute: RentalsRoute,
   RepairsRoute: RepairsRoute,
@@ -2566,6 +2607,7 @@ const rootRouteChildren: RootRouteChildren = {
   RentTokenRoute: RentTokenRoute,
   RentPaidRoute: RentPaidRoute,
   RmCardTokenRoute: RmCardTokenRoute,
+  RtoSignTokenRoute: RtoSignTokenRoute,
   RunnerTaskTokenRoute: RunnerTaskTokenRoute,
   SetupTokenRoute: SetupTokenRoute,
   SignAgreementRetroTokenRoute: SignAgreementRetroTokenRoute,
