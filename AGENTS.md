@@ -7,3 +7,4 @@
 - Rent-to-own uses rto_contracts/rto_payments with money rules in src/lib/rto.ts (tested); Stripe links carry kind=rto_payment and the webhook records them idempotently by session id. Why: balance math stays in one place and online payments never double-count.
 - Public link access uses exact route-prefix boundaries in public-routes.ts, with token-authorized RTO signing separate from administration. Why: signature links require no account without exposing admin pages.
 - Rent-to-own reservation views reuse the contract workspace and shared live print dialog. Why: payment actions and printed balances stay consistent across entry points.
+- Reservations bind rent-to-own contracts by exact driver, vehicle and start date through findRtoForRental, displaying contract payoff and suppressing duplicate standalone rows without changing signature/approval status. Why: existing on-rent bookings must not treat contract down payments as prepaid rental credit.

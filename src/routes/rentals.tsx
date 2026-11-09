@@ -67,7 +67,7 @@ import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { loadRtoContracts } from "@/lib/rto-data";
-import { rtoIsOnRent, rtoSummary } from "@/lib/rto";
+import { findRtoForRental, rtoIsOnRent, rtoSummary } from "@/lib/rto";
 import { RtoWorkspace } from "@/components/app/RtoWorkspace";
 import { Handshake } from "lucide-react";
 
@@ -314,6 +314,8 @@ function RentalsPage() {
   // Net balance = what's owed minus any overpayment credit on file. A negative
   // result means the renter has a positive credit (nothing due).
   function rentalBalance(r: Rental): number {
+    const contract = findRtoForRental(r, rtoContracts);
+    if (contract) return rtoSummary(contract.terms, contract.payments).balance;
     // Credits are now counted inside rentalCanonicalOwed's paymentsReceived,
     // so subtracting rentalCredit again would double-count them.
     return rentalOwed(r);
@@ -347,9 +349,12 @@ function RentalsPage() {
   };
   const STATUS_ORDER: DisplayStatus[] = ["on_rent", "past_due", "pending", "paid", "returned"];
 
+  const linkedRtoIds = new Set(rentals.map(r => findRtoForRental(r, rtoContracts)?.id).filter(Boolean));
+  const standaloneRto = rtoContracts.filter(c => !linkedRtoIds.has(c.id));
+
   const statusCounts: Record<StatusFilter, number> = {
-    on_rent: rentals.filter(r => statusFilterMatches(r, "on_rent")).length + rtoContracts.filter(c => rtoIsOnRent(c.status)).length,
-    all: rentals.length + rtoContracts.length,
+    on_rent: rentals.filter(r => statusFilterMatches(r, "on_rent")).length + standaloneRto.filter(c => rtoIsOnRent(c.status)).length,
+    all: rentals.length + standaloneRto.length,
     pending: rentals.filter(r => statusFilterMatches(r, "pending")).length,
     rent_to_own: rtoContracts.length,
     returned: rentals.filter(r => statusFilterMatches(r, "returned")).length,
@@ -395,7 +400,7 @@ function RentalsPage() {
     rows.sort((a, b) => sortDir === "asc" ? cmp(a, b) : -cmp(a, b));
     return rows;
   })();
-  const visibleRto = rtoContracts.filter(c => {
+  const visibleRto = standaloneRto.filter(c => {
     if (status !== "all" && (status !== "on_rent" || !rtoIsOnRent(c.status))) return false;
     return [c.customer_name, c.plate, c.vehicle_make, c.vehicle_model, c.vehicle_year, c.id, c.agreement_date]
       .join(" ").toLowerCase().includes(search.trim().toLowerCase());
@@ -446,6 +451,11 @@ function RentalsPage() {
   }
 
   function renderCard(r: Rental) {
+    const contract = findRtoForRental(r, rtoContracts);
+    if (contract) return <div className="border-l-4 border-rent-to-own bg-rent-to-own/5">
+      <div className="flex items-center gap-2 px-4 pt-4 font-semibold text-rent-to-own"><Handshake className="h-5 w-5" />Rent To Own · {r.id}</div>
+      <RtoWorkspace embedded contractId={contract.id} />
+    </div>;
     const v = vehicleById(r.vehicleId);
     const d = driverById(r.driverId);
     const sched = payments.filter(p => p.rentalId === r.id);
@@ -1413,6 +1423,7 @@ function RentalsPage() {
                   </TableCell>
                 </TableRow>
               ) : filteredSorted.map(r => {
+                const contract = findRtoForRental(r, rtoContracts);
                 const v = vehicleById(r.vehicleId);
                 const d = driverById(r.driverId);
                 const st = rentalStatus(r);
@@ -1422,7 +1433,7 @@ function RentalsPage() {
                   <TableRow
                     key={r.id}
                     onClick={() => setDetail(r)}
-                    className={`cursor-pointer ${meta.row}`}
+                    className={`cursor-pointer ${contract ? "bg-rent-to-own/5 hover:bg-rent-to-own/10" : meta.row}`}
                   >
                     <TableCell className="font-mono text-xs text-muted-foreground">{r.id}</TableCell>
                     <TableCell className="font-medium">
@@ -1435,10 +1446,10 @@ function RentalsPage() {
                     <TableCell className="text-xs">{fmtDate(r.startDate)}</TableCell>
                     <TableCell className="text-xs">{r.endDate ? fmtDate(r.endDate) : "—"}</TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
+                      {contract ? <span className="inline-flex items-center gap-1 rounded-md bg-rent-to-own/15 px-2 py-0.5 text-xs font-semibold text-rent-to-own"><Handshake className="h-3.5 w-3.5" />Rent To Own</span> : <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>}
                     </TableCell>
-                    <TableCell className={`text-right font-medium ${bal > 0 ? "text-destructive" : bal < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
-                      {bal < 0 ? `Prepaid ${fmtMoney(-bal)}` : fmtMoney(bal)}
+                    <TableCell className={`text-right font-medium ${contract ? "text-rent-to-own" : bal > 0 ? "text-destructive" : bal < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                      {contract ? <><span>{fmtMoney(bal)}</span><span className="block text-xs">Payoff balance</span></> : bal < 0 ? `Prepaid ${fmtMoney(-bal)}` : fmtMoney(bal)}
                     </TableCell>
                   </TableRow>
                 );
@@ -1450,7 +1461,7 @@ function RentalsPage() {
                 <TableCell className="text-xs">{fmtDate(c.agreement_date)}</TableCell>
                 <TableCell className="text-xs">—</TableCell>
                 <TableCell><span className="inline-flex items-center gap-1 rounded-md bg-rent-to-own/15 px-2 py-0.5 text-xs font-semibold text-rent-to-own"><Handshake className="h-3.5 w-3.5" />Rent To Own</span></TableCell>
-                <TableCell className="text-right font-medium">{fmtMoney(rtoSummary(c.terms, c.payments).balance)}</TableCell>
+                <TableCell className="text-right font-medium text-rent-to-own">{fmtMoney(rtoSummary(c.terms, c.payments).balance)}<span className="block text-xs">Payoff balance</span></TableCell>
               </TableRow>)}
             </TableBody>
           </Table>
