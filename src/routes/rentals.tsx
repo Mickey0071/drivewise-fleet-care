@@ -64,14 +64,26 @@ import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 import { toast } from "sonner";
 import type { Rental, AccidentReport } from "@/lib/mock/data";
 import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { loadRtoContracts } from "@/lib/rto-data";
+import { rtoIsOnRent, rtoSummary } from "@/lib/rto";
+import { RtoWorkspace } from "@/components/app/RtoWorkspace";
+import { Handshake } from "lucide-react";
 
 const getPublicAppOrigin = () =>
   typeof window !== "undefined" ? window.location.origin : "";
 
-type StatusFilter = "on_rent" | "all" | "pending" | "returned" | "cancelled";
+type StatusFilter = "on_rent" | "all" | "pending" | "rent_to_own" | "returned" | "cancelled";
 
 export const Route = createFileRoute("/rentals")({
-  head: () => ({ meta: [{ title: "Reservations — Camauto Rentals" }] }),
+  head: () => ({ meta: [
+    { title: "Reservations — Camauto Rentals" },
+    { name: "description", content: "Manage rental and rent-to-own reservations, signed contracts and payments." },
+    { property: "og:title", content: "Reservations — Camauto Rentals" },
+    { property: "og:description", content: "Manage rental and rent-to-own reservations, signed contracts and payments." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   validateSearch: (
     search: Record<string, unknown>,
   ): {
@@ -85,7 +97,7 @@ export const Route = createFileRoute("/rentals")({
     session_id: typeof search.session_id === "string" ? search.session_id : undefined,
     review: typeof search.review === "string" ? search.review : undefined,
     detail: typeof search.detail === "string" ? search.detail : undefined,
-    status: ["on_rent", "all", "pending", "returned", "cancelled"].includes(search.status as string)
+    status: ["on_rent", "all", "pending", "rent_to_own", "returned", "cancelled"].includes(search.status as string)
       ? (search.status as StatusFilter)
       : "on_rent",
   }),
@@ -98,6 +110,7 @@ const FILTER_LABELS: Record<StatusFilter, string> = {
   on_rent: "On Rent",
   all: "All",
   pending: "Pending",
+  rent_to_own: "Rent To Own",
   returned: "Returned",
   cancelled: "Cancelled",
 };
@@ -110,6 +123,7 @@ function statusFilterMatches(r: Rental, filter: StatusFilter): boolean {
     case "returned": return rs === "returned" || rs === "completed";
     case "cancelled": return rs === "cancelled";
     case "all": return true;
+    case "rent_to_own": return false;
     default: return true;
   }
 }
@@ -121,6 +135,11 @@ function RentalsPage() {
   const status: StatusFilter = (searchParams.status as StatusFilter) ?? "on_rent";
   const [detail, setDetail] = useState<Rental | null>(null);
   const { user, role } = useAuth();
+  const { data: rtoContracts = [], error: rtoError } = useQuery({
+    queryKey: ["rto-contracts"], queryFn: () => loadRtoContracts(supabase),
+    enabled: role === "admin", refetchInterval: 30_000,
+  });
+  const [rtoDetail, setRtoDetail] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [editing, setEditing] = useState<Rental | null>(null);
   const [delivering, setDelivering] = useState<Rental | null>(null);
@@ -329,9 +348,10 @@ function RentalsPage() {
   const STATUS_ORDER: DisplayStatus[] = ["on_rent", "past_due", "pending", "paid", "returned"];
 
   const statusCounts: Record<StatusFilter, number> = {
-    on_rent: rentals.filter(r => statusFilterMatches(r, "on_rent")).length,
-    all: rentals.length,
+    on_rent: rentals.filter(r => statusFilterMatches(r, "on_rent")).length + rtoContracts.filter(c => rtoIsOnRent(c.status)).length,
+    all: rentals.length + rtoContracts.length,
     pending: rentals.filter(r => statusFilterMatches(r, "pending")).length,
+    rent_to_own: rtoContracts.length,
     returned: rentals.filter(r => statusFilterMatches(r, "returned")).length,
     cancelled: rentals.filter(r => statusFilterMatches(r, "cancelled")).length,
   };
@@ -375,6 +395,11 @@ function RentalsPage() {
     rows.sort((a, b) => sortDir === "asc" ? cmp(a, b) : -cmp(a, b));
     return rows;
   })();
+  const visibleRto = rtoContracts.filter(c => {
+    if (status !== "all" && (status !== "on_rent" || !rtoIsOnRent(c.status))) return false;
+    return [c.customer_name, c.plate, c.vehicle_make, c.vehicle_model, c.vehicle_year, c.id, c.agreement_date]
+      .join(" ").toLowerCase().includes(search.trim().toLowerCase());
+  });
 
   function toggleSort(key: typeof sortKey) {
     if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -1330,7 +1355,7 @@ function RentalsPage() {
           </div>
         ) : (<>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Select
               value={status}
               onValueChange={(val: StatusFilter) => {
@@ -1341,13 +1366,17 @@ function RentalsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(["on_rent", "all", "pending", "returned", "cancelled"] as StatusFilter[]).map((k) => (
+                {(["on_rent", "all", "pending", ...(role === "admin" ? ["rent_to_own"] : []), "returned", "cancelled"] as StatusFilter[]).map((k) => (
                   <SelectItem key={k} value={k}>
                     {FILTER_LABELS[k]} ({statusCounts[k]})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <Button variant={status === "pending" ? "secondary" : "outline"} onClick={() => navigate({ to: "/rentals", search: { status: "pending" }, replace: true })}>Pending ({statusCounts.pending})</Button>
+            {role === "admin" && <Button variant="outline" className="border-rent-to-own/40 bg-rent-to-own/5 text-rent-to-own hover:bg-rent-to-own/15 hover:text-rent-to-own" onClick={() => navigate({ to: "/rentals", search: { status: "rent_to_own" }, replace: true })}>
+              <Handshake className="h-4 w-4" />Rent To Own ({rtoContracts.length})
+            </Button>}
             <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
               Showing: {FILTER_LABELS[status]} ({statusCounts[status]})
             </span>
@@ -1362,7 +1391,8 @@ function RentalsPage() {
             className="pl-9"
           />
         </div>
-        <div className="rounded-lg border">
+        {rtoError && <p className="text-sm text-destructive">Rent-to-own reservations could not load. Refresh to try again.</p>}
+        {status === "rent_to_own" ? <RtoWorkspace embedded /> : <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -1376,7 +1406,7 @@ function RentalsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSorted.length === 0 ? (
+              {filteredSorted.length === 0 && visibleRto.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                     {search ? "No reservations match your search." : "No reservations yet."}
@@ -1413,12 +1443,27 @@ function RentalsPage() {
                   </TableRow>
                 );
               })}
+              {visibleRto.map(c => <TableRow key={`rto-${c.id}`} className="cursor-pointer bg-rent-to-own/5 hover:bg-rent-to-own/10" onClick={() => setRtoDetail(c.id)}>
+                <TableCell className="font-mono text-xs text-rent-to-own">RTO-{c.id.slice(0, 8)}</TableCell>
+                <TableCell className="font-medium">{c.customer_name}</TableCell>
+                <TableCell className="text-muted-foreground">{c.vehicle_make} {c.vehicle_model} · {c.vehicle_year} · {c.plate}</TableCell>
+                <TableCell className="text-xs">{fmtDate(c.agreement_date)}</TableCell>
+                <TableCell className="text-xs">—</TableCell>
+                <TableCell><span className="inline-flex items-center gap-1 rounded-md bg-rent-to-own/15 px-2 py-0.5 text-xs font-semibold text-rent-to-own"><Handshake className="h-3.5 w-3.5" />Rent To Own</span></TableCell>
+                <TableCell className="text-right font-medium">{fmtMoney(rtoSummary(c.terms, c.payments).balance)}</TableCell>
+              </TableRow>)}
             </TableBody>
           </Table>
-        </div>
+        </div>}
         </>)}
       </div>
       <NewReservationDialog open={newOpen} onOpenChange={setNewOpen} />
+      <Dialog open={!!rtoDetail} onOpenChange={o => !o && setRtoDetail(null)}>
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+          <DialogHeader><DialogTitle className="flex items-center gap-2 text-rent-to-own"><Handshake className="h-5 w-5" />Rent To Own</DialogTitle></DialogHeader>
+          {rtoDetail && <RtoWorkspace embedded contractId={rtoDetail} />}
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!detail} onOpenChange={(o) => {
         if (!o) {
           setDetail(null);

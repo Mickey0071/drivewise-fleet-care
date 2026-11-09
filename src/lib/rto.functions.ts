@@ -55,10 +55,13 @@ export const getRtoByToken = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: c } = await supabaseAdmin.from("rto_contracts")
-      .select("id, customer_name, address, city_state_zip, phone, email, license_number, vehicle_year, vehicle_make, vehicle_model, vehicle_color, vin, plate, odometer, agreement_date, down_payment, weekly_amount, num_payments, late_fee_per_day, cancel_fee, first_due_date, status, signed_at, customer_signed_name")
+      .select("id, customer_name, address, city_state_zip, phone, email, license_number, vehicle_year, vehicle_make, vehicle_model, vehicle_color, vin, plate, odometer, agreement_date, down_payment, weekly_amount, num_payments, late_fee_per_day, cancel_fee, first_due_date, status, signed_at, customer_signed_name, customer_signature, rep_signed_name")
       .eq("sign_token", data.token).maybeSingle();
     if (!c || c.status === "cancelled") throw new Error("This link is no longer valid");
-    return c;
+    const { data: payments, error } = await supabaseAdmin.from("rto_payments")
+      .select("amount, late_fee, paid_at").eq("contract_id", c.id).order("paid_at");
+    if (error) throw new Error("Could not load current payments");
+    return { ...c, payments: (payments ?? []).map(p => ({ amount: Number(p.amount), lateFee: Number(p.late_fee), paidAt: p.paid_at })) };
   });
 
 /** Public: renter signs. Token is the only credential. */

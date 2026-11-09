@@ -23,6 +23,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { RenterName } from "@/components/app/RenterProfileProvider";
 
 export const Route = createFileRoute("/")({
+  head: () => ({ meta: [
+    { title: "Dashboard — Camauto Rentals" },
+    { name: "description", content: "Camauto fleet, reservations, payment and agreement alerts." },
+    { property: "og:title", content: "Dashboard — Camauto Rentals" },
+    { property: "og:description", content: "Camauto fleet, reservations, payment and agreement alerts." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: Index,
 });
 

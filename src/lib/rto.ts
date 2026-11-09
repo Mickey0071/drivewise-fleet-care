@@ -9,6 +9,10 @@ export interface RtoTerms {
 }
 export interface RtoPaymentLite { amount: number; lateFee: number; paidAt: string }
 
+export function rtoIsOnRent(status: string): boolean {
+  return status === "active";
+}
+
 function addDays(d: string, n: number) {
   const t = new Date(d + "T00:00:00Z");
   t.setUTCDate(t.getUTCDate() + n);
