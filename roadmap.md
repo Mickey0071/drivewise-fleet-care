@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Ridley rent-to-own: show linked On Rent reservation once, in blue, with $3,150 payoff after $1,500 down; open contract/payment printing instead of prepaid rental details.
+- [x] Ridley rent-to-own: linked On Rent reservation appears once in blue with $3,150 payoff after $1,500 down; contract/payment printing verified against saved payments; eight rule tests pass.
 
 - [x] Rent-to-own: no-signup signature link, blue Reservations section beside Pending and active On Rent entries, live payment checklist printing. Actual unsigned customer link and saved $1,500 payment checked without sending/signing; nine rule tests pass.
 
