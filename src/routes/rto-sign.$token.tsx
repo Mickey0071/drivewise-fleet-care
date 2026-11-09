@@ -64,7 +64,7 @@ function SignPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-4">
+    <div className="mx-auto max-w-3xl space-y-4 p-4 [&_canvas]:max-w-full">
       {done && <Button variant="outline" disabled={busy} onClick={printCurrent}><Printer className="h-4 w-4" />Print contract to date</Button>}
       <div ref={documentRef} className="p-4"><RtoContractDocument c={c} terms={terms} payments={c.payments ?? []} showChecklist={done} /></div>
       {done ? (

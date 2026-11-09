@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Rent-to-own: no-signup signature link, blue Reservations tab and On Rent entries, current signed-contract printing after payments.
+- [x] Rent-to-own: no-signup signature link, blue Reservations section beside Pending and active On Rent entries, live payment checklist printing. Actual unsigned customer link and saved $1,500 payment checked without sending/signing; nine rule tests pass.
 
 - [x] Repair close-out: permanent close button, preserve unpaid balances and ticket costs, wait for save/read-back, and check existing expenses/history. Four rule tests pass; real $950 confirmation checked on desktop/mobile without closing the customer's ticket.
 
