@@ -391,6 +391,13 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv, eventId?: s
   const kind =
     session.metadata?.kind || (session.mode === "subscription" ? "subscription" : "deposit");
 
+  // Rent-to-own payment link: record against the contract and stop.
+  if (kind === "rto_payment") {
+    const { recordRtoStripePayment } = await import("@/lib/rto.functions");
+    await recordRtoStripePayment(session);
+    return;
+  }
+
   async function resolveSessionPaymentMethodId(): Promise<string | null> {
     const stripe = createStripeClient(env);
     const piId =
