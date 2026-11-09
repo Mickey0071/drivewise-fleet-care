@@ -27,7 +27,7 @@ export function RtoContractDocument({ c, terms, payments, showChecklist = true }
     return { ...r, paid, when: paid >= r.amount ? when : undefined };
   });
   const F = ({ l, v }: { l: string; v?: string }) => (
-    <div className="rto-field"><span className="rto-l">{l}</span><span className="rto-v">{v || "\u00a0"}</span></div>
+    <div className="rto-field min-w-0 border-b py-1"><span className="rto-l block text-xs text-muted-foreground">{l}</span><span className="rto-v block break-words">{v || "\u00a0"}</span></div>
   );
   const dp = money(terms.downPayment), wk = money(terms.weeklyAmount), lf = money(terms.lateFeePerDay), cf = money(Number(c.cancel_fee));
   return (
@@ -39,14 +39,14 @@ export function RtoContractDocument({ c, terms, payments, showChecklist = true }
       </div>
       <p>This Rent-To-Own Agreement ("Agreement") is made on the date below between CAM Auto Rentals ("Owner") and the customer named below ("Customer").</p>
       <h2 className="font-semibold">1. CUSTOMER INFORMATION</h2>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+      <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
         <F l="Full Legal Name" v={c.customer_name} /><F l="Date of Agreement" v={fmt(c.agreement_date)} />
         <F l="Address" v={c.address} /><F l="City / State / ZIP" v={c.city_state_zip} />
         <F l="Phone" v={c.phone} /><F l="Driver's License # / State" v={c.license_number} />
         <F l="Email" v={c.email} />
       </div>
       <h2 className="font-semibold">2. VEHICLE INFORMATION</h2>
-      <div className="grid grid-cols-3 gap-x-4 gap-y-1">
+      <div className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-3">
         <F l="Year" v={c.vehicle_year} /><F l="Make" v={c.vehicle_make} /><F l="Model" v={c.vehicle_model} />
         <F l="Color" v={c.vehicle_color} /><F l="VIN" v={c.vin} /><F l="Plate #" v={c.plate} />
         <F l="Odometer at Delivery" v={c.odometer} />
