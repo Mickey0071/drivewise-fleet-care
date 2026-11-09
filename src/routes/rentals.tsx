@@ -1355,7 +1355,7 @@ function RentalsPage() {
           </div>
         ) : (<>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Select
               value={status}
               onValueChange={(val: StatusFilter) => {
@@ -1373,6 +1373,7 @@ function RentalsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Button variant={status === "pending" ? "secondary" : "outline"} onClick={() => navigate({ to: "/rentals", search: { status: "pending" }, replace: true })}>Pending ({statusCounts.pending})</Button>
             {role === "admin" && <Button variant="outline" className="border-rent-to-own/40 text-rent-to-own" onClick={() => navigate({ to: "/rentals", search: { status: "rent_to_own" }, replace: true })}>
               <Handshake className="h-4 w-4" />Rent To Own ({rtoContracts.length})
             </Button>}

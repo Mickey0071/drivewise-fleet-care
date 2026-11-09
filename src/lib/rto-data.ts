@@ -7,11 +7,12 @@ export type RtoRow = Record<string, any> & {
 
 /** Load contracts with payments (admin RLS applies). */
 export async function loadRtoContracts(supabase: any): Promise<RtoRow[]> {
-  const [{ data: cs, error }, { data: ps }] = await Promise.all([
+  const [{ data: cs, error }, { data: ps, error: paymentError }] = await Promise.all([
     supabase.from("rto_contracts").select("*").order("created_at", { ascending: false }),
     supabase.from("rto_payments").select("*").order("paid_at"),
   ]);
   if (error) throw error;
+  if (paymentError) throw paymentError;
   return (cs ?? []).map((c: any) => ({
     ...c,
     terms: {
