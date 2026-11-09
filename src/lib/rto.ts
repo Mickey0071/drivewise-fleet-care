@@ -13,6 +13,15 @@ export function rtoIsOnRent(status: string): boolean {
   return status === "active";
 }
 
+/** Bind only the same renter, vehicle and agreement start; never infer from names. */
+export function findRtoForRental<T extends {
+  driver_id?: string | null; vehicle_id?: string | null; agreement_date?: string; status: string;
+}>(rental: { driverId: string; vehicleId: string; startDate: string }, contracts: T[]): T | undefined {
+  return contracts.find(c => c.status !== "cancelled" &&
+    c.driver_id === rental.driverId && c.vehicle_id === rental.vehicleId &&
+    c.agreement_date === rental.startDate);
+}
+
 function addDays(d: string, n: number) {
   const t = new Date(d + "T00:00:00Z");
   t.setUTCDate(t.getUTCDate() + n);
