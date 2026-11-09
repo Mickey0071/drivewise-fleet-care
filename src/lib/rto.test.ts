@@ -1,9 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { rtoSummary, rtoSchedule } from "./rto";
+import { rtoSummary, rtoSchedule, rtoIsOnRent } from "./rto";
 
 const terms = { agreementDate: "2026-11-01", downPayment: 1500, weeklyAmount: 225, numPayments: 14, lateFeePerDay: 25 };
 
 describe("rent to own", () => {
+  it("only activated rent-to-own contracts appear on rent", () => {
+    expect(rtoIsOnRent("active")).toBe(true);
+    for (const status of ["draft", "sent", "signed", "completed", "cancelled"]) {
+      expect(rtoIsOnRent(status)).toBe(false);
+    }
+  });
   it("contract total is $1,500 down + 14 x $225", () => {
     expect(rtoSummary(terms, [], "2026-11-01").balance).toBe(4650);
   });

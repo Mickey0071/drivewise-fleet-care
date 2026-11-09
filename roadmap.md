@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Rent-to-own: no-signup signature link, blue Reservations tab and On Rent entries, current signed-contract printing after payments.
+
 - [x] Repair close-out: permanent close button, preserve unpaid balances and ticket costs, wait for save/read-back, and check existing expenses/history. Four rule tests pass; real $950 confirmation checked on desktop/mobile without closing the customer's ticket.
 
 - [x] Agreement signing: reuse approved recent renter documents, retain new signature/payment, and verify eligibility rules (15 tests; real agreement page checked without submitting).

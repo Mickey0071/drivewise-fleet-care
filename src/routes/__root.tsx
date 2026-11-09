@@ -26,6 +26,7 @@ import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { RenterProfileProvider } from "@/components/app/RenterProfileProvider";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { isPublicRoute } from "@/lib/public-routes";
 
 function HamburgerTrigger() {
   const { toggleSidebar } = useSidebar();
@@ -48,28 +49,6 @@ const ROUTE_ROLES: { prefix: string; roles: AppRole[] }[] = [
   { prefix: "/payroll", roles: ["admin"] },
   { prefix: "/pnl", roles: ["admin"] },
   { prefix: "/expenses", roles: ["admin"] },
-];
-const PUBLIC_ROUTES = [
-  "/login",
-  "/forgot-password",
-  "/reset-password",
-  "/sign",
-  "/rent",
-  "/extend",
-  "/setup",
-  "/inspect",
-  "/verify-payment",
-  "/portal-signup",
-  "/portal",
-  "/runner-task",
-  "/mechanic-job",
-  "/work-order",
-  "/part-quote",
-  "/repair/accept",
-  "/repair/decline",
-  "/waitlist",
-  "/add-driver",
-  "/verify-card",
 ];
 
 function NotFoundComponent() {
@@ -199,7 +178,7 @@ function AuthGate() {
   const [storeLoadError, setStoreLoadError] = useState<string | null>(null);
   const path = useRouterState({ select: (r) => r.location.pathname });
   const navigate = useNavigate();
-  const isPublic = PUBLIC_ROUTES.some(p => path.startsWith(p));
+  const isPublic = isPublicRoute(path);
   const isDriver = role === "driver";
 
   useEffect(() => {
