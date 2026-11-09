@@ -1374,7 +1374,7 @@ function RentalsPage() {
               </SelectContent>
             </Select>
             <Button variant={status === "pending" ? "secondary" : "outline"} onClick={() => navigate({ to: "/rentals", search: { status: "pending" }, replace: true })}>Pending ({statusCounts.pending})</Button>
-            {role === "admin" && <Button variant="outline" className="border-rent-to-own/40 text-rent-to-own" onClick={() => navigate({ to: "/rentals", search: { status: "rent_to_own" }, replace: true })}>
+            {role === "admin" && <Button variant="outline" className="border-rent-to-own/40 bg-rent-to-own/5 text-rent-to-own hover:bg-rent-to-own/15 hover:text-rent-to-own" onClick={() => navigate({ to: "/rentals", search: { status: "rent_to_own" }, replace: true })}>
               <Handshake className="h-4 w-4" />Rent To Own ({rtoContracts.length})
             </Button>}
             <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
