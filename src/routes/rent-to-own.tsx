@@ -95,7 +95,7 @@ function RtoPage() {
 
   return (
     <div className="space-y-4 p-4 md:p-6">
-      <PageHeader title="Rent To Own" description="Send agreements to sign by text, collect payments and track the balance." />
+      <PageHeader title="Rent To Own" subtitle="Send agreements to sign by text, collect payments and track the balance." />
       <div className="flex justify-end"><Button onClick={openNew}><Plus className="mr-1 h-4 w-4" />New Rent-To-Own</Button></div>
       {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : rows.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">No rent-to-own contracts yet.</Card>
@@ -157,7 +157,7 @@ function RtoPage() {
                   <SelectContent>{[...drivers].sort((a, b) => a.fullName.localeCompare(b.fullName)).map((d) => <SelectItem key={d.id} value={d.id}>{d.fullName}</SelectItem>)}</SelectContent></Select></div>
               <div><Label>Fill from vehicle</Label>
                 <Select value={form.vehicle_id} onValueChange={pickVehicle}><SelectTrigger><SelectValue placeholder="Pick a vehicle" /></SelectTrigger>
-                  <SelectContent>{vehicles.filter((v) => v.status !== "archived").map((v) => <SelectItem key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</SelectItem>)}</SelectContent></Select></div>
+                  <SelectContent>{vehicles.map((v) => <SelectItem key={v.id} value={v.id}>{formatVehiclePickerLabel(v)}</SelectItem>)}</SelectContent></Select></div>
               {([
                 ["customer_name", "Full legal name"], ["agreement_date", "Date of agreement", "date"], ["address", "Address"], ["city_state_zip", "City / State / ZIP"],
                 ["phone", "Phone"], ["license_number", "Driver's license # / State"], ["email", "Email"],

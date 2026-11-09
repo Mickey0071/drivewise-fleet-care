@@ -55,7 +55,7 @@ function SignPage() {
           <label className="text-sm font-medium">Type your full legal name</label>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
           <label className="text-sm font-medium">Sign below</label>
-          <SignaturePad value={sig} onChange={setSig} />
+          <SignaturePad value={sig ?? undefined} onChange={setSig} />
           <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={agree} onChange={(e) => setAgree(e.target.checked)} />I have read and agree to this Rent-To-Own Agreement, including the as-is, no-repairs, 3-day termination, late fee, repossession and forfeiture terms.</label>
           <Button className="w-full" disabled={!agree || !name.trim() || busy} onClick={submit}>{busy ? "Saving…" : "Sign Agreement"}</Button>
         </Card>
