@@ -3615,6 +3615,161 @@ export type Database = {
         }
         Relationships: []
       }
+      rto_contracts: {
+        Row: {
+          address: string | null
+          agreement_date: string
+          cancel_fee: number
+          city_state_zip: string | null
+          created_at: string
+          customer_name: string
+          customer_signature: string | null
+          customer_signed_name: string | null
+          down_payment: number
+          driver_id: string | null
+          email: string | null
+          first_due_date: string | null
+          id: string
+          late_fee_per_day: number
+          license_number: string | null
+          notes: string | null
+          num_payments: number
+          odometer: string | null
+          phone: string | null
+          plate: string | null
+          rep_signed_name: string | null
+          sent_at: string | null
+          sign_token: string | null
+          signed_at: string | null
+          staff_seen: boolean
+          status: string
+          updated_at: string
+          vehicle_color: string | null
+          vehicle_id: string | null
+          vehicle_make: string | null
+          vehicle_model: string | null
+          vehicle_year: string | null
+          vin: string | null
+          weekly_amount: number
+        }
+        Insert: {
+          address?: string | null
+          agreement_date?: string
+          cancel_fee?: number
+          city_state_zip?: string | null
+          created_at?: string
+          customer_name?: string
+          customer_signature?: string | null
+          customer_signed_name?: string | null
+          down_payment?: number
+          driver_id?: string | null
+          email?: string | null
+          first_due_date?: string | null
+          id?: string
+          late_fee_per_day?: number
+          license_number?: string | null
+          notes?: string | null
+          num_payments?: number
+          odometer?: string | null
+          phone?: string | null
+          plate?: string | null
+          rep_signed_name?: string | null
+          sent_at?: string | null
+          sign_token?: string | null
+          signed_at?: string | null
+          staff_seen?: boolean
+          status?: string
+          updated_at?: string
+          vehicle_color?: string | null
+          vehicle_id?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_year?: string | null
+          vin?: string | null
+          weekly_amount?: number
+        }
+        Update: {
+          address?: string | null
+          agreement_date?: string
+          cancel_fee?: number
+          city_state_zip?: string | null
+          created_at?: string
+          customer_name?: string
+          customer_signature?: string | null
+          customer_signed_name?: string | null
+          down_payment?: number
+          driver_id?: string | null
+          email?: string | null
+          first_due_date?: string | null
+          id?: string
+          late_fee_per_day?: number
+          license_number?: string | null
+          notes?: string | null
+          num_payments?: number
+          odometer?: string | null
+          phone?: string | null
+          plate?: string | null
+          rep_signed_name?: string | null
+          sent_at?: string | null
+          sign_token?: string | null
+          signed_at?: string | null
+          staff_seen?: boolean
+          status?: string
+          updated_at?: string
+          vehicle_color?: string | null
+          vehicle_id?: string | null
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_year?: string | null
+          vin?: string | null
+          weekly_amount?: number
+        }
+        Relationships: []
+      }
+      rto_payments: {
+        Row: {
+          amount: number
+          contract_id: string
+          created_at: string
+          id: string
+          late_fee: number
+          method: string
+          note: string | null
+          paid_at: string
+          stripe_session_id: string | null
+        }
+        Insert: {
+          amount: number
+          contract_id: string
+          created_at?: string
+          id?: string
+          late_fee?: number
+          method?: string
+          note?: string | null
+          paid_at?: string
+          stripe_session_id?: string | null
+        }
+        Update: {
+          amount?: number
+          contract_id?: string
+          created_at?: string
+          id?: string
+          late_fee?: number
+          method?: string
+          note?: string | null
+          paid_at?: string
+          stripe_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rto_payments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rto_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       runner_tasks: {
         Row: {
           accepted_at: string | null
