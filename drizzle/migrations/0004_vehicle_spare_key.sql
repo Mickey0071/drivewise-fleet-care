@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicles ADD COLUMN IF NOT EXISTS spare_key_made boolean NOT NULL DEFAULT false;

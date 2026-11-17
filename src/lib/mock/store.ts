@@ -37,6 +37,7 @@ const fromVehicle = (r: any) => ({
   seats: r.seats ?? undefined,
   fuelLevelPickup: r.fuel_level_pickup ?? undefined,
   ezPassTag: r.ez_pass_tag ?? undefined,
+  spareKeyMade: !!r.spare_key_made,
   registrationExpiry: r.registration_expiry ?? undefined,
   tagState: r.tag_state ?? undefined,
   tagExpiry: r.tag_expiry ?? undefined,
@@ -63,6 +64,7 @@ const toVehicle = (v: any) => ({
   seats: v.seats ?? null,
   fuel_level_pickup: v.fuelLevelPickup ?? null,
   ez_pass_tag: v.ezPassTag ?? null,
+  spare_key_made: !!v.spareKeyMade,
   registration_expiry: v.registrationExpiry ?? null,
   tag_state: v.tagState ?? null,
   tag_expiry: v.tagExpiry ?? null,
@@ -2012,6 +2014,7 @@ export function updateVehicle(id: string, fields: Partial<Omit<Vehicle, "id">>) 
   if (fields.seats !== undefined) patch.seats = fields.seats ?? null;
   if (fields.fuelLevelPickup !== undefined) patch.fuel_level_pickup = fields.fuelLevelPickup ?? null;
   if (fields.ezPassTag !== undefined) patch.ez_pass_tag = fields.ezPassTag ?? null;
+  if (fields.spareKeyMade !== undefined) patch.spare_key_made = fields.spareKeyMade;
   if (fields.registrationExpiry !== undefined) patch.registration_expiry = fields.registrationExpiry ?? null;
   if (fields.tagState !== undefined) patch.tag_state = fields.tagState ?? null;
   if (fields.tagExpiry !== undefined) patch.tag_expiry = fields.tagExpiry ?? null;

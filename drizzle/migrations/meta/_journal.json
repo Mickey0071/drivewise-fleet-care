@@ -29,6 +29,13 @@
       "when": 1794262924179,
       "tag": "0003_rent_to_own",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794927628500,
+      "tag": "0004_vehicle_spare_key",
+      "breakpoints": true
     }
   ]
 }

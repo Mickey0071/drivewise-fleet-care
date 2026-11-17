@@ -56,8 +56,17 @@ import { renderRepairHistoryPdf, type RepairHistoryRow } from "@/lib/repair-hist
 import { toast } from "sonner";
 import { GroupedExpenseTable } from "@/components/app/GroupedExpenseTable";
 import { groupExpenseItems } from "@/lib/grouped-expenses";
+import { VehicleSpareKey } from "@/components/app/VehicleSpareKey";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
+  head: ({ params }) => ({ meta: [
+    { title: `Vehicle ${params.vehicleId} — Camauto Rentals` },
+    { name: "description", content: "Camauto vehicle details, spare key status, rental history, and maintenance." },
+    { property: "og:title", content: `Vehicle ${params.vehicleId} — Camauto Rentals` },
+    { property: "og:description", content: "Camauto vehicle details, spare key status, rental history, and maintenance." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: VehicleDetail,
   validateSearch: (
     search: Record<string, unknown>,
@@ -476,6 +485,7 @@ function VehicleDetail() {
               <Field label="Risk tier" value={v.riskTier} />
               <Field label="Daily rate" value={fmtMoney(v.dailyRate)} />
               <Field label="Weekly rate" value={fmtMoney(v.weeklyRate)} />
+              <div className="sm:col-span-2"><VehicleSpareKey vehicle={v} /></div>
             </CardContent>
           </Card>
           <VehicleGallery vehicleId={v.id} coverUrl={v.imageUrl} />

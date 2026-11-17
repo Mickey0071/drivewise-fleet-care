@@ -31,9 +31,17 @@ import { Share2, Camera, Pencil, Images, Plus, Wrench, Archive, RotateCcw, Searc
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
+import { VehicleSpareKey } from "@/components/app/VehicleSpareKey";
 
 export const Route = createFileRoute("/fleet")({
-  head: () => ({ meta: [{ title: "Fleet — Camauto Rentals" }] }),
+  head: () => ({ meta: [
+    { title: "Fleet — Camauto Rentals" },
+    { name: "description", content: "Manage Camauto vehicles, spare keys, availability, and service history." },
+    { property: "og:title", content: "Fleet — Camauto Rentals" },
+    { property: "og:description", content: "Manage Camauto vehicles, spare keys, availability, and service history." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   validateSearch: (
     search: Record<string, unknown>,
   ): {
@@ -300,6 +308,7 @@ function FleetPage() {
                     Repairs {fmtMoney(byCat.repair + byCat.maintenance)} · Other {fmtMoney(byCat.manual)}
                   </div>
                 )}
+                <div className="mt-3"><VehicleSpareKey vehicle={v} /></div>
               </CardContent>
             </div>
             <div className="flex flex-wrap gap-2 border-t border-border bg-muted/30 p-2" onClick={(e) => e.stopPropagation()}>

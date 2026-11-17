@@ -16,6 +16,7 @@ export interface Vehicle {
   seats?: number;
   fuelLevelPickup?: "Full" | "3/4" | "1/2" | "1/4" | "Empty";
   ezPassTag?: string;
+  spareKeyMade?: boolean;
   registrationExpiry?: string;
   tagState?: string;
   tagExpiry?: string;

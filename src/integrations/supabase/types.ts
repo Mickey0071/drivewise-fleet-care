@@ -4505,6 +4505,7 @@ export type Database = {
           shop_est_return: string | null
           shop_vendor: string | null
           sold_date: string | null
+          spare_key_made: boolean
           status: string
           tag_expiry: string | null
           tag_state: string | null
@@ -4561,6 +4562,7 @@ export type Database = {
           shop_est_return?: string | null
           shop_vendor?: string | null
           sold_date?: string | null
+          spare_key_made?: boolean
           status?: string
           tag_expiry?: string | null
           tag_state?: string | null
@@ -4617,6 +4619,7 @@ export type Database = {
           shop_est_return?: string | null
           shop_vendor?: string | null
           sold_date?: string | null
+          spare_key_made?: boolean
           status?: string
           tag_expiry?: string | null
           tag_state?: string | null
