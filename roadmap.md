@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Place existing repair-related expenses in generated Repair History and repair totals without creating tickets or duplicating costs; six tests pass and existing $1,250 expense verified in PDF.
+
 - [x] Include directly entered vehicle expenses in service report preview, print, and PDF without repair workflow; five rule tests pass and existing $1,250 direct expense verified in preview and PDF.
 
 - [x] Per-car Analytics button and branded printable report matching that vehicle’s Analytics tab; saved-car PDF/download/print and mobile controls verified.

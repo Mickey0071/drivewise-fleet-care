@@ -81,7 +81,7 @@ export function ServiceHistoryReportDialog({ open, onOpenChange, vehicle }: Prop
         cost: m.cost,
         nextDue: fmtDate(m.nextServiceDue),
       })),
-      repairs: repairs.map(m => ({
+      repairs: [...repairs.map(m => ({
         date: fmtDate(m.dateCompleted),
         type: m.serviceType,
         vendor: m.vendor || m.completedBy || "—",
@@ -89,14 +89,19 @@ export function ServiceHistoryReportDialog({ open, onOpenChange, vehicle }: Prop
         labor: matchLine(m.notes, "Labor") || "—",
         total: m.cost,
         status: "COMPLETED",
-      })),
+      })), ...directExpenses.repairRows.map(e => ({
+        date: fmtDate(e.date), type: e.notes || e.category, vendor: e.vendor || "—",
+        parts: /^parts$/i.test(e.category) ? fmtMoney(e.amount) : "—",
+        labor: /^labor$/i.test(e.category) ? fmtMoney(e.amount) : "—",
+        total: e.amount, status: "EXPENSE ENTRY",
+      }))],
       openIssues: openRows,
-      expenses: directExpenses.rows.map(e => ({ date: fmtDate(e.date), category: e.category,
+      expenses: directExpenses.otherRows.map(e => ({ date: fmtDate(e.date), category: e.category,
         description: e.notes || e.category, vendor: e.vendor || "—", amount: e.amount })),
       summary: {
-        totalExpenses: directExpenses.total,
+        totalExpenses: directExpenses.otherTotal,
         totalMaintenance,
-        totalRepair,
+        totalRepair: totalRepair + directExpenses.repairTotal,
         openBalance,
         lastService: lastSvc ? `${fmtDate(lastSvc.dateCompleted)} (${lastSvc.serviceType})` : "—",
         nextDue: lastSvc ? fmtDate(lastSvc.nextServiceDue) : "—",

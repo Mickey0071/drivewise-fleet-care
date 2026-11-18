@@ -7,5 +7,10 @@ export function serviceHistoryExpenses(vehicleId: string, expenses: Expense[], r
   const rows = expenses.filter(e => e.vehicleId === vehicleId && !isTollOrViolationExpense(e)
     && !(e.maintenanceId && represented.has(e.maintenanceId)))
     .sort((a, b) => b.date.localeCompare(a.date));
-  return { rows, total: rows.reduce((sum, e) => sum + e.amount, 0) };
+  const isRepair = (e: Expense) => /\b(repairs?|maintenance|parts|labor|mechanic|body shop|tires?|brakes?)\b/i.test(e.category);
+  const repairRows = rows.filter(isRepair);
+  const otherRows = rows.filter(e => !isRepair(e));
+  return { rows, total: rows.reduce((sum, e) => sum + e.amount, 0), repairRows, otherRows,
+    repairTotal: repairRows.reduce((sum, e) => sum + e.amount, 0),
+    otherTotal: otherRows.reduce((sum, e) => sum + e.amount, 0) };
 }
