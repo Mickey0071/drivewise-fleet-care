@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Fix only 22 selected broad-access security findings: 57 policies restricted to verified staff roles, all selected findings absent on rescan, administrator/anonymous reads verified across 22 tables; 12 unselected findings unchanged.
+
 - [x] Place existing repair-related expenses in generated Repair History and repair totals without creating tickets or duplicating costs; six tests pass and existing $1,250 expense verified in PDF.
 
 - [x] Include directly entered vehicle expenses in service report preview, print, and PDF without repair workflow; five rule tests pass and existing $1,250 direct expense verified in preview and PDF.

@@ -36,6 +36,13 @@
       "when": 1794927628500,
       "tag": "0004_vehicle_spare_key",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794975800958,
+      "tag": "0005_selected_staff_access_security_fixes",
+      "breakpoints": true
     }
   ]
 }
