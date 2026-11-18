@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import { toast } from "sonner";
-import { maintenance, fmtDate, fmtMoney, type Vehicle, type Maintenance } from "@/lib/mock/data";
+import { maintenance, expenses, fmtDate, fmtMoney, type Vehicle, type Maintenance } from "@/lib/mock/data";
+import { serviceHistoryExpenses } from "@/lib/service-history-expenses";
 import { isServiceLogRecord, isIssueRecord, lastServiceFor, summarizeOpenIssue } from "@/lib/maintenance-utils";
 import { repairCost } from "@/lib/money-rules";
 import { useAgreementSettings } from "@/lib/agreementSettings";
@@ -27,7 +28,7 @@ function matchLine(notes: string | undefined, label: string): string {
 }
 
 export function ServiceHistoryReportDialog({ open, onOpenChange, vehicle }: Props) {
-  useStoreVersion();
+  const storeVersion = useStoreVersion();
   const settings = useAgreementSettings();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -53,6 +54,7 @@ export function ServiceHistoryReportDialog({ open, onOpenChange, vehicle }: Prop
 
     const totalMaintenance = serviceLog.reduce((s, m) => s + repairCost(m), 0);
     const totalRepair = repairs.reduce((s, m) => s + repairCost(m), 0);
+    const directExpenses = serviceHistoryExpenses(vehicle.id, expenses, [...serviceLog, ...repairs].map(m => m.id));
     const lastSvc = lastServiceFor(maintenance, vehicle.id);
     let openBalance = 0;
     const openRows = openIssues.map((m: Maintenance) => {
@@ -89,7 +91,10 @@ export function ServiceHistoryReportDialog({ open, onOpenChange, vehicle }: Prop
         status: "COMPLETED",
       })),
       openIssues: openRows,
+      expenses: directExpenses.rows.map(e => ({ date: fmtDate(e.date), category: e.category,
+        description: e.notes || e.category, vendor: e.vendor || "—", amount: e.amount })),
       summary: {
+        totalExpenses: directExpenses.total,
         totalMaintenance,
         totalRepair,
         openBalance,
@@ -102,7 +107,7 @@ export function ServiceHistoryReportDialog({ open, onOpenChange, vehicle }: Prop
       signatureDataUrl: signature,
       settings,
     };
-  }, [vehicle, notes, signedBy, dateSigned, signature, settings, today]);
+  }, [vehicle, notes, signedBy, dateSigned, signature, settings, today, storeVersion]);
 
   const fileName = `service-history-${vehicle.year}-${vehicle.make}-${vehicle.model}-${vehicle.plate}`
     .replace(/[^a-z0-9-]/gi, "-")
@@ -159,6 +164,7 @@ export function ServiceHistoryReportDialog({ open, onOpenChange, vehicle }: Prop
       ``,
       `Total maintenance cost: ${fmtMoney(s.totalMaintenance)}`,
       `Total repair cost: ${fmtMoney(s.totalRepair)}`,
+      `Additional vehicle expenses: ${fmtMoney(s.totalExpenses ?? 0)}`,
       `Open issues balance due: ${fmtMoney(s.openBalance)}`,
       `Last service: ${s.lastService}`,
       `Next due: ${s.nextDue}`,
@@ -229,10 +235,16 @@ export function ServiceHistoryReportDialog({ open, onOpenChange, vehicle }: Prop
           <SectionTitle>Open Issues</SectionTitle>
           <Table head={["Started", "Issue", "Vendor", "Est. Total", "Balance", "Est. Return"]} rows={data.openIssues.map(r => [r.dateStarted, r.issue, r.vendor, r.estTotal, r.balance, r.estReturn])} empty="No open issues." />
 
+          <SectionTitle>Vehicle Expenses</SectionTitle>
+          <Table head={["Date", "Category", "Description", "Vendor / Paid to", "Amount"]}
+            rows={(data.expenses ?? []).map(e => [e.date, e.category, e.description, e.vendor, fmtMoney(e.amount)])}
+            empty="No additional vehicle expenses." />
+
           <SectionTitle>Summary</SectionTitle>
           <div className="mt-2 grid gap-1">
             <SummaryRow label="Total maintenance cost" value={fmtMoney(data.summary.totalMaintenance)} />
             <SummaryRow label="Total repair cost" value={fmtMoney(data.summary.totalRepair)} />
+            <SummaryRow label="Additional vehicle expenses" value={fmtMoney(data.summary.totalExpenses ?? 0)} />
             <SummaryRow label="Open issues balance due" value={fmtMoney(data.summary.openBalance)} />
             <SummaryRow label="Last service" value={data.summary.lastService} />
             <SummaryRow label="Next due" value={data.summary.nextDue} />

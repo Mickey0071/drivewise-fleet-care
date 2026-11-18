@@ -32,7 +32,9 @@ export interface ServiceHistoryData {
   serviceLog: ServiceLogRow[];
   repairs: RepairRow[];
   openIssues: OpenIssueRow[];
+  expenses?: { date: string; category: string; description: string; vendor: string; amount: number }[];
   summary: {
+    totalExpenses?: number;
     totalMaintenance: number;
     totalRepair: number;
     openBalance: number;
@@ -161,14 +163,18 @@ export async function renderServiceHistoryPdf(data: ServiceHistoryData): Promise
       return;
     }
     for (const row of rows) {
-      ensure(rowH);
-      x = left;
-      row.forEach((cell, i) => {
-        const wrapped = doc.splitTextToSize(cell || "—", widths[i] - 4);
-        doc.text(Array.isArray(wrapped) ? wrapped[0] : wrapped, x + 2, y + 8);
-        x += widths[i];
-      });
-      y += rowH;
+      const wrappedCells = row.map((cell, i) => doc.splitTextToSize(cell || "—", widths[i] - 4) as string[]);
+      const lines = Math.max(...wrappedCells.map(cell => cell.length));
+      for (let line = 0; line < lines; line++) {
+        ensure(12);
+        x = left;
+        wrappedCells.forEach((cell, i) => {
+          if (cell[line]) doc.text(cell[line], x + 2, y + 8);
+          x += widths[i];
+        });
+        y += 12;
+      }
+      y += 4;
       doc.setDrawColor(238, 238, 238);
       doc.line(left, y - 3, right, y - 3);
     }
@@ -204,12 +210,21 @@ export async function renderServiceHistoryPdf(data: ServiceHistoryData): Promise
   );
   y += 12;
 
+  sectionBar("Vehicle Expenses — Direct Entries");
+  table(["Date", "Category", "Description", "Vendor / Paid to", "Amount"],
+    [64, 80, contentW - 64 - 80 - 100 - 64, 100, 64],
+    (data.expenses ?? []).map(e => [e.date, e.category, e.description, e.vendor, money(e.amount)]),
+    "No additional vehicle expenses.");
+  y += 12;
+
   // ---- Summary box ----
   ensure(120);
   sectionBar("Summary");
+  y += 8;
   const sumRows: [string, string][] = [
     ["Total maintenance cost", money(data.summary.totalMaintenance)],
     ["Total repair cost", money(data.summary.totalRepair)],
+    ["Additional vehicle expenses", money(data.summary.totalExpenses ?? 0)],
     ["Open issues balance due", money(data.summary.openBalance)],
     ["Last service", data.summary.lastService],
     ["Next due", data.summary.nextDue],
@@ -264,24 +279,6 @@ export async function renderServiceHistoryPdf(data: ServiceHistoryData): Promise
       doc.text("Authorized Signature", left, y + 84);
       y += 92;
     }
-  }
-
-  // ---- Footer on every page ----
-  const pageCount = doc.getNumberOfPages();
-  for (let p = 1; p <= pageCount; p++) {
-    doc.setPage(p);
-    doc.setDrawColor(...RGB_GREEN);
-    doc.setLineWidth(1);
-    doc.line(left, pageH - 30, right, pageH - 30);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(...COLOR_MUTED);
-    doc.text(
-      `${c.dba} — Service History for ${v.year} ${v.make} ${v.model} (${v.plate})`,
-      left,
-      pageH - 18,
-    );
-    doc.text(`Page ${p} of ${pageCount}`, right, pageH - 18, { align: "right" });
   }
 
   finalizeBrandedPdf(doc, { title: "Vehicle Service History Report" });
