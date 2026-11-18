@@ -1,5 +1,6 @@
 
 - Export branding: all .xlsx/.pdf reports use src/lib/branding.ts (logo from src/assets/camauto-logo-base64.ts, colors, company block) via branded-xlsx.ts / branded-pdf.ts; CSV stays raw. Why: one source so report styling never drifts.
+- Repair-log PDF separates caller-classified Repairs and Expenses with service descriptions and right-aligned price columns; retain caller-provided financial totals. Why: report readability must not change accounting or duplicate repair costs.
 - Vehicle spare-key status uses the shared VehicleSpareKey control and vehicles.spare_key_made through the vehicle store, with saved-row verification. Why: fleet cards and vehicle details must show the same durable status.
 - Individual vehicle analytics PDFs receive the visible tab's financial and average-expense values and reuse shared branding and expense grouping. Why: printed totals and breakdowns must match the selected car without independent calculations.
 - Service history classifies direct repair-category expenses into Repair History via service-history-expenses, leaving other expenses separate and excluding tolls and already-reported linked repairs. Why: existing repair expenses need no tickets and count once in repair totals.

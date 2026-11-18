@@ -22,8 +22,7 @@ export interface RepairHistoryRow {
 }
 
 const COLOR_TEXT: [number, number, number] = BRAND_RGB.dark;
-const COLOR_MUTED: [number, number, number] = [102, 102, 102];
-const COLOR_BORDER: [number, number, number] = [204, 204, 204];
+const COLOR_MUTED: [number, number, number] = BRAND_RGB.muted;
 const RGB_GREEN: [number, number, number] = BRAND_RGB.green;
 
 const money = (n: number | null) =>
@@ -49,7 +48,9 @@ export async function renderRepairHistoryPdf(
     if (y + need > pageH - 50) {
       doc.addPage();
       y = 100;
+      return true;
     }
+    return false;
   };
 
   // Title
@@ -92,70 +93,108 @@ export async function renderRepairHistoryPdf(
   doc.line(left, y, right, y);
   y += 16;
 
-  // Table columns
-  const widths = [64, 52, 82, 96, contentW - 64 - 52 - 82 - 96 - 60 - 60 - 70, 60, 60, 70];
-  const headers = ["Date", "Type", "Category", "Vendor", "Description", "Parts", "Labor", "Amount"];
-  const rightAligned = new Set([5, 6, 7]);
+  // Use a wide service column, keeping prices separate from descriptions.
+  // Classification and subtotals stay exactly as supplied by the caller.
+  const section = (kind: RepairHistoryRow["kind"], label: string, subtotal: number) => {
+    const sectionRows = rows.filter(row => row.kind === kind);
+    const isRepair = kind === "Repair";
+    const widths = isRepair
+      ? [66, contentW - 66 - 62 - 62 - 76, 62, 62, 76]
+      : [66, contentW - 66 - 90, 90];
+    const headers = isRepair
+      ? ["Date", "Repair / Service", "Parts", "Labor", "Total"]
+      : ["Date", "Expense / Service", "Price"];
 
-  const drawHeader = () => {
-    doc.setFillColor(240, 240, 240);
-    doc.rect(left, y, contentW, 18, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(...COLOR_MUTED);
-    let x = left;
-    headers.forEach((h, i) => {
-      const align = rightAligned.has(i) ? "right" : "left";
-      doc.text(h.toUpperCase(), align === "right" ? x + widths[i] - 4 : x + 4, y + 12, { align });
-      x += widths[i];
-    });
-    y += 18;
-  };
-
-  drawHeader();
-  doc.setDrawColor(...COLOR_BORDER);
-  doc.setLineWidth(0.5);
-
-  if (rows.length === 0) {
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(9);
-    doc.setTextColor(...COLOR_MUTED);
-    doc.text("No repair or expense records for this vehicle.", left + 4, y + 14);
-    y += 24;
-  } else {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(...COLOR_TEXT);
-    for (const r of rows) {
-      const cells = [
-        r.date,
-        r.kind,
-        r.category || "—",
-        r.vendor || "—",
-        r.description || "—",
-        money(r.parts),
-        money(r.labor),
-        money(r.amount),
-      ];
-      // Wrap description for row height
-      const descLines = doc.splitTextToSize(cells[4] || "—", widths[4] - 8) as string[];
-      const rowH = Math.max(16, descLines.length * 10 + 6);
-      ensure(rowH + 4);
+    const drawHeader = (continued = false) => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(...RGB_GREEN);
+      doc.text(`${label.toUpperCase()}${continued ? " (CONTINUED)" : ` (${sectionRows.length})`}`, left, y + 12);
+      y += 24;
+      doc.setFillColor(...BRAND_RGB.band);
+      doc.rect(left, y, contentW, 22, "F");
+      doc.setFontSize(9);
+      doc.setTextColor(...COLOR_TEXT);
       let x = left;
-      cells.forEach((cell, i) => {
-        const align = rightAligned.has(i) ? "right" : "left";
-        if (i === 4) {
-          doc.text(descLines, x + 4, y + 10);
-        } else {
-          doc.text(String(cell), align === "right" ? x + widths[i] - 4 : x + 4, y + 10, { align });
-        }
+      headers.forEach((header, i) => {
+        const align = i >= 2 ? "right" : "left";
+        doc.text(header, align === "right" ? x + widths[i] - 6 : x + 6, y + 14, { align });
         x += widths[i];
       });
-      y += rowH;
-      doc.setDrawColor(235, 235, 235);
-      doc.line(left, y, right, y);
+      y += 22;
+    };
+
+    ensure(92);
+    drawHeader();
+    if (sectionRows.length === 0) {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(9);
+      doc.setTextColor(...COLOR_MUTED);
+      doc.text(`No ${label.toLowerCase()} recorded.`, left + 6, y + 16);
+      y += 30;
     }
-  }
+
+    for (const row of sectionRows) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      const serviceLines = doc.splitTextToSize(row.description || row.category || "—", widths[1] - 12) as string[];
+      const detail = [row.category, row.vendor && `Vendor: ${row.vendor}`].filter(Boolean).join(" | ");
+      doc.setFontSize(8);
+      const detailLines = detail ? doc.splitTextToSize(detail, widths[1] - 12) as string[] : [];
+      const dateLines = doc.splitTextToSize(row.date || "—", widths[0] - 12) as string[];
+      const lineCount = Math.max(dateLines.length, serviceLines.length + detailLines.length);
+      let line = 0;
+      // Split unusually long entries safely, repeating section/column headings.
+      while (line < lineCount) {
+        if (ensure(34)) drawHeader(true);
+        const available = Math.max(1, Math.floor((pageH - 50 - y - 12) / 12));
+        const chunk = Math.min(lineCount - line, available);
+        const rowHeight = chunk * 12 + 12;
+        const serviceX = left + widths[0] + 6;
+        for (let offset = 0; offset < chunk; offset++) {
+          const index = line + offset;
+          const baseline = y + 15 + offset * 12;
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8);
+          doc.setTextColor(...COLOR_MUTED);
+          if (dateLines[index]) doc.text(dateLines[index], left + 6, baseline);
+          if (index < serviceLines.length) {
+            doc.setFontSize(9);
+            doc.setTextColor(...COLOR_TEXT);
+            doc.text(serviceLines[index], serviceX, baseline);
+          } else if (detailLines[index - serviceLines.length]) {
+            doc.text(detailLines[index - serviceLines.length], serviceX, baseline);
+          }
+        }
+        if (line === 0) {
+          const prices = isRepair ? [money(row.parts), money(row.labor), money(row.amount)] : [money(row.amount)];
+          let x = left + widths[0] + widths[1];
+          doc.setFontSize(9);
+          doc.setTextColor(...COLOR_TEXT);
+          prices.forEach((price, i) => {
+            doc.setFont("helvetica", i === prices.length - 1 ? "bold" : "normal");
+            doc.text(price, x + widths[i + 2] - 6, y + 15, { align: "right" });
+            x += widths[i + 2];
+          });
+        }
+        y += rowHeight;
+        doc.setDrawColor(...BRAND_RGB.band);
+        doc.setLineWidth(0.5);
+        doc.line(left, y, right, y);
+        line += chunk;
+      }
+    }
+    if (ensure(32)) drawHeader(true);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...COLOR_TEXT);
+    doc.text(`${label} subtotal`, left + 6, y + 18);
+    doc.text(money(subtotal), right - 6, y + 18, { align: "right" });
+    y += 44;
+  };
+
+  section("Repair", "Repairs & Service", totalRepairs);
+  section("Expense", "Expenses", totalExpenses);
 
   y += 14;
   ensure(60);
@@ -168,21 +207,6 @@ export async function renderRepairHistoryPdf(
   doc.setTextColor(...COLOR_TEXT);
   doc.text("Grand Total", left, y);
   doc.text(money(grandTotal), right, y, { align: "right" });
-
-  // Footer
-  const pageCount = doc.getNumberOfPages();
-  for (let p = 1; p <= pageCount; p++) {
-    doc.setPage(p);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(...COLOR_MUTED);
-    doc.text(
-      `Repair History — ${vehicle.year} ${vehicle.make} ${vehicle.model} (${vehicle.plate || "—"})`,
-      left,
-      pageH - 20,
-    );
-    doc.text(`Page ${p} of ${pageCount}`, right, pageH - 20, { align: "right" });
-  }
 
   finalizeBrandedPdf(doc, { title: "Repair History & Expenses" });
   return doc.output("blob");
