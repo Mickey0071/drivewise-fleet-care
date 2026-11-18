@@ -18,7 +18,7 @@ import { VehicleGallery } from "@/components/app/VehicleGallery";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { computeAverageMonthlyExpense } from "@/lib/vehicle-analytics";
-import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2, ChevronDown, Download, CheckCircle2, DollarSign } from "lucide-react";
+import { ArrowLeft, Link2, Camera, Pencil, Send, FileText, ClipboardList, Trash2, ChevronDown, Download, CheckCircle2, DollarSign, Printer } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { listCompletedTasksForVehicle } from "@/lib/runner-tasks-admin.functions";
 import { taskTypeLabel } from "@/lib/task-types";
@@ -57,6 +57,7 @@ import { toast } from "sonner";
 import { GroupedExpenseTable } from "@/components/app/GroupedExpenseTable";
 import { groupExpenseItems } from "@/lib/grouped-expenses";
 import { VehicleSpareKey } from "@/components/app/VehicleSpareKey";
+import { renderVehicleDetailAnalyticsPdf } from "@/lib/vehicle-detail-analytics-pdf";
 
 export const Route = createFileRoute("/fleet/$vehicleId")({
   head: ({ params }) => ({ meta: [
@@ -99,6 +100,7 @@ function VehicleDetail() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
+  const [analyticsBusy, setAnalyticsBusy] = useState(false);
   const [expandedRenter, setExpandedRenter] = useState<string | null>(null);
   const exportPdf = useServerFn(exportRentalReportPdf);
   const genAgreementPdf = useServerFn(generateAgreementPdf);
@@ -155,6 +157,29 @@ function VehicleDetail() {
   const expenseTotal = fin.totalExpenses;
   const netTotal = fin.netPnl;
   const roiPct = fin.roi;
+  const averageExpenses = computeAverageMonthlyExpense();
+  const vehicleAverage = averageExpenses.rows.find(row => row.id === v.id);
+  async function exportAnalytics(print: boolean) {
+    if (!v) return;
+    const printWindow = print ? window.open("", "_blank") : null;
+    if (print && !printWindow) { toast.error("Allow pop-ups to print analytics."); return; }
+    setAnalyticsBusy(true);
+    try {
+      const blob = await renderVehicleDetailAnalyticsPdf(v, fin, { mine: vehicleAverage, fleetAvgPerVehicle: averageExpenses.fleetAvgPerVehicle });
+      const url = URL.createObjectURL(blob);
+      if (printWindow) {
+        printWindow.addEventListener("load", () => setTimeout(() => printWindow.print(), 400), { once: true });
+        printWindow.location.href = url;
+      } else {
+        const link = document.createElement("a"); link.href = url;
+        link.download = `Camauto-${v.plate}-Analytics.pdf`; link.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      printWindow?.close();
+      toast.error("Could not generate analytics report", { description: error instanceof Error ? error.message : "Try again" });
+    } finally { setAnalyticsBusy(false); }
+  }
   const totalSpentOnVehicle = fin.totalExpenses;
   // Expense line items (all sources) drive both the Analytics breakdown and the
   // Expenses tab list. Category roll-up for the pills.
@@ -458,7 +483,7 @@ function VehicleDetail() {
       )}
 
       <Tabs defaultValue={tab ?? "overview"} className="mt-2">
-        <TabsList className="flex flex-wrap">
+        <TabsList className="flex h-auto flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="block">Block Vehicle</TabsTrigger>
           <TabsTrigger value="analytics">Analytics / P&amp;L</TabsTrigger>
@@ -497,7 +522,14 @@ function VehicleDetail() {
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4 space-y-4">
-          {(() => { const a = computeAverageMonthlyExpense(); const mine = a.rows.find(r => r.id === v.id); return (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold">{v.make} {v.model} · {v.plate} Analytics</h2>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" disabled={analyticsBusy} onClick={() => void exportAnalytics(true)}><Printer className="mr-1 h-4 w-4" /> Print Analytics</Button>
+              <Button size="sm" variant="outline" disabled={analyticsBusy} onClick={() => void exportAnalytics(false)}><Download className="mr-1 h-4 w-4" /> Download PDF</Button>
+            </div>
+          </div>
+          {(() => { const a = averageExpenses; const mine = vehicleAverage; return (
             <Card><CardContent className="flex flex-wrap items-center justify-between gap-2 p-4 text-sm">
               <div><div className="text-muted-foreground">Average expense per month</div>
                 <div className="text-2xl font-semibold">{fmtMoney(mine?.avg ?? 0)}</div>

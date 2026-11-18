@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Per-car Analytics button and branded printable report matching that vehicle’s Analytics tab; saved-car PDF/download/print and mobile controls verified.
+
 - [x] Ridley rent-to-own: linked On Rent reservation appears once in blue with $3,150 payoff after $1,500 down; contract/payment printing verified against saved payments; eight rule tests pass.
 
 - [x] Rent-to-own: no-signup signature link, blue Reservations section beside Pending and active On Rent entries, live payment checklist printing. Actual unsigned customer link and saved $1,500 payment checked without sending/signing; nine rule tests pass.

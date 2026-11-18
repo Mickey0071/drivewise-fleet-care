@@ -27,7 +27,7 @@ import { EMPTY_PAPERWORK, validatePaperwork, saveOnboardingRecord, type Paperwor
 import { VehiclePhotosDialog } from "@/components/app/VehiclePhotosDialog";
 import { VehicleRepairPanelDialog } from "@/components/app/VehicleRepairPanelDialog";
 import { SendVehicleToMechanicDialog } from "@/components/app/SendVehicleToMechanicDialog";
-import { Share2, Camera, Pencil, Images, Plus, Wrench, Archive, RotateCcw, Search } from "lucide-react";
+import { Share2, Camera, Pencil, Images, Plus, Wrench, Archive, RotateCcw, Search, ChartColumn } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
@@ -344,6 +344,10 @@ function FleetPage() {
                 onClick={() => goto({ to: "/fleet/$vehicleId", params: { vehicleId: v.id }, search: { tab: "repairs" } })}
               >
                 Profile
+              </Button>
+              <Button size="sm" variant="outline" className="border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
+                onClick={() => goto({ to: "/fleet/$vehicleId", params: { vehicleId: v.id }, search: { tab: "analytics" } })}>
+                <ChartColumn className="mr-1 h-4 w-4" /> Analytics
               </Button>
               <Button
                 variant="outline"
