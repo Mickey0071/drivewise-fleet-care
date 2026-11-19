@@ -7,6 +7,7 @@ import { vehicleById, fmtMoney, type Maintenance, type Vehicle } from "@/lib/moc
 import { carImage } from "@/lib/mock/carImages";
 import { repairDisplayTitle } from "@/lib/maintenance-utils";
 import { repairCost as effectiveRepairCost } from "@/lib/money-rules";
+import { needsOffRoadDiagnosis } from "@/lib/off-road-queue";
 
 export type RepairPhase =
   | "awaiting part"
@@ -109,17 +110,20 @@ function Tile({
 
 export function OffRoadVehicles({
   repairs,
+  submittedDiagnosisIds,
   onViewRepairs,
   onMechanic,
   onApprove,
 }: {
   repairs: Maintenance[];
+  submittedDiagnosisIds: ReadonlySet<string>;
   onViewRepairs: (g: OffRoadGroup) => void;
   onMechanic: (g: OffRoadGroup) => void;
   onApprove: (m: Maintenance) => void;
 }) {
   const navigate = useNavigate();
   const groups = useMemo(() => buildOffRoadGroups(repairs), [repairs]);
+  const diagnosisGroups = groups.filter(group => group.repairs.some(repair => needsOffRoadDiagnosis(repair, submittedDiagnosisIds)));
 
   const openRepairs = groups.flatMap((g) => g.repairs);
   const awaitingParts = openRepairs.filter((m) => repairPhase(m) === "awaiting part").length;
@@ -137,13 +141,13 @@ export function OffRoadVehicles({
 
       <section className="mb-8">
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Off road — in repair
+          Off road — awaiting diagnosis
         </h2>
-        {groups.length === 0 ? (
-          <Card className="p-6 text-sm text-muted-foreground">No vehicles are off road right now.</Card>
+        {diagnosisGroups.length === 0 ? (
+          <p className="py-6 text-sm text-muted-foreground">No vehicles awaiting diagnosis.</p>
         ) : (
           <div className="space-y-3">
-            {groups.map((g) => {
+            {diagnosisGroups.map((g) => {
               const v = g.vehicle;
               const urgent = !!g.needsApproval || g.daysDown > 7;
               const border = urgent ? "border-destructive/60" : "border-amber-500/50";

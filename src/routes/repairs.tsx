@@ -534,6 +534,7 @@ function RepairsPage() {
       {/* ===================== OFF ROAD (MAIN VIEW) ===================== */}
       <OffRoadVehicles
         repairs={maintenance}
+        submittedDiagnosisIds={new Set(submittedJobByMaint.keys())}
         onViewRepairs={(g) => {
           setOpenPhases({ p1: true, p2: true, p3: true });
           setExpandedId(g.repairs[0]?.id ?? null);
