@@ -152,7 +152,7 @@ export function RtoWorkspace({ contractId, embedded = false }: { contractId?: st
                 ["phone", "Phone"], ["license_number", "Driver's license # / State"], ["email", "Email"],
                 ["vehicle_year", "Year"], ["vehicle_make", "Make"], ["vehicle_model", "Model"], ["vehicle_color", "Color"], ["vin", "VIN"], ["plate", "Plate #"], ["odometer", "Odometer at delivery"],
                 ["down_payment", "Down payment ($)", "number"], ["weekly_amount", "Weekly payment ($)", "number"], ["num_payments", "Number of weekly payments", "number"],
-                ["late_fee_per_day", "Late fee per day ($)", "number"], ["cancel_fee", "3-day cancellation fee ($)", "number"], ["first_due_date", "First weekly payment due", "date"],
+                ["late_fee_per_day", "Late fee per day ($)", "number"], ["cancel_fee", "Restock fee ($)", "number"], ["first_due_date", "First weekly payment due", "date"],
                 ["rep_signed_name", "CAM Auto representative name"],
               ] as [keyof typeof EMPTY, string, string?][]).map(([k, l, t]) => (
                 <div key={k}><Label>{l}</Label><Input type={t ?? "text"} value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} /></div>

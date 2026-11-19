@@ -5,6 +5,7 @@ Violations/transfer packets: never build without renter address AND signature on
 Rental base_amount is locked forever; extensions are separate rows; pending extensions never count in income/P&L totals.
 
 ## Memories
+- [Rent-to-own returns](mem://features/rto-returns.md) — Restock fee applies to any termination; limited engine/transmission refund within three days of signing, less the fee
 - [Returning renter verification](mem://features/returning-renter-verification) — Eligible renters within 90 days reuse approved ID/selfie but sign every new agreement
 - [One-page rental agreements](mem://constraints/one-page-agreements) — Keep all agreement content and signature on one printed page
 - [Violations packet address & signature](mem://constraints/violations-packet-address-signature) — Block packet generation on missing renter address or signature; prompt admin instead

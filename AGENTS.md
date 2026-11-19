@@ -14,4 +14,5 @@
 - Public link access uses exact route-prefix boundaries in public-routes.ts, with token-authorized RTO signing separate from administration. Why: signature links require no account without exposing admin pages.
 - Rent-to-own reservation views reuse the contract workspace and shared live print dialog. Why: payment actions and printed balances stay consistent across entry points.
 - Rent-to-own admin and customer printing share rto-print.ts, fitting the complete agreement including signatures on page one and the current payment checklist on page two. Why: both entry points must print identical complete two-page contracts.
+- Rent-to-own restock display continues to read the existing cancel_fee field without migrating saved contracts. Why: wording changes must preserve each contract's saved fee and payment accounting.
 - Reservations bind rent-to-own contracts by exact driver, vehicle and start date through findRtoForRental, displaying contract payoff and suppressing duplicate standalone rows without changing signature/approval status. Why: existing on-rent bookings must not treat contract down payments as prepaid rental credit.
