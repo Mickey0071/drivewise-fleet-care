@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { needsOffRoadDiagnosis } from "./off-road-queue";
 
 describe("top off-road diagnosis queue", () => {
+  it("allows manual removal even when sent from tasks or repairs", () => {
+    expect(needsOffRoadDiagnosis({ id: "repair-1", status: "diagnosing", dateCompleted: "" }, new Set(), new Set(["repair-1"]))).toBe(false);
+  });
+  it("allows a new repair on a previously removed vehicle to appear", () => {
+    expect(needsOffRoadDiagnosis({ id: "repair-new", status: "reported", dateCompleted: "" }, new Set(), new Set(["repair-old"]))).toBe(true);
+  });
   it("keeps a car awaiting its mechanic diagnosis", () => {
     expect(needsOffRoadDiagnosis({ id: "repair-1", status: "diagnosing", dateCompleted: "" }, new Set())).toBe(true);
   });

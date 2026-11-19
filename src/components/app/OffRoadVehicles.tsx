@@ -1,13 +1,15 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Car, AlertTriangle, PackageSearch, DollarSign, CalendarClock } from "lucide-react";
+import { Car, AlertTriangle, PackageSearch, DollarSign, CalendarClock, X, RotateCcw } from "lucide-react";
 import { vehicleById, fmtMoney, type Maintenance, type Vehicle } from "@/lib/mock/data";
 import { carImage } from "@/lib/mock/carImages";
 import { repairDisplayTitle } from "@/lib/maintenance-utils";
 import { repairCost as effectiveRepairCost } from "@/lib/money-rules";
 import { needsOffRoadDiagnosis } from "@/lib/off-road-queue";
+import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
 
 export type RepairPhase =
   | "awaiting part"
@@ -122,8 +124,35 @@ export function OffRoadVehicles({
   onApprove: (m: Maintenance) => void;
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const storageKey = user ? `camauto-off-road-removed:${user.id}` : null;
+  const [removed, setRemoved] = useState<string[]>([]);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  useEffect(() => {
+    setRemoved([]);
+    setLoadedKey(null);
+    if (!storageKey) return;
+    try {
+      const saved: unknown = JSON.parse(localStorage.getItem(storageKey) ?? "[]");
+      setRemoved(Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string") : []);
+      setLoadedKey(storageKey);
+    } catch {
+      setLoadedKey(storageKey);
+    }
+  }, [storageKey]);
+  const saveRemoved = (next: string[]) => {
+    if (!storageKey || loadedKey !== storageKey) return;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(next));
+      setRemoved(next);
+    } catch {
+      toast.error("Could not save the top-list change.");
+    }
+  };
   const groups = useMemo(() => buildOffRoadGroups(repairs), [repairs]);
-  const diagnosisGroups = groups.filter(group => group.repairs.some(repair => needsOffRoadDiagnosis(repair, submittedDiagnosisIds)));
+  const removedIds = new Set(loadedKey === storageKey ? removed : []);
+  const diagnosisGroups = groups.filter(group => group.repairs.some(repair => needsOffRoadDiagnosis(repair, submittedDiagnosisIds, removedIds)));
+  const hiddenCount = groups.filter(group => !diagnosisGroups.includes(group) && group.repairs.some(repair => needsOffRoadDiagnosis(repair, submittedDiagnosisIds) && removedIds.has(repair.id))).length;
 
   const openRepairs = groups.flatMap((g) => g.repairs);
   const awaitingParts = openRepairs.filter((m) => repairPhase(m) === "awaiting part").length;
@@ -140,9 +169,12 @@ export function OffRoadVehicles({
       </div>
 
       <section className="mb-8">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Off road — awaiting diagnosis
         </h2>
+        {hiddenCount > 0 && <Button variant="ghost" size="sm" onClick={() => saveRemoved([])}><RotateCcw className="mr-1.5 h-4 w-4" />Restore removed ({hiddenCount})</Button>}
+        </div>
         {diagnosisGroups.length === 0 ? (
           <p className="py-6 text-sm text-muted-foreground">No vehicles awaiting diagnosis.</p>
         ) : (
@@ -213,6 +245,11 @@ export function OffRoadVehicles({
                       </ul>
 
                       <div className="mt-3 flex flex-wrap gap-2">
+                        <Button size="sm" variant="ghost" disabled={!storageKey || loadedKey !== storageKey} onClick={() => {
+                          saveRemoved([...new Set([...removed, ...g.repairs.map(repair => repair.id)])]);
+                        }}>
+                          <X className="mr-1.5 h-4 w-4" />Remove from top list
+                        </Button>
                         <Button size="sm" variant="outline" onClick={() => onViewRepairs(g)}>
                           View repairs
                         </Button>

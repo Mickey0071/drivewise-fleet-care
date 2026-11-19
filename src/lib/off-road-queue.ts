@@ -4,7 +4,9 @@ import type { Maintenance } from "@/lib/mock/data";
 export function needsOffRoadDiagnosis(
   repair: Pick<Maintenance, "id" | "status" | "dateCompleted" | "diagnosisTitle">,
   submittedDiagnosisIds: ReadonlySet<string>,
+  removedRepairIds: ReadonlySet<string> = new Set(),
 ): boolean {
+  if (removedRepairIds.has(repair.id)) return false;
   if (!repair.status || repair.status === "complete" || repair.dateCompleted) return false;
   if (submittedDiagnosisIds.has(repair.id) || repair.diagnosisTitle?.trim()) return false;
   return repair.status === "reported" || repair.status === "diagnosing";

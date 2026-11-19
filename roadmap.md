@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Add reversible Remove from top list per vehicle, saved for the current user in this browser; real-car removal, refresh persistence, and restore verified without deleting repairs or changing availability; twelve tests pass.
+
 - [x] Hide completed mechanic diagnoses from the top off-road queue, retaining repair records, vehicle availability, and all-off-road statistics; six queue tests and four close-out tests pass, signed-in saved-data check shows three awaiting diagnosis out of four off-road vehicles.
 
 - [x] Separate generated repair-log PDF into Repairs and Expenses, with wide service descriptions, Parts/Labor/Total price columns, subtotals, shared branding, and repeated headings on additional pages; real signed-in vehicle download verified ($3,051 repairs + $545 expenses = $3,596), ten existing accounting tests pass.
