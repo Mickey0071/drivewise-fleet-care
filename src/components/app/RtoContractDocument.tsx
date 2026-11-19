@@ -32,6 +32,7 @@ export function RtoContractDocument({ c, terms, payments, showChecklist = true }
   const dp = money(terms.downPayment), wk = money(terms.weeklyAmount), lf = money(terms.lateFeePerDay), cf = money(Number(c.cancel_fee));
   return (
     <div className="rto-doc space-y-4 text-sm leading-relaxed text-foreground">
+      <div className="rto-agreement space-y-4">
       <div className="text-center">
         <img src={BRAND_LOGO_DATA_URL} alt="Camauto Rentals" className="mx-auto h-16 object-contain" />
         <div className="text-xs text-muted-foreground">{BRAND_COMPANY.legal} | {BRAND_COMPANY.address}</div>
@@ -83,6 +84,7 @@ export function RtoContractDocument({ c, terms, payments, showChecklist = true }
           <div className="text-xs">Printed Name: {c.rep_signed_name}</div>
           <div className="text-xs">Date: {c.rep_signed_name ? fmt(c.signed_at) : ""}</div>
         </div>
+      </div>
       </div>
       {showChecklist && (
         <div className="rto-break space-y-2">

@@ -20,6 +20,7 @@ import { loadRtoContracts, type RtoRow } from "@/lib/rto-data";
 import { sendRtoSignLink, sendRtoPaymentLink } from "@/lib/rto.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
 import { RtoContractDocument } from "@/components/app/RtoContractDocument";
+import { printRtoDocument } from "@/lib/rto-print";
 
 const money = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const STATUS: Record<string, string> = { draft: "Draft", sent: "Sent — awaiting signature", signed: "Signed", active: "Active", completed: "Paid off", cancelled: "Cancelled" };
@@ -240,16 +241,9 @@ export function PrintDialog({ r: initial, onClose }: { r: RtoRow; onClose: () =>
   const r = latest ?? initial;
   const ref = useRef<HTMLDivElement>(null);
   const c = useMemo(() => r as any, [r]);
-  function print() {
+  async function print() {
     const w = window.open("", "_blank"); if (!w || !ref.current) return;
-    w.document.write(`<html><head><title>Rent-To-Own — ${r.customer_name}</title><style>
-      body{font-family:Georgia,serif;font-size:11px;color:#111;margin:24px} h1{font-size:18px;margin:4px 0} h2{font-size:12px;margin:10px 0 4px}
-      p{margin:4px 0} table{width:100%;border-collapse:collapse} td,th{border:1px solid #999;padding:3px;text-align:left}
-      .grid{display:grid;gap:4px 16px}.grid-cols-2{grid-template-columns:1fr 1fr}.grid-cols-3{grid-template-columns:1fr 1fr 1fr}
-      .rto-field{border-bottom:1px solid #999;display:flex;gap:6px}.rto-l{color:#555}.text-center{text-align:center}
-      .h-16{height:56px}.border-b{border-bottom:1px solid #111}.flex{display:flex}.items-end{align-items:flex-end}img{max-height:56px}
-      .rto-break{page-break-before:always}</style></head><body>${ref.current.innerHTML}</body></html>`);
-    w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
+    await printRtoDocument(w, ref.current.innerHTML);
   }
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}><DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">

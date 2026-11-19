@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Fit rent-to-own signatures and all agreement terms on page one, current payment checklist on page two using shared admin/customer printing; saved signed contract printed as exactly two Letter pages, signature verified on page one, eight balance tests pass.
+
 - [x] Add reversible Remove from top list per vehicle, saved for the current user in this browser; real-car removal, refresh persistence, and restore verified without deleting repairs or changing availability; twelve tests pass.
 
 - [x] Hide completed mechanic diagnoses from the top off-road queue, retaining repair records, vehicle availability, and all-off-road statistics; six queue tests and four close-out tests pass, signed-in saved-data check shows three awaiting diagnosis out of four off-road vehicles.

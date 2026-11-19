@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Printer } from "lucide-react";
+import { printRtoDocument } from "@/lib/rto-print";
 
 export const Route = createFileRoute("/rto-sign/$token")({
   head: () => ({ meta: [
@@ -55,10 +56,7 @@ function SignPage() {
       setC(updated);
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       if (!documentRef.current) { popup.close(); return; }
-      popup.document.write(`<html><head><title>CAM Auto Rent-To-Own Contract</title>${Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).map(el => el.outerHTML).join("")}<style>body{padding:24px}.rto-break{break-before:page}</style></head><body>${documentRef.current.innerHTML}</body></html>`);
-      popup.document.close();
-      await Promise.all(Array.from(popup.document.images).map(img => img.decode().catch(() => {})));
-      popup.focus(); popup.print();
+      await printRtoDocument(popup, documentRef.current.innerHTML);
     } catch { popup.close(); alert("Could not load current payments. Please try again."); }
     finally { setBusy(false); }
   }
