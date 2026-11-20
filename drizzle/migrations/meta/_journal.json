@@ -50,6 +50,13 @@
       "when": 1795148371575,
       "tag": "0006_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795184533272,
+      "tag": "0007_clear_return_date_on_reactivation",
+      "breakpoints": true
     }
   ]
 }
