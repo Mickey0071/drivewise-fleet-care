@@ -43,6 +43,13 @@
       "when": 1794975800958,
       "tag": "0005_selected_staff_access_security_fixes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795148371575,
+      "tag": "0006_migration",
+      "breakpoints": true
     }
   ]
 }

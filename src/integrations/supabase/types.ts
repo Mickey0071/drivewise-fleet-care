@@ -5435,6 +5435,7 @@ export type Database = {
         Returns: boolean
       }
       has_violations_access: { Args: { _user_id: string }; Returns: boolean }
+      is_staff: { Args: { _uid: string }; Returns: boolean }
       marketing_arm_sender: { Args: never; Returns: undefined }
       marketing_disarm_sender: { Args: never; Returns: undefined }
       marketing_schedule_campaign: {
