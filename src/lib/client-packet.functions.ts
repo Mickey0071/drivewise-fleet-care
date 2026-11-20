@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
+import { normalizeAgreementPdf } from "@/lib/one-page-agreement";
 
 /**
  * Bundle the rental agreement PDF + license + selfie + signature for a
@@ -64,7 +65,7 @@ export const downloadClientPacket = createServerFn({ method: "POST" })
         const ct = (res.headers.get("content-type") ?? "").toLowerCase();
         const looksPdf = ct.includes("pdf") || (buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46);
         if (looksPdf) {
-          const src = await PDFDocument.load(buf);
+          const src = await PDFDocument.load(part.label === "Signed Rental Agreement" ? await normalizeAgreementPdf(buf) : buf);
           const pages = await out.copyPages(src, src.getPageIndices());
           for (const p of pages) out.addPage(p);
         } else {

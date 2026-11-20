@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { agreementObjectUrl } from "@/lib/agreement-download";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { FileSignature, IdCard, UserRound, ReceiptText, ShieldAlert, FileText } from "lucide-react";
 import { violations } from "@/lib/mock/data";
@@ -18,6 +21,18 @@ function isPdf(url: string) {
 
 export function ReservationDocuments({ rental }: { rental: Rental }) {
   const [active, setActive] = useState<DocItem | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const close = () => {
+    if (active?.url.startsWith("blob:")) URL.revokeObjectURL(active.url);
+    setActive(null);
+  };
+  async function open(doc: DocItem) {
+    if (doc.key !== "agreement" || doc.kind !== "pdf") { setActive(doc); return; }
+    setPreparing(true);
+    try { setActive({ ...doc, url: await agreementObjectUrl(doc.url) }); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Could not load agreement"); }
+    finally { setPreparing(false); }
+  }
 
   const docs: DocItem[] = [];
 
@@ -107,10 +122,12 @@ export function ReservationDocuments({ rental }: { rental: Rental }) {
       <div className="text-xs uppercase tracking-wide text-muted-foreground mb-3">Documents</div>
       <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
         {docs.map((doc) => (
-          <button
+          <Button
+            variant="ghost"
             key={doc.key}
-            onClick={() => setActive(doc)}
-            className="group flex flex-col items-center gap-1.5 rounded-md border border-border bg-background p-2 text-center transition-colors hover:border-primary"
+            disabled={preparing}
+            onClick={() => void open(doc)}
+            className="group flex h-auto flex-col items-center gap-1.5 rounded-md border border-border bg-background p-2 text-center transition-colors hover:border-primary"
           >
             <div className="relative flex h-20 w-full items-center justify-center overflow-hidden rounded bg-muted">
               {doc.kind === "image" ? (
@@ -123,11 +140,11 @@ export function ReservationDocuments({ rental }: { rental: Rental }) {
               </span>
             </div>
             <span className="text-[11px] font-medium leading-tight">{doc.label}</span>
-          </button>
+          </Button>
         ))}
       </div>
 
-      <Dialog open={!!active} onOpenChange={(o) => !o && setActive(null)}>
+      <Dialog open={!!active} onOpenChange={(o) => !o && close()}>
         <DialogContent className="max-w-3xl p-2 sm:p-4">
           {active && (
             <div className="w-full">

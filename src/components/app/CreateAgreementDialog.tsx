@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { openOnePageAgreement } from "@/lib/agreement-download";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,7 +122,7 @@ export function CreateAgreementDialog({
         toast.success("Sign link sent to customer — awaiting signature");
       } else {
         toast.success("Agreement created and signed — ready to mail");
-        if (res.agreementUrl) window.open(res.agreementUrl, "_blank");
+        if (res.agreementUrl) await openOnePageAgreement(res.agreementUrl);
       }
       onOpenChange(false);
       onDone();

@@ -3,6 +3,7 @@ import { useState, useRef, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { agreementObjectUrl } from "@/lib/agreement-download";
 import {
   Upload,
   FileText,
@@ -57,7 +58,13 @@ import {
 } from "@/lib/retro-agreement.functions";
 
 export const Route = createFileRoute("/violations_/bulk-upload")({
-  head: () => ({ meta: [{ title: "EZPass Bulk Upload — Camauto Rentals" }] }),
+  head: () => ({ meta: [
+    { title: "EZPass Bulk Upload — Camauto Rentals" },
+    { name: "description", content: "Review bulk violations, match reservations and print signed rental evidence with Camauto Rentals." },
+    { property: "og:title", content: "EZPass Bulk Upload — Camauto Rentals" },
+    { property: "og:description", content: "Review bulk violations and prepare signed rental evidence." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: BulkUploadPage,
 });
 
@@ -1185,13 +1192,15 @@ function ManualMatchDialog({
         return;
       }
       const a = document.createElement("a");
-      a.href = url;
+      const fitted = await agreementObjectUrl(url);
+      a.href = fitted;
       a.download = filename;
       a.target = "_blank";
       a.rel = "noopener";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(fitted), 300_000);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load agreement");
     } finally {

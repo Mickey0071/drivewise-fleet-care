@@ -54,6 +54,7 @@ import { generateAgreementPdf } from "@/lib/agreement-pdf.functions";
 import { downloadCSV } from "@/lib/exports";
 import { renderRepairHistoryPdf, type RepairHistoryRow } from "@/lib/repair-history-pdf";
 import { toast } from "sonner";
+import { openOnePageAgreement } from "@/lib/agreement-download";
 import { GroupedExpenseTable } from "@/components/app/GroupedExpenseTable";
 import { groupExpenseItems } from "@/lib/grouped-expenses";
 import { VehicleSpareKey } from "@/components/app/VehicleSpareKey";
@@ -228,14 +229,15 @@ function VehicleDetail() {
   }
   async function downloadAgreement(rental: Rental) {
     if (rental.agreementPdfUrl) {
-      window.open(rental.agreementPdfUrl, "_blank", "noopener");
+      try { await openOnePageAgreement(rental.agreementPdfUrl); }
+      catch (error) { toast.error(error instanceof Error ? error.message : "Could not open agreement"); }
       return;
     }
     setAgreementLoadingId(rental.id);
     try {
       const res = await genAgreementPdf({ data: { rentalId: rental.id } });
       if (res?.url) {
-        window.open(res.url, "_blank", "noopener");
+        await openOnePageAgreement(res.url);
         toast.success("Agreement PDF generated");
       } else {
         toast.error("Could not generate agreement", { description: res?.error ?? "Unknown error" });

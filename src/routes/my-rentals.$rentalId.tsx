@@ -23,9 +23,16 @@ import {
   AlertTriangle, Image as ImageIcon, CreditCard, CalendarPlus, MessageSquare, Ban, Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AgreementDownload } from "@/components/app/AgreementDownload";
 
 export const Route = createFileRoute("/my-rentals/$rentalId")({
-  head: () => ({ meta: [{ title: "Rental details — Camauto Rentals" }] }),
+  head: () => ({ meta: [
+    { title: "Rental details — Camauto Rentals" },
+    { name: "description", content: "View your Camauto rental details, signed agreement, documents and payments." },
+    { property: "og:title", content: "Rental details — Camauto Rentals" },
+    { property: "og:description", content: "View your rental agreement, documents and payments." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: MyRentalDetailPage,
 });
 
@@ -556,7 +563,7 @@ function DocRow({ icon, label, url }: { icon: React.ReactNode; label: string; ur
         <span className="text-muted-foreground">{icon}</span>
         <span>{label}</span>
       </div>
-      {url ? (
+      {url && label === "Rental Agreement (PDF)" ? <AgreementDownload url={url}>View</AgreementDownload> : url ? (
         <a href={url} target="_blank" rel="noreferrer" className="text-primary hover:underline">View</a>
       ) : (
         <span className="text-xs text-muted-foreground">Not on file</span>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { AgreementDownload } from "@/components/app/AgreementDownload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -205,11 +206,7 @@ export function SubmitDisputeDialog({
                 <Button size="sm" variant="outline" disabled>No license on file</Button>
               )}
               {detail.agreementUrl ? (
-                <Button size="sm" variant="outline" asChild>
-                  <a href={detail.agreementUrl} target="_blank" rel="noreferrer" download>
-                    📑 Download Rental Agreement
-                  </a>
-                </Button>
+                <AgreementDownload url={detail.agreementUrl}>📑 Download Rental Agreement</AgreementDownload>
               ) : (
                 <Button size="sm" variant="outline" disabled>No rental agreement</Button>
               )}

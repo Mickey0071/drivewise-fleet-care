@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
+import { normalizeAgreementPdf } from "@/lib/one-page-agreement";
 import {
   type AuthorityAddress,
   loadViolationCtx,
@@ -100,7 +101,7 @@ export const generateMailPacket = createServerFn({ method: "POST" })
     // Page 1 — Liability transfer cover letter
     await appendPdf(cover);
 
-    // Page 2+ — Signed rental agreement, appended exactly as signed. If no
+    // Page 2 — All original signed agreement pages fitted onto one page. If no
     // agreement is on file we simply skip it: the cover letter is still a
     // valid liability-transfer notice on its own.
     const agreementUrl = (ctx.rental?.agreement_pdf_url as string | null) ?? null;
@@ -111,7 +112,7 @@ export const generateMailPacket = createServerFn({ method: "POST" })
           const ct = (res.headers.get("content-type") ?? "").toLowerCase();
           const bytes = new Uint8Array(await res.arrayBuffer());
           if (ct.includes("pdf") || /\.pdf(\?|$)/i.test(agreementUrl)) {
-            await appendPdf(bytes);
+            await appendPdf(await normalizeAgreementPdf(bytes));
           } else {
             missing.push("Signed rental agreement (not a PDF on file)");
           }

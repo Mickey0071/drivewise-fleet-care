@@ -20,10 +20,17 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { AgreementDownload } from "@/components/app/AgreementDownload";
 import logo from "@/assets/camauto-logo-full.jpeg";
 
 export const Route = createFileRoute("/rent/portal/$rentalId")({
-  head: () => ({ meta: [{ title: "Your reservation — Camauto Rentals" }] }),
+  head: () => ({ meta: [
+    { title: "Your reservation — Camauto Rentals" },
+    { name: "description", content: "Manage your Camauto reservation and access your signed agreement and receipts." },
+    { property: "og:title", content: "Your reservation — Camauto Rentals" },
+    { property: "og:description", content: "Access your reservation, signed agreement and receipts." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: PortalRouteComponent,
 });
 
@@ -353,9 +360,9 @@ export function PortalPage({ rentalId }: { rentalId: string }) {
                     </div>
                     <div className="flex flex-wrap gap-3">
                       {h.agreement_pdf_url ? (
-                        <a href={h.agreement_pdf_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                        <AgreementDownload url={h.agreement_pdf_url}>
                           <FileText className="h-3.5 w-3.5" /> Agreement
-                        </a>
+                        </AgreementDownload>
                       ) : null}
                       {h.receipt_pdf_url ? (
                         <a href={h.receipt_pdf_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
@@ -471,7 +478,7 @@ function DocRow({ icon, label, url }: { icon: ReactNode; label: string; url: str
         {icon}
         <span>{label}</span>
       </div>
-      {url ? (
+      {url && label === "Rental Agreement (PDF)" ? <AgreementDownload url={url}><Download className="h-3.5 w-3.5" />Download</AgreementDownload> : url ? (
         <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
           <Download className="h-3.5 w-3.5" /> Download
         </a>

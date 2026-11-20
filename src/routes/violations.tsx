@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { normalizeAgreementPdf } from "@/lib/one-page-agreement";
+import { openOnePageAgreement } from "@/lib/agreement-download";
 import { Plus, Search, AlertTriangle, FileUp, MoreHorizontal, Trash2, Phone, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
@@ -280,7 +282,13 @@ function SendCustomerButton({ violation, onDone }: { violation: ViolationRow; on
 }
 
 export const Route = createFileRoute("/violations")({
-  head: () => ({ meta: [{ title: "Violations — Camauto Rentals" }] }),
+  head: () => ({ meta: [
+    { title: "Violations — Camauto Rentals" },
+    { name: "description", content: "Manage Camauto vehicle violations, matched rental agreements and dispute evidence." },
+    { property: "og:title", content: "Violations — Camauto Rentals" },
+    { property: "og:description", content: "Manage violations, matched rental agreements and dispute evidence." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: ViolationsPage,
 });
 
@@ -310,7 +318,7 @@ function DownloadAgreementButton({
         onNoAgreement();
         return;
       }
-      window.open(res.url, "_blank");
+      await openOnePageAgreement(res.url);
       onDownloaded?.();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not load agreement");
@@ -1723,7 +1731,7 @@ function ViolationsPage() {
           const resp = await fetch(item.agreementUrl);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           const bytes = await resp.arrayBuffer();
-          const src = await PDFDocument.load(bytes);
+          const src = await PDFDocument.load(await normalizeAgreementPdf(new Uint8Array(bytes)));
           const pages = await merged.copyPages(src, src.getPageIndices());
           for (const p of pages) merged.addPage(p);
         } catch (e) {
@@ -3117,7 +3125,7 @@ function NewViolationDialog({
                               variant="outline"
                               className="mt-2 h-7 px-2 text-xs"
                               onClick={() =>
-                                window.open(picked.agreement_pdf_url as string, "_blank", "noopener")
+                                openOnePageAgreement(picked.agreement_pdf_url as string).catch(error => toast.error(error.message))
                               }
                             >
                               📄 View Agreement

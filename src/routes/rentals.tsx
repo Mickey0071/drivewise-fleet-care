@@ -62,6 +62,7 @@ import { sendRenewalLink } from "@/lib/renewal-link.functions";
 import { calculateRenewalStatus, RENEWAL_BADGE_CLASS } from "@/lib/rentalStatus";
 import { SendLinkPreview } from "@/components/app/SendLinkPreview";
 import { toast } from "sonner";
+import { openOnePageAgreement } from "@/lib/agreement-download";
 import type { Rental, AccidentReport } from "@/lib/mock/data";
 import { formatVehiclePickerLabel } from "@/lib/vehicle-labels";
 import { useQuery } from "@tanstack/react-query";
@@ -1170,7 +1171,9 @@ function RentalsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {r.agreementPdfUrl ? (
                     <button
-                      onClick={() => window.open(r.agreementPdfUrl!, "_blank", "noopener")}
+                      onClick={() => {
+                        if (r.agreementPdfUrl) void openOnePageAgreement(r.agreementPdfUrl).catch(error => toast.error(error.message));
+                      }}
                       className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
                     >
                       <span className="text-lg">📄</span>
@@ -1187,7 +1190,7 @@ function RentalsPage() {
                           const res = await genPdfFn({ data: { rentalId: r.id } });
                           if (res?.url) {
                             toast.success("Agreement PDF generated");
-                            window.open(res.url, "_blank", "noopener");
+                            await openOnePageAgreement(res.url);
                             await ensureRentalSynced(r.id);
                           } else {
                             toast.error("Could not generate agreement PDF", { description: res?.error ?? "Unknown error" });

@@ -1,5 +1,8 @@
 # Roadmap
 
+- [x] Enforce one-page signed rental agreements for older uploaded PDFs and all current agreement/packet printing paths; original two-page saved reservation verified as one page with identical text/signature, browser printing one page, real violation packet two pages (cover + signed agreement), fifteen tests pass; original stored evidence unchanged.
+- [ ] Combine violation cover letter and agreement onto the same page if requested — awaiting the user's cover-letter layout choice; currently one page each.
+
 - [x] Update rent-to-own restock/refund wording in the shared agreement, signing acknowledgement and admin form; saved contract prints exactly two pages with updated clause and both signatures on page one; eight payment tests pass, saved contracts and payment rules unchanged.
 
 - [x] Fit rent-to-own signatures and all agreement terms on page one, current payment checklist on page two using shared admin/customer printing; saved signed contract printed as exactly two Letter pages, signature verified on page one, eight balance tests pass.

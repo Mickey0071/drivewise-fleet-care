@@ -18,9 +18,17 @@ import { getStripeEnvironment } from "@/lib/stripe";
 import { toast } from "sonner";
 import { FileSignature, FileText, IdCard, Camera, CheckCircle2, Send, AlertTriangle, ExternalLink } from "lucide-react";
 import type { Rental } from "@/lib/mock/data";
+import { AgreementPreview } from "@/components/app/AgreementPreview";
+import { AgreementDownload } from "@/components/app/AgreementDownload";
 
 export const Route = createFileRoute("/pending-agreements")({
-  head: () => ({ meta: [{ title: "Pending Agreements — Camauto Rentals" }] }),
+  head: () => ({ meta: [
+    { title: "Pending Agreements — Camauto Rentals" },
+    { name: "description", content: "Review signed Camauto rental agreements and renter documents awaiting approval." },
+    { property: "og:title", content: "Pending Agreements — Camauto Rentals" },
+    { property: "og:description", content: "Review signed agreements and renter documents awaiting approval." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: PendingAgreementsPage,
 });
 
@@ -259,7 +267,7 @@ function DocSection({
           <span className="text-muted-foreground">{icon}</span>
           {label}
         </div>
-        {url && (
+        {url && kind === "pdf" ? <AgreementDownload url={url}>Open <ExternalLink className="h-3 w-3" /></AgreementDownload> : url && (
           <a
             href={url}
             target="_blank"
@@ -275,10 +283,10 @@ function DocSection({
           Not uploaded yet.
         </div>
       ) : kind === "pdf" ? (
-        <iframe
-          src={url}
+        <AgreementPreview
+          url={url}
           title={label}
-          className="h-80 w-full rounded-md border bg-white"
+          className="h-80 w-full rounded-md border bg-background"
         />
       ) : (
         <a href={url} target="_blank" rel="noreferrer" className="block">

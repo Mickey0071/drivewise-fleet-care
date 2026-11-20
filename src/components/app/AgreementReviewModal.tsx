@@ -12,6 +12,8 @@ import { ensureRentalSynced, refreshStoreFromCloud } from "@/lib/mock/store";
 import { sendPaymentLink } from "@/lib/payment-link.functions";
 import { requestAgreementResubmission } from "@/lib/agreement-review.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
+import { AgreementPreview } from "@/components/app/AgreementPreview";
+import { AgreementDownload } from "@/components/app/AgreementDownload";
 
 type Props = {
   rental: Rental | null;
@@ -157,7 +159,7 @@ function DocViewer({ icon, label, url, kind }: { icon: React.ReactNode; label: s
           <span className="text-muted-foreground">{icon}</span>
           {label}
         </div>
-        {url && (
+        {url && kind === "pdf" ? <AgreementDownload url={url}>Open <ExternalLink className="h-3 w-3" /></AgreementDownload> : url && (
           <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
             Open <ExternalLink className="h-3 w-3" />
           </a>
@@ -166,7 +168,7 @@ function DocViewer({ icon, label, url, kind }: { icon: React.ReactNode; label: s
       {!url ? (
         <div className="rounded-md border border-dashed bg-muted/20 p-4 text-center text-xs text-muted-foreground">Not uploaded yet.</div>
       ) : kind === "pdf" ? (
-        <iframe src={url} title={label} className="h-96 w-full rounded-md border bg-white" />
+        <AgreementPreview url={url} title={label} className="h-96 w-full rounded-md border bg-background" />
       ) : (
         <a href={url} target="_blank" rel="noreferrer" className="block">
           <img src={url} alt={label} className="max-h-96 w-full rounded-md border bg-muted/20 object-contain transition-transform hover:scale-[1.01]" />
